@@ -1,0 +1,7 @@
+//! Mathematical primitives for 3D robotics
+
+pub mod vec3;
+pub mod quaternion;
+
+pub use vec3::Vec3;
+pub use quarternion::Quat;

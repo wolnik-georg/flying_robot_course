@@ -1,5 +1,0 @@
-/home/georg/Desktop/flying_robot_course/Simulation and Dynamics/assignment1/target/debug/build/num-traits-6a8fbcb31a90d82f/build_script_build-6a8fbcb31a90d82f: /home/georg/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-traits-0.2.19/build.rs
-
-/home/georg/Desktop/flying_robot_course/Simulation and Dynamics/assignment1/target/debug/build/num-traits-6a8fbcb31a90d82f/build_script_build-6a8fbcb31a90d82f.d: /home/georg/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-traits-0.2.19/build.rs
-
-/home/georg/.cargo/registry/src/index.crates.io-6f17d22bba15001f/num-traits-0.2.19/build.rs:
