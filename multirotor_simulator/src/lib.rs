@@ -6,6 +6,8 @@
 pub mod math;
 pub mod dynamics;
 pub mod integration;
+pub mod controller;
+pub mod trajectory;
 
 /// Prelude for convenient imports
 pub mod prelude {
@@ -22,5 +24,17 @@ pub mod prelude {
         RK4Integrator,
         ExpEulerIntegrator,
         ExpRK4Integrator,
+    };
+    pub use crate::controller::{
+        Controller,
+        GeometricController,
+        TrajectoryReference,
+        ControlOutput,
+    };
+    pub use crate::trajectory::{
+        Trajectory,
+        Figure8Trajectory,
+        CircleTrajectory,
+        CsvTrajectory,
     };
 }

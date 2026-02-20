@@ -6,4 +6,4 @@ pub mod exponential;
 
 pub use euler::EulerIntegrator;
 pub use rk4::RK4Integrator;
-pub use exponential::{ExpEulerIntegrator, Exp4RKIntegrator};
+pub use exponential::{ExpEulerIntegrator, ExpRK4Integrator};

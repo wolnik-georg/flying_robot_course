@@ -30,7 +30,7 @@ impl Integrator for EulerIntegrator {
         let gravity = Vec3::new(0.0, 0.0, -params.gravity * params.mass);
 
         // linear acceleration
-        let linear_acc = (thrust_words + gravity) * (1.0 / params.mass);
+        let linear_acc = (thrust_world + gravity) * (1.0 / params.mass);
 
         // angular acceleration
         let angular_acc = params.angular_acceleration(state.angular_velocity, tau);
