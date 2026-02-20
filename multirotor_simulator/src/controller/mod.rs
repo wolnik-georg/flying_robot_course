@@ -65,13 +65,15 @@ impl GeometricController {
         Self { kp, kv, kr, kw }
     }
 
-    /// Create controller with default gains (tuned for Crazyflie)
+    /// Create controller with default gains (from official Crazyflie Lee controller)
+    /// Reference: controller_lee.c in bitcraze/crazyflie-firmware
+    /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
         Self {
-            kp: Vec3::new(1.0, 1.0, 1.0),     // Position gains (reduced)
-            kv: Vec3::new(0.5, 0.5, 0.5),     // Velocity gains (reduced)
-            kr: Vec3::new(0.5, 0.5, 0.5),     // Attitude gains (further reduced)
-            kw: Vec3::new(0.1, 0.1, 0.1),     // Angular velocity gains (further reduced)
+            kp: Vec3::new(7.0, 7.0, 7.0),            // Position P gains (Kpos_P from Lee controller)
+            kv: Vec3::new(4.0, 4.0, 4.0),            // Velocity D gains (Kpos_D from Lee controller)
+            kr: Vec3::new(0.007, 0.007, 0.008),      // Attitude P gains (KR from Lee controller)
+            kw: Vec3::new(0.00115, 0.00115, 0.002),  // Angular velocity D gains (Komega from Lee controller)
         }
     }
 
@@ -84,12 +86,22 @@ impl GeometricController {
         let zb_d = thrust_force.normalize();
 
         // Desired x-axis in world frame (forward direction with yaw)
-        let xb_d = Vec3::new(yaw.cos(), yaw.sin(), 0.0);
+        let xc = Vec3::new(yaw.cos(), yaw.sin(), 0.0);
 
-        // Desired y-axis (right direction)
-        let yb_d = zb_d.cross(&xb_d).normalize();
+        // Desired y-axis (perpendicular to both zb_d and xc)
+        // Use yb_d = zb_d × xc, which gives the left direction
+        let yb_d_unnorm = zb_d.cross(&xc);
+        
+        // Check for singularity (when thrust is nearly vertical and aligned with xc)
+        let yb_d = if yb_d_unnorm.norm() < 0.01 {
+            // Near singularity: use a fallback y-axis
+            // If zb_d is nearly vertical, use world y-axis
+            Vec3::new(-yaw.sin(), yaw.cos(), 0.0)
+        } else {
+            yb_d_unnorm.normalize()
+        };
 
-        // Re-orthogonalize x-axis
+        // Re-orthogonalize x-axis: xb_d = yb_d × zb_d
         let xb_d = yb_d.cross(&zb_d).normalize();
 
         // Construct rotation matrix Rd = [xb_d, yb_d, zb_d]
@@ -165,7 +177,7 @@ impl Controller for GeometricController {
                 self.kv.y * ev.y,
                 self.kv.z * ev.z,
             )
-            + Vec3::new(0.0, 0.0, params.gravity as f32);
+            + Vec3::new(0.0, 0.0, params.gravity as f32); // Gravity compensation: +g in z direction
 
         let thrust_force = feedforward * params.mass as f32;
 
@@ -186,7 +198,8 @@ impl Controller for GeometricController {
             Vec3::new(0.0, 0.0, reference.yaw_rate), // ωd = [0, 0, ψ̇d]
         );
 
-        // Attitude control law: τ = -KR er - Kω eω + ω×Jω - J(R^T Rd ω̇d - R^T Rd ωd_dot)
+        // Attitude control law: τ = -KR er - Kω eω
+        // Simplified - removed Coriolis and feedforward terms for stability
         let torque_proportional = Vec3::new(
             -self.kr.x * er.x,
             -self.kr.y * er.y,
@@ -198,24 +211,7 @@ impl Controller for GeometricController {
             -self.kw.z * eomega.z,
         );
 
-        // Coriolis term: ω × Jω
-        let coriolis = state.angular_velocity.cross(&matvecmul_f32_mat(&params.inertia, state.angular_velocity));
-
-        // Compute R^T Rd ω̇d - R^T Rd ωd_dot
-        let r_t = transpose_f32(&r);
-        let omega_d_dot = Vec3::new(0.0, 0.0, reference.yaw_acceleration);
-        let omega_d = Vec3::new(0.0, 0.0, reference.yaw_rate);
-
-        let rd_omega_d_dot = matvecmul_f32_mat(&rd, omega_d_dot);
-        let rd_omega_d = matvecmul_f32_mat(&rd, omega_d);
-
-        let r_t_rd_omega_d_dot = matvecmul_f32_mat(&r_t, rd_omega_d_dot);
-        let r_t_rd_omega_d = matvecmul_f32_mat(&r_t, rd_omega_d);
-
-        let angular_acceleration_feedforward = r_t_rd_omega_d_dot - r_t_rd_omega_d;
-        let inertia_feedforward = matvecmul_f32_mat(&params.inertia, angular_acceleration_feedforward);
-
-        let torque = torque_proportional + torque_derivative + coriolis - inertia_feedforward;
+        let torque = torque_proportional + torque_derivative;
 
         ControlOutput {
             thrust: thrust_force.norm(),
@@ -274,8 +270,11 @@ mod tests {
     #[test]
     fn test_geometric_controller_creation() {
         let controller = GeometricController::default();
-        assert_eq!(controller.kp, Vec3::new(1.0, 1.0, 1.0));
-        assert_eq!(controller.kv, Vec3::new(0.5, 0.5, 0.5));
+        // Check official Crazyflie Lee controller gains
+        assert_eq!(controller.kp, Vec3::new(7.0, 7.0, 7.0));
+        assert_eq!(controller.kv, Vec3::new(4.0, 4.0, 4.0));
+        assert_eq!(controller.kr, Vec3::new(0.007, 0.007, 0.008));
+        assert_eq!(controller.kw, Vec3::new(0.00115, 0.00115, 0.002));
     }
 
     #[test]

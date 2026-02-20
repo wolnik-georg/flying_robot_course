@@ -20,19 +20,20 @@ fn main() {
     let integrator = Box::new(RK4Integrator);
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
 
-    // Create geometric controller with moderate gains
+    // Create geometric controller with official Crazyflie Lee controller gains
+    // Reference: controller_lee.c in bitcraze/crazyflie-firmware
+    // These are the actual gains used in the real Crazyflie hardware
     let controller = GeometricController::new(
-        Vec3::new(0.1, 0.1, 0.1),    // Position gains
-        Vec3::new(0.05, 0.05, 0.05), // Velocity gains
-        Vec3::new(0.01, 0.01, 0.01), // Attitude gains
-        Vec3::new(0.001, 0.001, 0.001), // Angular velocity gains
+        Vec3::new(7.0, 7.0, 7.0),            // Position P gains (Kpos_P)
+        Vec3::new(4.0, 4.0, 4.0),            // Velocity D gains (Kpos_D)
+        Vec3::new(0.007, 0.007, 0.008),      // Attitude P gains (KR)
+        Vec3::new(0.00115, 0.00115, 0.002),  // Angular velocity D gains (Komega)
     );
-
-    println!("Controller gains:");
-    println!("  Position: Kp = {:.3}", 0.1);
-    println!("  Velocity: Kv = {:.3}", 0.05);
-    println!("  Attitude: KR = {:.3}", 0.01);
-    println!("  Angular velocity: Kω = {:.3}", 0.001);
+    println!("Controller gains (Official Crazyflie Lee Controller):");
+    println!("  Position: Kp = {:.3}", controller.kp.x);
+    println!("  Velocity: Kv = {:.3}", controller.kv.x);
+    println!("  Attitude: KR = {:.6}", controller.kr.x);
+    println!("  Angular velocity: Kω = {:.6}", controller.kw.x);
     println!();
 
     // Simulation parameters
@@ -52,8 +53,8 @@ fn main() {
         // Create trajectory based on scenario
         let trajectory: Box<dyn Trajectory> = match scenario_name {
             "hover" => Box::new(CircleTrajectory::new(0.0, 0.5, 0.0)), // Zero radius circle = hover
-            "figure8" => Box::new(Figure8Trajectory::new()), // Default figure-8
-            "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, 0.3)), // radius, height, angular velocity
+            "figure8" => Box::new(Figure8Trajectory::with_params(8.0, 0.5, 0.5)), // Slower figure-8
+            "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, 0.1)), // Slower circle
             _ => unreachable!(),
         };
 

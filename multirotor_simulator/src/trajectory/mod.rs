@@ -111,16 +111,17 @@ impl Trajectory for Figure8Trajectory {
         let yaw = self.evaluate_polynomial(&coeffs[segment_idx][25..33], s);
 
         // Compute derivatives (velocity and acceleration)
-        let vx = self.evaluate_polynomial_derivative(&coeffs[segment_idx][1..9], s) * self.scale / self.duration;
-        let vy = self.evaluate_polynomial_derivative(&coeffs[segment_idx][9..17], s) * self.scale / self.duration;
-        let vz = self.evaluate_polynomial_derivative(&coeffs[segment_idx][17..25], s) / self.duration;
+        // Note: derivatives are with respect to s ∈ [0,1], so we divide by segment_duration to get time derivatives
+        let vx = self.evaluate_polynomial_derivative(&coeffs[segment_idx][1..9], s) * self.scale / segment_duration;
+        let vy = self.evaluate_polynomial_derivative(&coeffs[segment_idx][9..17], s) * self.scale / segment_duration;
+        let vz = self.evaluate_polynomial_derivative(&coeffs[segment_idx][17..25], s) / segment_duration;
 
-        let ax = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][1..9], s) * self.scale / (self.duration * self.duration);
-        let ay = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][9..17], s) * self.scale / (self.duration * self.duration);
-        let az = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][17..25], s) / (self.duration * self.duration);
+        let ax = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][1..9], s) * self.scale / (segment_duration * segment_duration);
+        let ay = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][9..17], s) * self.scale / (segment_duration * segment_duration);
+        let az = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][17..25], s) / (segment_duration * segment_duration);
 
-        let yaw_rate = self.evaluate_polynomial_derivative(&coeffs[segment_idx][25..33], s) / self.duration;
-        let yaw_acceleration = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][25..33], s) / (self.duration * self.duration);
+        let yaw_rate = self.evaluate_polynomial_derivative(&coeffs[segment_idx][25..33], s) / segment_duration;
+        let yaw_acceleration = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][25..33], s) / (segment_duration * segment_duration);
 
         TrajectoryReference {
             position: Vec3::new(x, y, z),

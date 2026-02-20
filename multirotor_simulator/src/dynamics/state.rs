@@ -104,20 +104,29 @@ impl MotorAction {
         let kt = params.kt;
         let l = params.arm_length;
 
+        // For X-configuration, the lever arm is L/sqrt(2) due to 45° motor placement
+        let sqrt2 = 2.0_f32.sqrt();
+        let l_sqrt2 = l / sqrt2;
+
         // Drag factor
         let d = kt / kf;
 
-        // Common term
+        // Common terms
         let thrust_term = thrust / (4.0 * kf);
-        let torque_x_term = torque.x / (4.0 * kf * l);
-        let torque_y_term = torque.y / (4.0 * kf * l);
-        let torque_z_term = torque.z / (4.0 * d);
+        let roll_term = torque.x / (4.0 * kf * l_sqrt2);
+        let pitch_term = torque.y / (4.0 * kf * l_sqrt2);
+        let yaw_term = torque.z / (4.0 * kt);
 
         // Motor mixing for X configuration
-        let omega1_sq = thrust_term - torque_x_term - torque_y_term - torque_z_term; // Front-left
-        let omega2_sq = thrust_term + torque_x_term - torque_y_term + torque_z_term; // Front-right
-        let omega3_sq = thrust_term + torque_x_term + torque_y_term - torque_z_term; // Back-right
-        let omega4_sq = thrust_term - torque_x_term + torque_y_term + torque_z_term; // Back-left
+        // Derived from inverting:
+        // F = kf * (ω1² + ω2² + ω3² + ω4²)
+        // τx = kf * l_sqrt2 * (ω2² + ω3² - ω1² - ω4²)
+        // τy = kf * l_sqrt2 * (ω3² + ω4² - ω1² - ω2²)
+        // τz = kt * (ω1² - ω2² + ω3² - ω4²)
+        let omega1_sq = thrust_term - roll_term - pitch_term + yaw_term; // Front-left
+        let omega2_sq = thrust_term + roll_term - pitch_term - yaw_term; // Front-right
+        let omega3_sq = thrust_term + roll_term + pitch_term + yaw_term; // Back-right
+        let omega4_sq = thrust_term - roll_term + pitch_term - yaw_term; // Back-left
 
         // Clamp to non-negative values (motors can't spin backwards)
         let omega1_sq = omega1_sq.max(0.0);

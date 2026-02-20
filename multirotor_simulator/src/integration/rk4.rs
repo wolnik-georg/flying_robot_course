@@ -18,8 +18,10 @@ impl RK4Integrator {
     /// Quaternions need special handling due to unit constraint
     /// Rust note: Private associated function (not in trait, internal helper)
     fn integrate_quaternion(q: &Quat, dq_dt: Quat, dt: f32) -> Quat {
+        // Integrate using: q_new = q_old + dq/dt * dt, then normalize
+        // NOT quaternion multiplication, but quaternion addition!
         let delta_q = dq_dt * dt;
-        (*q * delta_q).normalize()  // Rust note: *q dereferences the &Quat to Quat
+        (*q + delta_q).normalize()
     }
 }
 

@@ -74,11 +74,12 @@ impl MultirotorParams {
         let sqrt2 = 2.0_f32.sqrt();
         let l_sqrt2 = self.arm_length / sqrt2;
 
-        // Roll torque (left vs right motors)
-        let tau_x = self.kf * l_sqrt2 * (omega4_sq - omega2_sq);
-        // Pitch torque (front vs back motors)
-        let tau_y = self.kf * l_sqrt2 * (omega3_sq - omega1_sq);
-        // Yaw torque (CW vs CCW motors, reaction torque)
+        // Roll torque (right motors faster = positive roll)
+        let tau_x = self.kf * l_sqrt2 * (omega2_sq + omega3_sq - omega1_sq - omega4_sq);
+        // Pitch torque (back motors faster = positive pitch)
+        let tau_y = self.kf * l_sqrt2 * (omega3_sq + omega4_sq - omega1_sq - omega2_sq);
+        // Yaw torque (CW motors 1,3 positive, CCW motors 2,4 negative)
+        // CW motors produce clockwise reaction torque (positive yaw)
         let tau_z = self.kt * (omega1_sq - omega2_sq + omega3_sq - omega4_sq);
 
         (f, Vec3::new(tau_x, tau_y, tau_z))
