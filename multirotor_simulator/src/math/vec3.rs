@@ -155,7 +155,6 @@ impl Mul<f32> for Vec3 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f32::consts::PI;
 
     #[test]
     fn test_vec3_new() {

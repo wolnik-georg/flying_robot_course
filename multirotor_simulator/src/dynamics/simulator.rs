@@ -313,7 +313,7 @@ mod tests {
         state.angular_velocity = Vec3::new(0.0, 0.0, 1.0);
         let action = MotorAction::hover();
 
-        let (vel_deriv, lin_acc, ori_deriv, ang_acc) = compute_derivatives(&params, &state, &action);
+        let (_vel_deriv, _lin_acc, ori_deriv, ang_acc) = compute_derivatives(&params, &state, &action);
 
         // Orientation derivative should be non-zero
         assert!(ori_deriv.norm() > 0.0);
@@ -330,7 +330,7 @@ mod tests {
         state.orientation = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI / 6.0);
         let action = MotorAction::hover();
 
-        let (vel_deriv, lin_acc, _ori_deriv, _ang_acc) = compute_derivatives(&params, &state, &action);
+        let (_vel_deriv, lin_acc, _ori_deriv, _ang_acc) = compute_derivatives(&params, &state, &action);
 
         // Linear acceleration should be different from hover (tilted thrust produces different acceleration)
         let hover_acc = Vec3::new(0.0, 0.0, -params.gravity); // Approximate hover acceleration

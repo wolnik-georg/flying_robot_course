@@ -36,5 +36,7 @@ pub mod prelude {
         Figure8Trajectory,
         CircleTrajectory,
         CsvTrajectory,
+        TakeoffTrajectory,
+        SequencedTrajectory,
     };
 }

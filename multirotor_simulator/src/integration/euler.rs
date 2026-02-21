@@ -56,7 +56,7 @@ impl Integrator for EulerIntegrator {
 mod tests {
     use super::*;
     use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
-    use crate::math::{Vec3, Quat};
+    use crate::math::Vec3;
 
     #[test]
     fn test_euler_step_no_acceleration() {

@@ -86,7 +86,7 @@ impl Integrator for RK4Integrator {
 mod tests {
     use super::*;
     use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
-    use crate::math::{Vec3, Quat};
+    use crate::math::Vec3;
 
     #[test]
     fn test_rk4_no_motion() {

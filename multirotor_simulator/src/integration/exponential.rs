@@ -101,7 +101,6 @@ impl Integrator for ExpRK4Integrator {
 mod tests {
     use super::*;
     use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
-    use crate::math::{Vec3, Quat};
     use crate::integration::RK4Integrator;
 
     #[test]

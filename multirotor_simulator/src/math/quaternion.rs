@@ -318,7 +318,6 @@ mod tests {
         let exp_q = q.exp();
 
         // Should be approximately (cos(θ/2), sin(θ/2) * axis)
-        let half_angle = PI / 4.0; // θ = π/4, so θ/2 = π/8? No, for pure quaternion q = (0,0,0,θ), |q| = θ
         let angle = PI / 4.0; // |imag| = π/4
         assert!((exp_q.w - angle.cos()).abs() < 1e-6);
         assert!((exp_q.z - angle.sin()).abs() < 1e-6);

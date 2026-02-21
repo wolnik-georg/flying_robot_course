@@ -167,7 +167,7 @@ mod tests {
             30000.0, // Back-right (fast)
             25000.0, // Back-left (slow)
         );
-        let (thrust, torque) = params.motor_speeds_to_forces_torques(&action);
+        let (_thrust, torque) = params.motor_speeds_to_forces_torques(&action);
 
         // Should have some roll torque (sign depends on motor configuration)
         assert!(torque.x.abs() > 0.0);
@@ -185,7 +185,7 @@ mod tests {
             30000.0, // Back-right (fast)
             30000.0, // Back-left (fast)
         );
-        let (thrust, torque) = params.motor_speeds_to_forces_torques(&action);
+        let (_thrust, torque) = params.motor_speeds_to_forces_torques(&action);
 
         // Should have some pitch torque (sign depends on motor configuration)
         assert!(torque.y.abs() > 0.0);
@@ -203,7 +203,7 @@ mod tests {
             30000.0, // Back-right (CW, fast)
             25000.0, // Back-left (CCW, slow)
         );
-        let (thrust, torque) = params.motor_speeds_to_forces_torques(&action);
+        let (_thrust, torque) = params.motor_speeds_to_forces_torques(&action);
 
         // Should have positive yaw torque
         assert!(torque.x.abs() < 1e-6); // No roll

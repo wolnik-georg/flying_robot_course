@@ -380,9 +380,184 @@ impl Trajectory for CsvTrajectory {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TakeoffTrajectory
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Smooth takeoff from the ground to a hover point using a minimum-jerk
+/// polynomial.  The drone starts at `(start_x, start_y, 0)` with zero
+/// velocity and acceleration and arrives at `(start_x, start_y, target_z)`
+/// with zero velocity and acceleration after `duration` seconds.
+///
+/// Minimum-jerk solution for boundary conditions
+///   p(0)=0, v(0)=0, a(0)=0, p(1)=1, v(1)=0, a(1)=0
+/// gives the normalised polynomial:
+///   p(s) = 10s³ - 15s⁴ + 6s⁵
+pub struct TakeoffTrajectory {
+    /// X/Y position to hold throughout the ascent
+    pub start_x: f32,
+    pub start_y: f32,
+    /// Target height [m]
+    pub target_z: f32,
+    /// Duration of the takeoff phase [s]
+    pub duration: f32,
+    /// Yaw to hold throughout the ascent [rad]
+    pub yaw: f32,
+}
+
+impl TakeoffTrajectory {
+    pub fn new(start_x: f32, start_y: f32, target_z: f32, duration: f32, yaw: f32) -> Self {
+        Self { start_x, start_y, target_z, duration, yaw }
+    }
+}
+
+impl Trajectory for TakeoffTrajectory {
+    fn get_reference(&self, time: f32) -> TrajectoryReference {
+        // Clamp s to [0, 1]
+        let s = (time / self.duration).clamp(0.0, 1.0);
+        let h = self.target_z;
+        let t_dur = self.duration;
+
+        // Minimum-jerk polynomial and its derivatives w.r.t. s
+        //   p(s)   = 10s³ - 15s⁴ + 6s⁵
+        //   p'(s)  = 30s² - 60s³ + 30s⁴
+        //   p''(s) = 60s  - 180s² + 120s³
+        //   p'''(s)= 60   - 360s  + 360s²
+        let p   =  10.0*s.powi(3) - 15.0*s.powi(4) +  6.0*s.powi(5);
+        let dp  =  30.0*s.powi(2) - 60.0*s.powi(3) + 30.0*s.powi(4);
+        let ddp =  60.0*s         -180.0*s.powi(2)  +120.0*s.powi(3);
+        let dddp = 60.0           -360.0*s           +360.0*s.powi(2);
+
+        // Chain rule: d/dt = d/ds * ds/dt = (1/T) * d/ds
+        let z    = h * p;
+        let vz   = h * dp   / t_dur;
+        let az   = h * ddp  / (t_dur * t_dur);
+        let jz   = h * dddp / (t_dur * t_dur * t_dur);
+
+        TrajectoryReference {
+            position:     Vec3::new(self.start_x, self.start_y, z),
+            velocity:     Vec3::new(0.0, 0.0, vz),
+            acceleration: Vec3::new(0.0, 0.0, az),
+            jerk:         Vec3::new(0.0, 0.0, jz),
+            yaw:          self.yaw,
+            yaw_rate:     0.0,
+            yaw_acceleration: 0.0,
+        }
+    }
+
+    fn duration(&self) -> Option<f32> {
+        Some(self.duration)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SequencedTrajectory
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Chains multiple trajectory phases back-to-back.
+///
+/// Each phase is described by a duration and a boxed `Trajectory`.  At any
+/// simulation time the active phase is selected and `get_reference` is
+/// forwarded to it with the *local* phase time (i.e. time since that phase
+/// started).  Once the last phase is reached it is held indefinitely.
+///
+/// Example:
+/// ```
+/// let seq = SequencedTrajectory::new(vec![
+///     (3.0, Box::new(TakeoffTrajectory::new(0.0, 0.0, 0.5, 3.0, 0.0))),
+///     (2.0, Box::new(CircleTrajectory::new(0.0, 0.5, 0.0))),  // hover
+///     (20.0, Box::new(CircleTrajectory::new(0.3, 0.3, PI/5.0))),
+/// ]);
+/// ```
+pub struct SequencedTrajectory {
+    /// (phase_duration, trajectory) pairs in execution order
+    phases: Vec<(f32, Box<dyn Trajectory>)>,
+    /// Cumulative start times cached at construction for fast lookup
+    phase_starts: Vec<f32>,
+    /// Total duration (sum of all phase durations)
+    total_duration: f32,
+}
+
+impl SequencedTrajectory {
+    /// Create a new sequence.  `phases` is a list of `(duration, trajectory)`.
+    pub fn new(phases: Vec<(f32, Box<dyn Trajectory>)>) -> Self {
+        let mut starts = Vec::with_capacity(phases.len());
+        let mut t = 0.0_f32;
+        for (dur, _) in &phases {
+            starts.push(t);
+            t += dur;
+        }
+        let total = t;
+        Self { phases, phase_starts: starts, total_duration: total }
+    }
+
+    /// Returns the index of the active phase and the local time within it.
+    pub fn active_phase(&self, time: f32) -> (usize, f32) {
+        let mut idx = 0;
+        for (i, &start) in self.phase_starts.iter().enumerate() {
+            if time >= start {
+                idx = i;
+            } else {
+                break;
+            }
+        }
+        let local_t = time - self.phase_starts[idx];
+        (idx, local_t)
+    }
+
+    /// How many seconds of prefix phases occur before the given phase index.
+    /// Useful for plotting to know when the "real" trajectory phase starts.
+    pub fn phase_start_time(&self, phase_idx: usize) -> f32 {
+        self.phase_starts.get(phase_idx).copied().unwrap_or(self.total_duration)
+    }
+}
+
+impl Trajectory for SequencedTrajectory {
+    fn get_reference(&self, time: f32) -> TrajectoryReference {
+        let (idx, local_t) = self.active_phase(time);
+        self.phases[idx].1.get_reference(local_t)
+    }
+
+    fn duration(&self) -> Option<f32> {
+        Some(self.total_duration)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_takeoff_trajectory() {
+        let traj = TakeoffTrajectory::new(0.1, 0.2, 0.5, 3.0, 0.0);
+        let start = traj.get_reference(0.0);
+        let end   = traj.get_reference(3.0);
+        // Starts on the ground
+        assert!(start.position.z.abs() < 1e-5, "z at t=0 should be 0");
+        assert!(start.velocity.z.abs() < 1e-5, "vz at t=0 should be 0");
+        // Arrives at target height with zero velocity
+        assert!((end.position.z - 0.5).abs() < 1e-4, "z at t=T should be target");
+        assert!(end.velocity.z.abs() < 1e-4, "vz at t=T should be 0");
+        // X/Y held constant
+        assert!((start.position.x - 0.1).abs() < 1e-6);
+        assert!((start.position.y - 0.2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_sequenced_trajectory() {
+        let seq = SequencedTrajectory::new(vec![
+            (3.0, Box::new(TakeoffTrajectory::new(0.0, 0.0, 0.5, 3.0, 0.0))),
+            (2.0, Box::new(CircleTrajectory::new(0.0, 0.5, 0.0))), // hover
+        ]);
+        assert_eq!(seq.phase_start_time(0), 0.0);
+        assert_eq!(seq.phase_start_time(1), 3.0);
+        // At t=0 we're in takeoff, z=0
+        let r0 = seq.get_reference(0.0);
+        assert!(r0.position.z < 0.01);
+        // At t=3 we're in hover, z=0.5
+        let r3 = seq.get_reference(3.0);
+        assert!((r3.position.z - 0.5).abs() < 1e-3);
+    }
 
     #[test]
     fn test_figure8_trajectory() {

@@ -46,6 +46,7 @@ fn main() {
     let debug = args.contains(&"--debug".to_string());
     let disable_jerk = args.contains(&"--no-jerk".to_string());
     let disable_integral = args.contains(&"--no-ki".to_string());
+    let realistic_start = args.contains(&"--realistic-start".to_string());
     // optional scenario selection: `--scenario=hover|figure8|circle`
     let scenario_filter = args
         .iter()
@@ -70,6 +71,11 @@ fn main() {
 
     if let Some(ref filter) = scenario_filter {
         println!("Filtering to scenario '{}'", filter);
+    }
+
+    if realistic_start {
+        println!("Realistic start enabled (--realistic-start): takeoff 3s + hover settle 2s prepended");
+        println!();
     }
 
     // Simulation parameters
@@ -99,40 +105,86 @@ fn main() {
     // caused the integral error to carry over and destabilize subsequent paths.
     controller.reset();
 
-        // Create trajectory based on scenario
-        let trajectory: Box<dyn Trajectory> = match scenario_name {
+        // Create the core trajectory based on scenario
+        let core_trajectory: Box<dyn Trajectory> = match scenario_name {
             "hover" => Box::new(CircleTrajectory::new(0.0, 0.5, 0.0)), // Zero radius circle = hover
             "figure8" => Box::new(Figure8Trajectory::with_time_scale(0.5, 0.5, 1.6)), // time_scale=1.6 gives ~0.19 m/s, consistent with circle
             "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, std::f32::consts::PI / 5.0)), // Full circle every 10s
             _ => unreachable!(),
         };
 
-        // Set initial state to match trajectory start
-        let initial_ref = trajectory.get_reference(0.0);
-        let initial_state = MultirotorState::with_initial(
-            initial_ref.position,
-            initial_ref.velocity,
-            Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), initial_ref.yaw),
-            Vec3::zero(),
-        );
+        // Determine target height and starting XY from the core trajectory's t=0
+        let core_start = core_trajectory.get_reference(0.0);
+        let target_z   = core_start.position.z;
+        let start_x    = core_start.position.x;
+        let start_y    = core_start.position.y;
+        let start_yaw  = core_start.yaw;
+
+        // Optionally prepend takeoff + hover-settle phases
+        const TAKEOFF_DURATION: f32 = 3.0;
+        const HOVER_SETTLE:     f32 = 2.0;
+        let phase_offset = if realistic_start { TAKEOFF_DURATION + HOVER_SETTLE } else { 0.0 };
+
+        let trajectory: Box<dyn Trajectory> = if realistic_start {
+            Box::new(SequencedTrajectory::new(vec![
+                // Phase 0: smooth ascent from ground to hover height
+                (TAKEOFF_DURATION, Box::new(TakeoffTrajectory::new(
+                    start_x, start_y, target_z, TAKEOFF_DURATION, start_yaw,
+                ))),
+                // Phase 1: hold hover point to let controller settle
+                (HOVER_SETTLE, Box::new(CircleTrajectory::new(0.0, target_z, 0.0))),
+                // Phase 2: the actual mission trajectory
+                (core_trajectory.duration().unwrap_or(f32::INFINITY), core_trajectory),
+            ]))
+        } else {
+            core_trajectory
+        };
+
+        // Set initial state
+        let initial_state = if realistic_start {
+            // Start on the ground at the trajectory's XY start position, zero velocity
+            MultirotorState::with_initial(
+                Vec3::new(start_x, start_y, 0.0),
+                Vec3::zero(),
+                Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), start_yaw),
+                Vec3::zero(),
+            )
+        } else {
+            // Teleport straight to the trajectory start (preserves existing behavior)
+            let initial_ref = trajectory.get_reference(0.0);
+            MultirotorState::with_initial(
+                initial_ref.position,
+                initial_ref.velocity,
+                Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), initial_ref.yaw),
+                Vec3::zero(),
+            )
+        };
         simulator.set_state(initial_state);
 
-        // Determine simulation duration based on scenario
-        let end_time = match scenario_name {
-            "hover" => 5.0,    // 5 seconds for hover
-            "figure8" => 24.0,  // 24 seconds = ~two full figure-8 loops at 1.6x time scale (7.28*1.6*2 ≈ 23.3s)
-            "circle" => 20.0,  // 20 seconds for two full circles
+        // Determine simulation duration based on scenario (plus any prefix phases)
+        let core_end_time = match scenario_name {
+            "hover"   => 5.0,   // 5 seconds for hover
+            "figure8" => 24.0,  // 24 seconds = ~two full figure-8 loops at 1.6x time scale
+            "circle"  => 20.0,  // 20 seconds for two full circles
             _ => unreachable!(),
         };
+        let end_time = core_end_time + phase_offset;
         let steps = (end_time / dt) as usize;
 
         // Create CSV file
         // ensure output directory exists (may have been removed)
         std::fs::create_dir_all("results/data").expect("Failed to create results/data directory");
-        let filename = format!("results/data/assignment2_{}.csv", scenario_name);
+        let filename = if realistic_start {
+            format!("results/data/assignment2_{}_realistic.csv", scenario_name)
+        } else {
+            format!("results/data/assignment2_{}.csv", scenario_name)
+        };
         let mut file = File::create(&filename).expect("Failed to create CSV file");
 
         // Write CSV header
+        // `phase_offset` carries the number of seconds of takeoff+hover prepended
+        // before the actual mission trajectory.  0.0 means no prefix (default mode).
+        writeln!(file, "# phase_offset={:.3}", phase_offset).expect("Failed to write metadata");
         writeln!(file, "time,x,y,z,vx,vy,vz,qw,qx,qy,qz,wx,wy,wz,x_ref,y_ref,z_ref,vx_ref,vy_ref,vz_ref,thrust,tx,ty,tz,omega1,omega2,omega3,omega4,pos_error_x,pos_error_y,pos_error_z,vel_error_x,vel_error_y,vel_error_z").expect("Failed to write header");
 
 
