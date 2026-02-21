@@ -48,4 +48,43 @@ impl Integrator for EulerIntegrator {
         // more complex than simple addition due to quaternion constraints
         state.orientation = state.orientation.integrate(state.angular_velocity, dt);
     }
+
+} // end impl Integrator for EulerIntegrator
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
+    use crate::math::{Vec3, Quat};
+
+    #[test]
+    fn test_euler_step_no_acceleration() {
+        let params = MultirotorParams::crazyflie();
+        let mut state = MultirotorState::new();
+        let action = MotorAction::hover();
+        let integrator = EulerIntegrator;
+
+        // take a single step; since hover thrust balances gravity,
+        // the vertical acceleration should be near zero and position
+        // should change only by a negligible amount (numerical drift).
+        integrator.step(&params, &mut state, &action);
+        assert!(state.position.z.abs() < 1e-2, "unexpected large climb/fall");
+        assert!(state.velocity.norm() < 1.0, "unexpected velocity");
+    }
+
+    #[test]
+    fn test_euler_step_linear_accel() {
+        let params = MultirotorParams::crazyflie();
+        let mut state = MultirotorState::new();
+        // apply constant upward thrust greater than weight to provide known acceleration
+        let thrust = params.mass * (params.gravity + 1.0);
+        let torque = Vec3::zero();
+        let action = MotorAction::from_thrust_torque(thrust, torque, &params);
+        let integrator = EulerIntegrator;
+
+        integrator.step(&params, &mut state, &action);
+    // expected linear acceleration positive upward (at least some upward velocity)
+    assert!(state.velocity.z > 0.0, "expected upward velocity, got {}", state.velocity.z);
+    }
 }

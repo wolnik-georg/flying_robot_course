@@ -488,4 +488,25 @@ mod tests {
         // Should have zero torque for hover
         assert!(control.torque.norm() < 1e-6);
     }
+
+    #[test]
+    fn test_compute_desired_rotation_simple() {
+        let controller = GeometricController::default();
+        // thrust aligned with world z axis, yaw = 0 -> expect identity rotation
+        let thrust = Vec3::new(0.0, 0.0, 1.0);
+        let rd = controller.compute_desired_rotation(thrust, 0.0);
+        // rd should be nearly identity matrix
+        assert!((rd[0][0] - 1.0).abs() < 1e-6);
+        assert!((rd[1][1] - 1.0).abs() < 1e-6);
+        assert!((rd[2][2] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_rotation_error_identity() {
+        let rd = [[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]];
+        let r = rd;
+        let err = GeometricController::compute_rotation_error(&rd, &r);
+        // identical rotations -> zero error
+        assert_eq!(err, Vec3::zero());
+    }
 }

@@ -161,6 +161,10 @@ def main():
     print("Assignment 1 Visualization: Integration Method Comparison")
     print("=" * 60)
 
+    # make sure output directories exist so plots can be written
+    os.makedirs("results/data", exist_ok=True)
+    os.makedirs("results/images", exist_ok=True)
+
     # Check if data files exist
     data_files = [
         f"results/data/trajectory_modular_{method}.csv"

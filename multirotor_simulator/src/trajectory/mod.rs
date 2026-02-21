@@ -74,8 +74,14 @@ impl Figure8Trajectory {
 
 impl Trajectory for Figure8Trajectory {
     fn get_reference(&self, time: f32) -> TrajectoryReference {
-        // Normalize time to [0, 1] over the trajectory duration
-        let t = (time % self.duration) / self.duration;
+    // Wrap time to stay within one full trajectory period (seconds).
+    // The coefficients include a duration field in seconds for each
+    // segment, so we must compare the raw time against those values.
+    // Previously we normalized t to [0,1] which meant segment_time
+    // never exceeded the first segment's duration, so only the first
+    // polynomial block was ever used.  The reference path therefore
+    // collapsed to a tiny fraction of the intended figure‑8.
+    let mut segment_time = time % self.duration;
 
         // Figure-8 polynomial coefficients (from autonomous_sequence_high_level.py)
         // Duration,x^0,x^1,x^2,x^3,x^4,x^5,x^6,x^7,y^0,y^1,y^2,y^3,y^4,y^5,y^6,y^7,z^0,z^1,z^2,z^3,z^4,z^5,z^6,z^7,yaw^0,yaw^1,yaw^2,yaw^3,yaw^4,yaw^5,yaw^6,yaw^7
@@ -92,10 +98,9 @@ impl Trajectory for Figure8Trajectory {
             [1.053185, -0.398611, 0.850510, -0.144007, -0.485368, -0.079781, 0.176330, 0.234482, -0.153567, 0.447039, -0.532729, -0.855023, 0.878509, 0.775168, -0.391051, -0.713519, 0.391628, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
         ];
 
-        // Find which segment we're in based on time
-        let mut segment_time = t;
-        let mut segment_idx = 0;
-        let mut cumulative_time = 0.0;
+    // Find which segment we're in based on the unscaled time value.
+    let mut segment_idx = 0;
+    let mut cumulative_time = 0.0;
 
         for (i, coeff) in coeffs.iter().enumerate() {
             let segment_duration = coeff[0];
@@ -103,13 +108,18 @@ impl Trajectory for Figure8Trajectory {
                 segment_idx = i;
                 break;
             }
+            // advance into the next segment
             segment_time -= segment_duration;
             cumulative_time += segment_duration;
         }
 
-        // Normalize segment time to [0, 1]
+        // Normalize segment time to [0, 1] for polynomial evaluation
         let segment_duration = coeffs[segment_idx][0];
-        let s = segment_time / segment_duration;
+        let s = if segment_duration > 0.0 {
+            segment_time / segment_duration
+        } else {
+            0.0
+        };
 
         // Evaluate polynomials for x, y, z, yaw
         let x = self.evaluate_polynomial(&coeffs[segment_idx][1..9], s) * self.scale;
@@ -367,6 +377,12 @@ mod tests {
         assert!(reference.position.x.abs() < 0.1);
         assert!(reference.position.y.abs() < 0.1);
         assert!((reference.position.z - 0.5).abs() < 0.1);
+
+        // after a couple seconds the trajectory should have moved significantly
+        let later = traj.get_reference(2.0);
+        let mag = (later.position.x.powi(2) + later.position.y.powi(2)).sqrt();
+        // size is scaled by default so expect at least a few tenths of a meter
+        assert!(mag > 0.3, "figure-8 too small: {}", mag);
     }
 
     #[test]

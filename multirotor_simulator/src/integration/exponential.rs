@@ -93,4 +93,42 @@ impl Integrator for ExpRK4Integrator {
         let avg_angular_vel = (k1_ang + k2_ang * 2.0 + k3_ang * 2.0 + k4_ang) * dt_sixth;
         state.orientation = state0.orientation.integrate_exponential(avg_angular_vel, dt);
     }
+
+    } // end impl Integrator for ExpRK4Integrator
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
+    use crate::math::{Vec3, Quat};
+    use crate::integration::RK4Integrator;
+
+    #[test]
+    fn test_expeuler_step_identity() {
+        let params = MultirotorParams::crazyflie();
+        let mut state = MultirotorState::new();
+        let action = MotorAction::hover();
+        let integrator = ExpEulerIntegrator;
+
+        integrator.step(&params, &mut state, &action);
+        // should not explode; orientation remains near identity
+        assert!((state.orientation.w - 1.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_exprk4_consistent_with_rk4() {
+        let params = MultirotorParams::crazyflie();
+        let mut state1 = MultirotorState::new();
+        let mut state2 = state1.clone();
+        let action = MotorAction::hover();
+        let euler = ExpRK4Integrator;
+        let rk4 = RK4Integrator;
+
+        euler.step(&params, &mut state1, &action);
+        rk4.step(&params, &mut state2, &action);
+
+        // results should be similar for hover
+        assert!((state1.position - state2.position).norm() < 1e-2);
+    }
 }

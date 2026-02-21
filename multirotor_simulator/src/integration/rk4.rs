@@ -77,4 +77,40 @@ impl Integrator for RK4Integrator {
         let avg_ori_deriv = (k1_ori + k2_ori * 2.0 + k3_ori * 2.0 + k4_ori) * dt_sixth;
         state.orientation = Self::integrate_quaternion(&state0.orientation, avg_ori_deriv, dt);
     }
+
+} // end impl Integrator for RK4Integrator
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dynamics::{MultirotorParams, MultirotorState, MotorAction};
+    use crate::math::{Vec3, Quat};
+
+    #[test]
+    fn test_rk4_no_motion() {
+        let params = MultirotorParams::crazyflie();
+        let mut state = MultirotorState::new();
+        let action = MotorAction::hover();
+        let integrator = RK4Integrator;
+
+        // With exactly balanced hover action, state should remain near initial value
+        integrator.step(&params, &mut state, &action);
+        assert!(state.position.norm() < 1e-2);
+        assert!(state.velocity.norm() < 1e-2);
+    }
+
+    #[test]
+    fn test_rk4_orientation_integration() {
+        let params = MultirotorParams::crazyflie();
+        let mut state = MultirotorState::new();
+        state.angular_velocity = Vec3::new(0.0, 0.0, 1.0);
+        let action = MotorAction::hover();
+        let integrator = RK4Integrator;
+
+        integrator.step(&params, &mut state, &action);
+        // orientation should have rotated slightly around z
+        let yaw = state.orientation.z; // approximate
+        assert!(yaw.abs() > 0.0);
+    }
 }

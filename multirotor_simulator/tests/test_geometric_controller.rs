@@ -10,11 +10,12 @@ fn test_geometric_controller_with_circle_trajectory() {
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
 
     // Create geometric controller with moderate gains
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),  // Moderate position gains
         Vec3::new(0.05, 0.05, 0.05),  // Moderate velocity gains  
         Vec3::new(0.01, 0.01, 0.01),  // Moderate attitude gains
         Vec3::new(0.001, 0.001, 0.001),  // Moderate angular velocity gains
+        Vec3::zero(), // zero integral gains for testing
     );
 
     // Create circle trajectory (slow circular motion for testing)
@@ -49,7 +50,7 @@ fn test_geometric_controller_with_circle_trajectory() {
         }
 
         // Compute control
-        let control = controller.compute_control(state, &reference, &params);
+    let control = controller.compute_control(state, &reference, &params, dt);
 
         // Debug: Check control output
         if control.thrust.is_nan() || control.torque.x.is_nan() {
@@ -105,17 +106,18 @@ fn test_geometric_controller_hover() {
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
 
     // Create geometric controller
-    let controller = GeometricController::default();
+    let mut controller = GeometricController::default();
 
     // Hover reference (zero velocity, acceleration)
-    let hover_reference = TrajectoryReference {
-        position: Vec3::new(0.0, 0.0, 0.3),
-        velocity: Vec3::zero(),
-        acceleration: Vec3::zero(),
-        yaw: 0.0,
-        yaw_rate: 0.0,
-        yaw_acceleration: 0.0,
-    };
+        let hover_reference = TrajectoryReference {
+            position: Vec3::new(0.0, 0.0, 0.3),
+            velocity: Vec3::zero(),
+            acceleration: Vec3::zero(),
+            jerk: Vec3::zero(),
+            yaw: 0.0,
+            yaw_rate: 0.0,
+            yaw_acceleration: 0.0,
+        };
 
     // Simulate for 5 seconds
     let dt = 0.01;
@@ -124,7 +126,7 @@ fn test_geometric_controller_hover() {
 
     while time < end_time {
         let state = simulator.state();
-        let control = controller.compute_control(state, &hover_reference, &params);
+    let control = controller.compute_control(state, &hover_reference, &params, dt);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         simulator.step(&motor_action);
         time += dt;

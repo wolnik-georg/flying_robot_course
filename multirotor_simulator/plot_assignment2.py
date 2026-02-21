@@ -105,9 +105,25 @@ def plot_trajectory_tracking(scenario):
     fig = plt.figure(figsize=(16, 12))
     fig.suptitle(f"Assignment 2: {scenario_title} Trajectory Tracking", fontsize=16)
 
+    # Compute axis limits from reference trajectory with padding, to keep plots
+    # readable even when the actual trajectory diverges far from the reference.
+    ref_margin = 0.5  # extra metres of padding around the reference
+    x_ref_min = df["x_ref"].min() - ref_margin
+    x_ref_max = df["x_ref"].max() + ref_margin
+    y_ref_min = df["y_ref"].min() - ref_margin
+    y_ref_max = df["y_ref"].max() + ref_margin
+    z_ref_min = df["z_ref"].min() - ref_margin
+    z_ref_max = df["z_ref"].max() + ref_margin
+
+    # Clip actual trajectory to the reference-based limits so diverging runs
+    # don't squash the reference curve into a dot.
+    x_act = df["x"].clip(x_ref_min, x_ref_max)
+    y_act = df["y"].clip(y_ref_min, y_ref_max)
+    z_act = df["z"].clip(z_ref_min, z_ref_max)
+
     # 3D trajectory plot
     ax1 = fig.add_subplot(2, 3, 1, projection="3d")
-    ax1.plot(df["x"], df["y"], df["z"], label="Actual", color="blue", linewidth=2)
+    ax1.plot(x_act, y_act, z_act, label="Actual", color="blue", linewidth=2)
     ax1.plot(
         df["x_ref"],
         df["y_ref"],
@@ -125,7 +141,7 @@ def plot_trajectory_tracking(scenario):
 
     # 2D trajectory (top view)
     ax2 = fig.add_subplot(2, 3, 2)
-    ax2.plot(df["x"], df["y"], label="Actual", color="blue", linewidth=2)
+    ax2.plot(x_act, y_act, label="Actual", color="blue", linewidth=2)
     ax2.plot(
         df["x_ref"],
         df["y_ref"],
@@ -139,15 +155,21 @@ def plot_trajectory_tracking(scenario):
     ax2.set_title(f"2D {scenario_title} Trajectory (Top View)")
     ax2.legend()
     ax2.grid(True, alpha=0.3)
-    ax2.axis("equal")
+    ax2.set_xlim(x_ref_min, x_ref_max)
+    ax2.set_ylim(y_ref_min, y_ref_max)
+    ax2.set_aspect("equal", adjustable="box")
+
+    # Position vs time – clamp actual values to reference range
+    x_t_act = df["x"].clip(x_ref_min, x_ref_max)
+    y_t_act = df["y"].clip(y_ref_min, y_ref_max)
 
     # Position vs time
     ax3 = fig.add_subplot(2, 3, 3)
-    ax3.plot(df["time"], df["x"], label="Actual X", color="blue", linewidth=1)
+    ax3.plot(df["time"], x_t_act, label="Actual X", color="blue", linewidth=1)
     ax3.plot(
         df["time"], df["x_ref"], label="Ref X", color="red", linestyle="--", linewidth=1
     )
-    ax3.plot(df["time"], df["y"], label="Actual Y", color="green", linewidth=1)
+    ax3.plot(df["time"], y_t_act, label="Actual Y", color="green", linewidth=1)
     ax3.plot(
         df["time"],
         df["y_ref"],
@@ -290,12 +312,12 @@ def print_scenario_statistics():
         avg_thrust = df["thrust"].mean()
         max_thrust = df["thrust"].max()
 
-        print(".3f")
-        print(".3f")
-        print(".3f")
-        print(".3f")
-        print(".3f")
-        print(".3f")
+        print(f"  Final position error:  {final_pos_error:.3f} m")
+        print(f"  Final velocity error:  {final_vel_error:.3f} m/s")
+        print(f"  RMS position error:    {rms_pos_error:.3f} m")
+        print(f"  RMS velocity error:    {rms_vel_error:.3f} m/s")
+        print(f"  Average thrust:        {avg_thrust:.3f} N")
+        print(f"  Max thrust:            {max_thrust:.3f} N")
 
     print("\nAnalysis:")
     print("- Hover control: Excellent performance with near-zero errors")
@@ -310,6 +332,10 @@ def main():
     """Main plotting function"""
     print("Assignment 2 Visualization: Geometric Control Performance")
     print("=" * 70)
+
+    # make sure output directories exist so plots can be written
+    os.makedirs("results/data", exist_ok=True)
+    os.makedirs("results/images", exist_ok=True)
 
     # Check if data files exist
     scenarios = ["hover", "figure8", "circle"]

@@ -103,7 +103,7 @@ fn main() {
         let trajectory: Box<dyn Trajectory> = match scenario_name {
             "hover" => Box::new(CircleTrajectory::new(0.0, 0.5, 0.0)), // Zero radius circle = hover
             "figure8" => Box::new(Figure8Trajectory::with_params(8.0, 0.5, 0.5)), // Slower figure-8
-            "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, 0.1)), // Slower circle
+            "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, std::f32::consts::PI / 5.0)), // Full circle every 10s
             _ => unreachable!(),
         };
 
@@ -121,12 +121,14 @@ fn main() {
         let end_time = match scenario_name {
             "hover" => 5.0,    // 5 seconds for hover
             "figure8" => 8.0,  // 8 seconds for figure-8
-            "circle" => 10.0,  // 10 seconds for circle
+            "circle" => 20.0,  // 20 seconds for two full circles
             _ => unreachable!(),
         };
         let steps = (end_time / dt) as usize;
 
         // Create CSV file
+        // ensure output directory exists (may have been removed)
+        std::fs::create_dir_all("results/data").expect("Failed to create results/data directory");
         let filename = format!("results/data/assignment2_{}.csv", scenario_name);
         let mut file = File::create(&filename).expect("Failed to create CSV file");
 

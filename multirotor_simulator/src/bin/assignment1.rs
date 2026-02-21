@@ -61,6 +61,8 @@ fn main() {
         let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
 
         // Create CSV file
+        // ensure output directory exists so that users can delete it between runs
+        std::fs::create_dir_all("results/data").expect("Failed to create results/data directory");
         let filename = format!("results/data/trajectory_modular_{}.csv", name.replace(" ", "_"));
         let mut file = File::create(&filename).expect("Failed to create CSV file");
 
