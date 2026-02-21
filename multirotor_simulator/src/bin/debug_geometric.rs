@@ -114,7 +114,7 @@ fn main() {
 
     println!("Step 5: Attitude control torque");
     let kr = Vec3::new(0.05, 0.05, 0.05);
-    let kw = Vec3::new(0.01, 0.01, 0.01);
+    let _kw = Vec3::new(0.01, 0.01, 0.01);
     
     let torque_prop = Vec3::new(-kr.x * er_x, -kr.y * er_y, -kr.z * er_z);
     println!("  Proportional torque (-KR * eR) = ({:.6}, {:.6}, {:.6}) Nm", torque_prop.x, torque_prop.y, torque_prop.z);

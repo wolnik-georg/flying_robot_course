@@ -141,7 +141,7 @@ impl Quat {
         let y = self.y;
         let z = self.z;
 
-        let ww = w * w;
+        let _ww = w * w;
         let xx = x * x;
         let yy = y * y;
         let zz = z * z;

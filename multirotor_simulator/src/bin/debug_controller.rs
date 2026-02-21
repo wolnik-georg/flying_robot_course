@@ -89,7 +89,7 @@ fn main() {
     // Step 3: Simulate 5 steps
     println!("Step 3: Simulate 5 timesteps");
     for step in 0..5 {
-        let state_before = simulator.state().clone();
+        let _state_before = simulator.state().clone();
         
         // Recompute control each time
         let control = controller.compute_control(&simulator.state(), &reference, &params, 0.01);

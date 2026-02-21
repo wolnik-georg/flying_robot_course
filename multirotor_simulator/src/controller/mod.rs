@@ -84,11 +84,11 @@ impl GeometricController {
     /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
         Self {
-            kp: Vec3::new(7.0, 7.0, 7.0),            // Position P gains (Kpos_P from Lee controller)
-            kv: Vec3::new(4.0, 4.0, 4.0),            // Velocity D gains (Kpos_D from Lee controller)
-            kr: Vec3::new(0.007, 0.007, 0.008),      // Attitude P gains (KR from Lee controller)
-            kw: Vec3::new(0.00115, 0.00115, 0.002),  // Angular velocity D gains (Komega from Lee controller)
-            ki: Vec3::new(0.03, 0.03, 0.03),         // Attitude integral gains (KI from Lee controller)
+            kp: Vec3::new(12.0, 12.0, 15.0),   // stronger position hold (was 7.0)
+            kv: Vec3::new(8.0, 8.0, 10.0),     // better damping (was 4.0)
+            kr: Vec3::new(0.010, 0.010, 0.012), // slightly higher attitude stiffness
+            kw: Vec3::new(0.0015, 0.0015, 0.0020),
+            ki: Vec3::new(0.05, 0.05, 0.05),   // small integral to kill steady-state error
             i_error_att: Vec3::zero(),
         }
     }
@@ -167,7 +167,8 @@ impl Controller for GeometricController {
         params: &MultirotorParams,
         dt: f32,
     ) -> ControlOutput {
-        // Position control law: Fd = m(p̈d + Kp ep + Kv ev + gez)
+        // Position control law: Fd = m ( p̈d - Kp ep - Kv ev + g ez )
+        // Negative signs for position and velocity errors (negative feedback)
         let ep = reference.position - state.position;
         let ev = reference.velocity - state.velocity;
 
@@ -209,7 +210,7 @@ impl Controller for GeometricController {
         let zdes = Vec3::new(rd[0][2], rd[1][2], rd[2][2]);
         
         let mut hw = Vec3::zero();
-        if thrust > 0.0 {
+        if thrust > 0.05 {  // higher threshold to avoid inf
             // Project jerk onto plane perpendicular to thrust direction
             let jerk_component_along_thrust = zdes.dot(&reference.jerk);
             let jerk_perpendicular = reference.jerk - zdes * jerk_component_along_thrust;
@@ -270,7 +271,7 @@ impl Controller for GeometricController {
 
 /// Additional debugging information returned alongside the normal control output.
 /// This mirrors most of the intermediate variables used by `compute_control` so that
-/// caller code (e.g. a unit test or a debug executable) can inspect what the controller
+/// caller code (e.g., a unit test or a debug executable) can inspect what the controller
 /// is doing on a step-by-step basis.
 #[derive(Debug)]
 pub struct DebugInfo {
@@ -340,7 +341,7 @@ impl GeometricController {
         let zdes = Vec3::new(rd[0][2], rd[1][2], rd[2][2]);
 
         let mut hw = Vec3::zero();
-        if thrust > 0.0 {
+        if thrust > 0.05 {
             let jerk_component_along_thrust = zdes.dot(&reference.jerk);
             let jerk_perpendicular = reference.jerk - zdes * jerk_component_along_thrust;
             hw = jerk_perpendicular * (params.mass as f32 / thrust);

@@ -100,7 +100,7 @@ impl Trajectory for Figure8Trajectory {
 
     // Find which segment we're in based on the unscaled time value.
     let mut segment_idx = 0;
-    let mut cumulative_time = 0.0;
+    let mut _cumulative_time = 0.0;
 
         for (i, coeff) in coeffs.iter().enumerate() {
             let segment_duration = coeff[0];
@@ -110,7 +110,7 @@ impl Trajectory for Figure8Trajectory {
             }
             // advance into the next segment
             segment_time -= segment_duration;
-            cumulative_time += segment_duration;
+            _cumulative_time += segment_duration;
         }
 
         // Normalize segment time to [0, 1] for polynomial evaluation
@@ -292,7 +292,7 @@ impl Trajectory for CsvTrajectory {
 
         if idx == 0 {
             // Before first waypoint
-            let (t, x, y, z, yaw) = self.waypoints[0];
+            let (_t, x, y, z, yaw) = self.waypoints[0];
             TrajectoryReference {
                 position: Vec3::new(x, y, z),
                 velocity: Vec3::zero(),
@@ -304,7 +304,7 @@ impl Trajectory for CsvTrajectory {
             }
         } else if idx >= self.waypoints.len() {
             // After last waypoint
-            let (t, x, y, z, yaw) = *self.waypoints.last().unwrap();
+            let (_t, x, y, z, yaw) = *self.waypoints.last().unwrap();
             TrajectoryReference {
                 position: Vec3::new(x, y, z),
                 velocity: Vec3::zero(),

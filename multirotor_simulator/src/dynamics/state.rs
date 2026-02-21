@@ -109,7 +109,7 @@ impl MotorAction {
         let l_sqrt2 = l / sqrt2;
 
         // Drag factor
-        let d = kt / kf;
+        let _d = kt / kf;
 
         // Common terms
         let thrust_term = thrust / (4.0 * kf);

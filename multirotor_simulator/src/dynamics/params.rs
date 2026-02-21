@@ -91,7 +91,7 @@ impl MultirotorParams {
     /// Rust note: Takes references (&) to avoid moving/copying data
     pub fn angular_acceleration(&self, omega: Vec3, tau: Vec3) -> Vec3 {
         // Gyroscopic term: ω × Jω
-        let omega_cross_Jomega = omega.cross(&Self::matrix_vec_mul(&self.inertia, &omega));
+        let omega_cross_jomega = omega.cross(&Self::matrix_vec_mul(&self.inertia, &omega));
 
         // For diagonal inertia, inverse is just 1/Jii for each component
         let j11 = self.inertia[0][0];
@@ -99,9 +99,9 @@ impl MultirotorParams {
         let j33 = self.inertia[2][2];
 
         Vec3::new(
-            (tau.x - omega_cross_Jomega.x) / j11,
-            (tau.y - omega_cross_Jomega.y) / j22,
-            (tau.z - omega_cross_Jomega.z) / j33,
+            (tau.x - omega_cross_jomega.x) / j11,
+            (tau.y - omega_cross_jomega.y) / j22,
+            (tau.z - omega_cross_jomega.z) / j33,
         )
     }
 

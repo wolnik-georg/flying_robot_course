@@ -74,8 +74,9 @@ impl Integrator for RK4Integrator {
         state.angular_velocity = state0.angular_velocity + (k1_ang + k2_ang * 2.0 + k3_ang * 2.0 + k4_ang) * dt_sixth;
 
         // Quaternion integration with weighted average derivative
+        // avg_ori_deriv is already scaled by dt/6, so pass dt=1.0 to avoid double-scaling
         let avg_ori_deriv = (k1_ori + k2_ori * 2.0 + k3_ori * 2.0 + k4_ori) * dt_sixth;
-        state.orientation = Self::integrate_quaternion(&state0.orientation, avg_ori_deriv, dt);
+        state.orientation = Self::integrate_quaternion(&state0.orientation, avg_ori_deriv, 1.0);
     }
 
 } // end impl Integrator for RK4Integrator
