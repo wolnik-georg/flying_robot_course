@@ -102,7 +102,7 @@ fn main() {
         // Create trajectory based on scenario
         let trajectory: Box<dyn Trajectory> = match scenario_name {
             "hover" => Box::new(CircleTrajectory::new(0.0, 0.5, 0.0)), // Zero radius circle = hover
-            "figure8" => Box::new(Figure8Trajectory::with_params(8.0, 0.5, 0.5)), // Slower figure-8
+            "figure8" => Box::new(Figure8Trajectory::with_time_scale(0.5, 0.5, 1.6)), // time_scale=1.6 gives ~0.19 m/s, consistent with circle
             "circle" => Box::new(CircleTrajectory::new(0.3, 0.3, std::f32::consts::PI / 5.0)), // Full circle every 10s
             _ => unreachable!(),
         };
@@ -120,7 +120,7 @@ fn main() {
         // Determine simulation duration based on scenario
         let end_time = match scenario_name {
             "hover" => 5.0,    // 5 seconds for hover
-            "figure8" => 8.0,  // 8 seconds for figure-8
+            "figure8" => 24.0,  // 24 seconds = ~two full figure-8 loops at 1.6x time scale (7.28*1.6*2 ≈ 23.3s)
             "circle" => 20.0,  // 20 seconds for two full circles
             _ => unreachable!(),
         };

@@ -24,8 +24,12 @@ pub struct Figure8Trajectory {
     pub duration: f32,
     /// Height offset for the trajectory
     pub height: f32,
-    /// Scale factor for the trajectory size
+    /// Scale factor for the trajectory size (spatial)
     pub scale: f32,
+    /// Time scale factor: >1 slows the trajectory down, <1 speeds it up.
+    /// Segment durations are multiplied by this value; velocity/acceleration
+    /// are divided by time_scale / time_scale² accordingly.
+    pub time_scale: f32,
 }
 
 impl Figure8Trajectory {
@@ -35,12 +39,22 @@ impl Figure8Trajectory {
             duration: 8.0, // 8 seconds for one figure-8
             height: 0.5,   // 0.5m height
             scale: 1.0,    // Normal size
+            time_scale: 1.0,
         }
     }
 
     /// Create figure-8 trajectory with custom parameters
     pub fn with_params(duration: f32, height: f32, scale: f32) -> Self {
-        Self { duration, height, scale }
+        Self { duration, height, scale, time_scale: 1.0 }
+    }
+
+    /// Create figure-8 trajectory with explicit time scaling.
+    /// `time_scale` > 1 stretches time (slower), < 1 compresses (faster).
+    pub fn with_time_scale(height: f32, scale: f32, time_scale: f32) -> Self {
+        // duration wraps at the scaled total segment time
+        let base_total = 1.050000 + 0.710000 + 0.620000 + 0.700000 + 0.560000
+                       + 0.560000 + 0.700000 + 0.620000 + 0.710000 + 1.053185;
+        Self { duration: base_total * time_scale, height, scale, time_scale }
     }
 
     /// Evaluate 7th order polynomial p(s) = c0 + c1*s + c2*s² + ... + c7*s⁷
@@ -98,12 +112,14 @@ impl Trajectory for Figure8Trajectory {
             [1.053185, -0.398611, 0.850510, -0.144007, -0.485368, -0.079781, 0.176330, 0.234482, -0.153567, 0.447039, -0.532729, -0.855023, 0.878509, 0.775168, -0.391051, -0.713519, 0.391628, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
         ];
 
-    // Find which segment we're in based on the unscaled time value.
+    // Find which segment we're in. Segment durations are scaled by time_scale
+    // so the drone traverses the same geometric path at a different speed.
+    let ts = self.time_scale;
     let mut segment_idx = 0;
     let mut _cumulative_time = 0.0;
 
         for (i, coeff) in coeffs.iter().enumerate() {
-            let segment_duration = coeff[0];
+            let segment_duration = coeff[0] * ts;
             if segment_time <= segment_duration {
                 segment_idx = i;
                 break;
@@ -114,7 +130,7 @@ impl Trajectory for Figure8Trajectory {
         }
 
         // Normalize segment time to [0, 1] for polynomial evaluation
-        let segment_duration = coeffs[segment_idx][0];
+        let segment_duration = coeffs[segment_idx][0] * ts;
         let s = if segment_duration > 0.0 {
             segment_time / segment_duration
         } else {
