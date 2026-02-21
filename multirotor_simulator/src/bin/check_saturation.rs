@@ -9,11 +9,12 @@ fn main() {
     let integrator = Box::new(RK4Integrator);
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
     
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),
         Vec3::new(0.05, 0.05, 0.05),
         Vec3::new(0.05, 0.05, 0.05),
         Vec3::new(0.01, 0.01, 0.01),
+        Vec3::new(0.03, 0.03, 0.03), // Attitude integral gains
     );
     
     let trajectory = Figure8Trajectory::with_params(8.0, 0.5, 0.5);
@@ -33,7 +34,7 @@ fn main() {
         let reference = trajectory.get_reference(t);
         let state = simulator.state();
 
-        let control = controller.compute_control(state, &reference, &params);
+        let control = controller.compute_control(state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
 
         // Check for negative motor speeds BEFORE clamping

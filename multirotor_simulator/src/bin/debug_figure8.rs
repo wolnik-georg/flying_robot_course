@@ -10,11 +10,12 @@ fn main() {
     let integrator = Box::new(RK4Integrator);
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
     
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),    // Position gains
         Vec3::new(0.05, 0.05, 0.05), // Velocity gains
         Vec3::new(0.05, 0.05, 0.05), // Attitude gains
         Vec3::new(0.01, 0.01, 0.01), // Angular velocity gains
+        Vec3::new(0.01, 0.01, 0.01), // Integral gains
     );
     
     // Create figure-8 trajectory (same as assignment2)
@@ -115,7 +116,7 @@ fn main() {
         }
 
         // Get control and step
-        let control = controller.compute_control(state, &reference, &params);
+        let control = controller.compute_control(state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         
         if should_print {

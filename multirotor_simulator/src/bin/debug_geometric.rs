@@ -27,6 +27,7 @@ fn main() {
         position: Vec3::new(0.0, 0.0, 0.5),
         velocity: Vec3::zero(),
         acceleration: Vec3::zero(),
+            jerk: Vec3::zero(),
         yaw: 0.0,
         yaw_rate: 0.0,
         yaw_acceleration: 0.0,

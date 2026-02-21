@@ -10,11 +10,12 @@ fn main() {
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
     
     // Try VERY strong angular velocity damping
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),      // Position gains - keep same
         Vec3::new(0.05, 0.05, 0.05),   // Velocity gains - keep same
         Vec3::new(0.05, 0.05, 0.05),   // Attitude gains - keep same
         Vec3::new(1.0, 1.0, 1.0),      // Angular velocity gains - 100x increase!
+        Vec3::new(0.03, 0.03, 0.03),   // Attitude integral gains
     );
     
     println!("Controller gains (100x damping):");
@@ -61,7 +62,7 @@ fn main() {
             break;
         }
 
-        let control = controller.compute_control(state, &reference, &params);
+        let control = controller.compute_control(state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         simulator.step(&motor_action);
     }

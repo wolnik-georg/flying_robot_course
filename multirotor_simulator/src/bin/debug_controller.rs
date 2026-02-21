@@ -13,11 +13,12 @@ fn main() {
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
 
     // Very simple controller gains
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),    // Position gains
         Vec3::new(0.05, 0.05, 0.05), // Velocity gains
         Vec3::new(0.05, 0.05, 0.05), // Attitude gains
         Vec3::new(0.01, 0.01, 0.01), // Angular velocity gains
+        Vec3::new(0.01, 0.01, 0.01), // Integral gains
     );
 
     println!("Parameters:");
@@ -36,6 +37,7 @@ fn main() {
         position: Vec3::new(0.0, 0.0, 0.5),
         velocity: Vec3::zero(),
         acceleration: Vec3::zero(),
+            jerk: Vec3::zero(),
         yaw: 0.0,
         yaw_rate: 0.0,
         yaw_acceleration: 0.0,
@@ -60,7 +62,7 @@ fn main() {
 
     // Step 1: Compute control
     println!("Step 1: Compute control for hover");
-    let control = controller.compute_control(&simulator.state(), &reference, &params);
+    let control = controller.compute_control(&simulator.state(), &reference, &params, 0.01);
     println!("  Thrust: {:.6} N (expected: {:.6} N = m*g)", control.thrust, params.mass * params.gravity);
     println!("  Torque: ({:.6}, {:.6}, {:.6}) Nm (expected: ~0)", control.torque.x, control.torque.y, control.torque.z);
     println!();
@@ -90,7 +92,7 @@ fn main() {
         let state_before = simulator.state().clone();
         
         // Recompute control each time
-        let control = controller.compute_control(&simulator.state(), &reference, &params);
+        let control = controller.compute_control(&simulator.state(), &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         
         simulator.step(&motor_action);
@@ -143,7 +145,7 @@ fn main() {
 
     for step in 0..10 {
         let state = simulator.state();
-        let control = controller.compute_control(&state, &reference, &params);
+        let control = controller.compute_control(&state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         
         if step % 2 == 0 {

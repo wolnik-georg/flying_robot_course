@@ -24,16 +24,18 @@ fn main() {
         position: Vec3::new(0.0, 0.0, 0.5),
         velocity: Vec3::zero(),
         acceleration: Vec3::zero(),
+            jerk: Vec3::zero(),
         yaw: 0.0,
         yaw_rate: 0.0,
         yaw_acceleration: 0.0,
     };
 
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(0.1, 0.1, 0.1),
         Vec3::new(0.05, 0.05, 0.05),
         Vec3::new(0.05, 0.05, 0.05),
         Vec3::new(0.01, 0.01, 0.01),
+        Vec3::new(0.03, 0.03, 0.03), // Attitude integral gains
     );
 
     println!("Initial condition:");
@@ -45,7 +47,7 @@ fn main() {
     println!();
 
     // Compute control
-    let control = controller.compute_control(&state, &reference, &params);
+    let control = controller.compute_control(&state, &reference, &params, 0.01);
 
     println!("Controller output:");
     println!("  Thrust: {:.6} N", control.thrust);

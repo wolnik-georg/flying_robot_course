@@ -10,11 +10,12 @@ fn main() {
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
     
     // Try MUCH stronger gains
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(1.0, 1.0, 1.0),      // Position gains (was 0.1) - 10x increase
         Vec3::new(0.5, 0.5, 0.5),      // Velocity gains (was 0.05) - 10x increase
         Vec3::new(0.5, 0.5, 0.5),      // Attitude gains (was 0.05) - 10x increase  
         Vec3::new(0.1, 0.1, 0.1),      // Angular velocity gains (was 0.01) - 10x increase
+        Vec3::new(0.03, 0.03, 0.03),   // Attitude integral gains
     );
     
     println!("Controller gains (10x increase from default):");
@@ -65,7 +66,7 @@ fn main() {
             break;
         }
 
-        let control = controller.compute_control(state, &reference, &params);
+        let control = controller.compute_control(state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         simulator.step(&motor_action);
     }

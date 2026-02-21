@@ -63,6 +63,13 @@ impl Figure8Trajectory {
             .map(|(i, &c)| c * (i as f32) * ((i as f32) - 1.0) * s.powi(i as i32 - 2))
             .sum()
     }
+
+    /// Evaluate third derivative p'''(s) for jerk computation
+    fn evaluate_polynomial_third_derivative(&self, coeffs: &[f32], s: f32) -> f32 {
+        coeffs.iter().enumerate().skip(3)
+            .map(|(i, &c)| c * (i as f32) * ((i as f32) - 1.0) * ((i as f32) - 2.0) * s.powi(i as i32 - 3))
+            .sum()
+    }
 }
 
 impl Trajectory for Figure8Trajectory {
@@ -120,6 +127,10 @@ impl Trajectory for Figure8Trajectory {
         let ay = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][9..17], s) * self.scale / (segment_duration * segment_duration);
         let az = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][17..25], s) / (segment_duration * segment_duration);
 
+        let jx = self.evaluate_polynomial_third_derivative(&coeffs[segment_idx][1..9], s) * self.scale / (segment_duration * segment_duration * segment_duration);
+        let jy = self.evaluate_polynomial_third_derivative(&coeffs[segment_idx][9..17], s) * self.scale / (segment_duration * segment_duration * segment_duration);
+        let jz = self.evaluate_polynomial_third_derivative(&coeffs[segment_idx][17..25], s) / (segment_duration * segment_duration * segment_duration);
+
         let yaw_rate = self.evaluate_polynomial_derivative(&coeffs[segment_idx][25..33], s) / segment_duration;
         let yaw_acceleration = self.evaluate_polynomial_second_derivative(&coeffs[segment_idx][25..33], s) / (segment_duration * segment_duration);
 
@@ -127,6 +138,7 @@ impl Trajectory for Figure8Trajectory {
             position: Vec3::new(x, y, z),
             velocity: Vec3::new(vx, vy, vz),
             acceleration: Vec3::new(ax, ay, az),
+            jerk: Vec3::new(jx, jy, jz),
             yaw,
             yaw_rate,
             yaw_acceleration,
@@ -186,6 +198,11 @@ impl Trajectory for CircleTrajectory {
         let ay = -self.radius * self.omega * self.omega * theta.sin();
         let az = 0.0;
 
+        // Jerk (derivative of acceleration)
+        let jx = self.radius * self.omega * self.omega * self.omega * theta.sin();
+        let jy = -self.radius * self.omega * self.omega * self.omega * theta.cos();
+        let jz = 0.0;
+
         // Yaw always points tangent to the circle
         let yaw = if self.radius > 0.0 { theta + PI / 2.0 } else { 0.0 }; // Point in direction of motion, or 0 for stationary
         let yaw_rate = self.omega;
@@ -195,6 +212,7 @@ impl Trajectory for CircleTrajectory {
             position: Vec3::new(x, y, z),
             velocity: Vec3::new(vx, vy, vz),
             acceleration: Vec3::new(ax, ay, az),
+            jerk: Vec3::new(jx, jy, jz),
             yaw,
             yaw_rate,
             yaw_acceleration,
@@ -246,6 +264,7 @@ impl Trajectory for CsvTrajectory {
                 position: Vec3::zero(),
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
+                jerk: Vec3::zero(),
                 yaw: 0.0,
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
@@ -268,6 +287,7 @@ impl Trajectory for CsvTrajectory {
                 position: Vec3::new(x, y, z),
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
+                jerk: Vec3::zero(),
                 yaw,
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
@@ -279,6 +299,7 @@ impl Trajectory for CsvTrajectory {
                 position: Vec3::new(x, y, z),
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
+                jerk: Vec3::zero(),
                 yaw,
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
@@ -308,6 +329,7 @@ impl Trajectory for CsvTrajectory {
                     position: Vec3::new(x, y, z),
                     velocity: Vec3::new(vx, vy, vz),
                     acceleration: Vec3::zero(), // No acceleration info in CSV
+                    jerk: Vec3::zero(), // No jerk info in CSV
                     yaw,
                     yaw_rate,
                     yaw_acceleration: 0.0,
@@ -318,6 +340,7 @@ impl Trajectory for CsvTrajectory {
                     position: Vec3::new(x1, y1, z1),
                     velocity: Vec3::zero(),
                     acceleration: Vec3::zero(),
+                    jerk: Vec3::zero(),
                     yaw: yaw1,
                     yaw_rate: 0.0,
                     yaw_acceleration: 0.0,

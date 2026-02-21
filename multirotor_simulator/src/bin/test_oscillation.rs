@@ -9,11 +9,12 @@ fn main() {
     let integrator = Box::new(RK4Integrator);
     let mut simulator = MultirotorSimulator::new(params.clone(), integrator);
     
-    let controller = GeometricController::new(
+    let mut controller = GeometricController::new(
         Vec3::new(1.0, 1.0, 1.0),
         Vec3::new(0.5, 0.5, 0.5),
         Vec3::new(0.5, 0.5, 0.5),
         Vec3::new(0.1, 0.1, 0.1),  // 10x stronger damping
+        Vec3::new(0.03, 0.03, 0.03), // Attitude integral gains
     );
 
     // Start with small pitch
@@ -31,6 +32,7 @@ fn main() {
         position: Vec3::new(0.0, 0.0, 0.5),
         velocity: Vec3::zero(),
         acceleration: Vec3::zero(),
+            jerk: Vec3::zero(),
         yaw: 0.0,
         yaw_rate: 0.0,
         yaw_acceleration: 0.0,
@@ -52,7 +54,7 @@ fn main() {
             break;
         }
 
-        let control = controller.compute_control(state, &reference, &params);
+        let control = controller.compute_control(state, &reference, &params, 0.01);
         let motor_action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         simulator.step(&motor_action);
     }
