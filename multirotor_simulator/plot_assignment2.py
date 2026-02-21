@@ -121,6 +121,14 @@ def plot_trajectory_tracking(scenario):
     y_act = df["y"].clip(y_ref_min, y_ref_max)
     z_act = df["z"].clip(z_ref_min, z_ref_max)
 
+    # For the 3D plot use equal-range limits on all three axes so that a
+    # small-but-real z variation is not artificially stretched relative to x/y.
+    # We base the cube side on the larger of the x/y span, centred on z_ref.
+    xy_span = max(x_ref_max - x_ref_min, y_ref_max - y_ref_min)
+    z_mid = df["z_ref"].mean()
+    z3d_min = z_mid - xy_span / 2
+    z3d_max = z_mid + xy_span / 2
+
     # 3D trajectory plot
     ax1 = fig.add_subplot(2, 3, 1, projection="3d")
     ax1.plot(x_act, y_act, z_act, label="Actual", color="blue", linewidth=2)
@@ -136,6 +144,9 @@ def plot_trajectory_tracking(scenario):
     ax1.set_xlabel("X (m)")
     ax1.set_ylabel("Y (m)")
     ax1.set_zlabel("Z (m)")
+    ax1.set_xlim(x_ref_min, x_ref_max)
+    ax1.set_ylim(y_ref_min, y_ref_max)
+    ax1.set_zlim(z3d_min, z3d_max)
     ax1.set_title(f"3D {scenario_title} Trajectory")
     ax1.legend()
 
