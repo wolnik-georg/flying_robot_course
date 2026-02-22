@@ -17,7 +17,12 @@ fn main() {
     println!("====================================================================\n");
 
     // ── Aircraft parameters ──────────────────────────────────────────────────
-    let params = MultirotorParams::crazyflie();
+    // Use 1 kHz physics timestep so the integrator actually steps at 1 ms.
+    // The default crazyflie() has dt=0.01 (100 Hz) which is correct for
+    // assignment2; here we override to 0.001 for higher-resolution planning.
+    let dt = 0.001_f32;
+    let mut params = MultirotorParams::crazyflie();
+    params.dt = dt;
 
     // ── Aggressive figure-8 waypoints ───────────────────────────────────────
     // A figure-8 in the x-y plane at 1 m altitude; 2 m × 1 m footprint.
@@ -48,7 +53,6 @@ fn main() {
     };
 
     // ── Sampling parameters ──────────────────────────────────────────────────
-    let dt = 0.001_f32;         // 1 kHz evaluation
     let total_time = traj.total_time;
     let n_steps = (total_time / dt) as usize;
 
@@ -84,6 +88,9 @@ fn main() {
             ref_tx: fr.torque.x, ref_ty: fr.torque.y, ref_tz: fr.torque.z,
             ref_yaw: flat.yaw,
             ref_ox: fr.omega.x, ref_oy: fr.omega.y, ref_oz: fr.omega.z,
+            // Open-loop: commanded == reference (flatness output fed directly)
+            cmd_thrust: fr.thrust,
+            cmd_tx: fr.torque.x, cmd_ty: fr.torque.y, cmd_tz: fr.torque.z,
         });
 
         // Convert to motor action and step
@@ -111,17 +118,6 @@ fn main() {
         let fr = compute_flatness(&flat, params.mass);
 
         let state = sim_cl.state().clone();
-        cl_records.push(Record {
-            t,
-            ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
-            ref_vx: flat.vel.x, ref_vy: flat.vel.y, ref_vz: flat.vel.z,
-            sim_vx: state.velocity.x, sim_vy: state.velocity.y, sim_vz: state.velocity.z,
-            ref_thrust: fr.thrust,
-            ref_tx: fr.torque.x, ref_ty: fr.torque.y, ref_tz: fr.torque.z,
-            ref_yaw: flat.yaw,
-            ref_ox: fr.omega.x, ref_oy: fr.omega.y, ref_oz: fr.omega.z,
-        });
 
         // Build reference for geometric controller
         let reference = TrajectoryReference {
@@ -136,6 +132,22 @@ fn main() {
 
         let ctrl_out = controller.compute_control(&state, &reference, &params, dt);
         let action = MotorAction::from_thrust_torque(ctrl_out.thrust, ctrl_out.torque, &params);
+
+        cl_records.push(Record {
+            t,
+            ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
+            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
+            ref_vx: flat.vel.x, ref_vy: flat.vel.y, ref_vz: flat.vel.z,
+            sim_vx: state.velocity.x, sim_vy: state.velocity.y, sim_vz: state.velocity.z,
+            ref_thrust: fr.thrust,
+            ref_tx: fr.torque.x, ref_ty: fr.torque.y, ref_tz: fr.torque.z,
+            ref_yaw: flat.yaw,
+            ref_ox: fr.omega.x, ref_oy: fr.omega.y, ref_oz: fr.omega.z,
+            // Closed-loop: record what the geometric controller actually commanded
+            cmd_thrust: ctrl_out.thrust,
+            cmd_tx: ctrl_out.torque.x, cmd_ty: ctrl_out.torque.y, cmd_tz: ctrl_out.torque.z,
+        });
+
         sim_cl.step(&action);
     }
     println!("  Closed-loop simulation complete ({} steps).\n", n_steps);
@@ -195,10 +207,14 @@ struct Record {
     sim_x: f32, sim_y: f32, sim_z: f32,
     ref_vx: f32, ref_vy: f32, ref_vz: f32,
     sim_vx: f32, sim_vy: f32, sim_vz: f32,
+    /// Desired thrust from differential flatness [N]
     ref_thrust: f32,
     ref_tx: f32, ref_ty: f32, ref_tz: f32,
     ref_yaw: f32,
     ref_ox: f32, ref_oy: f32, ref_oz: f32,
+    /// Actual commanded thrust (controller output, 0 for open-loop records) [N]
+    cmd_thrust: f32,
+    cmd_tx: f32, cmd_ty: f32, cmd_tz: f32,
 }
 
 fn write_record_csv(path: &str, records: &[Record]) {
@@ -207,14 +223,16 @@ fn write_record_csv(path: &str, records: &[Record]) {
         "t,ref_x,ref_y,ref_z,sim_x,sim_y,sim_z,\
          ref_vx,ref_vy,ref_vz,sim_vx,sim_vy,sim_vz,\
          ref_thrust,ref_tx,ref_ty,ref_tz,ref_yaw,\
-         ref_ox,ref_oy,ref_oz"
+         ref_ox,ref_oy,ref_oz,\
+         cmd_thrust,cmd_tx,cmd_ty,cmd_tz"
     ).unwrap();
     for r in records {
         writeln!(f,
             "{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},\
              {:.6},{:.6},{:.6},{:.6},{:.6},{:.6},\
              {:.6},{:.6},{:.6},{:.6},{:.6},\
-             {:.6},{:.6},{:.6}",
+             {:.6},{:.6},{:.6},\
+             {:.6},{:.6},{:.6},{:.6}",
             r.t,
             r.ref_x, r.ref_y, r.ref_z,
             r.sim_x, r.sim_y, r.sim_z,
@@ -224,6 +242,8 @@ fn write_record_csv(path: &str, records: &[Record]) {
             r.ref_tx, r.ref_ty, r.ref_tz,
             r.ref_yaw,
             r.ref_ox, r.ref_oy, r.ref_oz,
+            r.cmd_thrust,
+            r.cmd_tx, r.cmd_ty, r.cmd_tz,
         ).unwrap();
     }
 }

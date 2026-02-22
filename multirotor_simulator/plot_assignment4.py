@@ -200,6 +200,35 @@ plt.tight_layout()
 plt.savefig(os.path.join(IMG_DIR, "assignment4_errors.png"), dpi=150)
 print("Saved assignment4_errors.png")
 
+# ── Figure 8: Flatness desired vs controller commanded actions ───────────────
+# This is the key comparison: how closely does the geometric controller
+# reproduce the thrust and torques predicted by differential flatness?
+fig, axes = plt.subplots(4, 1, figsize=(13, 11), sharex=True)
+
+axes[0].plot(t_cl, cl["ref_thrust"], "b-", lw=1.5, label="Flatness desired")
+axes[0].plot(t_cl, cl["cmd_thrust"], "g--", lw=1.2, label="Controller commanded")
+axes[0].set_ylabel("Thrust [N]")
+axes[0].axhline(0.027 * 9.81, color="r", ls=":", lw=1, label="Hover")
+axes[0].legend(fontsize=8)
+axes[0].grid(True, alpha=0.4)
+
+for i, axis in enumerate(["x", "y", "z"]):
+    axes[i + 1].plot(t_cl, cl[f"ref_t{axis}"], "b-", lw=1.5, label="Flatness desired")
+    axes[i + 1].plot(
+        t_cl, cl[f"cmd_t{axis}"], "g--", lw=1.2, label="Controller commanded"
+    )
+    axes[i + 1].set_ylabel(f"τ{axis} [Nm]")
+    axes[i + 1].legend(fontsize=8)
+    axes[i + 1].grid(True, alpha=0.4)
+
+axes[-1].set_xlabel("Time [s]")
+axes[0].set_title(
+    "Desired Actions (Differential Flatness) vs Commanded Actions (Geometric Controller)"
+)
+plt.tight_layout()
+plt.savefig(os.path.join(IMG_DIR, "assignment4_actions_comparison.png"), dpi=150)
+print("Saved assignment4_actions_comparison.png")
+
 # ── Figure 7: Planned trajectory derivatives (pos / vel / acc) ───────────────
 fig, axes = plt.subplots(3, 3, figsize=(14, 9), sharex=True)
 deriv_data = {
