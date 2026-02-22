@@ -118,16 +118,15 @@ pub fn compute_flatness(flat: &FlatOutput, mass: f32) -> FlatnessResult {
     let xc = [psi.cos(), psi.sin(), 0.0_f32];
     let yc = [-psi.sin(), psi.cos(), 0.0_f32];
 
-    // zb = normalize(p̈ + g·ez)
+    // acc_g = p̈ + g·ez
     let acc_g = [acc[0], acc[1], acc[2] + G];
-    let zb = normalize3(acc_g);
 
-    // xb = normalize(yc × zb)
-    let xb_raw = cross3(yc, zb);
-    let xb = normalize3(xb_raw);
-
-    // yb = zb × xb  (already unit if xb, zb are unit and orthogonal)
-    let yb = cross3(zb, xb);
+    // xb = n(yc × (p̈ + g·ez))
+    let xb = normalize3(cross3(yc, acc_g));
+    // yb = n((p̈ + g·ez) × xb)
+    let yb = normalize3(cross3(acc_g, xb));
+    // zb = xb × yb
+    let zb = cross3(xb, yb);
 
     // R = [xb | yb | zb]  column-major
     let rot = [
@@ -137,39 +136,43 @@ pub fn compute_flatness(flat: &FlatOutput, mass: f32) -> FlatnessResult {
     ];
 
     // ── Thrust (slide 9) ────────────────────────────────────────────────────
-    // f = m * zb · (p̈ + g·ez)
-    let thrust = mass * dot3(zb, acc_g);
+    // c = zb · (p̈ + g·ez)  — since zb = (p̈+g·ez)/‖p̈+g·ez‖, this equals ‖p̈+g·ez‖
+    // f = m·c
+    let c = dot3(zb, acc_g);   // = ‖acc_g‖ = f / mass
+    let thrust = mass * c;
 
-    // ── c scalar (norm of yc × zb) ──────────────────────────────────────────
-    let c = norm3(cross3(yc, zb));
-    // c3 = ‖yc × zb‖  (same as c when yc·zb != ±1)
+    // ── c3 = ‖yc × zb‖  (separate scalar, only appears in ωz / ω̇z) ───────
+    let c3 = norm3(cross3(yc, zb));
 
-    // ── Angular velocity (slide 10 / Faessler App.A) ────────────────────────
-    // cĊ  = zb · p⃛
+    // ── Angular velocity (slides 10, Faessler App.A) ─────────────────────────
+    // ċ = zb · p⃛
     let c_dot = dot3(zb, jerk);
 
     // d1 = xb · p⃛
     let d1 = dot3(xb, jerk);
     // d2 = −yb · p⃛
     let d2 = -dot3(yb, jerk);
-    // b3 = −yc · zb   (note sign convention in Faessler)
+    // b3 = −yc · zb
     let b3 = -dot3(yc, zb);
-    // d3 = ψ̇ * xc · xb
+    // d3 = ψ̇ · (xc · xb)
     let d3 = psi_d * dot3(xc, xb);
 
-    // c3 = ‖yc × zb‖ = c  (already computed)
+    // ωx = d2 / c
+    // ωy = d1 / c
+    // ωz = (c·d3 − b3·d1) / (c·c3)
     let omega_x = d2 / c;
     let omega_y = d1 / c;
-    let omega_z = (c * d3 - b3 * d1) / (c * c);
+    let omega_z = (c * d3 - b3 * d1) / (c * c3);
 
     let omega = Vec3::new(omega_x, omega_y, omega_z);
 
-    // ── Angular acceleration (slide 11 / Faessler App.A) ────────────────────
-    // ω̇x = (1/c)(xb·p⁴ − 2ċωy − c·ωx·ωz)
-    // ω̇y = (1/c)(−yb·p⁴ − 2ċωx + c·ωy·ωz)       [Faessler sign corrected]
-    // ω̇z via ψ̈ term
-    //
-    // Note: these are scalar equations — we project snap onto body axes first.
+    // ── Angular acceleration (slide 11, Faessler App.A) ──────────────────────
+    // e1 = xb·p⁽⁴⁾ − 2ċ·ωy − c·ωx·ωz
+    // e2 = −yb·p⁽⁴⁾ − 2ċ·ωx + c·ωy·ωz
+    // e3 = ψ̈·(xc·xb) + 2ψ̇·ωz·(xc·yb) − 2ψ̇·ωy·(xc·zb) − ωx·ωy·(yc·yb) − ωx·ωz·(yc·zb)
+    // ω̇x = e2 / c
+    // ω̇y = e1 / c
+    // ω̇z = (c·e3 − b3·e1) / (c·c3)
     let snap_dot_xb = dot3(xb, snap);
     let snap_dot_yb = dot3(yb, snap);
 
@@ -184,7 +187,7 @@ pub fn compute_flatness(flat: &FlatOutput, mass: f32) -> FlatnessResult {
 
     let omega_dot_x = e2 / c;
     let omega_dot_y = e1 / c;
-    let omega_dot_z = (c * e3 - b3 * e1) / (c * c);
+    let omega_dot_z = (c * e3 - b3 * e1) / (c * c3);
 
     let omega_dot = Vec3::new(omega_dot_x, omega_dot_y, omega_dot_z);
 

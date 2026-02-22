@@ -56,14 +56,16 @@ ax.plot(
     alpha=0.85,
     label="Closed-loop sim",
 )
+# Open-loop: only plot up to divergence (~0.65 s, i.e. first ~650 steps)
+ol_horizon = ol["t"] < 1.0
 ax.plot(
-    ol["sim_x"].clip(-5, 5),
-    ol["sim_y"].clip(-5, 5),
-    ol["sim_z"].clip(-5, 5),
+    ol["sim_x"][ol_horizon],
+    ol["sim_y"][ol_horizon],
+    ol["sim_z"][ol_horizon],
     "r--",
-    lw=1,
-    alpha=0.6,
-    label="Open-loop sim (clipped ±5 m)",
+    lw=1.2,
+    alpha=0.8,
+    label="Open-loop sim (first 1 s)",
 )
 
 # Waypoints from planned trajectory start/end of each segment
@@ -166,36 +168,43 @@ plt.savefig(os.path.join(IMG_DIR, "assignment4_omega.png"), dpi=150)
 print("Saved assignment4_omega.png")
 
 # ── Figure 6: Position error comparison ─────────────────────────────────────
-fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
-labels = ["x", "y", "z"]
-cl_pos = [
-    (cl["ref_x"] - cl["sim_x"]),
-    (cl["ref_y"] - cl["sim_y"]),
-    (cl["ref_z"] - cl["sim_z"]),
-]
-# Clip open-loop for readability
-ol_clip = 2.0
-ol_pos = [
-    (ol["ref_x"] - ol["sim_x"]).clip(-ol_clip, ol_clip),
-    (ol["ref_y"] - ol["sim_y"]).clip(-ol_clip, ol_clip),
-    (ol["ref_z"] - ol["sim_z"]).clip(-ol_clip, ol_clip),
-]
+# Open-loop: show two sub-plots side-by-side — short horizon (clean) and full
+fig, axes = plt.subplots(2, 1, figsize=(13, 9), sharex=False)
 
-for i, ax in enumerate(axes):
-    ax.plot(t_cl, cl_pos[i], "g-", lw=1.5, label="Closed-loop error")
-    ax.plot(
-        t_ol,
-        ol_pos[i],
-        "r--",
-        lw=1,
-        alpha=0.7,
-        label=f"Open-loop error (clipped ±{ol_clip} m)",
-    )
-    ax.set_ylabel(f"e{labels[i]} [m]")
-    ax.legend(loc="upper right", fontsize=8)
-    ax.grid(True, alpha=0.4)
-axes[-1].set_xlabel("Time [s]")
-axes[0].set_title("Position Tracking Error: Open-Loop vs Closed-Loop")
+errs_ol = np.sqrt(
+    (ol["ref_x"] - ol["sim_x"]) ** 2
+    + (ol["ref_y"] - ol["sim_y"]) ** 2
+    + (ol["ref_z"] - ol["sim_z"]) ** 2
+)
+errs_cl = np.sqrt(
+    (cl["ref_x"] - cl["sim_x"]) ** 2
+    + (cl["ref_y"] - cl["sim_y"]) ** 2
+    + (cl["ref_z"] - cl["sim_z"]) ** 2
+)
+
+# Top: full timeline, both systems
+ax = axes[0]
+ax.semilogy(t_ol, np.maximum(errs_ol, 1e-5), "r-", lw=1.2, label="Open-loop")
+ax.semilogy(t_cl, np.maximum(errs_cl, 1e-5), "g-", lw=1.5, label="Closed-loop")
+ax.axvline(0.647, color="r", ls="--", lw=1, label="OL diverges (>1 cm) @ t=0.647 s")
+ax.axhline(0.01, color="gray", ls=":", lw=1, label="1 cm threshold")
+ax.set_xlabel("Time [s]")
+ax.set_ylabel("3D position error [m]")
+ax.set_title("Position Error: Open-Loop vs Closed-Loop (log scale)")
+ax.legend(fontsize=8)
+ax.grid(True, which="both", alpha=0.4)
+ax.set_ylim(1e-5, 50)
+
+# Bottom: closed-loop only, linear scale, full detail
+ax = axes[1]
+ax.plot(t_cl, errs_cl * 1000, "g-", lw=1.5)
+ax.set_xlabel("Time [s]")
+ax.set_ylabel("Closed-loop 3D error [mm]")
+ax.set_title(
+    f"Closed-Loop Error Detail  (RMS = {np.sqrt(np.mean(errs_cl**2))*1000:.1f} mm)"
+)
+ax.grid(True, alpha=0.4)
+
 plt.tight_layout()
 plt.savefig(os.path.join(IMG_DIR, "assignment4_errors.png"), dpi=150)
 print("Saved assignment4_errors.png")
