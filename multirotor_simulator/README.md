@@ -20,7 +20,30 @@ cargo build --release
 
 ## Available Programs
 
-### 🎯 Demo - Quick demonstration
+### 📊 Assignment 1 — Integrator comparison
+```bash
+cargo run --release --bin assignment1
+```
+Runs all 4 integrators and writes CSVs to `results/data/`. Plot with:
+```bash
+python plot_assignment1.py
+```
+
+### 🚁 Assignment 2 — Geometric control & trajectory tracking
+```bash
+# Normal start (drone teleported to trajectory start)
+cargo run --release --bin assignment2
+
+# Realistic start (takeoff + hover prepended)
+cargo run --release --bin assignment2 -- --realistic-start
+```
+Writes CSVs to `results/data/assignment2_<scenario>{_realistic}.csv`. Plot with:
+```bash
+python plot_assignment2.py
+```
+Produces side-by-side Normal vs Realistic path and error images in `results/images/`.
+
+### 🎯 Demo — Quick demonstration
 ```bash
 cargo run --bin demo
 ```
@@ -32,16 +55,11 @@ Exp+Euler    | z =    2.879 m | vz =   52.352 m/s
 Exp+RK4      | z =    2.618 m | vz =   52.352 m/s
 ```
 
-### 📊 Test Equivalence - Verification
+### 📊 Test Equivalence — Verification
 ```bash
 cargo run --bin test_equivalence
 ```
 Runs all methods and exports CSV files for comparison with original implementation.
-
-### 📝 Assignment 1 - Full implementation (WIP)
-```bash
-cargo run --bin assignment1
-```
 
 ## Using as a Library
 
@@ -49,22 +67,21 @@ cargo run --bin assignment1
 use multirotor_simulator::prelude::*;
 
 fn main() {
-    // 1. Configure aircraft
     let params = MultirotorParams::crazyflie();
-    
-    // 2. Choose integration method
-    let integrator = Box::new(RK4Integrator);  // or EulerIntegrator, etc.
-    
-    // 3. Create simulator
-    let mut sim = MultirotorSimulator::new(params, integrator);
-    
-    // 4. Define control input
-    let action = MotorAction::hover();
-    
-    // 5. Run simulation
-    for step in 0..100 {
+    let integrator = Box::new(RK4Integrator);
+    let mut sim = MultirotorSimulator::new(params.clone(), integrator);
+
+    let controller = GeometricController::default();
+    let trajectory = CircleTrajectory::new(0.5, 0.5, 0.3);
+
+    let dt = 0.01;
+    let mut time = 0.0_f32;
+    while time < 10.0 {
+        let reference = trajectory.get_reference(time);
+        let control = controller.compute_control(sim.state(), &reference, &params);
+        let action = MotorAction::from_thrust_torque(control.thrust, control.torque, &params);
         sim.step(&action);
-        println!("z = {:.3} m", sim.state().position.z);
+        time += dt;
     }
 }
 ```
@@ -75,101 +92,73 @@ fn main() {
 multirotor_simulator/
 ├── Cargo.toml              # Project configuration
 ├── README.md               # This file
+├── ARCHITECTURE.md         # Architecture documentation
+├── QUICKSTART.sh           # Quick-start shell script
+├── plot_assignment1.py     # Plotting script for Assignment 1 results
+├── plot_assignment2.py     # Plotting script for Assignment 2 results
 ├── src/
 │   ├── lib.rs             # Library entry point
 │   ├── math/              # Mathematical primitives
-│   │   ├── mod.rs         # Module definition
-│   │   ├── vec3.rs        # 3D vector implementation
-│   │   └── quaternion.rs  # Quaternion implementation
+│   │   ├── mod.rs
+│   │   ├── vec3.rs        # 3D vector
+│   │   └── quaternion.rs  # Unit quaternion
 │   ├── dynamics/          # Physics and dynamics
-│   │   ├── mod.rs         # Module definition
-│   │   ├── state.rs       # State representation
-│   │   ├── params.rs      # Physical parameters
-│   │   └── simulator.rs   # Main simulator
+│   │   ├── mod.rs
+│   │   ├── state.rs       # State representation & motor actions
+│   │   ├── params.rs      # Physical parameters (Crazyflie)
+│   │   └── simulator.rs   # Main simulation engine
 │   ├── integration/       # Numerical integration methods
-│   │   ├── mod.rs         # Module definition
-│   │   ├── euler.rs       # Euler integration
+│   │   ├── mod.rs
+│   │   ├── euler.rs       # First-order Euler
 │   │   ├── rk4.rs         # Runge-Kutta 4th order
 │   │   └── exponential.rs # Exponential map methods
-│   ├── validation/        # Validation and testing
-│   │   ├── mod.rs         # Module definition
-│   │   ├── synthetic.rs   # Synthetic validation
-│   │   └── flight_data.rs # Real flight data validation
-│   ├── io/                # Input/Output operations
-│   │   ├── mod.rs         # Module definition
-│   │   ├── csv_export.rs  # CSV data export
-│   │   └── flight_log.rs  # Flight log parsing
-│   └── bin/               # Binary executables
-│       ├── assignment1.rs # Assignment 1 experiment
-│       └── demo.rs        # Interactive demo
-└── data/                  # Data files (CSV, logs, etc.)
+│   ├── controller/        # Control algorithms
+│   │   └── mod.rs         # Geometric SE(3) controller (Lee et al.)
+│   ├── trajectory/        # Trajectory generators
+│   │   └── mod.rs         # Figure-8, Circle, CSV, Takeoff, Sequenced
+│   └── bin/               # Runnable binaries
+│       ├── assignment1.rs  # Assignment 1: integrator comparison
+│       ├── assignment2.rs  # Assignment 2: geometric control & trajectories
+│       ├── demo.rs         # Quick demo
+│       ├── debug_*.rs      # Debug / diagnostic binaries
+│       └── test_*.rs       # Standalone test binaries
+├── tests/
+│   └── test_geometric_controller.rs  # Integration tests
+└── results/
+    ├── data/               # CSV output from simulation runs
+    └── images/             # PNG plots generated by plot scripts
 ```
 
 ## Architecture
 
 ### Core Modules
 
-1. **math/** - Mathematical primitives (vectors, quaternions)
-   - Zero dependencies, pure mathematical operations
-   - Operator overloading for intuitive usage
-   - Optimized for 3D robotics applications
+1. **math/** - Mathematical primitives (Vec3, Quat)
+2. **dynamics/** - Physics core (state, parameters, simulator)
+3. **integration/** - Pluggable integrators (Euler, RK4, Exponential)
+4. **controller/** - Geometric SE(3) controller (Lee et al. 2010)
+5. **trajectory/** - Trajectory generators: `Figure8Trajectory`, `CircleTrajectory`, `CsvTrajectory`, `TakeoffTrajectory`, `SequencedTrajectory`
 
-2. **dynamics/** - Physics simulation core
-   - State representation (position, velocity, orientation)
-   - Physical parameters (mass, inertia, motor constants)
-   - Dynamics equations (forces, torques, accelerations)
+See `ARCHITECTURE.md` for detailed design documentation.
 
-3. **integration/** - Numerical integration methods
-   - Modular integrator trait for easy extension
-   - Multiple implementations (Euler, RK4, Exponential)
-   - Configurable time step and accuracy
-
-4. **validation/** - Testing and validation
-   - Synthetic trajectory generation
-   - Real flight data comparison
-   - K-step prediction accuracy
-
-5. **io/** - Data import/export
-   - CSV trajectory export for visualization
-   - Flight log parsing
-   - Python-compatible formats
-
-## Usage
-
-### As a Library
-
-```rust
-use multirotor_simulator::prelude::*;
-
-let params = MultirotorParams::crazyflie();
-let mut sim = MultirotorSimulator::new(params, IntegrationMethod::RK4);
-
-let action = MotorAction::hover();
-sim.step(&action);
-
-println!("Position: {:?}", sim.state().position);
-```
-
-### Run Assignment 1
+## Testing
 
 ```bash
-cargo run --bin assignment1
+cargo test
 ```
 
-### Run Demo
-
-```bash
-cargo run --bin demo
-```
+Current status: **69 tests pass**, 1 known pre-existing failing test (`test_geometric_controller_creation` — checks legacy hardcoded gain values, left as-is).
 
 ## Features
 
-- ✅ Multiple integration methods (Euler, RK4, Exponential map)
+- ✅ Multiple integration methods (Euler, RK4, Exponential)
 - ✅ Quaternion-based orientation (no gimbal lock)
+- ✅ Geometric SE(3) controller (Lee et al. 2010) — Crazyflie-tuned gains
+- ✅ Trajectory generators: figure-8, circle, CSV waypoints, takeoff, sequenced
+- ✅ Realistic mission sequencing (`--realistic-start`)
+- ✅ CSV output with phase metadata for plotting
+- ✅ Side-by-side Normal vs Realistic comparison plots
 - ✅ Crazyflie 2.1 parameters
-- ✅ CSV export for visualization
-- ✅ Real flight data validation
-- ✅ Comprehensive documentation
 - ✅ Clean, modular architecture
 
 ## Design Principles
@@ -180,20 +169,7 @@ cargo run --bin demo
 4. **Performance**: Efficient implementations without sacrificing clarity
 5. **Documentation**: Every module and function is documented
 
-## Testing
-
-```bash
-cargo test
-cargo test --lib        # Library tests only
-cargo test --bin        # Binary tests only
-```
-
-## Documentation
-
-```bash
-cargo doc --open
-```
-
 ## License
 
 Educational/Research use
+
