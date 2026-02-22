@@ -9,7 +9,8 @@ This project implements a clean, modular multirotor dynamics simulator and state
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                        Application Layer                          │
-│  assignment1 · assignment2 · assignment3 · demo · debug/test bins │
+│  assignment1 · assignment2 · assignment3 · assignment4 · demo ·   │
+│  debug/test bins                                                  │
 └────────────────────────────┬─────────────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────────────┐
@@ -23,16 +24,32 @@ This project implements a clean, modular multirotor dynamics simulator and state
 │  │  Mat9    │  │  Simul.  │  │  Exp     │  │          │        │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
 │                                                                   │
-│  ┌──────────────────────────┐  ┌──────────────────────────────┐ │
-│  │       Trajectory         │  │        Estimation            │ │
-│  │  Figure8 · Circle · CSV  │  │  MEKF (attitude + position)  │ │
-│  │  Takeoff · Sequenced     │  │  f32 · Joseph form · capped Σ│ │
-│  └──────────────────────────┘  └──────────────────────────────┘ │
+│  ┌───────────────┐  ┌──────────────────────────┐  ┌────────────┐ │
+│  │   Planning    │  │       Trajectory         │  │ Estimation │ │
+│  │  Spline ·     │  │  Figure8 · Circle · CSV  │  │  MEKF      │ │
+│  │  Flatness     │  │  Takeoff · Sequenced     │  │  f32 ·     │ │
+│  │  Minimum-snap │  │                          │  │  Joseph    │ │
+│  │  QP           │  │                          │  │  capped Σ  │ │
+│  └───────────────┘  └──────────────────────────┘  └────────────┘ │
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
 ## Module Responsibilities
+### `planning/` — Motion Planning & Trajectory Optimization
+**Purpose**: Advanced trajectory generation using minimum-snap splines and differential flatness.
+
+- `spline.rs`: 8th-order polynomial spline planner (QP, minimum-snap, continuity up to snap)
+- `flatness.rs`: Differential flatness chain for multirotor (position/yaw + derivatives → rotation, thrust, angular velocity, torque)
+- `mod.rs`: Module entry point, re-exports planner and flatness types
+
+**Key types**: `SplineTrajectory`, `Waypoint`, `FlatOutput`, `compute_flatness`
+
+**Features**:
+  - Minimum-snap spline optimization (Clarabel/simple_qp backend)
+  - Dynamically feasible, smooth trajectories for aggressive maneuvers
+  - Full flatness chain for feedforward control and reference generation
+  - Validated against closed-loop geometric controller tracking
 
 ### `math/` — Mathematical Primitives
 **Purpose**: Pure mathematical operations, zero external dependencies.
@@ -134,7 +151,10 @@ Each component is independently testable:
 - Simulator can use mock integrators
 
 ## File Organization
-
+  │   ├── planning/
+  │   │   ├── mod.rs               # Motion planning module (assignment4)
+  │   │   ├── spline.rs            # Minimum-snap spline planner (QP)
+  │   │   └── flatness.rs          # Differential flatness chain
 ```
 multirotor_simulator/
 ├── Cargo.toml                    # Project metadata & dependencies
@@ -202,11 +222,22 @@ multirotor_simulator/
 │   └── test_geometric_controller.rs   # Integration tests
 │
 └── results/
-    ├── data/                    # CSV outputs
-    │   ├── assignment2_<scenario>.csv
-    │   ├── assignment3_mekf.csv # MEKF: time, roll_rad, pitch_rad, yaw_rad, x, y, z
-    │   └── assignment3_ekf.csv  # On-board EKF reference (same columns)
-    └── images/                  # PNG plots
+  ├── data/                    # CSV outputs
+  │   ├── assignment2_<scenario>.csv
+  │   ├── assignment3_mekf.csv # MEKF: time, roll_rad, pitch_rad, yaw_rad, x, y, z
+  │   ├── assignment3_ekf.csv  # On-board EKF reference (same columns)
+  │   ├── assignment4_planned.csv      # Planned minimum-snap spline trajectory
+  │   ├── assignment4_openloop.csv     # Open-loop simulation (flatness feedforward)
+  │   └── assignment4_closedloop.csv   # Closed-loop simulation (geometric controller)
+  └── images/                  # PNG plots
+    ├── assignment4_3d.png
+    ├── assignment4_position_cl.png
+    ├── assignment4_velocity_cl.png
+    ├── assignment4_actions.png
+    ├── assignment4_omega.png
+    ├── assignment4_errors.png
+    ├── assignment4_actions_comparison.png
+    └── assignment4_derivatives.png
 ```
 
 ## Component Interactions
@@ -270,7 +301,11 @@ cargo test --test test_geometric_controller  # integration test only
 Current status: **69 tests pass**, 1 known pre-existing failing test (`test_geometric_controller_creation`).
 
 ## Build & Run
-
+# Assignment 4 — Minimum-snap spline planning & differential flatness
+cargo build --release --bin assignment4
+cargo run --release --bin assignment4
+python plot_assignment4.py
+# Generates CSVs and plots for planned, open-loop, and closed-loop figure-8 trajectory
 ```bash
 cargo build --release
 

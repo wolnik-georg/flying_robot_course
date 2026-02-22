@@ -57,15 +57,14 @@ ax.plot(
     label="Closed-loop sim",
 )
 # Open-loop: only plot up to divergence (~0.65 s, i.e. first ~650 steps)
-ol_horizon = ol["t"] < 1.0
 ax.plot(
-    ol["sim_x"][ol_horizon],
-    ol["sim_y"][ol_horizon],
-    ol["sim_z"][ol_horizon],
+    ol["sim_x"],
+    ol["sim_y"],
+    ol["sim_z"],
     "r--",
     lw=1.2,
     alpha=0.8,
-    label="Open-loop sim (first 1 s)",
+    label="Open-loop sim (full)",
 )
 
 # Waypoints from planned trajectory start/end of each segment

@@ -19,7 +19,16 @@ cargo build --release
 ```
 
 ## Available Programs
-
+### 🏁 Assignment 4 — Minimum-snap spline planning & differential flatness
+```bash
+cargo build --release --bin assignment4
+cargo run --release --bin assignment4
+```
+Generates CSVs for planned, open-loop, and closed-loop figure-8 trajectory in `results/data/`. Plot with:
+```bash
+python plot_assignment4.py
+```
+Produces 3D trajectory, tracking, action, and error plots in `results/images/`.
 ### 📊 Assignment 1 — Integrator comparison
 ```bash
 cargo run --release --bin assignment1
@@ -87,7 +96,10 @@ fn main() {
 ```
 
 ## Project Structure
-
+│   ├── planning/           # Motion planning module (assignment4)
+│   │   ├── mod.rs          # Module entry point
+│   │   ├── spline.rs       # Minimum-snap spline planner (QP)
+│   │   └── flatness.rs     # Differential flatness chain
 ```
 multirotor_simulator/
 ├── Cargo.toml              # Project configuration
@@ -130,7 +142,7 @@ multirotor_simulator/
 ```
 
 ## Architecture
-
+6. **planning/** - Motion planning: minimum-snap spline planner, differential flatness chain
 ### Core Modules
 
 1. **math/** - Mathematical primitives (Vec3, Quat)
