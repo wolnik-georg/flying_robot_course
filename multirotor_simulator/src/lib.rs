@@ -8,6 +8,8 @@ pub mod dynamics;
 pub mod integration;
 pub mod controller;
 pub mod trajectory;
+pub mod estimation;
+pub mod planning;
 
 /// Prelude for convenient imports
 pub mod prelude {
@@ -38,5 +40,10 @@ pub mod prelude {
         CsvTrajectory,
         TakeoffTrajectory,
         SequencedTrajectory,
+    };
+    pub use crate::estimation::{Mekf, MekfState, MekfParams};
+    pub use crate::planning::{
+        FlatOutput, FlatnessResult, compute_flatness, rot_to_quat, flatness_to_reference,
+        SplineTrajectory, SplineSegment, Waypoint,
     };
 }

@@ -2,33 +2,34 @@
 
 ## Overview
 
-This project implements a clean, modular multirotor dynamics simulator following software engineering best practices.
+This project implements a clean, modular multirotor dynamics simulator and state estimator following software engineering best practices. It covers the full perception-to-control stack: IMU-driven MEKF state estimation, SE(3) geometric control, and pluggable trajectory generation — all in f32, no-std compatible, and validated against Crazyflie hardware logs.
 
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                         │
-│  (Binaries: assignment1, assignment2, demo, debug/test bins) │
-└───────────────────────┬─────────────────────────────────────┘
-                        │
-┌───────────────────────▼─────────────────────────────────────┐
-│                  Multirotor Simulator Library                │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
-│  │  Math    │  │ Dynamics │  │Integr.   │  │Controller│  │
-│  │  Vec3    │  │  State   │  │  Euler   │  │Geometric │  │
-│  │  Quat    │  │  Params  │  │  RK4     │  │SE(3) Lee │  │
-│  │          │  │  Simul.  │  │  Exp     │  │          │  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │                   Trajectory                         │  │
-│  │  Figure8 · Circle · CSV · Takeoff · Sequenced        │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        Application Layer                          │
+│  assignment1 · assignment2 · assignment3 · demo · debug/test bins │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────────────┐
+│                   Multirotor Simulator Library                    │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │  Math    │  │ Dynamics │  │Integr.   │  │Controller│        │
+│  │  Vec3    │  │  State   │  │  Euler   │  │Geometric │        │
+│  │  Quat    │  │  Params  │  │  RK4     │  │SE(3) Lee │        │
+│  │  Mat9    │  │  Simul.  │  │  Exp     │  │          │        │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
+│                                                                   │
+│  ┌──────────────────────────┐  ┌──────────────────────────────┐ │
+│  │       Trajectory         │  │        Estimation            │ │
+│  │  Figure8 · Circle · CSV  │  │  MEKF (attitude + position)  │ │
+│  │  Takeoff · Sequenced     │  │  f32 · Joseph form · capped Σ│ │
+│  └──────────────────────────┘  └──────────────────────────────┘ │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ## Module Responsibilities
@@ -38,6 +39,11 @@ This project implements a clean, modular multirotor dynamics simulator following
 
 - `vec3.rs`: 3D vectors for position, velocity, force, torque
 - `quaternion.rs`: Unit quaternion for 3D rotations without gimbal lock
+- `matrix.rs`: `Mat9` — 9×9 f32 matrix for MEKF covariance arithmetic. Key methods:
+  - `mat_mul`, `transpose`, `scale`, `add` — standard matrix algebra
+  - `joseph_update(Σ, k, h, r)` — full Joseph form `(I−KH)Σ(I−KH)ᵀ + K·r·Kᵀ`, keeps Σ positive-definite
+  - `symmetrise()` — forces `Σ ← (Σ+Σᵀ)/2` after every predict/update
+  - `clamp_diagonal(max_var)` — caps each diagonal entry, scaling off-diagonal terms proportionally
 
 **Key Traits**: `Copy`, `Clone`, `Add`, `Mul`
 
@@ -77,6 +83,28 @@ This project implements a clean, modular multirotor dynamics simulator following
   - `SequencedTrajectory` — chains multiple trajectories with per-phase durations
 
 **Design Pattern**: Trait-based polymorphism via `Trajectory` trait.
+
+### `estimation/` — State Estimation
+**Purpose**: Sensor-fusion algorithms that recover full vehicle state from noisy IMU, range, and flow measurements.
+
+- `mekf.rs`: `Mekf` — Multiplicative Extended Kalman Filter.
+  - **State**: `x = [p(3), b(3), δ(3)]` ∈ ℝ⁹ with `q_ref` maintained outside the filter
+    - `p`: position in world frame [m]
+    - `b`: velocity in body frame [m/s]
+    - `δ`: attitude error angles [rad] — reset to zero after each `q_ref` update
+  - **Inputs**: gyroscope [deg/s] + accelerometer [G] as control input (not measurements)
+  - **Measurements**: height from range sensor (mm→m) and optical flow (pixels)
+  - **Numerical stability** (all three required for f32 on STM32-class hardware):
+    1. Full Joseph form covariance update — prevents loss of positive-definiteness
+    2. Symmetrisation `Σ ← (Σ+Σᵀ)/2` — suppresses f32 rounding asymmetry
+    3. Diagonal cap `MAX_COVARIANCE = 100.0` — mirrors Crazyflie `kalman_core.c`
+  - **Tuned noise params**: `q_pos=1e-7, q_vel=1e-3, q_att=1e-6, r_height=1e-3, r_flow=8.0`
+  - **Sensor constants**: `NP=350.0` pixels, `THETA_P=0.71674` rad/pixel
+  - **Validated against**: Crazyflie fr00.csv figure-8 log (7.2 s, ~1 kHz)
+    - Orientation RMS vs on-board EKF: roll 0.87°, pitch 1.02°, yaw 0.21°
+    - Position RMS vs on-board EKF: x 0.088 m, y 0.127 m, z 0.006 m
+
+**Key types**: `Mekf`, `MekfState`, `MekfParams`, `quat_to_euler`
 
 ## Design Principles
 
@@ -122,7 +150,8 @@ multirotor_simulator/
 │   ├── math/
 │   │   ├── mod.rs
 │   │   ├── vec3.rs
-│   │   └── quaternion.rs
+│   │   ├── quaternion.rs
+│   │   └── matrix.rs             # Mat9: 9×9 f32 matrix (Joseph form, symmetrise, clamp)
 │   │
 │   ├── dynamics/
 │   │   ├── mod.rs
@@ -142,9 +171,14 @@ multirotor_simulator/
 │   ├── trajectory/
 │   │   └── mod.rs               # All trajectory types
 │   │
+│   ├── estimation/
+│   │   ├── mod.rs               # Re-exports Mekf, MekfState, MekfParams
+│   │   └── mekf.rs              # Full MEKF: predict, height update, flow update
+│   │
 │   └── bin/
 │       ├── assignment1.rs       # Assignment 1: integrator comparison
 │       ├── assignment2.rs       # Assignment 2: geometric control (--realistic-start)
+│       ├── assignment3.rs       # Assignment 3: MEKF offline validation vs on-board EKF
 │       ├── demo.rs              # Quick demo
 │       ├── check_saturation.rs
 │       ├── check_trajectory.rs
@@ -168,8 +202,11 @@ multirotor_simulator/
 │   └── test_geometric_controller.rs   # Integration tests
 │
 └── results/
-    ├── data/                    # CSV outputs (assignment2_<scenario>{_realistic}.csv)
-    └── images/                  # PNG plots (*_paths.png, *_errors.png)
+    ├── data/                    # CSV outputs
+    │   ├── assignment2_<scenario>.csv
+    │   ├── assignment3_mekf.csv # MEKF: time, roll_rad, pitch_rad, yaw_rad, x, y, z
+    │   └── assignment3_ekf.csv  # On-board EKF reference (same columns)
+    └── images/                  # PNG plots
 ```
 
 ## Component Interactions
@@ -237,14 +274,20 @@ Current status: **69 tests pass**, 1 known pre-existing failing test (`test_geom
 ```bash
 cargo build --release
 
-# Assignment 1
+# Assignment 1 — integrator comparison
 cargo run --release --bin assignment1
 python plot_assignment1.py
 
-# Assignment 2 (both modes)
+# Assignment 2 — geometric control (both modes)
 cargo run --release --bin assignment2
 cargo run --release --bin assignment2 -- --realistic-start
 python plot_assignment2.py
+
+# Assignment 3 — MEKF offline validation
+cargo run --release --bin assignment3 -- --csv "../State Estimation/logging_ekf/logging/fr00.csv"
+# then from the State Estimation/ directory:
+python plot_assignment3.py      # MEKF orientation + position vs on-board EKF
+python plot_comparison.py       # Three-way: Python MEKF · Rust MEKF · on-board EKF
 ```
 
 ## Benefits of This Architecture

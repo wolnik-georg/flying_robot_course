@@ -7,6 +7,7 @@ description = "A modular multirotor dynamics simulator for flying robots"
 
 [dependencies]
 csv = "1.3"
+simple_qp = "0.2.2"
 
 [lib]
 name = "multirotor_simulator"
@@ -15,6 +16,18 @@ path = "src/lib.rs"
 [[bin]]
 name = "assignment1"
 path = "src/bin/assignment1.rs"
+
+[[bin]]
+name = "assignment2"
+path = "src/bin/assignment2.rs"
+
+[[bin]]
+name = "assignment3"
+path = "src/bin/assignment3.rs"
+
+[[bin]]
+name = "assignment4"
+path = "src/bin/assignment4.rs"
 
 [[bin]]
 name = "demo"
