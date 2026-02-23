@@ -74,15 +74,29 @@ fn main() {
     let n_steps = (total_time / dt) as usize;
 
     // ── Safety limits configuration ────────────────────────────────────────
-    let safety = SafetyLimits {
-        min_altitude: 0.0,
-        max_altitude: 0.25, // 25 cm
-        max_speed: 0.3,     // 0.3 m/s
-        x_min: -1.0,
-        x_max: 1.0,
-        y_min: -1.0,
-        y_max: 1.0,
+    let safety_enabled = std::env::args().any(|arg| arg == "--safety");
+    let safety = if safety_enabled {
+        SafetyLimits {
+            min_altitude: 0.0,
+            max_altitude: 0.25, // 25 cm
+            max_speed: 0.3,     // 0.3 m/s
+            x_min: -1.0,
+            x_max: 1.0,
+            y_min: -1.0,
+            y_max: 1.0,
+        }
+    } else {
+        SafetyLimits {
+            min_altitude: -100.0,
+            max_altitude: 100.0,
+            max_speed: 100.0,
+            x_min: -100.0,
+            x_max: 100.0,
+            y_min: -100.0,
+            y_max: 100.0,
+        }
     };
+    println!("Safety features enabled: {}", safety_enabled);
 
     // ── Open-loop simulation ────────────────────────────────────────────────
     // Feed flatness-computed thrust and torque directly to the simulator.
@@ -237,16 +251,17 @@ fn main() {
 
     // ── Planned trajectory CSV ───────────────────────────────────────────────
     println!("Writing output files...");
-    let planned_path = "results/data/assignment4_planned.csv";
-    write_planned_csv(planned_path, &traj, dt, n_steps, &params);
+    let suffix = if safety_enabled { "_safety" } else { "_classic" };
+    let planned_path = format!("results/data/assignment4_planned{}.csv", suffix);
+    write_planned_csv(&planned_path, &traj, dt, n_steps, &params);
 
     // ── Open-loop CSV ────────────────────────────────────────────────────────
-    let ol_path = "results/data/assignment4_openloop.csv";
-    write_record_csv(ol_path, &ol_records);
+    let ol_path = format!("results/data/assignment4_openloop{}.csv", suffix);
+    write_record_csv(&ol_path, &ol_records);
 
     // ── Closed-loop CSV ──────────────────────────────────────────────────────
-    let cl_path = "results/data/assignment4_closedloop.csv";
-    write_record_csv(cl_path, &cl_records);
+    let cl_path = format!("results/data/assignment4_closedloop{}.csv", suffix);
+    write_record_csv(&cl_path, &cl_records);
 
     println!("  Written: {}", planned_path);
     println!("  Written: {}", ol_path);
