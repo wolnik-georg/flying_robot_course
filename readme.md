@@ -1,14 +1,15 @@
 # Multirotor Dynamics Simulator
 
-A modular, high-performance Rust library for simulating multirotor dynamics with geometric control, designed for the Flying Robot Course assignments.
+A modular, high-performance Rust library for simulating multirotor dynamics with geometric control and MEKF state estimation, designed for the Flying Robot Course assignments.
 
 ## Overview
 
-This project implements a complete multirotor dynamics simulator with geometric control on SE(3), trajectory generation, and motor control allocation. It's designed for educational purposes in aerial robotics, specifically for the Crazyflie nano-quadcopter platform.
+This project implements a complete multirotor perception-to-control stack: IMU-driven Multiplicative Extended Kalman Filter (MEKF) for state estimation, SE(3) geometric control, and pluggable trajectory generation. It targets the Crazyflie nano-quadcopter and is written entirely in f32 with no heap allocation in any loop — structurally identical to firmware code to make C porting mechanical.
 
 ### Key Features
 
 - **Geometric Control**: SE(3) geometric controller implementation based on Lee et al. (2010)
+- **MEKF State Estimation**: Attitude (quaternion) + position/velocity from IMU, range and optical-flow fusion
 - **Modular Architecture**: Pluggable integrators, controllers, and trajectory generators
 - **Embedded Ready**: f32 precision and no_std compatibility for hardware deployment
 - **Comprehensive Testing**: Unit tests and integration tests for validation
@@ -20,14 +21,16 @@ The simulator follows a clean, modular architecture with clear separation of con
 
 ```
 multirotor_simulator/
-├── math/           # Vector and quaternion mathematics
+├── math/           # Vector, quaternion and 9×9 matrix mathematics
 ├── dynamics/       # Physical models and simulation
 │   ├── state.rs    # State representation and motor actions
 │   ├── params.rs   # Aircraft parameters and dynamics
 │   └── simulator.rs # Main simulation engine
 ├── integration/    # Numerical integration methods
 ├── controller/     # Control algorithms
-└── trajectory/     # Trajectory generation
+├── trajectory/     # Trajectory generation
+└── estimation/     # State estimation (MEKF)
+    └── mekf.rs     # Attitude + position Kalman filter (f32, numerically stable)
 ```
 
 ### Core Components
@@ -35,7 +38,7 @@ multirotor_simulator/
 #### 1. Mathematics (`math/`)
 - **Vec3**: 3D vector with operator overloading
 - **Quat**: Unit quaternion for 3D rotations
-- Matrix operations for SE(3) transformations
+- **Mat9**: 9×9 f32 matrix for MEKF covariance — full Joseph form update, symmetrisation, diagonal clamping
 
 #### 2. Dynamics (`dynamics/`)
 - **MultirotorState**: Complete 13-DOF state (position, velocity, orientation, angular velocity)
@@ -60,6 +63,12 @@ multirotor_simulator/
 - **Figure8Trajectory**: Polynomial-based figure-8 patterns
 - **CircleTrajectory**: Circular trajectories with configurable parameters
 - **CsvTrajectory**: Waypoint interpolation from CSV files
+
+#### 6. Estimation (`estimation/`)
+- **Mekf**: Multiplicative Extended Kalman Filter — fuses IMU, height (range sensor) and optical flow
+  - State `x = [p(3), b(3), δ(3)]` ∈ ℝ⁹, reference quaternion `q_ref` maintained outside filter
+  - Three numerical stability measures for f32: full Joseph-form update, Σ symmetrisation, diagonal cap `MAX_COVARIANCE=100.0` (mirrors Crazyflie `kalman_core.c`)
+  - Validated on real Crazyflie figure-8 flight log: orientation RMS ≤ 1.02°, position RMS ≤ 0.13 m vs on-board EKF
 
 ## Usage
 
@@ -146,6 +155,13 @@ cargo run --bin demo
 
 # Run assignment 1 validation
 cargo run --bin assignment1
+
+# Run assignment 2 (geometric control)
+cargo run --release --bin assignment2
+cargo run --release --bin assignment2 -- --realistic-start
+
+# Run assignment 3 (MEKF offline validation)
+cargo run --release --bin assignment3 -- --csv "../State Estimation/logging_ekf/logging/fr00.csv"
 ```
 
 ## Assignment Context
@@ -154,7 +170,7 @@ This project implements assignments from the Flying Robot Course:
 
 ### Assignment 1
 - Basic multirotor dynamics simulation
-- Integration method comparison
+- Integration method comparison (Euler, RK4, ExpEuler, ExpRK4)
 - Hover control validation
 
 ### Assignment 2
@@ -162,6 +178,13 @@ This project implements assignments from the Flying Robot Course:
 - Trajectory tracking (figure-8, circle, CSV waypoints)
 - Motor control allocation for X-configuration quadcopters
 - Hardware-ready implementation for Crazyflie deployment
+
+### Assignment 3
+- MEKF state estimation: attitude + position/velocity from IMU + range + optical flow
+- Offline validation against real Crazyflie figure-8 flight log (`fr00.csv`)
+- Three-way comparison: Rust MEKF · Python MEKF · on-board EKF
+- f32 numerical stability: Joseph form + symmetrisation + covariance cap
+- Results: orientation RMS ≤ 1.02°, position RMS ≤ 0.13 m vs on-board EKF
 
 ## API Reference
 

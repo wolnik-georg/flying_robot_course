@@ -196,7 +196,7 @@ fn main() {
                 emergency_ref.velocity = Vec3::zero();
                 emergency_ref.acceleration = Vec3::zero();
                 emergency_ref.jerk = Vec3::zero();
-                emergency_ref.yaw = state.orientation.to_euler().2;
+                emergency_ref.yaw = to_euler(state.orientation).2;
                 emergency_ref.yaw_rate = 0.0;
                 emergency_ref.yaw_acceleration = 0.0;
                 emergency_hover_steps += 1;
@@ -207,7 +207,7 @@ fn main() {
                 emergency_ref.velocity = Vec3::new(0.0, 0.0, landing_speed);
                 emergency_ref.acceleration = Vec3::zero();
                 emergency_ref.jerk = Vec3::zero();
-                emergency_ref.yaw = state.orientation.to_euler().2;
+                emergency_ref.yaw = to_euler(state.orientation).2;
                 emergency_ref.yaw_rate = 0.0;
                 emergency_ref.yaw_acceleration = 0.0;
             }

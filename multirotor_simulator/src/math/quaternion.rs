@@ -1,6 +1,32 @@
 //! Quaternion implementation for 3D rotations
-
+//!
 //! provided robust, numerically stable representation of 3D rotations
+/// Convert quaternion to Euler angles (roll, pitch, yaw)
+pub fn to_euler(q: Quat) -> (f32, f32, f32) {
+    let w = q.w;
+    let x = q.x;
+    let y = q.y;
+    let z = q.z;
+    // roll (x-axis rotation)
+    let sinr_cosp = 2.0 * (w * x + y * z);
+    let cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
+    let roll = sinr_cosp.atan2(cosr_cosp);
+    // pitch (y-axis rotation)
+    let sinp = 2.0 * (w * y - z * x);
+    let pitch = if sinp.abs() >= 1.0 {
+        sinp.signum() * std::f32::consts::FRAC_PI_2
+    } else {
+        sinp.asin()
+    };
+    // yaw (z-axis rotation)
+    let siny_cosp = 2.0 * (w * z + x * y);
+    let cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
+    let yaw = siny_cosp.atan2(cosy_cosp);
+    (roll, pitch, yaw)
+}
+/// Quaternion implementation for 3D rotations
+
+/// provided robust, numerically stable representation of 3D rotations
 // using unit quarternions. Avoids gimbal lock and provides smooth interpolation
 
 use super::vec3::Vec3;

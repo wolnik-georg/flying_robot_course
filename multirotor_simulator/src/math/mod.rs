@@ -1,4 +1,5 @@
-//! Mathematical primitives for 3D robotics
+pub use self::quaternion::to_euler;
+/// Mathematical primitives for 3D robotics
 
 pub mod vec3;
 pub mod quaternion;
