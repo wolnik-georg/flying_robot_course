@@ -50,6 +50,19 @@ This project implements a clean, modular multirotor dynamics simulator and state
   - Dynamically feasible, smooth trajectories for aggressive maneuvers
   - Full flatness chain for feedforward control and reference generation
   - Validated against closed-loop geometric controller tracking
+  - **Safety integration:** All maneuvers start and end with a stable hover. Altitude, speed, and geofence limits are enforced in simulation. Emergency hover and landing logic is triggered on violation.
+### `safety/` — Safety Limits and Emergency Handling
+**Purpose**: Enforce safety constraints and provide emergency override logic for simulation and real flight.
+
+- `safety.rs`: Defines `SafetyLimits` (altitude, speed, geofence), clamping, and violation checks.
+- Integrated in all simulation binaries (e.g., assignment4.rs).
+
+**Features**:
+  - Altitude, speed, and geofence limits
+  - Clamping of position/velocity if limits are exceeded
+  - Logging and warnings for violations
+  - Emergency override: stable hover and controlled landing if a violation occurs
+  - All flight programs start and end with a stable hover for safe takeoff/landing
 
 ### `math/` — Mathematical Primitives
 **Purpose**: Pure mathematical operations, zero external dependencies.
@@ -333,4 +346,5 @@ python plot_comparison.py       # Three-way: Python MEKF · Rust MEKF · on-boar
 4. **Testability**: Each component independently testable
 5. **Scalability**: Easy to add features without breaking existing code
 6. **Documentation**: Clear module boundaries and responsibilities
+7. **Safety**: Built-in safety logic for simulation and real flight, including emergency handling and safe maneuver transitions
 

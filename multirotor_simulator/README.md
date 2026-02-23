@@ -172,6 +172,7 @@ Current status: **69 tests pass**, 1 known pre-existing failing test (`test_geom
 - ✅ Side-by-side Normal vs Realistic comparison plots
 - ✅ Crazyflie 2.1 parameters
 - ✅ Clean, modular architecture
+- ✅ **Safety features:** Altitude, speed, and geofence limits; clamping; logging; emergency hover/landing; all maneuvers start and end with a stable hover
 
 ## Design Principles
 

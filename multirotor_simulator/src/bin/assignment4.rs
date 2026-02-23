@@ -9,6 +9,7 @@
 //! 5. Writes three CSV files for analysis and plotting.
 
 use multirotor_simulator::prelude::*;
+use multirotor_simulator::safety::{SafetyLimits, check_safety};
 use std::fs::File;
 use std::io::Write;
 
@@ -24,28 +25,44 @@ fn main() {
     let mut params = MultirotorParams::crazyflie();
     params.dt = dt;
 
-    // ── Aggressive figure-8 waypoints ───────────────────────────────────────
-    // A figure-8 in the x-y plane at 1 m altitude; 2 m × 1 m footprint.
-    // Speeds up to ~2 m/s; this is well within the Crazyflie's capabilities
-    // but aggressive enough to excite the higher-order dynamics.
-    let waypoints = vec![
-        Waypoint { pos: Vec3::new( 0.0,  0.0, 1.0), yaw: 0.0 },
+
+    // ── Waypoints: Add pre-hover and post-hover ─────────────────────────────
+    // Start with a hover at the initial position
+    let hover_pos = Vec3::new(0.0, 0.0, 1.0);
+    let hover_yaw = 0.0;
+    let hover_duration = 1.5_f32; // seconds to hover before and after
+
+    // Main figure-8 waypoints
+    let main_waypoints = vec![
+        Waypoint { pos: hover_pos, yaw: hover_yaw },
         Waypoint { pos: Vec3::new( 1.0,  0.5, 1.1), yaw: 0.3 },
         Waypoint { pos: Vec3::new( 0.0,  1.0, 1.0), yaw: std::f32::consts::FRAC_PI_2 },
         Waypoint { pos: Vec3::new(-1.0,  0.5, 0.9), yaw: std::f32::consts::PI },
-        Waypoint { pos: Vec3::new( 0.0,  0.0, 1.0), yaw: std::f32::consts::PI },
+        Waypoint { pos: hover_pos, yaw: std::f32::consts::PI },
         Waypoint { pos: Vec3::new( 1.0, -0.5, 1.1), yaw: -std::f32::consts::FRAC_PI_2 + std::f32::consts::TAU },
         Waypoint { pos: Vec3::new( 0.0, -1.0, 1.0), yaw: -std::f32::consts::FRAC_PI_2 },
         Waypoint { pos: Vec3::new(-1.0, -0.5, 0.9), yaw: -std::f32::consts::PI },
-        Waypoint { pos: Vec3::new( 0.0,  0.0, 1.0), yaw: 0.0 },
+        Waypoint { pos: hover_pos, yaw: hover_yaw },
     ];
-    let n_seg = waypoints.len() - 1;
-    // Equal time per segment → 1 s each, 8 s total
-    let seg_time = 1.0_f32;
-    let durations: Vec<f32> = vec![seg_time; n_seg];
 
-    println!("Planning minimum-snap spline trajectory...");
-    println!("  {} waypoints, {} segments, {:.1} s total", waypoints.len(), n_seg, seg_time * n_seg as f32);
+    // Build full waypoint list: pre-hover, main, post-hover
+    let mut waypoints = Vec::new();
+    waypoints.push(Waypoint { pos: hover_pos, yaw: hover_yaw }); // pre-hover start
+    waypoints.extend(main_waypoints.iter().cloned());
+    waypoints.push(Waypoint { pos: hover_pos, yaw: hover_yaw }); // post-hover end
+
+    // Durations: pre-hover, main, post-hover
+    let mut durations = Vec::new();
+    durations.push(hover_duration); // pre-hover
+    let seg_time = 1.0_f32;
+    let n_main_seg = main_waypoints.len() - 1;
+    durations.extend(vec![seg_time; n_main_seg]);
+    durations.push(hover_duration); // post-hover
+
+    let n_seg = waypoints.len() - 1;
+
+    println!("Planning minimum-snap spline trajectory with pre/post hover...");
+    println!("  {} waypoints, {} segments, {:.1} s total", waypoints.len(), n_seg, durations.iter().sum::<f32>());
 
     let traj = match SplineTrajectory::plan(&waypoints, &durations) {
         Ok(t) => { println!("  QP solved successfully.\n"); t }
@@ -55,6 +72,17 @@ fn main() {
     // ── Sampling parameters ──────────────────────────────────────────────────
     let total_time = traj.total_time;
     let n_steps = (total_time / dt) as usize;
+
+    // ── Safety limits configuration ────────────────────────────────────────
+    let safety = SafetyLimits {
+        min_altitude: 0.0,
+        max_altitude: 0.25, // 25 cm
+        max_speed: 0.3,     // 0.3 m/s
+        x_min: -1.0,
+        x_max: 1.0,
+        y_min: -1.0,
+        y_max: 1.0,
+    };
 
     // ── Open-loop simulation ────────────────────────────────────────────────
     // Feed flatness-computed thrust and torque directly to the simulator.
@@ -76,14 +104,28 @@ fn main() {
         let flat = traj.eval(t);
         let fr = compute_flatness(&flat, params.mass);
 
-        // Record before stepping
+        // Safety checks (open-loop)
         let state = sim_ol.state().clone();
+        let safety_status = check_safety(&safety, state.position, state.velocity);
+        let safe_pos = safety_status.clamped_pos;
+        let safe_vel = safety_status.clamped_vel;
+
+        if !safety_status.altitude_ok {
+            println!("[OPEN-LOOP][WARN] Altitude limit violated at t={:.3} s: z={:.3} m", t, state.position.z);
+        }
+        if !safety_status.speed_ok {
+            println!("[OPEN-LOOP][WARN] Speed limit violated at t={:.3} s: v={:.3} m/s", t, state.velocity.norm());
+        }
+        if !safety_status.geofence_ok {
+            println!("[OPEN-LOOP][WARN] Geofence limit violated at t={:.3} s: x={:.3}, y={:.3}", t, state.position.x, state.position.y);
+        }
+
         ol_records.push(Record {
             t,
             ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
+            sim_x: safe_pos.x, sim_y: safe_pos.y, sim_z: safe_pos.z,
             ref_vx: flat.vel.x, ref_vy: flat.vel.y, ref_vz: flat.vel.z,
-            sim_vx: state.velocity.x, sim_vy: state.velocity.y, sim_vz: state.velocity.z,
+            sim_vx: safe_vel.x, sim_vy: safe_vel.y, sim_vz: safe_vel.z,
             ref_thrust: fr.thrust,
             ref_tx: fr.torque.x, ref_ty: fr.torque.y, ref_tz: fr.torque.z,
             ref_yaw: flat.yaw,
@@ -110,6 +152,11 @@ fn main() {
 
     let mut controller = GeometricController::default();
 
+    // Emergency hover/landing state
+    let mut emergency_active = false;
+    let mut emergency_hover_steps = 0;
+    let emergency_hover_duration = (0.5 / dt) as usize; // 0.5 s hover before landing
+
     let mut cl_records: Vec<Record> = Vec::with_capacity(n_steps + 1);
 
     for k in 0..n_steps {
@@ -118,8 +165,6 @@ fn main() {
         let fr = compute_flatness(&flat, params.mass);
 
         let state = sim_cl.state().clone();
-
-        // Build reference for geometric controller
         let reference = TrajectoryReference {
             position: flat.pos,
             velocity: flat.vel,
@@ -130,15 +175,53 @@ fn main() {
             yaw_acceleration: flat.yaw_ddot,
         };
 
-        let ctrl_out = controller.compute_control(&state, &reference, &params, dt);
+        // Safety checks (closed-loop)
+        let safety_status = check_safety(&safety, state.position, state.velocity);
+        let safe_pos = safety_status.clamped_pos;
+        let safe_vel = safety_status.clamped_vel;
+
+        if !safety_status.altitude_ok || !safety_status.speed_ok || !safety_status.geofence_ok {
+            if !emergency_active {
+                println!("[EMERGENCY] Safety violation at t={:.3} s. Entering hover.", t);
+                emergency_active = true;
+                emergency_hover_steps = 0;
+            }
+        }
+
+        let mut emergency_ref = reference.clone();
+        if emergency_active {
+            if emergency_hover_steps < emergency_hover_duration {
+                // Stable hover: hold current position, zero velocity
+                emergency_ref.position = state.position;
+                emergency_ref.velocity = Vec3::zero();
+                emergency_ref.acceleration = Vec3::zero();
+                emergency_ref.jerk = Vec3::zero();
+                emergency_ref.yaw = state.orientation.to_euler().2;
+                emergency_ref.yaw_rate = 0.0;
+                emergency_ref.yaw_acceleration = 0.0;
+                emergency_hover_steps += 1;
+            } else {
+                // Controlled descent: decrease altitude gently
+                let landing_speed = -0.05; // m/s descent
+                emergency_ref.position = state.position;
+                emergency_ref.velocity = Vec3::new(0.0, 0.0, landing_speed);
+                emergency_ref.acceleration = Vec3::zero();
+                emergency_ref.jerk = Vec3::zero();
+                emergency_ref.yaw = state.orientation.to_euler().2;
+                emergency_ref.yaw_rate = 0.0;
+                emergency_ref.yaw_acceleration = 0.0;
+            }
+        }
+
+        let ctrl_out = controller.compute_control(&state, &emergency_ref, &params, dt);
         let action = MotorAction::from_thrust_torque(ctrl_out.thrust, ctrl_out.torque, &params);
 
         cl_records.push(Record {
             t,
             ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
+            sim_x: safe_pos.x, sim_y: safe_pos.y, sim_z: safe_pos.z,
             ref_vx: flat.vel.x, ref_vy: flat.vel.y, ref_vz: flat.vel.z,
-            sim_vx: state.velocity.x, sim_vy: state.velocity.y, sim_vz: state.velocity.z,
+            sim_vx: safe_vel.x, sim_vy: safe_vel.y, sim_vz: safe_vel.z,
             ref_thrust: fr.thrust,
             ref_tx: fr.torque.x, ref_ty: fr.torque.y, ref_tz: fr.torque.z,
             ref_yaw: flat.yaw,

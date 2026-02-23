@@ -16,7 +16,7 @@
 ### Control
 - Adaptive/robust controllers
 - Fault-tolerant logic (motor failure, sensor dropout)
-- Safety features (failsafe, geofencing, emergency landing)
+- Safety features (failsafe, geofencing, emergency landing, altitude/speed limits, emergency hover/landing, pre/post hover for all maneuvers) — **implemented in simulation**
 
 ### State Estimation
 - GPS, magnetometer, vision-based fusion
@@ -50,7 +50,7 @@
 
 ## Essential for Real Flight
 - Integration with real sensors/actuators
-- Robust error handling and safety
+- Robust error handling and safety (altitude/speed/geofence limits, emergency override, safe takeoff/landing)
 - Modular, extensible architecture
 - Documentation and test coverage
 
