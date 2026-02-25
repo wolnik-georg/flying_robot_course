@@ -542,3 +542,138 @@ plt.savefig(
     os.path.join(IMG_DIR, "assignment4_actions_controller_comparison.png"), dpi=150
 )
 print("Saved assignment4_actions_controller_comparison.png")
+
+
+# ── Assignment 5: Safe-space trajectory plots (if available) ──────────────
+def try_plot_assignment5(mode_name):
+    try:
+        planned = load(f"assignment5_planned_{mode_name}.csv")
+        cl = load(f"assignment5_closedloop_{mode_name}.csv")
+    except FileNotFoundError:
+        print(f"Assignment5 files for mode='{mode_name}' not found, skipping.")
+        return
+
+    print(f"Plotting Assignment5 ({mode_name}) results...")
+
+    # Safety box used by assignment5
+    x_min, x_max = -0.5, 0.5
+    y_min, y_max = -0.5, 0.5
+    z_min, z_max = 0.0, 0.30
+
+    # 3D comparison
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot(
+        planned["x"],
+        planned["y"],
+        planned["z"],
+        "b-",
+        lw=2,
+        label="Planned (assignment5)",
+    )
+    ax.plot(
+        cl["sim_x"],
+        cl["sim_y"],
+        cl["sim_z"],
+        "r--",
+        lw=1.5,
+        label="Closed-loop (assignment5)",
+    )
+
+    # draw safety box edges
+    gf = dict(
+        x_min=x_min,
+        x_max=x_max,
+        y_min=y_min,
+        y_max=y_max,
+        min_altitude=z_min,
+        max_altitude=z_max,
+    )
+    for s, e in [
+        (
+            [gf["x_min"], gf["y_min"], gf["min_altitude"]],
+            [gf["x_max"], gf["y_min"], gf["min_altitude"]],
+        ),
+        (
+            [gf["x_max"], gf["y_min"], gf["min_altitude"]],
+            [gf["x_max"], gf["y_max"], gf["min_altitude"]],
+        ),
+        (
+            [gf["x_max"], gf["y_max"], gf["min_altitude"]],
+            [gf["x_min"], gf["y_max"], gf["min_altitude"]],
+        ),
+        (
+            [gf["x_min"], gf["y_max"], gf["min_altitude"]],
+            [gf["x_min"], gf["y_min"], gf["min_altitude"]],
+        ),
+        (
+            [gf["x_min"], gf["y_min"], gf["max_altitude"]],
+            [gf["x_max"], gf["y_min"], gf["max_altitude"]],
+        ),
+        (
+            [gf["x_max"], gf["y_min"], gf["max_altitude"]],
+            [gf["x_max"], gf["y_max"], gf["max_altitude"]],
+        ),
+        (
+            [gf["x_max"], gf["y_max"], gf["max_altitude"]],
+            [gf["x_min"], gf["y_max"], gf["max_altitude"]],
+        ),
+        (
+            [gf["x_min"], gf["y_max"], gf["max_altitude"]],
+            [gf["x_min"], gf["y_min"], gf["max_altitude"]],
+        ),
+    ]:
+        ax.plot([s[0], e[0]], [s[1], e[1]], [s[2], e[2]], color="gray", lw=1, alpha=0.6)
+
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_zlabel("z [m]")
+    ax.set_title(f"Assignment5 {mode_name} – planned vs closed-loop with safety box")
+    ax.legend()
+    plt.tight_layout()
+    outpath = os.path.join(IMG_DIR, f"assignment5_3d_{mode_name}.png")
+    plt.savefig(outpath, dpi=150)
+    print(f"Saved {outpath}")
+
+    # Check violations
+    planned_viol = (
+        (planned["x"] < x_min)
+        | (planned["x"] > x_max)
+        | (planned["y"] < y_min)
+        | (planned["y"] > y_max)
+        | (planned["z"] < z_min)
+        | (planned["z"] > z_max)
+    ).any()
+    cl_viol = (
+        (cl["sim_x"] < x_min)
+        | (cl["sim_x"] > x_max)
+        | (cl["sim_y"] < y_min)
+        | (cl["sim_y"] > y_max)
+        | (cl["sim_z"] < z_min)
+        | (cl["sim_z"] > z_max)
+    ).any()
+    print(
+        f"Assignment5 {mode_name}: planned violation={planned_viol}, closed-loop violation={cl_viol}"
+    )
+
+    # z over time plot with bounds
+    fig, ax = plt.subplots(figsize=(10, 3))
+    t = planned["t"]
+    ax.plot(t, planned["z"], "b-", label="Planned z")
+    # find matching t for closed-loop (if different sampling) use its t
+    t_cl = cl["t"]
+    ax.plot(t_cl, cl["sim_z"], "r--", label="Closed-loop z")
+    ax.axhline(z_min, color="k", ls=":", label="z_min")
+    ax.axhline(z_max, color="k", ls="--", label="z_max")
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Altitude z [m]")
+    ax.set_title(f"Assignment5 {mode_name} altitude vs time")
+    ax.legend()
+    plt.tight_layout()
+    outpath = os.path.join(IMG_DIR, f"assignment5_z_{mode_name}.png")
+    plt.savefig(outpath, dpi=150)
+    print(f"Saved {outpath}")
+
+
+try_plot_assignment5("circle")
+try_plot_assignment5("figure8")
