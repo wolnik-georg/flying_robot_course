@@ -86,8 +86,9 @@ impl GeometricController {
         Self {
             kp: Vec3::new(12.0, 12.0, 15.0),   // stronger position hold (was 7.0)
             kv: Vec3::new(8.0, 8.0, 10.0),     // better damping (was 4.0)
-            kr: Vec3::new(0.010, 0.010, 0.012), // slightly higher attitude stiffness
-            kw: Vec3::new(0.0015, 0.0015, 0.0020),
+            // Increase attitude gains slightly to improve corrective torque authority
+            kr: Vec3::new(0.020, 0.020, 0.024), // doubled
+            kw: Vec3::new(0.0030, 0.0030, 0.0040), // doubled
             ki: Vec3::new(0.05, 0.05, 0.05),   // small integral to kill steady-state error
             i_error_att: Vec3::zero(),
         }

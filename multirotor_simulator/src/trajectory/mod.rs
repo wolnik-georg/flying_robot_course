@@ -32,6 +32,86 @@ pub struct Figure8Trajectory {
     pub time_scale: f32,
 }
 
+/// Smooth parametric figure-8 (Lissajous) trajectory
+///
+/// Uses sinusoidal basis to generate a figure-8 that is C-infinite (all derivatives
+/// are continuous). This is a simple, robust alternative to the polynomial segment
+/// approach and produces smooth velocity/acceleration/jerk for safe tracking.
+pub struct SmoothFigure8Trajectory {
+    /// Duration of the loop [s]
+    pub duration: f32,
+    /// Height offset [m]
+    pub height: f32,
+    /// X amplitude [m]
+    pub a: f32,
+    /// Y amplitude [m]
+    pub b: f32,
+    /// Frequency scale: omega = 2*pi / duration
+    pub time_scale: f32,
+}
+
+impl SmoothFigure8Trajectory {
+    pub fn new() -> Self {
+        Self { duration: 8.0, height: 0.25, a: 0.25, b: 0.25, time_scale: 1.0 }
+    }
+
+    pub fn with_params(duration: f32, height: f32, scale: f32) -> Self {
+        // scale controls overall spatial amplitude
+        Self { duration, height, a: scale, b: scale, time_scale: 1.0 }
+    }
+}
+
+impl Trajectory for SmoothFigure8Trajectory {
+    fn get_reference(&self, time: f32) -> TrajectoryReference {
+        // map time into [0, duration)
+        let t = time % self.duration;
+        let omega = 2.0 * std::f32::consts::PI / self.duration;
+
+        // Lissajous-style figure-8: x = a*sin(omega*t), y = b*sin(2*omega*t)
+        let x = self.a * (omega * t).sin();
+        let y = self.b * (2.0 * omega * t).sin();
+        let z = self.height;
+
+        // velocities
+        let vx = self.a * omega * (omega * t).cos();
+        let vy = self.b * 2.0 * omega * (2.0 * omega * t).cos();
+        let vz = 0.0;
+
+        // accelerations
+        let ax = -self.a * omega * omega * (omega * t).sin();
+        let ay = -self.b * (2.0 * omega) * (2.0 * omega) * (2.0 * omega * t).sin();
+        let az = 0.0;
+
+        // jerks
+        let jx = -self.a * omega * omega * omega * (omega * t).cos();
+        let jy = -self.b * (2.0 * omega) * (2.0 * omega) * (2.0 * omega) * (2.0 * omega * t).cos();
+        let jz = 0.0;
+
+        // yaw aligned with velocity direction
+        use crate::math::Vec3;
+        let yaw = (vy).atan2(vx);
+        // yaw rate (d/dt atan2(vy,vx)) = (vx*ay - vy*ax) / (vx^2 + vy^2)
+        let denom = vx*vx + vy*vy;
+        let yaw_rate = if denom.abs() > 1e-8 { (vx*ay - vy*ax) / denom } else { 0.0 };
+        // yaw acceleration approximate (set to zero for simplicity)
+        let yaw_acceleration = 0.0;
+
+        TrajectoryReference {
+            position: Vec3::new(x, y, z),
+            velocity: Vec3::new(vx, vy, vz),
+            acceleration: Vec3::new(ax, ay, az),
+            jerk: Vec3::new(jx, jy, jz),
+            yaw,
+            yaw_rate,
+            yaw_acceleration,
+        }
+    }
+
+    fn duration(&self) -> Option<f32> {
+        Some(self.duration)
+    }
+}
+
 impl Figure8Trajectory {
     /// Create a new figure-8 trajectory with default parameters
     pub fn new() -> Self {

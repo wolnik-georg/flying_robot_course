@@ -41,6 +41,7 @@ pub mod prelude {
     pub use crate::trajectory::{
         Trajectory,
         Figure8Trajectory,
+        SmoothFigure8Trajectory,
         CircleTrajectory,
         CsvTrajectory,
         TakeoffTrajectory,

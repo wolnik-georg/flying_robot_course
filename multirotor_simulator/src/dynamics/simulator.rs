@@ -23,6 +23,8 @@ pub struct MultirotorSimulator {
     params: MultirotorParams,
     state: MultirotorState,
     integrator: Box<dyn Integrator>,  // Rust note: "dyn" means dynamic dispatch (virtual calls)
+    // Internal motor action state for simple first-order motor dynamics
+    current_action: MotorAction,
 }
 
 impl MultirotorSimulator {
@@ -34,6 +36,7 @@ impl MultirotorSimulator {
             params,
             state: MultirotorState::new(),
             integrator,
+            current_action: MotorAction::hover(),
         }
     }
 
@@ -65,7 +68,20 @@ impl MultirotorSimulator {
     /// Advances state by dt using the configured integrator
     /// Rust note: Delegates to integrator via trait method (polymorphism)
     pub fn step(&mut self, action: &MotorAction) {
-        self.integrator.step(&self.params, &mut self.state, action);
+        // Apply simple first-order motor dynamics to the requested motor action
+        // Discrete-time low-pass: x_{k+1} = x_k + alpha*(u - x_k), alpha = dt/(tau+dt)
+        let tau = self.params.motor_time_constant.max(1e-6);
+        let dt = self.params.dt;
+        let alpha = dt / (tau + dt);
+
+        // update each motor omega^2
+        self.current_action.omega1_sq = self.current_action.omega1_sq + alpha * (action.omega1_sq - self.current_action.omega1_sq);
+        self.current_action.omega2_sq = self.current_action.omega2_sq + alpha * (action.omega2_sq - self.current_action.omega2_sq);
+        self.current_action.omega3_sq = self.current_action.omega3_sq + alpha * (action.omega3_sq - self.current_action.omega3_sq);
+        self.current_action.omega4_sq = self.current_action.omega4_sq + alpha * (action.omega4_sq - self.current_action.omega4_sq);
+
+        // Pass the filtered action to the integrator
+        self.integrator.step(&self.params, &mut self.state, &self.current_action);
     }
 
     /// Simulate multiple steps

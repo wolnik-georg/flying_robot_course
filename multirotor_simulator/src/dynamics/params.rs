@@ -30,6 +30,8 @@ pub struct MultirotorParams {
     /// Integration time step [s]
     /// Smaller dt = more accurate but slower simulation
     pub dt: f32,
+    /// Motor time constant [s] for first-order motor dynamics (controls bandwidth)
+    pub motor_time_constant: f32,
 }
 
 impl MultirotorParams {
@@ -49,6 +51,7 @@ impl MultirotorParams {
             kf: 2.5e-6,           // Thrust coefficient (empirically identified)
             kt: 1.0e-7,           // Torque coefficient
             dt: 0.01,             // 10ms time step (100 Hz control rate)
+            motor_time_constant: 0.03, // 30 ms motor time constant (reasonable for small brushless)
         }
     }
 
