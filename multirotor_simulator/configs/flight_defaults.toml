@@ -1,0 +1,19 @@
+# flight_defaults.toml
+# Minimal runtime configuration for offboard flight runs.
+# Values here are conservative starting points. Adjust after bench motor ID.
+
+# Default trajectory mode: "hover", "circle", or "figure8"
+mode = "figure8"
+
+# Scales applied to planned trajectory timing and controller gains
+speed_scale = 1.0
+gain_scale = 1.0
+
+# Thrust/actuator parameters (set after bench motor ID)
+# motor_time_constant (s): first-order motor time constant
+motor_time_constant = 0.01
+# thrust_rate_limit (N/s): recommended maximum thrust slew rate
+thrust_rate_limit = 10.0
+
+# Absolute thrust clamp (N)
+thrust_max = 15.0

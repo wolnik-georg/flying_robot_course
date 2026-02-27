@@ -7,6 +7,8 @@ use multirotor_simulator::prelude::*;
 use multirotor_simulator::safety::{SafetyLimits, check_safety};
 use std::fs::File;
 use std::io::Write;
+use std::fs;
+use serde::Deserialize;
 
 fn main() {
     println!("Assignment 5: Safe-space hover / circle / figure-8");
@@ -32,25 +34,58 @@ fn main() {
     println!("Using safety box: x/y in [{:.2}, {:.2}] m, z in [{:.2}, {:.2}] m",
         safety.x_min, safety.x_max, safety.min_altitude, safety.max_altitude);
 
-    // Parse requested trajectory from argv: hover / circle / figure8
+    // Parse requested trajectory and optional config file from argv: hover / circle / figure8
     let args: Vec<String> = std::env::args().collect();
-    let mode = if args.len() > 1 { args[1].as_str() } else { "circle" };
-    // Optional speed scale (e.g., pass a second arg '2.0' to make trajectories 2x slower)
-    let speed_scale: f32 = if args.len() > 2 { args[2].parse().unwrap_or(1.0) } else { 1.0 };
-    // Optional controller gain scale (args[3]) and thrust clamp maximum (args[4]) for experiments
-    let gain_scale: f32 = if args.len() > 3 { args[3].parse().unwrap_or(1.0) } else { 1.0 };
-    let thrust_max: f32 = if args.len() > 4 { args[4].parse().unwrap_or(1e6) } else { 1e6 };
-    // Optional motor time constant (args[5]) and thrust_rate_limit (args[6]) for parameter sweeps
-    // args indices: [0]=prog, [1]=mode, [2]=speed_scale, [3]=gain_scale, [4]=thrust_max, [5]=motor_tau, [6]=thrust_rate_limit
-    let motor_time_constant: f32 = if args.len() > 5 { args[5].parse().unwrap_or(params.motor_time_constant) } else { params.motor_time_constant };
-    let thrust_rate_limit_arg: f32 = if args.len() > 6 { args[6].parse().unwrap_or(20.0) } else { 20.0 };
+    // default values (may be overridden by config file)
+    let mut mode = if args.len() > 1 { args[1].as_str() } else { "circle" }.to_string();
+    let mut speed_scale: f32 = if args.len() > 2 { args[2].parse().unwrap_or(1.0) } else { 1.0 };
+    let mut gain_scale: f32 = if args.len() > 3 { args[3].parse().unwrap_or(1.0) } else { 1.0 };
+    let mut thrust_max: f32 = if args.len() > 4 { args[4].parse().unwrap_or(1e6) } else { 1e6 };
+    let mut motor_time_constant: f32 = params.motor_time_constant;
+    let mut thrust_rate_limit_arg: f32 = 20.0_f32;
+
+    // Simple TOML config support: --config path/to/flight_defaults.toml
+    #[derive(Deserialize, Debug)]
+    struct FlightConfig {
+        mode: Option<String>,
+        speed_scale: Option<f32>,
+        gain_scale: Option<f32>,
+        thrust_max: Option<f32>,
+        motor_time_constant: Option<f32>,
+        thrust_rate_limit: Option<f32>,
+    }
+
+    if let Some(pos) = args.iter().position(|a| a == "--config") {
+        if pos + 1 < args.len() {
+            let cfg_path = &args[pos + 1];
+            match fs::read_to_string(cfg_path) {
+                Ok(s) => match toml::from_str::<FlightConfig>(&s) {
+                    Ok(cfg) => {
+                        if let Some(m) = cfg.mode { mode = m; }
+                        if let Some(ss) = cfg.speed_scale { speed_scale = ss; }
+                        if let Some(gs) = cfg.gain_scale { gain_scale = gs; }
+                        if let Some(tm) = cfg.thrust_max { thrust_max = tm; }
+                        if let Some(mt) = cfg.motor_time_constant { motor_time_constant = mt; }
+                        if let Some(tr) = cfg.thrust_rate_limit { thrust_rate_limit_arg = tr; }
+                        println!("Loaded config from {}", cfg_path);
+                    }
+                    Err(e) => println!("Failed to parse config {}: {}", cfg_path, e),
+                },
+                Err(e) => println!("Could not read config {}: {}", cfg_path, e),
+            }
+        }
+    }
+
+    // CLI positional overrides (old behavior): args[5]=motor_tau, args[6]=thrust_rate_limit
+    if args.len() > 5 { motor_time_constant = args[5].parse().unwrap_or(motor_time_constant); }
+    if args.len() > 6 { thrust_rate_limit_arg = args[6].parse().unwrap_or(thrust_rate_limit_arg); }
 
     // Build a SequencedTrajectory: pre-hover, main pattern, post-hover
     // Use a shared start_z so the planned initial hover matches the simulator initial altitude
     let start_z = 0.2_f32;
     let pre_hover = (1.0_f32, Box::new(CircleTrajectory::new(0.0, start_z, 0.0)) as Box<dyn Trajectory>); // hover placeholder
 
-    let main_phase: (f32, Box<dyn Trajectory>) = match mode {
+    let main_phase: (f32, Box<dyn Trajectory>) = match mode.as_str() {
         "hover" => (6.0_f32, Box::new(CircleTrajectory::new(0.0, 0.25, 0.0))),
         "figure8" => {
             // Use the new smooth figure-8 trajectory (Lissajous parametric) which
