@@ -52,7 +52,7 @@ DEFAULT_URI = "radio://0/80/2M/E7E7E7E7E7"
 
 HOVER_HEIGHT = 0.25  # m  — cruise altitude (assignment5.rs: start_z=0.25)
 CIRCLE_RADIUS = 0.30  # m  — radius for circle and figure-8 (fits in ±0.50 m)
-SPEED_SCALE = 1.0  # dimensionless — set < 1.0 for slower first flights
+SPEED_SCALE = 0.5  # dimensionless — set < 1.0 for slower first flights
 
 # Kalman variance convergence threshold
 KALMAN_THRESHOLD = 0.001
@@ -515,6 +515,28 @@ def upload_trajectory(cf, traj_id, trajectory):
 
 
 # ---------------------------------------------------------------------------
+# Safety landing helper
+# ---------------------------------------------------------------------------
+
+
+def emergency_land(scf):
+    """
+    Best-effort emergency landing — called from finally blocks.
+    Sends land + stop regardless of any prior error state.
+    """
+    try:
+        hl = scf.cf.high_level_commander
+        print("\n[SAFETY] Emergency land triggered — sending land command ...")
+        hl.land(0.0, 2.0)
+        time.sleep(3.0)
+        hl.stop()
+        scf.cf.platform.send_arming_request(False)
+        print("[SAFETY] Drone disarmed.")
+    except Exception as ex:
+        print(f"[SAFETY] Emergency land failed: {ex}")
+
+
+# ---------------------------------------------------------------------------
 # Flight sequences
 # ---------------------------------------------------------------------------
 
@@ -537,15 +559,16 @@ def fly_circle(scf):
     Takeoff → hover → circle using go_to waypoints → land.
 
     go_to is more forgiving than polynomial trajectories because the firmware
-    generates a smooth path on-board.  We sample CIRCLE_RADIUS at 8 equally-
-    spaced angles plus one extra return to start.
+    generates a smooth path on-board.  We sample CIRCLE_RADIUS at 16 equally-
+    spaced angles (22.5° steps) for a smooth circle, plus one extra return to
+    start.  Total circle time ≈ 16 s (same as before, just finer steps).
     """
     cf = scf.cf
     hl = cf.high_level_commander
     R = CIRCLE_RADIUS
     z = HOVER_HEIGHT
-    n = 8  # waypoints per revolution (45° steps)
-    seg = 2.0 / SPEED_SCALE  # seconds per segment → full circle ≈ 16 s
+    n = 16  # waypoints per revolution (22.5° steps)
+    seg = 1.0 / SPEED_SCALE  # seconds per segment → full circle ≈ 16 s
 
     print(f"\n[CIRCLE] Takeoff to {z:.2f} m ...")
     hl.takeoff(z, 2.0)
@@ -556,11 +579,12 @@ def fly_circle(scf):
         angle = 2.0 * math.pi * i / n
         x = R * math.cos(angle)
         y = R * math.sin(angle)
-        hl.go_to(x, y, z, 0.0, seg, relative=True)
+        # relative=False: x/y/z are absolute — z stays fixed at HOVER_HEIGHT
+        hl.go_to(x, y, z, 0.0, seg, relative=False)
         time.sleep(seg)
 
     print("[CIRCLE] Returning to origin ...")
-    hl.go_to(0.0, 0.0, z, 0.0, 2.0, relative=True)
+    hl.go_to(0.0, 0.0, z, 0.0, 2.0, relative=False)
     time.sleep(2.5)
 
     print("[CIRCLE] Landing ...")
@@ -586,14 +610,39 @@ def fly_figure8(scf):
     # Mellinger controller tracks polynomial trajectories more accurately
     # than the default PID.
     print("[FIGURE-8] Switching to Mellinger controller ...")
-    cf.param.set_value("stabilizer.controller", "2")
+    try:
+        cf.param.set_value("stabilizer.controller", "2")
+    except Exception as e:
+        print(
+            f"[FIGURE-8] Warning: could not switch to Mellinger: {e} — continuing with PID"
+        )
 
-    print("[FIGURE-8] Starting trajectory (relative=True, yaw_mode=0) ...")
-    hl.start_trajectory(traj_id, SPEED_SCALE, relative=True)
-    time.sleep(duration / SPEED_SCALE + 1.0)  # wait for trajectory + small buffer
-
-    print("[FIGURE-8] Switching back to PID controller ...")
-    cf.param.set_value("stabilizer.controller", "1")
+    try:
+        print(
+            f"[FIGURE-8] Starting trajectory at {SPEED_SCALE}x speed ({duration/SPEED_SCALE:.1f} s) ..."
+        )
+        hl.start_trajectory(traj_id, SPEED_SCALE, relative_position=True)
+        # Print live position while trajectory runs so we can confirm motion
+        pos_log = LogConfig(name="Fig8Pos", period_in_ms=200)
+        pos_log.add_variable("stateEstimate.x", "float")
+        pos_log.add_variable("stateEstimate.y", "float")
+        pos_log.add_variable("stateEstimate.z", "float")
+        with SyncLogger(scf, pos_log) as logger:
+            t_end = time.time() + duration / SPEED_SCALE + 1.0
+            for entry in logger:
+                x = entry[1]["stateEstimate.x"]
+                y = entry[1]["stateEstimate.y"]
+                z = entry[1]["stateEstimate.z"]
+                print(f"  pos  x={x:+.3f}  y={y:+.3f}  z={z:.3f}", end="\r")
+                if time.time() >= t_end:
+                    break
+        print()  # newline after the \r position line
+    finally:
+        print("[FIGURE-8] Switching back to PID controller ...")
+        try:
+            cf.param.set_value("stabilizer.controller", "1")
+        except Exception:
+            pass  # link may be gone — emergency_land will handle it
 
     print("[FIGURE-8] Landing ...")
     hl.land(0.0, 2.0)
@@ -641,14 +690,28 @@ if __name__ == "__main__":
         scf.cf.platform.send_arming_request(True)
         time.sleep(0.5)
 
-        # 3. Fly chosen mode
-        if mode == "hover":
-            fly_hover(scf)
-        elif mode == "circle":
-            fly_circle(scf)
-        elif mode == "figure8":
-            fly_figure8(scf)
+        # 3. Fly chosen mode — always land on any exception or Ctrl-C
+        flight_started = False
+        try:
+            flight_started = True
+            if mode == "hover":
+                fly_hover(scf)
+            elif mode == "circle":
+                fly_circle(scf)
+            elif mode == "figure8":
+                fly_figure8(scf)
+        except KeyboardInterrupt:
+            print("\n[SAFETY] Ctrl-C received during flight!")
+            emergency_land(scf)
+        except Exception as ex:
+            print(f"\n[SAFETY] Exception during flight: {ex}")
+            emergency_land(scf)
+            raise
+        finally:
+            # 4. Disarm cleanly
+            try:
+                scf.cf.platform.send_arming_request(False)
+            except Exception:
+                pass
 
-        # 4. Disarm cleanly (high-level commander stop already sent by each sequence)
-        scf.cf.platform.send_arming_request(False)
         print("\nFlight complete.")
