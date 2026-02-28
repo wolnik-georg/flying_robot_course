@@ -479,64 +479,65 @@ def wait_for_position_estimator(scf, threshold=KALMAN_THRESHOLD):
 def reset_estimator(scf):
     """Reset Kalman filter and wait for convergence.
 
-    After a crash or power-on the EKF attitude drifts for ~30-60s while the
-    gyro bias estimator converges.  The raw accelerometer is clean immediately,
-    but stabilizer.roll/pitch lag behind.  We wait up to 60s for the attitude
-    to reach ±5°, then issue kalman.resetEstimation so the position/velocity
-    state is initialised from a clean attitude.
+    Uses raw accelerometer (not EKF-derived stabilizer.roll/pitch) to verify
+    the drone is physically flat.  After a crash the EKF attitude can be stuck
+    at a wrong value even though the hardware is fine — stabilizer.roll/pitch
+    are unreliable in that state and must not be used as a gate.
 
-    Note: supervisor.info bits use cfclient's scheme:
-      0x0001 can_arm  0x0002 is_armed  0x0004 auto_arming
-      0x0008 can_fly  0x0010 is_flying 0x0020 is_tumbled
-      0x0040 is_locked  0x0080 is_crashed
+    Fix for stuck EKF attitude: briefly switch to the complementary filter
+    (estimator=1), which re-initialises from accel in ~1 s, then switch back
+    to Kalman (estimator=2) before issuing kalman.resetEstimation.
     """
     cf = scf.cf
 
-    # --- Step 1: wait for attitude to settle ---
-    print("  Waiting for attitude filter to settle (up to 60s — keep drone still) ...")
-    att_log = LogConfig(name="att_settle", period_in_ms=200)
-    att_log.add_variable("stabilizer.roll", "float")
-    att_log.add_variable("stabilizer.pitch", "float")
-    att_data = {}
+    # --- Step 1: verify physical tilt from raw accelerometer ---
+    print("  Checking physical tilt from raw accelerometer ...")
+    acc_log = LogConfig(name="AccCheck", period_in_ms=50)
+    acc_log.add_variable("acc.x", "float")
+    acc_log.add_variable("acc.y", "float")
+    acc_log.add_variable("acc.z", "float")
+    acc_samples = []
 
-    def _att_cb(ts, data, cfg):
-        att_data.update(data)
+    def _acc_cb(ts, data, cfg):
+        acc_samples.append((data["acc.x"], data["acc.y"], data["acc.z"]))
 
-    att_log.data_received_cb.add_callback(_att_cb)
-    cf.log.add_config(att_log)
-    att_log.start()
+    acc_log.data_received_cb.add_callback(_acc_cb)
+    cf.log.add_config(acc_log)
+    acc_log.start()
+    time.sleep(1.0)  # collect ~20 samples at 50 ms
+    acc_log.stop()
 
-    t0 = time.time()
-    settled = False
-    while time.time() - t0 < 60.0:
-        time.sleep(0.5)
-        if not att_data:
-            continue
-        r = math.degrees(att_data.get("stabilizer.roll", 0))
-        p = math.degrees(att_data.get("stabilizer.pitch", 0))
-        elapsed = time.time() - t0
-        if abs(r) < 5.0 and abs(p) < 5.0:
-            print(
-                f"    Attitude settled in {elapsed:.0f}s: roll={r:+.1f}°  pitch={p:+.1f}°"
-            )
-            settled = True
-            break
-        if elapsed % 5 < 0.6:  # print every ~5s
-            print(f"    t={elapsed:4.0f}s  roll={r:+.1f}°  pitch={p:+.1f}°")
-
-    att_log.stop()
-    cf.log.delete(att_log)
-
-    if not settled:
-        r = math.degrees(att_data.get("stabilizer.roll", 0))
-        p = math.degrees(att_data.get("stabilizer.pitch", 0))
-        print(f"  ⚠ Attitude did not settle in 60s (roll={r:+.1f}°  pitch={p:+.1f}°)")
-        raise RuntimeError(
-            f"Attitude filter did not converge: roll={r:+.1f}°  pitch={p:+.1f}°\n"
-            "Keep the drone flat and still, wait ~30s after power-on, then retry."
+    if acc_samples:
+        ax = sum(s[0] for s in acc_samples) / len(acc_samples)
+        ay = sum(s[1] for s in acc_samples) / len(acc_samples)
+        az = sum(s[2] for s in acc_samples) / len(acc_samples)
+        mag = math.sqrt(ax**2 + ay**2 + az**2)
+        tilt_deg = math.degrees(math.acos(min(1.0, abs(az) / mag))) if mag > 0 else 0.0
+        print(
+            f"  Raw accel: ax={ax:+.3f}g  ay={ay:+.3f}g  az={az:+.3f}g"
+            f"  → tilt={tilt_deg:.1f}°"
         )
+        if tilt_deg > 10.0:
+            raise RuntimeError(
+                f"Drone is physically tilted {tilt_deg:.1f}° — place flat on the floor and retry."
+            )
+    else:
+        print("  Warning: no accel data received — proceeding anyway.")
 
-    # --- Step 2: reset estimator now that attitude is stable ---
+    # --- Step 2: flush stuck EKF attitude via estimator 1→2 ---
+    # The complementary filter (estimator=1) re-initialises attitude from
+    # accel in ~1 s.  Switching back to Kalman (estimator=2) starts the EKF
+    # from a clean quaternion instead of the stale crash state.
+    print("  Flushing EKF attitude: switching estimator 1 → 2 ...")
+    try:
+        cf.param.set_value("stabilizer.estimator", "1")
+        time.sleep(2.0)  # complementary filter settles in < 1 s; 2 s is safe
+        cf.param.set_value("stabilizer.estimator", "2")
+        time.sleep(0.1)
+    except Exception as exc:
+        print(f"  Warning: estimator switch failed ({exc}) — continuing.")
+
+    # --- Step 3: reset Kalman state (position + velocity + attitude) ---
     cf.param.set_value("kalman.resetEstimation", "1")
     time.sleep(0.1)
     cf.param.set_value("kalman.resetEstimation", "0")
@@ -613,14 +614,13 @@ def start_watchdog(scf, roll_limit_deg=30.0, pitch_limit_deg=30.0):
 
     def _cb(timestamp, data, logconf):
         try:
-            roll = abs(data.get("stabilizer.roll", 0.0))
-            pitch = abs(data.get("stabilizer.pitch", 0.0))
+            # stabilizer.roll/pitch are logged in DEGREES by the firmware
+            roll = abs(data.get("stabilizer.roll", 0.0))    # degrees
+            pitch = abs(data.get("stabilizer.pitch", 0.0))  # degrees
             thrust = data.get("stabilizer.thrust", 0.0)
-            if roll > math.radians(roll_limit_deg) or pitch > math.radians(
-                pitch_limit_deg
-            ):
+            if roll > roll_limit_deg or pitch > pitch_limit_deg:
                 print(
-                    f"[WATCHDOG] Large attitude detected: roll={math.degrees(roll):.1f}°, pitch={math.degrees(pitch):.1f}°, thrust={thrust:.3f}"
+                    f"[WATCHDOG] Large attitude: roll={roll:.1f}°  pitch={pitch:.1f}°  thrust={thrust:.3f}"
                 )
                 emergency_land(scf)
         except Exception:
@@ -641,15 +641,11 @@ def start_watchdog(scf, roll_limit_deg=30.0, pitch_limit_deg=30.0):
 
 
 def stop_watchdog(scf, log_cfg):
-    """Stop and remove the watchdog LogConfig."""
+    """Stop the watchdog LogConfig."""
     if not log_cfg:
         return
     try:
         log_cfg.stop()
-    except Exception:
-        pass
-    try:
-        scf.cf.log.remove_config(log_cfg)
     except Exception:
         pass
 
