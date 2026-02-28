@@ -477,8 +477,66 @@ def wait_for_position_estimator(scf, threshold=KALMAN_THRESHOLD):
 
 
 def reset_estimator(scf):
-    """Reset Kalman filter and wait for convergence (mirrors professor's script)."""
+    """Reset Kalman filter and wait for convergence.
+
+    After a crash or power-on the EKF attitude drifts for ~30-60s while the
+    gyro bias estimator converges.  The raw accelerometer is clean immediately,
+    but stabilizer.roll/pitch lag behind.  We wait up to 60s for the attitude
+    to reach ±5°, then issue kalman.resetEstimation so the position/velocity
+    state is initialised from a clean attitude.
+
+    Note: supervisor.info bits use cfclient's scheme:
+      0x0001 can_arm  0x0002 is_armed  0x0004 auto_arming
+      0x0008 can_fly  0x0010 is_flying 0x0020 is_tumbled
+      0x0040 is_locked  0x0080 is_crashed
+    """
     cf = scf.cf
+
+    # --- Step 1: wait for attitude to settle ---
+    print("  Waiting for attitude filter to settle (up to 60s — keep drone still) ...")
+    att_log = LogConfig(name="att_settle", period_in_ms=200)
+    att_log.add_variable("stabilizer.roll", "float")
+    att_log.add_variable("stabilizer.pitch", "float")
+    att_data = {}
+
+    def _att_cb(ts, data, cfg):
+        att_data.update(data)
+
+    att_log.data_received_cb.add_callback(_att_cb)
+    cf.log.add_config(att_log)
+    att_log.start()
+
+    t0 = time.time()
+    settled = False
+    while time.time() - t0 < 60.0:
+        time.sleep(0.5)
+        if not att_data:
+            continue
+        r = math.degrees(att_data.get("stabilizer.roll", 0))
+        p = math.degrees(att_data.get("stabilizer.pitch", 0))
+        elapsed = time.time() - t0
+        if abs(r) < 5.0 and abs(p) < 5.0:
+            print(
+                f"    Attitude settled in {elapsed:.0f}s: roll={r:+.1f}°  pitch={p:+.1f}°"
+            )
+            settled = True
+            break
+        if elapsed % 5 < 0.6:  # print every ~5s
+            print(f"    t={elapsed:4.0f}s  roll={r:+.1f}°  pitch={p:+.1f}°")
+
+    att_log.stop()
+    cf.log.delete(att_log)
+
+    if not settled:
+        r = math.degrees(att_data.get("stabilizer.roll", 0))
+        p = math.degrees(att_data.get("stabilizer.pitch", 0))
+        print(f"  ⚠ Attitude did not settle in 60s (roll={r:+.1f}°  pitch={p:+.1f}°)")
+        raise RuntimeError(
+            f"Attitude filter did not converge: roll={r:+.1f}°  pitch={p:+.1f}°\n"
+            "Keep the drone flat and still, wait ~30s after power-on, then retry."
+        )
+
+    # --- Step 2: reset estimator now that attitude is stable ---
     cf.param.set_value("kalman.resetEstimation", "1")
     time.sleep(0.1)
     cf.param.set_value("kalman.resetEstimation", "0")
@@ -534,6 +592,66 @@ def emergency_land(scf):
         print("[SAFETY] Drone disarmed.")
     except Exception as ex:
         print(f"[SAFETY] Emergency land failed: {ex}")
+
+
+def start_watchdog(scf, roll_limit_deg=30.0, pitch_limit_deg=30.0):
+    """
+    Start a lightweight logger watchdog that monitors stabilizer.roll and
+    stabilizer.pitch and triggers `emergency_land` if either exceeds a limit.
+
+    Returns the LogConfig object which should be passed to `stop_watchdog`.
+    """
+    cf = scf.cf
+    log_cfg = LogConfig(name="watchdog", period_in_ms=100)
+    try:
+        log_cfg.add_variable("stabilizer.roll", "float")
+        log_cfg.add_variable("stabilizer.pitch", "float")
+        log_cfg.add_variable("stabilizer.thrust", "float")
+    except Exception as e:
+        print(f"[WATCHDOG] Cannot add variables to LogConfig: {e}")
+        return None
+
+    def _cb(timestamp, data, logconf):
+        try:
+            roll = abs(data.get("stabilizer.roll", 0.0))
+            pitch = abs(data.get("stabilizer.pitch", 0.0))
+            thrust = data.get("stabilizer.thrust", 0.0)
+            if roll > math.radians(roll_limit_deg) or pitch > math.radians(
+                pitch_limit_deg
+            ):
+                print(
+                    f"[WATCHDOG] Large attitude detected: roll={math.degrees(roll):.1f}°, pitch={math.degrees(pitch):.1f}°, thrust={thrust:.3f}"
+                )
+                emergency_land(scf)
+        except Exception:
+            pass
+
+    log_cfg.data_received_cb.add_callback(_cb)
+    try:
+        cf.log.add_config(log_cfg)
+        log_cfg.start()
+        print(
+            "[WATCHDOG] Started (roll/pitch limits: %.1f°/%.1f°)"
+            % (roll_limit_deg, pitch_limit_deg)
+        )
+        return log_cfg
+    except Exception as e:
+        print(f"[WATCHDOG] Failed to start: {e}")
+        return None
+
+
+def stop_watchdog(scf, log_cfg):
+    """Stop and remove the watchdog LogConfig."""
+    if not log_cfg:
+        return
+    try:
+        log_cfg.stop()
+    except Exception:
+        pass
+    try:
+        scf.cf.log.remove_config(log_cfg)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -690,9 +808,14 @@ if __name__ == "__main__":
         scf.cf.platform.send_arming_request(True)
         time.sleep(0.5)
 
-        # 3. Fly chosen mode — always land on any exception or Ctrl-C
+        # 3. Start safety watchdog and fly chosen mode — always land on exception/Ctrl-C
+        watchdog_cfg = None
         flight_started = False
         try:
+            # Start watchdog (best-effort). It will call emergency_land if attitude blows up.
+            watchdog_cfg = start_watchdog(
+                scf, roll_limit_deg=35.0, pitch_limit_deg=35.0
+            )
             flight_started = True
             if mode == "hover":
                 fly_hover(scf)
@@ -708,7 +831,11 @@ if __name__ == "__main__":
             emergency_land(scf)
             raise
         finally:
-            # 4. Disarm cleanly
+            # Stop watchdog and disarm cleanly
+            try:
+                stop_watchdog(scf, watchdog_cfg)
+            except Exception:
+                pass
             try:
                 scf.cf.platform.send_arming_request(False)
             except Exception:
