@@ -32,9 +32,13 @@ Requirements
 ------------
   cflib installed, Crazyflie with Flow Deck v2 + Z-ranger (or Multi-ranger).
 """
+import csv
 import math
+import os
 import sys
+import threading
 import time
+from datetime import datetime
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -479,18 +483,17 @@ def wait_for_position_estimator(scf, threshold=KALMAN_THRESHOLD):
 def reset_estimator(scf):
     """Reset Kalman filter and wait for convergence.
 
-    Uses raw accelerometer (not EKF-derived stabilizer.roll/pitch) to verify
-    the drone is physically flat.  After a crash the EKF attitude can be stuck
-    at a wrong value even though the hardware is fine — stabilizer.roll/pitch
-    are unreliable in that state and must not be used as a gate.
+    Checks physical tilt from the raw accelerometer (reliable even when the
+    EKF attitude is wrong after a crash), then issues the standard
+    kalman.resetEstimation and waits for position variance to converge.
 
-    Fix for stuck EKF attitude: briefly switch to the complementary filter
-    (estimator=1), which re-initialises from accel in ~1 s, then switch back
-    to Kalman (estimator=2) before issuing kalman.resetEstimation.
+    The estimator 1→2 switch that was here previously triggered
+    'ESTKALMAN: WARNING: Kalman prediction rate off' and is not needed when
+    the EKF is already healthy (which the accel check confirms).
     """
     cf = scf.cf
 
-    # --- Step 1: verify physical tilt from raw accelerometer ---
+    # --- Verify physical tilt from raw accelerometer ---
     print("  Checking physical tilt from raw accelerometer ...")
     acc_log = LogConfig(name="AccCheck", period_in_ms=50)
     acc_log.add_variable("acc.x", "float")
@@ -504,7 +507,7 @@ def reset_estimator(scf):
     acc_log.data_received_cb.add_callback(_acc_cb)
     cf.log.add_config(acc_log)
     acc_log.start()
-    time.sleep(1.0)  # collect ~20 samples at 50 ms
+    time.sleep(1.0)
     acc_log.stop()
 
     if acc_samples:
@@ -524,20 +527,7 @@ def reset_estimator(scf):
     else:
         print("  Warning: no accel data received — proceeding anyway.")
 
-    # --- Step 2: flush stuck EKF attitude via estimator 1→2 ---
-    # The complementary filter (estimator=1) re-initialises attitude from
-    # accel in ~1 s.  Switching back to Kalman (estimator=2) starts the EKF
-    # from a clean quaternion instead of the stale crash state.
-    print("  Flushing EKF attitude: switching estimator 1 → 2 ...")
-    try:
-        cf.param.set_value("stabilizer.estimator", "1")
-        time.sleep(2.0)  # complementary filter settles in < 1 s; 2 s is safe
-        cf.param.set_value("stabilizer.estimator", "2")
-        time.sleep(0.1)
-    except Exception as exc:
-        print(f"  Warning: estimator switch failed ({exc}) — continuing.")
-
-    # --- Step 3: reset Kalman state (position + velocity + attitude) ---
+    # --- Standard Kalman reset ---
     cf.param.set_value("kalman.resetEstimation", "1")
     time.sleep(0.1)
     cf.param.set_value("kalman.resetEstimation", "0")
@@ -615,7 +605,7 @@ def start_watchdog(scf, roll_limit_deg=30.0, pitch_limit_deg=30.0):
     def _cb(timestamp, data, logconf):
         try:
             # stabilizer.roll/pitch are logged in DEGREES by the firmware
-            roll = abs(data.get("stabilizer.roll", 0.0))    # degrees
+            roll = abs(data.get("stabilizer.roll", 0.0))  # degrees
             pitch = abs(data.get("stabilizer.pitch", 0.0))  # degrees
             thrust = data.get("stabilizer.thrust", 0.0)
             if roll > roll_limit_deg or pitch > pitch_limit_deg:
@@ -655,13 +645,74 @@ def stop_watchdog(scf, log_cfg):
 # ---------------------------------------------------------------------------
 
 
+def _read_ekf_xy(cf, n_samples=10):
+    """Return the mean EKF (x, y) position over n_samples at 50 ms each."""
+    log = LogConfig(name="_TmpXY", period_in_ms=50)
+    log.add_variable("stateEstimate.x", "float")
+    log.add_variable("stateEstimate.y", "float")
+    samples = []
+
+    def _cb(ts, data, cfg):
+        samples.append((data["stateEstimate.x"], data["stateEstimate.y"]))
+
+    log.data_received_cb.add_callback(_cb)
+    cf.log.add_config(log)
+    log.start()
+    # wait for at least n_samples
+    deadline = time.time() + n_samples * 0.05 + 0.3
+    while time.time() < deadline:
+        time.sleep(0.05)
+    log.stop()
+    if samples:
+        ox = sum(s[0] for s in samples) / len(samples)
+        oy = sum(s[1] for s in samples) / len(samples)
+    else:
+        ox, oy = 0.0, 0.0
+    return ox, oy
+
+
 def fly_hover(scf):
-    """Takeoff → hover 6 s at HOVER_HEIGHT → land."""
+    """Takeoff → position-lock hover 6 s at HOVER_HEIGHT → land."""
     cf = scf.cf
     hl = cf.high_level_commander
     print(f"\n[HOVER] Takeoff to {HOVER_HEIGHT:.2f} m ...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
-    time.sleep(2.0 + 6.0)  # ramp (2 s) + hold (6 s)
+
+    # Wait for the 2 s takeoff ramp PLUS z-ranger dead-zone oscillation to damp.
+    #
+    # Root cause of previous crashes: the flow-deck z-ranger reads 0 mm below
+    # ~50 mm.  As the drone climbs through that zone the EKF integrates a bad
+    # velocity measurement and shifts the x/y estimate by 10–20 cm.  The HLC
+    # takeoff locked x/y=0 at t=0, so the controller keeps fighting to push the
+    # drone back to (0,0) against a phantom offset — oscillation grows until crash.
+    #
+    # Fix: wait 3 s (2 s ramp + 1 s damping), then read the actual settled EKF
+    # position and issue go_to there.  The controller target now matches the EKF
+    # state, the oscillation stops, and the drone holds steady wherever it is.
+    print("[HOVER] Waiting 3 s for z-ranger dead zone to clear ...")
+    time.sleep(3.0)
+
+    ox, oy = _read_ekf_xy(cf)
+    print(f"[HOVER] Locking position at EKF ({ox:+.3f}, {oy:+.3f}) ...")
+    hl.go_to(ox, oy, HOVER_HEIGHT, 0.0, 1.5, relative=False)
+    time.sleep(2.0)  # let the position hold converge
+
+    # Stream live x/y/z for the remaining hover time
+    pos_log = LogConfig(name="HoverPos", period_in_ms=200)
+    pos_log.add_variable("stateEstimate.x", "float")
+    pos_log.add_variable("stateEstimate.y", "float")
+    pos_log.add_variable("stateEstimate.z", "float")
+    with SyncLogger(scf, pos_log) as logger:
+        t_end = time.time() + 6.0
+        for entry in logger:
+            x = entry[1]["stateEstimate.x"]
+            y = entry[1]["stateEstimate.y"]
+            z = entry[1]["stateEstimate.z"]
+            print(f"  pos  x={x:+.3f}  y={y:+.3f}  z={z:.3f}  [lock {ox:+.3f},{oy:+.3f}]", end="\r")
+            if time.time() >= t_end:
+                break
+    print()
+
     print("[HOVER] Landing ...")
     hl.land(0.0, 2.0)
     time.sleep(2.5)
@@ -672,33 +723,58 @@ def fly_circle(scf):
     """
     Takeoff → hover → circle using go_to waypoints → land.
 
-    go_to is more forgiving than polynomial trajectories because the firmware
-    generates a smooth path on-board.  We sample CIRCLE_RADIUS at 16 equally-
-    spaced angles (22.5° steps) for a smooth circle, plus one extra return to
-    start.  Total circle time ≈ 16 s (same as before, just finer steps).
+    The circle origin is read from the EKF *after* the drone has settled at
+    hover height.  Using the live EKF position rather than the raw frame
+    origin (0, 0) avoids the "flies into the wall" failure mode: if the flow
+    deck drifts during motor spin-up the EKF origin and the physical takeoff
+    point diverge, so hardcoding (0, 0) as the circle centre sends the drone
+    to the wrong physical location.
     """
     cf = scf.cf
     hl = cf.high_level_commander
     R = CIRCLE_RADIUS
     z = HOVER_HEIGHT
     n = 16  # waypoints per revolution (22.5° steps)
-    seg = 1.0 / SPEED_SCALE  # seconds per segment → full circle ≈ 16 s
+    seg = 1.0 / SPEED_SCALE  # seconds per segment
 
     print(f"\n[CIRCLE] Takeoff to {z:.2f} m ...")
-    hl.takeoff(z, 2.0)
-    time.sleep(3.0)  # stabilise at hover before starting circle
+    hl.takeoff(z, 2.0)  # 2 s ramp — fast through low-alt noisy zone
+    time.sleep(2.5)
 
-    print(f"[CIRCLE] Flying circle r={R:.2f} m, {n} waypoints, {seg:.1f} s/segment ...")
-    for i in range(n + 1):  # +1 to close the loop back to start
+    # Lock position: read settled EKF coordinates and issue an explicit go_to.
+    # This activates full 3-axis hold and lets any post-takeoff drift converge
+    # before we take a snapshot for the circle origin.
+    ox, oy = _read_ekf_xy(cf)
+    print(f"[CIRCLE] Locking hover at EKF ({ox:+.3f}, {oy:+.3f}) ...")
+    hl.go_to(ox, oy, z, 0.0, 2.0, relative=False)
+    time.sleep(2.5)  # wait for position hold to converge
+
+    # Re-read after the hold to get the best settled position as circle origin
+    ox, oy = _read_ekf_xy(cf)
+    print(
+        f"[CIRCLE] Centre: EKF ({ox:+.3f}, {oy:+.3f}) m  radius={R:.2f} m  seg={seg:.1f} s"
+    )
+
+    # ── Move to circle start (angle = 0°) before the loop ─────────────────
+    # Give this first move twice the normal segment time so the drone arrives
+    # smoothly rather than sprinting to the first waypoint.
+    x0, y0 = ox + R, oy
+    print(f"[CIRCLE] Moving to start ({x0:+.3f}, {y0:+.3f}) ...")
+    hl.go_to(x0, y0, z, 0.0, seg * 2, relative=False)
+    time.sleep(seg * 2 + 0.3)
+
+    # ── Circle: waypoints 1 … n (angle=0° is already reached above) ───────
+    print(f"[CIRCLE] Flying {n} waypoints ...")
+    for i in range(1, n + 1):
         angle = 2.0 * math.pi * i / n
-        x = R * math.cos(angle)
-        y = R * math.sin(angle)
-        # relative=False: x/y/z are absolute — z stays fixed at HOVER_HEIGHT
+        x = ox + R * math.cos(angle)
+        y = oy + R * math.sin(angle)
         hl.go_to(x, y, z, 0.0, seg, relative=False)
         time.sleep(seg)
 
+    # ── Return to hover origin ─────────────────────────────────────────────
     print("[CIRCLE] Returning to origin ...")
-    hl.go_to(0.0, 0.0, z, 0.0, 2.0, relative=False)
+    hl.go_to(ox, oy, z, 0.0, 2.0, relative=False)
     time.sleep(2.5)
 
     print("[CIRCLE] Landing ...")
@@ -719,7 +795,13 @@ def fly_figure8(scf):
 
     print(f"[FIGURE-8] Takeoff to {HOVER_HEIGHT:.2f} m ...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
-    time.sleep(3.0)  # stabilise before trajectory
+    time.sleep(2.5)
+
+    # Lock position before starting trajectory
+    ox, oy = _read_ekf_xy(cf)
+    print(f"[FIGURE-8] Locking hover at EKF ({ox:+.3f}, {oy:+.3f}) ...")
+    cf.high_level_commander.go_to(ox, oy, HOVER_HEIGHT, 0.0, 2.0, relative=False)
+    time.sleep(3.0)  # let it settle
 
     # Mellinger controller tracks polynomial trajectories more accurately
     # than the default PID.
@@ -765,6 +847,127 @@ def fly_figure8(scf):
 
 
 # ---------------------------------------------------------------------------
+# Flight data logger
+# ---------------------------------------------------------------------------
+
+
+class FlightLogger:
+    """Non-blocking flight data recorder.
+
+    Starts two background log blocks at 50 Hz as soon as start() is called,
+    accumulates every sample in RAM, and writes a timestamped CSV to logs/
+    when stop() is called — including on crashes, so you always get the data.
+
+    Two log blocks (both at 20 ms / 50 Hz):
+      FLog1 — attitude + height : roll, pitch, yaw, thrust, zrange
+      FLog2 — position+velocity : x, y, z, vx, vy, vz
+
+    The blocks deliberately share no variables with the watchdog so the
+    firmware can serve all of them independently at their own rates.
+    """
+
+    COLS = [
+        "t",
+        "x", "y", "z",
+        "vx", "vy", "vz",
+        "roll", "pitch", "yaw",
+        "thrust", "zrange_mm",
+    ]
+
+    _VAR_MAP = {
+        "stateEstimate.x":   "x",
+        "stateEstimate.y":   "y",
+        "stateEstimate.z":   "z",
+        "stateEstimate.vx":  "vx",
+        "stateEstimate.vy":  "vy",
+        "stateEstimate.vz":  "vz",
+        "stabilizer.roll":   "roll",
+        "stabilizer.pitch":  "pitch",
+        "stabilizer.yaw":    "yaw",
+        "stabilizer.thrust": "thrust",
+        "range.zrange":      "zrange_mm",
+    }
+
+    def __init__(self, cf, mode):
+        self._cf = cf
+        self._mode = mode
+        self._t0 = None
+        self._latest = {c: float("nan") for c in self.COLS if c != "t"}
+        self._rows = []
+        self._lock = threading.Lock()
+        self._log1 = self._log2 = None
+
+    def start(self):
+        self._t0 = time.time()
+        try:
+            # Block 1: attitude + height sensor  (18 bytes/packet — fits in 26 B limit)
+            self._log1 = LogConfig(name="FLog1", period_in_ms=20)
+            self._log1.add_variable("stabilizer.roll",   "float")
+            self._log1.add_variable("stabilizer.pitch",  "float")
+            self._log1.add_variable("stabilizer.yaw",    "float")
+            self._log1.add_variable("stabilizer.thrust", "float")
+            self._log1.add_variable("range.zrange",      "uint16_t")
+
+            # Block 2: EKF position + velocity  (24 bytes/packet — fits in 26 B limit)
+            self._log2 = LogConfig(name="FLog2", period_in_ms=20)
+            self._log2.add_variable("stateEstimate.x",  "float")
+            self._log2.add_variable("stateEstimate.y",  "float")
+            self._log2.add_variable("stateEstimate.z",  "float")
+            self._log2.add_variable("stateEstimate.vx", "float")
+            self._log2.add_variable("stateEstimate.vy", "float")
+            self._log2.add_variable("stateEstimate.vz", "float")
+
+            self._log1.data_received_cb.add_callback(self._cb)
+            self._log2.data_received_cb.add_callback(self._cb)
+
+            self._cf.log.add_config(self._log1)
+            self._cf.log.add_config(self._log2)
+            self._log1.start()
+            self._log2.start()
+            print("[LOG] Flight logger started (50 Hz) — will save to logs/")
+        except Exception as exc:
+            print(f"[LOG] Warning: could not start flight logger: {exc}")
+            self._log1 = self._log2 = None
+
+    def _cb(self, ts, data, cfg):
+        renamed = {self._VAR_MAP[k]: v for k, v in data.items() if k in self._VAR_MAP}
+        with self._lock:
+            self._latest.update(renamed)
+            row = {"t": round(time.time() - self._t0, 4)}
+            row.update(self._latest)
+            self._rows.append(row)
+
+    def stop(self):
+        for log in (self._log1, self._log2):
+            if log:
+                try:
+                    log.stop()
+                except Exception:
+                    pass
+        time.sleep(0.05)  # let any in-flight callbacks drain
+        self._save()
+
+    def _save(self):
+        with self._lock:
+            rows = list(self._rows)
+        if not rows:
+            print("[LOG] No flight data collected.")
+            return
+        try:
+            os.makedirs("logs", exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            fname = os.path.join("logs", f"flight_{self._mode}_{ts}.csv")
+            with open(fname, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=self.COLS, extrasaction="ignore")
+                w.writeheader()
+                w.writerows(rows)
+            duration = rows[-1]["t"] if rows else 0.0
+            print(f"[LOG] {len(rows)} rows  {duration:.1f} s  → {fname}")
+        except Exception as exc:
+            print(f"[LOG] Warning: could not save flight log: {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -804,15 +1007,14 @@ if __name__ == "__main__":
         scf.cf.platform.send_arming_request(True)
         time.sleep(0.5)
 
-        # 3. Start safety watchdog and fly chosen mode — always land on exception/Ctrl-C
+        # 3. Start flight logger, safety watchdog, then fly
+        flight_log = FlightLogger(scf.cf, mode)
         watchdog_cfg = None
-        flight_started = False
         try:
-            # Start watchdog (best-effort). It will call emergency_land if attitude blows up.
+            flight_log.start()
             watchdog_cfg = start_watchdog(
-                scf, roll_limit_deg=35.0, pitch_limit_deg=35.0
+                scf, roll_limit_deg=20.0, pitch_limit_deg=20.0
             )
-            flight_started = True
             if mode == "hover":
                 fly_hover(scf)
             elif mode == "circle":
@@ -827,7 +1029,8 @@ if __name__ == "__main__":
             emergency_land(scf)
             raise
         finally:
-            # Stop watchdog and disarm cleanly
+            # Always save the flight log first (captures crash data too)
+            flight_log.stop()
             try:
                 stop_watchdog(scf, watchdog_cfg)
             except Exception:
