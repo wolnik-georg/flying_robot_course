@@ -633,35 +633,45 @@ class FlightLogger:
 def fly_hover(scf):
     cf = scf.cf
     hl = cf.high_level_commander
-    print(f"\n[HOVER] Takeoff to {HOVER_HEIGHT:.2f} m")
-    hl.takeoff(HOVER_HEIGHT, 2.0)
-    print("  Waiting 6 s for z-ranger dead zone + initial settling ...")
-    time.sleep(6.0)
+    print(f"\n[HOVER] Slow takeoff to {HOVER_HEIGHT:.2f} m over 5 s ...")
+    hl.takeoff(HOVER_HEIGHT, 5.0)  # Slower takeoff ramp
+    print("  Waiting 10 s for climb + z-ranger stabilization ...")
+    time.sleep(10.0)  # Longer settle time
 
-    print("  Second Kalman reset after takeoff ...")
+    print("  Low-thrust hold phase (4 s) ...")
+    cf.param.set_value("stabilizer.thrustBase", "28000")  # Low thrust hold
+    time.sleep(4.0)
+    cf.param.set_value("stabilizer.thrustBase", "0")  # Reset thrust
+
+    print("  Second Kalman reset ...")
     reset_estimator(scf)
 
     ox, oy = _read_ekf_xy(cf)
-    print(f"  Locking position hold at ({ox:+.3f}, {oy:+.3f})")
+    print(f"  Locking hold at ({ox:+.3f}, {oy:+.3f})")
     hl.go_to(ox, oy, HOVER_HEIGHT, 0.0, 2.0, relative=False)
-    print("  Waiting 6 s for position controller to stabilize ...")
-    time.sleep(6.0)
+    print("  Waiting 8 s for position controller convergence ...")
+    time.sleep(8.0)
 
-    # Monitor during hover
-    pos_log = LogConfig(name="HoverPos", period_in_ms=200)
-    pos_log.add_variable("stateEstimate.x", "float")
-    pos_log.add_variable("stateEstimate.y", "float")
-    pos_log.add_variable("stateEstimate.z", "float")
-    with SyncLogger(scf, pos_log) as logger:
-        t_end = time.time() + 8.0
-        for entry in logger:
-            x = entry[1]["stateEstimate.x"]
-            y = entry[1]["stateEstimate.y"]
-            z = entry[1]["stateEstimate.z"]
-            print(f"  pos  x={x:+.3f} y={y:+.3f} z={z:.3f}          ", end="\r")
-            if time.time() >= t_end:
-                break
-    print()
+    # Diagnostic logging during hover
+    mon_log = LogConfig(name="TakeoffMon", period_in_ms=40)
+    mon_log.add_variable("range.zrange", "uint16_t")
+    mon_log.add_variable("stateEstimate.vz", "float")
+    mon_log.add_variable("stateEstimate.z", "float")
+
+    def mon_cb(ts, data, _):
+        zr = data.get("range.zrange", 0)
+        vz = data.get("stateEstimate.vz", 0)
+        z = data.get("stateEstimate.z", 0)
+        print(
+            f"  t={ts/1000:.1f}s | z={z:.3f}m | vz={vz:+.4f}m/s | zrange={zr} mm",
+            end="\r",
+        )
+
+    mon_log.data_received_cb.add_callback(mon_cb)
+    cf.log.add_config(mon_log)
+    mon_log.start()
+    time.sleep(10.0)  # Let diagnostic log run
+    mon_log.stop()
 
     print("[HOVER] Landing ...")
     hl.land(0.0, 2.0)
@@ -677,15 +687,21 @@ def fly_circle(scf):
     n = 16
     seg = 1.0 / SPEED_SCALE
 
-    print(f"\n[CIRCLE] Takeoff to {z:.2f} m")
-    hl.takeoff(z, 2.0)
-    time.sleep(6.0)
+    print(f"\n[CIRCLE] Slow takeoff to {z:.2f} m over 5 s ...")
+    hl.takeoff(z, 5.0)  # Slower takeoff ramp
+    print("  Waiting 10 s for climb + z-ranger stabilization ...")
+    time.sleep(10.0)  # Longer settle time
+
+    print("  Low-thrust hold phase (4 s) ...")
+    cf.param.set_value("stabilizer.thrustBase", "28000")  # Low thrust hold
+    time.sleep(4.0)
+    cf.param.set_value("stabilizer.thrustBase", "0")  # Reset thrust
 
     reset_estimator(scf)
 
     ox, oy = _read_ekf_xy(cf)
     hl.go_to(ox, oy, z, 0.0, 2.0, relative=False)
-    time.sleep(6.0)
+    time.sleep(8.0)
 
     ox, oy = _read_ekf_xy(cf)  # re-sample after stabilization
     print(f"  Circle centre: ({ox:+.3f}, {oy:+.3f})  radius={R:.2f} m")
@@ -721,15 +737,21 @@ def fly_figure8(scf):
     duration = upload_trajectory(cf, traj_id, figure8)
     print(f"  Total duration at {SPEED_SCALE:.1f}x speed: {duration/SPEED_SCALE:.1f} s")
 
-    print(f"Takeoff to {HOVER_HEIGHT:.2f} m")
-    hl.takeoff(HOVER_HEIGHT, 2.0)
-    time.sleep(6.0)
+    print(f"Slow takeoff to {HOVER_HEIGHT:.2f} m over 5 s ...")
+    hl.takeoff(HOVER_HEIGHT, 5.0)  # Slower takeoff ramp
+    print("  Waiting 10 s for climb + z-ranger stabilization ...")
+    time.sleep(10.0)  # Longer settle time
+
+    print("  Low-thrust hold phase (4 s) ...")
+    cf.param.set_value("stabilizer.thrustBase", "28000")  # Low thrust hold
+    time.sleep(4.0)
+    cf.param.set_value("stabilizer.thrustBase", "0")  # Reset thrust
 
     reset_estimator(scf)
 
     ox, oy = _read_ekf_xy(cf)
     hl.go_to(ox, oy, HOVER_HEIGHT, 0.0, 2.0, relative=False)
-    time.sleep(6.0)
+    time.sleep(8.0)
 
     try:
         cf.param.set_value("stabilizer.controller", "2")  # Mellinger
