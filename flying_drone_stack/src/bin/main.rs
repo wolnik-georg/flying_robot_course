@@ -223,7 +223,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let yaw_rate = control.torque.z * rate_gain;
 
                 // Thrust: N → PWM (your scaling)
-                let thrust_pwm = ((control.thrust * 150000.0)) as u16;
+                let thrust_pwm = ((control.thrust * 160000.0) as u16).min(55000).max(10000); // clamp 10k–55k
 
                 cf.commander.setpoint_rpyt(roll_rate, pitch_rate, yaw_rate, thrust_pwm).await?;
                 sleep(Duration::from_millis(50)).await;

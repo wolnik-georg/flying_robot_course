@@ -84,8 +84,8 @@ impl GeometricController {
     /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
         Self {
-            kp: Vec3::new(12.0, 12.0, 15.0),   // stronger position hold (was 7.0)
-            kv: Vec3::new(8.0, 8.0, 10.0),     // better damping (was 4.0)
+            kp: Vec3::new(10.0, 10.0, 12.0),   // stronger position hold (was 7.0)
+            kv: Vec3::new(6.0, 6.0, 8.0),     // better damping (was 4.0)
             // Increase attitude gains slightly to improve corrective torque authority
             kr: Vec3::new(0.020, 0.020, 0.024), // doubled
             kw: Vec3::new(0.0030, 0.0030, 0.0040), // doubled
