@@ -10,15 +10,9 @@ use chrono::Utc;
 #[derive(Debug)]
 struct LogEntry {
     time_ms: u64,
-    x: f32,
-    y: f32,
-    z: f32,
-    vx: f32,
-    vy: f32,
-    vz: f32,
-    roll: f32,
-    pitch: f32,
-    yaw: f32,
+    x: f32, y: f32, z: f32,
+    vx: f32, vy: f32, vz: f32,
+    roll: f32, pitch: f32, yaw: f32,
     thrust: u32,
 }
 
@@ -32,32 +26,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connected!");
 
     // ────────────────────────────────────────────────
-    // Extended logging (limited to 9 variables to avoid error 7)
+    // Log block 1: Core pose + velocity + thrust
     // ────────────────────────────────────────────────
-    let mut block: LogBlock = cf.log.create_block().await?;
-
-    let variables = vec![
-        "stateEstimate.x",
-        "stateEstimate.y",
-        "stateEstimate.z",
-        "stateEstimate.vx",
-        "stateEstimate.vy",
-        "stateEstimate.vz",
-        "stabilizer.roll",
-        "stabilizer.pitch",
-        "stabilizer.yaw",
-        // "stabilizer.thrust", // ← commented out – add back if needed and block still fits
+    let mut block1: LogBlock = cf.log.create_block().await?;
+    let block1_vars = vec![
+        "stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
+        "stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz",
+        "stabilizer.thrust",
     ];
-
-    for var in variables {
-        match block.add_variable(var).await {
-            Ok(_) => println!("Added log variable: {}", var),
-            Err(e) => eprintln!("Failed to add {}: {}", var, e),
+    for var in block1_vars {
+        if let Err(e) = block1.add_variable(var).await {
+            eprintln!("Failed to add to block1 {}: {}", var, e);
+        } else {
+            println!("Added to block1: {}", var);
         }
     }
+    let period = LogPeriod::from_millis(50)?;
+    let stream1: LogStream = block1.start(period).await?;
 
-    let period = LogPeriod::from_millis(50)?; // 20 Hz
-    let stream: LogStream = block.start(period).await?;
+    // ────────────────────────────────────────────────
+    // Log block 2: Attitude + extras (recreate period since moved)
+    // ────────────────────────────────────────────────
+    let mut block2: LogBlock = cf.log.create_block().await?;
+    let block2_vars = vec![
+        "stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw",
+        // Add more here as needed – try one by one
+        // "pm.vbat",
+        // "gyro.x", "gyro.y", "gyro.z",
+    ];
+    for var in block2_vars {
+        if let Err(e) = block2.add_variable(var).await {
+            eprintln!("Failed to add to block2 {}: {}", var, e);
+        } else {
+            println!("Added to block2: {}", var);
+        }
+    }
+    let period2 = LogPeriod::from_millis(50)?; // recreate
+    let stream2: LogStream = block2.start(period2).await?;
 
     // Prepare data collection
     let mut log_data: Vec<LogEntry> = Vec::new();
@@ -74,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Ramping up...");
     for y in 0..15 {
-        let zdistance = y as f32 / 50.0; // max 0.3 m
+        let zdistance = y as f32 / 50.0;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(150)).await;
     }
@@ -82,31 +87,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hovering at 0.3 m for 12 seconds...");
     let hover_start = Instant::now();
     while hover_start.elapsed() < Duration::from_secs(12) {
-        if let Ok(data_packet) = stream.next().await {
-            let data = &data_packet.data;
+        // Read block 1
+        if let Ok(data1) = stream1.next().await {
+            let d = &data1.data;
 
-            let x     = data.get("stateEstimate.x")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let y     = data.get("stateEstimate.y")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let z     = data.get("stateEstimate.z")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let vx    = data.get("stateEstimate.vx")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let vy    = data.get("stateEstimate.vy")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let vz    = data.get("stateEstimate.vz")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let roll  = data.get("stabilizer.roll")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let pitch = data.get("stabilizer.pitch")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let yaw   = data.get("stabilizer.yaw")     .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
-            let thrust = data.get("stabilizer.thrust") .and_then(|v| u32::try_from(*v).ok()).unwrap_or(0);
+            let x     = d.get("stateEstimate.x")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let y     = d.get("stateEstimate.y")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let z     = d.get("stateEstimate.z")    .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let vx    = d.get("stateEstimate.vx")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let vy    = d.get("stateEstimate.vy")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let vz    = d.get("stateEstimate.vz")   .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0);
+            let thrust = d.get("stabilizer.thrust") .and_then(|v| u32::try_from(*v).ok()).unwrap_or(0);
+
+            // Read block 2 (attitude)
+            let (roll, pitch, yaw) = if let Ok(data2) = stream2.next().await {
+                let d2 = &data2.data;
+                (
+                    d2.get("stabilizer.roll") .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0),
+                    d2.get("stabilizer.pitch").and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0),
+                    d2.get("stabilizer.yaw")  .and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0),
+                )
+            } else {
+                (0.0, 0.0, 0.0)
+            };
 
             log_data.push(LogEntry {
                 time_ms: hover_start.elapsed().as_millis() as u64,
                 x, y, z, vx, vy, vz, roll, pitch, yaw, thrust,
             });
 
-            // Print summary every ~1 second
+            // Print summary every second
             if last_print.elapsed() >= Duration::from_secs(1) {
                 println!(
-                    "[t={:3}s] z={:+5.3} m  vx={:+5.3} vy={:+5.3}  thrust={:5}",
+                    "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} pitch={:+5.1}",
                     hover_start.elapsed().as_secs(),
-                    z, vx, vy, thrust
+                    z, vx, vy, thrust, roll, pitch
                 );
                 last_print = Instant::now();
             }
@@ -155,7 +170,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Log saved to: {}", filename);
 
-    drop(stream);
+    drop(stream1);
+    drop(stream2);
     cf.disconnect().await;
 
     println!("Disconnected cleanly.");
