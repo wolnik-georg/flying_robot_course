@@ -8,8 +8,8 @@ use tokio::time::sleep;
 use chrono::Utc;
 
 // CHANGE THIS TO SWITCH MANEUVER
-// "hover" | "circle" | "figure8"
-const MANEUVER: &str = "figure8";
+// Valid options: "hover", "circle", "figure8"
+const MANEUVER: &str = "circle";
 
 #[derive(Debug, Default)]
 struct LogEntry {
@@ -90,9 +90,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(150)).await;
     }
 
+
+    // Brief stabilize hover
+    println!("Stabilizing hover for 3 seconds...");
+    for _ in 0..30 {
+        run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
+        cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
+        sleep(Duration::from_millis(100)).await;
+    }
+
+    // Maneuver-specific logic
     match MANEUVER {
         "hover" => {
-            println!("Hovering at 0.3 m for 12 seconds...");
+            println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
@@ -105,10 +115,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let height = 0.3;
             let omega = 0.6;
 
-            println!("Circle: radius {:.2} m, height {:.2} m, ω = {:.2} rad/s", radius, height, omega);
+            println!(
+                "Circle: radius {:.2} m (diameter ~{:.2} m), height {:.2} m, ω = {:.2} rad/s (~{:.1} s per lap)",
+                radius, 2.0 * radius, height, omega, 2.0 * std::f32::consts::PI / omega
+            );
 
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(30) {
+            while start.elapsed() < Duration::from_secs(35) {
                 let t = start.elapsed().as_secs_f32();
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
@@ -119,26 +132,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         "figure8" => {
-            let a = 0.25;
-            let b = 0.15;
+            let a = 0.25; // x amplitude → total width ~1.0 m
+            let b = 0.15; // y amplitude → total height ~0.6 m
             let omega = 0.5;
 
-            println!("Figure-8: a={:.2}, b={:.2}, ω={:.2}", a, b, omega);
+            println!(
+                "Figure-8: x amplitude = {:.2} m (width ~{:.2} m), y amplitude = {:.2} m (height ~{:.2} m), ω = {:.2}",
+                a, 2.0 * a, b, 2.0 * b, omega
+            );
 
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(40) {
+            while start.elapsed() < Duration::from_secs(45) {
                 let t = start.elapsed().as_secs_f32();
                 let vx = -a * omega * (omega * t).sin();
-                let vy = b * omega * (2.0 * omega * t).cos();
+                let vy = b * omega * (2.0 * omega * t).cos(); // 2:1 frequency ratio
 
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
-        _ => println!("Unknown maneuver. Running hover."),
+        _ => {
+            println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(12) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
     }
 
+    // Gentle ramp down
     println!("Ramping down gently...");
     for y in (0..40).rev() {
         let zdistance = y as f32 / 100.0;
@@ -151,6 +176,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Maneuver complete. Motors stopped.");
 
+    // Save log
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
 
