@@ -9,7 +9,7 @@ use chrono::Utc;
 
 // CHANGE THIS TO SWITCH MANEUVER
 // "hover" | "circle" | "figure8"
-const MANEUVER: &str = "hover";
+const MANEUVER: &str = "figure8";
 
 #[derive(Debug, Default)]
 struct LogEntry {
@@ -45,8 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cf = Crazyflie::connect_from_uri(&link_context, uri, NoTocCache).await?;
     println!("Connected!");
 
-    let period = LogPeriod::from_millis(50)?;
-
     // Block 1: Position, velocity, thrust
     let mut block1 = cf.log.create_block().await?;
     let vars1 = vec![
@@ -55,7 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "stabilizer.thrust",
     ];
     for v in vars1 { add_var(&mut block1, v).await; }
-    let stream1 = block1.start(period).await?;
+    let stream1 = block1.start(LogPeriod::from_millis(50)?).await?;
 
     // Block 2: Attitude + body rates
     let mut block2 = cf.log.create_block().await?;
@@ -64,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rateRoll", "ratePitch", "rateYaw",
     ];
     for v in vars2 { add_var(&mut block2, v).await; }
-    let stream2 = block2.start(period).await?;
+    let stream2 = block2.start(LogPeriod::from_millis(50)?).await?;
 
     // Block 3: Battery + raw sensors
     let mut block3 = cf.log.create_block().await?;
@@ -74,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "acc.x", "acc.y", "acc.z",
     ];
     for v in vars3 { add_var(&mut block3, v).await; }
-    let stream3 = block3.start(period).await?;
+    let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
 
     let mut log_data: Vec<LogEntry> = Vec::new();
     let mut last_print = Instant::now();
@@ -103,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         "circle" => {
-            let radius = 0.5;
+            let radius = 0.25;
             let height = 0.3;
             let omega = 0.6;
 
@@ -121,8 +119,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         "figure8" => {
-            let a = 0.5;
-            let b = 0.3;
+            let a = 0.25;
+            let b = 0.15;
             let omega = 0.5;
 
             println!("Figure-8: a={:.2}, b={:.2}, ω={:.2}", a, b, omega);
@@ -165,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for e in log_data {
         writeln!(file,
-            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
             e.time_ms,
             e.pos_x, e.pos_y, e.pos_z,
             e.vel_x, e.vel_y, e.vel_z,
