@@ -4,19 +4,20 @@ use crazyflie_link::LinkContext;
 use std::time::{Duration, Instant};
 use std::fs::{self, File};
 use std::io::Write;
+use std::collections::HashMap;
 use tokio::time::sleep;
 use chrono::Utc;
-use std::collections::HashMap;
 
 use multirotor_simulator::math::{Vec3, Quat};
-use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams, MotorAction};
-use multirotor_simulator::controller::{GeometricController, TrajectoryReference, ControlOutput};
+use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams};
+use multirotor_simulator::controller::{GeometricController, TrajectoryReference};
+use multirotor_simulator::controller::Controller;
 
 // CHANGE THIS TO SWITCH MANEUVER
-// Valid options: "hover", "circle", "figure8"
-const MANEUVER: &str = "hover";
+// Valid options: "hover", "circle", "figure8", "my_controller"
+const MANEUVER: &str = "my_controller";
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct LogEntry {
     time_ms: u64,
     pos_x: f32,
@@ -49,6 +50,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connecting to {} ...", uri);
     let cf = Crazyflie::connect_from_uri(&link_context, uri, NoTocCache).await?;
     println!("Connected!");
+
+    // Initialize your controller and params
+    let mut controller = GeometricController::default();
+    let params = MultirotorParams::crazyflie();
+
+    // Fixed hover reference for "my_controller" mode
+    let hover_ref = TrajectoryReference {
+        position: Vec3::new(0.0, 0.0, 0.3),
+        velocity: Vec3::zero(),
+        acceleration: Vec3::zero(),
+        jerk: Vec3::zero(),
+        yaw: 0.0,
+        yaw_rate: 0.0,
+        yaw_acceleration: 0.0,
+    };
 
     // Block 1: Position, velocity, thrust
     let mut block1 = cf.log.create_block().await?;
@@ -95,8 +111,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(150)).await;
     }
 
-
-    // Brief stabilize hover
     println!("Stabilizing hover for 3 seconds...");
     for _ in 0..30 {
         run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
@@ -115,6 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sleep(Duration::from_millis(50)).await;
             }
         }
+
         "circle" => {
             let radius = 0.25;
             let height = 0.3;
@@ -136,9 +151,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sleep(Duration::from_millis(50)).await;
             }
         }
+
         "figure8" => {
-            let a = 0.25; // x amplitude → total width ~1.0 m
-            let b = 0.15; // y amplitude → total height ~0.6 m
+            let a = 0.25;
+            let b = 0.15;
             let omega = 0.5;
 
             println!(
@@ -150,13 +166,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             while start.elapsed() < Duration::from_secs(45) {
                 let t = start.elapsed().as_secs_f32();
                 let vx = -a * omega * (omega * t).sin();
-                let vy = b * omega * (2.0 * omega * t).cos(); // 2:1 frequency ratio
+                let vy = b * omega * (2.0 * omega * t).cos();
 
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
+
+        "my_controller" => {
+            println!("Hovering using YOUR GeometricController for 12 seconds...");
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(12) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+
+                // Extract state from latest log entry
+                let latest_entry = log_data.last().cloned().unwrap_or_default();
+                let state = MultirotorState {
+                    position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
+                    velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
+                    orientation: {
+                        // Full radians conversion (not half!)
+                        let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
+                        let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
+                        let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
+
+                        // ZYX intrinsic: yaw (around body Z) → pitch (around new Y) → roll (around new X)
+                        let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
+                        let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
+                        let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
+
+                        // Order: q = q_yaw * q_pitch * q_roll (intrinsic ZYX)
+                        let orientation = (q_yaw * q_pitch * q_roll).normalize();
+
+                        // Safety: if norm is bad (numerical issue), fallback to identity
+                        if orientation.norm() < 0.99 || orientation.norm() > 1.01 {
+                            Quat::identity()
+                        } else {
+                            orientation
+                        }
+                    },
+                    angular_velocity: Vec3::new(
+                        latest_entry.rate_roll   * std::f32::consts::PI / 180.0,
+                        latest_entry.rate_pitch  * std::f32::consts::PI / 180.0,
+                        latest_entry.rate_yaw    * std::f32::consts::PI / 180.0,
+                    ),
+                };
+
+                let dt = 0.05;
+                let control = controller.compute_control(&state, &hover_ref, &params, dt);
+
+                // Convert torque to desired rates (deg/s)
+                let rate_gain = 150.0;
+                let roll_rate = control.torque.x * rate_gain;
+                let pitch_rate = control.torque.y * rate_gain;
+                let yaw_rate = control.torque.z * rate_gain;
+
+                // Thrust: N → PWM (your scaling)
+                let thrust_pwm = ((control.thrust * 150000.0)) as u16;
+
+                cf.commander.setpoint_rpyt(roll_rate, pitch_rate, yaw_rate, thrust_pwm).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+
         _ => {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
@@ -181,7 +254,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Maneuver complete. Motors stopped.");
 
-    // Save log
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
 
@@ -218,6 +290,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// ────────────────────────────────────────────────
+// Helper: logging step (unchanged)
+// ────────────────────────────────────────────────
 async fn run_logging_step(
     log_data: &mut Vec<LogEntry>,
     last_print: &mut Instant,
@@ -282,47 +357,10 @@ async fn add_var(block: &mut LogBlock, name: &str) {
     }
 }
 
-fn get_f32(map: &std::collections::HashMap<String, crazyflie_lib::Value>, key: &str) -> f32 {
+fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
     map.get(key).and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0)
 }
 
-fn get_u32(map: &std::collections::HashMap<String, crazyflie_lib::Value>, key: &str) -> u32 {
+fn get_u32(map: &HashMap<String, Value>, key: &str) -> u32 {
     map.get(key).and_then(|v| u32::try_from(*v).ok()).unwrap_or(0)
-}
-
-fn extract_state_from_logs(
-    data1: &HashMap<String, Value>,
-    data2: &HashMap<String, Value>,
-) -> MultirotorState {
-    let pos = Vec3::new(
-        get_f32(data1, "stateEstimate.x"),
-        get_f32(data1, "stateEstimate.y"),
-        get_f32(data1, "stateEstimate.z"),
-    );
-    let vel = Vec3::new(
-        get_f32(data1, "stateEstimate.vx"),
-        get_f32(data1, "stateEstimate.vy"),
-        get_f32(data1, "stateEstimate.vz"),
-    );
-
-    // Convert roll/pitch/yaw (in degrees) to quaternion
-    let roll_rad = get_f32(data2, "stabilizer.roll") * std::f32::consts::PI / 180.0;
-    let pitch_rad = get_f32(data2, "stabilizer.pitch") * std::f32::consts::PI / 180.0;
-    let yaw_rad = get_f32(data2, "stabilizer.yaw") * std::f32::consts::PI / 180.0;
-
-    // Assuming ZYX Euler convention (yaw → pitch → roll) – common in Crazyflie
-    let orientation = Quat::from_euler(yaw_rad, pitch_rad, roll_rad); // adjust order if needed
-
-    let angular_vel = Vec3::new(
-        get_f32(data2, "rateRoll") * std::f32::consts::PI / 180.0,   // deg/s → rad/s
-        get_f32(data2, "ratePitch") * std::f32::consts::PI / 180.0,
-        get_f32(data2, "rateYaw") * std::f32::consts::PI / 180.0,
-    );
-
-    MultirotorState {
-        position: pos,
-        velocity: vel,
-        orientation,
-        angular_velocity: angular_vel,
-    }
 }
