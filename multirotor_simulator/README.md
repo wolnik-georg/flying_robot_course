@@ -19,38 +19,45 @@ cargo build --release
 ```
 
 ## Available Programs
+
+### 📊 Assignment 1 — Integrator comparison
+```bash
+cargo run --release --bin assignment1
+python plot_assignment1.py
+```
+Compares Euler, RK4, ExpEuler, ExpRK4 integrators on a free-flight trajectory. Writes CSVs to `results/data/`.
+
+### 🚁 Assignment 2 — Geometric control & trajectory tracking
+```bash
+cargo run --release --bin assignment2
+cargo run --release --bin assignment2 -- --realistic-start
+python plot_assignment2.py
+```
+Tracks a figure-8 trajectory with the SE(3) geometric controller. `--realistic-start` prepends takeoff + hover. Writes CSVs to `results/data/assignment2_<scenario>.csv`.
+
+### 🎯 Assignment 3 — MEKF offline validation
+```bash
+cargo run --release --bin assignment3 -- --csv "../State Estimation/logging_ekf/logging/fr00.csv"
+# then from State Estimation/:
+python plot_assignment3.py
+python plot_comparison.py
+```
+Runs the Multiplicative EKF offline against a real Crazyflie flight log. Compares Rust MEKF, Python MEKF, and on-board EKF.
+
 ### 🏁 Assignment 4 — Minimum-snap spline planning & differential flatness
 ```bash
 cargo build --release --bin assignment4
 cargo run --release --bin assignment4
-```
-Generates CSVs for planned, open-loop, and closed-loop figure-8 trajectory in `results/data/`. Plot with:
-```bash
 python plot_assignment4.py
 ```
-Produces 3D trajectory, tracking, action, and error plots in `results/images/`.
-### 📊 Assignment 1 — Integrator comparison
-```bash
-cargo run --release --bin assignment1
-```
-Runs all 4 integrators and writes CSVs to `results/data/`. Plot with:
-```bash
-python plot_assignment1.py
-```
+Generates planned, open-loop, and closed-loop figure-8 CSVs in `results/data/`. Produces 3D trajectory, tracking, action, and error plots in `results/images/`.
 
-### 🚁 Assignment 2 — Geometric control & trajectory tracking
+### � Assignment 5 — Safe-space simulation (hover / circle / figure-8)
 ```bash
-# Normal start (drone teleported to trajectory start)
-cargo run --release --bin assignment2
-
-# Realistic start (takeoff + hover prepended)
-cargo run --release --bin assignment2 -- --realistic-start
+cargo run --release --bin assignment5
+python plot_assignment5.py
 ```
-Writes CSVs to `results/data/assignment2_<scenario>{_realistic}.csv`. Plot with:
-```bash
-python plot_assignment2.py
-```
-Produces side-by-side Normal vs Realistic path and error images in `results/images/`.
+Simulates hover, circle, and figure-8 trajectories inside a 1.0 × 1.0 m safety box (max 0.30 m height) using the full MEKF estimator + geometric controller. For **real hardware flight**, use `Controls/run_assignment5_onboard.py`.
 
 ### 🎯 Demo — Quick demonstration
 ```bash
@@ -96,62 +103,73 @@ fn main() {
 ```
 
 ## Project Structure
-│   ├── planning/           # Motion planning module (assignment4)
-│   │   ├── mod.rs          # Module entry point
-│   │   ├── spline.rs       # Minimum-snap spline planner (QP)
-│   │   └── flatness.rs     # Differential flatness chain
+
 ```
 multirotor_simulator/
 ├── Cargo.toml              # Project configuration
 ├── README.md               # This file
-├── ARCHITECTURE.md         # Architecture documentation
+├── ARCHITECTURE.md         # Detailed architecture documentation
 ├── QUICKSTART.sh           # Quick-start shell script
-├── plot_assignment1.py     # Plotting script for Assignment 1 results
-├── plot_assignment2.py     # Plotting script for Assignment 2 results
+├── plot_assignment1.py     # Plotting: Assignment 1 integrator comparison
+├── plot_assignment2.py     # Plotting: Assignment 2 geometric control
+├── plot_assignment4.py     # Plotting: Assignment 4 spline planning
+├── plot_assignment5.py     # Plotting: Assignment 5 safe-space simulation
 ├── src/
-│   ├── lib.rs             # Library entry point
-│   ├── math/              # Mathematical primitives
-│   │   ├── mod.rs
-│   │   ├── vec3.rs        # 3D vector
-│   │   └── quaternion.rs  # Unit quaternion
-│   ├── dynamics/          # Physics and dynamics
-│   │   ├── mod.rs
-│   │   ├── state.rs       # State representation & motor actions
-│   │   ├── params.rs      # Physical parameters (Crazyflie)
-│   │   └── simulator.rs   # Main simulation engine
-│   ├── integration/       # Numerical integration methods
-│   │   ├── mod.rs
-│   │   ├── euler.rs       # First-order Euler
-│   │   ├── rk4.rs         # Runge-Kutta 4th order
-│   │   └── exponential.rs # Exponential map methods
-│   ├── controller/        # Control algorithms
-│   │   └── mod.rs         # Geometric SE(3) controller (Lee et al.)
-│   ├── trajectory/        # Trajectory generators
-│   │   └── mod.rs         # Figure-8, Circle, CSV, Takeoff, Sequenced
-│   └── bin/               # Runnable binaries
-│       ├── assignment1.rs  # Assignment 1: integrator comparison
-│       ├── assignment2.rs  # Assignment 2: geometric control & trajectories
+│   ├── lib.rs              # Library entry point & prelude
+│   ├── safety.rs           # SafetyLimits: altitude/speed/geofence, emergency land
+│   ├── math/               # Mathematical primitives
+│   │   ├── vec3.rs         # 3D vector (position, velocity, force, torque)
+│   │   ├── quaternion.rs   # Unit quaternion (no gimbal lock)
+│   │   └── matrix.rs       # Mat9: 9×9 f32 matrix (Joseph form, symmetrise, clamp)
+│   ├── dynamics/           # Physics and dynamics
+│   │   ├── state.rs        # MultirotorState & MotorAction
+│   │   ├── params.rs       # MultirotorParams — Crazyflie 2.1 physical parameters
+│   │   └── simulator.rs    # MultirotorSimulator — main simulation engine
+│   ├── integration/        # Numerical integration methods
+│   │   ├── euler.rs        # First-order forward Euler
+│   │   ├── rk4.rs          # Runge-Kutta 4th order
+│   │   └── exponential.rs  # Exponential map integrators (ExpEuler, ExpRK4)
+│   ├── controller/
+│   │   └── mod.rs          # GeometricController — SE(3) Lee et al. 2010
+│   ├── trajectory/
+│   │   └── mod.rs          # Figure8, Circle, CSV, Takeoff, Sequenced trajectories
+│   ├── planning/           # Motion planning (Assignment 4)
+│   │   ├── spline.rs       # Minimum-snap 8th-order polynomial QP planner
+│   │   └── flatness.rs     # Differential flatness chain (position/yaw → full state)
+│   ├── estimation/
+│   │   └── mekf.rs         # MEKF: IMU predict + height/flow update (f32, Joseph form)
+│   └── bin/                # Runnable binaries
+│       ├── assignment1.rs  # Integrator comparison
+│       ├── assignment2.rs  # Geometric control & trajectory tracking
+│       ├── assignment3.rs  # MEKF offline validation vs on-board EKF
+│       ├── assignment4.rs  # Minimum-snap planning & differential flatness
+│       ├── assignment5.rs  # Safe-space simulation (hover/circle/figure-8 + MEKF)
 │       ├── demo.rs         # Quick demo
 │       ├── debug_*.rs      # Debug / diagnostic binaries
 │       └── test_*.rs       # Standalone test binaries
 ├── tests/
 │   └── test_geometric_controller.rs  # Integration tests
+├── Controls/               # Real hardware flight scripts (Python / cflib)
+│   └── run_assignment5_onboard.py    # Onboard flight: hover, circle, figure-8
 └── results/
-    ├── data/               # CSV output from simulation runs
+    ├── data/               # CSV outputs from simulation runs
     └── images/             # PNG plots generated by plot scripts
 ```
 
 ## Architecture
-6. **planning/** - Motion planning: minimum-snap spline planner, differential flatness chain
+
 ### Core Modules
 
-1. **math/** - Mathematical primitives (Vec3, Quat)
-2. **dynamics/** - Physics core (state, parameters, simulator)
-3. **integration/** - Pluggable integrators (Euler, RK4, Exponential)
+1. **math/** - Mathematical primitives (`Vec3`, `Quat`, `Mat9`)
+2. **dynamics/** - Physics core (state, Crazyflie 2.1 parameters, simulator)
+3. **integration/** - Pluggable integrators (Euler, RK4, ExpEuler, ExpRK4)
 4. **controller/** - Geometric SE(3) controller (Lee et al. 2010)
 5. **trajectory/** - Trajectory generators: `Figure8Trajectory`, `CircleTrajectory`, `CsvTrajectory`, `TakeoffTrajectory`, `SequencedTrajectory`
+6. **planning/** - Motion planning: minimum-snap spline planner, differential flatness chain
+7. **estimation/** - `Mekf`: IMU-driven state estimator (predict + height/flow updates, f32, Joseph form)
+8. **safety** (`safety.rs`) - `SafetyLimits`: altitude/speed/geofence enforcement, emergency hover/land
 
-See `ARCHITECTURE.md` for detailed design documentation.
+See `ARCHITECTURE.md` for detailed design documentation with data-flow diagrams and per-module API descriptions.
 
 ## Testing
 

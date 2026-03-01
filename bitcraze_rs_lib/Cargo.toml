@@ -1,0 +1,9 @@
+[package]
+name = "crazyflie-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crazyflie-lib = "0.4"
+crazyflie-link = "0.3"           # ← this provides LinkContext
+tokio = { version = "1", features = ["full"] }

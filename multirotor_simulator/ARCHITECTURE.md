@@ -9,8 +9,8 @@ This project implements a clean, modular multirotor dynamics simulator and state
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                        Application Layer                          │
-│  assignment1 · assignment2 · assignment3 · assignment4 · demo ·   │
-│  debug/test bins                                                  │
+│  assignment1 · assignment2 · assignment3 · assignment4 ·          │
+│  assignment5 · demo · debug/test bins                             │
 └────────────────────────────┬─────────────────────────────────────┘
                              │
 ┌────────────────────────────▼─────────────────────────────────────┐
@@ -51,11 +51,12 @@ This project implements a clean, modular multirotor dynamics simulator and state
   - Full flatness chain for feedforward control and reference generation
   - Validated against closed-loop geometric controller tracking
   - **Safety integration:** All maneuvers start and end with a stable hover. Altitude, speed, and geofence limits are enforced in simulation. Emergency hover and landing logic is triggered on violation.
-### `safety/` — Safety Limits and Emergency Handling
+### `safety` (`src/safety.rs`) — Safety Limits and Emergency Handling
 **Purpose**: Enforce safety constraints and provide emergency override logic for simulation and real flight.
 
-- `safety.rs`: Defines `SafetyLimits` (altitude, speed, geofence), clamping, and violation checks.
-- Integrated in all simulation binaries (e.g., assignment4.rs).
+- `safety.rs` lives directly in `src/` (not a subdirectory).
+- Defines `SafetyLimits` (altitude, speed, geofence), clamping, and violation checks.
+- Integrated in all simulation binaries (e.g., `assignment4.rs`, `assignment5.rs`).
 
 **Features**:
   - Altitude, speed, and geofence limits
@@ -164,10 +165,7 @@ Each component is independently testable:
 - Simulator can use mock integrators
 
 ## File Organization
-  │   ├── planning/
-  │   │   ├── mod.rs               # Motion planning module (assignment4)
-  │   │   ├── spline.rs            # Minimum-snap spline planner (QP)
-  │   │   └── flatness.rs          # Differential flatness chain
+
 ```
 multirotor_simulator/
 ├── Cargo.toml                    # Project metadata & dependencies
@@ -176,9 +174,12 @@ multirotor_simulator/
 ├── QUICKSTART.sh                 # Shell quick-start guide
 ├── plot_assignment1.py           # Assignment 1 plotting
 ├── plot_assignment2.py           # Assignment 2 plotting (Normal + Realistic)
+├── plot_assignment4.py           # Assignment 4 plotting
+├── plot_assignment5.py           # Assignment 5 plotting
 │
 ├── src/
 │   ├── lib.rs                    # Library entry point & prelude
+│   ├── safety.rs                 # SafetyLimits: altitude/speed/geofence, emergency land
 │   │
 │   ├── math/
 │   │   ├── mod.rs
@@ -204,53 +205,50 @@ multirotor_simulator/
 │   ├── trajectory/
 │   │   └── mod.rs               # All trajectory types
 │   │
+│   ├── planning/
+│   │   ├── mod.rs               # Motion planning module (Assignment 4)
+│   │   ├── spline.rs            # Minimum-snap spline planner (QP)
+│   │   └── flatness.rs          # Differential flatness chain
+│   │
 │   ├── estimation/
 │   │   ├── mod.rs               # Re-exports Mekf, MekfState, MekfParams
 │   │   └── mekf.rs              # Full MEKF: predict, height update, flow update
 │   │
 │   └── bin/
-│       ├── assignment1.rs       # Assignment 1: integrator comparison
-│       ├── assignment2.rs       # Assignment 2: geometric control (--realistic-start)
-│       ├── assignment3.rs       # Assignment 3: MEKF offline validation vs on-board EKF
+│       ├── assignment1.rs       # Integrator comparison
+│       ├── assignment2.rs       # Geometric control (--realistic-start)
+│       ├── assignment3.rs       # MEKF offline validation vs on-board EKF
+│       ├── assignment4.rs       # Minimum-snap spline planning & differential flatness
+│       ├── assignment5.rs       # Safe-space simulation (hover/circle/figure-8 + MEKF)
 │       ├── demo.rs              # Quick demo
 │       ├── check_saturation.rs
 │       ├── check_trajectory.rs
-│       ├── debug_control.rs
-│       ├── debug_controller.rs
-│       ├── debug_figure8.rs
-│       ├── debug_geometric.rs
-│       ├── debug_jerk.rs
-│       ├── debug_pipeline.rs
-│       ├── debug_rotation.rs
-│       ├── debug_rotation_error.rs
-│       ├── test_coordinates.rs
-│       ├── test_equivalence.rs
-│       ├── test_euler.rs
-│       ├── test_gains.rs
-│       ├── test_motor_mixing.rs
-│       ├── test_oscillation.rs
-│       └── test_strong_damping.rs
+│       ├── debug_*.rs           # Debug / diagnostic binaries
+│       └── test_*.rs            # Standalone test binaries
 │
 ├── tests/
 │   └── test_geometric_controller.rs   # Integration tests
 │
+├── Controls/                          # Real hardware flight (Python / cflib)
+│   └── run_assignment5_onboard.py     # Onboard flight: hover, circle, figure-8
+│
 └── results/
-  ├── data/                    # CSV outputs
-  │   ├── assignment2_<scenario>.csv
-  │   ├── assignment3_mekf.csv # MEKF: time, roll_rad, pitch_rad, yaw_rad, x, y, z
-  │   ├── assignment3_ekf.csv  # On-board EKF reference (same columns)
-  │   ├── assignment4_planned.csv      # Planned minimum-snap spline trajectory
-  │   ├── assignment4_openloop.csv     # Open-loop simulation (flatness feedforward)
-  │   └── assignment4_closedloop.csv   # Closed-loop simulation (geometric controller)
-  └── images/                  # PNG plots
-    ├── assignment4_3d.png
-    ├── assignment4_position_cl.png
-    ├── assignment4_velocity_cl.png
-    ├── assignment4_actions.png
-    ├── assignment4_omega.png
-    ├── assignment4_errors.png
-    ├── assignment4_actions_comparison.png
-    └── assignment4_derivatives.png
+    ├── data/                    # CSV outputs
+    │   ├── assignment2_<scenario>.csv
+    │   ├── assignment3_mekf.csv # MEKF: time, roll_rad, pitch_rad, yaw_rad, x, y, z
+    │   ├── assignment3_ekf.csv  # On-board EKF reference (same columns)
+    │   ├── assignment4_planned.csv      # Planned minimum-snap spline trajectory
+    │   ├── assignment4_openloop.csv     # Open-loop simulation (flatness feedforward)
+    │   └── assignment4_closedloop.csv   # Closed-loop simulation (geometric controller)
+    └── images/                  # PNG plots
+        ├── assignment4_3d.png
+        ├── assignment4_position_cl.png
+        ├── assignment4_velocity_cl.png
+        ├── assignment4_actions.png
+        ├── assignment4_omega.png
+        ├── assignment4_errors.png
+        ├── assignment4_actions_comparison.png
+        └── assignment4_derivatives.png
 ```
 
 ## Component Interactions
@@ -314,11 +312,7 @@ cargo test --test test_geometric_controller  # integration test only
 Current status: **69 tests pass**, 1 known pre-existing failing test (`test_geometric_controller_creation`).
 
 ## Build & Run
-# Assignment 4 — Minimum-snap spline planning & differential flatness
-cargo build --release --bin assignment4
-cargo run --release --bin assignment4
-python plot_assignment4.py
-# Generates CSVs and plots for planned, open-loop, and closed-loop figure-8 trajectory
+
 ```bash
 cargo build --release
 
@@ -336,6 +330,19 @@ cargo run --release --bin assignment3 -- --csv "../State Estimation/logging_ekf/
 # then from the State Estimation/ directory:
 python plot_assignment3.py      # MEKF orientation + position vs on-board EKF
 python plot_comparison.py       # Three-way: Python MEKF · Rust MEKF · on-board EKF
+
+# Assignment 4 — Minimum-snap spline planning & differential flatness
+cargo run --release --bin assignment4
+python plot_assignment4.py
+
+# Assignment 5 — Safe-space simulation (hover / circle / figure-8 + MEKF)
+cargo run --release --bin assignment5
+python plot_assignment5.py
+
+# Real hardware flight (Crazyflie + Flow deck)
+python Controls/run_assignment5_onboard.py hover
+python Controls/run_assignment5_onboard.py circle
+python Controls/run_assignment5_onboard.py figure8
 ```
 
 ## Benefits of This Architecture
