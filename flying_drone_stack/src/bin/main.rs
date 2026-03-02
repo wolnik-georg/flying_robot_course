@@ -10,11 +10,9 @@ use chrono::Utc;
 
 use multirotor_simulator::math::{Vec3, Quat};
 use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams};
-use multirotor_simulator::controller::{GeometricController, TrajectoryReference};
-use multirotor_simulator::controller::Controller;
+use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
 
 // CHANGE THIS TO SWITCH MANEUVER
-// Valid options: "hover", "circle", "figure8", "my_controller"
 const MANEUVER: &str = "my_controller";
 
 #[derive(Debug, Default, Clone)]
@@ -131,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "circle" => {
-            let radius = 0.25;
+            let radius = 0.5;
             let height = 0.3;
             let omega = 0.6;
 
@@ -153,8 +151,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "figure8" => {
-            let a = 0.25;
-            let b = 0.15;
+            let a = 0.5;
+            let b = 0.3;
             let omega = 0.5;
 
             println!(
@@ -186,25 +184,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
                     velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
                     orientation: {
-                        // Full radians conversion (not half!)
                         let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
                         let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
                         let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
 
-                        // ZYX intrinsic: yaw (around body Z) → pitch (around new Y) → roll (around new X)
                         let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
                         let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
                         let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
 
-                        // Order: q = q_yaw * q_pitch * q_roll (intrinsic ZYX)
-                        let orientation = (q_yaw * q_pitch * q_roll).normalize();
-
-                        // Safety: if norm is bad (numerical issue), fallback to identity
-                        if orientation.norm() < 0.99 || orientation.norm() > 1.01 {
-                            Quat::identity()
-                        } else {
-                            orientation
-                        }
+                        (q_yaw * q_pitch * q_roll).normalize()
                     },
                     angular_velocity: Vec3::new(
                         latest_entry.rate_roll   * std::f32::consts::PI / 180.0,
@@ -216,22 +204,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let dt = 0.05;
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                // Rate: torque (Nm) → desired body rate (deg/s)
-                // Jxx = 1.7e-5 kg·m² → rough gain = 1 / Jxx * (180/π) * dt * safety_factor ≈ 150–250
-                // Start conservative at 120–150
-                let rate_gain = 150.0; // 100–150 range is typical
+                // Thrust: N → PWM
+                let thrust_pwm = (control.thrust * 170000.0) as u16;
+                let thrust_pwm = thrust_pwm.clamp(25000, 52000); // safety clamp
+
+                // Anti-windup
+                if thrust_pwm >= 52000 || thrust_pwm <= 25000 {
+                    controller.reset();
+                }
+
+                // Rates
+                let rate_gain = 120.0;
                 let roll_rate  = control.torque.x * rate_gain;
                 let pitch_rate = control.torque.y * rate_gain;
                 let yaw_rate   = control.torque.z * rate_gain;
 
-                // Thrust: N → PWM
-                // Official hover ~41000–46000 PWM for 0.265 N
-                // Scaling factor ≈ 41000 / 0.265 ≈ 154700
-                // Add 10–20 % headroom for corrections → 170000–190000
-                let thrust_pwm = (control.thrust * 165000.0) as u16;
-
-                // Safety clamp: prevent motor stall or oversaturation
-                let thrust_pwm = thrust_pwm.clamp(15000, 55000);
+                // Debug print
+                println!(
+                    "  My thrust: {:.3} N → PWM: {}  | onboard thrust: {}",
+                    control.thrust,
+                    thrust_pwm,
+                    latest_entry.thrust
+                );
 
                 cf.commander.setpoint_rpyt(roll_rate, pitch_rate, yaw_rate, thrust_pwm).await?;
                 sleep(Duration::from_millis(50)).await;
@@ -249,7 +243,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Gentle ramp down
     println!("Ramping down gently...");
     for y in (0..40).rev() {
         let zdistance = y as f32 / 100.0;
@@ -298,9 +291,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// ────────────────────────────────────────────────
-// Helper: logging step (unchanged)
-// ────────────────────────────────────────────────
 async fn run_logging_step(
     log_data: &mut Vec<LogEntry>,
     last_print: &mut Instant,
