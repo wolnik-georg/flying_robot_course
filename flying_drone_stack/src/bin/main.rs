@@ -216,14 +216,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let dt = 0.05;
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                // Convert torque to desired rates (deg/s)
-                let rate_gain = 150.0;
-                let roll_rate = control.torque.x * rate_gain;
+                // Rate: torque (Nm) → desired body rate (deg/s)
+                // Jxx = 1.7e-5 kg·m² → rough gain = 1 / Jxx * (180/π) * dt * safety_factor ≈ 150–250
+                // Start conservative at 120–150
+                let rate_gain = 150.0; // 100–150 range is typical
+                let roll_rate  = control.torque.x * rate_gain;
                 let pitch_rate = control.torque.y * rate_gain;
-                let yaw_rate = control.torque.z * rate_gain;
+                let yaw_rate   = control.torque.z * rate_gain;
 
-                // Thrust: N → PWM (your scaling)
-                let thrust_pwm = ((control.thrust * 160000.0) as u16).min(55000).max(10000); // clamp 10k–55k
+                // Thrust: N → PWM
+                // Official hover ~41000–46000 PWM for 0.265 N
+                // Scaling factor ≈ 41000 / 0.265 ≈ 154700
+                // Add 10–20 % headroom for corrections → 170000–190000
+                let thrust_pwm = (control.thrust * 165000.0) as u16;
+
+                // Safety clamp: prevent motor stall or oversaturation
+                let thrust_pwm = thrust_pwm.clamp(15000, 55000);
 
                 cf.commander.setpoint_rpyt(roll_rate, pitch_rate, yaw_rate, thrust_pwm).await?;
                 sleep(Duration::from_millis(50)).await;
