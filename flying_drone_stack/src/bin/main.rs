@@ -100,9 +100,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Logging started (20 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
 
-    cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0).await?;
-    sleep(Duration::from_millis(200)).await;
-
     println!("Ramping up...");
     for y in 0..15 {
         let zdistance = y as f32 / 50.0;
@@ -174,12 +171,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "my_controller" => {
-            println!("Hovering using YOUR GeometricController for 12 seconds (velocity setpoints)...");
+            println!("Hovering using YOUR GeometricController for 12 seconds (velocity setpoints - safe mode)...");
+
+            // Reset onboard estimator origin to current position (correct U8 type)
+            match cf.param.set("kalman.resetEstimation", 1u8).await {
+                Ok(_) => println!("Kalman estimator reset successfully"),
+                Err(e) => println!("Failed to reset Kalman: {}", e),
+            }
+            sleep(Duration::from_millis(500)).await;
+
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
-                // Extract state from latest log entry
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
                     position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
@@ -205,7 +209,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let dt = 0.05;
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                // Compute desired acceleration from feedforward + PD
+                // Compute desired acceleration
                 let ep = hover_ref.position - state.position;
                 let ev = hover_ref.velocity - state.velocity;
 
@@ -222,15 +226,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     + Vec3::new(0.0, 0.0, params.gravity as f32);
 
-                // Convert acceleration to velocity feedforward (simple scaling - tune these!)
-                let vx_ff = desired_accel.x * 0.8;   // scale to reasonable velocity command
-                let vy_ff = desired_accel.y * 0.8;
-                let vz_ff = desired_accel.z * 0.4;   // z usually slower
+                // SAFETY: zero velocity feedforward + fixed height (to prevent instant flip)
+                let vx_ff = 0.0;
+                let vy_ff = 0.0;
+                let vz_ff = 0.0;
 
-                // Debug print
                 println!(
-                    "  desired vel: vx={:.3}, vy={:.3}, vz={:.3}   ep_z={:.3}   ev_z={:.3}",
-                    vx_ff, vy_ff, vz_ff, ep.z, ev.z
+                    "  ep_x={:.3} ep_y={:.3} ep_z={:.3}   desired_accel: x={:.3} y={:.3} z={:.3}",
+                    ep.x, ep.y, ep.z, desired_accel.x, desired_accel.y, desired_accel.z
                 );
 
                 cf.commander.setpoint_hover(vx_ff, vy_ff, vz_ff, hover_ref.position.z).await?;
