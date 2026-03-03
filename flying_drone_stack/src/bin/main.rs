@@ -204,9 +204,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let dt = 0.05;
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
+                let ep_z = hover_ref.position.z - state.position.z;
+                let ev_z = hover_ref.velocity.z - state.velocity.z;
+
                 // Thrust: N → PWM
-                let thrust_pwm = (control.thrust * 170000.0) as u16;
-                let thrust_pwm = thrust_pwm.clamp(25000, 52000); // safety clamp
+                let thrust_pwm = (control.thrust * 145000.0) as u16;
+
+                println!(
+                    "  ep_z = {:.4} m  ev_z = {:.4} m/s  thrust_N = {:.3}  thrust_pwm = {}  onboard = {}",
+                    ep_z, ev_z, control.thrust, thrust_pwm, latest_entry.thrust
+                );
 
                 // Anti-windup
                 if thrust_pwm >= 52000 || thrust_pwm <= 25000 {
@@ -214,7 +221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 // Rates
-                let rate_gain = 120.0;
+                let rate_gain = 150.0;
                 let roll_rate  = control.torque.x * rate_gain;
                 let pitch_rate = control.torque.y * rate_gain;
                 let yaw_rate   = control.torque.z * rate_gain;

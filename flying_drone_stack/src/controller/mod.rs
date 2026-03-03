@@ -86,8 +86,8 @@ impl GeometricController {
     Self {
         // Position gains (from recent Crazyflie firmware + community tuning)
         // xy gains lower than z (horizontal is harder to control due to flow deck noise)
-        kp: Vec3::new(4.0, 4.0, 5.0),     // official-ish values, z stronger for height hold
-        kv: Vec3::new(3.0, 3.0, 4.0),     // velocity damping – prevents overshoot
+        kp: Vec3::new(3.0, 3.0, 4.0),
+        kv: Vec3::new(2.5, 2.5, 7.0),
         // ki: Vec3::new(0.0, 0.0, 0.0),     // integral usually disabled in firmware (wind-up risk)
 
         // Attitude gains (official values – do NOT double!)
@@ -193,6 +193,8 @@ impl Controller for GeometricController {
 
         let thrust_force = feedforward * params.mass as f32;
         let thrust = thrust_force.norm();
+
+        self.i_error_att = Vec3::zero(); // disable integral until stable
 
         // Compute desired rotation from thrust and yaw
         let rd = self.compute_desired_rotation(thrust_force, reference.yaw);
