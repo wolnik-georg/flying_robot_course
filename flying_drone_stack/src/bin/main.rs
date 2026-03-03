@@ -11,10 +11,11 @@ use chrono::Utc;
 use multirotor_simulator::math::{Vec3, Quat};
 use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams};
 use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
+use multirotor_simulator::trajectory::{CircleTrajectory, SmoothFigure8Trajectory, Trajectory};
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_controller"
-const MANEUVER: &str = "my_controller";
+const MANEUVER: &str = "my_circle";
 
 #[derive(Debug, Default, Clone)]
 struct LogEntry {
@@ -65,34 +66,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         yaw_acceleration: 0.0,
     };
 
-    // Block 1: Position, velocity, thrust
+    // Block 1: Position + velocity (6 floats = 24 bytes)
     let mut block1 = cf.log.create_block().await?;
     let vars1 = vec![
         "stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
         "stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz",
-        "stabilizer.thrust",
     ];
     for v in vars1 { add_var(&mut block1, v).await; }
     let stream1 = block1.start(LogPeriod::from_millis(50)?).await?;
 
-    // Block 2: Attitude + body rates
+    // Block 2: Attitude + thrust (3 floats + 1 uint16 = 14 bytes)
     let mut block2 = cf.log.create_block().await?;
     let vars2 = vec![
         "stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw",
-        "rateRoll", "ratePitch", "rateYaw",
+        "stabilizer.thrust",
     ];
     for v in vars2 { add_var(&mut block2, v).await; }
     let stream2 = block2.start(LogPeriod::from_millis(50)?).await?;
 
-    // Block 3: Battery + raw sensors
+    // Block 3: Body rates + battery (4 floats = 16 bytes)
     let mut block3 = cf.log.create_block().await?;
     let vars3 = vec![
+        "rateRoll", "ratePitch", "rateYaw",
         "pm.vbat",
-        "gyro.x", "gyro.y", "gyro.z",
-        "acc.x", "acc.y", "acc.z",
     ];
     for v in vars3 { add_var(&mut block3, v).await; }
     let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
+
+    // Block 4: Raw IMU sensors (6 floats = 24 bytes)
+    let mut block4 = cf.log.create_block().await?;
+    let vars4 = vec![
+        "gyro.x", "gyro.y", "gyro.z",
+        "acc.x", "acc.y", "acc.z",
+    ];
+    for v in vars4 { add_var(&mut block4, v).await; }
+    let stream4 = block4.start(LogPeriod::from_millis(50)?).await?;
 
     let mut log_data: Vec<LogEntry> = Vec::new();
     let mut last_print = Instant::now();
@@ -109,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Stabilizing hover for 3 seconds...");
     for _ in 0..30 {
-        run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
+        run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &Instant::now()).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
         sleep(Duration::from_millis(100)).await;
     }
@@ -120,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -142,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -164,13 +172,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
 
-        "my_controller" => {
+        "my_hover" => {
             println!("Hovering using YOUR GeometricController for 12 seconds (position setpoint mode)...");
 
             // Reset onboard Kalman filter origin to current position
@@ -183,7 +191,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
 
                 // Extract current state from onboard log
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
@@ -252,11 +260,124 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        "my_circle" => {
+            println!("Circle trajectory using GeometricController + tuned velocity feedforward...");
+
+            // Reset Kalman
+            match cf.param.set("kalman.resetEstimation", 1u8).await {
+                Ok(_) => println!("Kalman estimator reset successfully"),
+                Err(e) => println!("Failed to reset Kalman: {}", e),
+            }
+            sleep(Duration::from_millis(500)).await;
+
+            // Tuned circle parameters — start small/slow
+            let radius = 0.3;
+            let height = 0.3;
+            let omega = 0.4;  // ~15 s per lap — very gentle
+
+            let circle = CircleTrajectory::new(radius, height, omega);
+
+            let start = Instant::now();
+            let ff_scalar_xy = 0.04;   // low to avoid large velocity commands
+            let ff_scalar_z  = 0.02;
+
+            while start.elapsed() < Duration::from_secs(60) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
+
+                let t = start.elapsed().as_secs_f32();
+                let reference = circle.get_reference(t);
+
+                let latest_entry = log_data.last().cloned().unwrap_or_default();
+                let state = MultirotorState {
+                    position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
+                    velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
+                    orientation: {
+                        let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
+                        let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
+                        let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
+
+                        let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
+                        let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
+                        let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
+
+                        (q_yaw * q_pitch * q_roll).normalize()
+                    },
+                    angular_velocity: Vec3::new(
+                        latest_entry.rate_roll   * std::f32::consts::PI / 180.0,
+                        latest_entry.rate_pitch  * std::f32::consts::PI / 180.0,
+                        latest_entry.rate_yaw    * std::f32::consts::PI / 180.0,
+                    ),
+                };
+
+                let dt = 0.05;
+                let control = controller.compute_control(&state, &reference, &params, dt);
+
+                let ep = reference.position - state.position;
+                let ev = reference.velocity - state.velocity;
+
+                let desired_accel = reference.acceleration
+                    + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
+                    + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
+                    + Vec3::new(0.0, 0.0, params.gravity as f32);
+
+                let vx_ff = desired_accel.x * ff_scalar_xy;
+                let vy_ff = desired_accel.y * ff_scalar_xy;
+                let vz_ff = desired_accel.z * ff_scalar_z;
+
+                println!(
+                    "t={:.1}s  ref_x={:+.2} ref_y={:+.2} ref_z={:+.2}  ep_x={:+.3} ep_y={:+.3} ep_z={:+.3}  vx_ff={:+.3} vy_ff={:+.3} vz_ff={:+.3}",
+                    t,
+                    reference.position.x,
+                    reference.position.y,
+                    reference.position.z,
+                    ep.x, ep.y, ep.z,
+                    vx_ff, vy_ff, vz_ff
+                );
+
+                cf.commander.setpoint_hover(vx_ff, vy_ff, vz_ff, reference.position.z).await?;
+
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+
+    "my_figure8" => {
+        println!("Figure-8 trajectory using GeometricController (position setpoint mode)...");
+
+        // Reset Kalman
+        if let Err(e) = cf.param.set("kalman.resetEstimation", 1u8).await {
+            println!("Failed to reset Kalman: {}", e);
+        }
+        sleep(Duration::from_millis(500)).await;
+
+        // Use one of your figure-8 variants (pick one)
+        let figure8 = SmoothFigure8Trajectory::new();  // or Figure8Trajectory::new()
+
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(60) {
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
+
+            let t = start.elapsed().as_secs_f32();
+            let reference = figure8.get_reference(t);
+
+    
+    
+
+            cf.commander.setpoint_position(
+                reference.position.x,
+                reference.position.y,
+                reference.position.z,
+                reference.yaw
+            ).await?;
+
+            sleep(Duration::from_millis(50)).await;
+        }
+    }
+
         _ => {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -306,6 +427,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     drop(stream1);
     drop(stream2);
     drop(stream3);
+    drop(stream4);
     cf.disconnect().await;
 
     println!("Disconnected cleanly.");
@@ -322,6 +444,7 @@ async fn run_logging_step(
     stream1: &LogStream,
     stream2: &LogStream,
     stream3: &LogStream,
+    stream4: &LogStream,
     start: &Instant,
 ) {
     let mut entry = LogEntry {
@@ -337,7 +460,6 @@ async fn run_logging_step(
         entry.vel_x = get_f32(d, "stateEstimate.vx");
         entry.vel_y = get_f32(d, "stateEstimate.vy");
         entry.vel_z = get_f32(d, "stateEstimate.vz");
-        entry.thrust = get_u32(d, "stabilizer.thrust");
     }
 
     if let Ok(p) = stream2.next().await {
@@ -345,14 +467,19 @@ async fn run_logging_step(
         entry.roll = get_f32(d, "stabilizer.roll");
         entry.pitch = get_f32(d, "stabilizer.pitch");
         entry.yaw = get_f32(d, "stabilizer.yaw");
-        entry.rate_roll = get_f32(d, "rateRoll");
-        entry.rate_pitch = get_f32(d, "ratePitch");
-        entry.rate_yaw = get_f32(d, "rateYaw");
+        entry.thrust = get_u32(d, "stabilizer.thrust");
     }
 
     if let Ok(p) = stream3.next().await {
         let d = &p.data;
+        entry.rate_roll = get_f32(d, "rateRoll");
+        entry.rate_pitch = get_f32(d, "ratePitch");
+        entry.rate_yaw = get_f32(d, "rateYaw");
         entry.vbat = get_f32(d, "pm.vbat");
+    }
+
+    if let Ok(p) = stream4.next().await {
+        let d = &p.data;
         entry.gyro_x = get_f32(d, "gyro.x");
         entry.gyro_y = get_f32(d, "gyro.y");
         entry.gyro_z = get_f32(d, "gyro.z");
