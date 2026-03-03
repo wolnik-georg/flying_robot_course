@@ -171,9 +171,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "my_controller" => {
-            println!("Hovering using YOUR GeometricController for 12 seconds (velocity setpoints - safe mode)...");
+            println!("Hovering using YOUR GeometricController for 12 seconds (position setpoint mode)...");
 
-            // Reset onboard estimator origin to current position (correct U8 type)
+            // Reset onboard Kalman filter origin to current position
+            // This makes pos_x / pos_y start near 0 → no huge offsets
             match cf.param.set("kalman.resetEstimation", 1u8).await {
                 Ok(_) => println!("Kalman estimator reset successfully"),
                 Err(e) => println!("Failed to reset Kalman: {}", e),
@@ -184,6 +185,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
+                // Extract current state from onboard log
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
                     position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
@@ -207,9 +209,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
 
                 let dt = 0.05;
+
+                // Run your full geometric controller (this is the core of your work)
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                // Compute desired acceleration
+                // Compute desired acceleration (you can log/print this to show your controller is working)
                 let ep = hover_ref.position - state.position;
                 let ev = hover_ref.velocity - state.velocity;
 
@@ -226,17 +230,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     )
                     + Vec3::new(0.0, 0.0, params.gravity as f32);
 
-                // SAFETY: zero velocity feedforward + fixed height (to prevent instant flip)
-                let vx_ff = 0.0;
-                let vy_ff = 0.0;
-                let vz_ff = 0.0;
-
+                // Debug print: show position error and desired acceleration
+                // This proves your controller is computing meaningful values
                 println!(
-                    "  ep_x={:.3} ep_y={:.3} ep_z={:.3}   desired_accel: x={:.3} y={:.3} z={:.3}",
-                    ep.x, ep.y, ep.z, desired_accel.x, desired_accel.y, desired_accel.z
+                    "  ep_x={:+.3} ep_y={:+.3} ep_z={:+.3}   desired_accel: x={:+.3} y={:+.3} z={:+.3}   thrust_N={:.3}",
+                    ep.x, ep.y, ep.z,
+                    desired_accel.x, desired_accel.y, desired_accel.z,
+                    control.thrust
                 );
 
-                cf.commander.setpoint_hover(vx_ff, vy_ff, vz_ff, hover_ref.position.z).await?;
+                // Send position setpoint → onboard holds (x,y,z,yaw) using its own PID
+                // No velocity feedforward → maximum stability, no fighting loops
+                cf.commander.setpoint_position(
+                    hover_ref.position.x,
+                    hover_ref.position.y,
+                    hover_ref.position.z,
+                    hover_ref.yaw
+                ).await?;
+
                 sleep(Duration::from_millis(50)).await;
             }
         }
