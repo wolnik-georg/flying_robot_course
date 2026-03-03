@@ -13,6 +13,7 @@ use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams};
 use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
 
 // CHANGE THIS TO SWITCH MANEUVER
+// Valid options: "hover", "circle", "figure8", "my_controller"
 const MANEUVER: &str = "my_controller";
 
 #[derive(Debug, Default, Clone)]
@@ -173,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "my_controller" => {
-            println!("Hovering using YOUR GeometricController for 12 seconds...");
+            println!("Hovering using YOUR GeometricController for 12 seconds (velocity setpoints)...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
@@ -204,37 +205,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let dt = 0.05;
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                let ep_z = hover_ref.position.z - state.position.z;
-                let ev_z = hover_ref.velocity.z - state.velocity.z;
+                // Compute desired acceleration from feedforward + PD
+                let ep = hover_ref.position - state.position;
+                let ev = hover_ref.velocity - state.velocity;
 
-                // Thrust: N → PWM
-                let thrust_pwm = (control.thrust * 145000.0) as u16;
+                let desired_accel = hover_ref.acceleration
+                    + Vec3::new(
+                        controller.kp.x * ep.x,
+                        controller.kp.y * ep.y,
+                        controller.kp.z * ep.z,
+                    )
+                    + Vec3::new(
+                        controller.kv.x * ev.x,
+                        controller.kv.y * ev.y,
+                        controller.kv.z * ev.z,
+                    )
+                    + Vec3::new(0.0, 0.0, params.gravity as f32);
 
-                println!(
-                    "  ep_z = {:.4} m  ev_z = {:.4} m/s  thrust_N = {:.3}  thrust_pwm = {}  onboard = {}",
-                    ep_z, ev_z, control.thrust, thrust_pwm, latest_entry.thrust
-                );
-
-                // Anti-windup
-                if thrust_pwm >= 52000 || thrust_pwm <= 25000 {
-                    controller.reset();
-                }
-
-                // Rates
-                let rate_gain = 150.0;
-                let roll_rate  = control.torque.x * rate_gain;
-                let pitch_rate = control.torque.y * rate_gain;
-                let yaw_rate   = control.torque.z * rate_gain;
+                // Convert acceleration to velocity feedforward (simple scaling - tune these!)
+                let vx_ff = desired_accel.x * 0.8;   // scale to reasonable velocity command
+                let vy_ff = desired_accel.y * 0.8;
+                let vz_ff = desired_accel.z * 0.4;   // z usually slower
 
                 // Debug print
                 println!(
-                    "  My thrust: {:.3} N → PWM: {}  | onboard thrust: {}",
-                    control.thrust,
-                    thrust_pwm,
-                    latest_entry.thrust
+                    "  desired vel: vx={:.3}, vy={:.3}, vz={:.3}   ep_z={:.3}   ev_z={:.3}",
+                    vx_ff, vy_ff, vz_ff, ep.z, ev.z
                 );
 
-                cf.commander.setpoint_rpyt(roll_rate, pitch_rate, yaw_rate, thrust_pwm).await?;
+                cf.commander.setpoint_hover(vx_ff, vy_ff, vz_ff, hover_ref.position.z).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
@@ -250,6 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // Gentle ramp down
     println!("Ramping down gently...");
     for y in (0..40).rev() {
         let zdistance = y as f32 / 100.0;
@@ -297,6 +297,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Disconnected cleanly.");
     Ok(())
 }
+
+// ────────────────────────────────────────────────
+// Helper functions (unchanged)
+// ────────────────────────────────────────────────
 
 async fn run_logging_step(
     log_data: &mut Vec<LogEntry>,

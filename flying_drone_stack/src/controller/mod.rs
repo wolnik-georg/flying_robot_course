@@ -83,21 +83,18 @@ impl GeometricController {
     /// Reference: controller_lee.c in bitcraze/crazyflie-firmware
     /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
-    Self {
-        // Position gains (from recent Crazyflie firmware + community tuning)
-        // xy gains lower than z (horizontal is harder to control due to flow deck noise)
-        kp: Vec3::new(3.0, 3.0, 4.0),
-        kv: Vec3::new(2.5, 2.5, 7.0),
-        // ki: Vec3::new(0.0, 0.0, 0.0),     // integral usually disabled in firmware (wind-up risk)
+        Self {
+            kp: Vec3::new(4.0, 4.0, 5.0),     // xy lower than z
+            kv: Vec3::new(3.0, 3.0, 4.0),     // velocity damping
+            // ki: Vec3::new(0.0, 0.0, 0.0),     // integral disabled
 
-        // Attitude gains (official values – do NOT double!)
-        kr: Vec3::new(0.007, 0.007, 0.008),
-        kw: Vec3::new(0.00115, 0.00115, 0.002),
-        ki: Vec3::new(0.0, 0.0, 0.0),     // no attitude integral in official firmware
+            kr: Vec3::new(0.007, 0.007, 0.008),
+            kw: Vec3::new(0.00115, 0.00115, 0.002),
+            ki: Vec3::new(0.0, 0.0, 0.0),
 
-        i_error_att: Vec3::zero(),
+            i_error_att: Vec3::zero(),
+        }
     }
-}
 
     /// Reset integral error accumulator (call when touching down or taking off)
     pub fn reset(&mut self) {

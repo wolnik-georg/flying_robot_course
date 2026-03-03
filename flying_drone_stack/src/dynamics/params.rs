@@ -40,7 +40,7 @@ impl MultirotorParams {
     /// Values from: https://www.bitcraze.io/documentation/system/platform/cf2-specifications/
     pub fn crazyflie() -> Self {
         Self {
-            mass: 0.03,           // 30 grams
+            mass: 0.027,           // 30 grams
             arm_length: 0.046,     // 46mm motor-to-motor / 2
             inertia: [
                 [1.7e-5, 0.0, 0.0],    // Jxx (roll inertia)
