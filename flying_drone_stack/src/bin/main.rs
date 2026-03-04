@@ -128,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("Stabilizing hover for 3 seconds...");
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -140,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -162,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -184,7 +184,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -214,7 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // first RPYT iteration uses fresh EKF state (z should now be ~0.3 m).
             println!("my_hover: draining log buffer (getting fresh position)...");
             for _ in 0..60 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
             }
 
             // ── Step 2: anchor hover reference to current position ───────────────
@@ -255,7 +255,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(20) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
@@ -417,7 +417,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
             let stab_start = Instant::now();
             while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stab_start).await;
                 cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -434,8 +434,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let hover_thrust_n = params.mass * params.gravity;
 
             // EKF reset detection — same logic as my_hover.
-            // In trajectory mode we cannot re-anchor XY ref (that would jump off the path),
-            // so on XY resets we only wipe the XY integral and let the controller re-converge.
             let mut prev_ekf_pos_c: Option<Vec3> = None;
             let mut prev_ekf_yaw_c: f32 = 0.0;
 
@@ -466,28 +464,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                 };
 
-                // ── Axis-aware EKF reset detector (trajectory mode) ──────────────────
+                // ── Axis-aware EKF reset detector ──────────────────────────────
+                // For circle/trajectory mode we can't re-anchor the XY reference to the
+                // drone's current position (that would teleport it off the trajectory).
+                // Instead we only reset the position integral on EKF jumps, so the
+                // controller doesn't fight a stale integral from before the jump.
+                // Z is handled identically to my_hover: re-anchor ref.z + reset Z integral.
                 let cur_pos_c = state.position;
                 let cur_yaw_c = latest_entry.yaw;
                 if let Some(prev) = prev_ekf_pos_c {
                     let step = cur_pos_c - prev;
                     let step_xy = (step.x * step.x + step.y * step.y).sqrt();
                     let step_z  = step.z.abs();
-                    let dyaw = { let d = cur_yaw_c - prev_ekf_yaw_c;
-                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0; d.abs() };
+                    let dyaw = {
+                        let d = cur_yaw_c - prev_ekf_yaw_c;
+                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
+                        d.abs()
+                    };
                     if step_xy > 0.05 {
-                        println!("EKF XY reset ({:.2}m) — resetting XY integral (trajectory continues)", step_xy);
+                        println!(
+                            "EKF XY reset (XY={:.2}m) — resetting XY integral (trajectory continues)",
+                            step_xy
+                        );
                         let i_z = controller.i_error_pos().z;
                         controller.reset_position_integral();
-                        let mut ir = controller.i_error_pos(); ir.z = i_z;
-                        controller.set_i_error_pos(ir);
+                        let mut i_restored = controller.i_error_pos();
+                        i_restored.z = i_z;
+                        controller.set_i_error_pos(i_restored);
                     }
                     if step_z > 0.05 {
-                        println!("EKF Z reset ({:.2}m) — resetting Z integral", step_z);
-                        let mut i = controller.i_error_pos(); i.z = 0.0;
+                        println!(
+                            "EKF Z reset (Z={:.2}m) — resetting Z integral",
+                            step_z
+                        );
+                        let mut i = controller.i_error_pos();
+                        i.z = 0.0;
                         controller.set_i_error_pos(i);
                     }
-                    if dyaw > 10.0 { println!("EKF yaw reset ({:.1}°)", dyaw); }
+                    if dyaw > 10.0 {
+                        println!("EKF yaw reset (Δyaw={:.1}°) — noted", dyaw);
+                        // No re-anchor needed: reference.yaw is set by the trajectory,
+                        // and the yaw_rate_d term already compensates for any offset.
+                    }
                 }
                 prev_ekf_pos_c = Some(cur_pos_c);
                 prev_ekf_yaw_c = cur_yaw_c;
@@ -545,7 +563,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
@@ -599,7 +617,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -697,6 +715,8 @@ async fn run_logging_step(
 
     if let Ok(p) = r3 {
         let d = &p.data;
+        // stabilizer.thrust is uint16 on the drone; the log TOC exposes it as u16.
+        // get_f32 falls back to 0 if the cast fails, so cast via u32 to be safe.
         entry.thrust = d.get("stabilizer.thrust")
             .and_then(|v| u32::try_from(*v).ok())
             .unwrap_or(0);

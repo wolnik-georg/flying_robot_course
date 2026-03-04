@@ -90,14 +90,25 @@ impl GeometricController {
     /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
         Self {
-            kp: Vec3::new(5.5, 6.5, 6.0),     // increased position pull (was 4.0/4.0/5.0); y highest to fight persistent +y drift
-            kv: Vec3::new(4.5, 5.5, 5.0),     // increased velocity damping (was 3.0/3.0/4.0) to suppress xy drift
-            // Start with small ki_pos; y gets slightly higher gain because logs
-            // consistently show persistent +y drift in real flights.
-            ki_pos: Vec3::new(0.08, 0.12, 0.30),
+            // Firmware defaults (controller_lee.c):
+            // Kpos_P = {7, 7, 7},  Kpos_D = {4, 4, 4},  Kpos_I = {0, 0, 0}
+            kp: Vec3::new(7.0, 7.0, 7.0),
+            kv: Vec3::new(4.0, 4.0, 4.0),
+            // Position integral — used in RPYT mode (modifies f_vec → roll_d/pitch_d/thrust).
+            // Tuned for real hardware: handles slow XY drift from CG offsets / prop imbalance,
+            // and slow Z drift from EKF Z resets (Lighthouse geometry).
+            // Keep values low — anti-windup in main.rs prevents accumulation during
+            // saturation, but smaller gains still recover faster from EKF jumps.
+            // ki_pos.z = 0.05: integrates away persistent Z bias (e.g. EKF sinking).
+            ki_pos: Vec3::new(0.05, 0.05, 0.05),
 
+            // Firmware: KR = {0.007, 0.007, 0.008}, Komega = {0.00115, 0.00115, 0.002}
             kr: Vec3::new(0.007, 0.007, 0.008),
             kw: Vec3::new(0.00115, 0.00115, 0.002),
+            // NOTE: In RPYT mode the attitude integral accumulates but is never sent to
+            // the drone (we only send roll_d/pitch_d/thrust_pwm, not torques).  Leaving
+            // ki != 0 causes unbounded windup that eventually overpowers position control.
+            // Set to zero; position drift is handled by ki_pos instead.
             ki: Vec3::new(0.0, 0.0, 0.0),
 
             i_error_pos: Vec3::zero(),
@@ -111,9 +122,25 @@ impl GeometricController {
         self.i_error_att = Vec3::zero();
     }
 
+    /// Reset only the position integral (call on EKF jumps / re-anchor).
+    /// Attitude integral is left untouched.
+    pub fn reset_position_integral(&mut self) {
+        self.i_error_pos = Vec3::zero();
+    }
+
+    /// Set the position integral to a specific value (for anti-windup rollback).
+    pub fn set_i_error_pos(&mut self, val: Vec3) {
+        self.i_error_pos = val;
+    }
+
     /// Read the current position integral accumulator (for debug logging)
     pub fn i_error_pos(&self) -> Vec3 {
         self.i_error_pos
+    }
+
+    /// Read the current attitude integral accumulator (for debug logging)
+    pub fn i_error_att(&self) -> Vec3 {
+        self.i_error_att
     }
 
     /// Compute desired rotation matrix from thrust vector and yaw
@@ -121,33 +148,30 @@ impl GeometricController {
     /// The desired rotation matrix Rd aligns the body z-axis with the thrust direction
     /// while respecting the desired yaw angle.
     fn compute_desired_rotation(&self, thrust_force: Vec3, yaw: f32) -> [[f32; 3]; 3] {
-        // Normalize thrust direction to get desired z-axis
-        let zb_d = thrust_force.normalize();
+        let norm_fd = thrust_force.norm();
 
-        // Desired x-axis in world frame (forward direction with yaw)
-        let xc = Vec3::new(yaw.cos(), yaw.sin(), 0.0);
+        // Default to identity axes; firmware keeps zdes = ẑ when normFd == 0
+        let mut ydes = Vec3::new(0.0, 1.0, 0.0);
+        let mut zdes = Vec3::new(0.0, 0.0, 1.0);
 
-        // Desired y-axis (perpendicular to both zb_d and xc)
-        // Use yb_d = zb_d × xc, which gives the left direction
-        let yb_d_unnorm = zb_d.cross(&xc);
-        
-        // Check for singularity (when thrust is nearly vertical and aligned with xc)
-        let yb_d = if yb_d_unnorm.norm() < 0.01 {
-            // Near singularity: use a fallback y-axis
-            // If zb_d is nearly vertical, use world y-axis
-            Vec3::new(-yaw.sin(), yaw.cos(), 0.0)
-        } else {
-            yb_d_unnorm.normalize()
-        };
+        if norm_fd > 0.0 {
+            zdes = thrust_force.normalize(); // firmware: zdes = vnormalize(F_d)
+        }
 
-        // Re-orthogonalize x-axis: xb_d = yb_d × zb_d
-        let xb_d = yb_d.cross(&zb_d).normalize();
+        let xcdes = Vec3::new(yaw.cos(), yaw.sin(), 0.0);
+        let zcrossx = zdes.cross(&xcdes); // firmware: zcrossx = vcross(zdes, xcdes)
+        let norm_zx = zcrossx.norm();
 
-        // Construct rotation matrix Rd = [xb_d, yb_d, zb_d]
+        if norm_zx > 0.0 {
+            ydes = zcrossx.normalize(); // firmware: ydes = vnormalize(zcrossx)
+        }
+        let xdes = ydes.cross(&zdes); // firmware: xdes = vcross(ydes, zdes)
+
+        // Construct rotation matrix Rd = [xdes | ydes | zdes] (column-major storage)
         [
-            [xb_d.x, yb_d.x, zb_d.x],
-            [xb_d.y, yb_d.y, zb_d.y],
-            [xb_d.z, yb_d.z, zb_d.z],
+            [xdes.x, ydes.x, zdes.x],
+            [xdes.y, ydes.y, zdes.y],
+            [xdes.z, ydes.z, zdes.z],
         ]
     }
 
@@ -190,15 +214,19 @@ impl Controller for GeometricController {
         let ep = reference.position - state.position;
         let ev = reference.velocity - state.velocity;
 
-        // Accumulate position integral (anti-windup: clamp each axis independently)
+        // Accumulate position integral — clamp to ±0.5 (tighter than firmware's 2.0
+        // because in RPYT mode we also have anti-windup in the outer loop)
         self.i_error_pos = self.i_error_pos + ep * dt;
+        let kpos_i_limit = 0.5_f32;
         self.i_error_pos = Vec3::new(
-            self.i_error_pos.x.clamp(-1.0, 1.0),
-            self.i_error_pos.y.clamp(-1.0, 1.0),
-            self.i_error_pos.z.clamp(-1.0, 1.0),
+            self.i_error_pos.x.clamp(-kpos_i_limit, kpos_i_limit),
+            self.i_error_pos.y.clamp(-kpos_i_limit, kpos_i_limit),
+            self.i_error_pos.z.clamp(-kpos_i_limit, kpos_i_limit),
         );
 
-        let feedforward = reference.acceleration
+        // Desired force vector (world frame) — firmware: F_d = acc_d + Kp*ep + Kv*ev + Ki*i_ep
+        // acc_d already includes gravity offset in firmware (acc_d.z += GRAVITY_MAGNITUDE)
+        let f_d = reference.acceleration
             + Vec3::new(
                 self.kp.x * ep.x,
                 self.kp.y * ep.y,
@@ -214,27 +242,38 @@ impl Controller for GeometricController {
                 self.ki_pos.y * self.i_error_pos.y,
                 self.ki_pos.z * self.i_error_pos.z,
             )
-            + Vec3::new(0.0, 0.0, params.gravity as f32); // Gravity compensation: +g in z direction
+            + Vec3::new(0.0, 0.0, params.gravity as f32);
 
-        let thrust_force = feedforward * params.mass as f32;
-        let thrust = thrust_force.norm();
+        let thrust_force = f_d * params.mass as f32;
 
-        self.i_error_att = Vec3::zero(); // disable integral until stable
-
-        // Compute desired rotation from thrust and yaw
-        let rd = self.compute_desired_rotation(thrust_force, reference.yaw);
-
-        // Convert current rotation quaternion to matrix
+        // Firmware: thrustSi = mass * dot(F_d, R * ẑ)
+        // Project desired force onto current body z-axis, not the world-frame norm.
+        // At hover (level) these are equal; during tilt they diverge — using norm would
+        // over-estimate thrust and under-command tilt correction.
+        // R is needed here so we compute it once and reuse below.
         let r = state.orientation.to_rotation_matrix();
+        let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
+        let thrust = thrust_force.dot(&body_z);
+
+        // ── Integral reset — mirrors firmware: reset when thrustSi < 0.01 N ──
+        if thrust < 0.01 {
+            self.i_error_pos = Vec3::zero();
+            self.i_error_att = Vec3::zero();
+        }
+
+        // Compute desired rotation from thrust force direction and desired yaw
+        let rd = self.compute_desired_rotation(thrust_force, reference.yaw);
 
         // Compute rotation error
         let er = Self::compute_rotation_error(&rd, &r);
 
-        // Accumulate integral error (reset when thrust is low, i.e., on ground)
-        if thrust > 0.01 {
+        // Accumulate attitude integral — mirrors firmware: vadd(i_error_att, vscl(dt, eR))
+        // No per-axis clamp in firmware; reset on low thrust handles windup instead.
+        // Skip accumulation when ki is zero — avoids pre-winding state that would
+        // cause an instant spike if ki is ever turned on, and keeps the logged
+        // i_att values meaningful (stays at zero when not contributing).
+        if self.ki.x != 0.0 || self.ki.y != 0.0 || self.ki.z != 0.0 {
             self.i_error_att = self.i_error_att + er * dt;
-        } else {
-            self.i_error_att = Vec3::zero();
         }
 
         // Compute desired angular velocity using jerk feedforward (from Crazyflie Lee controller)
@@ -243,7 +282,7 @@ impl Controller for GeometricController {
         let zdes = Vec3::new(rd[0][2], rd[1][2], rd[2][2]);
         
         let mut hw = Vec3::zero();
-        if thrust > 0.05 {  // higher threshold to avoid inf
+        if thrust != 0.0 {  // firmware: `if (control->thrustSi != 0)`
             // Project jerk onto plane perpendicular to thrust direction
             let jerk_component_along_thrust = zdes.dot(&reference.jerk);
             let jerk_perpendicular = reference.jerk - zdes * jerk_component_along_thrust;
