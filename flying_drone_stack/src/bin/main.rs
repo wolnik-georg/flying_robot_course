@@ -14,8 +14,14 @@ use multirotor_simulator::controller::{GeometricController, TrajectoryReference,
 use multirotor_simulator::trajectory::{CircleTrajectory, SmoothFigure8Trajectory, Trajectory};
 
 // CHANGE THIS TO SWITCH MANEUVER
-// Valid options: "hover", "circle", "figure8", "my_controller"
+// Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
 const MANEUVER: &str = "my_circle";
+
+/// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
+/// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
+/// hover, take the average and set it here before flying my_circle.
+/// Typical CF2.1 range: 35000–45000. Start low and increase if drone won't climb.
+const HOVER_PWM: f32 = 38000.0;
 
 #[derive(Debug, Default, Clone)]
 struct LogEntry {
@@ -108,6 +114,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Logging started (20 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
 
+    // Reset Kalman filter BEFORE takeoff so position estimates start near zero.
+    // Doing this mid-flight zeros z-estimate and causes the drone to re-land.
+    match cf.param.set("kalman.resetEstimation", 1u8).await {
+        Ok(_) => println!("Kalman estimator reset (pre-takeoff)"),
+        Err(e) => println!("Failed to reset Kalman: {}", e),
+    }
+    sleep(Duration::from_millis(500)).await;
+
     println!("Ramping up...");
     for y in 0..15 {
         let zdistance = y as f32 / 50.0;
@@ -179,21 +193,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "my_hover" => {
-            println!("Hovering using YOUR GeometricController for 12 seconds (position setpoint mode)...");
+            // Level 1 geometric control via setpoint_rpyt:
+            //   position + velocity error → desired force vector → roll/pitch angles + thrust PWM
+            //   firmware handles only: attitude rate PIDs, motor mixing, battery compensation.
+            //
+            // USE THIS MODE TO CALIBRATE HOVER_PWM:
+            //   watch "thr_pwm" in the output during steady hover, average it, set HOVER_PWM above.
+            println!("Hovering with GeometricController → setpoint_rpyt (Level 1 closed loop)");
+            println!("HOVER_PWM={:.0} — if drone climbs/sinks slowly, adjust by ±2000 and re-run.", HOVER_PWM);
 
-            // Reset onboard Kalman filter origin to current position
-            // This makes pos_x / pos_y start near 0 → no huge offsets
-            match cf.param.set("kalman.resetEstimation", 1u8).await {
-                Ok(_) => println!("Kalman estimator reset successfully"),
-                Err(e) => println!("Failed to reset Kalman: {}", e),
-            }
-            sleep(Duration::from_millis(500)).await;
+            let hover_thrust_n = params.mass * params.gravity; // 0.265 N for CF2.1
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
 
-                // Extract current state from onboard log
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
                     position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
@@ -202,85 +216,86 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
                         let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
                         let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
-
                         let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
                         let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
                         let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
-
                         (q_yaw * q_pitch * q_roll).normalize()
                     },
                     angular_velocity: Vec3::new(
-                        latest_entry.rate_roll   * std::f32::consts::PI / 180.0,
-                        latest_entry.rate_pitch  * std::f32::consts::PI / 180.0,
-                        latest_entry.rate_yaw    * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_x * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_y * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_z * std::f32::consts::PI / 180.0,
                     ),
                 };
 
                 let dt = 0.05;
-
-                // Run your full geometric controller (this is the core of your work)
                 let control = controller.compute_control(&state, &hover_ref, &params, dt);
 
-                // Compute desired acceleration (you can log/print this to show your controller is working)
                 let ep = hover_ref.position - state.position;
                 let ev = hover_ref.velocity - state.velocity;
 
+                // Desired force vector in world frame: F = m * (a_ff + kp*ep + kv*ev + g*ez)
+                // This is the same thrust_force computed inside compute_control — we reproduce
+                // it here so we have the direction, not just the magnitude (control.thrust).
                 let desired_accel = hover_ref.acceleration
-                    + Vec3::new(
-                        controller.kp.x * ep.x,
-                        controller.kp.y * ep.y,
-                        controller.kp.z * ep.z,
-                    )
-                    + Vec3::new(
-                        controller.kv.x * ev.x,
-                        controller.kv.y * ev.y,
-                        controller.kv.z * ev.z,
-                    )
-                    + Vec3::new(0.0, 0.0, params.gravity as f32);
+                    + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
+                    + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
+                    + Vec3::new(0.0, 0.0, params.gravity);
+                let f_vec = desired_accel * params.mass;
 
-                // Debug print: show position error and desired acceleration
-                // This proves your controller is computing meaningful values
+                // Extract roll/pitch from force direction.
+                // pitch_d = atan2(fx, fz): positive fx (forward force) → positive pitch (nose up in CF)
+                // roll_d  = atan2(-fy, fz): positive fy (left force)   → negative roll (bank left)
+                let pitch_d    = f_vec.x.atan2(f_vec.z).to_degrees().clamp(-15.0, 15.0);
+                let roll_d     = (-f_vec.y).atan2(f_vec.z).to_degrees().clamp(-15.0, 15.0);
+
+                // Yaw: simple P controller — drives yaw error to zero at up to 30 °/s
+                let yaw_rate_d = (hover_ref.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 2.0;
+
+                // Thrust: scale control.thrust (N) proportionally to HOVER_PWM
+                let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
+                    .clamp(10_000.0, 60_000.0) as u16;
+
                 println!(
-                    "  ep_x={:+.3} ep_y={:+.3} ep_z={:+.3}   desired_accel: x={:+.3} y={:+.3} z={:+.3}   thrust_N={:.3}",
-                    ep.x, ep.y, ep.z,
-                    desired_accel.x, desired_accel.y, desired_accel.z,
-                    control.thrust
+                    "  ep=({:+.3},{:+.3},{:+.3})  r={:+.1}°  p={:+.1}°  thr_pwm={}  ctrl_N={:.3}",
+                    ep.x, ep.y, ep.z, roll_d, pitch_d, thrust_pwm, control.thrust
                 );
 
-                // Send position setpoint → onboard holds (x,y,z,yaw) using its own PID
-                // No velocity feedforward → maximum stability, no fighting loops
-                cf.commander.setpoint_position(
-                    hover_ref.position.x,
-                    hover_ref.position.y,
-                    hover_ref.position.z,
-                    hover_ref.yaw
-                ).await?;
-
+                cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
 
         "my_circle" => {
-            println!("Circle trajectory using GeometricController + tuned velocity feedforward...");
+            println!("Circle trajectory using GeometricController (position setpoint mode)...");
 
-            // Reset Kalman
-            match cf.param.set("kalman.resetEstimation", 1u8).await {
-                Ok(_) => println!("Kalman estimator reset successfully"),
-                Err(e) => println!("Failed to reset Kalman: {}", e),
-            }
-            sleep(Duration::from_millis(500)).await;
-
-            // Tuned circle parameters — start small/slow
             let radius = 0.3;
             let height = 0.3;
-            let omega = 0.4;  // ~15 s per lap — very gentle
+            let omega  = 0.15; // ~42 s per lap, max speed 0.045 m/s — gentle for first flight
 
-            let circle = CircleTrajectory::new(radius, height, omega);
+            // Hold at origin for 8 s to let the Kalman EKF fully converge.
+            // Then read the converged position and offset the circle center so
+            // t=0 starts exactly where the drone is (no step error at launch).
+            println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
+            let stab_start = Instant::now();
+            while stab_start.elapsed() < Duration::from_secs(8) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stab_start).await;
+                cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+
+            // Read converged position as the circle start point.
+            let base = log_data.last().cloned().unwrap_or_default();
+            println!("EKF converged at ({:.3}, {:.3}) — using as circle start.", base.pos_x, base.pos_y);
+
+            // Center at (base.pos_x - radius, base.pos_y) so t=0 is at (base.pos_x, base.pos_y).
+            let circle = CircleTrajectory::with_center(radius, height, omega, (base.pos_x - radius, base.pos_y));
+
+            // Level 1 geometric control: geometric controller drives the drone via setpoint_rpyt.
+            // The firmware only handles attitude rate PIDs + motor mixing + battery compensation.
+            let hover_thrust_n = params.mass * params.gravity;
 
             let start = Instant::now();
-            let ff_scalar_xy = 0.04;   // low to avoid large velocity commands
-            let ff_scalar_z  = 0.02;
-
             while start.elapsed() < Duration::from_secs(60) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start).await;
 
@@ -295,17 +310,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
                         let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
                         let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
-
                         let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
                         let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
                         let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
-
                         (q_yaw * q_pitch * q_roll).normalize()
                     },
                     angular_velocity: Vec3::new(
-                        latest_entry.rate_roll   * std::f32::consts::PI / 180.0,
-                        latest_entry.rate_pitch  * std::f32::consts::PI / 180.0,
-                        latest_entry.rate_yaw    * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_x * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_y * std::f32::consts::PI / 180.0,
+                        latest_entry.gyro_z * std::f32::consts::PI / 180.0,
                     ),
                 };
 
@@ -315,27 +328,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let ep = reference.position - state.position;
                 let ev = reference.velocity - state.velocity;
 
+                // Desired force vector in world frame: F = m*(a_ff + kp*ep + kv*ev + g*ez)
+                // Reproduces the internal thrust_force from compute_control so we have
+                // direction (for roll/pitch) in addition to magnitude (control.thrust).
                 let desired_accel = reference.acceleration
                     + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
                     + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
-                    + Vec3::new(0.0, 0.0, params.gravity as f32);
+                    + Vec3::new(0.0, 0.0, params.gravity);
+                let f_vec = desired_accel * params.mass;
 
-                let vx_ff = desired_accel.x * ff_scalar_xy;
-                let vy_ff = desired_accel.y * ff_scalar_xy;
-                let vz_ff = desired_accel.z * ff_scalar_z;
+                // Level 1: roll/pitch from force direction, thrust magnitude → PWM.
+                let pitch_d    = f_vec.x.atan2(f_vec.z).to_degrees().clamp(-20.0, 20.0);
+                let roll_d     = (-f_vec.y).atan2(f_vec.z).to_degrees().clamp(-20.0, 20.0);
+                let yaw_rate_d = (reference.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 2.0;
+                let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
+                    .clamp(10_000.0, 60_000.0) as u16;
 
                 println!(
-                    "t={:.1}s  ref_x={:+.2} ref_y={:+.2} ref_z={:+.2}  ep_x={:+.3} ep_y={:+.3} ep_z={:+.3}  vx_ff={:+.3} vy_ff={:+.3} vz_ff={:+.3}",
+                    "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  r={:+.1}° p={:+.1}° thr={}",
                     t,
-                    reference.position.x,
-                    reference.position.y,
-                    reference.position.z,
-                    ep.x, ep.y, ep.z,
-                    vx_ff, vy_ff, vz_ff
+                    reference.position.x, reference.position.y,
+                    state.position.x, state.position.y,
+                    ep.x, ep.y,
+                    roll_d, pitch_d, thrust_pwm,
                 );
 
-                cf.commander.setpoint_hover(vx_ff, vy_ff, vz_ff, reference.position.z).await?;
-
+                cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
@@ -343,14 +361,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     "my_figure8" => {
         println!("Figure-8 trajectory using GeometricController (position setpoint mode)...");
 
-        // Reset Kalman
-        if let Err(e) = cf.param.set("kalman.resetEstimation", 1u8).await {
-            println!("Failed to reset Kalman: {}", e);
-        }
-        sleep(Duration::from_millis(500)).await;
-
-        // Use one of your figure-8 variants (pick one)
-        let figure8 = SmoothFigure8Trajectory::new();  // or Figure8Trajectory::new()
+        let figure8 = SmoothFigure8Trajectory::new();
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
@@ -359,14 +370,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
 
-    
-    
+            let latest_entry = log_data.last().cloned().unwrap_or_default();
+            let state = MultirotorState {
+                position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
+                velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
+                orientation: {
+                    let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
+                    let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
+                    let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
+                    let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
+                    let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
+                    let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
+                    (q_yaw * q_pitch * q_roll).normalize()
+                },
+                angular_velocity: Vec3::new(
+                    latest_entry.gyro_x * std::f32::consts::PI / 180.0,
+                    latest_entry.gyro_y * std::f32::consts::PI / 180.0,
+                    latest_entry.gyro_z * std::f32::consts::PI / 180.0,
+                ),
+            };
+
+            let dt = 0.05;
+            let control = controller.compute_control(&state, &reference, &params, dt);
+
+            let ep = reference.position - state.position;
+
+            println!(
+                "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  thrust_N={:.3}",
+                t,
+                reference.position.x, reference.position.y,
+                state.position.x, state.position.y,
+                ep.x, ep.y,
+                control.thrust,
+            );
 
             cf.commander.setpoint_position(
                 reference.position.x,
                 reference.position.y,
                 reference.position.z,
-                reference.yaw
+                reference.yaw,
             ).await?;
 
             sleep(Duration::from_millis(50)).await;
@@ -467,7 +509,7 @@ async fn run_logging_step(
         entry.roll = get_f32(d, "stabilizer.roll");
         entry.pitch = get_f32(d, "stabilizer.pitch");
         entry.yaw = get_f32(d, "stabilizer.yaw");
-        entry.thrust = get_u32(d, "stabilizer.thrust");
+        entry.thrust = get_f32(d, "stabilizer.thrust") as u32;
     }
 
     if let Ok(p) = stream3.next().await {
@@ -511,6 +553,3 @@ fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
     map.get(key).and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0)
 }
 
-fn get_u32(map: &HashMap<String, Value>, key: &str) -> u32 {
-    map.get(key).and_then(|v| u32::try_from(*v).ok()).unwrap_or(0)
-}
