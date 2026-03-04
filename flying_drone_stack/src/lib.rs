@@ -15,6 +15,7 @@ pub mod controller;
 pub mod trajectory;
 pub mod estimation;
 pub mod planning;
+pub mod flight;
 
 /// Prelude for convenient imports
 pub mod prelude {

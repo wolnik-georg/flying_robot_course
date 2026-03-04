@@ -8,10 +8,19 @@ use std::collections::HashMap;
 use tokio::time::sleep;
 use chrono::Utc;
 
-use multirotor_simulator::math::{Vec3, Quat};
-use multirotor_simulator::dynamics::{MultirotorState, MultirotorParams};
+use multirotor_simulator::math::Vec3;
+use multirotor_simulator::dynamics::MultirotorParams;
 use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
 use multirotor_simulator::trajectory::{CircleTrajectory, SmoothFigure8Trajectory, Trajectory};
+use multirotor_simulator::flight::{
+    build_state,
+    compute_force_vector,
+    force_vector_to_rpyt,
+    thrust_to_pwm,
+    yaw_rate_cmd,
+    detect_ekf_reset,
+    deg_to_rad,
+};
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
@@ -240,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Anchor yaw to the drone's current heading so there is no yaw-rate
                 // kick at RPYT hand-off.  The yaw field is in radians everywhere in
                 // the controller; latest_entry.yaw from the EKF is in degrees.
-                yaw: anchor.yaw * std::f32::consts::PI / 180.0,
+                yaw: deg_to_rad(anchor.yaw),
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
             };
@@ -268,24 +277,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
-                let state = MultirotorState {
-                    position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
-                    velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
-                    orientation: {
-                        let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
-                        let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
-                        let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
-                        let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
-                        let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
-                        let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
-                        (q_yaw * q_pitch * q_roll).normalize()
-                    },
-                    angular_velocity: Vec3::new(
-                        latest_entry.gyro_x * std::f32::consts::PI / 180.0,
-                        latest_entry.gyro_y * std::f32::consts::PI / 180.0,
-                        latest_entry.gyro_z * std::f32::consts::PI / 180.0,
-                    ),
-                };
+                let state = build_state(
+                    latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                    latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
+                    latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
+                    latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
+                );
 
                 // Safety: stop on flip
                 if latest_entry.roll.abs() > 90.0 {
@@ -310,60 +307,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // so the yaw rate command doesn't blast at ±30 deg/s afterward.
                 let cur_pos = state.position;
                 let cur_yaw = latest_entry.yaw; // degrees
-                if let Some(prev) = prev_ekf_pos {
-                    let step = cur_pos - prev;
-                    let step_xy = (step.x * step.x + step.y * step.y).sqrt();
-                    let step_z  = step.z.abs();
-                    // Yaw jump detection — unwrap to shortest-path difference
-                    let dyaw = {
-                        let d = cur_yaw - prev_ekf_yaw;
-                        // Wrap to (-180, 180]
-                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
-                        d.abs()
+                let reset = detect_ekf_reset(
+                    prev_ekf_pos, cur_pos,
+                    prev_ekf_yaw, cur_yaw,
+                    0.05, 0.05, 10.0,
+                );
+                if reset.xy {
+                    let step_xy = {
+                        let s = cur_pos - prev_ekf_pos.unwrap_or(cur_pos);
+                        (s.x * s.x + s.y * s.y).sqrt()
                     };
-                    let xy_reset  = step_xy > 0.05;
-                    let z_reset   = step_z  > 0.05;
-                    let yaw_reset = dyaw > 10.0; // > 1000 deg/s is impossible
-                    if xy_reset || z_reset || yaw_reset {
-                        // Re-anchor X/Y only when the XY estimate jumped.
-                        if xy_reset {
-                            println!(
-                                "EKF XY reset detected (XY={:.2}m) — re-anchoring XY+Z + resetting position integral",
-                                step_xy
-                            );
-                            hover_ref_rpyt.position.x = state.position.x;
-                            hover_ref_rpyt.position.y = state.position.y;
-                            // Also re-anchor Z: a Lighthouse XY reset means the full
-                            // position estimate just re-initialised.  Before this event
-                            // EKF z was unreliable (drone on floor → Lighthouse comes
-                            // online → position teleports).  Now z is trustworthy, so
-                            // update the Z reference to the actual drone height and wipe
-                            // the Z integral to avoid fighting a stale correction.
-                            hover_ref_rpyt.position.z = state.position.z;
-                            controller.reset_position_integral();
-                        }
-                        // Re-anchor Z only when the Z estimate jumped.
-                        if z_reset {
-                            println!(
-                                "EKF Z reset detected (Z={:.2}m) — re-anchoring Z + resetting Z integral",
-                                step_z
-                            );
-                            hover_ref_rpyt.position.z = state.position.z;
-                            let mut i = controller.i_error_pos();
-                            i.z = 0.0;
-                            controller.set_i_error_pos(i);
-                        }
-                        // Re-anchor yaw so there is no yaw-rate kick after the reset.
-                        if yaw_reset {
-                            println!(
-                                "EKF yaw reset detected (Δyaw={:.1}°) — re-anchoring yaw",
-                                dyaw
-                            );
-                            hover_ref_rpyt.yaw = cur_yaw * std::f32::consts::PI / 180.0;
-                        }
-                        ep = hover_ref_rpyt.position - state.position;
-                        ev = hover_ref_rpyt.velocity - state.velocity;
-                    }
+                    println!(
+                        "EKF XY reset detected (XY={:.2}m) — re-anchoring XY+Z + resetting position integral",
+                        step_xy
+                    );
+                    hover_ref_rpyt.position.x = state.position.x;
+                    hover_ref_rpyt.position.y = state.position.y;
+                    hover_ref_rpyt.position.z = state.position.z;
+                    controller.reset_position_integral();
+                }
+                if reset.z {
+                    let step_z = (cur_pos - prev_ekf_pos.unwrap_or(cur_pos)).z.abs();
+                    println!(
+                        "EKF Z reset detected (Z={:.2}m) — re-anchoring Z + resetting Z integral",
+                        step_z
+                    );
+                    hover_ref_rpyt.position.z = state.position.z;
+                    let mut i = controller.i_error_pos();
+                    i.z = 0.0;
+                    controller.set_i_error_pos(i);
+                }
+                if reset.yaw {
+                    println!(
+                        "EKF yaw reset detected (Δyaw={:.1}°) — re-anchoring yaw",
+                        reset.step_yaw_deg
+                    );
+                    hover_ref_rpyt.yaw = deg_to_rad(cur_yaw);
+                }
+                if reset.any() {
+                    ep = hover_ref_rpyt.position - state.position;
+                    ev = hover_ref_rpyt.velocity - state.velocity;
                 }
                 prev_ekf_pos = Some(cur_pos);
                 prev_ekf_yaw = cur_yaw;
@@ -373,45 +356,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let control = controller.compute_control(&state, &hover_ref_rpyt, &params, 0.01);
                 let i_pos = controller.i_error_pos();
-                let i_att = controller.i_error_att();
+                let _i_att = controller.i_error_att();
 
-                let desired_accel = hover_ref_rpyt.acceleration
-                    + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
-                    + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
-                    + Vec3::new(controller.ki_pos.x * i_pos.x, controller.ki_pos.y * i_pos.y, controller.ki_pos.z * i_pos.z)
-                    + Vec3::new(0.0, 0.0, params.gravity);
-                let f_vec = desired_accel * params.mass;
-
-                let pitch_d_raw = f_vec.x.atan2(f_vec.z).to_degrees();
-                let roll_d_raw  = (-f_vec.y).atan2(f_vec.z).to_degrees();
-                let pitch_d     = pitch_d_raw.clamp(-25.0, 25.0);
-                let roll_d      = roll_d_raw.clamp(-25.0, 25.0);
+                let f_vec = compute_force_vector(
+                    &hover_ref_rpyt, ep, ev, i_pos, &controller, &params,
+                );
+                let (roll_d_cmd, pitch_d_cmd, roll_d_raw, pitch_d_raw) =
+                    force_vector_to_rpyt(f_vec, 25.0);
 
                 // Anti-windup: if roll or pitch saturated, revert position integral
                 // to its pre-step value so it doesn't accumulate during saturation.
-                if roll_d_raw.abs() > 25.0 || pitch_d_raw.abs() > 25.0 {
+                if multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_d_raw, pitch_d_raw, 25.0) {
                     controller.set_i_error_pos(i_pos_prev);
                 }
 
-                let yaw_rate_d = (hover_ref_rpyt.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 1.0;
-                let thrust_pwm_raw = control.thrust / hover_thrust_n * HOVER_PWM;
-                let thrust_pwm = thrust_pwm_raw.clamp(10_000.0, 60_000.0) as u16;
+                let yaw_rate_d = yaw_rate_cmd(hover_ref_rpyt.yaw, latest_entry.yaw, 1.0, 30.0);
+                let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
+                    control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
+                );
 
                 // Anti-windup: also revert Z integral if thrust is saturated.
                 if thrust_pwm_raw > 60_000.0 || thrust_pwm_raw < 10_000.0 {
                     controller.set_i_error_pos(i_pos_prev);
                 }
+
                 println!(
-                    "  ep=({:+.3},{:+.3},{:+.3})  i_pos=({:+.3},{:+.3},{:+.3})  i_att=({:+.4},{:+.4})  r={:+.1}°  p={:+.1}°  yaw={:+.1}°→{:+.1}°/s  thr_pwm={}",
+                    "  ep=({:+.3},{:+.3},{:+.3})  i_pos=({:+.3},{:+.3},{:+.3})  r={:+.1}°  p_cmd={:+.1}°  yaw={:+.1}°→{:+.1}°/s  thr_pwm={}",
                     ep.x, ep.y, ep.z,
                     i_pos.x, i_pos.y, i_pos.z,
-                    i_att.x, i_att.y,
-                    roll_d, pitch_d,
+                    roll_d_cmd, pitch_d_cmd,
                     latest_entry.yaw, yaw_rate_d,
                     thrust_pwm,
                 );
 
-                cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;
+                cf.commander.setpoint_rpyt(roll_d_cmd, pitch_d_cmd, yaw_rate_d, thrust_pwm).await?;
             }
         }
 
@@ -456,24 +434,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let reference = circle.get_reference(t);
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
-                let state = MultirotorState {
-                    position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
-                    velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
-                    orientation: {
-                        let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
-                        let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
-                        let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
-                        let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
-                        let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
-                        let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
-                        (q_yaw * q_pitch * q_roll).normalize()
-                    },
-                    angular_velocity: Vec3::new(
-                        latest_entry.gyro_x * std::f32::consts::PI / 180.0,
-                        latest_entry.gyro_y * std::f32::consts::PI / 180.0,
-                        latest_entry.gyro_z * std::f32::consts::PI / 180.0,
-                    ),
-                };
+                let state = build_state(
+                    latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                    latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
+                    latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
+                    latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
+                );
 
                 // ── Axis-aware EKF reset detector ──────────────────────────────
                 // For circle/trajectory mode we can't re-anchor the XY reference to the
@@ -483,40 +449,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Z is handled identically to my_hover: re-anchor ref.z + reset Z integral.
                 let cur_pos_c = state.position;
                 let cur_yaw_c = latest_entry.yaw;
-                if let Some(prev) = prev_ekf_pos_c {
-                    let step = cur_pos_c - prev;
-                    let step_xy = (step.x * step.x + step.y * step.y).sqrt();
-                    let step_z  = step.z.abs();
-                    let dyaw = {
-                        let d = cur_yaw_c - prev_ekf_yaw_c;
-                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
-                        d.abs()
+                let reset_c = detect_ekf_reset(
+                    prev_ekf_pos_c, cur_pos_c,
+                    prev_ekf_yaw_c, cur_yaw_c,
+                    0.05, 0.05, 10.0,
+                );
+                if reset_c.xy {
+                    let step_xy = {
+                        let s = cur_pos_c - prev_ekf_pos_c.unwrap_or(cur_pos_c);
+                        (s.x * s.x + s.y * s.y).sqrt()
                     };
-                    if step_xy > 0.05 {
-                        println!(
-                            "EKF XY reset (XY={:.2}m) — resetting XY integral (trajectory continues)",
-                            step_xy
-                        );
-                        let i_z = controller.i_error_pos().z;
-                        controller.reset_position_integral();
-                        let mut i_restored = controller.i_error_pos();
-                        i_restored.z = i_z;
-                        controller.set_i_error_pos(i_restored);
-                    }
-                    if step_z > 0.05 {
-                        println!(
-                            "EKF Z reset (Z={:.2}m) — resetting Z integral",
-                            step_z
-                        );
-                        let mut i = controller.i_error_pos();
-                        i.z = 0.0;
-                        controller.set_i_error_pos(i);
-                    }
-                    if dyaw > 10.0 {
-                        println!("EKF yaw reset (Δyaw={:.1}°) — noted", dyaw);
-                        // No re-anchor needed: reference.yaw is set by the trajectory,
-                        // and the yaw_rate_d term already compensates for any offset.
-                    }
+                    println!(
+                        "EKF XY reset (XY={:.2}m) — resetting XY integral (trajectory continues)",
+                        step_xy
+                    );
+                    let i_z = controller.i_error_pos().z;
+                    controller.reset_position_integral();
+                    let mut i_restored = controller.i_error_pos();
+                    i_restored.z = i_z;
+                    controller.set_i_error_pos(i_restored);
+                }
+                if reset_c.z {
+                    let step_z = (cur_pos_c - prev_ekf_pos_c.unwrap_or(cur_pos_c)).z.abs();
+                    println!(
+                        "EKF Z reset (Z={:.2}m) — resetting Z integral",
+                        step_z
+                    );
+                    let mut i = controller.i_error_pos();
+                    i.z = 0.0;
+                    controller.set_i_error_pos(i);
+                }
+                if reset_c.yaw {
+                    println!("EKF yaw reset (Δyaw={:.1}°) — noted", reset_c.step_yaw_deg);
+                    // No re-anchor needed: reference.yaw is set by the trajectory,
+                    // and the yaw_rate_d term already compensates for any offset.
                 }
                 prev_ekf_pos_c = Some(cur_pos_c);
                 prev_ekf_yaw_c = cur_yaw_c;
@@ -527,42 +493,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let ep = reference.position - state.position;
                 let ev = reference.velocity - state.velocity;
-
-                // Desired force vector in world frame: F = m*(a_ff + kp*ep + kv*ev + ki_pos*i_pos + g*ez)
-                // Reproduces the internal thrust_force from compute_control so we have
-                // direction (for roll/pitch) in addition to magnitude (control.thrust).
                 let i_pos = controller.i_error_pos();
-                let desired_accel = reference.acceleration
-                    + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
-                    + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
-                    + Vec3::new(controller.ki_pos.x * i_pos.x, controller.ki_pos.y * i_pos.y, controller.ki_pos.z * i_pos.z)
-                    + Vec3::new(0.0, 0.0, params.gravity);
-                let f_vec = desired_accel * params.mass;
 
-                // Level 1: roll/pitch from force direction, thrust magnitude → PWM.
-                let pitch_d_raw = f_vec.x.atan2(f_vec.z).to_degrees();
-                let roll_d_raw  = (-f_vec.y).atan2(f_vec.z).to_degrees();
-                let pitch_d     = pitch_d_raw.clamp(-20.0, 20.0);
-                let roll_d      = roll_d_raw.clamp(-20.0, 20.0);
+                let f_vec = compute_force_vector(
+                    &reference, ep, ev, i_pos, &controller, &params,
+                );
+                let (roll_d_cmd, pitch_d_cmd, roll_d_raw, pitch_d_raw) =
+                    force_vector_to_rpyt(f_vec, 20.0);
 
                 // Anti-windup: if roll or pitch saturated, revert position integral
-                if roll_d_raw.abs() > 20.0 || pitch_d_raw.abs() > 20.0 {
+                if multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_d_raw, pitch_d_raw, 20.0) {
                     controller.set_i_error_pos(i_pos_prev);
                 }
-                let yaw_rate_d = (reference.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 2.0;
-                let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
-                    .clamp(10_000.0, 60_000.0) as u16;
+                let yaw_rate_d = yaw_rate_cmd(reference.yaw, latest_entry.yaw, 2.0, 30.0);
+                let (thrust_pwm, _) = thrust_to_pwm(
+                    control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
+                );
 
                 println!(
-                    "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  r={:+.1}° p={:+.1}° thr={}",
+                    "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  r={:+.1}° p_cmd={:+.1}° thr={}",
                     t,
                     reference.position.x, reference.position.y,
                     state.position.x, state.position.y,
                     ep.x, ep.y,
-                    roll_d, pitch_d, thrust_pwm,
+                    roll_d_cmd, pitch_d_cmd, thrust_pwm,
                 );
 
-                cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;
+                cf.commander.setpoint_rpyt(roll_d_cmd, pitch_d_cmd, yaw_rate_d, thrust_pwm).await?;
                 // No sleep — tokio::join! on both streams drives the loop at 100 Hz.
             }
         }
@@ -580,24 +537,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let reference = figure8.get_reference(t);
 
             let latest_entry = log_data.last().cloned().unwrap_or_default();
-            let state = MultirotorState {
-                position: Vec3::new(latest_entry.pos_x, latest_entry.pos_y, latest_entry.pos_z),
-                velocity: Vec3::new(latest_entry.vel_x, latest_entry.vel_y, latest_entry.vel_z),
-                orientation: {
-                    let roll_rad  = latest_entry.roll  * std::f32::consts::PI / 180.0;
-                    let pitch_rad = latest_entry.pitch * std::f32::consts::PI / 180.0;
-                    let yaw_rad   = latest_entry.yaw   * std::f32::consts::PI / 180.0;
-                    let q_yaw   = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), yaw_rad);
-                    let q_pitch = Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), pitch_rad);
-                    let q_roll  = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_rad);
-                    (q_yaw * q_pitch * q_roll).normalize()
-                },
-                angular_velocity: Vec3::new(
-                    latest_entry.gyro_x * std::f32::consts::PI / 180.0,
-                    latest_entry.gyro_y * std::f32::consts::PI / 180.0,
-                    latest_entry.gyro_z * std::f32::consts::PI / 180.0,
-                ),
-            };
+            let state = build_state(
+                latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
+                latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
+                latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
+            );
 
             let dt = 0.05;
             let control = controller.compute_control(&state, &reference, &params, dt);

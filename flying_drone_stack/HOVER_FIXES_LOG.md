@@ -72,6 +72,45 @@ position integral (all axes). Rationale: a Lighthouse-triggered XY reset means t
 
 ---
 
+### ✅ F5 — RPYT pitch sign inverted (Crazyflie legacy coordinate convention)
+**Root cause — most likely reason for sustained instability on real hardware.**
+
+The Crazyflie `setpoint_rpyt` commander uses a **legacy coordinate system** in which
+the pitch setpoint is **negated internally** before being converted to a quaternion:
+```c
+// firmware controller_lee.c (RPYT branch):
+struct quat q = rpy2quat(mkvec(
+    radians(setpoint->attitude.roll),
+    -radians(setpoint->attitude.pitch),  // ← pitch is NEGATED
+    desiredYaw));
+```
+
+Old code sent `pitch_d_raw` directly. This meant:
+- Drone is at x=0, target is at x=0.2 → ep.x = +0.2
+- Controller computes: `pitch_d_raw = atan2(F_x, F_z) > 0` (positive force in +X)
+- Code sends: `setpoint_rpyt(roll, +pitch_d_raw, ...)`
+- Firmware interprets: `actual_pitch = -pitch_d_raw < 0` = nose-**UP**
+- Result: drone pitches AWAY from target → **positive feedback → diverging oscillation**
+
+**Fix:** Negate pitch before sending:
+```rust
+let pitch_d_cmd = (-pitch_d_raw).clamp(-25.0, 25.0);  // ← negate for legacy convention
+cf.commander.setpoint_rpyt(roll_d_cmd, pitch_d_cmd, yaw_rate_d, thrust_pwm).await?;
+```
+
+Applied to both `my_hover` and `my_circle`.
+
+**Test added:** `test_rpyt_pitch_sign_convention` and `test_rpyt_roll_sign_convention`
+in `tests/test_hover_control_loop.rs`. These tests will immediately catch any future
+accidental reversion of the sign.
+
+**Note on roll:** Roll does NOT have the same inversion — only pitch is negated in the
+firmware's RPYT path. The roll sign is correct as-is.
+
+**Status:** ✅ Fixed (this session, 2026-03-04).
+
+---
+
 ## Current expected flow (post all fixes)
 
 ```

@@ -37,15 +37,18 @@ pub struct MultirotorParams {
 impl MultirotorParams {
     /// Create parameters for Bitcraze Crazyflie 2.1
     /// Reference platform for course - 27g nano quadcopter
-    /// Values from: https://www.bitcraze.io/documentation/system/platform/cf2-specifications/
+    /// Values from firmware: https://github.com/bitcraze/crazyflie-firmware/blob/master/src/modules/src/controller/controller_lee.c
+    /// and: System Identification of the Crazyflie 2.0 Nano Quadrocopter
+    ///      BA theses, Julian Foerster, ETHZ
     pub fn crazyflie() -> Self {
         Self {
-            mass: 0.027,           // 30 grams
+            mass: 0.027,           // 27 grams (firmware: CF_MASS = 0.027 kg)
             arm_length: 0.046,     // 46mm motor-to-motor / 2
             inertia: [
-                [1.7e-5, 0.0, 0.0],    // Jxx (roll inertia)
-                [0.0, 1.7e-5, 0.0],    // Jyy (pitch inertia)
-                [0.0, 0.0, 2.9e-5],    // Jzz (yaw inertia)
+                // Firmware controller_lee.c: .J = {16.571710e-6, 16.655602e-6, 29.261652e-6}
+                [16.571710e-6, 0.0, 0.0],  // Jxx (roll inertia)  [kg·m²]
+                [0.0, 16.655602e-6, 0.0],  // Jyy (pitch inertia) [kg·m²]
+                [0.0, 0.0, 29.261652e-6],  // Jzz (yaw inertia)   [kg·m²]
             ],
             gravity: 9.81,         // Standard Earth gravity
             kf: 2.5e-6,           // Thrust coefficient (empirically identified)
@@ -136,10 +139,10 @@ mod tests {
         assert_eq!(params.kt, 1.0e-7);
         assert_eq!(params.dt, 0.01);
 
-        // Check inertia matrix
-        assert_eq!(params.inertia[0][0], 1.7e-5);
-        assert_eq!(params.inertia[1][1], 1.7e-5);
-        assert_eq!(params.inertia[2][2], 2.9e-5);
+        // Check inertia matrix — must match firmware controller_lee.c exactly
+        assert!((params.inertia[0][0] - 16.571710e-6).abs() < 1e-10);
+        assert!((params.inertia[1][1] - 16.655602e-6).abs() < 1e-10);
+        assert!((params.inertia[2][2] - 29.261652e-6).abs() < 1e-10);
         assert_eq!(params.inertia[0][1], 0.0); // Off-diagonal should be zero
     }
 
