@@ -19,9 +19,11 @@ const MANEUVER: &str = "my_hover";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
-/// hover, take the average and set it here before flying my_circle.
-/// Typical CF2.1 range: 35000–45000. Start low and increase if drone won't climb.
-const HOVER_PWM: f32 = 56000.0;
+/// hover (after ep.z settles), take the average and set it here.
+/// Typical CF2.1 range: 35000–50000. Last flight showed thr_pwm settling around 42000.
+/// If the drone rises (ep.z goes negative), HOVER_PWM is too high — lower it.
+/// If the drone falls  (ep.z goes positive), HOVER_PWM is too low  — raise it.
+const HOVER_PWM: f32 = 42000.0;
 
 #[derive(Debug, Default, Clone)]
 struct LogEntry {
@@ -89,6 +91,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let stream2 = block2.start(LogPeriod::from_millis(10)?).await?;
 
+    // Block 3: Thrust, battery voltage, accelerometer — 5 floats + 1 uint16, ~22 bytes.
+    // stabilizer.thrust is the uint16 motor PWM command (0–65535).
+    // pm.vbat is the battery voltage in volts — useful for post-flight analysis.
+    // acc.x/y/z are the IMU accelerometer readings in g (body frame).
+    let mut block3 = cf.log.create_block().await?;
+    for v in ["stabilizer.thrust", "pm.vbat", "acc.x", "acc.y", "acc.z"] {
+        add_var(&mut block3, v).await;
+    }
+    let stream3 = block3.start(LogPeriod::from_millis(10)?).await?;
+
     let mut log_data: Vec<LogEntry> = Vec::new();
     let mut last_print = Instant::now();
 
@@ -116,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("Stabilizing hover for 3 seconds...");
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -128,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -150,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -172,7 +184,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -202,7 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // first RPYT iteration uses fresh EKF state (z should now be ~0.3 m).
             println!("my_hover: draining log buffer (getting fresh position)...");
             for _ in 0..60 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &Instant::now()).await;
             }
 
             // ── Step 2: anchor hover reference to current position ───────────────
@@ -215,7 +227,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
                 jerk: Vec3::zero(),
-                yaw: 0.0,
+                // Anchor yaw to the drone's current heading so there is no yaw-rate
+                // kick at RPYT hand-off.  The yaw field is in radians everywhere in
+                // the controller; latest_entry.yaw from the EKF is in degrees.
+                yaw: anchor.yaw * std::f32::consts::PI / 180.0,
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
             };
@@ -232,9 +247,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let hover_thrust_n = params.mass * params.gravity;
 
+            // Track previous EKF position and yaw to detect sudden jumps (Kalman resets).
+            // Position step > 0.05 m/tick = 5 m/s apparent velocity — impossible.
+            // Yaw step > 10°/tick = 1000 deg/s — impossible.  Both indicate EKF resets.
+            let mut prev_ekf_pos: Option<Vec3> = None;
+            let mut prev_ekf_yaw: f32 = 0.0;
+
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(20) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
@@ -263,34 +284,120 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 }
 
-                let ep = hover_ref_rpyt.position - state.position;
-                let ev = hover_ref_rpyt.velocity - state.velocity;
+                let mut ep = hover_ref_rpyt.position - state.position;
+                let mut ev = hover_ref_rpyt.velocity - state.velocity;
 
-                // Safety: re-anchor on EKF position jump (e.g. Kalman reset)
-                let ep_xy = (ep.x * ep.x + ep.y * ep.y).sqrt();
-                if ep_xy > 0.5 {
-                    println!("Position jump ({:.2}m XY) detected — re-anchoring hover ref", ep_xy);
-                    hover_ref_rpyt.position.x = state.position.x;
-                    hover_ref_rpyt.position.y = state.position.y;
+                // Safety: re-anchor ONLY on genuine EKF Kalman resets, not on
+                // normal XY drift. We detect a reset by comparing the EKF position
+                // change between consecutive 10 ms ticks. A step > 0.05 m in one
+                // tick = 5 m/s apparent velocity — physically impossible for this
+                // drone — so it must be a Kalman reset. Normal 130 mm/s drift is
+                // only 1.3 mm/tick, far below this threshold.
+                //
+                // Also detect yaw resets: a yaw jump > 10° in one 10 ms tick =
+                // 1000 deg/s yaw rate — physically impossible — so it must be a
+                // Lighthouse/EKF yaw re-initialisation.  Re-anchor hover_ref yaw
+                // so the yaw rate command doesn't blast at ±30 deg/s afterward.
+                let cur_pos = state.position;
+                let cur_yaw = latest_entry.yaw; // degrees
+                if let Some(prev) = prev_ekf_pos {
+                    let step = cur_pos - prev;
+                    let step_xy = (step.x * step.x + step.y * step.y).sqrt();
+                    let step_z  = step.z.abs();
+                    // Yaw jump detection — unwrap to shortest-path difference
+                    let dyaw = {
+                        let d = cur_yaw - prev_ekf_yaw;
+                        // Wrap to (-180, 180]
+                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0;
+                        d.abs()
+                    };
+                    let xy_reset  = step_xy > 0.05;
+                    let z_reset   = step_z  > 0.05;
+                    let yaw_reset = dyaw > 10.0; // > 1000 deg/s is impossible
+                    if xy_reset || z_reset || yaw_reset {
+                        // Re-anchor X/Y only when the XY estimate jumped.
+                        if xy_reset {
+                            println!(
+                                "EKF XY reset detected (XY={:.2}m) — re-anchoring XY + resetting XY integral",
+                                step_xy
+                            );
+                            hover_ref_rpyt.position.x = state.position.x;
+                            hover_ref_rpyt.position.y = state.position.y;
+                            // Only zero the XY integrals; keep Z integral intact so
+                            // altitude hold doesn't lose its steady-state correction.
+                            let i_z = controller.i_error_pos().z;
+                            controller.reset_position_integral();
+                            let mut i_pos_restored = controller.i_error_pos();
+                            i_pos_restored.z = i_z;
+                            controller.set_i_error_pos(i_pos_restored);
+                        }
+                        // Re-anchor Z only when the Z estimate jumped.
+                        if z_reset {
+                            println!(
+                                "EKF Z reset detected (Z={:.2}m) — re-anchoring Z + resetting Z integral",
+                                step_z
+                            );
+                            hover_ref_rpyt.position.z = state.position.z;
+                            let mut i = controller.i_error_pos();
+                            i.z = 0.0;
+                            controller.set_i_error_pos(i);
+                        }
+                        // Re-anchor yaw so there is no yaw-rate kick after the reset.
+                        if yaw_reset {
+                            println!(
+                                "EKF yaw reset detected (Δyaw={:.1}°) — re-anchoring yaw",
+                                dyaw
+                            );
+                            hover_ref_rpyt.yaw = cur_yaw * std::f32::consts::PI / 180.0;
+                        }
+                        ep = hover_ref_rpyt.position - state.position;
+                        ev = hover_ref_rpyt.velocity - state.velocity;
+                    }
                 }
+                prev_ekf_pos = Some(cur_pos);
+                prev_ekf_yaw = cur_yaw;
+
+                // Save integral before compute_control updates it (for anti-windup rollback)
+                let i_pos_prev = controller.i_error_pos();
+
+                let control = controller.compute_control(&state, &hover_ref_rpyt, &params, 0.01);
+                let i_pos = controller.i_error_pos();
+                let i_att = controller.i_error_att();
 
                 let desired_accel = hover_ref_rpyt.acceleration
                     + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
                     + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
+                    + Vec3::new(controller.ki_pos.x * i_pos.x, controller.ki_pos.y * i_pos.y, controller.ki_pos.z * i_pos.z)
                     + Vec3::new(0.0, 0.0, params.gravity);
                 let f_vec = desired_accel * params.mass;
-                let control = controller.compute_control(&state, &hover_ref_rpyt, &params, 0.01);
 
-                let pitch_d    = f_vec.x.atan2(f_vec.z).to_degrees().clamp(-15.0, 15.0);
-                let roll_d     = (-f_vec.y).atan2(f_vec.z).to_degrees().clamp(-15.0, 15.0);
-                let yaw_rate_d = (hover_ref_rpyt.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 2.0;
-                let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
-                    .clamp(10_000.0, 60_000.0) as u16;
+                let pitch_d_raw = f_vec.x.atan2(f_vec.z).to_degrees();
+                let roll_d_raw  = (-f_vec.y).atan2(f_vec.z).to_degrees();
+                let pitch_d     = pitch_d_raw.clamp(-25.0, 25.0);
+                let roll_d      = roll_d_raw.clamp(-25.0, 25.0);
 
-                let i_pos = controller.i_error_pos();
+                // Anti-windup: if roll or pitch saturated, revert position integral
+                // to its pre-step value so it doesn't accumulate during saturation.
+                if roll_d_raw.abs() > 25.0 || pitch_d_raw.abs() > 25.0 {
+                    controller.set_i_error_pos(i_pos_prev);
+                }
+
+                let yaw_rate_d = (hover_ref_rpyt.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 1.0;
+                let thrust_pwm_raw = control.thrust / hover_thrust_n * HOVER_PWM;
+                let thrust_pwm = thrust_pwm_raw.clamp(10_000.0, 60_000.0) as u16;
+
+                // Anti-windup: also revert Z integral if thrust is saturated.
+                if thrust_pwm_raw > 60_000.0 || thrust_pwm_raw < 10_000.0 {
+                    controller.set_i_error_pos(i_pos_prev);
+                }
                 println!(
-                    "  ep=({:+.3},{:+.3},{:+.3})  i=({:+.3},{:+.3},{:+.3})  r={:+.1}°  p={:+.1}°  thr_pwm={}",
-                    ep.x, ep.y, ep.z, i_pos.x, i_pos.y, i_pos.z, roll_d, pitch_d, thrust_pwm,
+                    "  ep=({:+.3},{:+.3},{:+.3})  i_pos=({:+.3},{:+.3},{:+.3})  i_att=({:+.4},{:+.4})  r={:+.1}°  p={:+.1}°  yaw={:+.1}°→{:+.1}°/s  thr_pwm={}",
+                    ep.x, ep.y, ep.z,
+                    i_pos.x, i_pos.y, i_pos.z,
+                    i_att.x, i_att.y,
+                    roll_d, pitch_d,
+                    latest_entry.yaw, yaw_rate_d,
+                    thrust_pwm,
                 );
 
                 cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;
@@ -310,7 +417,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
             let stab_start = Instant::now();
             while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stab_start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
                 cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -326,9 +433,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // The firmware only handles attitude rate PIDs + motor mixing + battery compensation.
             let hover_thrust_n = params.mass * params.gravity;
 
+            // EKF reset detection — same logic as my_hover.
+            // In trajectory mode we cannot re-anchor XY ref (that would jump off the path),
+            // so on XY resets we only wipe the XY integral and let the controller re-converge.
+            let mut prev_ekf_pos_c: Option<Vec3> = None;
+            let mut prev_ekf_yaw_c: f32 = 0.0;
+
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(60) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
                 let t = start.elapsed().as_secs_f32();
                 let reference = circle.get_reference(t);
@@ -353,24 +466,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ),
                 };
 
+                // ── Axis-aware EKF reset detector (trajectory mode) ──────────────────
+                let cur_pos_c = state.position;
+                let cur_yaw_c = latest_entry.yaw;
+                if let Some(prev) = prev_ekf_pos_c {
+                    let step = cur_pos_c - prev;
+                    let step_xy = (step.x * step.x + step.y * step.y).sqrt();
+                    let step_z  = step.z.abs();
+                    let dyaw = { let d = cur_yaw_c - prev_ekf_yaw_c;
+                        let d = ((d + 180.0) % 360.0 + 360.0) % 360.0 - 180.0; d.abs() };
+                    if step_xy > 0.05 {
+                        println!("EKF XY reset ({:.2}m) — resetting XY integral (trajectory continues)", step_xy);
+                        let i_z = controller.i_error_pos().z;
+                        controller.reset_position_integral();
+                        let mut ir = controller.i_error_pos(); ir.z = i_z;
+                        controller.set_i_error_pos(ir);
+                    }
+                    if step_z > 0.05 {
+                        println!("EKF Z reset ({:.2}m) — resetting Z integral", step_z);
+                        let mut i = controller.i_error_pos(); i.z = 0.0;
+                        controller.set_i_error_pos(i);
+                    }
+                    if dyaw > 10.0 { println!("EKF yaw reset ({:.1}°)", dyaw); }
+                }
+                prev_ekf_pos_c = Some(cur_pos_c);
+                prev_ekf_yaw_c = cur_yaw_c;
+
                 let dt = 0.05;
+                let i_pos_prev = controller.i_error_pos();
                 let control = controller.compute_control(&state, &reference, &params, dt);
 
                 let ep = reference.position - state.position;
                 let ev = reference.velocity - state.velocity;
 
-                // Desired force vector in world frame: F = m*(a_ff + kp*ep + kv*ev + g*ez)
+                // Desired force vector in world frame: F = m*(a_ff + kp*ep + kv*ev + ki_pos*i_pos + g*ez)
                 // Reproduces the internal thrust_force from compute_control so we have
                 // direction (for roll/pitch) in addition to magnitude (control.thrust).
+                let i_pos = controller.i_error_pos();
                 let desired_accel = reference.acceleration
                     + Vec3::new(controller.kp.x * ep.x, controller.kp.y * ep.y, controller.kp.z * ep.z)
                     + Vec3::new(controller.kv.x * ev.x, controller.kv.y * ev.y, controller.kv.z * ev.z)
+                    + Vec3::new(controller.ki_pos.x * i_pos.x, controller.ki_pos.y * i_pos.y, controller.ki_pos.z * i_pos.z)
                     + Vec3::new(0.0, 0.0, params.gravity);
                 let f_vec = desired_accel * params.mass;
 
                 // Level 1: roll/pitch from force direction, thrust magnitude → PWM.
-                let pitch_d    = f_vec.x.atan2(f_vec.z).to_degrees().clamp(-20.0, 20.0);
-                let roll_d     = (-f_vec.y).atan2(f_vec.z).to_degrees().clamp(-20.0, 20.0);
+                let pitch_d_raw = f_vec.x.atan2(f_vec.z).to_degrees();
+                let roll_d_raw  = (-f_vec.y).atan2(f_vec.z).to_degrees();
+                let pitch_d     = pitch_d_raw.clamp(-20.0, 20.0);
+                let roll_d      = roll_d_raw.clamp(-20.0, 20.0);
+
+                // Anti-windup: if roll or pitch saturated, revert position integral
+                if roll_d_raw.abs() > 20.0 || pitch_d_raw.abs() > 20.0 {
+                    controller.set_i_error_pos(i_pos_prev);
+                }
                 let yaw_rate_d = (reference.yaw.to_degrees() - latest_entry.yaw).clamp(-30.0, 30.0) * 2.0;
                 let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
                     .clamp(10_000.0, 60_000.0) as u16;
@@ -396,7 +545,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
@@ -450,7 +599,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -499,6 +648,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     drop(stream1);
     drop(stream2);
+    drop(stream3);
     cf.disconnect().await;
 
     println!("Disconnected cleanly.");
@@ -514,6 +664,7 @@ async fn run_logging_step(
     last_print: &mut Instant,
     stream1: &LogStream,  // pos + vel
     stream2: &LogStream,  // attitude + gyro
+    stream3: &LogStream,  // thrust + vbat + acc
     start: &Instant,
 ) {
     let mut entry = LogEntry {
@@ -521,8 +672,8 @@ async fn run_logging_step(
         ..Default::default()
     };
 
-    // Read both blocks in parallel — total wait = max(block1, block2) not sum.
-    let (r1, r2) = tokio::join!(stream1.next(), stream2.next());
+    // Read all three blocks in parallel — total wait = max(b1, b2, b3) not sum.
+    let (r1, r2, r3) = tokio::join!(stream1.next(), stream2.next(), stream3.next());
 
     if let Ok(p) = r1 {
         let d = &p.data;
@@ -544,11 +695,23 @@ async fn run_logging_step(
         entry.gyro_z = get_f32(d, "gyro.z");
     }
 
+    if let Ok(p) = r3 {
+        let d = &p.data;
+        entry.thrust = d.get("stabilizer.thrust")
+            .and_then(|v| u32::try_from(*v).ok())
+            .unwrap_or(0);
+        entry.vbat  = get_f32(d, "pm.vbat");
+        entry.acc_x = get_f32(d, "acc.x");
+        entry.acc_y = get_f32(d, "acc.y");
+        entry.acc_z = get_f32(d, "acc.z");
+    }
+
     if last_print.elapsed() >= Duration::from_secs(1) {
         println!(
-            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} roll={:+5.1} gyro_z={:+6.1}",
+            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} roll={:+5.1} gyro_z={:+6.1} thr={} vbat={:.2}V",
             start.elapsed().as_secs(),
-            entry.pos_z, entry.vel_x, entry.vel_y, entry.roll, entry.gyro_z
+            entry.pos_z, entry.vel_x, entry.vel_y, entry.roll, entry.gyro_z,
+            entry.thrust, entry.vbat,
         );
         *last_print = Instant::now();
     }
