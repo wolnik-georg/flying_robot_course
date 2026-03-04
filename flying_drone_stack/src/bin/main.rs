@@ -287,9 +287,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let thrust_pwm = (control.thrust / hover_thrust_n * HOVER_PWM)
                     .clamp(10_000.0, 60_000.0) as u16;
 
+                let i_pos = controller.i_error_pos();
                 println!(
-                    "  ep=({:+.3},{:+.3},{:+.3})  r={:+.1}°  p={:+.1}°  thr_pwm={}",
-                    ep.x, ep.y, ep.z, roll_d, pitch_d, thrust_pwm,
+                    "  ep=({:+.3},{:+.3},{:+.3})  i=({:+.3},{:+.3},{:+.3})  r={:+.1}°  p={:+.1}°  thr_pwm={}",
+                    ep.x, ep.y, ep.z, i_pos.x, i_pos.y, i_pos.z, roll_d, pitch_d, thrust_pwm,
                 );
 
                 cf.commander.setpoint_rpyt(roll_d, pitch_d, yaw_rate_d, thrust_pwm).await?;

@@ -56,12 +56,16 @@ pub struct GeometricController {
     pub kp: Vec3,
     /// Position derivative gains [N/(m/s)]
     pub kv: Vec3,
+    /// Position integral gains [m/s² / (m·s)] — eliminates steady-state xy drift
+    pub ki_pos: Vec3,
     /// Attitude proportional gains [Nm/rad]
     pub kr: Vec3,
     /// Attitude derivative gains [Nm/(rad/s)]
     pub kw: Vec3,
     /// Attitude integral gains [Nm/(rad·s)]
     pub ki: Vec3,
+    /// Accumulated position error integral (anti-windup clamped per axis)
+    i_error_pos: Vec3,
     /// Accumulated attitude error for integral term
     i_error_att: Vec3,
 }
@@ -71,10 +75,12 @@ impl GeometricController {
     pub fn new(kp: Vec3, kv: Vec3, kr: Vec3, kw: Vec3, ki: Vec3) -> Self {
         Self { 
             kp, 
-            kv, 
+            kv,
+            ki_pos: Vec3::zero(),
             kr, 
             kw, 
             ki,
+            i_error_pos: Vec3::zero(),
             i_error_att: Vec3::zero(),
         }
     }
@@ -84,21 +90,30 @@ impl GeometricController {
     /// Lee controller uses same SE(3) geometric control as our implementation
     pub fn default() -> Self {
         Self {
-            kp: Vec3::new(4.0, 4.0, 5.0),     // xy lower than z
-            kv: Vec3::new(3.0, 3.0, 4.0),     // velocity damping
-            // ki: Vec3::new(0.0, 0.0, 0.0),     // integral disabled
+            kp: Vec3::new(5.5, 6.5, 6.0),     // increased position pull (was 4.0/4.0/5.0); y highest to fight persistent +y drift
+            kv: Vec3::new(4.5, 5.5, 5.0),     // increased velocity damping (was 3.0/3.0/4.0) to suppress xy drift
+            // Start with small ki_pos; y gets slightly higher gain because logs
+            // consistently show persistent +y drift in real flights.
+            ki_pos: Vec3::new(0.08, 0.12, 0.30),
 
             kr: Vec3::new(0.007, 0.007, 0.008),
             kw: Vec3::new(0.00115, 0.00115, 0.002),
             ki: Vec3::new(0.0, 0.0, 0.0),
 
+            i_error_pos: Vec3::zero(),
             i_error_att: Vec3::zero(),
         }
     }
 
     /// Reset integral error accumulator (call when touching down or taking off)
     pub fn reset(&mut self) {
+        self.i_error_pos = Vec3::zero();
         self.i_error_att = Vec3::zero();
+    }
+
+    /// Read the current position integral accumulator (for debug logging)
+    pub fn i_error_pos(&self) -> Vec3 {
+        self.i_error_pos
     }
 
     /// Compute desired rotation matrix from thrust vector and yaw
@@ -170,10 +185,18 @@ impl Controller for GeometricController {
         params: &MultirotorParams,
         dt: f32,
     ) -> ControlOutput {
-        // Position control law: Fd = m ( p̈d - Kp ep - Kv ev + g ez )
+        // Position control law: Fd = m ( p̈d + Kp·ep + Kv·ev + Ki_pos·∫ep + g·ez )
         // Negative signs for position and velocity errors (negative feedback)
         let ep = reference.position - state.position;
         let ev = reference.velocity - state.velocity;
+
+        // Accumulate position integral (anti-windup: clamp each axis independently)
+        self.i_error_pos = self.i_error_pos + ep * dt;
+        self.i_error_pos = Vec3::new(
+            self.i_error_pos.x.clamp(-1.0, 1.0),
+            self.i_error_pos.y.clamp(-1.0, 1.0),
+            self.i_error_pos.z.clamp(-1.0, 1.0),
+        );
 
         let feedforward = reference.acceleration
             + Vec3::new(
@@ -185,6 +208,11 @@ impl Controller for GeometricController {
                 self.kv.x * ev.x,
                 self.kv.y * ev.y,
                 self.kv.z * ev.z,
+            )
+            + Vec3::new(
+                self.ki_pos.x * self.i_error_pos.x,
+                self.ki_pos.y * self.i_error_pos.y,
+                self.ki_pos.z * self.i_error_pos.z,
             )
             + Vec3::new(0.0, 0.0, params.gravity as f32); // Gravity compensation: +g in z direction
 
