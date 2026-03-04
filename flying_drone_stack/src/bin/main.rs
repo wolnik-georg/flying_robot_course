@@ -127,8 +127,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         println!("Stabilizing hover for 3 seconds...");
+        let stab_start = Instant::now();
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -140,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -162,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -184,7 +185,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -213,17 +214,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // setpoint_hover ran for ~4 s above; drain accumulated packets so the
             // first RPYT iteration uses fresh EKF state (z should now be ~0.3 m).
             println!("my_hover: draining log buffer (getting fresh position)...");
+            let drain_start = Instant::now();
             for _ in 0..60 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &Instant::now()).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start).await;
             }
 
-            // ── Step 2: anchor hover reference to current position ───────────────
-            // The drone is hovering at ~0.3 m via setpoint_hover.  Anchor all three
-            // axes to the current EKF estimate so ep ≈ 0 at RPYT hand-off → no
-            // large initial correction that could destabilise the transition.
+            // ── Step 2: anchor hover reference ───────────────────────────────────
+            // Anchor XY to the current EKF estimate so there is no lateral step
+            // error at RPYT hand-off.  Z is intentionally set to TARGET_HEIGHT
+            // (not the current EKF z), because:
+            //   • If Lighthouse hasn't initialised yet, EKF z ≈ 0 (floor) → anchoring
+            //     there would make ep.z go negative as the drone rises, winding the
+            //     Z integral negative and collapsing thrust.
+            //   • setpoint_hover has been running for 3 s; the drone IS at ~0.3 m
+            //     physically, so targeting 0.3 m is correct.
+            //   • After the first Lighthouse fix the EKF XY/yaw reset fires and we
+            //     re-anchor XY then; Z is left at TARGET_HEIGHT which remains valid.
+            const TARGET_HEIGHT: f32 = 0.3;
             let anchor = log_data.last().cloned().unwrap_or_default();
             let mut hover_ref_rpyt = TrajectoryReference {
-                position: Vec3::new(anchor.pos_x, anchor.pos_y, anchor.pos_z),
+                position: Vec3::new(anchor.pos_x, anchor.pos_y, TARGET_HEIGHT),
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
                 jerk: Vec3::zero(),
@@ -235,8 +245,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 yaw_acceleration: 0.0,
             };
             println!(
-                "my_hover: RPYT hand-off. Hover target ({:.3}, {:.3}, {:.3}) m. HOVER_PWM={:.0}",
-                anchor.pos_x, anchor.pos_y, anchor.pos_z, HOVER_PWM
+                "my_hover: RPYT hand-off. XY anchor ({:.3}, {:.3}), Z target {:.3} m. HOVER_PWM={:.0}",
+                anchor.pos_x, anchor.pos_y, TARGET_HEIGHT, HOVER_PWM
             );
 
             // ── Step 3: one-shot RPYT thrust=0 unlock ───────────────────────────
@@ -255,7 +265,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(20) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = MultirotorState {
@@ -318,18 +328,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         // Re-anchor X/Y only when the XY estimate jumped.
                         if xy_reset {
                             println!(
-                                "EKF XY reset detected (XY={:.2}m) — re-anchoring XY + resetting XY integral",
+                                "EKF XY reset detected (XY={:.2}m) — re-anchoring XY+Z + resetting position integral",
                                 step_xy
                             );
                             hover_ref_rpyt.position.x = state.position.x;
                             hover_ref_rpyt.position.y = state.position.y;
-                            // Only zero the XY integrals; keep Z integral intact so
-                            // altitude hold doesn't lose its steady-state correction.
-                            let i_z = controller.i_error_pos().z;
+                            // Also re-anchor Z: a Lighthouse XY reset means the full
+                            // position estimate just re-initialised.  Before this event
+                            // EKF z was unreliable (drone on floor → Lighthouse comes
+                            // online → position teleports).  Now z is trustworthy, so
+                            // update the Z reference to the actual drone height and wipe
+                            // the Z integral to avoid fighting a stale correction.
+                            hover_ref_rpyt.position.z = state.position.z;
                             controller.reset_position_integral();
-                            let mut i_pos_restored = controller.i_error_pos();
-                            i_pos_restored.z = i_z;
-                            controller.set_i_error_pos(i_pos_restored);
                         }
                         // Re-anchor Z only when the Z estimate jumped.
                         if z_reset {
@@ -417,7 +428,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
             let stab_start = Instant::now();
             while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stab_start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
                 cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -563,7 +574,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
@@ -617,7 +628,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
