@@ -113,6 +113,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut log_data: Vec<LogEntry> = Vec::new();
     let mut last_print = Instant::now();
 
+    // Open CSV immediately so every row is flushed to disk as it is collected.
+    // This means the log is preserved even on crashes, panics, or radio drops.
+    fs::create_dir_all("runs")?;
+    let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
+    let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
+    let mut log_file = File::create(&filename)?;
+    writeln!(log_file,
+        "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw"
+    )?;
+    println!("Log file opened: {}", filename);
+
     println!("Logging started (100 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
 
@@ -138,7 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Stabilizing hover for 3 seconds...");
         let stab_start = Instant::now();
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start, &mut log_file).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -150,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -172,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -194,7 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -225,7 +236,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("my_hover: draining log buffer (getting fresh position)...");
             let drain_start = Instant::now();
             for _ in 0..60 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start, &mut log_file).await;
             }
 
             // ── Step 2: anchor hover reference ───────────────────────────────────
@@ -273,8 +284,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut prev_ekf_yaw: f32 = 0.0;
 
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(20) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+            while start.elapsed() < Duration::from_secs(5) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = build_state(
@@ -287,6 +298,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Safety: stop on flip
                 if latest_entry.roll.abs() > 90.0 {
                     println!("FLIP detected (roll={:.1}°) — stopping motors", latest_entry.roll);
+                    cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+                    break;
+                }
+
+                // Safety: abort if drone drifts >0.4 m from anchor in XY
+                let drift_xy = {
+                    let dx = state.position.x - hover_ref_rpyt.position.x;
+                    let dy = state.position.y - hover_ref_rpyt.position.y;
+                    (dx * dx + dy * dy).sqrt()
+                };
+                if drift_xy > 0.4 {
+                    println!("DRIFT ABORT (XY drift={:.2}m > 0.4m) — stopping motors", drift_xy);
                     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
                     break;
                 }
@@ -406,7 +429,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
             let stab_start = Instant::now();
             while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start, &mut log_file).await;
                 cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -428,7 +451,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(60) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
 
                 let t = start.elapsed().as_secs_f32();
                 let reference = circle.get_reference(t);
@@ -531,7 +554,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
@@ -573,7 +596,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -592,32 +615,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     cf.commander.notify_setpoint_stop(500).await?;
 
     println!("Maneuver complete. Motors stopped.");
-
-    let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
-    let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
-
-    fs::create_dir_all("runs")?;
-    let mut file = File::create(&filename)?;
-
-    writeln!(file,
-        "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw"
-    )?;
-
-    for e in log_data {
-        writeln!(file,
-            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
-            e.time_ms,
-            e.pos_x, e.pos_y, e.pos_z,
-            e.vel_x, e.vel_y, e.vel_z,
-            e.roll, e.pitch, e.yaw,
-            e.thrust,
-            e.vbat,
-            e.gyro_x, e.gyro_y, e.gyro_z,
-            e.acc_x, e.acc_y, e.acc_z,
-            e.rate_roll, e.rate_pitch, e.rate_yaw
-        )?;
-    }
-
     println!("Log saved to: {}", filename);
 
     drop(stream1);
@@ -640,6 +637,7 @@ async fn run_logging_step(
     stream2: &LogStream,  // attitude + gyro
     stream3: &LogStream,  // thrust + vbat + acc
     start: &Instant,
+    log_file: &mut File,
 ) {
     let mut entry = LogEntry {
         time_ms: start.elapsed().as_millis() as u64,
@@ -671,8 +669,6 @@ async fn run_logging_step(
 
     if let Ok(p) = r3 {
         let d = &p.data;
-        // stabilizer.thrust is uint16 on the drone; the log TOC exposes it as u16.
-        // get_f32 falls back to 0 if the cast fails, so cast via u32 to be safe.
         entry.thrust = d.get("stabilizer.thrust")
             .and_then(|v| u32::try_from(*v).ok())
             .unwrap_or(0);
@@ -691,6 +687,20 @@ async fn run_logging_step(
         );
         *last_print = Instant::now();
     }
+
+    // Write row immediately — log is safe even on crash or radio drop
+    let _ = writeln!(log_file,
+        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+        entry.time_ms,
+        entry.pos_x, entry.pos_y, entry.pos_z,
+        entry.vel_x, entry.vel_y, entry.vel_z,
+        entry.roll, entry.pitch, entry.yaw,
+        entry.thrust,
+        entry.vbat,
+        entry.gyro_x, entry.gyro_y, entry.gyro_z,
+        entry.acc_x, entry.acc_y, entry.acc_z,
+        entry.rate_roll, entry.rate_pitch, entry.rate_yaw
+    );
 
     log_data.push(entry);
 }
