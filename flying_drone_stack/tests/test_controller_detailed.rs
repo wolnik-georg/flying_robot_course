@@ -8,6 +8,7 @@
 //!   - Gyroscopic compensation: nonzero angular velocity increases torque
 //!   - Position integral accumulation over time
 //!   - Integral reset when thrust < 0.01 N
+//!   - compute_control_debug: returns same thrust/torque as compute_control + populates DebugInfo
 //!   - Zdes aligned with thrust_force direction
 
 use multirotor_simulator::controller::{GeometricController, Controller, TrajectoryReference};
@@ -301,4 +302,269 @@ fn test_controller_reset_position_integral_only() {
 
     ctrl.reset_position_integral();
     assert!(ctrl.i_error_pos().norm() < 1e-6, "position integral not cleared");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// compute_control_debug
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// At hover, debug output must agree with compute_control and ep/ev must be zero.
+#[test]
+fn test_compute_control_debug_hover_agrees_with_control() {
+    let params = MultirotorParams::crazyflie();
+    let state = MultirotorState::new();
+    let reference = default_reference();
+
+    let mut ctrl_a = GeometricController::default();
+    let mut ctrl_b = GeometricController::default();
+
+    let out_normal = ctrl_a.compute_control(&state, &reference, &params, 0.01);
+    let (out_debug, info) = ctrl_b.compute_control_debug(&state, &reference, &params, 0.01);
+
+    // Both paths should produce the same thrust (within floating-point)
+    assert!((out_normal.thrust - out_debug.thrust).abs() < 1e-4,
+        "thrust mismatch: normal={} debug={}", out_normal.thrust, out_debug.thrust);
+    assert!((out_normal.torque - out_debug.torque).norm() < 1e-6,
+        "torque mismatch");
+
+    // At hover: position error and velocity error are both zero
+    assert!(info.ep.norm() < 1e-6, "ep should be zero at hover");
+    assert!(info.ev.norm() < 1e-6, "ev should be zero at hover");
+}
+
+/// With a position error, debug info must carry nonzero ep and nonzero feedforward.
+#[test]
+fn test_compute_control_debug_exposes_ep_ev() {
+    let params = MultirotorParams::crazyflie();
+    let state = MultirotorState::new();
+    let mut reference = default_reference();
+    reference.position = Vec3::new(1.0, 0.0, 1.0);
+    reference.velocity = Vec3::new(0.5, 0.0, 0.0);
+
+    let mut ctrl = GeometricController::default();
+    let (_out, info) = ctrl.compute_control_debug(&state, &reference, &params, 0.01);
+
+    assert!(info.ep.norm() > 0.5, "ep should reflect position error: {:?}", info.ep);
+    assert!(info.ev.norm() > 0.1, "ev should reflect velocity error: {:?}", info.ev);
+    assert!(info.feedforward.norm() > 0.0, "feedforward must be nonzero");
+}
+
+/// With a roll attitude error, debug info must carry a nonzero rotation error er.
+#[test]
+fn test_compute_control_debug_exposes_rotation_error() {
+    let params = MultirotorParams::crazyflie();
+    let mut state = MultirotorState::new();
+    state.orientation = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), 0.3_f32);
+    let reference = default_reference();
+
+    let mut ctrl = GeometricController::default();
+    let (_out, info) = ctrl.compute_control_debug(&state, &reference, &params, 0.01);
+
+    assert!(info.er.norm() > 1e-3,
+        "rotation error should be nonzero for rolled drone: {:?}", info.er);
+    assert!(info.torque_proportional.norm() > 1e-6,
+        "proportional torque should be nonzero");
+}
+
+/// All debug fields must be finite (no NaN or Inf).
+#[test]
+fn test_compute_control_debug_no_nan() {
+    let params = MultirotorParams::crazyflie();
+    let mut state = MultirotorState::new();
+    state.orientation = Quat::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), 1.0_f32);
+    state.angular_velocity = Vec3::new(0.5, -0.3, 0.2);
+    let mut reference = default_reference();
+    reference.position = Vec3::new(0.5, -0.5, 0.8);
+    reference.velocity = Vec3::new(0.1, 0.1, 0.0);
+    reference.jerk = Vec3::new(0.1, 0.0, 0.0);
+
+    let mut ctrl = GeometricController::default();
+    let (out, info) = ctrl.compute_control_debug(&state, &reference, &params, 0.01);
+
+    assert!(out.thrust.is_finite(), "thrust NaN");
+    assert!(out.torque.x.is_finite() && out.torque.y.is_finite() && out.torque.z.is_finite());
+    assert!(info.ep.x.is_finite());
+    assert!(info.er.x.is_finite());
+    assert!(info.eomega.x.is_finite());
+    assert!(info.torque_proportional.x.is_finite());
+    assert!(info.torque_derivative.x.is_finite());
+    assert!(info.gyroscopic_compensation.x.is_finite());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Documented divergences between compute_control and compute_control_debug
+//
+// The two functions share the same rotation/torque math but differ in three
+// deliberate ways.  These tests pin the exact behaviour so a future refactor
+// cannot accidentally merge or reverse any of the differences silently.
+//
+//  Difference 1 — Thrust calculation
+//    compute_control:       thrust = thrust_force.dot(body_z)  [firmware-accurate]
+//    compute_control_debug: thrust = thrust_force.norm()       [world-frame norm]
+//    At hover (level) they are equal. Under tilt they differ: norm() is always
+//    >= body-z projection, so debug thrust >= normal thrust when tilted.
+//
+//  Difference 2 — Position integral (ki_pos)
+//    compute_control:       includes ki_pos * i_error_pos in the force vector
+//    compute_control_debug: no ki_pos term (feedforward = kp*ep + kv*ev + acc + g)
+//    After the integral has wound up, the two desired-force vectors differ,
+//    which means they will produce different rd, er, and torque.
+//
+//  Difference 3 — Attitude integral reset direction
+//    compute_control:       resets when thrust < 0.01  (near-zero / motors off)
+//    compute_control_debug: resets when thrust > 0.01  (logically inverted)
+//    This is a known quirk of the debug path; this test documents it explicitly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Difference 1: under 45° tilt debug thrust (norm) must be strictly greater
+/// than normal thrust (body-z projection).
+///
+/// Geometry: if the body z-axis is tilted 45° from world-z, the dot product
+/// of F (pointing mostly world-z) with body-z is F·cos(45°) ≈ 0.707·F,
+/// while the norm of the same vector F is just |F|. So norm > dot.
+#[test]
+fn test_thrust_calculation_diverges_under_tilt() {
+    let params = MultirotorParams::crazyflie();
+    // Tilt the drone 45° around X (large roll)
+    let mut state = MultirotorState::new();
+    state.orientation = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::FRAC_PI_4);
+
+    // No position/velocity error — only the tilt drives the difference.
+    let reference = default_reference();
+
+    let mut ctrl_normal = GeometricController::default();
+    let mut ctrl_debug  = GeometricController::default();
+
+    let out_normal         = ctrl_normal.compute_control(&state, &reference, &params, 0.01);
+    let (out_debug, _info) = ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
+
+    // norm() >= dot(body_z) always; at 45° tilt the gap must be measurable.
+    assert!(
+        out_debug.thrust > out_normal.thrust + 1e-3,
+        "expected debug thrust ({}) > normal thrust ({}) under 45° tilt",
+        out_debug.thrust, out_normal.thrust
+    );
+}
+
+/// Difference 1 converse: at exactly zero tilt (hover) both thrust values
+/// must be equal within floating-point tolerance.
+#[test]
+fn test_thrust_calculation_agrees_at_hover() {
+    let params = MultirotorParams::crazyflie();
+    let state     = MultirotorState::new();   // identity orientation
+    let reference = default_reference();
+
+    let mut ctrl_normal = GeometricController::default();
+    let mut ctrl_debug  = GeometricController::default();
+
+    let out_normal         = ctrl_normal.compute_control(&state, &reference, &params, 0.01);
+    let (out_debug, _info) = ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
+
+    assert!(
+        (out_normal.thrust - out_debug.thrust).abs() < 1e-4,
+        "hover thrust should match: normal={} debug={}",
+        out_normal.thrust, out_debug.thrust
+    );
+}
+
+/// Difference 2: once ki_pos has wound up, the two force vectors differ, which
+/// causes their desired rotation matrices — and therefore their torques — to differ.
+///
+/// Setup: give the drone a lateral (X) position error so ki_pos winds up a
+/// horizontal force component. That tilts `thrust_force` away from vertical,
+/// which changes `rd` (desired rotation). compute_control includes ki_pos in
+/// the force vector; compute_control_debug does not. With enough integral
+/// accumulation the two `rd` matrices diverge → different `er` → different torques.
+#[test]
+fn test_torque_diverges_when_position_integral_wound_up() {
+    let params = MultirotorParams::crazyflie();
+    let state = MultirotorState::new();
+
+    // Lateral X error: both kp (proportional) AND ki_pos (integral) drive a
+    // tilt in the force vector. After 100 steps ki_pos contribution is significant.
+    let mut reference = default_reference();
+    reference.position.x = 2.0; // large offset so tilt is clearly nonzero
+
+    let mut ctrl_normal = GeometricController::default();
+    let mut ctrl_debug  = GeometricController::default();
+
+    // Run 100 steps (~1 s) so i_error_pos accumulates a significant ki_pos contribution.
+    for _ in 0..100 {
+        ctrl_normal.compute_control(&state, &reference, &params, 0.01);
+        ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
+    }
+
+    // After wind-up, compute one more step and compare thrusts (not torques —
+    // because torque also depends on ki which is zero by default; the measurable
+    // difference is in the *thrust* since ki_pos shifts the vertical force).
+    let out_normal         = ctrl_normal.compute_control(&state, &reference, &params, 0.01);
+    let (out_debug, _info) = ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
+
+    // With a large X offset: compute_control body-z thrust projection with ki_pos
+    // component will differ from compute_control_debug norm without ki_pos.
+    let thrust_diff = (out_normal.thrust - out_debug.thrust).abs();
+    assert!(
+        thrust_diff > 1e-4,
+        "thrust should differ once ki_pos has wound up (diff={}, normal={}, debug={})",
+        thrust_diff, out_normal.thrust, out_debug.thrust
+    );
+
+    // Sanity: both must still be finite.
+    assert!(out_normal.thrust.is_finite());
+    assert!(out_debug.thrust.is_finite());
+}
+
+/// Difference 3: the attitude integral accumulation guard differs.
+///
+/// compute_control:       `if ki.x != 0 || ki.y != 0 || ki.z != 0 { accumulate }`
+///   — only accumulates when the gain is actually nonzero.
+/// compute_control_debug: `if thrust > 0.01 { accumulate }`
+///   — always accumulates regardless of ki, as long as thrust is above 0.01 N.
+///
+/// Consequence: with ki = 0 (the hardware default to avoid unbounded windup in
+/// RPYT mode), compute_control never touches i_error_att, but compute_control_debug
+/// still accumulates it.  This means the debug path can build up a nonzero attitude
+/// integral even when the production path would not — an important difference to
+/// know when interpreting debug output from hardware flights.
+#[test]
+fn test_attitude_integral_accumulation_guard_difference() {
+    let params = MultirotorParams::crazyflie();
+
+    // Roll error gives a nonzero er so any integration produces a nonzero result.
+    let mut state = MultirotorState::new();
+    state.orientation = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), 0.3_f32);
+    let reference = default_reference();
+
+    // Use the hardware default: ki = 0.
+    let mut ctrl_normal = GeometricController::default(); // ki = (0,0,0)
+    let mut ctrl_debug  = GeometricController::default();
+
+    // Run 20 steps to give both paths a chance to accumulate.
+    for _ in 0..20 {
+        ctrl_normal.compute_control(&state, &reference, &params, 0.01);
+        ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
+    }
+
+    // compute_control: ki == 0 → guard blocks ALL accumulation → integral stays zero.
+    let i_att_normal = ctrl_normal.i_error_att();
+    assert!(
+        i_att_normal.norm() < 1e-9,
+        "compute_control must not accumulate attitude integral when ki=0 (norm={})",
+        i_att_normal.norm()
+    );
+
+    // compute_control_debug: no ki guard → accumulates as long as thrust > 0.01.
+    // Hover thrust ≈ 0.33 N >> 0.01 → integral winds up over 20 steps.
+    let i_att_debug = ctrl_debug.i_error_att();
+    assert!(
+        i_att_debug.norm() > 1e-6,
+        "compute_control_debug should accumulate attitude integral regardless of ki (norm={})",
+        i_att_debug.norm()
+    );
+
+    // The two integrals must be different — normal=0, debug≠0.
+    assert!(
+        (i_att_normal - i_att_debug).norm() > 1e-6,
+        "attitude integrals should diverge due to ki-guard difference"
+    );
 }

@@ -6,6 +6,8 @@
 //!   - `integrate_exponential` vs `integrate` for small ω (should agree within 1e-4)
 //!   - `Mat9`: zeros, identity, diag, transpose, mat_mul, add, scale, mat_vec,
 //!             outer, joseph_update, h_sigma_ht, sigma_ht, symmetrise, clamp_diagonal
+//!   - `rot_to_quat`: identity, orthogonal rotation matrix round-trip
+//!   - `flatness_to_reference`: position/velocity/yaw forwarded correctly
 
 use multirotor_simulator::math::{Vec3, Quat, Mat9, to_euler};
 
@@ -359,4 +361,120 @@ fn test_mat9_joseph_update_identity_gain() {
             assert!(!result.data[i][j].is_nan(), "NaN at [{i}][{j}]");
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// rot_to_quat  (planning::flatness)
+// ─────────────────────────────────────────────────────────────────────────────
+
+use multirotor_simulator::prelude::{FlatOutput, compute_flatness, rot_to_quat, flatness_to_reference};
+
+/// Identity rotation matrix → identity quaternion [w=1, x=0, y=0, z=0].
+#[test]
+fn test_rot_to_quat_identity() {
+    let rot: [[f32; 3]; 3] = [
+        [1.0, 0.0, 0.0], // xb column
+        [0.0, 1.0, 0.0], // yb column
+        [0.0, 0.0, 1.0], // zb column
+    ];
+    let q = rot_to_quat(&rot);
+    assert!((q[0] - 1.0).abs() < 1e-5, "w={}", q[0]);
+    assert!(q[1].abs() < 1e-5, "x={}", q[1]);
+    assert!(q[2].abs() < 1e-5, "y={}", q[2]);
+    assert!(q[3].abs() < 1e-5, "z={}", q[3]);
+}
+
+/// Output of rot_to_quat must always be a unit quaternion.
+#[test]
+fn test_rot_to_quat_unit_norm() {
+    // Use compute_flatness to produce a valid rotation matrix for a 45° yaw case
+    let flat = FlatOutput {
+        pos: Vec3::new(0.0, 0.0, 1.0),
+        vel: Vec3::zero(),
+        acc: Vec3::zero(),
+        jerk: Vec3::zero(),
+        snap: Vec3::zero(),
+        yaw: std::f32::consts::FRAC_PI_4,
+        yaw_dot: 0.0,
+        yaw_ddot: 0.0,
+    };
+    let fr = compute_flatness(&flat, 0.027);
+    let q = rot_to_quat(&fr.rot);
+    let norm: f32 = q.iter().map(|v| v * v).sum::<f32>().sqrt();
+    assert!((norm - 1.0).abs() < 1e-4, "quaternion not unit: norm={norm}");
+}
+
+/// 90° yaw: the rotation matrix from compute_flatness → rot_to_quat should
+/// yield a quaternion consistent with a z-axis rotation by π/2.
+#[test]
+fn test_rot_to_quat_90deg_yaw() {
+    let half_pi = std::f32::consts::FRAC_PI_2;
+    let flat = FlatOutput {
+        pos: Vec3::zero(),
+        vel: Vec3::zero(),
+        acc: Vec3::zero(),
+        jerk: Vec3::zero(),
+        snap: Vec3::zero(),
+        yaw: half_pi,
+        yaw_dot: 0.0,
+        yaw_ddot: 0.0,
+    };
+    let fr = compute_flatness(&flat, 0.027);
+    let q = rot_to_quat(&fr.rot);
+    // For a pure yaw of π/2 the quaternion should be [cos(π/4), 0, 0, sin(π/4)]
+    let expected_w = (half_pi / 2.0).cos();
+    let expected_z = (half_pi / 2.0).sin();
+    assert!((q[0] - expected_w).abs() < 1e-4, "w={} expected={expected_w}", q[0]);
+    assert!(q[1].abs() < 1e-4, "x={}", q[1]);
+    assert!(q[2].abs() < 1e-4, "y={}", q[2]);
+    assert!((q[3].abs() - expected_z.abs()) < 1e-4, "z={} expected={expected_z}", q[3]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// flatness_to_reference  (planning::flatness)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// flatness_to_reference must copy position, velocity, yaw, and yaw_rate correctly.
+#[test]
+fn test_flatness_to_reference_copies_fields() {
+    let flat = FlatOutput {
+        pos: Vec3::new(1.0, 2.0, 3.0),
+        vel: Vec3::new(0.1, 0.2, 0.3),
+        acc: Vec3::zero(),
+        jerk: Vec3::zero(),
+        snap: Vec3::zero(),
+        yaw: 0.4,
+        yaw_dot: 0.05,
+        yaw_ddot: 0.0,
+    };
+    let fr = compute_flatness(&flat, 0.027);
+    let tref = flatness_to_reference(&fr, Vec3::new(0.0, 0.0, 9.81), Vec3::zero(), 0.4, 0.05, 0.0);
+
+    assert!((tref.position.x - 1.0).abs() < 1e-5, "pos.x={}", tref.position.x);
+    assert!((tref.position.y - 2.0).abs() < 1e-5, "pos.y={}", tref.position.y);
+    assert!((tref.position.z - 3.0).abs() < 1e-5, "pos.z={}", tref.position.z);
+    assert!((tref.velocity.x - 0.1).abs() < 1e-5, "vel.x={}", tref.velocity.x);
+    assert!((tref.yaw - 0.4).abs() < 1e-5, "yaw={}", tref.yaw);
+    assert!((tref.yaw_rate - 0.05).abs() < 1e-5, "yaw_rate={}", tref.yaw_rate);
+}
+
+/// Acceleration and jerk passed to flatness_to_reference appear in the reference.
+#[test]
+fn test_flatness_to_reference_forwards_acc_jerk() {
+    let flat = FlatOutput {
+        pos: Vec3::zero(), vel: Vec3::zero(), acc: Vec3::zero(),
+        jerk: Vec3::zero(), snap: Vec3::zero(),
+        yaw: 0.0, yaw_dot: 0.0, yaw_ddot: 0.0,
+    };
+    let fr = compute_flatness(&flat, 0.027);
+    let acc_in = Vec3::new(1.0, 2.0, 3.0);
+    let jerk_in = Vec3::new(0.1, 0.2, 0.3);
+    let tref = flatness_to_reference(&fr, acc_in, jerk_in, 0.0, 0.0, 0.0);
+
+    assert!((tref.acceleration.x - 1.0).abs() < 1e-5);
+    assert!((tref.acceleration.y - 2.0).abs() < 1e-5);
+    assert!((tref.acceleration.z - 3.0).abs() < 1e-5);
+    assert!((tref.jerk.x - 0.1).abs() < 1e-5);
+    assert!((tref.jerk.y - 0.2).abs() < 1e-5);
+    assert!((tref.jerk.z - 0.3).abs() < 1e-5);
 }

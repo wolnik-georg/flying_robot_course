@@ -542,10 +542,12 @@ impl Trajectory for TakeoffTrajectory {
 /// started).  Once the last phase is reached it is held indefinitely.
 ///
 /// Example:
-/// ```
+/// ```no_run
+/// use multirotor_simulator::prelude::{SequencedTrajectory, TakeoffTrajectory, CircleTrajectory};
+/// use std::f32::consts::PI;
 /// let seq = SequencedTrajectory::new(vec![
 ///     (3.0, Box::new(TakeoffTrajectory::new(0.0, 0.0, 0.5, 3.0, 0.0))),
-///     (2.0, Box::new(CircleTrajectory::new(0.0, 0.5, 0.0))),  // hover
+///     (2.0, Box::new(CircleTrajectory::new(0.0, 0.5, 0.0))),
 ///     (20.0, Box::new(CircleTrajectory::new(0.3, 0.3, PI/5.0))),
 /// ]);
 /// ```

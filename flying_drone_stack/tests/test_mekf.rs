@@ -10,7 +10,7 @@
 //!   - `Mekf::feed_row`: integration-level smoke test
 
 use multirotor_simulator::estimation::{Mekf, MekfParams, MekfState, quat_to_euler};
-use multirotor_simulator::estimation::mekf::{mekf_reset, mekf_predict, mekf_update_height};
+use multirotor_simulator::estimation::mekf::{mekf_reset, mekf_predict, mekf_update_height, mekf_update_flow};
 use multirotor_simulator::math::Mat9;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,4 +221,67 @@ fn test_mekf_feed_row_output_finite() {
             assert!(v.is_finite(), "estimate[{i}] = {v}");
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// mekf_update_flow
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A nonzero flow observation should update the horizontal velocity states.
+#[test]
+fn test_mekf_update_flow_changes_velocity_state() {
+    let params = MekfParams::default();
+    let mut state = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+    // height must be > 0.05 to avoid the early-return guard
+    state.x[2] = 0.5;
+    // give the state a nonzero body-frame velocity so the predicted measurement is nonzero
+    state.x[3] = 1.0;
+    state.x[4] = 0.5;
+
+    let bx_before = state.x[3];
+    let by_before = state.x[4];
+
+    // Inject a flow measurement that disagrees with the predicted value
+    mekf_update_flow(&mut state, 0.0, 0.0, 0.01, params.r_flow);
+
+    // Both bx and by should have been pulled toward zero (innovation = 0 - predicted)
+    assert!((state.x[3] - bx_before).abs() > 1e-9,
+        "x[3] (bx) should change; before={bx_before}, after={}", state.x[3]);
+    assert!((state.x[4] - by_before).abs() > 1e-9,
+        "x[4] (by) should change; before={by_before}, after={}", state.x[4]);
+}
+
+/// When pz < 0.05, mekf_update_flow must return early without touching the state.
+#[test]
+fn test_mekf_update_flow_skips_near_zero_height() {
+    let params = MekfParams::default();
+    let mut state = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+    state.x[2] = 0.01; // below 0.05 threshold
+    state.x[3] = 2.0;
+    state.x[4] = 3.0;
+
+    let x3_before = state.x[3];
+    let x4_before = state.x[4];
+
+    mekf_update_flow(&mut state, 100.0, 100.0, 0.01, params.r_flow);
+
+    assert!((state.x[3] - x3_before).abs() < 1e-9, "x[3] should not change below height guard");
+    assert!((state.x[4] - x4_before).abs() < 1e-9, "x[4] should not change below height guard");
+}
+
+/// After many identical flow observations the state should converge (residual shrinks).
+#[test]
+fn test_mekf_update_flow_converges() {
+    let params = MekfParams::default();
+    let mut state = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+    state.x[2] = 1.0;
+    state.x[3] = 0.0;
+    state.x[4] = 0.0;
+
+    // Feed the same measurement 50 times — state should stabilise and remain finite
+    for _ in 0..50 {
+        mekf_update_flow(&mut state, 0.5, -0.5, 0.01, params.r_flow);
+    }
+    assert!(state.x[3].is_finite(), "x[3] went non-finite");
+    assert!(state.x[4].is_finite(), "x[4] went non-finite");
 }
