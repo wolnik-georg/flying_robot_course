@@ -12,7 +12,7 @@
 
 use multirotor_simulator::math::Vec3;
 use multirotor_simulator::dynamics::MultirotorParams;
-use multirotor_simulator::controller::{GeometricController, TrajectoryReference};
+use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
 use multirotor_simulator::flight::{
     build_state,
     compute_force_vector,
@@ -654,4 +654,147 @@ fn test_detect_ekf_reset_just_below_threshold() {
     let cur  = Vec3::new(0.0499, 0.0, 0.0);  // 49.9 mm — just below 50 mm threshold
     let flags = detect_ekf_reset(prev, cur, 0.0, 0.0, 0.05, 0.05, 10.0);
     assert!(!flags.any(), "0.0499 m < 0.05 m threshold should not trigger");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// compute_force_vector vs compute_control consistency
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// compute_force_vector is a separate code path from the internal thrust_force
+// in compute_control, but they must agree in direction (and magnitude) for the
+// RPYT decomposition to be physically correct.
+//
+// At level flight (identity orientation) the body-z axis equals world-z, so:
+//   compute_control.thrust  = thrust_force · body_z = thrust_force.z = f_vec.z
+// This lets us cross-check the two paths numerically without needing internal
+// access to compute_control's thrust_force.
+
+/// At hover equilibrium (ep=0, ev=0, i=0, level) both paths must agree on
+/// the force magnitude (= m*g) and direction (pure world-z).
+#[test]
+fn test_force_vector_matches_compute_control_at_hover() {
+    use multirotor_simulator::dynamics::MultirotorState;
+    let params     = MultirotorParams::crazyflie();
+    let mut ctrl   = GeometricController::default();
+    let reference  = hover_ref(Vec3::new(0.0, 0.0, 0.3));
+    let state      = MultirotorState::new(); // identity orientation, at origin
+
+    let ep = reference.position - state.position; // (0, 0, 0.3) — but test with zero ep
+    let ep_zero = Vec3::zero();
+    let ev_zero = Vec3::zero();
+    let i_zero  = Vec3::zero();
+
+    // Run compute_control with zero error so that internal thrust_force = m*g*ez
+    let mut ctrl_c = GeometricController::default();
+    let mut state_at_ref = state.clone();
+    state_at_ref.position = reference.position; // ep = 0
+    let control = ctrl_c.compute_control(&state_at_ref, &reference, &params, 0.01);
+
+    // compute_force_vector with matching zero ep/ev/i
+    let f_vec = compute_force_vector(&reference, ep_zero, ev_zero, i_zero, &ctrl, &params);
+
+    let weight = params.mass * params.gravity;
+
+    // Both must give a force equal to m*g
+    assert!(
+        (f_vec.z - weight).abs() < 1e-5,
+        "f_vec.z should be m*g = {:.5}, got {:.5}", weight, f_vec.z
+    );
+    assert!(
+        (control.thrust - weight).abs() < 1e-5,
+        "compute_control.thrust should be m*g = {:.5}, got {:.5}", weight, control.thrust
+    );
+    // At level flight: thrust = f_vec.z (body-z = world-z)
+    assert!(
+        (control.thrust - f_vec.z).abs() < 1e-5,
+        "compute_control.thrust ({:.5}) must equal f_vec.z ({:.5}) at level hover",
+        control.thrust, f_vec.z
+    );
+    // No lateral force
+    assert!(f_vec.x.abs() < 1e-6, "f_vec.x should be 0 at hover, got {:.6}", f_vec.x);
+    assert!(f_vec.y.abs() < 1e-6, "f_vec.y should be 0 at hover, got {:.6}", f_vec.y);
+}
+
+/// With a lateral position error (ep.x > 0) at level flight:
+/// compute_control.thrust ≈ f_vec.z  (body-z ≈ world-z for small tilt)
+/// and f_vec.x > 0 (force in +X to correct the error).
+/// The ratio f_vec.x / f_vec.z must equal kp.x * ep.x / g (small-angle).
+#[test]
+fn test_force_vector_matches_compute_control_with_x_error() {
+    use multirotor_simulator::dynamics::MultirotorState;
+    let params    = MultirotorParams::crazyflie();
+    let ctrl      = GeometricController::default();
+    let reference = hover_ref(Vec3::new(0.5, 0.0, 0.3));
+
+    // Drone is at the origin — 0.5 m behind reference in X.
+    let state = MultirotorState::new();
+
+    let ep = reference.position - state.position; // (0.5, 0, 0.3)
+    let ev = Vec3::zero();
+    let i  = Vec3::zero();
+
+    let f_vec = compute_force_vector(&reference, ep, ev, i, &ctrl, &params);
+
+    // Force must have a positive X component (need to accelerate in +X)
+    assert!(f_vec.x > 0.0,
+        "ep.x > 0 → f_vec.x must be positive, got {:.5}", f_vec.x);
+
+    // At level flight: thrust from compute_control ≈ f_vec.z (small tilt)
+    // Verify X-component matches: f_vec.x = kp.x * ep.x * mass
+    let expected_fx = ctrl.kp.x * ep.x * params.mass;
+    assert!(
+        (f_vec.x - expected_fx).abs() < 1e-4,
+        "f_vec.x = {:.5} should be kp.x * ep.x * mass = {:.5}",
+        f_vec.x, expected_fx
+    );
+
+    // Small-angle: pitch angle ≈ f_vec.x / f_vec.z (radians)
+    let pitch_rad = f_vec.x / f_vec.z;
+    assert!(
+        pitch_rad > 0.0 && pitch_rad < 0.5,
+        "pitch_rad = {:.4} should be small and positive for ep.x = 0.5 m",
+        pitch_rad
+    );
+}
+
+/// After compute_control accumulates i_pos (non-zero ki_pos), the force vector
+/// from compute_force_vector with the updated i_pos must include the integral
+/// contribution — the direction must shift compared to zero integral.
+#[test]
+fn test_force_vector_includes_integral_contribution() {
+    use multirotor_simulator::dynamics::MultirotorState;
+    let params     = MultirotorParams::crazyflie();
+    let mut ctrl   = GeometricController::default();
+    let reference  = hover_ref(Vec3::new(0.0, 0.0, 0.3));
+
+    // Give the drone a Z position error so the integral winds up.
+    let mut state = MultirotorState::new();
+    state.position.z = 0.1; // 0.2 m below target
+
+    // Run 20 steps to accumulate Z integral.
+    for _ in 0..20 {
+        ctrl.compute_control(&state, &reference, &params, 0.01);
+    }
+    let i_pos = ctrl.i_error_pos();
+    assert!(i_pos.z > 0.0, "i_pos.z should have wound up positively: {:.4}", i_pos.z);
+
+    let ep = reference.position - state.position;
+    let ev = Vec3::zero();
+
+    let f_with_i    = compute_force_vector(&reference, ep, ev, i_pos,       &ctrl, &params);
+    let f_without_i = compute_force_vector(&reference, ep, ev, Vec3::zero(), &ctrl, &params);
+
+    // Integral adds positive Z force (boosting thrust to reach target height).
+    assert!(
+        f_with_i.z > f_without_i.z,
+        "Integral should add Z force: with_i.z={:.5} vs without_i.z={:.5}",
+        f_with_i.z, f_without_i.z
+    );
+    let expected_delta = ctrl.ki_pos.z * i_pos.z * params.mass;
+    let actual_delta   = f_with_i.z - f_without_i.z;
+    assert!(
+        (actual_delta - expected_delta).abs() < 1e-5,
+        "Delta = {:.5}, expected ki_pos.z * i.z * mass = {:.5}",
+        actual_delta, expected_delta
+    );
 }

@@ -295,14 +295,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
                 );
 
-                // Safety: stop on flip
-                if latest_entry.roll.abs() > 90.0 {
-                    println!("FLIP detected (roll={:.1}°) — stopping motors", latest_entry.roll);
+                // Safety: stop on flip (roll or pitch exceeds 90°)
+                if latest_entry.roll.abs() > 90.0 || latest_entry.pitch.abs() > 90.0 {
+                    println!(
+                        "FLIP detected (roll={:.1}°, pitch={:.1}°) — stopping motors",
+                        latest_entry.roll, latest_entry.pitch
+                    );
                     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
                     break;
                 }
 
-                // Safety: abort if drone drifts >0.4 m from anchor in XY
+                // Safety: hard abort if drone drifts > 0.4 m from the XY anchor.
+                //
+                // This is intentionally evaluated BEFORE the EKF-reset re-anchor below,
+                // so it acts as a last-resort stop for large Lighthouse jumps (> 0.4 m)
+                // that were not caught by the 0.05 m re-anchor threshold, or for genuine
+                // controller divergence.
+                //
+                // Why 0.4 m is safe here: the setpoint_hover pre-phase runs for ~3 s
+                // before RPYT handoff, giving the Lighthouse / EKF time to initialise.
+                // Any Lighthouse re-init *during* the RPYT phase that moves the position
+                // estimate by > 0.4 m in one tick is treated as unrecoverable — stopping
+                // motors is safer than trying to re-anchor mid-flight with stale state.
+                // Smaller EKF jumps (< 0.4 m) are handled by the re-anchor logic below.
                 let drift_xy = {
                     let dx = state.position.x - hover_ref_rpyt.position.x;
                     let dy = state.position.y - hover_ref_rpyt.position.y;
@@ -529,9 +544,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     controller.set_i_error_pos(i_pos_prev);
                 }
                 let yaw_rate_d = yaw_rate_cmd(reference.yaw, latest_entry.yaw, 2.0, 30.0);
-                let (thrust_pwm, _) = thrust_to_pwm(
+                let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
                     control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
                 );
+
+                // Anti-windup: also revert Z integral if thrust is saturated
+                // (same logic as my_hover — prevents Z integral winding up when
+                // the drone is far above/below target height during a circle).
+                if thrust_pwm_raw > 60_000.0 || thrust_pwm_raw < 10_000.0 {
+                    controller.set_i_error_pos(i_pos_prev);
+                }
 
                 println!(
                     "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  r={:+.1}° p_cmd={:+.1}° thr={}",
