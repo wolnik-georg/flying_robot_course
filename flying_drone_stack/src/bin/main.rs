@@ -361,9 +361,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // - Phase 1: hover at (0,0,height) until stable
             // - Phase 2: track circle trajectory once at height
 
-            let radius = 0.3f32;
+            let radius = 0.2f32;
             let height = 0.3f32;
-            let omega  = 0.15f32; // ~42 s per lap, max speed r*ω = 0.045 m/s — gentle
+            let omega  = 0.15f32; // ~42 s per lap, max speed r*ω = 0.030 m/s — gentle
 
             // ── Drain stale buffer (same as my_hover) ────────────────────────
             println!("my_circle: draining stale log buffer...");
@@ -401,9 +401,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut est_pos_y = 0.0f32;
             let mut ever_airborne = false;
 
-            // circle_t advances once the drone is stably at height.
+            // Phase logic:
+            //   at_height      — set once drone reaches target height zone
+            //   settle_ticks   — counts up after at_height; circle only starts after 5 s
+            //   circle_t       — advances only after settle is complete
+            // The settle period lets residual takeoff velocity damp to near-zero and the
+            // Z integral converge, so the circle starts from a stable, near-stationary drone.
             let mut at_height = false;
+            let mut settle_ticks: u32 = 0;
             let mut circle_t = 0.0f32;
+            const SETTLE_TICKS: u32 = 500; // 5 s at 100 Hz before circle begins
 
             let start = Instant::now();
             // 70 s total: up to ~10 s to reach height + 60 s circle
@@ -440,19 +447,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     est_pos_y += latest_entry.vel_y * 0.01;
                 }
 
-                // Transition to circle phase: drone must be airborne and within 3 cm of target height.
-                // Reset est_pos to (0, 0) at transition so circle starts with zero position error.
-                if !at_height && ever_airborne && (latest_entry.range_z - height).abs() < 0.03 {
-                    est_pos_x = 0.0;
-                    est_pos_y = 0.0;
+                // Phase 1 → Phase 2 transition: drone airborne and above 0.20 m.
+                // Using a simple floor (not a narrow band) so the settle phase starts
+                // immediately after liftoff rather than waiting for the drone to hit a
+                // tight ±3 cm window around the 0.30 m target (which took 34 s in flight 3).
+                // During the 5 s settle phase the controller still targets height = 0.30 m,
+                // so the drone climbs to its final altitude naturally while velocity damps out.
+                if !at_height && ever_airborne && latest_entry.range_z > 0.20 {
                     at_height = true;
                     println!(
-                        "my_circle: at height {:.3}m — starting circle (ω={:.2} rad/s, r={:.2}m)",
-                        latest_entry.range_z, omega, radius,
+                        "my_circle: at height {:.3}m — settling for {:.0}s before circle",
+                        latest_entry.range_z, SETTLE_TICKS as f32 * 0.01,
                     );
                 }
 
-                let reference = if at_height {
+                // Count settle ticks; reset est_pos to zero when settle completes so the
+                // circle starts with zero position error and near-zero velocity.
+                if at_height && settle_ticks < SETTLE_TICKS {
+                    settle_ticks += 1;
+                    if settle_ticks == SETTLE_TICKS {
+                        est_pos_x = 0.0;
+                        est_pos_y = 0.0;
+                        println!(
+                            "my_circle: settled — starting circle (ω={:.2} rad/s, r={:.2}m, vel_xy={:.3}m/s)",
+                            omega, radius, vel_xy,
+                        );
+                    }
+                }
+
+                let circle_started = at_height && settle_ticks >= SETTLE_TICKS;
+                let reference = if circle_started {
                     circle_t += 0.01;
                     circle.get_reference(circle_t)
                 } else {
@@ -481,7 +505,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     controller.set_i_error_pos(i_pos_prev);
                 }
 
-                let yaw_rate_d = -yaw_rate_cmd(reference.yaw, latest_entry.yaw, 1.0, 30.0);
+                // Hold anchor yaw throughout — do NOT use reference.yaw from the circle trajectory.
+                // CircleTrajectory sets yaw = theta + π/2 (tangential heading).
+                // Switching from hover yaw (0°) to circle yaw (90° at t=0) commands max yaw rate,
+                // spinning the drone and misaligning roll/pitch with the world frame → spiral drift.
+                let yaw_rate_d = -yaw_rate_cmd(deg_to_rad(anchor.yaw), latest_entry.yaw, 1.0, 30.0);
                 let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
                     control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
                 );
@@ -492,7 +520,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 println!(
                     "{}  ref=({:+.2},{:+.2},{:+.2})  est=({:+.2},{:+.2})  ep=({:+.3},{:+.3},{:+.3})  r={:+.1}° p={:+.1}° thr={}",
-                    if at_height { format!("c={:.1}s", circle_t) } else { "hover ".to_string() },
+                    if circle_started { format!("c={:.1}s", circle_t) }
+                    else if at_height { format!("settle {}/{}", settle_ticks, SETTLE_TICKS) }
+                    else { "takeoff".to_string() },
                     reference.position.x, reference.position.y, reference.position.z,
                     est_pos_x, est_pos_y,
                     ep.x, ep.y, ep.z,
