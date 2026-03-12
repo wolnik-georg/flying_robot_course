@@ -18,13 +18,12 @@ use multirotor_simulator::flight::{
     force_vector_to_rpyt,
     thrust_to_pwm,
     yaw_rate_cmd,
-    detect_ekf_reset,
     deg_to_rad,
 };
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
-const MANEUVER: &str = "my_hover";
+const MANEUVER: &str = "my_circle";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
@@ -355,141 +354,152 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         "my_circle" => {
-            println!("Circle trajectory using GeometricController (position setpoint mode)...");
+            // Circle trajectory using the same approach as my_hover:
+            // - range.zrange for height (no Lighthouse needed)
+            // - velocity integration for XY position estimate
+            // - RPYT control throughout, takeoff from ground
+            // - Phase 1: hover at (0,0,height) until stable
+            // - Phase 2: track circle trajectory once at height
 
-            let radius = 0.3;
-            let height = 0.3;
-            let omega  = 0.15; // ~42 s per lap, max speed 0.045 m/s — gentle for first flight
+            let radius = 0.3f32;
+            let height = 0.3f32;
+            let omega  = 0.15f32; // ~42 s per lap, max speed r*ω = 0.045 m/s — gentle
 
-            // Hold at origin for 8 s to let the Kalman EKF fully converge.
-            // Then read the converged position and offset the circle center so
-            // t=0 starts exactly where the drone is (no step error at launch).
-            println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
-            let stab_start = Instant::now();
-            while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&stab_start, &mut log_file).await;
-                cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
-                sleep(Duration::from_millis(50)).await;
+            // ── Drain stale buffer (same as my_hover) ────────────────────────
+            println!("my_circle: draining stale log buffer...");
+            let drain_start = Instant::now();
+            for _ in 0..500 {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &drain_start, &mut log_file).await;
             }
+            let anchor = log_data.last().cloned().unwrap_or_default();
+            println!(
+                "my_circle: range_z={:.3}m  yaw={:.1}°  → taking off to {:.2}m then circling",
+                anchor.range_z, anchor.yaw, height,
+            );
 
-            // Read converged position as the circle start point.
-            let base = log_data.last().cloned().unwrap_or_default();
-            println!("Starting circle.");
+            // ── RPYT unlock ──────────────────────────────────────────────────
+            cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
 
-            // Circle centered at (-radius, 0) so t=0 starts at (0, 0).
-            let circle = CircleTrajectory::with_center(radius, height, omega, (-radius, 0.0));
-
-            // Level 1 geometric control: geometric controller drives the drone via setpoint_rpyt.
-            // The firmware only handles attitude rate PIDs + motor mixing + battery compensation.
             let hover_thrust_n = params.mass * params.gravity;
 
-            // EKF reset detection — same logic as my_hover.
-            let mut prev_ekf_pos_c: Option<Vec3> = None;
-            let mut prev_ekf_yaw_c: f32 = 0.0;
+            // Circle centered at (-radius, 0) so t=0 starts at (0, 0) with velocity (0, r*ω).
+            let circle = CircleTrajectory::with_center(radius, height, omega, (-radius, 0.0));
+
+            // Hover reference used during Phase 1 (takeoff + height stabilisation).
+            let hover_ref_circle = TrajectoryReference {
+                position: Vec3::new(0.0, 0.0, height),
+                velocity: Vec3::zero(),
+                acceleration: Vec3::zero(),
+                jerk: Vec3::zero(),
+                yaw: deg_to_rad(anchor.yaw),
+                yaw_rate: 0.0,
+                yaw_acceleration: 0.0,
+            };
+
+            // Integrated XY position — same dead-reckoning as my_hover.
+            let mut est_pos_x = 0.0f32;
+            let mut est_pos_y = 0.0f32;
+            let mut ever_airborne = false;
+
+            // circle_t advances once the drone is stably at height.
+            let mut at_height = false;
+            let mut circle_t = 0.0f32;
 
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(60) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
-
-                let t = start.elapsed().as_secs_f32();
-                let reference = circle.get_reference(t);
+            // 70 s total: up to ~10 s to reach height + 60 s circle
+            while start.elapsed() < Duration::from_secs(70) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &start, &mut log_file).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
+
+                // Safety: stop on flip
+                if latest_entry.roll.abs() > 90.0 || latest_entry.pitch.abs() > 90.0 {
+                    println!(
+                        "FLIP detected (roll={:.1}°, pitch={:.1}°) — stopping motors",
+                        latest_entry.roll, latest_entry.pitch
+                    );
+                    cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+                    break;
+                }
+
+                let vel_xy = (latest_entry.vel_x.powi(2) + latest_entry.vel_y.powi(2)).sqrt();
+                if vel_xy > 2.0 {
+                    println!("VELOCITY ABORT (vel_xy={:.2} m/s) — stopping motors", vel_xy);
+                    cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+                    break;
+                }
+
+                if latest_entry.range_z > 0.1 {
+                    ever_airborne = true;
+                }
+
+                // Integrate XY position from velocity (dt = 10 ms tick).
+                // Gate: freeze during fast drift (same logic as my_hover).
+                if ever_airborne && vel_xy < 0.3 {
+                    est_pos_x += latest_entry.vel_x * 0.01;
+                    est_pos_y += latest_entry.vel_y * 0.01;
+                }
+
+                // Transition to circle phase: drone must be airborne and within 3 cm of target height.
+                // Reset est_pos to (0, 0) at transition so circle starts with zero position error.
+                if !at_height && ever_airborne && (latest_entry.range_z - height).abs() < 0.03 {
+                    est_pos_x = 0.0;
+                    est_pos_y = 0.0;
+                    at_height = true;
+                    println!(
+                        "my_circle: at height {:.3}m — starting circle (ω={:.2} rad/s, r={:.2}m)",
+                        latest_entry.range_z, omega, radius,
+                    );
+                }
+
+                let reference = if at_height {
+                    circle_t += 0.01;
+                    circle.get_reference(circle_t)
+                } else {
+                    hover_ref_circle.clone()
+                };
+
                 let state = build_state(
-                    0.0, 0.0, latest_entry.range_z,
+                    est_pos_x, est_pos_y, latest_entry.range_z,
                     latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
                     latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
                     latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
                 );
 
-                // ── Axis-aware EKF reset detector ──────────────────────────────
-                // For circle/trajectory mode we can't re-anchor the XY reference to the
-                // drone's current position (that would teleport it off the trajectory).
-                // Instead we only reset the position integral on EKF jumps, so the
-                // controller doesn't fight a stale integral from before the jump.
-                // Z is handled identically to my_hover: re-anchor ref.z + reset Z integral.
-                let cur_pos_c = state.position;
-                let cur_yaw_c = latest_entry.yaw;
-                let reset_c = detect_ekf_reset(
-                    prev_ekf_pos_c, cur_pos_c,
-                    prev_ekf_yaw_c, cur_yaw_c,
-                    0.05, 0.05, 10.0,
-                );
-                if reset_c.xy {
-                    let step_xy = {
-                        let s = cur_pos_c - prev_ekf_pos_c.unwrap_or(cur_pos_c);
-                        (s.x * s.x + s.y * s.y).sqrt()
-                    };
-                    println!(
-                        "EKF XY reset (XY={:.2}m) — resetting XY integral (trajectory continues)",
-                        step_xy
-                    );
-                    let i_z = controller.i_error_pos().z;
-                    controller.reset_position_integral();
-                    let mut i_restored = controller.i_error_pos();
-                    i_restored.z = i_z;
-                    controller.set_i_error_pos(i_restored);
-                }
-                if reset_c.z {
-                    let step_z = (cur_pos_c - prev_ekf_pos_c.unwrap_or(cur_pos_c)).z.abs();
-                    println!(
-                        "EKF Z reset (Z={:.2}m) — resetting Z integral",
-                        step_z
-                    );
-                    let mut i = controller.i_error_pos();
-                    i.z = 0.0;
-                    controller.set_i_error_pos(i);
-                }
-                if reset_c.yaw {
-                    println!("EKF yaw reset (Δyaw={:.1}°) — noted", reset_c.step_yaw_deg);
-                    // No re-anchor needed: reference.yaw is set by the trajectory,
-                    // and the yaw_rate_d term already compensates for any offset.
-                }
-                prev_ekf_pos_c = Some(cur_pos_c);
-                prev_ekf_yaw_c = cur_yaw_c;
-
-                let dt = 0.05;
-                let i_pos_prev = controller.i_error_pos();
-                let control = controller.compute_control(&state, &reference, &params, dt);
-
                 let ep = reference.position - state.position;
                 let ev = reference.velocity - state.velocity;
+
+                let i_pos_prev = controller.i_error_pos();
+                let control = controller.compute_control(&state, &reference, &params, 0.01);
                 let i_pos = controller.i_error_pos();
 
-                let f_vec = compute_force_vector(
-                    &reference, ep, ev, i_pos, &controller, &params,
-                );
+                let f_vec = compute_force_vector(&reference, ep, ev, i_pos, &controller, &params);
                 let (roll_d_cmd, pitch_d_cmd, roll_d_raw, pitch_d_raw) =
                     force_vector_to_rpyt(f_vec, 20.0);
 
-                // Anti-windup: if roll or pitch saturated, revert position integral
                 if multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_d_raw, pitch_d_raw, 20.0) {
                     controller.set_i_error_pos(i_pos_prev);
                 }
-                // Same sign convention fix as my_hover.
-                let yaw_rate_d = -yaw_rate_cmd(reference.yaw, latest_entry.yaw, 2.0, 30.0);
+
+                let yaw_rate_d = -yaw_rate_cmd(reference.yaw, latest_entry.yaw, 1.0, 30.0);
                 let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
                     control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
                 );
 
-                // Anti-windup: also revert Z integral if thrust is saturated
-                // (same logic as my_hover — prevents Z integral winding up when
-                // the drone is far above/below target height during a circle).
                 if thrust_pwm_raw > 60_000.0 || thrust_pwm_raw < 10_000.0 {
                     controller.set_i_error_pos(i_pos_prev);
                 }
 
                 println!(
-                    "t={:.1}s  ref=({:+.2},{:+.2})  pos=({:+.2},{:+.2})  ep=({:+.3},{:+.3})  r={:+.1}° p_cmd={:+.1}° thr={}",
-                    t,
-                    reference.position.x, reference.position.y,
-                    state.position.x, state.position.y,
-                    ep.x, ep.y,
+                    "{}  ref=({:+.2},{:+.2},{:+.2})  est=({:+.2},{:+.2})  ep=({:+.3},{:+.3},{:+.3})  r={:+.1}° p={:+.1}° thr={}",
+                    if at_height { format!("c={:.1}s", circle_t) } else { "hover ".to_string() },
+                    reference.position.x, reference.position.y, reference.position.z,
+                    est_pos_x, est_pos_y,
+                    ep.x, ep.y, ep.z,
                     roll_d_cmd, pitch_d_cmd, thrust_pwm,
                 );
 
                 cf.commander.setpoint_rpyt(roll_d_cmd, pitch_d_cmd, yaw_rate_d, thrust_pwm).await?;
-                // No sleep — tokio::join! on both streams drives the loop at 100 Hz.
             }
         }
 
