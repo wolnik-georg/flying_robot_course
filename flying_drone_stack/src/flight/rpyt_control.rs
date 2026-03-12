@@ -1,22 +1,25 @@
 //! RPYT control math: convert a geometric controller output into the four scalars
 //! that `cf.commander.setpoint_rpyt(roll, pitch, yaw_rate, thrust_u16)` expects.
 //!
-//! # Coordinate-convention note (Crazyflie RPYT legacy pitch sign)
+//! # Coordinate-convention note (Crazyflie RPYT pitch sign)
 //! The Crazyflie RPYT commander (firmware `controller_lee.c`) internally does:
 //! ```text
 //!   q_att = rpy2quat(roll, -pitch_setpoint, yaw)
 //! ```
 //! i.e. it **negates** the pitch setpoint before converting to a quaternion.
-//! Our geometric controller produces `f_vec` in world frame with the usual
-//! right-hand-rule conventions.  To compensate for the firmware's negation we
-//! negate `pitch_d_raw` before sending.  The full sign chain is:
+//!
+//! In the Crazyflie body frame, **positive pitch = nose-up**, which tilts the
+//! thrust vector toward −X (drone accelerates backward in world frame).  We
+//! therefore send `pitch_d_raw` **un-negated** so the firmware's negation
+//! produces the correct negative (nose-down) attitude for forward acceleration.
+//! The full sign chain is:
 //! ```text
 //!   ep.x > 0  (drone behind target, need +X force)
 //!   → f_vec.x > 0
 //!   → pitch_d_raw = atan2(f_vec.x, f_vec.z) > 0
-//!   → pitch_d_cmd = −pitch_d_raw < 0          ← this module
-//!   → firmware negates: actual_pitch = +pitch_d_raw > 0
-//!   → positive pitch → body_z tilts toward +world_x
+//!   → pitch_d_cmd = +pitch_d_raw > 0          ← this module (no negation)
+//!   → firmware negates: actual_pitch = −pitch_d_raw < 0
+//!   → negative pitch → nose-down → thrust tilts toward +world_x
 //!   → drone accelerates in +X  ✓
 //! ```
 
@@ -93,8 +96,9 @@ pub fn compute_force_vector(
 ///   roll_d_raw  = atan2(−F_y, F_z)  — positive roll  tilts body_z toward +world_y (right-down)
 /// ```
 ///
-/// `pitch_d_cmd` is **negated** before clamping to compensate for the Crazyflie
-/// RPYT firmware's legacy sign convention (see module-level doc).
+/// `pitch_d_cmd` is passed **un-negated** so the firmware's own negation in
+/// `rpy2quat(roll, -pitch, yaw)` produces the correct nose-down attitude
+/// (see module-level doc).
 ///
 /// Returns `(roll_cmd_deg, pitch_cmd_deg, roll_d_raw_deg, pitch_d_raw_deg)`.
 /// The raw values are returned so the caller can decide on anti-windup rollback.
@@ -105,8 +109,8 @@ pub fn force_vector_to_rpyt(
     let pitch_d_raw = f_vec.x.atan2(f_vec.z).to_degrees();
     let roll_d_raw  = (-f_vec.y).atan2(f_vec.z).to_degrees();
 
-    // Negate pitch to match Crazyflie RPYT legacy convention (see module doc).
-    let pitch_d_cmd = (-pitch_d_raw).clamp(-max_tilt_deg, max_tilt_deg);
+    // Pass pitch un-negated — firmware negates it in rpy2quat (see module doc).
+    let pitch_d_cmd = pitch_d_raw.clamp(-max_tilt_deg, max_tilt_deg);
     let roll_d_cmd  = roll_d_raw.clamp(-max_tilt_deg, max_tilt_deg);
 
     (roll_d_cmd, pitch_d_cmd, roll_d_raw, pitch_d_raw)

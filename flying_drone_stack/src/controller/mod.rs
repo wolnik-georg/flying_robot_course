@@ -92,8 +92,8 @@ impl GeometricController {
         Self {
             // Firmware defaults (controller_lee.c):
             // Kpos_P = {7, 7, 7},  Kpos_D = {4, 4, 4},  Kpos_I = {0, 0, 0}
-            kp: Vec3::new(7.0, 7.0, 7.0),
-            kv: Vec3::new(4.0, 4.0, 4.0),
+            kp: Vec3::new(12.0, 12.0, 7.0),
+            kv: Vec3::new(8.0, 8.0, 4.0),
             // Position integral — used in RPYT mode (modifies f_vec → roll_d/pitch_d/thrust).
             // Tuned for real hardware: handles slow XY drift from CG offsets / prop imbalance,
             // and slow Z drift from EKF Z resets (Lighthouse geometry).

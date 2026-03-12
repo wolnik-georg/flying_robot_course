@@ -29,34 +29,26 @@ const MANEUVER: &str = "my_hover";
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
 /// hover (after ep.z settles), take the average and set it here.
-/// Typical CF2.1 range: 35000–50000. Last flight showed thr_pwm settling around 42000.
+/// Typical CF2.1 range: 35000–50000.
+/// Flight 2026-03-04: setpoint_hover worked, RPYT descended immediately → HOVER_PWM was too low.
+/// Back-calculation from descent rate at RPYT handoff gives real hover ≈ 50 000.
 /// If the drone rises (ep.z goes negative), HOVER_PWM is too high — lower it.
 /// If the drone falls  (ep.z goes positive), HOVER_PWM is too low  — raise it.
-const HOVER_PWM: f32 = 42000.0;
+const HOVER_PWM: f32 = 50000.0;
 
 #[derive(Debug, Default, Clone)]
 struct LogEntry {
     time_ms: u64,
-    pos_x: f32,
-    pos_y: f32,
-    pos_z: f32,
     vel_x: f32,
     vel_y: f32,
     vel_z: f32,
     roll: f32,
     pitch: f32,
     yaw: f32,
-    thrust: u32,
-    vbat: f32,
+    range_z: f32,   // range.zrange — ToF height above floor (m), reliable without Lighthouse
     gyro_x: f32,
     gyro_y: f32,
     gyro_z: f32,
-    acc_x: f32,
-    acc_y: f32,
-    acc_z: f32,
-    rate_roll: f32,
-    rate_pitch: f32,
-    rate_yaw: f32,
 }
 
 #[tokio::main]
@@ -83,32 +75,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         yaw_acceleration: 0.0,
     };
 
-    // Block 1: Position + velocity — 6 floats, 24 bytes (at CF2 CRTP limit)
+    // Block 1: Velocity + attitude — 6 floats, 24 bytes.
+    // All control-critical lateral variables in one packet at 200 Hz.
     let mut block1 = cf.log.create_block().await?;
-    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
-              "stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz"] {
+    for v in ["stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz",
+              "stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw"] {
         add_var(&mut block1, v).await;
     }
     let stream1 = block1.start(LogPeriod::from_millis(10)?).await?;
 
-    // Block 2: Attitude + body rates — 6 floats, 24 bytes
-    // Merges old blocks 2+4: everything needed for the geometric controller state.
+    // Block 2: Z-ranger + gyro — uint16 + 3 floats, 14 bytes.
+    // range.zrange: ToF height in mm (uint16) → divided by 1000 to get metres.
+    // gyro.x/y/z: body-frame angular rates needed by the geometric attitude controller.
     let mut block2 = cf.log.create_block().await?;
-    for v in ["stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw",
-              "gyro.x", "gyro.y", "gyro.z"] {
+    for v in ["range.zrange", "gyro.x", "gyro.y", "gyro.z"] {
         add_var(&mut block2, v).await;
     }
     let stream2 = block2.start(LogPeriod::from_millis(10)?).await?;
-
-    // Block 3: Thrust, battery voltage, accelerometer — 5 floats + 1 uint16, ~22 bytes.
-    // stabilizer.thrust is the uint16 motor PWM command (0–65535).
-    // pm.vbat is the battery voltage in volts — useful for post-flight analysis.
-    // acc.x/y/z are the IMU accelerometer readings in g (body frame).
-    let mut block3 = cf.log.create_block().await?;
-    for v in ["stabilizer.thrust", "pm.vbat", "acc.x", "acc.y", "acc.z"] {
-        add_var(&mut block3, v).await;
-    }
-    let stream3 = block3.start(LogPeriod::from_millis(10)?).await?;
 
     let mut log_data: Vec<LogEntry> = Vec::new();
     let mut last_print = Instant::now();
@@ -119,12 +102,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file,
-        "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw"
-    )?;
+    writeln!(log_file, "time_ms,vel_x,vel_y,vel_z,roll,pitch,yaw,range_z,gyro_x,gyro_y,gyro_z")?;
     println!("Log file opened: {}", filename);
 
-    println!("Logging started (100 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
+    println!("Logging started (100 Hz, 2 blocks). Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
 
     // Reset Kalman filter BEFORE takeoff so position estimates start near zero.
@@ -137,8 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // my_hover uses setpoint_hover to lift and stabilize (so EKF z is correct at ~0.3 m),
     // then switches to RPYT for closed-loop control.  my_circle does its own position-hold.
-    let is_rpyt_maneuver = matches!(MANEUVER, "my_circle");
-    if !is_rpyt_maneuver {
+    let skip_hover_bootstrap = matches!(MANEUVER, "my_circle" | "my_hover");
+    if !skip_hover_bootstrap {
         println!("Ramping up...");
         for y in 0..15 {
             let zdistance = y as f32 / 50.0;
@@ -149,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Stabilizing hover for 3 seconds...");
         let stab_start = Instant::now();
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start, &mut log_file).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&stab_start, &mut log_file).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -161,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Pure hover at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -183,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -radius * omega * (omega * t).sin();
                 let vy = radius * omega * (omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -205,97 +186,84 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let vx = -a * omega * (omega * t).sin();
                 let vy = b * omega * (2.0 * omega * t).cos();
 
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
 
         "my_hover" => {
-            // Geometric controller closed-loop hover via setpoint_rpyt (Level 1).
+            // Geometric controller hover using range.zrange for height, EKF x/y for lateral.
+            // No Lighthouse dependency.  Takes off directly from the ground via RPYT.
             //
-            // HOVER_PWM calibration — why thr_pwm converges to the real hover PWM:
-            //   At equilibrium the drone is stationary, so real_thrust = m*g.
-            //   real_thrust is linear in PWM → thr_pwm = real_hover_PWM, always,
-            //   regardless of what HOVER_PWM is set to.  The drone will hover below
-            //   0.3 m if HOVER_PWM is too low (ep_z will be positive), but thr_pwm
-            //   in the terminal is still the correct value to copy into HOVER_PWM.
-            //
-            // Procedure:
-            //   1. Run this flight. Drone hovers somewhere (possibly below 0.3 m).
-            //   2. Wait ~10 s for ep_z to settle. Read the stable thr_pwm.
-            //   3. Set HOVER_PWM = that value, recompile.  Drone now hovers at 0.3 m.
-            //   4. During the same or next flight, nudge drone +x (forward) by hand.
-            //      pitch_d must go NEGATIVE (nose down, pushes drone back to origin).
-            //      If pitch_d goes POSITIVE instead, flip pitch_d and roll_d signs in
-            //      my_circle before flying it.
+            // HOVER_PWM calibration: run once, read stable thr_pwm when ep.z ≈ 0, copy here.
 
-            // ── Step 1: drain the log buffer ────────────────────────────────────
-            // setpoint_hover ran for ~4 s above; drain accumulated packets so the
-            // first RPYT iteration uses fresh EKF state (z should now be ~0.3 m).
-            println!("my_hover: draining log buffer (getting fresh position)...");
+            // ── Read initial sensors on ground ───────────────────────────────────
+            // 30 iterations ≈ 300 ms to fill log buffer with valid sensor readings.
+            // Drain ALL buffered log packets before starting RPYT.
+            // Log streams run from connect time (~3.5 s before this point) → ~350 stale
+            // packets queued per stream.  30 iterations was not enough; the RPYT loop then
+            // drained the remaining ~320 stale packets at 2000 Hz, blasting max-thrust
+            // commands before the drone was ready (flight 2026-03-10 bug).
+            // 500 iterations covers ~5 s of buffered data at 100 Hz and guarantees the
+            // control loop starts with real-time packets.
+            println!("my_hover: draining stale log buffer...");
             let drain_start = Instant::now();
-            for _ in 0..60 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start, &mut log_file).await;
+            for _ in 0..500 {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &drain_start, &mut log_file).await;
             }
-
-            // ── Step 2: anchor hover reference ───────────────────────────────────
-            // Anchor XY to the current EKF estimate so there is no lateral step
-            // error at RPYT hand-off.  Z is intentionally set to TARGET_HEIGHT
-            // (not the current EKF z), because:
-            //   • If Lighthouse hasn't initialised yet, EKF z ≈ 0 (floor) → anchoring
-            //     there would make ep.z go negative as the drone rises, winding the
-            //     Z integral negative and collapsing thrust.
-            //   • setpoint_hover has been running for 3 s; the drone IS at ~0.3 m
-            //     physically, so targeting 0.3 m is correct.
-            //   • After the first Lighthouse fix the EKF XY/yaw reset fires and we
-            //     re-anchor XY then; Z is left at TARGET_HEIGHT which remains valid.
-            const TARGET_HEIGHT: f32 = 0.3;
             let anchor = log_data.last().cloned().unwrap_or_default();
-            let mut hover_ref_rpyt = TrajectoryReference {
-                position: Vec3::new(anchor.pos_x, anchor.pos_y, TARGET_HEIGHT),
+            println!(
+                "my_hover: range_z={:.3}m  yaw={:.1}°  → taking off to 0.3 m",
+                anchor.range_z, anchor.yaw,
+            );
+
+            // ── RPYT unlock ──────────────────────────────────────────────────────
+            // CF RPYT commander ignores non-zero thrust until it sees thrust=0 first.
+            cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+
+            let hover_thrust_n = params.mass * params.gravity;
+
+            // Reference position: XY = EKF starting position (= 0 after Kalman reset,
+            // relative to where the drone sits), Z = 0.3 m target height in range_z frame.
+            // On the ground: range_z ≈ 0 → ep.z = +0.3 → max thrust → natural takeoff.
+            // At target:     range_z ≈ 0.3 → ep.z ≈ 0 → hover thrust → stable hold.
+            let hover_ref_rpyt = TrajectoryReference {
+                position: Vec3::new(0.0, 0.0, 0.3),  // XY unused (velocity-only); Z = target height
                 velocity: Vec3::zero(),
                 acceleration: Vec3::zero(),
                 jerk: Vec3::zero(),
-                // Anchor yaw to the drone's current heading so there is no yaw-rate
-                // kick at RPYT hand-off.  The yaw field is in radians everywhere in
-                // the controller; latest_entry.yaw from the EKF is in degrees.
                 yaw: deg_to_rad(anchor.yaw),
                 yaw_rate: 0.0,
                 yaw_acceleration: 0.0,
             };
-            println!(
-                "my_hover: RPYT hand-off. XY anchor ({:.3}, {:.3}), Z target {:.3} m. HOVER_PWM={:.0}",
-                anchor.pos_x, anchor.pos_y, TARGET_HEIGHT, HOVER_PWM
-            );
 
-            // ── Step 3: one-shot RPYT thrust=0 unlock ───────────────────────────
-            // CF RPYT commander requires thrust=0 before accepting non-zero thrust.
-            // One command is enough; the drone drops ~1 cm in 50 ms — acceptable.
-            cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
-            sleep(Duration::from_millis(50)).await;
-
-            let hover_thrust_n = params.mass * params.gravity;
-
-            // Track previous EKF position and yaw to detect sudden jumps (Kalman resets).
-            // Position step > 0.05 m/tick = 5 m/s apparent velocity — impossible.
-            // Yaw step > 10°/tick = 1000 deg/s — impossible.  Both indicate EKF resets.
-            let mut prev_ekf_pos: Option<Vec3> = None;
-            let mut prev_ekf_yaw: f32 = 0.0;
+            // Self-integrated XY position estimate — gentle rubber-band to start position.
+            let mut est_pos_x = 0.0f32;
+            let mut est_pos_y = 0.0f32;
+            // Once the drone has been airborne, keep lateral damping active even if
+            // range_z momentarily dips below 0.1 m (e.g. during a crash descent).
+            // The takeoff gate only applies during the initial liftoff from the ground.
+            let mut ever_airborne = false;
 
             let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(5) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+            while start.elapsed() < Duration::from_secs(15) {
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
+
+                // XY position passed as 0 — velocity-only lateral control, no position hold.
+                // Z from range.zrange (reliable ToF, no Lighthouse needed).
                 let state = build_state(
-                    latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                    0.0, 0.0, latest_entry.range_z,
                     latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
                     latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
                     latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
                 );
 
-                // Safety: stop on flip (roll or pitch exceeds 90°)
+                let vel_xy = (latest_entry.vel_x.powi(2) + latest_entry.vel_y.powi(2)).sqrt();
+
+                // Safety: stop on flip
                 if latest_entry.roll.abs() > 90.0 || latest_entry.pitch.abs() > 90.0 {
                     println!(
                         "FLIP detected (roll={:.1}°, pitch={:.1}°) — stopping motors",
@@ -305,115 +273,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 }
 
-                // Safety: hard abort if drone drifts > 0.4 m from the XY anchor.
-                //
-                // This is intentionally evaluated BEFORE the EKF-reset re-anchor below,
-                // so it acts as a last-resort stop for large Lighthouse jumps (> 0.4 m)
-                // that were not caught by the 0.05 m re-anchor threshold, or for genuine
-                // controller divergence.
-                //
-                // Why 0.4 m is safe here: the setpoint_hover pre-phase runs for ~3 s
-                // before RPYT handoff, giving the Lighthouse / EKF time to initialise.
-                // Any Lighthouse re-init *during* the RPYT phase that moves the position
-                // estimate by > 0.4 m in one tick is treated as unrecoverable — stopping
-                // motors is safer than trying to re-anchor mid-flight with stale state.
-                // Smaller EKF jumps (< 0.4 m) are handled by the re-anchor logic below.
-                let drift_xy = {
-                    let dx = state.position.x - hover_ref_rpyt.position.x;
-                    let dy = state.position.y - hover_ref_rpyt.position.y;
-                    (dx * dx + dy * dy).sqrt()
-                };
-                if drift_xy > 0.4 {
-                    println!("DRIFT ABORT (XY drift={:.2}m > 0.4m) — stopping motors", drift_xy);
+                // Safety: abort on excessive lateral velocity.
+                if vel_xy > 1.5 {
+                    println!("VELOCITY ABORT (vel_xy={:.2} m/s) — stopping motors", vel_xy);
                     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
                     break;
                 }
 
+                // XY: gentle position correction + velocity damping.
+                // Z: full position control via range_z (absolute ToF, no drift).
+                if latest_entry.range_z > 0.1 {
+                    ever_airborne = true;
+                }
+
+                // Only integrate position when velocity is small — prevents a crash
+                // spiral from inflating est_pos to 0.7+ m and causing a massive
+                // destabilizing correction when the gate later reopens.
+                if ever_airborne && vel_xy < 0.2 {
+                    est_pos_x += latest_entry.vel_x * 0.01;
+                    est_pos_y += latest_entry.vel_y * 0.01;
+                    // Clamp so any residual bias can't build past ±0.5 m.
+                    est_pos_x = est_pos_x.clamp(-0.5, 0.5);
+                    est_pos_y = est_pos_y.clamp(-0.5, 0.5);
+                }
+
                 let mut ep = hover_ref_rpyt.position - state.position;
+                // Effective XY kp = 0.5 — gentle rubber-band to starting position.
+                ep.x = if ever_airborne { -est_pos_x * (0.5 / 7.0) } else { 0.0 };
+                ep.y = if ever_airborne { -est_pos_y * (0.5 / 7.0) } else { 0.0 };
+
                 let mut ev = hover_ref_rpyt.velocity - state.velocity;
+                // Takeoff gate: suppress lateral damping only during initial liftoff.
+                // Once ever_airborne is set, damping stays active even if range_z dips
+                // (e.g. during a crash descent) — prevents gate-toggle destabilisation.
+                if !ever_airborne {
+                    ev.x = 0.0;
+                    ev.y = 0.0;
+                }
 
-                // Safety: re-anchor ONLY on genuine EKF Kalman resets, not on
-                // normal XY drift. We detect a reset by comparing the EKF position
-                // change between consecutive 10 ms ticks. A step > 0.05 m in one
-                // tick = 5 m/s apparent velocity — physically impossible for this
-                // drone — so it must be a Kalman reset. Normal 130 mm/s drift is
-                // only 1.3 mm/tick, far below this threshold.
-                //
-                // Also detect yaw resets: a yaw jump > 10° in one 10 ms tick =
-                // 1000 deg/s yaw rate — physically impossible — so it must be a
-                // Lighthouse/EKF yaw re-initialisation.  Re-anchor hover_ref yaw
-                // so the yaw rate command doesn't blast at ±30 deg/s afterward.
-                let cur_pos = state.position;
-                let cur_yaw = latest_entry.yaw; // degrees
-                let reset = detect_ekf_reset(
-                    prev_ekf_pos, cur_pos,
-                    prev_ekf_yaw, cur_yaw,
-                    0.05, 0.05, 10.0,
-                );
-                if reset.xy {
-                    let step_xy = {
-                        let s = cur_pos - prev_ekf_pos.unwrap_or(cur_pos);
-                        (s.x * s.x + s.y * s.y).sqrt()
-                    };
-                    println!(
-                        "EKF XY reset detected (XY={:.2}m) — re-anchoring XY+Z + resetting position integral",
-                        step_xy
-                    );
-                    hover_ref_rpyt.position.x = state.position.x;
-                    hover_ref_rpyt.position.y = state.position.y;
-                    hover_ref_rpyt.position.z = state.position.z;
-                    controller.reset_position_integral();
-                }
-                if reset.z {
-                    let step_z = (cur_pos - prev_ekf_pos.unwrap_or(cur_pos)).z.abs();
-                    println!(
-                        "EKF Z reset detected (Z={:.2}m) — re-anchoring Z + resetting Z integral",
-                        step_z
-                    );
-                    hover_ref_rpyt.position.z = state.position.z;
-                    let mut i = controller.i_error_pos();
-                    i.z = 0.0;
-                    controller.set_i_error_pos(i);
-                }
-                if reset.yaw {
-                    println!(
-                        "EKF yaw reset detected (Δyaw={:.1}°) — re-anchoring yaw",
-                        reset.step_yaw_deg
-                    );
-                    hover_ref_rpyt.yaw = deg_to_rad(cur_yaw);
-                }
-                if reset.any() {
-                    ep = hover_ref_rpyt.position - state.position;
-                    ev = hover_ref_rpyt.velocity - state.velocity;
-                }
-                prev_ekf_pos = Some(cur_pos);
-                prev_ekf_yaw = cur_yaw;
-
-                // Save integral before compute_control updates it (for anti-windup rollback)
                 let i_pos_prev = controller.i_error_pos();
-
                 let control = controller.compute_control(&state, &hover_ref_rpyt, &params, 0.01);
+                // Zero XY integral: with ep.x/y=0 the controller's internal integral
+                // still accumulates XY position error — reset it each tick so only the
+                // velocity term (ev) drives lateral corrections.
+                let mut i_pos = controller.i_error_pos();
+                i_pos.x = 0.0;
+                i_pos.y = 0.0;
+                controller.set_i_error_pos(i_pos);
                 let i_pos = controller.i_error_pos();
-                let _i_att = controller.i_error_att();
 
-                let f_vec = compute_force_vector(
-                    &hover_ref_rpyt, ep, ev, i_pos, &controller, &params,
-                );
+                let f_vec = compute_force_vector(&hover_ref_rpyt, ep, ev, i_pos, &controller, &params);
                 let (roll_d_cmd, pitch_d_cmd, roll_d_raw, pitch_d_raw) =
                     force_vector_to_rpyt(f_vec, 25.0);
 
-                // Anti-windup: if roll or pitch saturated, revert position integral
-                // to its pre-step value so it doesn't accumulate during saturation.
                 if multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_d_raw, pitch_d_raw, 25.0) {
                     controller.set_i_error_pos(i_pos_prev);
                 }
 
-                let yaw_rate_d = yaw_rate_cmd(hover_ref_rpyt.yaw, latest_entry.yaw, 1.0, 30.0);
+                // Crazyflie RPYT sign: positive yaw_rate = CW from above = decreasing EKF yaw.
+                // yaw_rate_cmd returns (ref − current): negate to match hardware convention.
+                let yaw_rate_d = -yaw_rate_cmd(hover_ref_rpyt.yaw, latest_entry.yaw, 1.0, 30.0);
                 let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
                     control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
                 );
 
-                // Anti-windup: also revert Z integral if thrust is saturated.
                 if thrust_pwm_raw > 60_000.0 || thrust_pwm_raw < 10_000.0 {
                     controller.set_i_error_pos(i_pos_prev);
                 }
@@ -444,17 +367,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Stabilising at (0, 0, {:.2}) for 8 s — waiting for EKF convergence...", height);
             let stab_start = Instant::now();
             while stab_start.elapsed() < Duration::from_secs(8) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&stab_start, &mut log_file).await;
                 cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
 
             // Read converged position as the circle start point.
             let base = log_data.last().cloned().unwrap_or_default();
-            println!("EKF converged at ({:.3}, {:.3}) — using as circle start.", base.pos_x, base.pos_y);
+            println!("Starting circle.");
 
-            // Center at (base.pos_x - radius, base.pos_y) so t=0 is at (base.pos_x, base.pos_y).
-            let circle = CircleTrajectory::with_center(radius, height, omega, (base.pos_x - radius, base.pos_y));
+            // Circle centered at (-radius, 0) so t=0 starts at (0, 0).
+            let circle = CircleTrajectory::with_center(radius, height, omega, (-radius, 0.0));
 
             // Level 1 geometric control: geometric controller drives the drone via setpoint_rpyt.
             // The firmware only handles attitude rate PIDs + motor mixing + battery compensation.
@@ -466,14 +389,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(60) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
 
                 let t = start.elapsed().as_secs_f32();
                 let reference = circle.get_reference(t);
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
                 let state = build_state(
-                    latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                    0.0, 0.0, latest_entry.range_z,
                     latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
                     latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
                     latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
@@ -543,7 +466,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_d_raw, pitch_d_raw, 20.0) {
                     controller.set_i_error_pos(i_pos_prev);
                 }
-                let yaw_rate_d = yaw_rate_cmd(reference.yaw, latest_entry.yaw, 2.0, 30.0);
+                // Same sign convention fix as my_hover.
+                let yaw_rate_d = -yaw_rate_cmd(reference.yaw, latest_entry.yaw, 2.0, 30.0);
                 let (thrust_pwm, thrust_pwm_raw) = thrust_to_pwm(
                     control.thrust, hover_thrust_n, HOVER_PWM, 10_000.0, 60_000.0,
                 );
@@ -576,14 +500,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
 
             let latest_entry = log_data.last().cloned().unwrap_or_default();
             let state = build_state(
-                latest_entry.pos_x,  latest_entry.pos_y,  latest_entry.pos_z,
+                0.0, 0.0, latest_entry.range_z,
                 latest_entry.vel_x,  latest_entry.vel_y,  latest_entry.vel_z,
                 latest_entry.roll,   latest_entry.pitch,  latest_entry.yaw,
                 latest_entry.gyro_x, latest_entry.gyro_y, latest_entry.gyro_z,
@@ -618,7 +542,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2,&start, &mut log_file).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -641,7 +565,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     drop(stream1);
     drop(stream2);
-    drop(stream3);
     cf.disconnect().await;
 
     println!("Disconnected cleanly.");
@@ -655,9 +578,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_logging_step(
     log_data: &mut Vec<LogEntry>,
     last_print: &mut Instant,
-    stream1: &LogStream,  // pos + vel
-    stream2: &LogStream,  // attitude + gyro
-    stream3: &LogStream,  // thrust + vbat + acc
+    stream1: &LogStream,  // vel + attitude (200 Hz)
+    stream2: &LogStream,  // range_z + gyro (200 Hz)
     start: &Instant,
     log_file: &mut File,
 ) {
@@ -666,62 +588,45 @@ async fn run_logging_step(
         ..Default::default()
     };
 
-    // Read all three blocks in parallel — total wait = max(b1, b2, b3) not sum.
-    let (r1, r2, r3) = tokio::join!(stream1.next(), stream2.next(), stream3.next());
+    // Read both blocks in parallel — total wait = max(b1, b2), not sum.
+    let (r1, r2) = tokio::join!(stream1.next(), stream2.next());
 
     if let Ok(p) = r1 {
         let d = &p.data;
-        entry.pos_x = get_f32(d, "stateEstimate.x");
-        entry.pos_y = get_f32(d, "stateEstimate.y");
-        entry.pos_z = get_f32(d, "stateEstimate.z");
         entry.vel_x = get_f32(d, "stateEstimate.vx");
         entry.vel_y = get_f32(d, "stateEstimate.vy");
         entry.vel_z = get_f32(d, "stateEstimate.vz");
+        entry.roll  = get_f32(d, "stabilizer.roll");
+        entry.pitch = get_f32(d, "stabilizer.pitch");
+        entry.yaw   = get_f32(d, "stabilizer.yaw");
     }
 
     if let Ok(p) = r2 {
         let d = &p.data;
-        entry.roll   = get_f32(d, "stabilizer.roll");
-        entry.pitch  = get_f32(d, "stabilizer.pitch");
-        entry.yaw    = get_f32(d, "stabilizer.yaw");
-        entry.gyro_x = get_f32(d, "gyro.x");
-        entry.gyro_y = get_f32(d, "gyro.y");
-        entry.gyro_z = get_f32(d, "gyro.z");
-    }
-
-    if let Ok(p) = r3 {
-        let d = &p.data;
-        entry.thrust = d.get("stabilizer.thrust")
-            .and_then(|v| u32::try_from(*v).ok())
-            .unwrap_or(0);
-        entry.vbat  = get_f32(d, "pm.vbat");
-        entry.acc_x = get_f32(d, "acc.x");
-        entry.acc_y = get_f32(d, "acc.y");
-        entry.acc_z = get_f32(d, "acc.z");
+        // range.zrange: firmware logs as uint16 in mm → divide by 1000 to get metres.
+        entry.range_z = get_f32(d, "range.zrange") / 1000.0;
+        entry.gyro_x  = get_f32(d, "gyro.x");
+        entry.gyro_y  = get_f32(d, "gyro.y");
+        entry.gyro_z  = get_f32(d, "gyro.z");
     }
 
     if last_print.elapsed() >= Duration::from_secs(1) {
         println!(
-            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} roll={:+5.1} gyro_z={:+6.1} thr={} vbat={:.2}V",
+            "[t={:3}s] rng={:+5.3}  vx={:+5.3} vy={:+5.3}  roll={:+5.1} pitch={:+5.1}",
             start.elapsed().as_secs(),
-            entry.pos_z, entry.vel_x, entry.vel_y, entry.roll, entry.gyro_z,
-            entry.thrust, entry.vbat,
+            entry.range_z, entry.vel_x, entry.vel_y, entry.roll, entry.pitch,
         );
         *last_print = Instant::now();
     }
 
     // Write row immediately — log is safe even on crash or radio drop
     let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+        "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3}",
         entry.time_ms,
-        entry.pos_x, entry.pos_y, entry.pos_z,
         entry.vel_x, entry.vel_y, entry.vel_z,
         entry.roll, entry.pitch, entry.yaw,
-        entry.thrust,
-        entry.vbat,
+        entry.range_z,
         entry.gyro_x, entry.gyro_y, entry.gyro_z,
-        entry.acc_x, entry.acc_y, entry.acc_z,
-        entry.rate_roll, entry.rate_pitch, entry.rate_yaw
     );
 
     log_data.push(entry);
@@ -735,6 +640,9 @@ async fn add_var(block: &mut LogBlock, name: &str) {
 }
 
 fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
-    map.get(key).and_then(|v| f32::try_from(*v).ok()).unwrap_or(0.0)
+    // to_f64_lossy() handles every Value variant (U8/U16/U32/F32/...).
+    // The old f32::try_from() only matched Value::F32 and silently returned 0
+    // for integer types such as range.zrange (U16) and stabilizer.thrust (U16).
+    map.get(key).map(|v| v.to_f64_lossy() as f32).unwrap_or(0.0)
 }
 
