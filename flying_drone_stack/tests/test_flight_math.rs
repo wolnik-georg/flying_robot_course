@@ -294,9 +294,10 @@ fn test_force_vector_to_rpyt_positive_fx_gives_negative_pitch_cmd() {
         "F.x>0 → pitch_raw should be positive, got {:.3}°",
         pitch_raw_
     );
+    // pitch_cmd is sent un-negated; the firmware negates it internally in rpy2quat(roll,-pitch,yaw).
     assert!(
-        pitch_cmd < 0.0,
-        "F.x>0 → pitch_cmd (after firmware-convention negation) should be negative, got {:.3}°",
+        pitch_cmd > 0.0,
+        "F.x>0 → pitch_cmd should be positive (firmware negates it), got {:.3}°",
         pitch_cmd
     );
 }
@@ -748,10 +749,12 @@ fn test_force_vector_matches_compute_control_with_x_error() {
         f_vec.x, expected_fx
     );
 
-    // Small-angle: pitch angle ≈ f_vec.x / f_vec.z (radians)
+    // Small-angle: pitch angle ≈ f_vec.x / f_vec.z (radians).
+    // With kp.x=12 and ep.x=0.5: f_x/f_z ≈ 6/9.81 ≈ 0.61 rad — larger than the
+    // old 7.0 gains but still within a physically safe range (< 1 rad = 57°).
     let pitch_rad = f_vec.x / f_vec.z;
     assert!(
-        pitch_rad > 0.0 && pitch_rad < 0.5,
+        pitch_rad > 0.0 && pitch_rad < 0.7,
         "pitch_rad = {:.4} should be small and positive for ep.x = 0.5 m",
         pitch_rad
     );

@@ -2,14 +2,16 @@
 //!
 //! Covers:
 //!   - `quat_to_euler`: identity, known 90° yaw, round-trip
+//!   - `quat_to_rot`: identity, 90° yaw, orthogonality
 //!   - `quat_mult` (via mekf internals): tested through reset/predict
 //!   - `mekf_reset`: folds delta into q_ref and zeroes delta
 //!   - `mekf_predict`: state advances, covariance grows then stabilises
+//!   - Coriolis term: non-zero gyro + velocity → correct velocity coupling
 //!   - `mekf_update_height`: state x[2] moves toward measurement
 //!   - `mekf_update_flow`: state x[3]/x[4] move toward measurement
 //!   - `Mekf::feed_row`: integration-level smoke test
 
-use multirotor_simulator::estimation::{Mekf, MekfParams, MekfState, quat_to_euler};
+use multirotor_simulator::estimation::{Mekf, MekfParams, MekfState, quat_to_euler, quat_to_rot};
 use multirotor_simulator::estimation::mekf::{mekf_reset, mekf_predict, mekf_update_height, mekf_update_flow};
 use multirotor_simulator::math::Mat9;
 
@@ -284,4 +286,104 @@ fn test_mekf_update_flow_converges() {
     }
     assert!(state.x[3].is_finite(), "x[3] went non-finite");
     assert!(state.x[4].is_finite(), "x[4] went non-finite");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// quat_to_rot
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Identity quaternion → identity rotation matrix.
+#[test]
+fn test_quat_to_rot_identity() {
+    let r = quat_to_rot([1.0, 0.0, 0.0, 0.0]);
+    for i in 0..3 {
+        for j in 0..3 {
+            let expected = if i == j { 1.0 } else { 0.0 };
+            assert!((r[i][j] - expected).abs() < 1e-6,
+                "R[{i}][{j}] = {} expected {expected}", r[i][j]);
+        }
+    }
+}
+
+/// 90° CCW yaw: body X should map to world Y.
+#[test]
+fn test_quat_to_rot_90deg_yaw() {
+    let s = (std::f32::consts::FRAC_PI_4).sin();
+    let c = (std::f32::consts::FRAC_PI_4).cos();
+    let r = quat_to_rot([c, 0.0, 0.0, s]);
+    // R * [1, 0, 0] = [0, 1, 0]
+    assert!((r[0][0]).abs() < 1e-6, "R[0][0]={}", r[0][0]);
+    assert!((r[1][0] - 1.0).abs() < 1e-6, "R[1][0]={}", r[1][0]);
+    assert!((r[2][0]).abs() < 1e-6, "R[2][0]={}", r[2][0]);
+}
+
+/// Rotation matrix must be orthogonal: R^T R = I.
+#[test]
+fn test_quat_to_rot_orthogonal() {
+    // arbitrary non-trivial quaternion
+    let n = (0.6f32*0.6 + 0.2*0.2 + 0.3*0.3 + 0.7*0.7).sqrt();
+    let q = [0.6/n, 0.2/n, -0.3/n, 0.7/n];
+    let r = quat_to_rot(q);
+    for i in 0..3 {
+        for j in 0..3 {
+            let dot: f32 = (0..3).map(|k| r[k][i] * r[k][j]).sum();
+            let expected = if i == j { 1.0 } else { 0.0 };
+            assert!((dot - expected).abs() < 1e-5,
+                "RtR[{i}][{j}] = {dot}, expected {expected}");
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coriolis term correctness
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// With ωz = 1 rad/s and bx = 1 m/s (level drone), the Coriolis term
+/// −ω×v contributes −(ωz·bx) to the y-velocity derivative.
+/// After one predict step, by should be negative.
+#[test]
+fn test_coriolis_correct_sign_level() {
+    let params = MekfParams::default();
+    let mut state = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+    state.x[3] = 1.0; // bx = 1 m/s, everything else zero
+
+    let r_proc = Mat9::diag([
+        params.q_pos, params.q_pos, params.q_pos,
+        params.q_vel, params.q_vel, params.q_vel,
+        params.q_att, params.q_att, params.q_att,
+    ]);
+    let gyro  = [0.0f32, 0.0, 1.0]; // ωz = 1 rad/s
+    let accel = [0.0f32, 0.0, 9.81]; // cancel gravity, no net thrust
+
+    mekf_reset(&mut state);
+    mekf_predict(&mut state, gyro, accel, 0.01, &r_proc);
+
+    // −(ω×v).y = −(ωz·bx − ωx·bz) = −(1·1 − 0) = −1 m/s²  over dt=0.01 → Δby ≈ −0.01
+    assert!(state.x[4] < -1e-4,
+        "Coriolis should make by negative; got by={}", state.x[4]);
+}
+
+/// Without rotation (gyro = 0), Coriolis term is zero — velocity should not
+/// change relative to the no-Coriolis case.
+#[test]
+fn test_no_coriolis_when_not_rotating() {
+    let params = MekfParams::default();
+    let mut state = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+    state.x[3] = 1.0; // bx = 1 m/s
+
+    let r_proc = Mat9::diag([
+        params.q_pos, params.q_pos, params.q_pos,
+        params.q_vel, params.q_vel, params.q_vel,
+        params.q_att, params.q_att, params.q_att,
+    ]);
+    let gyro  = [0.0f32; 3];        // no rotation
+    let accel = [0.0f32, 0.0, 9.81];
+
+    let by_before = state.x[4];
+    mekf_reset(&mut state);
+    mekf_predict(&mut state, gyro, accel, 0.01, &r_proc);
+
+    // by should remain near zero (no Coriolis coupling with zero gyro)
+    assert!((state.x[4] - by_before).abs() < 1e-6,
+        "by changed without rotation: Δby={}", state.x[4] - by_before);
 }

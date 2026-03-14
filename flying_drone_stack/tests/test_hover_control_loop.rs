@@ -967,8 +967,9 @@ fn test_yaw_wrap_arithmetic() {
 fn test_default_gains_match_firmware() {
     let c = GeometricController::default();
 
-    assert_eq!(c.kp, Vec3::new(7.0, 7.0, 7.0),   "kp mismatch (firmware: Kpos_P = 7,7,7)");
-    assert_eq!(c.kv, Vec3::new(4.0, 4.0, 4.0),   "kv mismatch (firmware: Kpos_D = 4,4,4)");
+    // XY gains raised from firmware defaults (7, 4) for stronger lateral control in flight.
+    assert_eq!(c.kp, Vec3::new(12.0, 12.0, 7.0), "kp mismatch");
+    assert_eq!(c.kv, Vec3::new(8.0, 8.0, 4.0),   "kv mismatch");
     assert_eq!(c.kr, Vec3::new(0.007, 0.007, 0.008), "kr mismatch (firmware: KR)");
     assert_eq!(c.kw, Vec3::new(0.00115, 0.00115, 0.002), "kw mismatch (firmware: Komega)");
 

@@ -530,9 +530,9 @@ mod tests {
     #[test]
     fn test_geometric_controller_creation() {
         let controller = GeometricController::default();
-        // Check official Crazyflie Lee controller gains
-        assert_eq!(controller.kp, Vec3::new(7.0, 7.0, 7.0));
-        assert_eq!(controller.kv, Vec3::new(4.0, 4.0, 4.0));
+        // Tuned gains (XY raised from 7→12 kp, 4→8 kv for stronger lateral control)
+        assert_eq!(controller.kp, Vec3::new(12.0, 12.0, 7.0));
+        assert_eq!(controller.kv, Vec3::new(8.0, 8.0, 4.0));
         assert_eq!(controller.kr, Vec3::new(0.007, 0.007, 0.008));
         assert_eq!(controller.kw, Vec3::new(0.00115, 0.00115, 0.002));
     }

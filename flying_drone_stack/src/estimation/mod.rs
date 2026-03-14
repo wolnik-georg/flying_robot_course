@@ -4,4 +4,4 @@
 
 pub mod mekf;
 
-pub use mekf::{Mekf, MekfState, MekfParams, quat_to_euler};
+pub use mekf::{Mekf, MekfState, MekfParams, quat_to_euler, quat_to_rot};
