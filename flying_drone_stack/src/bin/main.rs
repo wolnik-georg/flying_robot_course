@@ -23,7 +23,7 @@ use multirotor_simulator::flight::{
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
-const MANEUVER: &str = "circle";
+const MANEUVER: &str = "figure8";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
@@ -63,6 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connecting to {} ...", uri);
     let cf = Crazyflie::connect_from_uri(&link_context, uri, NoTocCache).await?;
     println!("Connected!");
+
+    // Firmware-controlled modes use the original working code path (20 Hz, no Kalman reset).
+    if matches!(MANEUVER, "hover" | "circle" | "figure8") {
+        return run_firmware_mode(&cf).await;
+    }
 
     // Initialize your controller and params
     let mut controller = GeometricController::default();
@@ -839,5 +844,215 @@ fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
     // The old f32::try_from() only matched Value::F32 and silently returned 0
     // for integer types such as range.zrange (U16) and stabilizer.thrust (U16).
     map.get(key).map(|v| v.to_f64_lossy() as f32).unwrap_or(0.0)
+}
+
+fn get_u32(map: &HashMap<String, Value>, key: &str) -> u32 {
+    map.get(key).map(|v| v.to_f64_lossy() as u32).unwrap_or(0)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Original working firmware-mode path (hover / circle / figure8)
+//
+// This is a faithful copy of the code that had hover, circle and figure8
+// flying reliably.  Key differences from the my_* path:
+//   • 20 Hz logging (50 ms period) — 60 CRTP packets/s vs 300 at 100 Hz
+//   • No Kalman reset — EKF is left in whatever state the firmware settled it
+//   • Sequential stream reads — matches the original timing behaviour
+//   • CSV written at end (all data buffered in memory)
+// ────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Default)]
+struct FwLogEntry {
+    time_ms: u64,
+    pos_x: f32, pos_y: f32, pos_z: f32,
+    vel_x: f32, vel_y: f32, vel_z: f32,
+    roll: f32, pitch: f32, yaw: f32,
+    thrust: u32,
+    vbat: f32,
+    gyro_x: f32, gyro_y: f32, gyro_z: f32,
+    acc_x: f32, acc_y: f32, acc_z: f32,
+    rate_roll: f32, rate_pitch: f32, rate_yaw: f32,
+}
+
+async fn fw_logging_step(
+    log_data: &mut Vec<FwLogEntry>,
+    last_print: &mut Instant,
+    stream1: &LogStream,
+    stream2: &LogStream,
+    stream3: &LogStream,
+    start: &Instant,
+) {
+    let mut entry = FwLogEntry {
+        time_ms: start.elapsed().as_millis() as u64,
+        ..Default::default()
+    };
+
+    if let Ok(p) = stream1.next().await {
+        let d = &p.data;
+        entry.pos_x  = get_f32(d, "stateEstimate.x");
+        entry.pos_y  = get_f32(d, "stateEstimate.y");
+        entry.pos_z  = get_f32(d, "stateEstimate.z");
+        entry.vel_x  = get_f32(d, "stateEstimate.vx");
+        entry.vel_y  = get_f32(d, "stateEstimate.vy");
+        entry.vel_z  = get_f32(d, "stateEstimate.vz");
+        entry.thrust = get_u32(d, "stabilizer.thrust");
+    }
+
+    if let Ok(p) = stream2.next().await {
+        let d = &p.data;
+        entry.roll       = get_f32(d, "stabilizer.roll");
+        entry.pitch      = get_f32(d, "stabilizer.pitch");
+        entry.yaw        = get_f32(d, "stabilizer.yaw");
+        entry.rate_roll  = get_f32(d, "rateRoll");
+        entry.rate_pitch = get_f32(d, "ratePitch");
+        entry.rate_yaw   = get_f32(d, "rateYaw");
+    }
+
+    if let Ok(p) = stream3.next().await {
+        let d = &p.data;
+        entry.vbat  = get_f32(d, "pm.vbat");
+        entry.gyro_x = get_f32(d, "gyro.x");
+        entry.gyro_y = get_f32(d, "gyro.y");
+        entry.gyro_z = get_f32(d, "gyro.z");
+        entry.acc_x  = get_f32(d, "acc.x");
+        entry.acc_y  = get_f32(d, "acc.y");
+        entry.acc_z  = get_f32(d, "acc.z");
+    }
+
+    if last_print.elapsed() >= Duration::from_secs(1) {
+        println!(
+            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2}",
+            start.elapsed().as_secs(),
+            entry.pos_z, entry.vel_x, entry.vel_y, entry.thrust, entry.roll, entry.vbat
+        );
+        *last_print = Instant::now();
+    }
+
+    log_data.push(entry);
+}
+
+async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Error>> {
+    // Block 1: Position, velocity, thrust — 7 variables, 28 bytes @ 20 Hz
+    let mut block1 = cf.log.create_block().await?;
+    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
+              "stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz",
+              "stabilizer.thrust"] {
+        add_var(&mut block1, v).await;
+    }
+    let stream1 = block1.start(LogPeriod::from_millis(50)?).await?;
+
+    // Block 2: Attitude + body rates — 6 floats, 24 bytes @ 20 Hz
+    let mut block2 = cf.log.create_block().await?;
+    for v in ["stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw",
+              "rateRoll", "ratePitch", "rateYaw"] {
+        add_var(&mut block2, v).await;
+    }
+    let stream2 = block2.start(LogPeriod::from_millis(50)?).await?;
+
+    // Block 3: Battery + raw sensors — 7 variables, 28 bytes @ 20 Hz
+    let mut block3 = cf.log.create_block().await?;
+    for v in ["pm.vbat", "gyro.x", "gyro.y", "gyro.z",
+              "acc.x", "acc.y", "acc.z"] {
+        add_var(&mut block3, v).await;
+    }
+    let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
+
+    let mut log_data: Vec<FwLogEntry> = Vec::new();
+    let mut last_print = Instant::now();
+
+    println!("Logging started (20 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
+    sleep(Duration::from_secs(3)).await;
+
+    cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+    sleep(Duration::from_millis(200)).await;
+
+    println!("Ramping up...");
+    for y in 0..15 {
+        let zdistance = y as f32 / 50.0;
+        cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
+        sleep(Duration::from_millis(150)).await;
+    }
+
+    match MANEUVER {
+        "hover" => {
+            println!("Hovering at 0.3 m for 12 seconds...");
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(12) {
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+        "circle" => {
+            let radius = 0.25f32;
+            let height = 0.3f32;
+            let omega = 0.6f32;
+            println!("Circle: radius {:.2} m, height {:.2} m, ω = {:.2} rad/s", radius, height, omega);
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(30) {
+                let t = start.elapsed().as_secs_f32();
+                let vx = -radius * omega * (omega * t).sin();
+                let vy =  radius * omega * (omega * t).cos();
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+        "figure8" => {
+            let a = 0.25f32;
+            let b = 0.15f32;
+            let omega = 0.5f32;
+            println!("Figure-8: a={:.2}, b={:.2}, ω={:.2}", a, b, omega);
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(40) {
+                let t = start.elapsed().as_secs_f32();
+                let vx = -a * omega * (omega * t).sin();
+                let vy =  b * omega * (2.0 * omega * t).cos();
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+        _ => {}
+    }
+
+    println!("Ramping down gently...");
+    for y in (0..40).rev() {
+        let zdistance = y as f32 / 100.0;
+        cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
+        sleep(Duration::from_millis(120)).await;
+    }
+
+    cf.commander.setpoint_stop().await?;
+    cf.commander.notify_setpoint_stop(500).await?;
+
+    println!("Maneuver complete. Motors stopped.");
+
+    let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
+    let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
+    fs::create_dir_all("runs")?;
+    let mut file = File::create(&filename)?;
+    writeln!(file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw")?;
+    for e in &log_data {
+        writeln!(file,
+            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+            e.time_ms,
+            e.pos_x, e.pos_y, e.pos_z,
+            e.vel_x, e.vel_y, e.vel_z,
+            e.roll, e.pitch, e.yaw,
+            e.thrust, e.vbat,
+            e.gyro_x, e.gyro_y, e.gyro_z,
+            e.acc_x, e.acc_y, e.acc_z,
+            e.rate_roll, e.rate_pitch, e.rate_yaw,
+        )?;
+    }
+    println!("Log saved to: {}", filename);
+
+    drop(stream1);
+    drop(stream2);
+    drop(stream3);
+    cf.disconnect().await;
+    println!("Disconnected cleanly.");
+    Ok(())
 }
 
