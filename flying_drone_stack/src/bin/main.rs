@@ -11,6 +11,7 @@ use chrono::Utc;
 use multirotor_simulator::math::Vec3;
 use multirotor_simulator::dynamics::MultirotorParams;
 use multirotor_simulator::controller::{GeometricController, TrajectoryReference, Controller};
+use multirotor_simulator::estimation::{Mekf, MekfParams};
 use multirotor_simulator::trajectory::{CircleTrajectory, SmoothFigure8Trajectory, Trajectory};
 use multirotor_simulator::flight::{
     build_state,
@@ -872,6 +873,12 @@ struct FwLogEntry {
     gyro_x: f32, gyro_y: f32, gyro_z: f32,
     acc_x: f32, acc_y: f32, acc_z: f32,
     rate_roll: f32, rate_pitch: f32, rate_yaw: f32,
+    range_z: f32,   // range.zrange — ToF height above floor [m] (uint16 mm → /1000)
+    flow_dx: f32,   // motion.deltaX — raw flow pixel count (int16)
+    flow_dy: f32,   // motion.deltaY — raw flow pixel count (int16)
+    // Our MEKF running in parallel (passenger — no effect on flight)
+    mekf_roll: f32, mekf_pitch: f32, mekf_yaw: f32,    // [deg]
+    mekf_x: f32,    mekf_y: f32,    mekf_z: f32,        // [m]
 }
 
 async fn fw_logging_step(
@@ -880,7 +887,10 @@ async fn fw_logging_step(
     stream1: &LogStream,
     stream2: &LogStream,
     stream3: &LogStream,
+    stream4: &LogStream,
     start: &Instant,
+    mekf: &mut Mekf,
+    mekf_seeded: &mut bool,
 ) {
     let mut entry = FwLogEntry {
         time_ms: start.elapsed().as_millis() as u64,
@@ -919,11 +929,62 @@ async fn fw_logging_step(
         entry.acc_z  = get_f32(d, "acc.z");
     }
 
+    if let Ok(p) = stream4.next().await {
+        let d = &p.data;
+        // range.zrange is uint16 in mm — convert to metres
+        entry.range_z = get_f32(d, "range.zrange") / 1000.0;
+        // motion.deltaX/Y are int16 raw pixel counts (accumulated since last poll)
+        entry.flow_dx = get_f32(d, "motion.deltaX");
+        entry.flow_dy = get_f32(d, "motion.deltaY");
+    }
+
+    // ── MEKF (passenger — purely for logging, no effect on flight control) ──
+    //
+    // Seed once at first genuine liftoff (range_z > 0.1 m).  Before that the
+    // motors are spinning up with large gyro transients that would corrupt yaw,
+    // so we don't start the filter until the drone is actually airborne.
+    if !*mekf_seeded && entry.range_z > 0.1 {
+        let q0 = euler_deg_to_quat(entry.roll, entry.pitch, entry.yaw);
+        mekf.seed_qref(q0);
+        mekf.state.x[0] = entry.pos_x;
+        mekf.state.x[1] = entry.pos_y;
+        mekf.state.x[2] = entry.range_z;
+        *mekf_seeded = true;
+        println!("[MEKF] seeded at t={:.2}s: x={:.3} y={:.3} z={:.3} yaw={:.1}°",
+            entry.time_ms as f32 / 1000.0, entry.pos_x, entry.pos_y, entry.range_z, entry.yaw);
+    }
+
+    if *mekf_seeded {
+        let t_s = entry.time_ms as f32 / 1000.0;
+        let range_mm = if entry.range_z > 0.01 { Some(entry.range_z * 1000.0) } else { None };
+        // PMW3901 axis convention (confirmed by correlation analysis on flight logs):
+        //   vel_x ↔ -flow_dy  (r ≈ +0.74)
+        //   vel_y ↔ -flow_dx  (r ≈ +0.30)
+        let (dnx, dny) = (-entry.flow_dy, -entry.flow_dx);
+        let flow = if dnx != 0.0 || dny != 0.0 { (Some(dnx), Some(dny)) } else { (None, None) };
+
+        if let Some([roll_r, pitch_r, yaw_r, px, py, pz]) = mekf.feed_row(
+            t_s,
+            Some([entry.gyro_x, entry.gyro_y, entry.gyro_z]),
+            Some([entry.acc_x,  entry.acc_y,  entry.acc_z]),
+            range_mm,
+            flow.0, flow.1,
+        ) {
+            entry.mekf_roll  = roll_r.to_degrees();
+            entry.mekf_pitch = pitch_r.to_degrees();
+            entry.mekf_yaw   = yaw_r.to_degrees();
+            entry.mekf_x     = px;
+            entry.mekf_y     = py;
+            entry.mekf_z     = pz;
+        }
+    }
+
     if last_print.elapsed() >= Duration::from_secs(1) {
         println!(
-            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2}",
+            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2} | mekf x={:+5.3} y={:+5.3} z={:+5.3}",
             start.elapsed().as_secs(),
-            entry.pos_z, entry.vel_x, entry.vel_y, entry.thrust, entry.roll, entry.vbat
+            entry.pos_z, entry.vel_x, entry.vel_y, entry.thrust, entry.roll, entry.vbat,
+            entry.mekf_x, entry.mekf_y, entry.mekf_z,
         );
         *last_print = Instant::now();
     }
@@ -957,8 +1018,21 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     }
     let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
 
+    // Block 4: ToF range + optical flow — 3 variables (uint16/int16, 6 bytes total) @ 20 Hz
+    // Kept separate so block 3 stays within the 26-byte payload limit.
+    // range.zrange : uint16 [mm]   → converted to [m] on read
+    // motion.deltaX: int16  [px]   → raw pixel accumulation since last read
+    // motion.deltaY: int16  [px]   → raw pixel accumulation since last read
+    let mut block4 = cf.log.create_block().await?;
+    for v in ["range.zrange", "motion.deltaX", "motion.deltaY"] {
+        add_var(&mut block4, v).await;
+    }
+    let stream4 = block4.start(LogPeriod::from_millis(50)?).await?;
+
     let mut log_data: Vec<FwLogEntry> = Vec::new();
     let mut last_print = Instant::now();
+    let mut mekf = Mekf::new(MekfParams::default());
+    let mut mekf_seeded = false;
 
     println!("Logging started (20 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
@@ -978,7 +1052,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             println!("Hovering at 0.3 m for 12 seconds...");
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded).await;
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -993,7 +1067,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
                 let t = start.elapsed().as_secs_f32();
                 let vx = -radius * omega * (omega * t).sin();
                 let vy =  radius * omega * (omega * t).cos();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, height).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1008,7 +1082,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
                 let t = start.elapsed().as_secs_f32();
                 let vx = -a * omega * (omega * t).sin();
                 let vy =  b * omega * (2.0 * omega * t).cos();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded).await;
                 cf.commander.setpoint_hover(vx, vy, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1032,10 +1106,10 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
     fs::create_dir_all("runs")?;
     let mut file = File::create(&filename)?;
-    writeln!(file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw")?;
+    writeln!(file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z")?;
     for e in &log_data {
         writeln!(file,
-            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3}",
+            "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4}",
             e.time_ms,
             e.pos_x, e.pos_y, e.pos_z,
             e.vel_x, e.vel_y, e.vel_z,
@@ -1044,6 +1118,10 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             e.gyro_x, e.gyro_y, e.gyro_z,
             e.acc_x, e.acc_y, e.acc_z,
             e.rate_roll, e.rate_pitch, e.rate_yaw,
+            e.range_z,
+            e.flow_dx, e.flow_dy,
+            e.mekf_roll, e.mekf_pitch, e.mekf_yaw,
+            e.mekf_x, e.mekf_y, e.mekf_z,
         )?;
     }
     println!("Log saved to: {}", filename);
@@ -1051,8 +1129,25 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     drop(stream1);
     drop(stream2);
     drop(stream3);
+    drop(stream4);
     cf.disconnect().await;
     println!("Disconnected cleanly.");
     Ok(())
 }
 
+/// Convert Euler angles (degrees, ZYX / aerospace convention) to a unit quaternion [w, x, y, z].
+/// Matches the convention used in mekf_eval.rs.
+fn euler_deg_to_quat(roll_deg: f32, pitch_deg: f32, yaw_deg: f32) -> [f32; 4] {
+    let r = roll_deg.to_radians()  * 0.5;
+    let p = pitch_deg.to_radians() * 0.5;
+    let y = yaw_deg.to_radians()   * 0.5;
+    let (sr, cr) = r.sin_cos();
+    let (sp, cp) = p.sin_cos();
+    let (sy, cy) = y.sin_cos();
+    [
+        cr * cp * cy + sr * sp * sy,
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+    ]
+}
