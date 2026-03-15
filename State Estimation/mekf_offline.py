@@ -29,8 +29,9 @@ import numpy as np
 # Constants
 # ---------------------------------------------------------------------------
 G_MS2 = 9.81  # gravitational acceleration [m/s^2]
-NP = 350.0  # flow sensor: nominal pixel count
-THETA_P = 0.71674  # flow sensor: angle per pixel [rad]
+NP = 350.0  # flow sensor: nominal pixel count (CF convention)
+THETA_P = 3.50  # effective calibration constant [empirical, March 15 2026]
+# NP/THETA_P ≈ 100 (old 0.71674 was 4.9× too large, gave 4.9× too little XY motion)
 DEG2RAD = math.pi / 180.0
 G_TO_MS2 = G_MS2  # 1 G = 9.81 m/s^2
 
