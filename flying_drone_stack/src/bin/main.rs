@@ -868,7 +868,6 @@ async fn fw_logging_step(
 
     if let Ok(p) = stream3.next().await {
         let d = &p.data;
-        entry.vbat  = get_f32(d, "pm.vbat");
         entry.gyro_x = get_f32(d, "gyro.x");
         entry.gyro_y = get_f32(d, "gyro.y");
         entry.gyro_z = get_f32(d, "gyro.z");
@@ -881,9 +880,10 @@ async fn fw_logging_step(
         let d = &p.data;
         // range.zrange is uint16 in mm — convert to metres
         entry.range_z = get_f32(d, "range.zrange") / 1000.0;
-        // motion.deltaX/Y are int16 raw pixel counts (accumulated since last poll)
+        // motion.deltaX/Y are int16 raw pixel counts (accumulated since last read)
         entry.flow_dx = get_f32(d, "motion.deltaX");
         entry.flow_dy = get_f32(d, "motion.deltaY");
+        entry.vbat    = get_f32(d, "pm.vbat");
     }
 
     // ── MEKF (passenger — purely for logging, no effect on flight control) ──
@@ -974,21 +974,21 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     }
     let stream2 = block2.start(LogPeriod::from_millis(50)?).await?;
 
-    // Block 3: Battery + raw sensors — 7 variables, 28 bytes @ 20 Hz
+    // Block 3: Raw sensors — 6 floats = 24 bytes @ 20 Hz (within 26-byte limit).
+    // pm.vbat moved to block 4 to stay under the limit (7 floats = 28 bytes > 26).
     let mut block3 = cf.log.create_block().await?;
-    for v in ["pm.vbat", "gyro.x", "gyro.y", "gyro.z",
-              "acc.x", "acc.y", "acc.z"] {
+    for v in ["gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z"] {
         add_var(&mut block3, v).await;
     }
     let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
 
-    // Block 4: ToF range + optical flow — 3 variables (uint16/int16, 6 bytes total) @ 20 Hz
-    // Kept separate so block 3 stays within the 26-byte payload limit.
-    // range.zrange : uint16 [mm]   → converted to [m] on read
-    // motion.deltaX: int16  [px]   → raw pixel accumulation since last read
-    // motion.deltaY: int16  [px]   → raw pixel accumulation since last read
+    // Block 4: ToF range + optical flow + battery — 10 bytes @ 20 Hz.
+    // range.zrange : uint16 [mm]  → converted to [m] on read
+    // motion.deltaX: int16  [px]  → raw pixel accumulation since last read
+    // motion.deltaY: int16  [px]  → raw pixel accumulation since last read
+    // pm.vbat      : float  [V]
     let mut block4 = cf.log.create_block().await?;
-    for v in ["range.zrange", "motion.deltaX", "motion.deltaY"] {
+    for v in ["range.zrange", "motion.deltaX", "motion.deltaY", "pm.vbat"] {
         add_var(&mut block4, v).await;
     }
     let stream4 = block4.start(LogPeriod::from_millis(50)?).await?;
@@ -1007,52 +1007,55 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z")?;
     println!("Log file opened: {}", filename);
 
-    println!("Logging started (20 Hz). Starting maneuver '{}' in 3 seconds...", MANEUVER);
+    println!("Starting maneuver '{}' in 3 seconds...", MANEUVER);
     sleep(Duration::from_secs(3)).await;
 
-    // ── Pre-takeoff: Kalman reset + convergence wait ─────────────────────────
-    // Mirrors the original Python sequence:
-    //   reset_estimator() → wait_for_position_estimator()
+    // ── Pre-takeoff: Kalman reset ─────────────────────────────────────────────
+    // Pulse resetEstimation 1→0 then wait 1 s for the EKF to settle.
+    // We do NOT poll variance here — on the ground the flow sensor reads garbage
+    // (3 mm height) so variance never converges and the wait blocks forever.
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+    let _ = cf.param.set("kalman.resetEstimation", 1u8).await;
     sleep(Duration::from_millis(200)).await;
-    reset_and_wait_kalman(cf).await?;
+    let _ = cf.param.set("kalman.resetEstimation", 0u8).await;
+    println!("[Kalman] reset pulse sent, waiting 1 s...");
+    sleep(Duration::from_secs(1)).await;
 
+    // Single flight timer — every fw_logging_step call uses this same Instant
+    // so time_ms is continuous and monotonic across all phases in the CSV.
+    let flight_start = Instant::now();
+
+    // ── Ramp up ──────────────────────────────────────────────────────────────
     println!("Ramping up...");
     for y in 0..15 {
         let zdistance = y as f32 / 50.0;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
-        sleep(Duration::from_millis(150)).await;
+        sleep(Duration::from_millis(100)).await;
     }
 
-    // ── Phase 1: Stabilize for 8 s at 0.3 m ────────────────────────────────
-    // Original Python did takeoff(5s) + sleep(10s) before any maneuver.
-    // 8 s matches that intent while accounting for the ramp we already did.
+    // ── Stabilize for 8 s at 0.3 m ───────────────────────────────────────────
     println!("Stabilizing hover for 8 seconds...");
     {
-        let stab_start = Instant::now();
-        while stab_start.elapsed() < Duration::from_secs(8) {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stab_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+        let deadline = Instant::now() + Duration::from_secs(8);
+        while Instant::now() < deadline {
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(50)).await;
         }
     }
 
-    // ── Phase 2: Second Kalman reset + convergence wait ─────────────────────
-    // Original Python reset again after the 10-second hover, then sampled the
-    // EKF XY position as the maneuver origin.  We do the same.
-    println!("Second Kalman reset after stable hover...");
-    reset_and_wait_kalman(cf).await?;
-
-    // Sample EKF XY over 2 s to get a stable centre for circle / figure8.
-    // Keep a running mean; use the final value as (cx, cy).
+    // ── Sample EKF XY to get maneuver origin ─────────────────────────────────
+    // Average pos_x/y over 2 s while holding hover — this is the (cx, cy) centre
+    // used as the reference point for circle and figure-8 trajectories.
     println!("Sampling EKF position for maneuver origin (2 s)...");
     let (cx, cy) = {
         let mut sum_x = 0.0f32;
         let mut sum_y = 0.0f32;
         let mut count = 0u32;
-        let sample_start = Instant::now();
-        while sample_start.elapsed() < Duration::from_secs(2) {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &sample_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
@@ -1070,9 +1073,9 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     match MANEUVER {
         "hover" => {
             println!("Holding position ({:.3}, {:.3}) at 0.3 m for 12 seconds...", cx, cy);
-            let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(12) {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+            let deadline = Instant::now() + Duration::from_secs(12);
+            while Instant::now() < deadline {
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
                 cf.commander.setpoint_position(cx, cy, 0.3, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1083,29 +1086,24 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             let omega = 0.6f32;
             println!("Circle: radius {:.2} m, height {:.2} m, ω = {:.2} rad/s, centre ({:.3}, {:.3})", radius, height, omega, cx, cy);
 
-            // Move to the circle start point (cx+radius, cy) before the timer starts,
-            // so the drone is already on the track with zero residual velocity.
-            // This mirrors the original Python fly_circle() which called go_to(x0, y0)
-            // before entering the waypoint loop.
             let x_start = cx + radius;
             let y_start = cy;
             println!("Moving to circle start point ({:.3}, {:.3})...", x_start, y_start);
-            {
-                let move_start = Instant::now();
-                while move_start.elapsed() < Duration::from_secs(3) {
-                    fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &move_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
-                    cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
-                    sleep(Duration::from_millis(50)).await;
-                }
+            let move_deadline = Instant::now() + Duration::from_secs(3);
+            while Instant::now() < move_deadline {
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
+                sleep(Duration::from_millis(50)).await;
             }
 
             println!("Starting circle trajectory...");
-            let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(30) {
-                let t = start.elapsed().as_secs_f32();
+            let traj_start = Instant::now();
+            let deadline = traj_start + Duration::from_secs(30);
+            while Instant::now() < deadline {
+                let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + radius * (omega * t).cos();
                 let y = cy + radius * (omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
                 cf.commander.setpoint_position(x, y, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1117,41 +1115,27 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             let height = 0.3f32;
             println!("Figure-8: a={:.2}, b={:.2}, ω={:.2}, centre ({:.3}, {:.3})", a, b, omega, cx, cy);
 
-            // The Lissajous parametrisation  x = a·sin(ωt),  y = b·sin(2ωt)
-            // has zero position AND zero velocity at t = 0 (centre).
-            // We use a phase offset of π/2 so we enter at (cx, cy+b) — the top
-            // of the "8" — where x-velocity is at its peak and y-velocity is zero.
-            // That matches the original Python which moved to a well-defined start
-            // point before beginning the trajectory.
-            //
-            // With phase φ = π/2:
-            //   x(t) = a · sin(ωt + π/2) = a · cos(ωt)
-            //   y(t) = b · sin(2(ωt + π/2)) = b · sin(2ωt + π) = −b · sin(2ωt)
-            //
-            // Start point (t=0): (cx + a, cy + 0)  — right edge of figure-8.
-            // That gives a smooth, non-zero-velocity entry consistent with the loop.
-
-            // Move to start point and wait for firmware PID to converge.
+            // Phase offset π/2: x = a·cos(ωt), y = −b·sin(2ωt)
+            // Start point (t=0): (cx+a, cy) — drone is moved there first so
+            // there is no position jump on the first trajectory command.
             let x_start = cx + a;
             let y_start = cy;
             println!("Moving to figure-8 start point ({:.3}, {:.3})...", x_start, y_start);
-            {
-                let move_start = Instant::now();
-                while move_start.elapsed() < Duration::from_secs(3) {
-                    fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &move_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
-                    cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
-                    sleep(Duration::from_millis(50)).await;
-                }
+            let move_deadline = Instant::now() + Duration::from_secs(3);
+            while Instant::now() < move_deadline {
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
+                sleep(Duration::from_millis(50)).await;
             }
 
             println!("Starting figure-8 trajectory...");
-            let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(40) {
-                let t = start.elapsed().as_secs_f32();
-                // Phase offset π/2: start = (cx+a, cy), smooth entry velocity.
+            let traj_start = Instant::now();
+            let deadline = traj_start + Duration::from_secs(40);
+            while Instant::now() < deadline {
+                let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + a * (omega * t).cos();
                 let y = cy - b * (2.0 * omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
                 cf.commander.setpoint_position(x, y, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1160,8 +1144,9 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     }
 
     println!("Ramping down gently...");
-    for y in (0..40).rev() {
-        let zdistance = y as f32 / 100.0;
+    for step in (0..40).rev() {
+        let zdistance = step as f32 / 100.0;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(120)).await;
     }
@@ -1186,58 +1171,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
 ///
 /// This mirrors the Python `reset_estimator()` + `wait_for_position_estimator()`
 /// pattern used in the original `autonomous_sequence_high_level.py` script.
-async fn reset_and_wait_kalman(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Error>> {
-    match cf.param.set("kalman.resetEstimation", 1u8).await {
-        Ok(_)  => println!("[Kalman] estimator reset"),
-        Err(e) => println!("[Kalman] reset failed (non-fatal): {}", e),
-    }
-    sleep(Duration::from_millis(200)).await;
-
-    // Temporary log block — only varPX/Y/Z at 500 ms (matching Python).
-    let mut vblock = cf.log.create_block().await?;
-    for v in ["kalman.varPX", "kalman.varPY", "kalman.varPZ"] {
-        add_var(&mut vblock, v).await;
-    }
-    let vstream = vblock.start(LogPeriod::from_millis(500)?).await?;
-
-    const HISTORY: usize = 10;
-    const THRESHOLD: f32 = 0.001;
-    let mut hx = [1000.0f32; HISTORY];
-    let mut hy = [1000.0f32; HISTORY];
-    let mut hz = [1000.0f32; HISTORY];
-    let mut idx = 0usize;
-    let mut samples = 0usize;
-
-    println!("[Kalman] waiting for estimator to converge…");
-    loop {
-        if let Ok(pkt) = vstream.next().await {
-            let d = pkt.data;
-            hx[idx] = get_f32(&d, "kalman.varPX");
-            hy[idx] = get_f32(&d, "kalman.varPY");
-            hz[idx] = get_f32(&d, "kalman.varPZ");
-            idx = (idx + 1) % HISTORY;
-            samples += 1;
-
-            if samples >= HISTORY {
-                let spread = |h: &[f32; HISTORY]| -> f32 {
-                    let mn = h.iter().cloned().fold(f32::INFINITY, f32::min);
-                    let mx = h.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-                    mx - mn
-                };
-                if spread(&hx) < THRESHOLD && spread(&hy) < THRESHOLD && spread(&hz) < THRESHOLD {
-                    println!("[Kalman] converged (varX={:.5}, varY={:.5}, varZ={:.5})",
-                             hx[idx.saturating_sub(1)],
-                             hy[idx.saturating_sub(1)],
-                             hz[idx.saturating_sub(1)]);
-                    break;
-                }
-            }
-        }
-    }
-    drop(vstream);
-    Ok(())
-}
-
+///
 /// Convert Euler angles (degrees, ZYX / aerospace convention) to a unit quaternion [w, x, y, z].
 /// Matches the convention used in mekf_eval.rs.
 fn euler_deg_to_quat(roll_deg: f32, pitch_deg: f32, yaw_deg: f32) -> [f32; 4] {
