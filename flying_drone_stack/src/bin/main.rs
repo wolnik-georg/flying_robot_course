@@ -890,41 +890,26 @@ impl ShadowCtx {
             ShadowManeuver::Circle { cx, cy, height, radius, omega } => {
                 let (cx, cy, height, radius, omega) = (*cx, *cy, *height, *radius, *omega);
                 let t = self.traj_start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
-                let th = omega * t;
-                let ref_x = cx + radius * th.cos();
-                let ref_y = cy + radius * th.sin();
-                let vx = -radius * omega * th.sin();
-                let vy =  radius * omega * th.cos();
-                let ax = -radius * omega * omega * th.cos();
-                let ay = -radius * omega * omega * th.sin();
-                let jx =  radius * omega * omega * omega * th.sin();
-                let jy = -radius * omega * omega * omega * th.cos();
-                TrajectoryReference {
-                    position: Vec3::new(ref_x, ref_y, height),
-                    velocity: Vec3::new(vx, vy, 0.0),
-                    acceleration: Vec3::new(ax, ay, 0.0),
-                    jerk: Vec3::new(jx, jy, 0.0),
-                    yaw: 0.0, yaw_rate: 0.0, yaw_acceleration: 0.0,
-                }
+                // Use CircleTrajectory so the reference math is shared with the live path.
+                // Yaw is overridden to 0 below — shadow holds fixed heading like the firmware.
+                let mut r = CircleTrajectory::with_center(radius, height, omega, (cx, cy))
+                    .get_reference(t);
+                r.yaw = 0.0; r.yaw_rate = 0.0; r.yaw_acceleration = 0.0;
+                r
             }
             ShadowManeuver::Figure8 { cx, cy, height, a, b, omega } => {
                 let (cx, cy, height, a, b, omega) = (*cx, *cy, *height, *a, *b, *omega);
                 let t = self.traj_start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
-                let ref_x = cx + a * (omega * t).cos();
-                let ref_y = cy - b * (2.0 * omega * t).sin();
-                let vx = -a * omega * (omega * t).sin();
-                let vy = -2.0 * b * omega * (2.0 * omega * t).cos();
-                let ax = -a * omega * omega * (omega * t).cos();
-                let ay =  4.0 * b * omega * omega * (2.0 * omega * t).sin();
-                let jx =  a * omega * omega * omega * (omega * t).sin();
-                let jy =  8.0 * b * omega * omega * omega * (2.0 * omega * t).cos();
-                TrajectoryReference {
-                    position: Vec3::new(ref_x, ref_y, height),
-                    velocity: Vec3::new(vx, vy, 0.0),
-                    acceleration: Vec3::new(ax, ay, 0.0),
-                    jerk: Vec3::new(jx, jy, 0.0),
-                    yaw: 0.0, yaw_rate: 0.0, yaw_acceleration: 0.0,
-                }
+                // Derive the loop duration from omega so SmoothFigure8Trajectory wraps correctly.
+                let duration = 2.0 * std::f32::consts::PI / omega;
+                let f8 = SmoothFigure8Trajectory { duration, height, a, b, time_scale: 1.0 };
+                let mut r = f8.get_reference(t);
+                // SmoothFigure8Trajectory centres at origin — apply the centre offset.
+                r.position.x += cx;
+                r.position.y += cy;
+                // Yaw fixed at 0 throughout (firmware holds anchor heading).
+                r.yaw = 0.0; r.yaw_rate = 0.0; r.yaw_acceleration = 0.0;
+                r
             }
         };
 

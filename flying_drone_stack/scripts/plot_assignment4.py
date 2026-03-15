@@ -16,8 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "results", "data")
-IMG_DIR = os.path.join(os.path.dirname(__file__), "results", "images")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results", "data")
+IMG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results", "images")
 os.makedirs(IMG_DIR, exist_ok=True)
 
 # ── Load CSVs for both modes ────────────────────────────────────────────────

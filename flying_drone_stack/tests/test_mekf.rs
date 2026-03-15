@@ -387,3 +387,54 @@ fn test_no_coriolis_when_not_rotating() {
     assert!((state.x[4] - by_before).abs() < 1e-6,
         "by changed without rotation: Δby={}", state.x[4] - by_before);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zero-flow gate (Mekf::feed_row)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Zero flow samples (both axes < zero_flow_threshold) must NOT trigger a
+/// velocity-state update — they are PMW3901 zero-padding artefacts.
+#[test]
+fn test_flow_zero_gate_skips_update() {
+    let params = MekfParams::default(); // zero_flow_threshold = 0.3
+    let mut filter = Mekf::new(params);
+    filter.seed_qref([1.0, 0.0, 0.0, 0.0]);
+
+    // Prime the filter with a non-zero height so the flow scale is valid,
+    // and give it a non-zero body velocity so any real update would move the state.
+    filter.feed_row(0.02, None, None, Some(500.0), None, None);
+    filter.state.x[3] = 1.0; // bx = 1 m/s
+    filter.state.x[4] = 0.5; // by = 0.5 m/s
+
+    let bx_before = filter.state.x[3];
+    let by_before = filter.state.x[4];
+
+    // Feed a zero-flow sample (both axes exactly 0.0, well below threshold 0.3)
+    filter.feed_row(0.10, None, None, Some(500.0), Some(0.0), Some(0.0));
+
+    assert_eq!(filter.state.x[3], bx_before,
+        "bx changed on zero-padded flow: before={bx_before}, after={}", filter.state.x[3]);
+    assert_eq!(filter.state.x[4], by_before,
+        "by changed on zero-padded flow: before={by_before}, after={}", filter.state.x[4]);
+}
+
+/// Flow above the zero_flow_threshold DOES update the velocity state.
+#[test]
+fn test_flow_above_threshold_updates_velocity() {
+    let params = MekfParams { zero_flow_threshold: 0.3, ..MekfParams::default() };
+    let mut filter = Mekf::new(params);
+    filter.seed_qref([1.0, 0.0, 0.0, 0.0]);
+
+    // Prime with height and a reference timestamp so dt_flow > 0
+    filter.feed_row(0.02, None, None, Some(500.0), None, None);
+    // Feed a small non-zero flow (below threshold) to set last_flow_t
+    filter.feed_row(0.05, None, None, Some(500.0), Some(0.2), Some(0.0));
+
+    let bx_before = filter.state.x[3];
+
+    // Feed a significant flow well above the 0.3 threshold
+    filter.feed_row(0.10, None, None, Some(500.0), Some(2.0), Some(1.5));
+
+    assert!(filter.state.x[3] != bx_before,
+        "bx should change on real flow above threshold; bx={}", filter.state.x[3]);
+}

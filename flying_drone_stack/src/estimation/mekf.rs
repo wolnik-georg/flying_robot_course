@@ -146,6 +146,12 @@ pub struct MekfParams {
     pub r_height: f32,
     /// Measurement noise: optical flow [pixels²]
     pub r_flow: f32,
+    /// Zero-motion gate: skip flow update when |dnx| < threshold AND |dny| < threshold.
+    /// Filters PMW3901 zero-padding artefacts (sensor fires at <20 Hz; missing samples
+    /// are logged as 0.0, which appear as 46% of airborne readings on March 15 flights).
+    /// Default 0.3 px — slightly above sensor quantisation noise (~0.1 px) but well
+    /// below any real motion signal at hover (typical |flow| ≈ 1–5 px at 0.3 m height).
+    pub zero_flow_threshold: f32,
 }
 
 impl Default for MekfParams {
@@ -156,6 +162,7 @@ impl Default for MekfParams {
             q_att:    1e-6,
             r_height: 1e-3,
             r_flow:   8.0,
+            zero_flow_threshold: 0.3,
         }
     }
 }
@@ -572,10 +579,19 @@ impl Mekf {
         // XY drift on dynamic manoeuvres (height wobble → wrong velocity scale).
         let pz_meas = range_mm.map(|mm| mm / 1000.0);
         if let (Some(dnx), Some(dny)) = (flow_dnx, flow_dny) {
-            if let Some(ft) = self.last_flow_t {
-                if t > ft {
-                    let dt_flow = t - ft;
-                    mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow, pz_meas);
+            // Zero-motion gate: skip update when both components are below threshold.
+            // The PMW3901 fires at <20 Hz and the firmware pads missing samples with 0.0,
+            // producing ~46% spurious zero readings in the 100 Hz log stream.
+            // Applying these zeros as measurements drives the velocity estimate toward zero
+            // even during real motion (underestimation bias).
+            let thr = self.params.zero_flow_threshold;
+            let is_zero_padded = dnx.abs() < thr && dny.abs() < thr;
+            if !is_zero_padded {
+                if let Some(ft) = self.last_flow_t {
+                    if t > ft {
+                        let dt_flow = t - ft;
+                        mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow, pz_meas);
+                    }
                 }
             }
             self.last_flow_t = Some(t);
