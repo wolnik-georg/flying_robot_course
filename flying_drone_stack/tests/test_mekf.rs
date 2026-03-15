@@ -244,7 +244,7 @@ fn test_mekf_update_flow_changes_velocity_state() {
     let by_before = state.x[4];
 
     // Inject a flow measurement that disagrees with the predicted value
-    mekf_update_flow(&mut state, 0.0, 0.0, 0.01, params.r_flow);
+    mekf_update_flow(&mut state, 0.0, 0.0, 0.01, params.r_flow, None);
 
     // Both bx and by should have been pulled toward zero (innovation = 0 - predicted)
     assert!((state.x[3] - bx_before).abs() > 1e-9,
@@ -265,7 +265,7 @@ fn test_mekf_update_flow_skips_near_zero_height() {
     let x3_before = state.x[3];
     let x4_before = state.x[4];
 
-    mekf_update_flow(&mut state, 100.0, 100.0, 0.01, params.r_flow);
+    mekf_update_flow(&mut state, 100.0, 100.0, 0.01, params.r_flow, None);
 
     assert!((state.x[3] - x3_before).abs() < 1e-9, "x[3] should not change below height guard");
     assert!((state.x[4] - x4_before).abs() < 1e-9, "x[4] should not change below height guard");
@@ -282,7 +282,7 @@ fn test_mekf_update_flow_converges() {
 
     // Feed the same measurement 50 times — state should stabilise and remain finite
     for _ in 0..50 {
-        mekf_update_flow(&mut state, 0.5, -0.5, 0.01, params.r_flow);
+        mekf_update_flow(&mut state, 0.5, -0.5, 0.01, params.r_flow, None);
     }
     assert!(state.x[3].is_finite(), "x[3] went non-finite");
     assert!(state.x[4].is_finite(), "x[4] went non-finite");

@@ -25,16 +25,37 @@
 use multirotor_simulator::estimation::{Mekf, MekfParams};
 
 fn main() {
-    let path = std::env::args().nth(1).unwrap_or_else(|| {
-        eprintln!("Usage: mekf_eval <flight_log.csv>");
-        eprintln!("Running synthetic hover demo instead.");
-        String::new()
-    });
+    // Parse args: mekf_eval <csv> [--r_flow <val>] [--q_pos <val>] [--q_vel <val>]
+    //                               [--q_att <val>] [--r_height <val>]
+    let args: Vec<String> = std::env::args().collect();
+    let mut path = String::new();
+    let mut r_flow_override: Option<f32> = None;
+    let mut q_pos_override: Option<f32> = None;
+    let mut q_vel_override: Option<f32> = None;
+    let mut q_att_override: Option<f32> = None;
+    let mut r_height_override: Option<f32> = None;
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--r_flow"   => { i += 1; r_flow_override   = args.get(i).and_then(|s| s.parse().ok()); }
+            "--q_pos"    => { i += 1; q_pos_override    = args.get(i).and_then(|s| s.parse().ok()); }
+            "--q_vel"    => { i += 1; q_vel_override    = args.get(i).and_then(|s| s.parse().ok()); }
+            "--q_att"    => { i += 1; q_att_override    = args.get(i).and_then(|s| s.parse().ok()); }
+            "--r_height" => { i += 1; r_height_override = args.get(i).and_then(|s| s.parse().ok()); }
+            other if !other.starts_with("--") => { path = other.to_string(); }
+            _ => {}
+        }
+        i += 1;
+    }
 
     if path.is_empty() {
+        eprintln!("Usage: mekf_eval <flight_log.csv> [--r_flow <val>] [--q_pos <val>] ...");
+        eprintln!("Running synthetic hover demo instead.");
         run_synthetic_demo();
     } else {
-        run_from_csv(&path);
+        run_from_csv(&path, r_flow_override, q_pos_override, q_vel_override,
+                     q_att_override, r_height_override);
     }
 }
 
@@ -173,7 +194,12 @@ fn parse_csv(path: &str) -> Vec<Row> {
     rows
 }
 
-fn run_from_csv(path: &str) {
+fn run_from_csv(path: &str,
+               r_flow_override: Option<f32>,
+               q_pos_override: Option<f32>,
+               q_vel_override: Option<f32>,
+               q_att_override: Option<f32>,
+               r_height_override: Option<f32>) {
     let rows = parse_csv(path);
     if rows.is_empty() { eprintln!("No rows parsed from {}", path); return; }
 
@@ -197,7 +223,15 @@ fn run_from_csv(path: &str) {
     let seed_row = &rows[seed_idx];
 
     // Seed initial attitude from the liftoff row
-    let mekf_params = MekfParams::default();
+    let mut mekf_params = MekfParams::default();
+    if let Some(v) = r_flow_override   { mekf_params.r_flow   = v; }
+    if let Some(v) = q_pos_override    { mekf_params.q_pos    = v; }
+    if let Some(v) = q_vel_override    { mekf_params.q_vel    = v; }
+    if let Some(v) = q_att_override    { mekf_params.q_att    = v; }
+    if let Some(v) = r_height_override { mekf_params.r_height = v; }
+    eprintln!("MekfParams: q_pos={:.2e} q_vel={:.2e} q_att={:.2e} r_height={:.2e} r_flow={:.4}",
+        mekf_params.q_pos, mekf_params.q_vel, mekf_params.q_att,
+        mekf_params.r_height, mekf_params.r_flow);
     let mut mekf = Mekf::new(mekf_params);
     let q0 = euler_deg_to_quat(seed_row.roll_deg, seed_row.pitch_deg, seed_row.yaw_deg);
     mekf.seed_qref(q0);
@@ -212,8 +246,8 @@ fn run_from_csv(path: &str) {
     eprintln!("  t={:.3}s  yaw={:.2}°  x={:.4} m  y={:.4} m  z={:.4} m",
         seed_row.time_s, seed_row.yaw_deg, seed_row.gt_x, seed_row.gt_y, seed_row.range_z_m);
 
-    // Accumulators for RMSE: roll, pitch, yaw, x, y, z
-    let mut sum_sq = [0.0f64; 6];
+    // Accumulators for RMSE: roll, pitch, yaw, x, y, z, fw_z_vs_tof
+    let mut sum_sq = [0.0f64; 7];
     let mut count = 0usize;
     let mut count_z = 0usize;
 
@@ -278,8 +312,11 @@ fn run_from_csv(path: &str) {
             sum_sq[4] += (py - row.gt_y).powi(2) as f64;
             count += 1;
 
-            if row.gt_z > 0.01 {
-                sum_sq[5] += (pz - row.gt_z).powi(2) as f64;
+            // Z reference: ToF range_z (consistent with validate_mekf.py)
+            if row.range_z_m > 0.01 {
+                sum_sq[5] += (pz - row.range_z_m).powi(2) as f64;
+                // FW EKF z vs ToF — reference baseline
+                sum_sq[6] += (row.gt_z - row.range_z_m).powi(2) as f64;
                 count_z += 1;
             }
         }
@@ -288,16 +325,20 @@ fn run_from_csv(path: &str) {
     if count == 0 { eprintln!("No MEKF estimates produced (check log format)."); return; }
 
     let n = count as f64;
-    eprintln!("\n=== RMSE ({} samples) ===", count);
+    eprintln!("\n=== RMSE ({} samples, airborne) ===", count);
     eprintln!("  roll  : {:.3} deg", (sum_sq[0]/n).sqrt());
     eprintln!("  pitch : {:.3} deg", (sum_sq[1]/n).sqrt());
     eprintln!("  yaw   : {:.3} deg", (sum_sq[2]/n).sqrt());
-    eprintln!("  x     : {:.4} m",   (sum_sq[3]/n).sqrt());
-    eprintln!("  y     : {:.4} m",   (sum_sq[4]/n).sqrt());
+    eprintln!("  x     : {:.1} cm  vs firmware EKF pos_x", (sum_sq[3]/n).sqrt() * 100.0);
+    eprintln!("  y     : {:.1} cm  vs firmware EKF pos_y", (sum_sq[4]/n).sqrt() * 100.0);
     if count_z > 0 {
-        eprintln!("  z     : {:.4} m   ({} samples with gt_z > 0.01)",
-            (sum_sq[5] / count_z as f64).sqrt(), count_z);
+        // Z reference is ToF range_z (same as validate_mekf.py uses)
+        eprintln!("  z     : {:.2} cm  vs ToF range_z  ({} samples)",
+            (sum_sq[5] / count_z as f64).sqrt() * 100.0, count_z);
+        eprintln!("  fw_z  : {:.2} cm  firmware EKF pos_z vs ToF  (reference baseline)",
+            (sum_sq[6] / count_z as f64).sqrt() * 100.0);
     }
+    eprintln!("  (fw EKF z vs ToF shown above for reference — expect ~0.3 cm)");
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

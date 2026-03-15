@@ -33,8 +33,21 @@ use crate::math::Mat9;
 // Physical constants
 // ---------------------------------------------------------------------------
 const G_MS2: f32 = 9.81;
-const NP: f32 = 350.0;       // flow sensor: nominal pixel count
-const THETA_P: f32 = 0.71674; // flow sensor: angle per pixel [rad]
+// Flow sensor scale: predicted_flow_pixels = dt * NP / (pz * THETA_P) * body_vel
+//
+// Calibrated empirically from March 15 flights (circle + figure-8):
+//   MEKF XY span was 4.9× too small with the old constants (NP=350, THETA_P=0.717 rad).
+//   Amplitude ratio pos_ekf / mekf_x across all dynamic logs → mean 4.88.
+//   Correct NP/THETA_P = 488 / 4.88 ≈ 100.
+//
+// Keeping NP=350 to preserve the formula structure; THETA_P absorbs the correction:
+//   THETA_P = 350 / 100 = 3.50 rad  — this is NOT a physical per-pixel angle but
+//   an effective sensor calibration constant for the PMW3901 as read by the CF firmware.
+//   (The old 0.717 rad came from the Python mekf_offline prototype and was never validated
+//    against real flight data.)
+const NP: f32 = 350.0;       // flow sensor: nominal pixel count (CF convention)
+const THETA_P: f32 = 3.50;   // effective calibration constant [empirical, March 15 2026]
+                              // NP/THETA_P ≈ 100  (old value 488 was 4.9× too large)
 const DEG2RAD: f32 = std::f32::consts::PI / 180.0;
 const G_TO_MS2: f32 = G_MS2;
 
@@ -429,14 +442,21 @@ pub fn mekf_update_height(state: &mut MekfState, z_m: f32, r_height: f32) {
 
 /// Optical flow measurement update (two scalar updates).
 /// Model: h = (dt * NP / (pz * θp)) * [bx, by]
+///
+/// `pz_meas`: actual ToF height [m] if available.  When provided it is used
+/// for the scale factor instead of the estimated state height (state.x[2]).
+/// This avoids the feedback loop where a slightly wrong height estimate causes
+/// a slightly wrong velocity update, which then corrupts height further.
 pub fn mekf_update_flow(
     state: &mut MekfState,
     dnx: f32,
     dny: f32,
     dt_flow: f32,
     r_flow: f32,
+    pz_meas: Option<f32>,
 ) {
-    let pz = state.x[2];
+    // Prefer the measured ToF height; fall back to the state estimate.
+    let pz = pz_meas.unwrap_or(state.x[2]);
     if pz.abs() < 0.05 {
         return;
     }
@@ -450,8 +470,8 @@ pub fn mekf_update_flow(
     h_x[3] = scale;             // ∂/∂bx
     scalar_update(&mut state.x, &mut state.sigma, h_pred_x, dnx, &h_x, r_flow);
 
-    // recompute scale after state update
-    let pz2 = state.x[2];
+    // y-component — reuse same pz (ToF reading doesn't change between x and y)
+    let pz2 = pz_meas.unwrap_or(state.x[2]);
     if pz2.abs() < 0.05 {
         return;
     }
@@ -547,11 +567,15 @@ impl Mekf {
         }
 
         // --- flow update ---
+        // Pass the ToF height so the scale factor uses the actual measured height
+        // rather than the estimated state height.  This removes the main source of
+        // XY drift on dynamic manoeuvres (height wobble → wrong velocity scale).
+        let pz_meas = range_mm.map(|mm| mm / 1000.0);
         if let (Some(dnx), Some(dny)) = (flow_dnx, flow_dny) {
             if let Some(ft) = self.last_flow_t {
                 if t > ft {
                     let dt_flow = t - ft;
-                    mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow);
+                    mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow, pz_meas);
                 }
             }
             self.last_flow_t = Some(t);

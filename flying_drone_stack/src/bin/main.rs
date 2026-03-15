@@ -24,7 +24,7 @@ use multirotor_simulator::flight::{
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
-const MANEUVER: &str = "hover";
+const MANEUVER: &str = "figure8";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
@@ -826,6 +826,130 @@ struct FwLogEntry {
     // Our MEKF running in parallel (passenger — no effect on flight)
     mekf_roll: f32, mekf_pitch: f32, mekf_yaw: f32,    // [deg]
     mekf_x: f32,    mekf_y: f32,    mekf_z: f32,        // [m]
+    // Shadow geometric controller (passenger — computed but NEVER sent to drone)
+    our_ref_x: f32, our_ref_y: f32, our_ref_z: f32,    // spline reference position [m]
+    our_thrust: f32,                                     // desired thrust [N]
+    our_roll_cmd: f32, our_pitch_cmd: f32,               // desired roll/pitch [deg]
+    our_yaw_rate_cmd: f32,                               // desired yaw rate [deg/s]
+}
+
+/// Describes the trajectory our shadow controller is tracking.
+/// Maneuver-specific parameters needed to evaluate the reference at each timestep.
+/// None of this information is ever sent to the drone — it is purely for logging.
+#[derive(Clone)]
+enum ShadowManeuver {
+    Hover  { cx: f32, cy: f32, height: f32 },
+    Circle { cx: f32, cy: f32, height: f32, radius: f32, omega: f32 },
+    Figure8 { cx: f32, cy: f32, height: f32, a: f32, b: f32, omega: f32 },
+}
+
+/// State carried into every `fw_logging_step` call for shadow controller evaluation.
+struct ShadowCtx {
+    /// Which trajectory to evaluate.
+    maneuver: ShadowManeuver,
+    /// Instant the trajectory phase began (used to compute elapsed t).
+    /// Set to `None` during ramp-up / stabilise / before the maneuver starts.
+    traj_start: Option<Instant>,
+    /// Shadow geometric controller (maintains integral state across steps).
+    controller: GeometricController,
+    /// Drone parameters (mass, gravity, inertia).
+    params: MultirotorParams,
+}
+
+impl ShadowCtx {
+    /// Compute the shadow controller outputs for the given entry.
+    /// Returns `(ref_x, ref_y, ref_z, thrust_N, roll_deg, pitch_deg, yaw_rate_deg_s)`
+    /// or `None` if there is not enough state to run (MEKF not yet seeded, no traj_start).
+    fn compute(&mut self, entry: &FwLogEntry, mekf_seeded: bool) -> Option<(f32,f32,f32,f32,f32,f32,f32)> {
+        if !mekf_seeded { return None; }
+
+        // Build MultirotorState from MEKF outputs.
+        // Velocity: use firmware EKF velocity (MEKF doesn't yet estimate vel_x/y directly).
+        let state = build_state(
+            entry.mekf_x, entry.mekf_y, entry.mekf_z,
+            entry.vel_x,  entry.vel_y,  entry.vel_z,
+            entry.mekf_roll, entry.mekf_pitch, entry.mekf_yaw,
+            entry.gyro_x, entry.gyro_y, entry.gyro_z,
+        );
+
+        // Evaluate reference trajectory at current elapsed time.
+        // Before the maneuver phase begins (traj_start == None) we use a hover reference
+        // at the current MEKF position so the shadow integrators don't wind up.
+        let dt = 0.05_f32; // 20 Hz log rate
+        let reference: TrajectoryReference = match &self.maneuver {
+            ShadowManeuver::Hover { cx, cy, height } => {
+                let (cx, cy, height) = (*cx, *cy, *height);
+                TrajectoryReference {
+                    position: Vec3::new(cx, cy, height),
+                    velocity: Vec3::new(0.0, 0.0, 0.0),
+                    acceleration: Vec3::new(0.0, 0.0, 0.0),
+                    jerk: Vec3::new(0.0, 0.0, 0.0),
+                    yaw: 0.0, yaw_rate: 0.0, yaw_acceleration: 0.0,
+                }
+            }
+            ShadowManeuver::Circle { cx, cy, height, radius, omega } => {
+                let (cx, cy, height, radius, omega) = (*cx, *cy, *height, *radius, *omega);
+                let t = self.traj_start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
+                let th = omega * t;
+                let ref_x = cx + radius * th.cos();
+                let ref_y = cy + radius * th.sin();
+                let vx = -radius * omega * th.sin();
+                let vy =  radius * omega * th.cos();
+                let ax = -radius * omega * omega * th.cos();
+                let ay = -radius * omega * omega * th.sin();
+                let jx =  radius * omega * omega * omega * th.sin();
+                let jy = -radius * omega * omega * omega * th.cos();
+                TrajectoryReference {
+                    position: Vec3::new(ref_x, ref_y, height),
+                    velocity: Vec3::new(vx, vy, 0.0),
+                    acceleration: Vec3::new(ax, ay, 0.0),
+                    jerk: Vec3::new(jx, jy, 0.0),
+                    yaw: 0.0, yaw_rate: 0.0, yaw_acceleration: 0.0,
+                }
+            }
+            ShadowManeuver::Figure8 { cx, cy, height, a, b, omega } => {
+                let (cx, cy, height, a, b, omega) = (*cx, *cy, *height, *a, *b, *omega);
+                let t = self.traj_start.map(|s| s.elapsed().as_secs_f32()).unwrap_or(0.0);
+                let ref_x = cx + a * (omega * t).cos();
+                let ref_y = cy - b * (2.0 * omega * t).sin();
+                let vx = -a * omega * (omega * t).sin();
+                let vy = -2.0 * b * omega * (2.0 * omega * t).cos();
+                let ax = -a * omega * omega * (omega * t).cos();
+                let ay =  4.0 * b * omega * omega * (2.0 * omega * t).sin();
+                let jx =  a * omega * omega * omega * (omega * t).sin();
+                let jy =  8.0 * b * omega * omega * omega * (2.0 * omega * t).cos();
+                TrajectoryReference {
+                    position: Vec3::new(ref_x, ref_y, height),
+                    velocity: Vec3::new(vx, vy, 0.0),
+                    acceleration: Vec3::new(ax, ay, 0.0),
+                    jerk: Vec3::new(jx, jy, 0.0),
+                    yaw: 0.0, yaw_rate: 0.0, yaw_acceleration: 0.0,
+                }
+            }
+        };
+
+        let ref_pos = reference.position;
+
+        // Position & velocity errors
+        let ep = reference.position - state.position;
+        let ev = reference.velocity - state.velocity;
+        let i_pos = self.controller.i_error_pos();
+
+        // Compute desired force vector and roll/pitch commands
+        let f_vec = compute_force_vector(&reference, ep, ev, i_pos, &self.controller, &self.params);
+        let (roll_cmd_deg, pitch_cmd_deg, roll_raw, pitch_raw) = force_vector_to_rpyt(f_vec, 25.0);
+        let thrust_n = f_vec.z; // world-frame z component ≈ thrust [N]
+
+        // Update position integral (clamped inside controller, mimic firmware anti-windup)
+        if !multirotor_simulator::flight::rpyt_control::tilt_saturated(roll_raw, pitch_raw, 25.0) {
+            self.controller.set_i_error_pos(i_pos + ep * dt);
+        }
+
+        // Yaw-rate command: hold yaw = 0 (firmware uses fixed yaw heading throughout)
+        let yaw_rate_deg_s = yaw_rate_cmd(0.0_f32, entry.mekf_yaw, 30.0, 120.0);
+
+        Some((ref_pos.x, ref_pos.y, ref_pos.z, thrust_n, roll_cmd_deg, pitch_cmd_deg, yaw_rate_deg_s))
+    }
 }
 
 async fn fw_logging_step(
@@ -839,6 +963,7 @@ async fn fw_logging_step(
     mekf: &mut Mekf,
     mekf_seeded: &mut bool,
     log_file: &mut File,
+    shadow: &mut ShadowCtx,
 ) {
     let mut entry = FwLogEntry {
         time_ms: start.elapsed().as_millis() as u64,
@@ -927,19 +1052,31 @@ async fn fw_logging_step(
         }
     }
 
+    // ── Shadow geometric controller (passenger — logged only, NEVER sent to drone) ──
+    if let Some((rx, ry, rz, thr, roll_c, pitch_c, yaw_rate_c)) = shadow.compute(&entry, *mekf_seeded) {
+        entry.our_ref_x      = rx;
+        entry.our_ref_y      = ry;
+        entry.our_ref_z      = rz;
+        entry.our_thrust     = thr;
+        entry.our_roll_cmd   = roll_c;
+        entry.our_pitch_cmd  = pitch_c;
+        entry.our_yaw_rate_cmd = yaw_rate_c;
+    }
+
     if last_print.elapsed() >= Duration::from_secs(1) {
         println!(
-            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2} | mekf x={:+5.3} y={:+5.3} z={:+5.3}",
+            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2} | mekf x={:+5.3} y={:+5.3} z={:+5.3} | shadow roll={:+5.1} pitch={:+5.1} thr={:.3}",
             start.elapsed().as_secs(),
             entry.pos_z, entry.vel_x, entry.vel_y, entry.thrust, entry.roll, entry.vbat,
             entry.mekf_x, entry.mekf_y, entry.mekf_z,
+            entry.our_roll_cmd, entry.our_pitch_cmd, entry.our_thrust,
         );
         *last_print = Instant::now();
     }
 
     // Write row immediately to disk so data survives a crash/panic.
     let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4}",
+        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2}",
         entry.time_ms,
         entry.pos_x, entry.pos_y, entry.pos_z,
         entry.vel_x, entry.vel_y, entry.vel_z,
@@ -952,6 +1089,9 @@ async fn fw_logging_step(
         entry.flow_dx, entry.flow_dy,
         entry.mekf_roll, entry.mekf_pitch, entry.mekf_yaw,
         entry.mekf_x, entry.mekf_y, entry.mekf_z,
+        entry.our_ref_x, entry.our_ref_y, entry.our_ref_z,
+        entry.our_thrust,
+        entry.our_roll_cmd, entry.our_pitch_cmd, entry.our_yaw_rate_cmd,
     );
     log_data.push(entry);
 }
@@ -998,13 +1138,22 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     let mut mekf = Mekf::new(MekfParams::default());
     let mut mekf_seeded = false;
 
+    // Shadow controller — starts with a hover placeholder; maneuver params and
+    // traj_start are filled in once we know the maneuver origin (cx, cy).
+    let mut shadow = ShadowCtx {
+        maneuver: ShadowManeuver::Hover { cx: 0.0, cy: 0.0, height: 0.3 },
+        traj_start: None,
+        controller: GeometricController::default(),
+        params: MultirotorParams::crazyflie(),
+    };
+
     // Open CSV immediately — every row is written to disk as it arrives.
     // This means the log is preserved even if the drone crashes mid-flight.
     fs::create_dir_all("runs")?;
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z")?;
+    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd")?;
     println!("Log file opened: {}", filename);
 
     println!("Starting maneuver '{}' in 3 seconds...", MANEUVER);
@@ -1029,7 +1178,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     println!("Ramping up...");
     for y in 0..15 {
         let zdistance = y as f32 / 50.0;
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(100)).await;
     }
@@ -1039,7 +1188,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     {
         let deadline = Instant::now() + Duration::from_secs(8);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(50)).await;
         }
@@ -1055,7 +1204,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
         let mut count = 0u32;
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
@@ -1070,12 +1219,18 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
         (mx, my)
     };
 
+    // Update shadow with real maneuver origin — hover placeholder until traj phase.
+    shadow.maneuver = ShadowManeuver::Hover { cx, cy, height: 0.3 };
+
     match MANEUVER {
         "hover" => {
+            // Shadow tracks the same hover setpoint as the firmware.
+            shadow.maneuver = ShadowManeuver::Hover { cx, cy, height: 0.3 };
+            shadow.traj_start = Some(Instant::now());
             println!("Holding position ({:.3}, {:.3}) at 0.3 m for 12 seconds...", cx, cy);
             let deadline = Instant::now() + Duration::from_secs(12);
             while Instant::now() < deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
                 cf.commander.setpoint_position(cx, cy, 0.3, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1085,25 +1240,28 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             let height = 0.3f32;
             let omega = 0.6f32;
             println!("Circle: radius {:.2} m, height {:.2} m, ω = {:.2} rad/s, centre ({:.3}, {:.3})", radius, height, omega, cx, cy);
+            // Shadow tracks the same circle the firmware will execute.
+            shadow.maneuver = ShadowManeuver::Circle { cx, cy, height, radius, omega };
 
             let x_start = cx + radius;
             let y_start = cy;
             println!("Moving to circle start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
                 cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
 
             println!("Starting circle trajectory...");
             let traj_start = Instant::now();
+            shadow.traj_start = Some(traj_start);
             let deadline = traj_start + Duration::from_secs(30);
             while Instant::now() < deadline {
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + radius * (omega * t).cos();
                 let y = cy + radius * (omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
                 cf.commander.setpoint_position(x, y, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1114,6 +1272,8 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             let omega = 0.5f32;
             let height = 0.3f32;
             println!("Figure-8: a={:.2}, b={:.2}, ω={:.2}, centre ({:.3}, {:.3})", a, b, omega, cx, cy);
+            // Shadow tracks the same figure-8 the firmware will execute.
+            shadow.maneuver = ShadowManeuver::Figure8 { cx, cy, height, a, b, omega };
 
             // Phase offset π/2: x = a·cos(ωt), y = −b·sin(2ωt)
             // Start point (t=0): (cx+a, cy) — drone is moved there first so
@@ -1123,19 +1283,20 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
             println!("Moving to figure-8 start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
                 cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
 
             println!("Starting figure-8 trajectory...");
             let traj_start = Instant::now();
+            shadow.traj_start = Some(traj_start);
             let deadline = traj_start + Duration::from_secs(40);
             while Instant::now() < deadline {
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + a * (omega * t).cos();
                 let y = cy - b * (2.0 * omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
                 cf.commander.setpoint_position(x, y, height, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -1146,7 +1307,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     println!("Ramping down gently...");
     for step in (0..40).rev() {
         let zdistance = step as f32 / 100.0;
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(120)).await;
     }
