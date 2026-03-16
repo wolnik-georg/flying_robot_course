@@ -4,6 +4,77 @@
 
 A modular Rust library for Crazyflie 2.1 real-hardware flight, covering the full perception-to-control stack: IMU-driven MEKF state estimation, SE(3) geometric control, minimum-snap motion planning, and a shadow-controller evaluation framework. Everything is in `f32`, no-std compatible, and validated against real flight logs.
 
+---
+
+## Full Pipeline Data Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Sensors (hardware)                                                          │
+│  IMU: gyro [deg/s] + accel [g]  │  ToF range [mm]  │  Optical flow [px]    │
+└──────────────────┬──────────────────────────────────────────────────────────┘
+                   │ raw sensor rows (100 Hz)
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Estimation — MEKF  (src/estimation/mekf.rs)                                │
+│  State: position [m], body velocity [m/s], attitude (quaternion)            │
+│  Fuses IMU (predict) + ToF (height update) + flow (XY velocity update)      │
+└──────────────────┬──────────────────────────────────────────────────────────┘
+                   │ MultirotorState: p, v, q, ω
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Trajectory / Planning                                                       │
+│  SplineTrajectory::eval(t) → FlatOutput → compute_flatness → FlatnessResult │
+│  or: Figure8Trajectory / CircleTrajectory / CsvTrajectory                   │
+│  → TrajectoryReference: pos, vel, acc, jerk, yaw, yaw_rate                  │
+└──────────────────┬──────────────────────────────────────────────────────────┘
+                   │ TrajectoryReference
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Controller — SE(3) Geometric (src/controller/mod.rs)                       │
+│  Position PD + feedforward → desired force vector                           │
+│  Rotation error on SO(3) → torque                                           │
+│  Output: thrust [N] + torque [N·m]                                          │
+└──────────────────┬──────────────────────────────────────────────────────────┘
+                   │ ControlOutput: thrust, torque
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Motor Mixer (MotorAction::from_thrust_torque)                              │
+│  Invert mixer: (f, τ) → [ω₁², ω₂², ω₃², ω₄²]                             │
+└──────────────────┬──────────────────────────────────────────────────────────┘
+                   │ MotorAction (simulation) or RPYT setpoint (hardware)
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Actuators                                                                  │
+│  Simulation: MultirotorSimulator::step → next MultirotorState               │
+│  Hardware:   Crazyflie firmware setpoint_position / setpoint_rpyt           │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Module Data-Flow Table
+
+| Module | Key Inputs | Key Outputs | Consumed By |
+|--------|-----------|-------------|-------------|
+| `estimation/` | gyro, accel, range, flow | `MultirotorState` (p, v, q, ω) | `controller/`, `flight/`, `bin/main.rs` |
+| `planning/` | waypoints, time allocations | `TrajectoryReference` (pos, vel, acc, jerk, yaw) | `controller/` |
+| `trajectory/` | time `t` | `TrajectoryReference` | `controller/` |
+| `controller/` | `MultirotorState` + `TrajectoryReference` | `ControlOutput` (f, τ) | `dynamics/` (sim), `flight/` (hardware) |
+| `dynamics/` | `MotorAction`, `MultirotorParams` | next `MultirotorState` | simulation loop |
+| `integration/` | `MultirotorState`, `MotorAction` | updated `MultirotorState` | `dynamics/simulator.rs` |
+| `flight/` | firmware log row + `ControlOutput` | CRTP RPYT setpoint | `bin/main.rs` |
+
+### Per-Module Educational Docs
+
+- [Dynamics — Multirotor Rigid-Body Physics](../src/dynamics/README.md)
+- [Integration — Numerical ODE Solvers](../src/integration/README.md)
+- [Controller — SE(3) Geometric Controller](../src/controller/README.md)
+- [Trajectory — Reference Signal Generators](../src/trajectory/README.md)
+- [Estimation — Multiplicative Extended Kalman Filter](../src/estimation/README.md)
+- [Planning — Minimum-Snap Motion Planning & Differential Flatness](../src/planning/README.md)
+- [Flight — Hardware Bridge](../src/flight/README.md)
+
+---
+
 ## Architecture Diagram
 
 ```
