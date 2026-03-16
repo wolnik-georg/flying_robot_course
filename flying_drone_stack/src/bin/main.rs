@@ -24,7 +24,7 @@ use multirotor_simulator::flight::{
 
 // CHANGE THIS TO SWITCH MANEUVER
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
-const MANEUVER: &str = "figure8";
+const MANEUVER: &str = "circle";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
@@ -863,12 +863,16 @@ impl ShadowCtx {
     fn compute(&mut self, entry: &FwLogEntry, mekf_seeded: bool) -> Option<(f32,f32,f32,f32,f32,f32,f32)> {
         if !mekf_seeded { return None; }
 
-        // Build MultirotorState from MEKF outputs.
-        // Velocity: use firmware EKF velocity (MEKF doesn't yet estimate vel_x/y directly).
+        // Build MultirotorState from FIRMWARE EKF outputs (pos_x/y/z, roll/pitch/yaw).
+        // This is the same state the firmware's position controller acts on, so our
+        // shadow errors and the firmware's errors are computed in the same frame.
+        // Using MEKF position here caused a coordinate-frame mismatch: setpoint_position
+        // commands use the firmware EKF frame, so the shadow reference and the drone's
+        // actual position were in different frames → large position error → saturated cmds.
         let state = build_state(
-            entry.mekf_x, entry.mekf_y, entry.mekf_z,
+            entry.pos_x,  entry.pos_y,  entry.pos_z,
             entry.vel_x,  entry.vel_y,  entry.vel_z,
-            entry.mekf_roll, entry.mekf_pitch, entry.mekf_yaw,
+            entry.roll,   entry.pitch,  entry.yaw,
             entry.gyro_x, entry.gyro_y, entry.gyro_z,
         );
 
@@ -930,8 +934,8 @@ impl ShadowCtx {
             self.controller.set_i_error_pos(i_pos + ep * dt);
         }
 
-        // Yaw-rate command: hold yaw = 0 (firmware uses fixed yaw heading throughout)
-        let yaw_rate_deg_s = yaw_rate_cmd(0.0_f32, entry.mekf_yaw, 30.0, 120.0);
+        // Yaw-rate command: hold yaw = 0, using firmware EKF yaw (same frame as state).
+        let yaw_rate_deg_s = yaw_rate_cmd(0.0_f32, entry.yaw, 30.0, 120.0);
 
         Some((ref_pos.x, ref_pos.y, ref_pos.z, thrust_n, roll_cmd_deg, pitch_cmd_deg, yaw_rate_deg_s))
     }
