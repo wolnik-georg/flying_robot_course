@@ -26,9 +26,9 @@ use multirotor_simulator::flight::{
 use multirotor_simulator::perception::sensors::crtp::CrtpMultiRangeAdapter;
 use multirotor_simulator::perception::processing::features::detect_features;
 
-// CHANGE THIS TO SWITCH MANEUVER
+// Default maneuver — overridden by --maneuver <name> on the command line.
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
-const MANEUVER: &str = "circle";
+const DEFAULT_MANEUVER: &str = "figure8";
 
 /// PWM value (0–65535) that produces exactly hover thrust at the current battery charge.
 /// Procedure: run MANEUVER="my_hover" once, read "thr_pwm" in the terminal during steady
@@ -62,17 +62,24 @@ struct LogEntry {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    let maneuver: String = args.iter()
+        .position(|a| a == "--maneuver")
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+        .unwrap_or_else(|| DEFAULT_MANEUVER.to_string());
+
     let link_context = LinkContext::new();
     let uri = "radio://0/80/2M/E7E7E7E7E7";
 
     println!("Connecting to {} ...", uri);
     let cf = Crazyflie::connect_from_uri(&link_context, uri, NoTocCache).await?;
-    println!("Connected!");
+    println!("Connected! Maneuver: {}", maneuver);
 
     // "hover", "circle", "figure8" use the firmware position PID path.
     // run_firmware_mode handles everything (Kalman reset, ramp, maneuver, landing).
-    if matches!(MANEUVER, "hover" | "circle" | "figure8") {
-        return run_firmware_mode(&cf).await;
+    if matches!(maneuver.as_str(), "hover" | "circle" | "figure8") {
+        return run_firmware_mode(&cf, &maneuver).await;
     }
 
     // Initialize your controller and params
@@ -125,12 +132,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // This means the log is preserved even on crashes, panics, or radio drops.
     fs::create_dir_all("runs")?;
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
-    let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
+    let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
     writeln!(log_file, "time_ms,vel_x,vel_y,vel_z,roll,pitch,yaw,range_z,gyro_x,gyro_y,gyro_z,ekf_x,ekf_y,acc_x,acc_y,acc_z")?;
     println!("Log file opened: {}", filename);
 
-    println!("Logging started (100 Hz, 3 blocks). Starting maneuver '{}' in 3 seconds...", MANEUVER);
+    println!("Logging started (100 Hz, 3 blocks). Starting maneuver '{}' in 3 seconds...", maneuver);
     sleep(Duration::from_secs(3)).await;
 
     // Reset Kalman filter BEFORE takeoff so position estimates start near zero.
@@ -148,7 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // my_hover uses setpoint_hover to lift and stabilize (so EKF z is correct at ~0.3 m),
     // then switches to RPYT for closed-loop control.  my_circle does its own position-hold.
-    let skip_hover_bootstrap = matches!(MANEUVER, "my_circle" | "my_hover");
+    let skip_hover_bootstrap = matches!(maneuver.as_str(), "my_circle" | "my_hover");
     if !skip_hover_bootstrap {
         println!("Ramping up...");
         for y in 0..15 {
@@ -167,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Maneuver-specific logic
-    match MANEUVER {
+    match maneuver.as_str() {
         "my_hover" => {
             // Geometric controller hover using range.zrange for height, EKF x/y for lateral.
             // No Lighthouse dependency.  Takes off directly from the ground via RPYT.
@@ -678,7 +685,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
         _ => {
-            println!("Unknown maneuver '{}'. Falling back to hover.", MANEUVER);
+            println!("Unknown maneuver '{}'. Falling back to hover.", maneuver);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
                 run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
@@ -1120,7 +1127,7 @@ async fn fw_logging_step(
     log_data.push(entry);
 }
 
-async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Block 1: Position, velocity, thrust — 7 variables, 28 bytes @ 20 Hz
     let mut block1 = cf.log.create_block().await?;
     for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
@@ -1216,12 +1223,12 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     // This means the log is preserved even if the drone crashes mid-flight.
     fs::create_dir_all("runs")?;
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
-    let filename = format!("runs/{}_{}.csv", MANEUVER, timestamp);
+    let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
     writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count")?;
     println!("Log file opened: {}", filename);
 
-    println!("Starting maneuver '{}' in 3 seconds...", MANEUVER);
+    println!("Starting maneuver '{}' in 3 seconds...", maneuver);
     sleep(Duration::from_secs(3)).await;
 
     // ── Pre-takeoff: Kalman reset ─────────────────────────────────────────────
@@ -1287,7 +1294,7 @@ async fn run_firmware_mode(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Err
     // Update shadow with real maneuver origin — hover placeholder until traj phase.
     shadow.maneuver = ShadowManeuver::Hover { cx, cy, height: 0.3 };
 
-    match MANEUVER {
+    match maneuver {
         "hover" => {
             // Shadow tracks the same hover setpoint as the firmware.
             shadow.maneuver = ShadowManeuver::Hover { cx, cy, height: 0.3 };
