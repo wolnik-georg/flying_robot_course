@@ -16,6 +16,7 @@ pub mod trajectory;
 pub mod estimation;
 pub mod planning;
 pub mod flight;
+pub mod perception;
 
 /// Prelude for convenient imports
 pub mod prelude {

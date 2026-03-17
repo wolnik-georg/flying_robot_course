@@ -13,7 +13,8 @@ toml = "0.5"
 crazyflie-lib = "0.4"
 crazyflie-link = "0.3"
 tokio = { version = "1", features = ["full"] }
-chrono = "0.4"              # ← add this line
+chrono = "0.4"
+jpeg-decoder = "0.3"       # pure Rust JPEG decode for AI Deck CPX frames
 
 [lib]
 name = "multirotor_simulator"
