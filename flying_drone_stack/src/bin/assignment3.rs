@@ -150,21 +150,39 @@ fn main() {
     let rows = load_csv(csv_path);
     println!("Loaded {} rows", rows.len());
 
-    // --- Seed q_ref from the first on-board EKF quaternion ---
-    let q_seed = rows.iter()
+    // --- Find seed index: first row where range > 100 mm (drone is airborne) ---
+    // Feeding ground rows (static accel, zero flow/range) corrupts the attitude
+    // estimate before takeoff.  The MEKF must start from an airborne row.
+    let seed_idx = rows.iter()
+        .position(|r| r.range_mm.map_or(false, |mm| mm > 100.0))
+        .unwrap_or(0);
+    println!("Seeding MEKF from row {} (range > 100 mm)", seed_idx);
+
+    // Seed orientation and position from the on-board EKF at seed_idx.
+    let q_seed = rows[seed_idx..].iter()
         .find_map(|r| r.ekf_q)
         .unwrap_or([1.0, 0.0, 0.0, 0.0]);
+    let p_seed = rows[seed_idx..].iter()
+        .find_map(|r| r.ekf_pos)
+        .unwrap_or([0.0, 0.0, 0.0]);
 
-    let params = MekfParams::default();
+    // fr00.csv uses the original course firmware flow convention (THETA_P ≈ 0.717 rad).
+    // Our default THETA_P = 3.50 was calibrated on March 2026 flights and is 4.88×
+    // larger — using it on this dataset inflates position estimates by that factor.
+    let params = MekfParams { theta_p: 0.717, ..MekfParams::default() };
     let mut mekf = Mekf::new(params);
     mekf.seed_qref(q_seed);
+    mekf.state.x[0] = p_seed[0];
+    mekf.state.x[1] = p_seed[1];
+    mekf.state.x[2] = p_seed[2];
+    println!("Seeded position from EKF: ({:.3}, {:.3}, {:.3}) m", p_seed[0], p_seed[1], p_seed[2]);
 
     // Output storage
     let mut mekf_out: Vec<(f32, [f32; 6])> = Vec::new(); // (time, [roll,pitch,yaw,x,y,z])
     let mut ekf_out:  Vec<(f32, [f32; 7])> = Vec::new(); // (time, [roll,pitch,yaw,x,y,z,_])
 
-    // --- Collect on-board EKF baseline and run MEKF ---
-    for row in &rows {
+    // --- Collect on-board EKF baseline and run MEKF (airborne rows only) ---
+    for row in &rows[seed_idx..] {
         let t = row.timestamp;
 
         // On-board EKF baseline
@@ -243,6 +261,9 @@ fn main() {
             println!("  roll  = {:.3}°", (sum_sq[0]/nf).sqrt());
             println!("  pitch = {:.3}°", (sum_sq[1]/nf).sqrt());
             println!("  yaw   = {:.3}°", (sum_sq[2]/nf).sqrt());
+            println!("\nNote: THETA_P = 0.717 matches the original course firmware flow");
+            println!("  convention used in fr00.csv.  Our March 2026 flights use 3.50.");
+            println!("  See MekfParams::theta_p to switch datasets.");
         }
     }
 }

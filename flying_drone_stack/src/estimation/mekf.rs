@@ -46,8 +46,8 @@ const G_MS2: f32 = 9.81;
 //   (The old 0.717 rad came from the Python mekf_offline prototype and was never validated
 //    against real flight data.)
 const NP: f32 = 350.0;       // flow sensor: nominal pixel count (CF convention)
-const THETA_P: f32 = 3.50;   // effective calibration constant [empirical, March 15 2026]
-                              // NP/THETA_P ≈ 100  (old value 488 was 4.9× too large)
+                              // theta_p is now in MekfParams (default 3.50, empirical March 2026)
+                              // NP/theta_p ≈ 100  (old value 488 was 4.9× too large)
 const DEG2RAD: f32 = std::f32::consts::PI / 180.0;
 const G_TO_MS2: f32 = G_MS2;
 
@@ -152,6 +152,10 @@ pub struct MekfParams {
     /// Default 0.3 px — slightly above sensor quantisation noise (~0.1 px) but well
     /// below any real motion signal at hover (typical |flow| ≈ 1–5 px at 0.3 m height).
     pub zero_flow_threshold: f32,
+    /// Flow calibration constant [rad].  NP/theta_p is the effective pixels-per-rad scale.
+    /// Default 3.50 — calibrated against March 2026 flights with CF 2.1 + Flow Deck v2.
+    /// Use 0.717 for the original course dataset (fr00.csv / State Estimation lab).
+    pub theta_p: f32,
 }
 
 impl Default for MekfParams {
@@ -163,6 +167,7 @@ impl Default for MekfParams {
             r_height: 1e-3,
             r_flow:   8.0,
             zero_flow_threshold: 0.3,
+            theta_p:  3.50,
         }
     }
 }
@@ -461,13 +466,14 @@ pub fn mekf_update_flow(
     dt_flow: f32,
     r_flow: f32,
     pz_meas: Option<f32>,
+    theta_p: f32,
 ) {
     // Prefer the measured ToF height; fall back to the state estimate.
     let pz = pz_meas.unwrap_or(state.x[2]);
     if pz.abs() < 0.05 {
         return;
     }
-    let scale = dt_flow * NP / (pz * THETA_P);
+    let scale = dt_flow * NP / (pz * theta_p);
 
     // x-component
     let bx = state.x[3];
@@ -482,7 +488,7 @@ pub fn mekf_update_flow(
     if pz2.abs() < 0.05 {
         return;
     }
-    let scale2 = dt_flow * NP / (pz2 * THETA_P);
+    let scale2 = dt_flow * NP / (pz2 * theta_p);
     let by = state.x[4];
     let h_pred_y = scale2 * by;
     let mut h_y = [0.0f32; 9];
@@ -590,7 +596,7 @@ impl Mekf {
                 if let Some(ft) = self.last_flow_t {
                     if t > ft {
                         let dt_flow = t - ft;
-                        mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow, pz_meas);
+                        mekf_update_flow(&mut self.state, dnx, dny, dt_flow, self.params.r_flow, pz_meas, self.params.theta_p);
                     }
                 }
             }
