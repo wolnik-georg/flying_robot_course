@@ -1072,7 +1072,7 @@ async fn fw_logging_step(
             flow.0, flow.1,
         ) {
             entry.mekf_roll  = roll_r.to_degrees();
-            entry.mekf_pitch = pitch_r.to_degrees();
+            entry.mekf_pitch = -pitch_r.to_degrees(); // negate: CF firmware pitch positive = nose-down; ZYX convention positive = nose-up
             entry.mekf_yaw   = yaw_r.to_degrees();
             entry.mekf_x     = px;
             entry.mekf_y     = py;
@@ -1087,7 +1087,7 @@ async fn fw_logging_step(
         entry.our_ref_z      = rz;
         entry.our_thrust     = thr;
         entry.our_roll_cmd   = roll_c;
-        entry.our_pitch_cmd  = pitch_c;
+        entry.our_pitch_cmd  = -pitch_c; // negate to match CF firmware pitch convention
         entry.our_yaw_rate_cmd = yaw_rate_c;
     }
 
