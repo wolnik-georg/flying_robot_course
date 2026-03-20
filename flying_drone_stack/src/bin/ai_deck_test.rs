@@ -99,11 +99,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let fmt_name = if fmt == 0 { "raw" } else { "jpeg" };
 
-        // Build grayscale ImageFrame for FAST-9 feature detection.
-        let gray_frame = if fmt == 0 {
-            bayer_to_gray_box(&raw_bytes, raw_w as usize, raw_h as usize)
+        // Decode frame → grayscale ImageFrame (FAST-9 input) + native RGB bytes (PPM output).
+        let (gray_frame, jpeg_rgb) = if fmt == 0 {
+            let gf = bayer_to_gray_box(&raw_bytes, raw_w as usize, raw_h as usize);
+            (gf, Vec::new()) // RGB for RAW built on demand below (bilinear debayer)
         } else {
-            decode_jpeg_gray(&raw_bytes)?
+            decode_jpeg(&raw_bytes)?
         };
 
         let feats = detect_features(&gray_frame, 20);
@@ -125,12 +126,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let rgb = bayer_bg_to_rgb_bilinear(&raw_bytes, raw_w as usize, raw_h as usize);
                 write_ppm(&ppm_path, &rgb, raw_w as usize, raw_h as usize)?;
             } else {
-                // JPEG: save raw bytes + a false-colour PPM for visual verification.
+                // JPEG: save raw bytes + native-colour PPM (grey→grey, colour→colour).
                 let jpg_path = format!("results/data/frame_{:04}.jpg", i);
                 fs::write(&jpg_path, &raw_bytes)?;
                 let ppm_path = format!("results/data/frame_{:04}_color.ppm", i);
-                let rgb = colormap_turbo(&gray_frame.pixels);
-                write_ppm(&ppm_path, &rgb, gray_frame.width as usize, gray_frame.height as usize)?;
+                write_ppm(&ppm_path, &jpeg_rgb, gray_frame.width as usize, gray_frame.height as usize)?;
             }
             if i == 0 {
                 let ext = if fmt == 0 { "pgm + _color.ppm" } else { "jpg + _color.ppm" };
@@ -148,8 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let jpg_path  = out_path.replace(".pgm", ".jpg");
                 let ppm_path  = out_path.replace(".pgm", "_color.ppm");
                 fs::write(&jpg_path, &raw_bytes)?;
-                let rgb = colormap_turbo(&gray_frame.pixels);
-                write_ppm(&ppm_path, &rgb, gray_frame.width as usize, gray_frame.height as usize)?;
+                write_ppm(&ppm_path, &jpeg_rgb, gray_frame.width as usize, gray_frame.height as usize)?;
                 println!("  -> Saved {}", ppm_path);
                 println!("     (open with: eog {})", ppm_path);
             }
@@ -267,22 +266,39 @@ fn is_no_route(e: &multirotor_simulator::perception::sensors::cpx::CpxError) -> 
 }
 
 // ---------------------------------------------------------------------------
-// JPEG → grayscale
+// JPEG → (grayscale ImageFrame, native RGB bytes)
 // ---------------------------------------------------------------------------
 
-fn decode_jpeg_gray(jpeg_bytes: &[u8]) -> Result<ImageFrame, Box<dyn std::error::Error>> {
+/// Decode a JPEG buffer into a grayscale `ImageFrame` (for FAST-9) and a
+/// parallel RGB byte vec (for color PPM output).
+///
+/// - If the JPEG is already grayscale (L8): RGB is simply R=G=B (natural look).
+/// - If the JPEG is colour (RGB24, e.g. YCbCr JPEG): RGB passes through directly.
+///
+/// Both have the same pixel count (`width × height`); RGB has 3× the bytes.
+fn decode_jpeg(jpeg_bytes: &[u8]) -> Result<(ImageFrame, Vec<u8>), Box<dyn std::error::Error>> {
     use std::io::Cursor;
     let mut dec = jpeg_decoder::Decoder::new(Cursor::new(jpeg_bytes));
     let pixels = dec.decode()?;
     let info = dec.info().ok_or("JPEG decode: missing info")?;
-    let gray: Vec<u8> = match info.pixel_format {
-        jpeg_decoder::PixelFormat::L8 => pixels,
-        jpeg_decoder::PixelFormat::RGB24 => pixels.chunks_exact(3)
-            .map(|c| ((c[0] as u32 * 299 + c[1] as u32 * 587 + c[2] as u32 * 114) / 1000) as u8)
-            .collect(),
+    let (gray, rgb): (Vec<u8>, Vec<u8>) = match info.pixel_format {
+        jpeg_decoder::PixelFormat::L8 => {
+            // Grayscale JPEG (HiMax HM01B0 + GAP8 encoder with flags=0).
+            // Expand to RGB so the PPM viewer shows a natural grey image.
+            let rgb = pixels.iter().flat_map(|&v| [v, v, v]).collect();
+            (pixels, rgb)
+        }
+        jpeg_decoder::PixelFormat::RGB24 => {
+            // Colour JPEG — keep RGB, derive grey via BT.601 luma.
+            let gray = pixels.chunks_exact(3)
+                .map(|c| ((c[0] as u32 * 299 + c[1] as u32 * 587 + c[2] as u32 * 114) / 1000) as u8)
+                .collect();
+            (gray, pixels)
+        }
         _ => return Err("Unsupported JPEG pixel format".into()),
     };
-    Ok(ImageFrame { width: info.width, height: info.height, pixels: gray, timestamp_ms: 0 })
+    let frame = ImageFrame { width: info.width, height: info.height, pixels: gray, timestamp_ms: 0 };
+    Ok((frame, rgb))
 }
 
 // ---------------------------------------------------------------------------
@@ -371,44 +387,6 @@ fn bayer_bg_to_rgb_bilinear(bayer: &[u8], w: usize, h: usize) -> Vec<u8> {
         }
     }
 
-    rgb
-}
-
-// ---------------------------------------------------------------------------
-// False-colour: turbo colormap
-// ---------------------------------------------------------------------------
-
-/// Apply the turbo colormap to an 8-bit grayscale slice.
-///
-/// Returns `pixels.len() * 3` bytes in R,G,B order, suitable for `write_ppm`.
-/// Turbo maps 0 (black) → dark-purple, 128 → cyan-green, 255 → dark-red,
-/// giving a perceptually uniform rainbow that makes grayscale structure obvious.
-fn colormap_turbo(gray: &[u8]) -> Vec<u8> {
-    // Nine evenly-spaced samples from the turbo colormap (t = 0, 1/8 … 1).
-    const TURBO: [(f32, f32, f32); 9] = [
-        (0.18995, 0.07176, 0.23217), // t=0.000  dark purple
-        (0.26900, 0.54130, 0.96780), // t=0.125  blue
-        (0.13120, 0.77760, 0.76610), // t=0.250  cyan
-        (0.09660, 0.87200, 0.51530), // t=0.375  teal-green
-        (0.54390, 0.92480, 0.21190), // t=0.500  yellow-green
-        (0.91590, 0.77100, 0.09340), // t=0.625  yellow-orange
-        (0.97230, 0.46950, 0.06980), // t=0.750  orange
-        (0.87940, 0.18870, 0.08700), // t=0.875  red
-        (0.47900, 0.01500, 0.01500), // t=1.000  dark red
-    ];
-    const N: usize = TURBO.len() - 1; // 8 segments
-
-    let mut rgb = Vec::with_capacity(gray.len() * 3);
-    for &v in gray {
-        let t    = v as f32 / 255.0;
-        let seg  = ((t * N as f32) as usize).min(N - 1);
-        let frac = t * N as f32 - seg as f32;
-        let (r0, g0, b0) = TURBO[seg];
-        let (r1, g1, b1) = TURBO[seg + 1];
-        rgb.push(((r0 + frac * (r1 - r0)).clamp(0.0, 1.0) * 255.0) as u8);
-        rgb.push(((g0 + frac * (g1 - g0)).clamp(0.0, 1.0) * 255.0) as u8);
-        rgb.push(((b0 + frac * (b1 - b0)).clamp(0.0, 1.0) * 255.0) as u8);
-    }
     rgb
 }
 

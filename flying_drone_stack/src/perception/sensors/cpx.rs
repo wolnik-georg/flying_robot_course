@@ -56,8 +56,10 @@ const MAX_FRAME_BYTES: usize = 2 * 1024 * 1024;
 
 /// Timeout for individual read operations — if no data arrives within this
 /// duration the stream has likely frozen on the GAP8 side.
-/// 2 s is enough: at ~3 fps a frame arrives every ~330 ms.
-const READ_TIMEOUT: Duration = Duration::from_secs(2);
+/// 5 s: at ~3 fps a frame arrives every ~330 ms, but JPEG encoding can stall
+/// on a complex frame and WiFi AP mode has occasional brief packet loss.
+/// 2 s caused spurious reconnects mid-frame on frames 60–70.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Error type for CPX camera operations.
 #[derive(Debug)]
