@@ -452,6 +452,32 @@ pub fn mekf_update_height(state: &mut MekfState, z_m: f32, r_height: f32) {
     scalar_update(&mut state.x, &mut state.sigma, h_pred, z_m, &h_row, r_height);
 }
 
+/// Visual-odometry XY position update (two independent scalar updates).
+///
+/// Uses the same [`scalar_update`] primitive as `mekf_update_height`.
+/// Height is *not* updated here — the range sensor already provides a better
+/// Z measurement and re-using the VO Z would create a circular dependency
+/// (VO scale recovery relies on `range_z`).
+///
+/// # Arguments
+/// - `vo_pos` — `[x, y]` world-frame position from [`VoTrajectory::position`].
+/// - `r_vo_xy` — Measurement noise variance `σ²` [m²].  Set to at least
+///   `R_VO_MIN = 0.04` (≡ 0.2 m sigma) to prevent over-trusting a single step.
+///
+/// The caller should gate on `sigma_xy < VO_MAX_SIGMA * 0.9` and a chi-squared
+/// innovation test before calling this function (see `main.rs`).
+pub fn mekf_update_vo(state: &mut MekfState, vo_pos: [f32; 2], r_vo_xy: f32) {
+    // Copy predicted values before mutable borrows below.
+    let h_pred_x = state.x[0];
+    // X update: h(x) = p_x = state.x[0]
+    let h_x: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    scalar_update(&mut state.x, &mut state.sigma, h_pred_x, vo_pos[0], &h_x, r_vo_xy);
+    // Re-read p_y after the X update (X update may shift Y slightly via cross-covariance).
+    let h_pred_y = state.x[1];
+    let h_y: [f32; 9] = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+    scalar_update(&mut state.x, &mut state.sigma, h_pred_y, vo_pos[1], &h_y, r_vo_xy);
+}
+
 /// Optical flow measurement update (two scalar updates).
 /// Model: h = (dt * NP / (pz * θp)) * [bx, by]
 ///
@@ -747,5 +773,55 @@ mod tests {
                     "G[{i}][{j}]: analytical={a:.6}, numerical={n:.6}, diff={:.6}", (a-n).abs());
             }
         }
+    }
+
+    // ── mekf_update_vo ───────────────────────────────────────────────────────
+
+    fn default_state() -> MekfState {
+        let params = MekfParams::default();
+        let mut s = MekfState::new([1.0, 0.0, 0.0, 0.0], &params);
+        s.x[0] = 0.5; // p_x
+        s.x[1] = 0.5; // p_y
+        s.x[2] = 0.3; // p_z
+        s
+    }
+
+    #[test]
+    fn vo_update_corrects_position_x() {
+        let mut state = default_state();
+        // Observation says x = 0.0; state is at 0.5.  Update should pull x toward 0.
+        mekf_update_vo(&mut state, [0.0, 0.5], 0.04);
+        assert!(state.x[0] < 0.5, "x should move toward 0.0, got {}", state.x[0]);
+    }
+
+    #[test]
+    fn vo_update_xy_only_height_unchanged() {
+        let mut state = default_state();
+        let z_before = state.x[2];
+        mekf_update_vo(&mut state, [0.0, 0.0], 0.04);
+        assert!((state.x[2] - z_before).abs() < 1e-6,
+            "height must not change, was {z_before}, got {}", state.x[2]);
+    }
+
+    #[test]
+    fn vo_update_reduces_covariance() {
+        let mut state = default_state();
+        let cov_before = state.sigma.data[0][0] + state.sigma.data[1][1];
+        let (px, py) = (state.x[0], state.x[1]);
+        mekf_update_vo(&mut state, [px, py], 0.04);
+        let cov_after = state.sigma.data[0][0] + state.sigma.data[1][1];
+        assert!(cov_after < cov_before,
+            "covariance should decrease after update: before={cov_before}, after={cov_after}");
+    }
+
+    #[test]
+    fn vo_update_high_noise_gives_small_correction() {
+        let mut state = default_state();
+        let x_before = state.x[0];
+        // r_vo_xy = 1000 → measurement essentially ignored
+        mekf_update_vo(&mut state, [0.0, 0.5], 1000.0);
+        let dx = (state.x[0] - x_before).abs();
+        assert!(dx < 0.01,
+            "high noise should give negligible correction, dx = {dx}");
     }
 }

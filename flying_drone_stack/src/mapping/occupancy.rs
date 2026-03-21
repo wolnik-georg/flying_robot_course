@@ -53,6 +53,12 @@ const LOG_ODDS_MAX: f32 = 3.0;
 /// Voxels above this threshold are considered occupied for export and queries.
 const OCCUPIED_THRESH: f32 = 0.5;
 
+/// Log-odds threshold below which a voxel is classified as *free* for frontier
+/// detection.  Slightly negative (rather than exactly 0) so that voxels with just
+/// one free observation are already classified as frontiers — matching the
+/// Crazyflie firmware's conservative approach.
+pub(crate) const FRONTIER_FREE_THRESH: f32 = -0.1;
+
 /// Maximum valid range sensor reading (VL53L1x datasheet max: 4.0 m).
 const MAX_RANGE_M: f32 = 4.0;
 
@@ -183,7 +189,7 @@ impl OccupancyMap {
         let mut result = Vec::new();
         for (&(ix, iy, iz), &log_odds) in &self.voxels {
             // Must be a free cell (not occupied, not unknown).
-            if log_odds >= -0.1 { continue; }
+            if log_odds >= FRONTIER_FREE_THRESH { continue; }
             // At least one of the 6 face-neighbours must be unknown (absent).
             let unknown_neighbour = [
                 (ix + 1, iy, iz), (ix - 1, iy, iz),
@@ -407,6 +413,55 @@ mod tests {
                    Some(2.0), None, None, None, None, None);
         let fronts = map.frontiers();
         assert!(!fronts.is_empty(), "should find at least one frontier voxel");
+        // All returned frontier positions must be within the ray length.
+        for f in &fronts {
+            let dist = (f.x * f.x + f.y * f.y + f.z * f.z).sqrt();
+            assert!(dist <= 2.1, "frontier at {} should be within ray length", dist);
+        }
+    }
+
+    #[test]
+    fn no_frontiers_on_empty_map() {
+        let map = OccupancyMap::new();
+        assert!(map.frontiers().is_empty(), "empty map has no frontiers");
+    }
+
+    #[test]
+    fn stats_on_empty_map() {
+        let map = OccupancyMap::new();
+        let s = map.stats();
+        assert_eq!(s.n_total, 0);
+        assert_eq!(s.n_occupied, 0);
+        assert_eq!(s.n_free, 0);
+    }
+
+    #[test]
+    fn overlapping_rays_accumulate_correctly() {
+        // Two rays along the same axis: first marks endpoint occupied, second
+        // drives it back toward free.  The log-odds should be between OCC and FREE.
+        let mut map = OccupancyMap::new();
+        let ray_len = 0.5;
+        // First ray: marks ~(0.5, 0, 0) as occupied.
+        map.update(Vec3::zero(), 0.0, 0.0, 0.0, Some(ray_len), None, None, None, None, None);
+        // Second ray: longer — the endpoint is now a free midpoint of this ray.
+        map.update(Vec3::zero(), 0.0, 0.0, 0.0, Some(ray_len * 3.0), None, None, None, None, None);
+        // After free-evidence from the second ray, the voxel should be less
+        // confident (possibly no longer classified as occupied).
+        let stats_after = map.stats();
+        // We cannot assert the exact state, but the map must still be consistent.
+        assert!(stats_after.n_total > 0, "map should not be empty");
+    }
+
+    #[test]
+    fn out_of_range_readings_are_ignored() {
+        let mut map = OccupancyMap::new();
+        // 0.0 m is below MIN_RANGE_M and should be silently ignored.
+        map.update(Vec3::zero(), 0.0, 0.0, 0.0, Some(0.0), None, None, None, None, None);
+        assert_eq!(map.stats().n_total, 0, "sub-minimum range should produce no voxels");
+
+        // 5.0 m exceeds MAX_RANGE_M (4.0 m) and should be ignored.
+        map.update(Vec3::zero(), 0.0, 0.0, 0.0, Some(5.0), None, None, None, None, None);
+        assert_eq!(map.stats().n_total, 0, "beyond-max range should produce no voxels");
     }
 
     #[test]

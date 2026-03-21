@@ -16,7 +16,7 @@ The module has three layers:
 
 The 6-axis range coverage is the key addition over what the MEKF currently uses.  It enables wall/obstacle proximity in all directions (foundation for collision avoidance) and simple 2D/3D occupancy mapping.
 
-**Explicitly out of scope**: SLAM, visual odometry, dense depth maps, loop closure, RL observation spaces.
+**Downstream consumers**: `mapping/` uses `Vec<Feature>` for keyframe-based visual odometry and `MultiRangeMeasurement` for the occupancy map.  SLAM, dense depth maps, loop closure, and RL observation spaces are out of scope for this module.
 
 ---
 
@@ -166,7 +166,7 @@ A complete JPEG frame spans 2–20 fragments.  The receiver (`CpxCamera`) append
               └──────────────────────────┘
                            |
                     Vec<Feature>
-                    (future: SLAM / RL input)
+                    → mapping/ (KeyframeStore, OccupancyMap)
 ```
 
 ---
@@ -407,7 +407,7 @@ accel = lerp(a0, a1, alpha)
 | Consumes | `dynamics/` | `MultirotorState` (position, velocity, orientation) for all sim sensors |
 | Consumes | `estimation/` | `NP`, `THETA_P` constants must remain in sync with MEKF flow model |
 | Feeds | `estimation/` | `FlowMeasurement`, `RangeMeasurement` passed to `Mekf::feed_row()` |
-| Feeds | future SLAM | `Vec<Feature>` is the primary output for visual odometry / loop closure |
+| Feeds | `mapping/` | `Vec<Feature>` fed into `KeyframeStore` for visual odometry; `MultiRangeMeasurement` fed into `OccupancyMap::update()` |
 | Used by | `bin/sim_closed_loop.rs` | All three sim sensors wired into control loop; feature count logged |
 | Used by | `bin/main.rs` | Multi-ranger block5 decoded via `CrtpMultiRangeAdapter`; AI Deck stream via `CpxCamera` |
 

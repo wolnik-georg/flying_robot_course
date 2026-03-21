@@ -64,9 +64,10 @@ impl CameraIntrinsics {
     // Distortion
     // -----------------------------------------------------------------------
 
-    /// Remove radial distortion from a pixel using one Newton iteration.
+    /// Remove radial distortion from a pixel using iterative Newton refinement.
     ///
-    /// Accurate for `|k1|, |k2| < 0.5`.  Returns the input unchanged when
+    /// Runs **3 iterations** of Brown-Conrady inversion, which is accurate to
+    /// < 0.01 px for `|k1|, |k2| < 0.5`.  Returns the input unchanged when
     /// k1 = k2 = 0 (no-op for default HM01B0 intrinsics).
     pub fn undistort_point(&self, u: f32, v: f32) -> (f32, f32) {
         if self.k1 == 0.0 && self.k2 == 0.0 {

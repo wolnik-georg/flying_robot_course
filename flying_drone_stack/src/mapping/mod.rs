@@ -1,10 +1,18 @@
-//! 3D occupancy mapping and autonomous exploration.
+//! 3D occupancy mapping, visual odometry, and SLAM.
 //!
 //! # Modules
 //!
-//! - [`occupancy`] — Sparse log-odds voxel grid.  Updated from multi-ranger
-//!   range measurements; exports PLY point clouds and frontier lists for
-//!   autonomous exploration.
+//! - [`occupancy`] — Sparse log-odds voxel grid updated from multi-ranger
+//!   measurements; exports PLY point clouds and frontier lists for exploration.
+//! - [`keyframe`] — Rolling keyframe buffer + unbounded global index.
+//!   Accepts `ImageFrame`s, detects FAST-9 features, matches against the
+//!   previous keyframe, and recovers metric translation via the 8-point
+//!   essential matrix.  Also provides full-history loop-closure search via
+//!   [`KeyframeStore::detect_loop`].
+//! - [`vo_trajectory`] — Chains keyframe relative poses into a world-frame
+//!   trajectory; can be re-seeded from MEKF after a loop closure.
+//! - [`loop_closure`] — [`PoseGraph`] with unbounded Vec-backed node storage.
+//!   Sequential edges (σ ≈ 10 cm) + loop edges optimised by Gauss-Seidel.
 //!
 //! # Quick start
 //!
@@ -21,6 +29,12 @@
 //! ```
 
 pub mod occupancy;
+pub mod keyframe;
+pub mod vo_trajectory;
+pub mod loop_closure;
 
 pub use occupancy::OccupancyMap;
 pub use occupancy::MapStats;
+pub use keyframe::{KeyframeStore, KeyframeResult, Keyframe, FeatureMatch, CompactKeyframe};
+pub use vo_trajectory::VoTrajectory;
+pub use loop_closure::{LoopConstraint, PoseGraph};

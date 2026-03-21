@@ -56,3 +56,57 @@ pub fn build_state(
         ),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::math::Quat;
+
+    fn approx_eq(a: f32, b: f32) -> bool { (a - b).abs() < 1e-4 }
+
+    #[test]
+    fn zero_angles_gives_identity_orientation() {
+        let state = build_state(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let q = state.orientation;
+        assert!(approx_eq(q.w, 1.0) && approx_eq(q.x, 0.0)
+            && approx_eq(q.y, 0.0) && approx_eq(q.z, 0.0),
+            "expected identity, got ({},{},{},{})", q.w, q.x, q.y, q.z);
+    }
+
+    #[test]
+    fn position_and_velocity_passed_through() {
+        let state = build_state(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        assert!(approx_eq(state.position.x, 1.0));
+        assert!(approx_eq(state.position.y, 2.0));
+        assert!(approx_eq(state.position.z, 3.0));
+        assert!(approx_eq(state.velocity.x, 4.0));
+        assert!(approx_eq(state.velocity.y, 5.0));
+        assert!(approx_eq(state.velocity.z, 6.0));
+    }
+
+    #[test]
+    fn gyro_converted_from_deg_s_to_rad_s() {
+        let state = build_state(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            180.0, 0.0, 0.0);
+        let pi = std::f32::consts::PI;
+        assert!(approx_eq(state.angular_velocity.x, pi),
+            "expected pi rad/s, got {}", state.angular_velocity.x);
+    }
+
+    #[test]
+    fn pure_yaw_orientation_rotates_correctly() {
+        // 90° yaw: body_x should point in world_y direction (right-hand rule)
+        let state = build_state(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 90.0, 0.0, 0.0, 0.0);
+        let body_x = state.orientation.rotate_vector(Vec3::new(1.0, 0.0, 0.0));
+        assert!(approx_eq(body_x.x, 0.0) && approx_eq(body_x.y, 1.0) && approx_eq(body_x.z, 0.0),
+            "body_x after 90° yaw = ({},{},{})", body_x.x, body_x.y, body_x.z);
+    }
+
+    #[test]
+    fn orientation_is_unit_quaternion() {
+        let state = build_state(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0, -10.0, 45.0, 0.0, 0.0, 0.0);
+        let q = state.orientation;
+        let norm_sq = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
+        assert!(approx_eq(norm_sq, 1.0), "norm² = {norm_sq}");
+    }
+}

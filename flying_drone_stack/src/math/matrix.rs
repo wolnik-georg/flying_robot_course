@@ -185,3 +185,182 @@ impl Mat9 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approx_eq(a: f32, b: f32) -> bool { (a - b).abs() < 1e-5 }
+
+    fn mat9_approx_eq(a: &Mat9, b: &Mat9) -> bool {
+        for i in 0..9 {
+            for j in 0..9 {
+                if !approx_eq(a.data[i][j], b.data[i][j]) { return false; }
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn zeros_is_all_zero() {
+        let m = Mat9::zeros();
+        for i in 0..9 { for j in 0..9 { assert_eq!(m.data[i][j], 0.0); } }
+    }
+
+    #[test]
+    fn identity_diagonal_ones_offdiag_zero() {
+        let m = Mat9::identity();
+        for i in 0..9 {
+            for j in 0..9 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert_eq!(m.data[i][j], expected);
+            }
+        }
+    }
+
+    #[test]
+    fn diag_sets_diagonal() {
+        let d = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let m = Mat9::diag(d);
+        for i in 0..9 {
+            assert_eq!(m.data[i][i], d[i]);
+            for j in 0..9 { if i != j { assert_eq!(m.data[i][j], 0.0); } }
+        }
+    }
+
+    #[test]
+    fn transpose_swaps_indices() {
+        let mut m = Mat9::zeros();
+        // Fill with distinct values: m[i][j] = i*9 + j
+        for i in 0..9 { for j in 0..9 { m.data[i][j] = (i * 9 + j) as f32; } }
+        let t = m.transpose();
+        for i in 0..9 { for j in 0..9 { assert_eq!(t.data[i][j], m.data[j][i]); } }
+    }
+
+    #[test]
+    fn transpose_of_transpose_is_identity() {
+        let mut m = Mat9::zeros();
+        for i in 0..9 { for j in 0..9 { m.data[i][j] = (i * 9 + j) as f32; } }
+        assert!(mat9_approx_eq(&m.transpose().transpose(), &m));
+    }
+
+    #[test]
+    fn mat_mul_identity_unchanged() {
+        let mut a = Mat9::zeros();
+        for i in 0..9 { for j in 0..9 { a.data[i][j] = (i * 9 + j) as f32; } }
+        let result = a.mat_mul(&Mat9::identity());
+        assert!(mat9_approx_eq(&result, &a));
+    }
+
+    #[test]
+    fn mat_mul_known_2x2_block() {
+        // Use top-left 2×2 sub-block: [[1,2],[3,4]] * [[5,6],[7,8]] = [[19,22],[43,50]]
+        let mut a = Mat9::zeros();
+        let mut b = Mat9::zeros();
+        a.data[0][0] = 1.0; a.data[0][1] = 2.0;
+        a.data[1][0] = 3.0; a.data[1][1] = 4.0;
+        b.data[0][0] = 5.0; b.data[0][1] = 6.0;
+        b.data[1][0] = 7.0; b.data[1][1] = 8.0;
+        let c = a.mat_mul(&b);
+        assert!(approx_eq(c.data[0][0], 19.0));
+        assert!(approx_eq(c.data[0][1], 22.0));
+        assert!(approx_eq(c.data[1][0], 43.0));
+        assert!(approx_eq(c.data[1][1], 50.0));
+    }
+
+    #[test]
+    fn add_elementwise() {
+        let a = Mat9::diag([1.0; 9]);
+        let b = Mat9::diag([2.0; 9]);
+        let c = a.add(&b);
+        for i in 0..9 {
+            assert!(approx_eq(c.data[i][i], 3.0));
+            for j in 0..9 { if i != j { assert!(approx_eq(c.data[i][j], 0.0)); } }
+        }
+    }
+
+    #[test]
+    fn scale_multiplies_all_entries() {
+        let m = Mat9::identity().scale(3.0);
+        for i in 0..9 {
+            assert!(approx_eq(m.data[i][i], 3.0));
+            for j in 0..9 { if i != j { assert!(approx_eq(m.data[i][j], 0.0)); } }
+        }
+    }
+
+    #[test]
+    fn mat_vec_identity_returns_input() {
+        let v = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let result = Mat9::identity().mat_vec(&v);
+        for i in 0..9 { assert!(approx_eq(result[i], v[i])); }
+    }
+
+    #[test]
+    fn outer_product_correctness() {
+        let u = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let v = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let m = Mat9::outer(&u, &v);
+        // u⊗v should be 1 at [0][1], 0 everywhere else
+        assert!(approx_eq(m.data[0][1], 1.0));
+        assert!(approx_eq(m.data[0][0], 0.0));
+        assert!(approx_eq(m.data[1][1], 0.0));
+    }
+
+    #[test]
+    fn h_sigma_ht_with_identity_equals_h_dot_h() {
+        // H·I·H^T = H·H^T = sum(H_i^2)
+        let h = [1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let result = Mat9::h_sigma_ht(&h, &Mat9::identity());
+        assert!(approx_eq(result, 5.0)); // 1² + 2² = 5
+    }
+
+    #[test]
+    fn sigma_ht_with_identity_returns_h() {
+        let h = [3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0];
+        let result = Mat9::sigma_ht(&Mat9::identity(), &h);
+        assert!(approx_eq(result[0], 3.0));
+        assert!(approx_eq(result[8], 4.0));
+    }
+
+    #[test]
+    fn joseph_update_preserves_symmetry() {
+        // K = e_0, H = e_0 (update first state), r = 1.0
+        // Result should still be symmetric
+        let sigma = Mat9::identity();
+        let k = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let h = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        let updated = Mat9::joseph_update(&sigma, &k, &h, 1.0);
+        for i in 0..9 {
+            for j in 0..9 {
+                assert!(approx_eq(updated.data[i][j], updated.data[j][i]),
+                    "Not symmetric at [{i}][{j}]");
+            }
+        }
+    }
+
+    #[test]
+    fn symmetrise_corrects_asymmetry() {
+        let mut m = Mat9::zeros();
+        m.data[0][1] = 3.0; // asymmetric: [0][1]=3, [1][0]=0
+        m.symmetrise();
+        assert!(approx_eq(m.data[0][1], 1.5));
+        assert!(approx_eq(m.data[1][0], 1.5));
+    }
+
+    #[test]
+    fn clamp_diagonal_caps_large_variance() {
+        let mut m = Mat9::identity().scale(10.0); // diagonal = 10
+        m.clamp_diagonal(1.0);
+        for i in 0..9 {
+            assert!(m.data[i][i] <= 1.0 + 1e-5,
+                "diagonal[{i}] = {} > 1.0", m.data[i][i]);
+        }
+    }
+
+    #[test]
+    fn clamp_diagonal_unchanged_when_below_max() {
+        let mut m = Mat9::diag([0.5; 9]);
+        m.clamp_diagonal(1.0);
+        for i in 0..9 { assert!(approx_eq(m.data[i][i], 0.5)); }
+    }
+}

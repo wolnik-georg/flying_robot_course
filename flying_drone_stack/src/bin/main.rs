@@ -25,6 +25,90 @@ use multirotor_simulator::flight::{
 };
 use multirotor_simulator::perception::sensors::crtp::CrtpMultiRangeAdapter;
 use multirotor_simulator::perception::processing::features::detect_features;
+use multirotor_simulator::mapping::{OccupancyMap, KeyframeStore, KeyframeResult, VoTrajectory,
+                                    LoopConstraint, PoseGraph};
+use multirotor_simulator::estimation::mekf::mekf_update_vo;
+use multirotor_simulator::mapping::vo_trajectory::VO_MAX_SIGMA;
+use multirotor_simulator::planning::exploration::{ExplorationPlanner, ExplorationCommand};
+
+// ---------------------------------------------------------------------------
+// Phase 5 perception step macro
+// ---------------------------------------------------------------------------
+// Called once per control cycle after fw_logging_step to:
+//   1. Update the shared OccupancyMap from the latest multi-ranger readings.
+//   2. Drain any pending KeyframeResult from the AI Deck background task,
+//      integrate it into the VoTrajectory, and fuse with the MEKF if the
+//      chi-squared innovation gate passes.
+//   3. Update `pending_vo` so the next fw_logging_step row carries current VO data.
+macro_rules! step_perception {
+    ($log_data:expr, $omap:expr, $mekf:expr, $mekf_seeded:expr,
+     $ai_kf_result:expr, $vo_traj:expr, $vo_seeded:expr, $pending_vo:expr,
+     $ai_loop_result:expr, $pose_graph:expr, $pending_pg:expr) => {{
+        // ── Update occupancy map ─────────────────────────────────────────────
+        if let Some((pos, roll, pitch, yaw, f, b, l, r, u, d)) = $log_data.last().map(|e| {
+            let to_opt = |v: f32| if v > 0.02 { Some(v) } else { None };
+            (Vec3::new(e.pos_x, e.pos_y, e.pos_z),
+             e.roll, e.pitch, e.yaw,
+             to_opt(e.multi_front), to_opt(e.multi_back), to_opt(e.multi_left),
+             to_opt(e.multi_right), to_opt(e.multi_up), to_opt(e.range_z))
+        }) {
+            $omap.update(pos, roll, pitch, yaw, f, b, l, r, u, d);
+        }
+        // ── Visual odometry: consume latest keyframe result ──────────────────
+        if let Ok(mut guard) = $ai_kf_result.lock() {
+            if let Some(kf) = guard.take() {
+                // Seed VO on first valid keyframe after MEKF converges.
+                if !$vo_seeded && $mekf_seeded {
+                    $vo_traj.seed(Vec3::new(
+                        $mekf.state.x[0], $mekf.state.x[1], $mekf.state.x[2]));
+                    $vo_seeded = true;
+                }
+                if $vo_seeded {
+                    // Register this keyframe in the pose graph at the post-fusion MEKF position.
+                    $pose_graph.add_node(kf.kf_index,
+                        [$mekf.state.x[0], $mekf.state.x[1]]);
+
+                    if let Some(vo_pos) = $vo_traj.integrate(&kf) {
+                        // Gate: only fuse if sigma is below 90 % of max and the
+                        // XY innovation is within 3-sigma of the MEKF position covariance.
+                        if $vo_traj.sigma_xy < VO_MAX_SIGMA * 0.9 {
+                            let r_vo = $vo_traj.sigma_xy.powi(2).max(R_VO_MIN);
+                            let inno_x = vo_pos.x - $mekf.state.x[0];
+                            let inno_y = vo_pos.y - $mekf.state.x[1];
+                            let gate = (r_vo + $mekf.state.sigma.data[0][0]).max(0.01) * 9.0;
+                            if inno_x * inno_x + inno_y * inno_y < gate {
+                                mekf_update_vo(&mut $mekf.state, [vo_pos.x, vo_pos.y], r_vo);
+                                $vo_traj.reset_to(Vec3::new(
+                                    $mekf.state.x[0], $mekf.state.x[1], $mekf.state.x[2]));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // ── Loop closure: apply pose-graph correction ────────────────────────
+        if let Ok(mut guard) = $ai_loop_result.lock() {
+            if let Some(lc) = guard.take() {
+                $pose_graph.add_loop(&lc);
+                if let Some(pg_pos) = $pose_graph.optimize() {
+                    mekf_update_vo(&mut $mekf.state, pg_pos, R_LOOP);
+                    $vo_traj.reset_to(Vec3::new(
+                        $mekf.state.x[0], $mekf.state.x[1], $mekf.state.x[2]));
+                    eprintln!("[PG] correction pos=({:.3},{:.3}) lc#={}",
+                        pg_pos[0], pg_pos[1], $pose_graph.lc_count);
+                }
+            }
+        }
+        // ── Update pending VO for next CSV row ───────────────────────────────
+        $pending_vo = ($vo_traj.position.x, $vo_traj.position.y, $vo_traj.sigma_xy);
+        // ── Update pending pose-graph for next CSV row ───────────────────────
+        $pending_pg = (
+            $pose_graph.latest_pos().map(|p| p[0]).unwrap_or(0.0),
+            $pose_graph.latest_pos().map(|p| p[1]).unwrap_or(0.0),
+            $pose_graph.lc_count as u32,
+        );
+    }}
+}
 
 // Default maneuver — overridden by --maneuver <name> on the command line.
 // Valid options: "hover", "circle", "figure8", "my_hover", "my_circle", "my_figure8"
@@ -78,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // "hover", "circle", "figure8" use the firmware position PID path.
     // run_firmware_mode handles everything (Kalman reset, ramp, maneuver, landing).
-    if matches!(maneuver.as_str(), "hover" | "circle" | "figure8") {
+    if matches!(maneuver.as_str(), "hover" | "circle" | "figure8" | "explore") {
         return run_firmware_mode(&cf, &maneuver).await;
     }
 
@@ -847,6 +931,12 @@ struct FwLogEntry {
     multi_right: f32, multi_up: f32,                     // [m], 0 = not available
     // AI Deck feature count (perception module — CPX camera, optional)
     ai_feat_count: u32,
+    // Visual odometry (from AI Deck keyframes, one-cycle lag vs sensor data)
+    vo_x: f32, vo_y: f32,   // VO trajectory position [m]; 0 before first keyframe
+    vo_sigma: f32,           // VO accumulated uncertainty [m]
+    // Pose-graph SLAM (Phase 6 — loop closure corrected position)
+    pg_x: f32, pg_y: f32,   // Latest pose-graph node position [m]; 0 before first keyframe
+    lc_count: u32,           // Total loop closures detected so far
 }
 
 /// Describes the trajectory our shadow controller is tracking.
@@ -971,6 +1061,8 @@ async fn fw_logging_step(
     mekf_seeded: &mut bool,
     log_file: &mut File,
     shadow: &mut ShadowCtx,
+    pending_vo: (f32, f32, f32),
+    pending_pg: (f32, f32, u32),
 ) {
     let mut entry = FwLogEntry {
         time_ms: start.elapsed().as_millis() as u64,
@@ -1102,9 +1194,19 @@ async fn fw_logging_step(
         *last_print = Instant::now();
     }
 
+    // Fill in VO values from the previous control cycle (one-step lag).
+    entry.vo_x     = pending_vo.0;
+    entry.vo_y     = pending_vo.1;
+    entry.vo_sigma = pending_vo.2;
+
+    // Fill in pose-graph values from the previous control cycle (one-step lag).
+    entry.pg_x     = pending_pg.0;
+    entry.pg_y     = pending_pg.1;
+    entry.lc_count = pending_pg.2;
+
     // Write row immediately to disk so data survives a crash/panic.
     let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{}",
+        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{},{:.4},{:.4},{:.4},{:.4},{:.4},{}",
         entry.time_ms,
         entry.pos_x, entry.pos_y, entry.pos_z,
         entry.vel_x, entry.vel_y, entry.vel_z,
@@ -1123,8 +1225,145 @@ async fn fw_logging_step(
         entry.multi_front, entry.multi_back, entry.multi_left,
         entry.multi_right, entry.multi_up,
         entry.ai_feat_count,
+        entry.vo_x, entry.vo_y, entry.vo_sigma,
+        entry.pg_x, entry.pg_y, entry.lc_count,
     );
     log_data.push(entry);
+}
+
+// ── Safety layer ─────────────────────────────────────────────────────────────
+//
+// Reactive collision avoidance via multi-ranger position-setpoint correction.
+//
+// When any multi-ranger reading falls below the safety threshold the planned
+// position setpoint is nudged away from the obstacle.  The correction is
+// proportional to proximity and capped at SAFETY_MAX_OFFSET_M, so normal
+// flight is unaffected when the drone is well clear of walls.
+//
+// Applied only during active maneuvers (hover/circle/figure8 setpoint_position
+// calls).  Ramp-up and landing use setpoint_hover with zero velocity, so the
+// drone is already being commanded to stay put — no correction needed there.
+//
+// Coordinate convention:
+//   Body  +X = forward  (multi_front measures distance to front wall)
+//   Body  +Y = left     (multi_left  measures distance to left  wall)
+//   Body  +Z = up       (multi_up    measures distance to ceiling)
+//   World frame = body frame rotated by EKF yaw (roll/pitch neglected for
+//   the purposes of this horizontal correction).
+
+/// Horizontal range at which repulsion starts (metres).
+const SAFETY_DIST_HORIZ_M: f32 = 0.40;
+/// Ceiling range at which repulsion starts (metres).
+const SAFETY_DIST_UP_M: f32 = 0.35;
+/// Maximum correction per axis (metres).  Large enough to matter; small enough
+/// not to cause abrupt position jumps the firmware PID cannot track.
+const SAFETY_MAX_OFFSET_M: f32 = 0.12;
+
+/// Compute a safety-adjusted position setpoint.
+///
+/// Returns `(safe_x, safe_y, safe_z)` — the planned setpoint shifted away from
+/// any obstacle detected by the multi-ranger.  When all readings are above the
+/// threshold the output equals the input.
+///
+/// # Arguments
+/// - `x, y, z`       — Planned position in EKF world frame (metres).
+/// - `yaw_deg`       — EKF heading used to rotate body→world (degrees).
+/// - `front/back/left/right/up` — Multi-ranger distances (metres; 0.0 = not available).
+fn safety_position(
+    x: f32, y: f32, z: f32,
+    yaw_deg:  f32,
+    front_m:  f32, back_m:  f32,
+    left_m:   f32, right_m: f32,
+    up_m:     f32,
+) -> (f32, f32, f32) {
+    // Returns a negative offset (push away) proportional to proximity.
+    let repel = |dist_m: f32, threshold: f32| -> f32 {
+        if dist_m > 0.02 && dist_m < threshold {
+            -SAFETY_MAX_OFFSET_M * (1.0 - dist_m / threshold)
+        } else {
+            0.0
+        }
+    };
+
+    // Body-frame corrections: front/back share the X axis, left/right share Y.
+    // repel() is negative (push away), so:
+    //   front close → body_x negative (push backward)
+    //   back  close → -repel() → body_x positive (push forward)
+    let body_x = repel(front_m, SAFETY_DIST_HORIZ_M) - repel(back_m,  SAFETY_DIST_HORIZ_M);
+    let body_y = repel(left_m,  SAFETY_DIST_HORIZ_M) - repel(right_m, SAFETY_DIST_HORIZ_M);
+    let body_z = repel(up_m,    SAFETY_DIST_UP_M);
+
+    // Rotate horizontal correction from body → world frame via yaw only.
+    let (sin_y, cos_y) = yaw_deg.to_radians().sin_cos();
+    let dx = body_x * cos_y - body_y * sin_y;
+    let dy = body_x * sin_y + body_y * cos_y;
+
+    (x + dx, y + dy, z + body_z)
+}
+
+/// Extract the latest multi-ranger readings from the log and return a
+/// safety-adjusted position.  Falls back to the raw setpoint if no log
+/// data is available yet.
+fn safe_setpoint(
+    log_data: &[FwLogEntry],
+    x: f32, y: f32, z: f32,
+) -> (f32, f32, f32) {
+    match log_data.last() {
+        Some(e) => safety_position(
+            x, y, z, e.yaw,
+            e.multi_front, e.multi_back,
+            e.multi_left,  e.multi_right,
+            e.multi_up,
+        ),
+        None => (x, y, z),
+    }
+}
+
+/// Safety-adjusted setpoint that combines the reactive multi-ranger layer
+/// with the persistent occupancy map.
+///
+/// First applies `safe_setpoint` (multi-ranger proximity repulsion), then
+/// probes 8 world-frame directions around the resulting setpoint in the
+/// occupancy map.  Any occupied voxel within `OMAP_PROBE_DIST` nudges the
+/// setpoint away by up to `OMAP_MAX_REPEL`.
+///
+/// The map layer complements the reactive layer: it catches obstacles that
+/// currently return out-of-range readings (e.g. specular walls) but were
+/// previously confirmed occupied by the multi-ranger.
+fn safe_setpoint_omap(
+    log_data: &[FwLogEntry],
+    omap: &OccupancyMap,
+    x: f32, y: f32, z: f32,
+) -> (f32, f32, f32) {
+    // Step 1: reactive multi-ranger layer.
+    let (x1, y1, z1) = safe_setpoint(log_data, x, y, z);
+
+    // Step 2: occupancy-map repulsion (world-frame horizontal ring).
+    const PROBE_DIST: f32 = 0.25; // m — ring radius around setpoint
+    const OMAP_MAX_REPEL: f32 = 0.08; // m — max per-obstacle correction
+
+    let mut dx = 0.0f32;
+    let mut dy = 0.0f32;
+    for i in 0..8u32 {
+        let angle = i as f32 * std::f32::consts::PI / 4.0;
+        let (ca, sa) = angle.sin_cos();
+        let px = x1 + PROBE_DIST * ca;
+        let py = y1 + PROBE_DIST * sa;
+        if omap.is_occupied(Vec3::new(px, py, z1)) {
+            // Repel away from this obstacle direction.
+            dx -= OMAP_MAX_REPEL * ca;
+            dy -= OMAP_MAX_REPEL * sa;
+        }
+    }
+    // Clamp total map correction to OMAP_MAX_REPEL.
+    let mag = (dx * dx + dy * dy).sqrt();
+    let (dx, dy) = if mag > OMAP_MAX_REPEL {
+        (dx / mag * OMAP_MAX_REPEL, dy / mag * OMAP_MAX_REPEL)
+    } else {
+        (dx, dy)
+    };
+
+    (x1 + dx, y1 + dy, z1)
 }
 
 async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -1176,22 +1415,60 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     let stream5 = block5.start(LogPeriod::from_millis(50)?).await?;
 
     // Optional AI Deck CPX camera — only if --ai-deck flag is present.
-    // Feature detection runs in a background task; the count is stored atomically
-    // so fw_logging_step can read it without blocking.
-    let ai_feat_count = Arc::new(AtomicU32::new(0));
+    //
+    // Two shared values updated by the background task:
+    //   ai_feat_count  — latest FAST-9 feature count (logged per cycle).
+    //   ai_kf_result   — latest keyframe registration result (logged on each new keyframe).
+    //
+    // The background task also runs a KeyframeStore; it reads the current drone
+    // pose from ai_pose (written by the main loop each fw_logging_step).
+    let ai_feat_count  = Arc::new(AtomicU32::new(0));
+    let ai_kf_result: Arc<std::sync::Mutex<Option<KeyframeResult>>> =
+        Arc::new(std::sync::Mutex::new(None));
+    let ai_loop_result: Arc<std::sync::Mutex<Option<LoopConstraint>>> =
+        Arc::new(std::sync::Mutex::new(None));
+    // (pos_x, pos_y, pos_z, yaw_deg, range_z) — written by main loop, read by AI task.
+    let ai_pose: Arc<std::sync::Mutex<(f32,f32,f32,f32,f32)>> =
+        Arc::new(std::sync::Mutex::new((0.0, 0.0, 0.3, 0.0, 0.3)));
+
     let ai_deck_mode  = std::env::args().any(|a| a == "--ai-deck");
     if ai_deck_mode {
         use multirotor_simulator::perception::sensors::cpx::CpxCamera;
-        let feat_clone = Arc::clone(&ai_feat_count);
+        let feat_clone  = Arc::clone(&ai_feat_count);
+        let kf_clone    = Arc::clone(&ai_kf_result);
+        let loop_clone  = Arc::clone(&ai_loop_result);
+        let pose_clone  = Arc::clone(&ai_pose);
         tokio::spawn(async move {
             match CpxCamera::connect("192.168.4.1:5000").await {
                 Ok(mut cam) => {
                     println!("[AI Deck] connected");
+                    let mut kf_store = KeyframeStore::new();
                     loop {
                         match cam.recv_frame().await {
                             Ok(frame) => {
                                 let n = detect_features(&frame, 20).len() as u32;
                                 feat_clone.store(n, Ordering::Relaxed);
+
+                                // Feed frame into keyframe store with latest pose.
+                                let (px, py, pz, yaw, rz) = {
+                                    *pose_clone.lock().unwrap()
+                                };
+                                let pos = multirotor_simulator::math::Vec3::new(px, py, pz);
+                                if let Some(result) = kf_store.push(frame, pos, yaw, rz) {
+                                    println!("[KF] kf#{} matches={} inliers={} t=({:.3},{:.3},{:.3})m",
+                                        result.kf_index, result.match_count, result.inlier_count,
+                                        result.translation_m.x, result.translation_m.y, result.translation_m.z);
+
+                                    // Run loop closure detection on this new keyframe.
+                                    let new_idx = result.kf_index;
+                                    if let Some(lc) = kf_store.detect_loop(new_idx) {
+                                        eprintln!("[LC] loop kf{}→kf{} inliers={} t=({:.3},{:.3})m",
+                                            lc.from_idx, lc.to_idx, lc.inlier_count,
+                                            lc.translation_world[0], lc.translation_world[1]);
+                                        *loop_clone.lock().unwrap() = Some(lc);
+                                    }
+                                    *kf_clone.lock().unwrap() = Some(result);
+                                }
                             }
                             Err(e) => {
                                 eprintln!("[AI Deck] frame error: {}", e);
@@ -1210,6 +1487,26 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     let mut mekf = Mekf::new(MekfParams::default());
     let mut mekf_seeded = false;
 
+    // ── Phase 5: Visual odometry + occupancy map (shared across all maneuvers) ──
+    let mut vo_traj   = VoTrajectory::new();
+    let mut vo_seeded = false;
+    /// Minimum VO position noise variance [m²] = (0.2 m sigma)².
+    /// Prevents over-trusting a single keyframe step.
+    const R_VO_MIN: f32 = 0.04;
+    // Pending VO values written to each log row (one-cycle lag vs sensor data).
+    let mut pending_vo: (f32, f32, f32) = (0.0, 0.0, 0.0);
+    // Occupancy map — hoisted to outer scope so all maneuver arms can update and
+    // query it, and so safe_setpoint_omap is available everywhere.
+    let mut omap = OccupancyMap::new();
+
+    // ── Phase 6: Pose-graph loop closure SLAM ────────────────────────────────
+    let mut pose_graph = PoseGraph::new();
+    // Pending pose-graph values written to each log row (one-cycle lag).
+    let mut pending_pg: (f32, f32, u32) = (0.0, 0.0, 0);
+    /// MEKF position noise for pose-graph correction [m²] = (0.1 m σ)².
+    /// Tighter than VO noise — a loop closure is a hard geometric constraint.
+    const R_LOOP: f32 = 0.01;
+
     // Shadow controller — starts with a hover placeholder; maneuver params and
     // traj_start are filled in once we know the maneuver origin (cx, cy).
     let mut shadow = ShadowCtx {
@@ -1225,7 +1522,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count")?;
+    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count,vo_x,vo_y,vo_sigma,pg_x,pg_y,lc_count")?;
     println!("Log file opened: {}", filename);
 
     println!("Starting maneuver '{}' in 3 seconds...", maneuver);
@@ -1246,11 +1543,21 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     // so time_ms is continuous and monotonic across all phases in the CSV.
     let flight_start = Instant::now();
 
+    // Helper: after each fw_logging_step, publish the latest pose to the AI
+    // Deck background task so its keyframe store captures it with the frame.
+    let sync_ai_pose = |log_data: &[FwLogEntry]| {
+        if let Some(e) = log_data.last() {
+            if let Ok(mut g) = ai_pose.lock() {
+                *g = (e.pos_x, e.pos_y, e.pos_z, e.yaw, e.range_z);
+            }
+        }
+    };
+
     // ── Ramp up ──────────────────────────────────────────────────────────────
     println!("Ramping up...");
     for y in 0..15 {
         let zdistance = y as f32 / 50.0;
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(100)).await;
     }
@@ -1260,7 +1567,11 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     {
         let deadline = Instant::now() + Duration::from_secs(8);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+            sync_ai_pose(&log_data);
+            step_perception!(log_data, omap, mekf, mekf_seeded,
+                             ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                             ai_loop_result, pose_graph, pending_pg);
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(50)).await;
         }
@@ -1276,7 +1587,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         let mut count = 0u32;
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
@@ -1302,8 +1613,13 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Holding position ({:.3}, {:.3}) at 0.3 m for 12 seconds...", cx, cy);
             let deadline = Instant::now() + Duration::from_secs(12);
             while Instant::now() < deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
-                cf.commander.setpoint_position(cx, cy, 0.3, 0.0).await?;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+                let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, cx, cy, 0.3);
+                cf.commander.setpoint_position(sx, sy, sz, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
@@ -1320,8 +1636,13 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Moving to circle start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
-                cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+                let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x_start, y_start, height);
+                cf.commander.setpoint_position(sx, sy, sz, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
 
@@ -1333,8 +1654,13 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + radius * (omega * t).cos();
                 let y = cy + radius * (omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
-                cf.commander.setpoint_position(x, y, height, 0.0).await?;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+                let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, height);
+                cf.commander.setpoint_position(sx, sy, sz, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
         }
@@ -1355,8 +1681,13 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Moving to figure-8 start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
-                cf.commander.setpoint_position(x_start, y_start, height, 0.0).await?;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+                let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x_start, y_start, height);
+                cf.commander.setpoint_position(sx, sy, sz, 0.0).await?;
                 sleep(Duration::from_millis(50)).await;
             }
 
@@ -1368,8 +1699,65 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + a * (omega * t).cos();
                 let y = cy - b * (2.0 * omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
-                cf.commander.setpoint_position(x, y, height, 0.0).await?;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+                let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, height);
+                cf.commander.setpoint_position(sx, sy, sz, 0.0).await?;
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+        "explore" => {
+            // Frontier-based autonomous exploration.
+            // Planner runs a SCAN→NAVIGATE→LAND state machine using the
+            // live OccupancyMap (hoisted to outer scope, shared with all arms).
+            let hover_z = 0.3f32;
+            let mut planner = ExplorationPlanner::new(hover_z);
+            let explore_start = Instant::now();
+
+            println!("Starting exploration (max {} s)...", 120);
+            loop {
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                sync_ai_pose(&log_data);
+                // Map update + VO integration (same as all other maneuver arms).
+                step_perception!(log_data, omap, mekf, mekf_seeded,
+                                 ai_kf_result, vo_traj, vo_seeded, pending_vo,
+                                 ai_loop_result, pose_graph, pending_pg);
+
+                let pos = log_data.last()
+                    .map(|e| Vec3::new(e.pos_x, e.pos_y, e.pos_z))
+                    .unwrap_or(Vec3::new(cx, cy, hover_z));
+                let yaw_now = log_data.last().map(|e| e.yaw).unwrap_or(0.0);
+                let vbat    = log_data.last().map(|e| e.vbat).unwrap_or(4.0);
+                let elapsed = explore_start.elapsed().as_secs_f32();
+
+                let cmd = planner.step(pos, yaw_now, &omap, vbat, elapsed);
+                match cmd {
+                    ExplorationCommand::Hold { x, y, z, .. } => {
+                        let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);
+                        cf.commander.setpoint_position(sx, sy, sz, yaw_now).await?;
+                    }
+                    ExplorationCommand::GoTo { x, y, z, yaw_deg } => {
+                        let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);
+                        cf.commander.setpoint_position(sx, sy, sz, yaw_deg).await?;
+                    }
+                    ExplorationCommand::Land { reason } => {
+                        println!("[explore] Landing: {}", reason);
+                        // Save map before breaking into the landing ramp.
+                        let stats = omap.stats();
+                        println!("[explore] Map: {} occupied, {} free voxels",
+                                 stats.n_occupied, stats.n_free);
+                        let ply = omap.to_ply();
+                        let map_path = format!("results/data/explore_map_{}.ply", timestamp);
+                        if fs::create_dir_all("results/data").is_ok() {
+                            let _ = fs::write(&map_path, &ply);
+                            println!("[explore] Map saved: {}", map_path);
+                        }
+                        break;
+                    }
+                }
                 sleep(Duration::from_millis(50)).await;
             }
         }
@@ -1379,7 +1767,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     println!("Ramping down gently...");
     for step in (0..40).rev() {
         let zdistance = step as f32 / 100.0;
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
         cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
         sleep(Duration::from_millis(120)).await;
     }

@@ -173,3 +173,124 @@ pub fn yaw_rate_cmd(
         .clamp(-max_yaw_rate_deg_s, max_yaw_rate_deg_s)
         * kp_yaw
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approx_eq(a: f32, b: f32) -> bool { (a - b).abs() < 1e-4 }
+
+    // ── force_vector_to_rpyt ────────────────────────────────────────────────
+
+    #[test]
+    fn pure_z_force_gives_zero_tilt() {
+        let (roll, pitch, _, _) = force_vector_to_rpyt(Vec3::new(0.0, 0.0, 1.0), 30.0);
+        assert!(approx_eq(roll, 0.0), "roll = {roll}");
+        assert!(approx_eq(pitch, 0.0), "pitch = {pitch}");
+    }
+
+    #[test]
+    fn positive_fx_gives_positive_pitch() {
+        // F_x > 0 (need +X acceleration) → pitch_d_raw = atan2(F_x, F_z) > 0
+        let (_, pitch, _, pitch_raw) =
+            force_vector_to_rpyt(Vec3::new(1.0, 0.0, 1.0), 45.0);
+        assert!(pitch > 0.0, "pitch should be positive, got {pitch}");
+        assert!(approx_eq(pitch, pitch_raw)); // not clamped
+    }
+
+    #[test]
+    fn negative_fy_gives_positive_roll() {
+        // F_y < 0 → roll_d_raw = atan2(-F_y, F_z) = atan2(positive, ...) > 0
+        let (roll, _, roll_raw, _) =
+            force_vector_to_rpyt(Vec3::new(0.0, -1.0, 1.0), 45.0);
+        assert!(roll > 0.0, "roll should be positive, got {roll}");
+        assert!(approx_eq(roll, roll_raw));
+    }
+
+    #[test]
+    fn force_vector_clamped_to_max_tilt() {
+        // Very large F_x/F_z ratio → raw pitch > max_tilt
+        let (_, pitch_cmd, _, pitch_raw) =
+            force_vector_to_rpyt(Vec3::new(100.0, 0.0, 1.0), 30.0);
+        assert!(pitch_raw > 30.0, "raw pitch should exceed limit");
+        assert!(approx_eq(pitch_cmd, 30.0), "cmd should be clamped to 30°, got {pitch_cmd}");
+    }
+
+    #[test]
+    fn roll_sign_positive_right_side_down() {
+        // Drone needs to tilt right (+Y direction force = F_y > 0, so -F_y < 0 → roll < 0)
+        // Drone needs to tilt left  (-Y direction force = F_y < 0, so -F_y > 0 → roll > 0)
+        let (roll_left, _, _, _) = force_vector_to_rpyt(Vec3::new(0.0, -1.0, 5.0), 30.0);
+        let (roll_right, _, _, _) = force_vector_to_rpyt(Vec3::new(0.0, 1.0, 5.0), 30.0);
+        assert!(roll_left > 0.0);
+        assert!(roll_right < 0.0);
+    }
+
+    // ── tilt_saturated ──────────────────────────────────────────────────────
+
+    #[test]
+    fn tilt_saturated_true_when_roll_exceeds() {
+        assert!(tilt_saturated(35.0, 10.0, 30.0));
+    }
+
+    #[test]
+    fn tilt_saturated_true_when_pitch_exceeds() {
+        assert!(tilt_saturated(5.0, -35.0, 30.0));
+    }
+
+    #[test]
+    fn tilt_saturated_false_when_within_limit() {
+        assert!(!tilt_saturated(10.0, 20.0, 30.0));
+    }
+
+    // ── thrust_to_pwm ───────────────────────────────────────────────────────
+
+    #[test]
+    fn thrust_at_hover_gives_hover_pwm() {
+        let hover_thrust = 0.37 * 9.81; // ~3.63 N
+        let (pwm, raw) = thrust_to_pwm(hover_thrust, hover_thrust, 35000.0, 10000.0, 60000.0);
+        assert!(approx_eq(raw, 35000.0));
+        assert_eq!(pwm, 35000);
+    }
+
+    #[test]
+    fn thrust_below_min_clamped() {
+        let (pwm, _) = thrust_to_pwm(0.0, 3.63, 35000.0, 10000.0, 60000.0);
+        assert_eq!(pwm, 10000);
+    }
+
+    #[test]
+    fn thrust_above_max_clamped() {
+        let (pwm, _) = thrust_to_pwm(1000.0, 3.63, 35000.0, 10000.0, 60000.0);
+        assert_eq!(pwm, 60000);
+    }
+
+    #[test]
+    fn thrust_double_hover_gives_double_pwm_or_clamped() {
+        let hover_thrust = 3.63;
+        let (_, raw) = thrust_to_pwm(2.0 * hover_thrust, hover_thrust, 35000.0, 10000.0, 60000.0);
+        assert!(approx_eq(raw, 70000.0)); // unclamped raw is 70000
+    }
+
+    // ── yaw_rate_cmd ────────────────────────────────────────────────────────
+
+    #[test]
+    fn yaw_rate_proportional_to_error() {
+        // ref = 0 rad (0°), current = -10° → error = 10° → rate = 10 * kp
+        let rate = yaw_rate_cmd(0.0, -10.0, 1.5, 200.0);
+        assert!(approx_eq(rate, 10.0 * 1.5), "rate = {rate}");
+    }
+
+    #[test]
+    fn yaw_rate_clamped_to_max() {
+        // error = 200° >> clamp=100° → clamped error = 100°, rate = 100 * kp
+        let rate = yaw_rate_cmd(0.0, -200.0, 5.0, 100.0);
+        assert!(approx_eq(rate, 100.0 * 5.0), "rate = {rate}");
+    }
+
+    #[test]
+    fn yaw_rate_zero_when_aligned() {
+        let rate = yaw_rate_cmd(0.0, 0.0, 1.0, 200.0);
+        assert!(approx_eq(rate, 0.0));
+    }
+}

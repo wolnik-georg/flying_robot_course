@@ -113,3 +113,100 @@ pub fn yaw_wrap_delta(from_deg: f32, to_deg: f32) -> f32 {
 pub fn deg_to_rad(deg: f32) -> f32 {
     deg * std::f32::consts::PI / 180.0
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approx_eq(a: f32, b: f32) -> bool { (a - b).abs() < 1e-4 }
+
+    // ── detect_ekf_reset ────────────────────────────────────────────────────
+
+    #[test]
+    fn first_call_no_reset() {
+        let flags = detect_ekf_reset(
+            None, Vec3::new(1.0, 2.0, 0.5),
+            0.0, 5.0, 0.05, 0.05, 10.0,
+        );
+        assert!(!flags.any());
+    }
+
+    #[test]
+    fn small_step_no_reset() {
+        let prev = Vec3::new(0.0, 0.0, 0.5);
+        let cur  = Vec3::new(0.001, 0.001, 0.501); // 1.4 mm XY, 1 mm Z
+        let flags = detect_ekf_reset(Some(prev), cur, 0.0, 0.5, 0.05, 0.05, 10.0);
+        assert!(!flags.any(), "flags = {flags:?}");
+    }
+
+    #[test]
+    fn large_xy_step_triggers_xy_reset() {
+        let prev = Vec3::new(0.0, 0.0, 0.5);
+        let cur  = Vec3::new(0.5, 0.0, 0.5); // 0.5 m XY step >> 0.05 m threshold
+        let flags = detect_ekf_reset(Some(prev), cur, 0.0, 0.0, 0.05, 0.05, 10.0);
+        assert!(flags.xy, "xy reset expected");
+        assert!(!flags.z && !flags.yaw);
+    }
+
+    #[test]
+    fn large_z_step_triggers_z_reset() {
+        let prev = Vec3::new(0.0, 0.0, 0.5);
+        let cur  = Vec3::new(0.0, 0.0, 1.0); // 0.5 m Z step
+        let flags = detect_ekf_reset(Some(prev), cur, 0.0, 0.0, 0.05, 0.05, 10.0);
+        assert!(flags.z, "z reset expected");
+        assert!(!flags.xy && !flags.yaw);
+    }
+
+    #[test]
+    fn large_yaw_step_triggers_yaw_reset() {
+        let pos = Vec3::new(0.0, 0.0, 0.5);
+        let flags = detect_ekf_reset(Some(pos), pos, 0.0, 90.0, 0.05, 0.05, 10.0);
+        assert!(flags.yaw, "yaw reset expected");
+        assert!(!flags.xy && !flags.z);
+    }
+
+    #[test]
+    fn step_magnitudes_reported_correctly() {
+        let prev = Vec3::new(0.0, 0.0, 0.5);
+        let cur  = Vec3::new(0.03, 0.04, 0.5); // XY = 0.05 m exactly
+        let flags = detect_ekf_reset(Some(prev), cur, 0.0, 0.0, 0.04, 0.05, 10.0);
+        // 0.05 > 0.04 → triggers
+        assert!(flags.xy);
+        assert!(approx_eq(flags.step_xy_m, 0.05));
+    }
+
+    // ── yaw_wrap_delta ──────────────────────────────────────────────────────
+
+    #[test]
+    fn yaw_wrap_delta_normal_positive() {
+        assert!(approx_eq(yaw_wrap_delta(0.0, 90.0), 90.0));
+    }
+
+    #[test]
+    fn yaw_wrap_delta_normal_negative() {
+        assert!(approx_eq(yaw_wrap_delta(90.0, 0.0), -90.0));
+    }
+
+    #[test]
+    fn yaw_wrap_delta_crossing_180_deg() {
+        // From 170° to -170° — shortest path is +20° (CCW), not CW 340°
+        assert!(approx_eq(yaw_wrap_delta(170.0, -170.0), 20.0));
+    }
+
+    #[test]
+    fn yaw_wrap_delta_crossing_minus_180() {
+        assert!(approx_eq(yaw_wrap_delta(-170.0, 170.0), -20.0));
+    }
+
+    #[test]
+    fn yaw_wrap_delta_zero_no_change() {
+        assert!(approx_eq(yaw_wrap_delta(45.0, 45.0), 0.0));
+    }
+
+    // ── deg_to_rad ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn deg_to_rad_180_is_pi() {
+        assert!((deg_to_rad(180.0) - std::f32::consts::PI).abs() < 1e-5);
+    }
+}

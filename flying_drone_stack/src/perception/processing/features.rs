@@ -317,4 +317,49 @@ mod tests {
         c[14] = 1; c[15] = 1; c[0] = 1; c[1] = 1; c[2] = 1;
         assert_eq!(max_circular_run(&c, 1), 5);
     }
+
+    #[test]
+    fn too_small_image_returns_no_features() {
+        // FAST requires a 3-pixel border → minimum usable image is 7×7.
+        // A 6×6 image (or smaller) must return zero features without panicking.
+        let small = ImageFrame {
+            width: 6, height: 6,
+            pixels: vec![128u8; 36],
+            timestamp_ms: 0,
+        };
+        let feats = detect_features(&small, 20);
+        assert!(feats.is_empty(), "6×6 image should yield no features");
+    }
+
+    #[test]
+    fn high_threshold_reduces_feature_count() {
+        // On a checkerboard a very high threshold should detect fewer corners.
+        let low_thresh_frame = {
+            let mut p = vec![0u8; 40 * 40];
+            for y in 0..40usize { for x in 0..40usize {
+                p[y * 40 + x] = if (x / 8 + y / 8) % 2 == 0 { 230 } else { 20 };
+            }}
+            ImageFrame { width: 40, height: 40, pixels: p, timestamp_ms: 0 }
+        };
+        let high_thresh_frame = low_thresh_frame.clone();
+        let n_low  = detect_features(&low_thresh_frame, 10).len();
+        let n_high = detect_features(&high_thresh_frame, 100).len();
+        assert!(n_high <= n_low,
+                "high threshold ({} feats) should not exceed low threshold ({} feats)",
+                n_high, n_low);
+    }
+
+    #[test]
+    fn detect_features_returns_scores_within_valid_range() {
+        // All feature scores must be non-negative (they measure corner strength).
+        let mut pixels = vec![0u8; 64 * 64];
+        for y in 0..64usize { for x in 0..64usize {
+            pixels[y * 64 + x] = if (x / 8 + y / 8) % 2 == 0 { 200 } else { 50 };
+        }}
+        let frame = ImageFrame { width: 64, height: 64, pixels, timestamp_ms: 0 };
+        for f in detect_features(&frame, 20) {
+            assert!(f.score >= 0.0, "feature score {} is negative", f.score);
+            assert!(f.x < 64.0 && f.y < 64.0, "feature out of image bounds");
+        }
+    }
 }

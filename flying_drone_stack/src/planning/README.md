@@ -1,14 +1,16 @@
-# Planning — Minimum-Snap Motion Planning & Differential Flatness
+# Planning — Minimum-Snap Motion Planning, Differential Flatness & Frontier Exploration
 
 ## 1. Overview
 
-The planning module solves two related problems:
+The planning module solves three related problems:
 
 1. **Trajectory generation** (`spline.rs`): Given a set of waypoints and time allocations, compute a smooth, dynamically feasible polynomial trajectory that passes through all waypoints.
 
 2. **Differential flatness** (`flatness.rs`): Given the trajectory's position derivatives (up to 4th order) and yaw derivatives (up to 2nd order), compute the exact rotation, thrust, angular velocity, and torque that the drone must produce — without integration.
 
-Together they form a complete planning pipeline: waypoints in → motor commands out (given current state).
+3. **Autonomous exploration** (`exploration.rs`): A frontier-based planner that drives the drone through a SCAN → NAVIGATE → LAND state machine, building a 3D occupancy map of the room while deciding where to fly next.
+
+Together they cover the full planning spectrum: from mathematically optimal pre-planned trajectories (spline + flatness) to reactive real-time exploration (frontier planner).
 
 ---
 
@@ -111,11 +113,51 @@ Similar but one derivative higher (involves `p⁽⁴⁾` and `ψ̈`).
 
 No ODEs are solved — every quantity is computed algebraically at each time step.
 
+### 2.5 Frontier-Based Exploration
+
+A **frontier** is a voxel that is adjacent to known free space but has not yet been observed (log-odds ≈ 0, i.e. never updated).  Navigating toward frontiers incrementally converts unknown space to known space.
+
+**Frontier condition** (sourced from `mapping/occupancy.rs`):
+```
+voxel is a frontier if:
+    voxel.log_odds == 0.0                          (never observed)
+    AND at least one 6-connected neighbour has
+        log_odds < FRONTIER_FREE_THRESH (= −0.1)   (confirmed free)
+```
+
+The `−0.1` threshold (slightly negative rather than 0) means a single free observation is enough to classify a neighbour as free, reducing the scan time needed to open up new frontiers.
+
+**Nearest-frontier selection** (`exploration.rs:nearest_frontier`):
+```
+for each frontier f in map.frontiers():
+    dz  = |f.z − hover_z|
+    if dz > FRONTIER_Z_BAND_M   → skip  (floor / ceiling)
+    d2  = sqrt((f.x−px)² + (f.y−py)²)  (horizontal only)
+    if d2 < MIN_FRONTIER_DIST_M → skip  (already explored)
+    if d2 > MAX_FRONTIER_DIST_M → skip  (too far, unknown space)
+    track minimum d2
+
+return nearest frontier (or None if none qualify)
+```
+
+**State machine** (20 Hz control cycle):
+```
+SCAN ──360° sweep──► SELECT ──frontier found──► NAVIGATE ──arrived──► SCAN
+                         └── no frontier ──► LAND
+SCAN / NAVIGATE / LAND ──battery < 3.6 V or elapsed > 120 s ──► LAND
+```
+
+- **SCAN**: Rotate in place at `SCAN_YAW_RATE_DEG_S = 60°/s` for a full 360°.  The multi-ranger sweeps all wall directions while the map updates.
+- **NAVIGATE**: Emit `GoTo` commands toward the chosen frontier.  Arrival is declared when the horizontal distance drops below `ARRIVE_DIST_M = 0.15 m`.
+- **LAND**: Emit `Land` unconditionally every cycle.  The caller in `main.rs` performs the landing sequence and saves the PLY map.
+
 ---
 
 ## 3. Architecture Diagram
 
 ```
+── Pre-planned trajectory path ──────────────────────────────────────────────
+
 ┌─────────────────────────────────────────────────────────────────┐
 │  Inputs                                                         │
 │  waypoints: [(pos₀, yaw₀), ..., (posₙ, yawₙ)]                 │
@@ -125,36 +167,48 @@ No ODEs are solved — every quantity is computed algebraically at each time ste
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  SplineTrajectory::plan  (spline.rs:156)                        │
-│                                                                 │
-│  For each axis (x, y, z, yaw):                                  │
 │    solve_axis → QP → [c₀, c₁, ..., c₈] per segment            │
 └────────────────────────┬────────────────────────────────────────┘
-                         │  SplineTrajectory (segments + coefficients)
+                         │  SplineTrajectory
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  SplineTrajectory::eval(t)  (spline.rs:183)                     │
-│                                                                 │
-│  Given time t:                                                  │
-│    locate segment → evaluate polynomial and 4 derivatives       │
 │    returns FlatOutput: pos, vel, acc, jerk, snap, yaw, ẏaw, ÿaw │
 └────────────────────────┬────────────────────────────────────────┘
                          │  FlatOutput
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  compute_flatness(flat, mass)  (flatness.rs:106)                │
-│                                                                 │
-│  acc_g → ẑ_b → R (rotation)                                    │
-│  f = m·‖acc_g‖   (thrust)                                      │
-│  jerk → ω       (angular velocity)                             │
-│  snap → ω̇       (angular acceleration)                        │
-│  τ = J·ω̇ − Jω×ω  (torque)                                     │
+│  acc_g → R, f = m·‖acc_g‖, jerk → ω, snap → ω̇, τ = Jω̇−Jω×ω │
 └────────────────────────┬────────────────────────────────────────┘
-                         │  FlatnessResult
+                         │  FlatnessResult → GeometricController
+                         ▼
+
+── Reactive exploration path ────────────────────────────────────────────────
+
+┌─────────────────────────────────────────────────────────────────┐
+│  Inputs (20 Hz from main loop)                                  │
+│  pos: Vec3, yaw_deg: f32                                        │
+│  map: &OccupancyMap  (updated from multi-ranger readings)       │
+│  vbat: f32,  elapsed_s: f32                                     │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  flatness_to_reference → TrajectoryReference                    │
-│  → GeometricController                                          │
-└─────────────────────────────────────────────────────────────────┘
+│  ExplorationPlanner::step()  (exploration.rs:148)               │
+│                                                                 │
+│  SCAN ──360°──► nearest_frontier() ──found──► NAVIGATE         │
+│                       └── none ──────────────► LAND            │
+│  NAVIGATE ──arrived──► SCAN                                     │
+│  any state ──battery / timeout──────────────► LAND             │
+└────────────────────────┬────────────────────────────────────────┘
+                         │  ExplorationCommand
+                         │  Hold { x, y, z, yaw_deg }
+                         │  GoTo { x, y, z, yaw_deg }
+                         │  Land { reason }
+                         ▼
+                  position setpoint → firmware CRTP
+                  (Land → PLY map saved to results/data/)
 ```
 
 ---
@@ -202,6 +256,27 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 | `omega_dot` | `Vec3` | rad/s² | Desired angular acceleration |
 | `torque` | `Vec3` | N·m | Desired torque (`Jω̇ − Jω×ω`) |
 
+### `ExplorationCommand` — `src/planning/exploration.rs:95`
+
+```rust
+pub enum ExplorationCommand {
+    Hold { x: f32, y: f32, z: f32, yaw_deg: f32 },
+    GoTo { x: f32, y: f32, z: f32, yaw_deg: f32 },
+    Land { reason: &'static str },
+}
+```
+
+Returned by `ExplorationPlanner::step()` every control cycle.  `Hold` and `GoTo` carry a full position + yaw setpoint that the caller passes directly to the firmware CRTP position controller.  `Land` carries a human-readable reason string logged to the CSV and PLY-save path.
+
+### `ExplorationPlanner` — `src/planning/exploration.rs:123`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `state` | `State` | Internal state machine (Scan / Navigate / Land) |
+| `hover_z` | `f32` | Fixed cruise altitude [m] — exploration stays at this Z |
+
+The `State::Scan` variant accumulates yaw rotated so far; `State::Navigate` stores the target `Vec3` waypoint.
+
 ---
 
 ## 5. Algorithm Walkthrough
@@ -225,6 +300,20 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 2. Normalise: `t_norm = trem / seg.duration ∈ [0,1]`
 3. Evaluate polynomial and 4 derivatives using precomputed factorial coefficients, dividing by appropriate powers of `duration` to recover physical-time derivatives
 
+### Exploration Phase (`src/planning/exploration.rs`)
+
+**`ExplorationPlanner::step`** (line 148) is called every 20 Hz control cycle:
+
+1. **Global land conditions** (lines 157–162): Check `vbat < 3.6 V` (skipped if `vbat == 0` to ignore uninitialised readings) and `elapsed_s >= 120 s`.  Either condition forces transition to `State::Land`.
+
+2. **SCAN** (lines 168–196): Accumulate `SCAN_YAW_RATE_DEG_S × DT_S = 3°` per cycle.  Return `Hold` with a slowly incrementing `yaw_deg`.  When `yaw_accumulated >= 360°` call `nearest_frontier()`.  If a frontier is found → `State::Navigate`; otherwise → `State::Land`.  Return `Hold` on the transition cycle.
+
+3. **NAVIGATE** (lines 199+): Return `GoTo` pointing at the stored waypoint.  Each cycle check horizontal distance `d2 = sqrt(Δx² + Δy²)`.  When `d2 < ARRIVE_DIST_M = 0.15 m` → reset to `State::Scan { yaw_accumulated: 0.0 }`.
+
+4. **LAND** (lines 220+): Return `Land { reason }` unconditionally.  The caller in `main.rs` performs the firmware landing and then breaks out of the loop.
+
+**`nearest_frontier`** (line 232): Calls `map.frontiers()`, filters by height band `|f.z − hover_z| ≤ 0.25 m` and horizontal distance `[0.20, 1.50]` m, returns the closest qualifying frontier.
+
 ### Flatness Phase (`src/planning/flatness.rs:106`)
 
 **`compute_flatness(flat, mass)`** follows Faessler et al. 2018 directly:
@@ -237,6 +326,26 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 ---
 
 ## 6. Parameters & Tuning
+
+### Exploration Parameters
+
+| Constant | Value | Location | Description |
+|----------|-------|----------|-------------|
+| `SCAN_YAW_RATE_DEG_S` | 60°/s | `exploration.rs:58` | Rotation speed during SCAN phase |
+| `SCAN_TOTAL_DEG` | 360° | `exploration.rs:62` | Full sweep before frontier selection |
+| `DT_S` | 0.05 s | `exploration.rs:65` | Control loop period (20 Hz) |
+| `MAX_FRONTIER_DIST_M` | 1.5 m | `exploration.rs:69` | Maximum horizontal range for frontier selection |
+| `MIN_FRONTIER_DIST_M` | 0.20 m | `exploration.rs:73` | Frontiers closer than this are skipped |
+| `ARRIVE_DIST_M` | 0.15 m | `exploration.rs:77` | Arrival threshold (2D horizontal) |
+| `LOW_BATTERY_V` | 3.60 V | `exploration.rs:80` | Emergency landing voltage |
+| `MAX_EXPLORE_S` | 120 s | `exploration.rs:83` | Maximum exploration time |
+| `FRONTIER_Z_BAND_M` | 0.25 m | `exploration.rs:87` | Height band — prevents floor/ceiling frontiers |
+
+**Tuning `MAX_FRONTIER_DIST_M`**: Larger values allow the drone to jump to far frontiers but risk navigating through unobserved space.  1.5 m is conservative for a 4×4 m room.  Increase for larger environments once the map quality is higher.
+
+**Tuning `SCAN_YAW_RATE_DEG_S`**: 60°/s gives 6 seconds per sweep.  Faster sweeps build the map faster but give fewer sensor readings per direction.  Slower sweeps are more thorough but waste time hovering.
+
+### Trajectory Parameters
 
 **Segment durations**: The most important design choice. Too short = QP is infeasible (the drone cannot physically cover the distance). Too long = slower manoeuvres. A good heuristic is `T_seg = distance / max_speed`.
 
@@ -252,10 +361,12 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 
 | Direction | Module | What is exchanged |
 |-----------|--------|------------------|
-| Consumes | User / `bin/` | Waypoints and time allocations |
+| Consumes | User / `bin/` | Waypoints and time allocations (spline) |
 | Produces | `controller/` | `FlatOutput → FlatnessResult → TrajectoryReference` |
 | Depends on | `math/` | `Vec3` for waypoints and flat output fields |
 | Alternative to | `trajectory/` | `SplineTrajectory` replaces `CircleTrajectory`/`Figure8Trajectory` for custom paths |
+| Consumes | `mapping/` | `OccupancyMap::frontiers()` for frontier selection in `ExplorationPlanner` |
+| Produces | `bin/main.rs` | `ExplorationCommand` consumed by the `"explore"` maneuver arm |
 
 ---
 
@@ -271,9 +382,17 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 
 **Axis convention for rotation matrix**: `rot` in `FlatnessResult` is column-major: `rot[0] = x̂_b`, `rot[1] = ŷ_b`, `rot[2] = ẑ_b`. To recover the 3×3 rotation matrix `R[row][col]`, use `R[row][col] = rot[col][row]`.
 
+**Exploration: map must be updated before `step()`**: The `ExplorationPlanner` reads `map.frontiers()` during the SCAN → SELECT transition.  If the map has not been updated with the latest sensor readings in the same cycle, the frontier list reflects stale data.  In `main.rs` the order is: `fw_logging_step → omap.update(...) → planner.step(...)`.
+
+**Exploration: `vbat = 0` does not trigger landing**: The guard `if vbat > 0.1 && vbat < LOW_BATTERY_V` ignores a zero reading to handle the brief period at startup when battery telemetry has not yet arrived.  Once a real reading (> 0.1 V) is seen, the check is active.
+
+**Exploration: frontier coordinates are voxel centres, not wall surfaces**: `OccupancyMap::frontiers()` returns the centre of the unknown voxel, which is typically 5–10 cm inside the unknown region.  The drone stops `ARRIVE_DIST_M = 0.15 m` before reaching this point, so it will not fly into the wall.  But the multi-ranger must be able to observe the wall from `0.15 + voxel_size/2` away — verify `MAX_RANGE_M` is not saturated.
+
 ---
 
 ## 9. Related Tests
+
+### Trajectory & Flatness
 
 | Test file | What it covers |
 |-----------|---------------|
@@ -282,3 +401,20 @@ Each `SplineSegment` holds four 9-coefficient arrays (`cx, cy, cz, cyaw`) and a 
 | `src/planning/flatness.rs` (inline) | `hover_flatness`: zero acc/jerk/snap → thrust = mg, ω = 0, τ = 0 |
 | `tests/test_flatness.rs` | Circular trajectory flatness consistency: expected angular velocity from known geometry |
 | `src/bin/assignment4.rs` | Planned figure-8 via minimum-snap spline, closed-loop simulation |
+
+### Exploration
+
+| Test | File | What it covers |
+|------|------|----------------|
+| `starts_in_scan_state` | `exploration.rs` | Fresh planner returns Hold immediately |
+| `scan_transitions_to_navigate_after_full_rotation` | `exploration.rs` | After 360° worth of steps with a frontier available, state becomes Navigate |
+| `navigates_toward_frontier` | `exploration.rs` | GoTo command points at frontier when map has a qualifying frontier |
+| `nearest_frontier_picks_closest_among_multiple` | `exploration.rs` | Two frontiers at 0.8 m and 1.2 m — nearest (0.8 m) is selected |
+| `frontier_height_band_filter` | `exploration.rs` | Frontier at z=0 excluded when drone is at z=0.3 (dz=0.3 > FRONTIER_Z_BAND_M) |
+| `navigate_arrives_and_returns_to_scan` | `exploration.rs` | Full cycle — GoTo waypoint extracted from command, step from it, verify SCAN |
+| `land_state_emits_land_command_on_every_step` | `exploration.rs` | 5 consecutive Land steps all return ExplorationCommand::Land |
+| `vbat_zero_does_not_trigger_land` | `exploration.rs` | vbat=0.0 skipped by > 0.1 guard; planner remains in SCAN |
+| `low_battery_triggers_land` | `exploration.rs` | vbat=3.5 V (< 3.6 V) immediately transitions to Land |
+| `time_limit_triggers_land` | `exploration.rs` | elapsed_s=121 (> 120 s) immediately transitions to Land |
+| `nearest_frontier_filters_by_distance` | `exploration.rs` | Nearest qualifying frontier distance ≤ MAX_FRONTIER_DIST_M + 0.1 |
+| `no_frontier_lands_drone` | `exploration.rs` | Empty map after full rotation → Land command |
