@@ -1626,7 +1626,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         "circle" => {
             let radius = 0.25f32;
             let height = 0.3f32;
-            let omega = 0.6f32;
+            let omega = 0.3f32;  // reduced from 0.6 — gentler circle, less drift into walls
             println!("Circle: radius {:.2} m, height {:.2} m, ω = {:.2} rad/s, centre ({:.3}, {:.3})", radius, height, omega, cx, cy);
             // Shadow tracks the same circle the firmware will execute.
             shadow.maneuver = ShadowManeuver::Circle { cx, cy, height, radius, omega };
@@ -1649,7 +1649,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Starting circle trajectory...");
             let traj_start = Instant::now();
             shadow.traj_start = Some(traj_start);
-            let deadline = traj_start + Duration::from_secs(30);
+            let deadline = traj_start + Duration::from_secs(50); // 50 s ≈ 2.4 laps at ω=0.3
             while Instant::now() < deadline {
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + radius * (omega * t).cos();
