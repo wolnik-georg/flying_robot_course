@@ -64,7 +64,8 @@ const KF_MIN_YAW_DEG: f32 = 30.0;
 const KF_MAX_STORED: usize = 50;
 
 /// FAST-9 corner threshold.  Higher → fewer but more distinctive corners.
-const FAST_THRESHOLD: u8 = 20;
+/// Lowered from 20 → 10 to improve feature count on low-texture indoor floors.
+const FAST_THRESHOLD: u8 = 10;
 
 /// Maximum Hamming distance for a match to be considered good.
 const MATCH_MAX_HAMMING: u32 = 64;
