@@ -55,7 +55,10 @@ use crate::mapping::loop_closure::LoopConstraint;
 // ---------------------------------------------------------------------------
 
 /// Minimum translation (metres) between consecutive keyframes.
-const KF_MIN_DIST_M: f32 = 0.30;
+/// Halved from 0.30 → 0.15 to double the keyframe rate (circle speed ≈ 0.075 m/s →
+/// 1 KF every 2 s instead of 4 s).  Allows loop closure to fire ~12 s into the
+/// circle rather than ~24 s — critical given the AI Deck's limited streaming window.
+const KF_MIN_DIST_M: f32 = 0.15;
 
 /// Minimum yaw rotation (degrees) between consecutive keyframes.
 const KF_MIN_YAW_DEG: f32 = 30.0;

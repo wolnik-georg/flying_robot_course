@@ -491,18 +491,18 @@ if let Some(vo_pos) = vo_traj.integrate(&kf) {
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `KF_MIN_DIST_M` | 0.30 m | Minimum translation between keyframes |
+| `KF_MIN_DIST_M` | 0.15 m | Minimum translation between keyframes |
 | `KF_MIN_YAW_DEG` | 30° | Minimum yaw change between keyframes |
 | `KF_MAX_STORED` | 50 | Rolling buffer size |
-| `FAST_THRESHOLD` | 20 | FAST-9 corner intensity threshold |
+| `FAST_THRESHOLD` | 10 | FAST-9 corner intensity threshold |
 | `MATCH_MAX_HAMMING` | 64 | Maximum descriptor distance for a valid match |
 | `MATCH_RATIO` | 0.75 | Lowe ratio test threshold |
 | `MIN_MATCHES_FOR_ESSENTIAL` | 8 | Minimum matches to attempt E matrix estimation |
 
 **Tuning notes**:
-- `KF_MIN_DIST_M = 0.30` gives one keyframe per 30 cm of travel — roughly one every
-  few seconds during slow indoor exploration. Decrease for more frequent keyframes
-  (more position estimates) but higher CPU load.
+- `KF_MIN_DIST_M = 0.15` gives one keyframe per 15 cm of travel — roughly one every
+  2 s at typical circle speed (0.075 m/s). This was halved from 0.30 to double the
+  keyframe rate given the AI Deck's limited streaming window (~13–70 s before Nina reboots).
 - `MATCH_MAX_HAMMING = 64` means ≤25% of BRIEF bits differ. For low-texture scenes
   this may need to be raised to 80–96.
 - `KF_MAX_STORED = 50` caps memory at ≈50 × (5 KB image + feature list) ≈ 250 KB.
@@ -546,7 +546,7 @@ if let Some(vo_pos) = vo_traj.integrate(&kf) {
   the correction along the chain — the desired behaviour for long trajectories.
 - Increase `LOOP_SEARCH_RADIUS_M` if the drone covers a large area; decrease it to
   reduce false-positive loop closures in feature-poor environments.
-- `LOOP_MIN_AGE = 5` means the drone must travel ≈1.5 m (5 × 0.3 m keyframe spacing)
+- `LOOP_MIN_AGE = 5` means the drone must travel ≈0.75 m (5 × 0.15 m keyframe spacing)
   before a location can be re-detected — prevents the previous frame from matching itself.
 
 ---

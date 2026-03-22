@@ -1,6 +1,9 @@
 # Flying Drone Stack
 
-A complete Rust-based stack for Crazyflie 2.1 real-hardware flight, covering dynamics simulation, SE(3) geometric control, MEKF state estimation, minimum-snap motion planning, and a shadow-controller evaluation framework — all validated against real flight logs.
+A complete Rust-based stack for Crazyflie 2.1 real-hardware flight, covering dynamics
+simulation, SE(3) geometric control, MEKF state estimation, minimum-snap motion planning,
+3D occupancy mapping, visual odometry (VO), loop-closure SLAM, and autonomous frontier
+exploration — all validated against real flight logs.
 
 ## Quick Start
 
@@ -10,158 +13,196 @@ cd flying_drone_stack
 # Build everything
 cargo build --release
 
-# Run all tests
+# Run all tests (249 tests, 0 failures)
 cargo test
-
-# Verify full pipeline (tests + all binaries + all plots)
-bash verify_all.sh
 ```
 
-## Available Binaries
+## Real Hardware Flight
 
-### 📊 Assignment 1 — Integrator comparison
 ```bash
-cargo run --release --bin assignment1
-PYENV_VERSION=flying_robots python3 scripts/plot_assignment1.py
+# Hover at 0.30 m for 30 s
+cargo run --release --bin main -- --maneuver hover
+
+# Circle r=0.25 m, ω=0.30 rad/s, 50 s (~2.4 laps)
+cargo run --release --bin main -- --maneuver circle
+
+# Figure-8 a=0.25 m b=0.15 m, ω=0.5 rad/s, 40 s
+cargo run --release --bin main -- --maneuver figure8
+
+# Autonomous exploration (frontier-based, SCAN→NAVIGATE→LAND)
+cargo run --release --bin main -- --maneuver explore
+
+# Any maneuver with AI Deck camera (VO + loop closure + SLAM enabled)
+cargo run --release --bin main -- --maneuver circle --ai-deck
+cargo run --release --bin main -- --maneuver explore --ai-deck
 ```
-Compares Euler, RK4, ExpEuler, ExpRK4 on a free-flight trajectory. Writes CSVs to `results/data/`.
 
-### 🚁 Assignment 2 — Geometric control & trajectory tracking
+**Hardware required**: Crazyflie 2.1 + Flow Deck v2 + Multi-ranger Deck.
+Optional: AI Deck (enables full visual-SLAM path).
+
+Radio URI: `radio://0/80/2M/E7E7E7E7E7`
+
+## Offline Analysis Binaries
+
 ```bash
-cargo run --release --bin assignment2
-cargo run --release --bin assignment2 -- --realistic-start
-PYENV_VERSION=flying_robots python3 scripts/plot_assignment2.py
+# Offline MEKF vs firmware EKF (prints RMSE)
+cargo run --release --bin mekf_eval -- runs/<file>.csv
+
+# Analyse VO, loop closure, and pose graph from a flight CSV
+cargo run --release --bin slam_eval -- runs/<file>.csv
+
+# Build a 3D occupancy map from one or more flight CSVs → PLY file
+cargo run --release --bin build_map -- runs/<file>.csv
+
+# Test AI Deck camera connection (bench test, no flight)
+cargo run --release --bin ai_deck_test -- --frames 50 --save-all
 ```
-Tracks a figure-8 with the SE(3) geometric controller. `--realistic-start` prepends takeoff + hover.
 
-### 🎯 Assignment 3 — MEKF offline validation
+## Post-Flight Scripts
+
 ```bash
+# Diagnostic overview: EKF vs MEKF, shadow controller, multi-ranger
+python3 scripts/plot_flight_diagnostic.py          # auto-picks latest CSV
+
+# Shadow controller evaluation: roll/pitch cmd vs actual
+python3 scripts/plot_shadow_eval.py runs/<file>.csv
+
+# View a saved map in MeshLab or CloudCompare
+meshlab results/data/map.ply
+```
+
+## Assignment Binaries (simulation only)
+
+```bash
+cargo run --release --bin assignment1   # Integrator comparison (Euler/RK4/Exp)
+cargo run --release --bin assignment2   # SE(3) geometric control, figure-8 tracking
 cargo run --release --bin assignment3 -- --csv "../State Estimation/logging_ekf/logging/fr00.csv"
-PYENV_VERSION=flying_robots python3 scripts/plot_assignment3.py
+cargo run --release --bin assignment4   # Minimum-snap spline + differential flatness
+cargo run --release --bin assignment5 -- circle   # Safe-space sim (hover/circle/fig8) + MEKF
 ```
-Runs the Multiplicative EKF offline against a real Crazyflie flight log and compares to the on-board EKF.
-
-### 🏁 Assignment 4 — Minimum-snap spline planning & differential flatness
-```bash
-cargo run --release --bin assignment4
-PYENV_VERSION=flying_robots python3 scripts/plot_assignment4.py
-```
-Generates minimum-snap polynomial trajectories. Writes planned/open-loop/closed-loop CSVs to `results/data/`.
-
-### 🛡️ Assignment 5 — Safe-space simulation (hover / circle / figure-8 + MEKF)
-```bash
-cargo run --release --bin assignment5 -- hover
-cargo run --release --bin assignment5 -- circle
-cargo run --release --bin assignment5 -- figure8
-PYENV_VERSION=flying_robots python3 scripts/plot_assignment5.py
-```
-Full MEKF + geometric controller simulation inside a 1.0 × 1.0 m safety box (max 0.30 m height).
-
-### 🔬 MEKF evaluation — offline MEKF vs flight log
-```bash
-cargo run --release --bin mekf_eval -- runs/circle_2026-03-15_11-46-16.csv
-# With parameter overrides for tuning:
-cargo run --release --bin mekf_eval -- runs/circle_2026-03-15_11-46-16.csv --r_flow 4.0
-```
-Runs the Rust MEKF against any recorded flight CSV and prints RMSE for orientation and position.
-
-### 🚀 Main — Real hardware flight (Crazyflie 2.1 + Flow/ToF decks)
-```bash
-# 1. Edit MANEUVER at the top of src/bin/main.rs:
-#      "hover"   — hold position at 0.30 m for 12 s
-#      "circle"  — radius 0.25 m, omega = 0.6 rad/s, 30 s
-#      "figure8" — a=0.25 m, b=0.15 m, omega = 0.5 rad/s, 40 s
-# 2. Build and run:
-cargo build --release --bin main
-./target/release/main
-
-# 3. After the flight, evaluate the shadow controller:
-PYENV_VERSION=flying_robots python3 scripts/plot_shadow_eval.py
-```
-
-Connects to the drone over `radio://0/80/2M/E7E7E7E7E7`, executes the chosen maneuver using the firmware's onboard position PID, and simultaneously logs:
-- Firmware EKF state (pos, vel, attitude, body rates, thrust)
-- Our MEKF running as a passenger (logged, never sent to the drone)
-- Shadow geometric controller outputs (what we would have commanded — logged only)
-
-Each flight produces a timestamped 37-column CSV in `runs/`.
 
 ## Flight Procedure
 
-1. **Charge battery fully** — hover load pulls the cell to ~3.5–3.6 V; starting below 3.7 V risks mid-flight voltage collapse.
-2. **Place drone on textured surface** — the PMW3901 flow sensor requires texture for XY estimation.
-3. **Set `MANEUVER`** constant at the top of `src/bin/main.rs`.
-4. **Build**: `cargo build --release --bin main`
-5. **Run**: `./target/release/main`  
-   The binary waits 3 s, pulses Kalman reset, ramps up over ~1.5 s, stabilises at 0.30 m for 8 s, samples the EKF XY origin, then executes the maneuver and lands.
-6. **Evaluate**: `PYENV_VERSION=flying_robots python3 scripts/plot_shadow_eval.py`
+1. **Charge battery** — start ≥ 3.7 V; hover pulls to ~3.5 V.
+2. **Place drone on textured surface** — PMW3901 flow sensor needs texture for XY estimation.
+3. **Plug in Crazyradio PA** — URI `radio://0/80/2M/E7E7E7E7E7`.
+4. **Run**: `cargo run --release --bin main -- --maneuver <name>` (with `--ai-deck` if using camera).
+5. **Evaluate**: `python3 scripts/plot_flight_diagnostic.py`
+
+The binary auto-resets the Kalman filter, ramps up, hovers to stabilise, executes the maneuver, and lands.  CSV written to `runs/<maneuver>_<timestamp>.csv`.
 
 ### Pre-flight checklist
-- [ ] Battery ≥ 3.7 V per cell (fully charged)
-- [ ] Textured paper/cardboard under drone (flow sensor needs texture)
-- [ ] Crazyradio PA plugged in, URI = `radio://0/80/2M/E7E7E7E7E7`
-- [ ] `MANEUVER` set correctly in `src/bin/main.rs`
+- [ ] Battery ≥ 3.7 V per cell
+- [ ] Textured paper/cardboard under drone
+- [ ] Crazyradio PA plugged in
 - [ ] Clear 1 m × 1 m flight area, ceiling > 0.5 m
+- [ ] Multi-ranger Deck attached (required for safety repulsion + occupancy map)
+- [ ] If `--ai-deck`: laptop connected to "WiFi streaming example" AP, drone powered ≥ 15 s
 
-## Scripts
+## Stack Overview
 
-All scripts live in `scripts/` and require the `flying_robots` pyenv environment.
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Sensors (hardware)                                                   │
+│  IMU: gyro [deg/s] + accel [g]                                       │
+│  Flow Deck v2: PMW3901 optical flow [px] + VL53L1x ToF range [m]    │
+│  Multi-ranger Deck: 5× VL53L1x (front/back/left/right/up)           │
+│  AI Deck: HiMax HM01B0 camera 324×244, JPEG over WiFi TCP (CPX)     │
+└─────────────────────────────────┬────────────────────────────────────┘
+                                  │
+             ┌────────────────────▼────────────────────┐
+             │  Estimation — MEKF  (estimation/mekf.rs) │
+             │  State: position, body vel, quaternion   │
+             │  Fuses: IMU predict + ToF height +       │
+             │         flow XY vel + VO position        │
+             └────────────────────┬────────────────────┘
+                                  │
+     ┌────────────────────────────▼────────────────────────────────┐
+     │  Mapping  (mapping/)                                         │
+     │  OccupancyMap: sparse log-odds voxel grid (5 cm),           │
+     │                ray-cast from multi-ranger                    │
+     │  KeyframeStore: FAST-9 + BRIEF, normalized 8-pt E matrix,   │
+     │                 metric VO, spatial-grid loop closure         │
+     │  VoTrajectory: chains relative poses → global XY            │
+     │  PoseGraph: Gauss-Seidel 100× → corrects VO drift           │
+     └──────────────────┬─────────────────┬───────────────────────┘
+                        │                 │
+         ┌──────────────▼──┐   ┌──────────▼──────────────┐
+         │  Safety         │   │  Planning                │
+         │  Multi-ranger   │   │  ExplorationPlanner:     │
+         │  repulsion +    │   │  SCAN→NAVIGATE→LAND      │
+         │  occupancy      │   │  frontier selection      │
+         │  probe          │   │  (planning/exploration)  │
+         └──────────────┬──┘   └──────────┬───────────────┘
+                        │                 │
+             ┌──────────▼─────────────────▼──────────────┐
+             │  Firmware track (main.rs)                  │
+             │  setpoint_position → Crazyflie PID         │
+             │  Shadow track (main.rs)                    │
+             │  SE(3) geometric controller → CSV only     │
+             └────────────────────────────────────────────┘
+```
 
-| Script | Purpose |
-|--------|---------|
-| `plot_assignment1.py` | Integrator comparison plots |
-| `plot_assignment2.py` | Geometric control tracking plots |
-| `plot_assignment3.py` | MEKF vs on-board EKF orientation comparison |
-| `plot_assignment4.py` | Minimum-snap spline planning plots |
-| `plot_assignment5.py` | Safe-space simulation plots |
-| `plot_mekf_eval.py` | MEKF evaluation plots from `mekf_eval` output |
-| `plot_shadow_eval.py` | Shadow controller evaluation: roll/pitch/thrust/XY vs firmware |
+## CSV Output Format (49 columns)
 
-`plot_shadow_eval.py` auto-detects the newest CSV in `runs/`. It handles both the 30-column MEKF-only format (older `bitcraze_rs_lib` flights) and the 37-column full format (main binary with shadow columns).
+```
+time_ms, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z,
+roll, pitch, yaw, thrust, vbat,
+gyro_x, gyro_y, gyro_z, acc_x, acc_y, acc_z,
+rate_roll, rate_pitch, rate_yaw,
+range_z, flow_dx, flow_dy,
+mekf_roll, mekf_pitch, mekf_yaw, mekf_x, mekf_y, mekf_z,
+our_ref_x, our_ref_y, our_ref_z,
+our_thrust, our_roll_cmd, our_pitch_cmd, our_yaw_rate_cmd,
+multi_front, multi_back, multi_left, multi_right, multi_up,
+ai_feat_count,
+vo_x, vo_y, vo_sigma,
+pg_x, pg_y, lc_count
+```
+
+Units: time [ms], pos/vel [m, m/s], roll/pitch/yaw [deg], gyro [deg/s], acc [g],
+range [m], flow [px], mekf_roll/pitch/yaw [deg], mekf_x/y/z [m].
 
 ## Project Structure
 
 ```
 flying_drone_stack/
-├── Cargo.toml                   # Workspace config & dependencies
-├── README.md                    # This file
-├── verify_all.sh                # Full pipeline verification script
-├── configs/
-│   └── flight_defaults.toml     # Default flight parameters
+├── Cargo.toml
+├── README.md                         # This file
+├── ROADMAP.md                        # What is built and what to do next
+├── VALIDATION_PLAN.md                # Tiered flight validation plan (Tier 0–7)
 ├── docs/
-│   ├── ARCHITECTURE.md          # Detailed architecture documentation
-│   └── DRONE_STACK_ASPECTS.md   # Feature roadmap
+│   ├── ARCHITECTURE.md               # Full architecture documentation
+│   └── DRONE_STACK_ASPECTS.md
 ├── scripts/
-│   ├── plot_assignment1.py      # Assignment 1 plots
-│   ├── plot_assignment2.py      # Assignment 2 plots
-│   ├── plot_assignment3.py      # Assignment 3 plots
-│   ├── plot_assignment4.py      # Assignment 4 plots
-│   ├── plot_assignment5.py      # Assignment 5 plots
-│   ├── plot_mekf_eval.py        # MEKF evaluation plots
-│   └── plot_shadow_eval.py      # Shadow controller evaluation
+│   ├── plot_flight_diagnostic.py     # Post-flight overview (picks latest CSV)
+│   ├── plot_shadow_eval.py           # Shadow controller evaluation
+│   ├── plot_assignment1..5.py        # Assignment plot scripts
+│   └── plot_mekf_eval.py
 ├── src/
-│   ├── lib.rs                   # Library entry point & prelude
-│   ├── math/                    # Vec3, Quat, Mat9
-│   ├── dynamics/                # MultirotorState, MultirotorParams, simulator
-│   ├── integration/             # Euler, RK4, ExpEuler, ExpRK4
-│   ├── controller/              # GeometricController (SE(3) Lee et al. 2010)
-│   ├── trajectory/              # Figure8, Circle, SmoothFigure8, Sequenced, …
-│   ├── planning/                # Minimum-snap QP spline + differential flatness
-│   ├── estimation/              # Mekf: IMU predict + height/flow updates
-│   ├── flight/                  # build_state, force_vector_to_rpyt, yaw_rate_cmd, …
+│   ├── lib.rs                        # Library entry point
+│   ├── safety.rs                     # Multi-ranger repulsion, safety checks
+│   ├── math/                         # Vec3, Quat, Mat9 (README.md inside)
+│   ├── dynamics/                     # MultirotorState, MultirotorParams, simulator
+│   ├── integration/                  # Euler, RK4, ExpEuler, ExpRK4
+│   ├── controller/                   # GeometricController (SE(3) Lee et al. 2010)
+│   ├── trajectory/                   # CircleTrajectory, Figure8, Sequenced, …
+│   ├── planning/                     # SplineTrajectory, flatness, ExplorationPlanner (README.md)
+│   ├── estimation/                   # MEKF: predict + height/flow/VO updates (README.md)
+│   ├── flight/                       # build_state, force_vector_to_rpyt, yaw_rate_cmd
+│   ├── mapping/                      # OccupancyMap, KeyframeStore, VoTrajectory, PoseGraph (README.md)
+│   ├── perception/                   # Sensor traits, CPX camera, FAST-9/BRIEF features (README.md)
 │   └── bin/
-│       ├── assignment1.rs       # Assignment 1
-│       ├── assignment2.rs       # Assignment 2
-│       ├── assignment3.rs       # Assignment 3
-│       ├── assignment4.rs       # Assignment 4
-│       ├── assignment5.rs       # Assignment 5
-│       ├── demo.rs              # Quick demo
-│       ├── mekf_eval.rs         # Offline MEKF evaluation vs flight log
-│       ├── sim_closed_loop.rs   # Closed-loop simulation
-│       └── main.rs              # Real hardware flight binary
+│       ├── main.rs                   # Real hardware flight (CLI maneuver arg + --ai-deck)
+│       ├── mekf_eval.rs              # Offline MEKF vs firmware EKF RMSE
+│       ├── slam_eval.rs              # Offline VO/loop closure/pose graph analysis
+│       ├── build_map.rs              # Replay CSV → PLY occupancy map
+│       ├── ai_deck_test.rs           # AI Deck camera bench test
+│       ├── assignment1..5.rs         # Course assignment simulations
+│       └── sim_closed_loop.rs
 ├── tests/
-│   ├── test_mekf.rs             # MEKF unit + integration tests
-│   ├── test_flight_math.rs      # Flight math helpers
+│   ├── test_mekf.rs
+│   ├── test_flight_math.rs
 │   ├── test_geometric_controller.rs
 │   ├── test_controller_detailed.rs
 │   ├── test_flatness.rs
@@ -169,47 +210,57 @@ flying_drone_stack/
 │   ├── test_math.rs
 │   ├── test_safety.rs
 │   └── test_spline.rs
-└── runs/                        # Real flight CSVs (timestamped)
-    ├── hover_<timestamp>.csv
-    ├── circle_<timestamp>.csv
-    └── figure8_<timestamp>.csv
+└── runs/                             # Real flight CSVs (49 columns, timestamped)
 ```
 
 ## Testing
 
 ```bash
 cargo test
-# Expected: 248 tests, 0 failures
+# Expected: 249 tests, 0 failures
 ```
 
-Test coverage: MEKF predict/update/flow gate, flight math, geometric controller gains, differential flatness chain, hover control loop convergence, safety limits, spline planner continuity.
-
-## Verification
-
-```bash
-bash verify_all.sh
-# Runs: cargo test → all 5 assignment binaries → all 5 plot scripts
-# All steps must pass.
-```
+Coverage: MEKF predict/update/flow gate/VO update, flight math, geometric controller,
+differential flatness, hover control loop, safety limits, spline planner, occupancy map
+ray casting, FAST-9/BRIEF features, CPX frame reassembly, VO trajectory chain,
+loop closure age/spatial gates, pose graph Gauss-Seidel, spatial grid index, exploration FSM.
 
 ## Key Design Decisions
 
-### Shadow controller
-The `main` binary runs two parallel tracks during every flight:
+### Firmware track vs shadow track
 
-1. **Firmware track** — `setpoint_position(x, y, z, yaw)` commands the Crazyflie's onboard position PID. This is what actually flies the drone.
-2. **Shadow track** — our geometric controller evaluates what it *would* command given the same state and reference, logs it, and **never touches the motors**.
+The `main` binary runs two parallel tracks every loop iteration:
 
-Both tracks use the same coordinate frame (firmware EKF: `pos_x/y/z`, `roll/pitch/yaw`). Target: shadow roll/pitch RMSE < 5° airborne before the shadow is trusted to fly.
+1. **Firmware track** — `setpoint_position(x, y, z, yaw)` commands the Crazyflie's onboard
+   position PID. This is what actually flies the drone.
+2. **Shadow track** — our SE(3) geometric controller evaluates what *it would command* given
+   the same state and reference trajectory, logs the result, and **never touches the motors**.
+
+### SLAM pipeline (with `--ai-deck`)
+
+Each JPEG frame from the AI Deck is processed by `KeyframeStore::push()`. When the drone
+has moved ≥ 0.15 m or ≥ 30° since the last keyframe, FAST-9 features are detected, BRIEF
+descriptors computed, features matched to the previous keyframe, and the relative pose
+estimated via the normalized 8-point essential matrix algorithm (metric scale from `range_z`).
+
+`VoTrajectory` accumulates these relative poses into a world-frame position estimate and
+feeds corrections into the MEKF via `mekf_update_vo`. `PoseGraph` applies loop-closure
+corrections when `detect_loop` finds a spatially and visually consistent revisit.
+
+### Safety layer
+
+`safe_setpoint_omap()` applies two layers of repulsion before every setpoint:
+1. **Multi-ranger repulsion** — proportional push away from walls (threshold 0.40 m,
+   max correction 0.12 m per axis).
+2. **Occupancy-map probe** — 8-direction horizontal ring at 0.25 m radius around the
+   setpoint; any occupied voxel cancels motion in that direction.
 
 ### MEKF sensor calibration
-Empirically calibrated from March 2026 flights (circle + figure-8 logs):
-- `THETA_P = 3.50` rad effective constant (old value 0.717 gave 4.9× too little XY motion)
-- **Zero-motion gate**: skips flow updates when both axes < 0.3 px, filtering PMW3901 zero-padding artefacts (~46% of airborne 100 Hz log entries are padded zeros)
-- Flow scale uses ToF-measured height rather than estimated state height (removes height-wobble → velocity-drift feedback loop)
 
-### Coordinate frame rule
-Shadow controller state **must** use firmware EKF fields (`pos_x/y/z`, `roll/pitch/yaw`), not MEKF fields. The firmware's `setpoint_position` commands live in the firmware EKF frame; mixing frames causes up to 50 cm position error and full command saturation.
+- `THETA_P = 3.50` rad — empirically calibrated from March 2026 flights.
+- Zero-motion gate `0.3 px` — skips PMW3901 zero-padded entries (~46% of airborne samples).
+- Flow axis convention: `vel_x ↔ -flow_dy`, `vel_y ↔ -flow_dx`.
+- Validated RMSE (Mar 17 flights): hover roll 0.84°, pitch 2.39°, yaw 1.03°; circle roll 0.59°.
 
 ## Dependencies
 
@@ -219,8 +270,9 @@ Shadow controller state **must** use firmware EKF fields (`pos_x/y/z`, `roll/pit
 | `crazyflie-link 0.3` | Radio/USB link layer |
 | `tokio` | Async runtime for concurrent log stream reading |
 | `chrono` | UTC timestamps for CSV filenames |
-| `simple_qp` | QP solver for minimum-snap spline planner |
-| `serde` | Config deserialisation (`toml`) |
+| `simple_qp` / Clarabel | QP solver for minimum-snap spline planner |
+| `jpeg-decoder` | JPEG decoding for AI Deck frames |
+| `serde` | Config deserialisation (toml) |
 
 ## License
 

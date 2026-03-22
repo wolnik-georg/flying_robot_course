@@ -2,11 +2,12 @@
 
 ## 1. Overview
 
-The MEKF fuses two sensor streams to continuously estimate the drone's position and orientation:
+The MEKF fuses three sensor streams to continuously estimate the drone's position and orientation:
 
 - **IMU** (accelerometer + gyroscope): high-rate (100 Hz+), noisy, drifting over time
 - **ToF range sensor**: absolute height measurement, 100 Hz
 - **PMW3901 optical flow**: lateral velocity measurement, <20 Hz effective rate
+- **Visual odometry (VO)**: absolute XY position correction from camera keyframes, event-driven (Phase 5+)
 
 The filter is a direct Rust port of the Crazyflie firmware's `kalman_core.c` (Mueller et al. 2015), extended with a Coriolis correction and an analytical Jacobian. The "multiplicative" in MEKF refers to how orientation errors are represented: as a small rotation applied *multiplicatively* to a reference quaternion, rather than additively. This avoids the singularities of Euler angles and keeps the quaternion on the unit sphere.
 
@@ -99,7 +100,27 @@ The constants `NP = 350 px` and `THETA_P = 3.50 rad` are calibrated (see Paramet
 
 Two separate scalar updates are performed (one for x, one for y), using the ToF height directly rather than the estimated `p_z` — this breaks the feedback loop where height error corrupts velocity estimate.
 
-### 2.6 Kalman Gain and Joseph Form Update
+### 2.6 VO Position Update
+
+When a new visual odometry estimate `[vo_x, vo_y]` is available (from `VoTrajectory` or a pose-graph correction), two scalar EKF position updates are performed:
+
+```
+H_x = [1, 0, 0, 0, 0, 0, 0, 0, 0]   (observes p_x)
+H_y = [0, 1, 0, 0, 0, 0, 0, 0, 0]   (observes p_y)
+
+innovation_x = vo_x − x[0]
+innovation_y = vo_y − x[1]
+
+Chi² gate: if innovation_i² > 9 · S_i, skip that axis update
+```
+
+The gate threshold `9·S` corresponds to 3-sigma — it rejects VO estimates that are more than 3 standard deviations away from the current position belief. This prevents a bad VO frame or a large accumulated drift jump from corrupting the filter.
+
+The `r_vo_xy` noise parameter is passed by the caller:
+- **VO update**: `R_VO = 0.10 m²` — trusts VO loosely (camera pose estimates have ~0.1 m accuracy)
+- **Pose-graph correction**: `R_LOOP = 0.01 m²` — trusts loop closure more (global constraint, sub-10 cm accuracy expected)
+
+### 2.7 Kalman Gain and Joseph Form Update
 
 For each scalar measurement:
 
@@ -117,28 +138,36 @@ The Joseph form `(I−KH)Σ(I−KH)ᵀ + KRKᵀ` is algebraically equivalent to 
 ## 3. Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Sensor inputs per timestep                                         │
-│  gyro [deg/s] + accel [g]  |  range [mm]  |  flow_x, flow_y [px]  │
-└───────────────────┬────────────────────────────────┬───────────────┘
-                    │                                │
-                    ▼                                ▼
-┌───────────────────────────┐      ┌─────────────────────────────────┐
-│  mekf_reset               │      │   mekf_update_height            │
-│  δ → q_ref (fold error)   │      │   H = [0,0,1,0,...0]            │
-│  δ ← 0                   │      │   z_meas = range_mm / 1000 m    │
-└─────────────┬─────────────┘      └─────────────────────────────────┘
-              │                                      │
-              ▼                                      ▼
-┌───────────────────────────┐      ┌─────────────────────────────────┐
-│  mekf_predict             │      │   mekf_update_flow              │
-│  p ← p + R·b·dt           │      │   scale = dt·NP/(pz·THETA_P)   │
-│  b ← b + (a+g_body−ω×b)dt│      │   zero-motion gate: skip if    │
-│  δ ← δ + ω·dt             │      │   |dnx|<0.3 AND |dny|<0.3      │
-│  Σ ← GΣGᵀ + Q             │      │   two scalar EKF updates        │
-└─────────────┬─────────────┘      └─────────────────────────────────┘
-              │                                      │
-              └──────────────────┬───────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Sensor inputs                                                               │
+│  gyro [deg/s] + accel [g]  |  range [mm]  |  flow_x, flow_y [px]           │
+│                                               VO position [x,y m] (event)   │
+└───────────────────┬─────────────────────────────────────┬────────────────────┘
+                    │                                     │
+                    ▼                                     ▼
+┌───────────────────────────┐      ┌──────────────────────────────────────────┐
+│  mekf_reset               │      │   mekf_update_height                     │
+│  δ → q_ref (fold error)   │      │   H = [0,0,1,0,...0]                     │
+│  δ ← 0                   │      │   z_meas = range_mm / 1000 m             │
+└─────────────┬─────────────┘      └──────────────────────────────────────────┘
+              │                                           │
+              ▼                                           ▼
+┌───────────────────────────┐      ┌──────────────────────────────────────────┐
+│  mekf_predict             │      │   mekf_update_flow                       │
+│  p ← p + R·b·dt           │      │   scale = dt·NP/(pz·THETA_P)            │
+│  b ← b + (a+g_body−ω×b)dt│      │   zero-motion gate: skip if             │
+│  δ ← δ + ω·dt             │      │   |dnx|<0.3 AND |dny|<0.3               │
+│  Σ ← GΣGᵀ + Q             │      │   two scalar EKF updates                 │
+└─────────────┬─────────────┘      └──────────────────────────────────────────┘
+              │                                           │
+              │                    ┌──────────────────────────────────────────┐
+              │                    │   mekf_update_vo (event-driven)          │
+              │                    │   H_x = [1,0,0,0,...0]                   │
+              │                    │   H_y = [0,1,0,0,...0]                   │
+              │                    │   z = [vo_x, vo_y], R = r_vo_xy·I       │
+              │                    │   chi² gate: skip if innovation² > 9·S   │
+              │                    │   two scalar EKF updates (x then y)      │
+              └──────────────────┬─┘──────────────────────────────────────────┘
                                  ▼
                     ┌────────────────────────┐
                     │  MekfState output      │
@@ -169,6 +198,7 @@ The Joseph form `(I−KH)Σ(I−KH)ᵀ + KRKᵀ` is algebraically equivalent to 
 | `r_height` | 1e-3 | m² | Height measurement noise (ToF is accurate) |
 | `r_flow` | 8.0 | px² | Flow measurement noise (PMW3901 is noisy) |
 | `zero_flow_threshold` | 0.3 | px | Gate: skip flow update if both axes below this |
+| *(r_vo_xy)* | caller-supplied | m² | VO position noise; `main.rs` uses 0.10 m² (VO), 0.01 m² (pose-graph corrections) |
 
 ### `Mekf` — `src/estimation/mekf.rs:499`
 
@@ -192,6 +222,19 @@ High-level wrapper around `MekfState`. Call `mekf.feed_row(t, gyro, accel, range
 4. **Flow update** (lines 578–598): If both flow components are valid:
    - Apply zero-motion gate: skip if `|dnx| < 0.3 AND |dny| < 0.3`
    - Call `mekf_update_flow` with ToF height as the scale denominator
+
+**VO update — `mekf_update_vo`** (`src/estimation/mekf.rs`, called from `main.rs`):
+
+This is an **event-driven** update, not called every step. `main.rs` calls it whenever a new VO position estimate is available (from `VoTrajectory`) or when the pose graph applies a loop-closure correction:
+
+```
+H_x = [1, 0, 0, 0, 0, 0, 0, 0, 0]   (measures p_x directly)
+H_y = [0, 1, 0, 0, 0, 0, 0, 0, 0]   (measures p_y directly)
+```
+
+Two scalar EKF updates correct the XY position. A **chi² gate** (innovation² > 9·S) rejects large outliers — this prevents a bad VO estimate from jerking the filter. The noise parameter `r_vo_xy` is caller-supplied:
+- `main.rs` passes `R_VO = 0.10` m² for normal VO updates
+- `main.rs` passes `R_LOOP = 0.01` m² for pose-graph-corrected positions (higher confidence)
 
 **Inside `mekf_predict`** (`src/estimation/mekf.rs:226`):
 ```
@@ -251,6 +294,8 @@ Decreasing `r_flow` → filter trusts flow measurements more → tighter positio
 | Direction | Module | What is exchanged |
 |-----------|--------|------------------|
 | Consumes | `flight/` | Raw sensor rows: `gyro [deg/s], accel [g], range [mm], flow [px]` |
+| Consumes | `mapping/vo_trajectory.rs` | VO XY position estimate `[vo_x, vo_y]` (m) + noise `r_vo_xy = 0.10 m²` |
+| Consumes | `mapping/loop_closure.rs` via `main.rs` | Pose-graph corrected XY `[pg_x, pg_y]` (m) + tighter noise `r_loop = 0.01 m²` |
 | Produces | `flight/` | Attitude (roll/pitch/yaw) and position (x,y,z) estimates |
 | Shadowed by | `main.rs` | MEKF runs in parallel but its output is **not** sent to the drone; firmware EKF controls |
 | Validated by | `mekf_eval` binary | Offline replay against recorded flight CSVs |
