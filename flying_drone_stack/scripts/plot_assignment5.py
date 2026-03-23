@@ -9,7 +9,7 @@ import sys
 
 
 modes = ["circle", "figure8", "hover"]
-out_dir = Path("results/images")
+out_dir = Path("results/assignment5/images")
 out_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -29,8 +29,8 @@ if _have_matplotlib_numpy():
     import matplotlib.pyplot as plt
 
     for mode in modes:
-        planned = Path(f"results/data/assignment5_planned_{mode}.csv")
-        cl = Path(f"results/data/assignment5_closedloop_{mode}.csv")
+        planned = Path(f"results/assignment5/data/assignment5_planned_{mode}.csv")
+        cl = Path(f"results/assignment5/data/assignment5_closedloop_{mode}.csv")
         if not planned.exists() or not cl.exists():
             print(f"Assignment5 files for mode='{mode}' not found, skipping.")
             continue

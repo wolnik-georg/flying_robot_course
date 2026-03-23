@@ -1,7 +1,7 @@
 //! Assignment 3: MEKF offline validation
 //!
 //! Loads the figure-8 flight log (fr00.csv), runs the Rust MEKF, and writes
-//! results/data/assignment3_mekf.csv for comparison with the on-board EKF.
+//! results/assignment3/data/assignment3_mekf.csv for comparison with the on-board EKF.
 //!
 //! Usage:
 //!   cargo run --release --bin assignment3 -- [--csv PATH]
@@ -213,8 +213,8 @@ fn main() {
     println!("On-board EKF has {} samples", ekf_out.len());
 
     // --- Write MEKF CSV ---
-    std::fs::create_dir_all("results/data").expect("Failed to create results/data");
-    let mekf_path = "results/data/assignment3_mekf.csv";
+    std::fs::create_dir_all("results/assignment3/data").expect("Failed to create results/assignment3/data");
+    let mekf_path = "results/assignment3/data/assignment3_mekf.csv";
     {
         let mut f = File::create(mekf_path).expect("Cannot create MEKF CSV");
         writeln!(f, "time,roll_rad,pitch_rad,yaw_rad,x,y,z").unwrap();
@@ -226,7 +226,7 @@ fn main() {
     println!("MEKF results → {}", mekf_path);
 
     // --- Write on-board EKF CSV ---
-    let ekf_path = "results/data/assignment3_ekf.csv";
+    let ekf_path = "results/assignment3/data/assignment3_ekf.csv";
     {
         let mut f = File::create(ekf_path).expect("Cannot create EKF CSV");
         writeln!(f, "time,roll_rad,pitch_rad,yaw_rad,x,y,z").unwrap();

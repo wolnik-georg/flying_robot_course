@@ -112,7 +112,8 @@ fn main() {
     let n_steps = (total_time / dt) as usize;
 
     // --- Write planned trajectory CSV (sampled) ---
-    let planned_path = format!("results/data/assignment5_planned_{}.csv", mode);
+    std::fs::create_dir_all("results/assignment5/data").expect("Failed to create results/assignment5/data");
+    let planned_path = format!("results/assignment5/data/assignment5_planned_{}.csv", mode);
     write_planned_csv_traj(&planned_path, &seq, dt, n_steps, &params);
     println!("Wrote planned trajectory: {}", planned_path);
 
@@ -349,7 +350,7 @@ fn main() {
     }
 
     // Write closed-loop CSV
-    let cl_path = format!("results/data/assignment5_closedloop_{}.csv", mode);
+    let cl_path = format!("results/assignment5/data/assignment5_closedloop_{}.csv", mode);
     write_record_csv(&cl_path, &cl_records);
     println!("Wrote closed-loop CSV: {}", cl_path);
 

@@ -88,10 +88,21 @@ impl Integrator for ExpRK4Integrator {
         state.velocity = state0.velocity + (k1_vel + k2_vel * 2.0 + k3_vel * 2.0 + k4_vel) * dt_sixth;
         state.angular_velocity = state0.angular_velocity + (k1_ang + k2_ang * 2.0 + k3_ang * 2.0 + k4_ang) * dt_sixth;
 
-        // use weighted average angular velocity for final orientation update
-        // this combines rk4's accuracy with exponential map's stability
-        let avg_angular_vel = (k1_ang + k2_ang * 2.0 + k3_ang * 2.0 + k4_ang) * dt_sixth;
-        state.orientation = state0.orientation.integrate_exponential(avg_angular_vel, dt);
+        // Orientation update: integrate using the RK4 weighted-average *angular velocity*
+        // (not angular acceleration).  The angular velocities at the four evaluation
+        // points are:
+        //   ω₁ = state0.angular_velocity
+        //   ω₂ = state0.angular_velocity + k1_ang * dt/2
+        //   ω₃ = state0.angular_velocity + k2_ang * dt/2
+        //   ω₄ = state0.angular_velocity + k3_ang * dt
+        // RK4 weighted average: (ω₁ + 2ω₂ + 2ω₃ + ω₄) / 6
+        // For linearly-varying ω this equals the exact midpoint ω, giving O(dt³) accuracy.
+        let omega_2 = state0.angular_velocity + k1_ang * dt_half;
+        let omega_3 = state0.angular_velocity + k2_ang * dt_half;
+        let omega_4 = state0.angular_velocity + k3_ang * dt;
+        let avg_omega = (state0.angular_velocity + omega_2 * 2.0 + omega_3 * 2.0 + omega_4)
+            * (1.0 / 6.0);
+        state.orientation = state0.orientation.integrate_exponential(avg_omega, dt);
     }
 
     } // end impl Integrator for ExpRK4Integrator

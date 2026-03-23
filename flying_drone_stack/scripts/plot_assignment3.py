@@ -3,10 +3,10 @@
 Assignment 3 — MEKF vs On-board EKF (figure-8 flight, fr00.csv)
 ================================================================
 Reads the two CSV files produced by `cargo run --bin assignment3`:
-  results/data/assignment3_mekf.csv   — our Rust MEKF
-  results/data/assignment3_ekf.csv    — on-board EKF baseline
+  results/assignment3/data/assignment3_mekf.csv   — our Rust MEKF
+  results/assignment3/data/assignment3_ekf.csv    — on-board EKF baseline
 
-Produces three PNG files in results/images/:
+Produces three PNG files in results/assignment3/images/:
   assignment3_orientation.png  — roll / pitch / yaw vs time
   assignment3_position.png     — x / y / z vs time
   assignment3_xy.png           — XY top-down trajectory
@@ -24,8 +24,9 @@ import matplotlib.pyplot as plt
 # Paths
 # ---------------------------------------------------------------------------
 PROJ_ROOT = os.path.dirname(os.path.dirname(__file__))
-DATA_DIR = os.path.join(PROJ_ROOT, "results", "data")
-IMG_DIR = os.path.join(PROJ_ROOT, "results", "images")
+DATA_DIR = os.path.join(PROJ_ROOT, "results", "assignment3", "data")
+IMG_DIR = os.path.join(PROJ_ROOT, "results", "assignment3", "images")
+os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
 
 RAD2DEG = 180.0 / np.pi

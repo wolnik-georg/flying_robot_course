@@ -173,11 +173,11 @@ fn main() {
 
         // Create CSV file
         // ensure output directory exists (may have been removed)
-        std::fs::create_dir_all("results/data").expect("Failed to create results/data directory");
+        std::fs::create_dir_all("results/assignment2/data").expect("Failed to create results/assignment2/data directory");
         let filename = if realistic_start {
-            format!("results/data/assignment2_{}_realistic.csv", scenario_name)
+            format!("results/assignment2/data/assignment2_{}_realistic.csv", scenario_name)
         } else {
-            format!("results/data/assignment2_{}.csv", scenario_name)
+            format!("results/assignment2/data/assignment2_{}.csv", scenario_name)
         };
         let mut file = File::create(&filename).expect("Failed to create CSV file");
 

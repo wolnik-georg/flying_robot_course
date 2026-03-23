@@ -23,7 +23,7 @@ def load_scenario_data(scenario):
     It is read from the '# phase_offset=...' comment line written by the
     Rust binary.  If no such line is present, 0.0 is returned.
     """
-    filename = f"results/data/assignment2_{scenario}.csv"
+    filename = f"results/assignment2/data/assignment2_{scenario}.csv"
     if not os.path.exists(filename):
         print(f"Warning: {filename} not found")
         return None, 0.0
@@ -52,8 +52,8 @@ def load_scenario_modes(scenario):
     the caller already skips the scenario).
     """
     modes = []
-    normal_path = f"results/data/assignment2_{scenario}.csv"
-    realistic_path = f"results/data/assignment2_{scenario}_realistic.csv"
+    normal_path = f"results/assignment2/data/assignment2_{scenario}.csv"
+    realistic_path = f"results/assignment2/data/assignment2_{scenario}_realistic.csv"
 
     if os.path.exists(normal_path):
         df, po = load_scenario_data(scenario)
@@ -508,13 +508,14 @@ def print_scenario_statistics():
                 + df["vel_error_y"].iloc[-1] ** 2
                 + df["vel_error_z"].iloc[-1] ** 2
             )
-            rms_pos_error = np.sqrt(
-                np.mean(
-                    df["pos_error_x"] ** 2
-                    + df["pos_error_y"] ** 2
-                    + df["pos_error_z"] ** 2
-                )
+            err_3d = np.sqrt(
+                df["pos_error_x"] ** 2
+                + df["pos_error_y"] ** 2
+                + df["pos_error_z"] ** 2
             )
+            rms_pos_error = float(np.sqrt(np.mean(err_3d ** 2)))
+            dt_avg = float(np.median(np.diff(df["time"]))) if len(df) > 1 else 0.01
+            cumulative_pos_error = float(np.sum(err_3d) * dt_avg)
             rms_vel_error = np.sqrt(
                 np.mean(
                     df["vel_error_x"] ** 2
@@ -526,12 +527,13 @@ def print_scenario_statistics():
             max_thrust = df["thrust"].max()
 
             print(f"  [{label}]")
-            print(f"    Final position error:  {final_pos_error:.3f} m")
-            print(f"    Final velocity error:  {final_vel_error:.3f} m/s")
-            print(f"    RMS position error:    {rms_pos_error:.3f} m")
-            print(f"    RMS velocity error:    {rms_vel_error:.3f} m/s")
-            print(f"    Average thrust:        {avg_thrust:.3f} N")
-            print(f"    Max thrust:            {max_thrust:.3f} N")
+            print(f"    Final position error:     {final_pos_error:.3f} m")
+            print(f"    Final velocity error:     {final_vel_error:.3f} m/s")
+            print(f"    RMS position error:       {rms_pos_error*100:.1f} cm")
+            print(f"    Cumulative position error:{cumulative_pos_error:.3f} m·s  (∫|e₃D| dt)")
+            print(f"    RMS velocity error:       {rms_vel_error:.3f} m/s")
+            print(f"    Average thrust:           {avg_thrust:.3f} N")
+            print(f"    Max thrust:               {max_thrust:.3f} N")
 
     print("\nAnalysis:")
     print("- Hover control: Excellent performance with near-zero errors")
@@ -551,15 +553,15 @@ def main():
     print("=" * 70)
 
     # make sure output directories exist so plots can be written
-    os.makedirs("results/data", exist_ok=True)
-    os.makedirs("results/images", exist_ok=True)
+    os.makedirs("results/assignment2/data", exist_ok=True)
+    os.makedirs("results/assignment2/images", exist_ok=True)
 
     # Check that at least one data file exists for each scenario
     scenarios = ["hover", "figure8", "circle"]
     any_missing = False
     for scenario in scenarios:
-        normal = f"results/data/assignment2_{scenario}.csv"
-        realistic = f"results/data/assignment2_{scenario}_realistic.csv"
+        normal = f"results/assignment2/data/assignment2_{scenario}.csv"
+        realistic = f"results/assignment2/data/assignment2_{scenario}_realistic.csv"
         if not os.path.exists(normal) and not os.path.exists(realistic):
             print(f"Warning: no data found for '{scenario}' — run assignment2 first.")
             any_missing = True
@@ -576,60 +578,60 @@ def main():
     fig1 = plot_hover_performance()
     if fig1:
         fig1.savefig(
-            "results/images/assignment2_hover_performance.png",
+            "results/assignment2/images/assignment2_hover_performance.png",
             dpi=150,
             bbox_inches="tight",
         )
-        print("Saved: results/images/assignment2_hover_performance.png")
+        print("Saved: results/assignment2/images/assignment2_hover_performance.png")
 
     # Figure-8: paths image + errors/control image
     fig2a = plot_trajectory_paths("figure8")
     if fig2a:
         fig2a.savefig(
-            "results/images/assignment2_figure8_paths.png",
+            "results/assignment2/images/assignment2_figure8_paths.png",
             dpi=150,
             bbox_inches="tight",
         )
-        print("Saved: results/images/assignment2_figure8_paths.png")
+        print("Saved: results/assignment2/images/assignment2_figure8_paths.png")
 
     fig2b = plot_trajectory_errors("figure8")
     if fig2b:
         fig2b.savefig(
-            "results/images/assignment2_figure8_errors.png",
+            "results/assignment2/images/assignment2_figure8_errors.png",
             dpi=150,
             bbox_inches="tight",
         )
-        print("Saved: results/images/assignment2_figure8_errors.png")
+        print("Saved: results/assignment2/images/assignment2_figure8_errors.png")
 
     # Circle: paths image + errors/control image
     fig3a = plot_trajectory_paths("circle")
     if fig3a:
         fig3a.savefig(
-            "results/images/assignment2_circle_paths.png",
+            "results/assignment2/images/assignment2_circle_paths.png",
             dpi=150,
             bbox_inches="tight",
         )
-        print("Saved: results/images/assignment2_circle_paths.png")
+        print("Saved: results/assignment2/images/assignment2_circle_paths.png")
 
     fig3b = plot_trajectory_errors("circle")
     if fig3b:
         fig3b.savefig(
-            "results/images/assignment2_circle_errors.png",
+            "results/assignment2/images/assignment2_circle_errors.png",
             dpi=150,
             bbox_inches="tight",
         )
-        print("Saved: results/images/assignment2_circle_errors.png")
+        print("Saved: results/assignment2/images/assignment2_circle_errors.png")
 
     # Motor speeds for all scenarios
     for scenario in scenarios:
         fig = plot_motor_speeds(scenario)
         if fig:
             fig.savefig(
-                f"results/images/assignment2_motor_speeds_{scenario}.png",
+                f"results/assignment2/images/assignment2_motor_speeds_{scenario}.png",
                 dpi=150,
                 bbox_inches="tight",
             )
-            print(f"Saved: results/images/assignment2_motor_speeds_{scenario}.png")
+            print(f"Saved: results/assignment2/images/assignment2_motor_speeds_{scenario}.png")
 
     # Print statistics
     print_scenario_statistics()

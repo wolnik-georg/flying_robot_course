@@ -16,15 +16,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results", "data")
-IMG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results", "images")
+_ROOT = os.path.dirname(os.path.dirname(__file__))
+DATA_DIR   = os.path.join(_ROOT, "results", "assignment4", "data")
+IMG_DIR    = os.path.join(_ROOT, "results", "assignment4", "images")
+DATA_DIR_5 = os.path.join(_ROOT, "results", "assignment5", "data")
+IMG_DIR_5  = os.path.join(_ROOT, "results", "assignment5", "images")
+os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
+os.makedirs(DATA_DIR_5, exist_ok=True)
+os.makedirs(IMG_DIR_5, exist_ok=True)
 
 # ── Load CSVs for both modes ────────────────────────────────────────────────
 
 
-def load(name):
-    path = os.path.join(DATA_DIR, name)
+def load(name, data_dir=None):
+    if data_dir is None:
+        data_dir = DATA_DIR
+    path = os.path.join(data_dir, name)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Missing: {path}")
     return np.genfromtxt(path, delimiter=",", names=True)
@@ -547,8 +555,8 @@ print("Saved assignment4_actions_controller_comparison.png")
 # ── Assignment 5: Safe-space trajectory plots (if available) ──────────────
 def try_plot_assignment5(mode_name):
     try:
-        planned = load(f"assignment5_planned_{mode_name}.csv")
-        cl = load(f"assignment5_closedloop_{mode_name}.csv")
+        planned = load(f"assignment5_planned_{mode_name}.csv", DATA_DIR_5)
+        cl = load(f"assignment5_closedloop_{mode_name}.csv", DATA_DIR_5)
     except FileNotFoundError:
         print(f"Assignment5 files for mode='{mode_name}' not found, skipping.")
         return
@@ -631,7 +639,7 @@ def try_plot_assignment5(mode_name):
     ax.set_title(f"Assignment5 {mode_name} – planned vs closed-loop with safety box")
     ax.legend()
     plt.tight_layout()
-    outpath = os.path.join(IMG_DIR, f"assignment5_3d_{mode_name}.png")
+    outpath = os.path.join(IMG_DIR_5, f"assignment5_3d_{mode_name}.png")
     plt.savefig(outpath, dpi=150)
     print(f"Saved {outpath}")
 
@@ -670,7 +678,7 @@ def try_plot_assignment5(mode_name):
     ax.set_title(f"Assignment5 {mode_name} altitude vs time")
     ax.legend()
     plt.tight_layout()
-    outpath = os.path.join(IMG_DIR, f"assignment5_z_{mode_name}.png")
+    outpath = os.path.join(IMG_DIR_5, f"assignment5_z_{mode_name}.png")
     plt.savefig(outpath, dpi=150)
     print(f"Saved {outpath}")
 

@@ -158,32 +158,63 @@ def plot_thrust_tracking(df: pd.DataFrame, stem: str):
     print(f"  Saved {out}")
 
 
-def plot_trajectory_tracking(df: pd.DataFrame, stem: str):
-    """XY and Z: shadow reference vs firmware position."""
+def plot_trajectory_tracking(df: pd.DataFrame, stem: str) -> dict:
+    """XY and Z: shadow reference vs firmware position.
+
+    Returns a dict with position error metrics for the assignment summary:
+      pos_rmse_x_cm, pos_rmse_y_cm, pos_rmse_z_cm  — per-axis RMSE [cm]
+      pos_rmse_3d_cm                                — 3D RMSE [cm]
+      pos_cumulative_error_m                        — integral of |e_3D| dt [m·s]
+    """
     mask = airborne_mask(df)
     t = df["time_s"].values[mask]
 
-    fig, axes = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
+    fw_x = df["pos_x"].values[mask]
+    fw_y = df["pos_y"].values[mask]
+    fw_z = df["pos_z"].values[mask]
+    ref_x = df["our_ref_x"].values[mask]
+    ref_y = df["our_ref_y"].values[mask]
+    ref_z = df["our_ref_z"].values[mask]
+
+    err_3d = np.sqrt((fw_x - ref_x) ** 2 + (fw_y - ref_y) ** 2 + (fw_z - ref_z) ** 2)
+
+    # dt from median sample interval (robust to gaps)
+    dt_avg = float(np.median(np.diff(t))) if len(t) > 1 else 0.05
+    cumulative_error = float(np.sum(err_3d) * dt_avg)
+
+    metrics = {
+        "pos_rmse_x_cm": rmse(fw_x, ref_x) * 100,
+        "pos_rmse_y_cm": rmse(fw_y, ref_y) * 100,
+        "pos_rmse_z_cm": rmse(fw_z, ref_z) * 100,
+        "pos_rmse_3d_cm": float(np.sqrt(np.mean(err_3d ** 2))) * 100,
+        "pos_cumulative_error_m": cumulative_error,
+    }
+
+    fig, axes = plt.subplots(4, 1, figsize=(12, 10), sharex=True)
     fig.suptitle(f"Shadow trajectory tracking — {stem}", fontsize=13)
 
-    for ax, pos_col, ref_col, label in [
-        (axes[0], "pos_x", "our_ref_x", "X"),
-        (axes[1], "pos_y", "our_ref_y", "Y"),
-        (axes[2], "pos_z", "our_ref_z", "Z"),
+    for ax, fw, ref, label, key in [
+        (axes[0], fw_x, ref_x, "X", "pos_rmse_x_cm"),
+        (axes[1], fw_y, ref_y, "Y", "pos_rmse_y_cm"),
+        (axes[2], fw_z, ref_z, "Z", "pos_rmse_z_cm"),
     ]:
-        fw = df[pos_col].values[mask]
-        ref = df[ref_col].values[mask]
-        err = rmse(fw, ref)
         ax.plot(t, fw, label=f"Firmware {label.lower()} (EKF)", linewidth=1.2)
-        ax.plot(
-            t, ref, label=f"Shadow ref {label.lower()}", linewidth=1.0, linestyle="--"
-        )
+        ax.plot(t, ref, label=f"Shadow ref {label.lower()}", linewidth=1.0, linestyle="--")
         ax.set_ylabel(f"{label} [m]")
         ax.legend(loc="upper right", fontsize=8)
-        ax.set_title(f"RMSE = {err*100:.1f} cm")
+        ax.set_title(f"RMSE = {metrics[key]:.1f} cm")
         ax.grid(True, alpha=0.4)
 
-    axes[-1].set_xlabel("Time [s]")
+    axes[3].plot(t, err_3d * 100, color="purple", linewidth=1.0, label="|e_3D| [cm]")
+    axes[3].set_ylabel("|e₃D| [cm]")
+    axes[3].set_xlabel("Time [s]")
+    axes[3].set_title(
+        f"3D position error  RMSE = {metrics['pos_rmse_3d_cm']:.1f} cm   "
+        f"cumulative = {cumulative_error:.3f} m·s"
+    )
+    axes[3].legend(fontsize=8)
+    axes[3].grid(True, alpha=0.4)
+
     fig.tight_layout()
     out = os.path.join(IMG_DIR, f"shadow_traj_{stem}.png")
     fig.savefig(out, dpi=120)
@@ -192,19 +223,8 @@ def plot_trajectory_tracking(df: pd.DataFrame, stem: str):
 
     # XY top-down
     fig2, ax2 = plt.subplots(figsize=(6, 6))
-    ax2.plot(
-        df["pos_x"].values[mask],
-        df["pos_y"].values[mask],
-        label="Firmware EKF",
-        linewidth=1.2,
-    )
-    ax2.plot(
-        df["our_ref_x"].values[mask],
-        df["our_ref_y"].values[mask],
-        label="Shadow reference",
-        linewidth=1.0,
-        linestyle="--",
-    )
+    ax2.plot(fw_x, fw_y, label="Firmware EKF", linewidth=1.2)
+    ax2.plot(ref_x, ref_y, label="Shadow reference", linewidth=1.0, linestyle="--")
     ax2.set_xlabel("X [m]")
     ax2.set_ylabel("Y [m]")
     ax2.set_title(f"XY top-down — {stem}")
@@ -216,6 +236,8 @@ def plot_trajectory_tracking(df: pd.DataFrame, stem: str):
     fig2.savefig(out2, dpi=120)
     plt.close(fig2)
     print(f"  Saved {out2}")
+
+    return metrics
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -250,19 +272,37 @@ def main():
         return
 
     print("\nShadow data detected — generating evaluation plots...")
-    metrics = plot_attitude_tracking(df, stem)
+    att_metrics = plot_attitude_tracking(df, stem)
     plot_thrust_tracking(df, stem)
-    plot_trajectory_tracking(df, stem)
+    pos_metrics = plot_trajectory_tracking(df, stem)
 
-    print("\n── Summary ────────────────────────────────────")
-    for k, v in metrics.items():
-        unit = "°" if "deg" in k else ""
+    all_metrics = {**att_metrics, **pos_metrics}
+
+    print("\n── Summary ────────────────────────────────────────────────")
+    print("  Attitude tracking (shadow cmd vs firmware):")
+    for k in ("roll_rmse_deg", "pitch_rmse_deg"):
+        v = all_metrics[k]
         status = "✓" if v < 5.0 else "✗"
-        print(f"  {k:25s}: {v:.2f}{unit}  {status}")
-    if metrics["roll_rmse_deg"] < 5.0 and metrics["pitch_rmse_deg"] < 5.0:
-        print("\n✅  Shadow controller tracking within 5° threshold.")
+        print(f"    {k:25s}: {v:.2f}°  {status}")
+
+    print("  Position tracking (firmware EKF vs shadow reference):")
+    for k in ("pos_rmse_x_cm", "pos_rmse_y_cm", "pos_rmse_z_cm", "pos_rmse_3d_cm"):
+        v = all_metrics[k]
+        status = "✓" if v < 20.0 else "✗"
+        print(f"    {k:25s}: {v:.1f} cm  {status}")
+    cum = all_metrics["pos_cumulative_error_m"]
+    print(f"    {'pos_cumulative_error':25s}: {cum:.3f} m·s")
+
+    att_ok = all_metrics["roll_rmse_deg"] < 5.0 and all_metrics["pitch_rmse_deg"] < 5.0
+    pos_ok = all_metrics["pos_rmse_3d_cm"] < 20.0
+    print()
+    if att_ok and pos_ok:
+        print("✅  Controller tracking within thresholds (att <5°, pos <20 cm).")
     else:
-        print("\n❌  Tracking error exceeds 5° — check gains / HOVER_PWM.")
+        if not att_ok:
+            print("❌  Attitude error exceeds 5° — check gains / HOVER_PWM.")
+        if not pos_ok:
+            print("❌  Position RMSE exceeds 20 cm — EKF drift or gain issue.")
 
 
 def _plot_raw_attitude(df: pd.DataFrame, stem: str):
