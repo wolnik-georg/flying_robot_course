@@ -5,6 +5,8 @@ simulation, SE(3) geometric control, MEKF state estimation, minimum-snap motion 
 3D occupancy mapping, visual odometry (VO), loop-closure SLAM, and autonomous frontier
 exploration — all validated against real flight logs.
 
+> **Course assignments with results and plots → [ASSIGNMENTS.md](ASSIGNMENTS.md)**
+
 ## Quick Start
 
 ```bash
