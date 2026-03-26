@@ -218,7 +218,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file, "time_ms,vel_x,vel_y,vel_z,roll,pitch,yaw,range_z,gyro_x,gyro_y,gyro_z,ekf_x,ekf_y,acc_x,acc_y,acc_z")?;
+    if maneuver == "my_circle" {
+        writeln!(log_file, "time_ms,vel_x,vel_y,vel_z,roll,pitch,yaw,range_z,gyro_x,gyro_y,gyro_z,ekf_x,ekf_y,acc_x,acc_y,acc_z,ref_x,ref_y,ref_z,est_x,est_y")?;
+    } else {
+        writeln!(log_file, "time_ms,vel_x,vel_y,vel_z,roll,pitch,yaw,range_z,gyro_x,gyro_y,gyro_z,ekf_x,ekf_y,acc_x,acc_y,acc_z")?;
+    }
     println!("Log file opened: {}", filename);
 
     println!("Logging started (100 Hz, 3 blocks). Starting maneuver '{}' in 3 seconds...", maneuver);
@@ -251,7 +255,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Stabilizing hover for 3 seconds...");
         let stab_start = Instant::now();
         for _ in 0..30 {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stab_start, &mut log_file).await;
+            let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &stab_start).await;
+            log_data.push(entry);
             cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
             sleep(Duration::from_millis(100)).await;
         }
@@ -277,7 +282,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("my_hover: draining stale log buffer...");
             let drain_start = Instant::now();
             for _ in 0..500 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start, &mut log_file).await;
+                let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &drain_start).await;
+                log_data.push(entry);
             }
             let anchor = log_data.last().cloned().unwrap_or_default();
             println!(
@@ -315,7 +321,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(15) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &start).await;
+                log_data.push(entry.clone());
+                let _ = writeln!(log_file,
+                    "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3},{:.4},{:.4},{:.4},{:.4},{:.4}",
+                    entry.time_ms,
+                    entry.vel_x, entry.vel_y, entry.vel_z,
+                    entry.roll, entry.pitch, entry.yaw,
+                    entry.range_z,
+                    entry.gyro_x, entry.gyro_y, entry.gyro_z,
+                    entry.ekf_x, entry.ekf_y,
+                    entry.acc_x, entry.acc_y, entry.acc_z,
+                );
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
 
@@ -430,14 +447,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // - Phase 2: track circle trajectory once at height
 
             let radius = 0.2f32;
-            let height = 0.3f32;
+            let height = 0.22f32;
             let omega  = 0.50f32; // ~12.6 s per lap, max speed r*ω = 0.100 m/s, SNR≈2
 
             // ── Drain stale buffer (same as my_hover) ────────────────────────
             println!("my_circle: draining stale log buffer...");
             let drain_start = Instant::now();
             for _ in 0..500 {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &drain_start, &mut log_file).await;
+                let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &drain_start).await;
+                log_data.push(entry);
             }
             let anchor = log_data.last().cloned().unwrap_or_default();
             println!(
@@ -498,7 +516,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let start = Instant::now();
             // 70 s total: up to ~10 s to reach height + 60 s circle
             while start.elapsed() < Duration::from_secs(70) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &start).await;
+                log_data.push(entry.clone());
 
                 let latest_entry = log_data.last().cloned().unwrap_or_default();
 
@@ -539,7 +558,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // tight ±3 cm window around the 0.30 m target (which took 34 s in flight 3).
                 // During the 5 s settle phase the controller still targets height = 0.30 m,
                 // so the drone climbs to its final altitude naturally while velocity damps out.
-                if !at_height && ever_airborne && latest_entry.range_z > 0.20 {
+                if !at_height && ever_airborne && latest_entry.range_z > 0.15 {
                     at_height = true;
                     println!(
                         "my_circle: at height {:.3}m — settling for {:.0}s before circle",
@@ -719,6 +738,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     );
                 }
 
+                let _ = writeln!(log_file,
+                    "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4}",
+                    entry.time_ms,
+                    entry.vel_x, entry.vel_y, entry.vel_z,
+                    entry.roll, entry.pitch, entry.yaw,
+                    entry.range_z,
+                    entry.gyro_x, entry.gyro_y, entry.gyro_z,
+                    entry.ekf_x, entry.ekf_y,
+                    entry.acc_x, entry.acc_y, entry.acc_z,
+                    reference.position.x, reference.position.y, reference.position.z,
+                    pos_x, pos_y,
+                );
                 cf.commander.setpoint_rpyt(roll_d_cmd, pitch_d_cmd, yaw_rate_d, thrust_pwm).await?;
             }
         }
@@ -730,7 +761,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(60) {
-            run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+            let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &start).await;
+            log_data.push(entry.clone());
+            let _ = writeln!(log_file,
+                "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3},{:.4},{:.4},{:.4},{:.4},{:.4}",
+                entry.time_ms,
+                entry.vel_x, entry.vel_y, entry.vel_z,
+                entry.roll, entry.pitch, entry.yaw,
+                entry.range_z,
+                entry.gyro_x, entry.gyro_y, entry.gyro_z,
+                entry.ekf_x, entry.ekf_y,
+                entry.acc_x, entry.acc_y, entry.acc_z,
+            );
 
             let t = start.elapsed().as_secs_f32();
             let reference = figure8.get_reference(t);
@@ -772,7 +814,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Unknown maneuver '{}'. Falling back to hover.", maneuver);
             let start = Instant::now();
             while start.elapsed() < Duration::from_secs(12) {
-                run_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &start, &mut log_file).await;
+                let entry = run_logging_step(&mut last_print, &stream1, &stream2, &stream3, &start).await;
+                log_data.push(entry.clone());
+                let _ = writeln!(log_file,
+                    "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3},{:.4},{:.4},{:.4},{:.4},{:.4}",
+                    entry.time_ms,
+                    entry.vel_x, entry.vel_y, entry.vel_z,
+                    entry.roll, entry.pitch, entry.yaw,
+                    entry.range_z,
+                    entry.gyro_x, entry.gyro_y, entry.gyro_z,
+                    entry.ekf_x, entry.ekf_y,
+                    entry.acc_x, entry.acc_y, entry.acc_z,
+                );
                 cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
                 sleep(Duration::from_millis(50)).await;
             }
@@ -807,14 +860,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 // ────────────────────────────────────────────────
 
 async fn run_logging_step(
-    log_data: &mut Vec<LogEntry>,
     last_print: &mut Instant,
     stream1: &LogStream,  // vel + attitude (100 Hz)
     stream2: &LogStream,  // range_z + gyro + ekf_x/y (100 Hz)
     stream3: &LogStream,  // acc.xyz (100 Hz)
     start: &Instant,
-    log_file: &mut File,
-) {
+) -> LogEntry {
     let mut entry = LogEntry {
         time_ms: start.elapsed().as_millis() as u64,
         ..Default::default()
@@ -860,19 +911,7 @@ async fn run_logging_step(
         *last_print = Instant::now();
     }
 
-    // Write row immediately — log is safe even on crash or radio drop
-    let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.3},{:.3},{:.3},{:.3},{:.4},{:.4},{:.4},{:.4},{:.4}",
-        entry.time_ms,
-        entry.vel_x, entry.vel_y, entry.vel_z,
-        entry.roll, entry.pitch, entry.yaw,
-        entry.range_z,
-        entry.gyro_x, entry.gyro_y, entry.gyro_z,
-        entry.ekf_x, entry.ekf_y,
-        entry.acc_x, entry.acc_y, entry.acc_z,
-    );
-
-    log_data.push(entry);
+    entry
 }
 
 async fn add_var(block: &mut LogBlock, name: &str) {
