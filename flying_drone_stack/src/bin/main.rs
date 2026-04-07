@@ -1790,9 +1790,9 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
 
                 let cmd = planner.step(pos, yaw_now, &omap, vbat, elapsed);
                 match cmd {
-                    ExplorationCommand::Hold { x, y, z, .. } => {
+                    ExplorationCommand::Hold { x, y, z, yaw_deg } => {
                         let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);
-                        cf.commander.setpoint_position(sx, sy, sz, yaw_now).await?;
+                        cf.commander.setpoint_position(sx, sy, sz, yaw_deg).await?;
                     }
                     ExplorationCommand::GoTo { x, y, z, yaw_deg } => {
                         let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);
