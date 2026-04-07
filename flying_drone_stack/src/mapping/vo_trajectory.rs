@@ -173,14 +173,15 @@ impl VoTrajectory {
         Some(self.position)
     }
 
-    /// Reset the accumulated position to `pos` and clear sigma.
+    /// Reset the accumulated position to `pos`.
     ///
     /// Call this after a successful MEKF VO fusion to reseed the trajectory
-    /// from the now-corrected filter estimate, preventing drift accumulation.
-    /// The accumulated orientation is preserved (position-only correction).
+    /// from the now-corrected filter estimate.  The accumulated orientation
+    /// **and sigma** are preserved: position-only corrections do not reduce
+    /// uncertainty about future VO drift.  Only [`seed`](Self::seed) resets
+    /// sigma (full re-initialisation from a trusted fix).
     pub fn reset_to(&mut self, pos: Vec3) {
         self.position = pos;
-        self.sigma_xy = 0.0;
     }
 }
 
@@ -369,15 +370,17 @@ mod tests {
     }
 
     #[test]
-    fn reset_clears_sigma_and_updates_position() {
+    fn reset_preserves_sigma_and_updates_position() {
         let mut vo = VoTrajectory::new();
         vo.seed(Vec3::new(0.0, 0.0, 0.0));
         for _ in 0..10 {
             let _ = vo.integrate(&identity_result(0.0, 0.0, 0.3));
         }
-        assert!(vo.sigma_xy > 0.0);
+        let sigma_before = vo.sigma_xy;
+        assert!(sigma_before > 0.0);
         vo.reset_to(Vec3::new(1.0, 2.0, 0.3));
-        assert_eq!(vo.sigma_xy, 0.0, "sigma should clear after reset");
+        // sigma is preserved through position-only reseeds; only seed() resets it.
+        assert_eq!(vo.sigma_xy, sigma_before, "sigma should be preserved after reset");
         assert!((vo.position.x - 1.0).abs() < 1e-5);
         assert!((vo.position.y - 2.0).abs() < 1e-5);
     }

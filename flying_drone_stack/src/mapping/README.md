@@ -164,7 +164,9 @@ sigma_xy ← min(sigma_xy + VO_DRIFT_FRAC × |t_body|, VO_MAX_SIGMA)
 When `sigma_xy < VO_MAX_SIGMA × 0.9`, the estimate is fused with the MEKF via
 two scalar position updates (X then Y) with noise `r_vo = sigma_xy²`.  After fusion
 `reset_to(mekf_pos)` re-anchors the VO trajectory to prevent accumulated drift from
-compounding on the next keyframe.
+compounding on the next keyframe.  `sigma_xy` is **not** reset on `reset_to` — the
+position is corrected but the uncertainty about future VO drift is unchanged.  Only
+`seed()` (full re-initialisation at start of flight) resets sigma to zero.
 
 ### 2.5 Loop Closure Detection (`KeyframeStore::detect_loop`)
 
@@ -181,6 +183,23 @@ buffer for candidate frames that are:
 The returned `LoopConstraint` contains the world-frame displacement from the old frame
 to the new one, derived by the same camera-to-body and body-to-world transforms used in
 `VoTrajectory::integrate`.
+
+#### Spatial hash grid — O(1) candidate lookup
+
+Candidate retrieval uses a `SpatialGrid` (sparse `HashMap<(i32,i32), Vec<usize>>`).
+Cell size equals `LOOP_SEARCH_RADIUS_M = 1.5 m` so the **3×3 neighbourhood** of the
+query cell contains every candidate within the search radius:
+
+```
+If |C.x − Q.x| < R and |C.y − Q.y| < R
+   ⟹ |floor(C.x/R) − floor(Q.x/R)| ≤ 1  (same for y)
+   ⟹ C's cell is in the 3×3 neighbourhood of Q's cell  ✓
+```
+
+At most 9 cells × ~25 keyframes/cell = 225 distance checks regardless of flight
+length, versus O(N) for a linear scan.  Diagonal-corner false positives (up to
+R√2 ≈ 2.1 m) are eliminated by an exact squared-distance check before feature
+matching.
 
 ### 2.6 Pose-Graph Optimisation (`PoseGraph`)
 
@@ -326,7 +345,7 @@ pub struct VoTrajectory {
 | `new()` | `→ Self` | Identity orientation, zero position, uninitialised |
 | `seed(pos)` | `→ ()` | Set initial world position (called once MEKF is trusted) |
 | `integrate(result)` | `→ Option<Vec3>` | Accept `KeyframeResult`; returns new world position or `None` if rejected |
-| `reset_to(pos)` | `→ ()` | Re-anchor to `pos` after MEKF fusion; clears `sigma_xy` |
+| `reset_to(pos)` | `→ ()` | Re-anchor to `pos` after MEKF fusion; **preserves `sigma_xy`** (position-only correction — drift uncertainty is unaffected by reseeding) |
 
 **Rejection criteria** (inside `integrate`):
 - `result.inlier_count < MIN_INLIERS` (6) → noisy essential matrix

@@ -1478,45 +1478,61 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         let loop_clone  = Arc::clone(&ai_loop_result);
         let pose_clone  = Arc::clone(&ai_pose);
         tokio::spawn(async move {
-            match CpxCamera::connect("192.168.4.1:5000").await {
-                Ok(mut cam) => {
-                    println!("[AI Deck] connected");
-                    let mut kf_store = KeyframeStore::new();
-                    loop {
-                        match cam.recv_frame().await {
-                            Ok(frame) => {
-                                let n = detect_features(&frame, 20).len() as u32;
-                                feat_clone.store(n, Ordering::Relaxed);
+            // kf_store lives outside the reconnect loop so the full SLAM history
+            // (keyframes, pose graph, spatial grid) is preserved across Nina reboots.
+            let mut kf_store = KeyframeStore::new();
+            loop {
+                // ── reconnect loop ────────────────────────────────────────────
+                // Nina (ESP32) reboots every 13–70 s due to WiFi TX-queue overflow.
+                // When it comes back up (~5 s later) we open a fresh TcpStream and
+                // resume streaming without resetting the SLAM state.
+                println!("[AI Deck] connecting to 192.168.4.1:5000 ...");
+                let mut cam = match CpxCamera::connect("192.168.4.1:5000").await {
+                    Ok(c)  => { println!("[AI Deck] connected"); c }
+                    Err(e) => {
+                        eprintln!("[AI Deck] connect failed: {e} — retrying in 10 s");
+                        sleep(Duration::from_secs(10)).await;
+                        continue;
+                    }
+                };
 
-                                // Feed frame into keyframe store with latest pose.
-                                let (px, py, pz, yaw, rz) = {
-                                    *pose_clone.lock().unwrap()
-                                };
-                                let pos = multirotor_simulator::math::Vec3::new(px, py, pz);
-                                if let Some(result) = kf_store.push(frame, pos, yaw, rz) {
-                                    println!("[KF] kf#{} matches={} inliers={} t=({:.3},{:.3},{:.3})m",
-                                        result.kf_index, result.match_count, result.inlier_count,
-                                        result.translation_m.x, result.translation_m.y, result.translation_m.z);
+                // ── frame loop ────────────────────────────────────────────────
+                loop {
+                    match cam.recv_frame().await {
+                        Ok(frame) => {
+                            let n = detect_features(&frame, 20).len() as u32;
+                            feat_clone.store(n, Ordering::Relaxed);
 
-                                    // Run loop closure detection on this new keyframe.
-                                    let new_idx = result.kf_index;
-                                    if let Some(lc) = kf_store.detect_loop(new_idx) {
-                                        eprintln!("[LC] loop kf{}→kf{} inliers={} t=({:.3},{:.3})m",
-                                            lc.from_idx, lc.to_idx, lc.inlier_count,
-                                            lc.translation_world[0], lc.translation_world[1]);
-                                        *loop_clone.lock().unwrap() = Some(lc);
-                                    }
-                                    *kf_clone.lock().unwrap() = Some(result);
+                            // Feed frame into keyframe store with latest pose.
+                            let (px, py, pz, yaw, rz) = {
+                                *pose_clone.lock().unwrap()
+                            };
+                            let pos = multirotor_simulator::math::Vec3::new(px, py, pz);
+                            if let Some(result) = kf_store.push(frame, pos, yaw, rz) {
+                                println!("[KF] kf#{} matches={} inliers={} t=({:.3},{:.3},{:.3})m",
+                                    result.kf_index, result.match_count, result.inlier_count,
+                                    result.translation_m.x, result.translation_m.y, result.translation_m.z);
+
+                                // Run loop closure detection on this new keyframe.
+                                let new_idx = result.kf_index;
+                                if let Some(lc) = kf_store.detect_loop(new_idx) {
+                                    eprintln!("[LC] loop kf{}→kf{} inliers={} t=({:.3},{:.3})m",
+                                        lc.from_idx, lc.to_idx, lc.inlier_count,
+                                        lc.translation_world[0], lc.translation_world[1]);
+                                    *loop_clone.lock().unwrap() = Some(lc);
                                 }
+                                *kf_clone.lock().unwrap() = Some(result);
                             }
-                            Err(e) => {
-                                eprintln!("[AI Deck] frame error: {}", e);
-                                sleep(Duration::from_millis(200)).await;
-                            }
+                        }
+                        Err(e) => {
+                            eprintln!("[AI Deck] lost connection: {e} — reconnecting in 5 s");
+                            feat_clone.store(0, Ordering::Relaxed);
+                            sleep(Duration::from_secs(5)).await;
+                            break; // break frame loop → outer reconnect loop
                         }
                     }
                 }
-                Err(e) => eprintln!("[AI Deck] connection failed (continuing without camera): {}", e),
+                // cam is dropped here; the dead TcpStream is released.
             }
         });
     }
@@ -1774,9 +1790,9 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
 
                 let cmd = planner.step(pos, yaw_now, &omap, vbat, elapsed);
                 match cmd {
-                    ExplorationCommand::Hold { x, y, z, .. } => {
+                    ExplorationCommand::Hold { x, y, z, yaw_deg } => {
                         let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);
-                        cf.commander.setpoint_position(sx, sy, sz, yaw_now).await?;
+                        cf.commander.setpoint_position(sx, sy, sz, yaw_deg).await?;
                     }
                     ExplorationCommand::GoTo { x, y, z, yaw_deg } => {
                         let (sx, sy, sz) = safe_setpoint_omap(&log_data, &omap, x, y, z);

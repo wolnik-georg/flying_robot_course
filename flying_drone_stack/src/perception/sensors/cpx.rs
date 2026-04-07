@@ -54,11 +54,16 @@ const ENC_RAW: u8 = 0;
 /// Maximum allowed image data size (2 MiB).
 const MAX_FRAME_BYTES: usize = 2 * 1024 * 1024;
 
-/// Timeout for individual read operations — if no data arrives within this
-/// duration the stream has likely frozen on the GAP8 side.
-/// 5 s: at ~3 fps a frame arrives every ~330 ms, but JPEG encoding can stall
-/// on a complex frame and WiFi AP mode has occasional brief packet loss.
-/// 2 s caused spurious reconnects mid-frame on frames 60–70.
+/// Timeout for the initial TCP connection to Nina W102.
+/// Nina takes ~3–5 s to boot as a WiFi AP; 10 s gives comfortable headroom
+/// without hanging the AI Deck background task indefinitely if Nina is down.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Timeout for individual read operations on an established connection.
+/// At ~2 fps (after GAP8 frame-rate throttle) a frame arrives every ~500 ms.
+/// JPEG encoding on GAP8 takes ~57 ms; WiFi AP mode has occasional brief
+/// packet loss.  5 s means we tolerate up to 9 missed frames before declaring
+/// the stream dead and triggering a reconnect in `main.rs`.
 const READ_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Error type for CPX camera operations.
@@ -121,8 +126,13 @@ impl CpxCamera {
     /// Just opens the TCP socket — no data is sent.  Nina W102 automatically
     /// notifies GAP8 of the new TCP client (in both AP and STA mode), which
     /// sets `wifiClientConnected = 1` and triggers image streaming.
+    ///
+    /// Returns `Err(CpxError::Timeout)` if Nina does not accept the connection
+    /// within `CONNECT_TIMEOUT` (10 s), allowing the caller's reconnect loop
+    /// to retry without hanging indefinitely.
     pub async fn connect(addr: &str) -> Result<Self, CpxError> {
-        let stream = TcpStream::connect(addr).await?;
+        let stream = timeout(CONNECT_TIMEOUT, TcpStream::connect(addr)).await
+            .map_err(|_| CpxError::Timeout)??;
         Ok(Self {
             stream,
             frag_buf: Vec::with_capacity(64 * 1024),

@@ -104,8 +104,10 @@ pub enum ExplorationCommand {
 /// Internal states of the exploration state machine.
 #[derive(Debug, Clone)]
 enum State {
-    /// Rotate in place; `yaw_accumulated` tracks degrees turned so far.
-    Scan { yaw_accumulated: f32 },
+    /// Rotate in place.
+    /// `yaw_accumulated` tracks commanded degrees turned so far (time-based).
+    /// `start_yaw` is the heading when this SCAN phase began (None until first step).
+    Scan { yaw_accumulated: f32, start_yaw: Option<f32> },
     /// Fly toward `waypoint`.
     Navigate { waypoint: Vec3 },
     /// Exploration complete — emit `Land` every step.
@@ -131,7 +133,7 @@ impl ExplorationPlanner {
     /// hovering at `hover_z` metres before exploration starts.
     pub fn new(hover_z: f32) -> Self {
         Self {
-            state:   State::Scan { yaw_accumulated: 0.0 },
+            state:   State::Scan { yaw_accumulated: 0.0, start_yaw: None },
             hover_z,
         }
     }
@@ -165,11 +167,18 @@ impl ExplorationPlanner {
         match &mut self.state {
 
             // ── SCAN ──────────────────────────────────────────────────────────
-            State::Scan { yaw_accumulated } => {
+            State::Scan { yaw_accumulated, start_yaw } => {
+                // Latch the heading at the start of this SCAN phase.
+                let sy = *start_yaw.get_or_insert(yaw_deg);
+
                 let delta = SCAN_YAW_RATE_DEG_S * DT_S;
                 *yaw_accumulated += delta;
 
-                let target_yaw = yaw_deg + delta;
+                // Command the cumulative absolute target so the firmware always
+                // sees a growing yaw error and applies real rotation effort.
+                // (Contrast: commanding yaw_deg+delta each step gives only a
+                // 3° error → near-zero yaw authority → drone barely rotates.)
+                let target_yaw = sy + *yaw_accumulated;
 
                 if *yaw_accumulated >= SCAN_TOTAL_DEG {
                     // Full rotation done — pick the nearest frontier.
@@ -205,7 +214,7 @@ impl ExplorationPlanner {
                 if dist < ARRIVE_DIST_M {
                     // Arrived — start a fresh SCAN.
                     println!("[explore] Arrived at frontier — starting SCAN");
-                    self.state = State::Scan { yaw_accumulated: 0.0 };
+                    self.state = State::Scan { yaw_accumulated: 0.0, start_yaw: None };
                     return ExplorationCommand::Hold {
                         x: pos.x, y: pos.y, z: self.hover_z, yaw_deg,
                     };
