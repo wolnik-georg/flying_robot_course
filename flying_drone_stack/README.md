@@ -143,6 +143,14 @@ The binary auto-resets the Kalman filter, ramps up, hovers to stabilise, execute
              │  Shadow track (main.rs)                    │
              │  SE(3) geometric controller → CSV only     │
              └────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│  firmware_app/ — Onboard SE(3) Controller (no_std Rust, STM32)       │
+│  controllerOutOfTree() runs at 500 Hz inside Crazyflie firmware      │
+│  Same gains as offboard shadow track; receives position setpoints     │
+│  from the laptop via CRTP radio; uses Crazyflie Kalman EKF state     │
+│  Build: cd firmware_app && make    Flash: make cload                 │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## CSV Output Format (49 columns)
@@ -173,6 +181,12 @@ flying_drone_stack/
 ├── README.md                         # This file
 ├── ROADMAP.md                        # What is built and what to do next
 ├── VALIDATION_PLAN.md                # Tiered flight validation plan (Tier 0–7)
+├── firmware_app/                     # Onboard SE(3) controller (no_std Rust, STM32)
+│   ├── README.md                     # Build + flash instructions, architecture
+│   ├── src/lib.rs                    # controllerOutOfTree* entry points (500 Hz)
+│   ├── build.rs                      # bindgen: stabilizer_types.h → bindings.rs
+│   ├── Makefile / Kbuild / app-config # Crazyflie OOT build system integration
+│   └── wrapper.h                     # C header for bindgen
 ├── docs/
 │   ├── ARCHITECTURE.md               # Full architecture documentation
 │   └── DRONE_STACK_ASPECTS.md

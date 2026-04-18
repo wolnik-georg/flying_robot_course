@@ -1,0 +1,24 @@
+# Kbuild — integrates the Rust staticlib into the Crazyflie firmware build.
+#
+# Pattern from examples/app_hello_rs in the crazyflie-firmware repo.
+# $(src)  = the OOT app source directory (this directory)
+# $(obj)  = the Kbuild output directory
+# CRAZYFLIE_BASE is exported by the Makefile and forwarded to cargo.
+
+# Name of the Rust crate (must match Cargo.toml [package].name with '-' → '_')
+CRATE_NAME := cf_controller_rs
+
+# Tell Kbuild to include app.o in the build
+obj-y += app.o
+
+# --whole-archive: include every symbol from the static lib (Rust uses LTO)
+# -z noexecstack:  matches LLVM's default, suppresses a linker warning
+EXTRA_LDFLAGS += -Wl,--whole-archive -z noexecstack
+
+# Always rebuild the Rust crate; copy the resulting .a as app.o
+$(obj)/app.o: FORCE
+	cd $(src) && CRAZYFLIE_BASE=$(CRAZYFLIE_BASE) LIBCLANG_PATH=/usr/lib/llvm-14/lib \
+		cargo build --release --target thumbv7em-none-eabihf
+	cp $(src)/target/thumbv7em-none-eabihf/release/lib$(CRATE_NAME).a $@
+
+FORCE:

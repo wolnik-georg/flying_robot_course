@@ -417,19 +417,20 @@ fn test_compute_control_debug_no_nan() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Difference 1: under 45° tilt debug thrust (norm) must be strictly greater
-/// than normal thrust (body-z projection).
+/// After the debug fix both compute_control and compute_control_debug use
+/// body-z projection for thrust.  They must agree even at large tilt angles.
 ///
-/// Geometry: if the body z-axis is tilted 45° from world-z, the dot product
-/// of F (pointing mostly world-z) with body-z is F·cos(45°) ≈ 0.707·F,
-/// while the norm of the same vector F is just |F|. So norm > dot.
+/// Geometry: at 45° roll the body z-axis is rotated 45° from world-z.  The
+/// body-z projection F·ẑ_body equals F·cos(45°) < |F|.  Both paths now use
+/// this projection, so they return the same value.
 #[test]
-fn test_thrust_calculation_diverges_under_tilt() {
+fn test_thrust_calculation_agrees_under_tilt() {
     let params = MultirotorParams::crazyflie();
     // Tilt the drone 45° around X (large roll)
     let mut state = MultirotorState::new();
     state.orientation = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::FRAC_PI_4);
 
-    // No position/velocity error — only the tilt drives the difference.
+    // No position/velocity error — only tilt present.
     let reference = default_reference();
 
     let mut ctrl_normal = GeometricController::default();
@@ -438,11 +439,11 @@ fn test_thrust_calculation_diverges_under_tilt() {
     let out_normal         = ctrl_normal.compute_control(&state, &reference, &params, 0.01);
     let (out_debug, _info) = ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
 
-    // norm() >= dot(body_z) always; at 45° tilt the gap must be measurable.
+    // Both use body-z projection: must agree to floating-point tolerance.
     assert!(
-        out_debug.thrust > out_normal.thrust + 1e-3,
-        "expected debug thrust ({}) > normal thrust ({}) under 45° tilt",
-        out_debug.thrust, out_normal.thrust
+        (out_debug.thrust - out_normal.thrust).abs() < 1e-4,
+        "both thrust computations should agree under 45° tilt: normal={} debug={}",
+        out_normal.thrust, out_debug.thrust
     );
 }
 
@@ -467,41 +468,37 @@ fn test_thrust_calculation_agrees_at_hover() {
     );
 }
 
-/// Difference 2: once ki_pos has wound up, the two force vectors differ, which
-/// causes their desired rotation matrices — and therefore their torques — to differ.
+/// Difference 2: compute_control accumulates i_error_pos and includes ki_pos in
+/// the force vector; compute_control_debug does neither.  After wind-up the two
+/// force vectors differ → different thrust.
 ///
-/// Setup: give the drone a lateral (X) position error so ki_pos winds up a
-/// horizontal force component. That tilts `thrust_force` away from vertical,
-/// which changes `rd` (desired rotation). compute_control includes ki_pos in
-/// the force vector; compute_control_debug does not. With enough integral
-/// accumulation the two `rd` matrices diverge → different `er` → different torques.
+/// Setup: give the drone a vertical (Z) position error so ki_pos accumulates a
+/// vertical force component.  At level hover (body_z = world_z) thrust equals
+/// the Z component of the force, which ki_pos directly raises in the normal path
+/// but not in the debug path.
 #[test]
 fn test_torque_diverges_when_position_integral_wound_up() {
     let params = MultirotorParams::crazyflie();
-    let state = MultirotorState::new();
+    let state = MultirotorState::new();  // level hover, identity orientation
 
-    // Lateral X error: both kp (proportional) AND ki_pos (integral) drive a
-    // tilt in the force vector. After 100 steps ki_pos contribution is significant.
+    // Vertical Z error: ki_pos accumulates a Z force component, visible in thrust.
     let mut reference = default_reference();
-    reference.position.x = 2.0; // large offset so tilt is clearly nonzero
+    reference.position.z = 2.0;
 
     let mut ctrl_normal = GeometricController::default();
     let mut ctrl_debug  = GeometricController::default();
 
-    // Run 100 steps (~1 s) so i_error_pos accumulates a significant ki_pos contribution.
+    // Run 100 steps (~1 s): i_error_pos.z saturates at ±0.5 (anti-windup clamp).
     for _ in 0..100 {
         ctrl_normal.compute_control(&state, &reference, &params, 0.01);
         ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
     }
 
-    // After wind-up, compute one more step and compare thrusts (not torques —
-    // because torque also depends on ki which is zero by default; the measurable
-    // difference is in the *thrust* since ki_pos shifts the vertical force).
+    // Final step: compute_control uses wound-up i_error_pos.z; debug does not.
     let out_normal         = ctrl_normal.compute_control(&state, &reference, &params, 0.01);
     let (out_debug, _info) = ctrl_debug.compute_control_debug(&state, &reference, &params, 0.01);
 
-    // With a large X offset: compute_control body-z thrust projection with ki_pos
-    // component will differ from compute_control_debug norm without ki_pos.
+    // thrust_diff ≈ KI_P × i_pos.z_clamped × mass = 0.05 × 0.5 × 0.027 ≈ 6.75e-4 N
     let thrust_diff = (out_normal.thrust - out_debug.thrust).abs();
     assert!(
         thrust_diff > 1e-4,
