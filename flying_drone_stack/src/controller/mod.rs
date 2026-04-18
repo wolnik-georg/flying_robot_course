@@ -395,10 +395,11 @@ impl GeometricController {
             + Vec3::new(0.0, 0.0, params.gravity as f32);
 
         let thrust_force = feedforward * params.mass as f32;
-        let thrust = thrust_force.norm();
+        let r = state.orientation.to_rotation_matrix();
+        let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
+        let thrust = thrust_force.dot(&body_z);
 
         let rd = self.compute_desired_rotation(thrust_force, reference.yaw);
-        let r = state.orientation.to_rotation_matrix();
 
         let er = Self::compute_rotation_error(&rd, &r);
 

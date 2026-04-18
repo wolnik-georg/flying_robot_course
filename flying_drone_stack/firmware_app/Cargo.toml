@@ -1,0 +1,18 @@
+[package]
+name = "cf_controller_rs"
+version = "0.1.0"
+edition = "2021"
+
+# Must be staticlib — the firmware Kbuild links this .a into the firmware binary.
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+# Panic handler for bare-metal: halts CPU on panic (required for no_std).
+panic-halt = "1"
+# Software float math (sin, cos) — sqrt uses the Cortex-M4 hardware FPU directly.
+libm = { version = "0.2", default-features = false }
+
+[build-dependencies]
+# Generates Rust FFI bindings from the Crazyflie C headers (lecture slides: bindgen).
+bindgen = "0.69"
