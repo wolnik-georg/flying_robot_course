@@ -205,10 +205,9 @@ arm-none-eabi-nm firmware_app/target/thumbv7em-none-eabihf/release/libcf_control
 
 ```bash
 cd firmware_app
-make cload      # flashes cf2.bin via cfloader
-# or directly:
-cfloader flash /home/georg/Desktop/crazyflie-firmware/build/cf2.bin \
-  stm32-fw -w radio://0/80/2M/E7E7E7E7E7
+make cload      # flashes build/cf2.bin via cfloader (PREFERRED — always uses the OOT build)
+# or directly (use firmware_app/build/cf2.bin, NOT crazyflie-firmware/build/cf2.bin):
+cfloader flash /home/georg/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build/cf2.bin stm32-fw -w radio://0/80/2M/E7E7E7E7E7
 ```
 
 After flashing, use the laptop stack as normal:

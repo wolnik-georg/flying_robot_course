@@ -89,33 +89,12 @@ const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
 // ── Gains — conservative first-hover tuning ────────────────────────────────
-// Flow deck XY position is noisy (~5 cm 1σ).  High KP_XY chases noise and
-// causes oscillations.  Target bandwidth ~2.5 rad/s (XY) and ~3.2 rad/s (Z).
-//
-// Closed-loop damping:  ζ ≥ 1  →  KV ≥ 2·√KP
-//   KP_XY=6 → KV_XY=5  (ζ=5/(2√6)≈1.02 — near-critical)
-//   KP_Z=10 → KV_Z=7   (ζ=7/(2√10)≈1.11 — slightly overdamped)
-//
-// Attitude: ζ = KW/(2·√(KR·J)) with J≈16.6 µN·m²
-//   KW=0.0007 → ζ≈0.96  (near-critical; was 1.78 — too sluggish)
-const KP_X: f32 = 6.0;    // position P XY — reduced 3× for noisy flow deck
-const KP_Y: f32 = 6.0;
-const KP_Z: f32 = 10.0;
-
-const KV_X: f32 = 5.0;    // velocity D XY — near-critical for KP=6
-const KV_Y: f32 = 5.0;
-const KV_Z: f32 = 7.0;    // near-critical for KP=10
-
-const KI_P: f32 = 0.05;   // gentle integral; mainly corrects mass offset
-const KI_LIMIT: f32 = 0.4; // anti-windup (tighter)
-
-const KR_X: f32 = 0.008;  // attitude P
-const KR_Y: f32 = 0.008;
-const KR_Z: f32 = 0.009;
-
-const KW_X: f32 = 0.0007; // attitude D — ζ≈0.96 (was 0.0013 = ζ≈1.78)
-const KW_Y: f32 = 0.0007;
-const KW_Z: f32 = 0.0014;
+const KP_X: f32 = 6.0;   const KP_Y: f32 = 6.0;   const KP_Z: f32 = 10.0;
+const KV_X: f32 = 5.0;   const KV_Y: f32 = 5.0;   const KV_Z: f32 = 7.0;
+const KI_P: f32 = 0.05;
+const KI_LIMIT: f32 = 0.4;
+const KR_X: f32 = 0.008; const KR_Y: f32 = 0.008; const KR_Z: f32 = 0.009;
+const KW_X: f32 = 0.0007; const KW_Y: f32 = 0.0007; const KW_Z: f32 = 0.0014;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
@@ -156,11 +135,9 @@ fn geometric_step(
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
-
     let ep = pd.sub(pos);
     let ev = vd.sub(vel);
 
-    // Integral with anti-windup
     s.i_ep = s.i_ep.add(ep.scale(dt));
     s.i_ep = Vec3::new(
         s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
@@ -168,7 +145,6 @@ fn geometric_step(
         s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
     );
 
-    // Desired force in world frame
     let f_d = ad
         .add(Vec3::new(KP_X*ep.x, KP_Y*ep.y, KP_Z*ep.z))
         .add(Vec3::new(KV_X*ev.x, KV_Y*ev.y, KV_Z*ev.z))
@@ -177,28 +153,25 @@ fn geometric_step(
 
     let thrust_vec = f_d.scale(MASS);
 
-    // Thrust = projection onto current body z-axis, clamped to [0, 2.5×hover]
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
-    let thrust = thrust_vec.dot(body_z).clamp(0.0, 2.5 * HOVER_THRUST);
+    let mut thrust = thrust_vec.dot(body_z).max(0.0);
 
-    // Reset integral on very low thrust
+    // FORCE MINIMUM THRUST FOR DEBUG — this should make motors spin
+    if thrust < 0.15 {          // ~0.5 * hover thrust
+        thrust = 0.15;
+    }
+
     if thrust < 0.01 {
         s.i_ep = Vec3::zero();
     }
 
     let rd = desired_rot(thrust_vec, yaw_d);
-
-    // Rotation error eR
     let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
-
-    // Angular velocity error (for hover we use ω_d = 0)
     let e_omega = omega;
 
-    // Gyroscopic term
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
 
-    // Torque command
     let torque = Vec3::new(
         -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
         -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y,
@@ -222,65 +195,21 @@ pub extern "C" fn controllerOutOfTreeTest() -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn controllerOutOfTree(
     control: *mut control_s,
-    setpoint: *const setpoint_s,
-    sensors: *const sensorData_s,
-    state: *const state_s,
-    tick: u32,
+    _setpoint: *const setpoint_s,
+    _sensors: *const sensorData_s,
+    _state: *const state_s,
+    _tick: u32,
 ) {
-    let s = &mut *core::ptr::addr_of_mut!(CTRL);
-
-    let dt = if s.last_tick == 0 { 0.002_f32 }
-             else { (tick.wrapping_sub(s.last_tick)) as f32 * 0.001_f32 };
-    s.last_tick = tick;
-
-    // Current state
-    let st = &*state;
-    let pos = Vec3::new(st.position.x, st.position.y, st.position.z);
-    let vel = Vec3::new(st.velocity.x, st.velocity.y, st.velocity.z);
-
-    let qw = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q3;
-    let qx = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q0;
-    let qy = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q1;
-    let qz = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q2;
-    let r = quat_to_rot(qw, qx, qy, qz);
-
-    let deg2rad = core::f32::consts::PI / 180.0_f32;
-    let g = &(*sensors).gyro;
-    let omega = Vec3::new(g.axis[0]*deg2rad, g.axis[1]*deg2rad, g.axis[2]*deg2rad);
-
-    // Setpoint
-    let sp = &*setpoint;
-
-    // Safety check: only run if the Z setpoint is in absolute position mode
-    let mode_z = sp.mode.z;
-    let mode_abs = bindings::mode_e_modeAbs;
-
-    if mode_z != mode_abs {
-        let out = &mut *control;
-        let union_ptr = (&mut out.__bindgen_anon_1) as *mut _ as *mut f32;
-        *union_ptr.add(0) = 0.0;
-        *union_ptr.add(1) = 0.0;
-        *union_ptr.add(2) = 0.0;
-        *union_ptr.add(3) = 0.0;
-        out.controlMode = bindings::control_mode_e_controlModeForceTorque;
-        return;
-    }
-
-    let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
-    let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
-    let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
-    let yaw_d = sp.attitude.yaw * deg2rad;
-
-    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, dt, s);
-
-    s.omega_prev = omega;
-
-    // Output
     let out = &mut *control;
-    let union_ptr = (&mut out.__bindgen_anon_1) as *mut _ as *mut f32;
-    *union_ptr.add(0) = thrust_si;
-    *union_ptr.add(1) = torque.x;
-    *union_ptr.add(2) = torque.y;
-    *union_ptr.add(3) = torque.z;
+
+    // Force the mode
     out.controlMode = bindings::control_mode_e_controlModeForceTorque;
+
+    // Raw pointer into the union (offset 0 = thrustSi, offsets 4/8/12 = torque[0/1/2])
+    let union_ptr = (&mut out.__bindgen_anon_1) as *mut _ as *mut f32;
+
+    *union_ptr.add(0) = 0.28_f32;   // thrustSi ≈ hover thrust
+    *union_ptr.add(1) = 0.0_f32;    // torque X
+    *union_ptr.add(2) = 0.0_f32;    // torque Y
+    *union_ptr.add(3) = 0.0_f32;    // torque Z
 }
