@@ -88,12 +88,10 @@ const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
-// ── Current best starting gains (slightly more aggressive than official) ─────
-// ── Next tuned gains (reduce roll oscillation, improve XY tracking and Z height) ──
-// ── Final tuned gains (based on your latest observation) ───────────────────
-const KP_X: f32 = 10.0;   const KP_Y: f32 = 10.0;   const KP_Z: f32 = 26.0;   // increased Z for better climb
-const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 14.0;
-const KI_P: f32 = 0.015;
+// ── Tuned for better XY accuracy and reduced accumulating drift ───────────
+const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // reduced XY P (less aggressive)
+const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // increased XY D (better damping)
+const KI_P: f32 = 0.025;  // slight increase to fight steady-state drift
 const KI_LIMIT: f32 = 0.4;
 
 const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;
