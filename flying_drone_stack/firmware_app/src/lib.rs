@@ -195,21 +195,53 @@ pub extern "C" fn controllerOutOfTreeTest() -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn controllerOutOfTree(
     control: *mut control_s,
-    _setpoint: *const setpoint_s,
-    _sensors: *const sensorData_s,
-    _state: *const state_s,
-    _tick: u32,
+    setpoint: *const setpoint_s,
+    sensors: *const sensorData_s,
+    state: *const state_s,
+    tick: u32,
 ) {
+    let s = &mut *core::ptr::addr_of_mut!(CTRL);
+
+    let dt = if s.last_tick == 0 { 0.002_f32 }
+             else { (tick.wrapping_sub(s.last_tick)) as f32 * 0.001_f32 };
+    s.last_tick = tick;
+
+    // Current state
+    let st = &*state;
+    let pos = Vec3::new(st.position.x, st.position.y, st.position.z);
+    let vel = Vec3::new(st.velocity.x, st.velocity.y, st.velocity.z);
+
+    let qw = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q3;
+    let qx = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q0;
+    let qy = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q1;
+    let qz = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q2;
+    let r = quat_to_rot(qw, qx, qy, qz);
+
+    let deg2rad = core::f32::consts::PI / 180.0_f32;
+    let g = &(*sensors).gyro;
+    let omega = Vec3::new(g.axis[0]*deg2rad, g.axis[1]*deg2rad, g.axis[2]*deg2rad);
+
+    let sp = &*setpoint;
+
+    // TEMPORARY: Bypass mode check for testing (we know the output path works)
+    // We will restore a clean version later
+    let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
+    let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
+    let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
+    let yaw_d = sp.attitude.yaw * deg2rad;
+
+    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, dt, s);
+
+    s.omega_prev = omega;
+
+    // Working output path
     let out = &mut *control;
-
-    // Force the mode
-    out.controlMode = bindings::control_mode_e_controlModeForceTorque;
-
-    // Raw pointer into the union (offset 0 = thrustSi, offsets 4/8/12 = torque[0/1/2])
     let union_ptr = (&mut out.__bindgen_anon_1) as *mut _ as *mut f32;
 
-    *union_ptr.add(0) = 0.28_f32;   // thrustSi ≈ hover thrust
-    *union_ptr.add(1) = 0.0_f32;    // torque X
-    *union_ptr.add(2) = 0.0_f32;    // torque Y
-    *union_ptr.add(3) = 0.0_f32;    // torque Z
+    *union_ptr.add(0) = thrust_si;
+    *union_ptr.add(1) = torque.x;
+    *union_ptr.add(2) = torque.y;
+    *union_ptr.add(3) = torque.z;
+
+    out.controlMode = bindings::control_mode_e_controlModeForceTorque;
 }
