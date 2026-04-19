@@ -89,13 +89,14 @@ const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
 // ── Current best starting gains (slightly more aggressive than official) ─────
-const KP_X: f32 = 8.0;   const KP_Y: f32 = 8.0;   const KP_Z: f32 = 9.0;
-const KV_X: f32 = 5.0;   const KV_Y: f32 = 5.0;   const KV_Z: f32 = 6.0;
-const KI_P: f32 = 0.0;   // start with 0, increase only if steady drift
-const KI_LIMIT: f32 = 2.0;
+// ── Next tuned gains (reduce roll oscillation, improve XY tracking and Z height) ──
+const KP_X: f32 = 10.0;   const KP_Y: f32 = 10.0;   const KP_Z: f32 = 18.0;   // higher Z for better height
+const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 10.0;
+const KI_P: f32 = 0.02;
+const KI_LIMIT: f32 = 0.5;
 
-const KR_X: f32 = 0.009; const KR_Y: f32 = 0.009; const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.0014; const KW_Y: f32 = 0.0014; const KW_Z: f32 = 0.0022;
+const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;  // reduced roll gains to calm oscillation
+const KW_X: f32 = 0.0013; const KW_Y: f32 = 0.0013; const KW_Z: f32 = 0.0019;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
