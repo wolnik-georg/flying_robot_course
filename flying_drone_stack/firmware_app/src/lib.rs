@@ -88,14 +88,14 @@ const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
-// ── Tuned for better XY accuracy and reduced accumulating drift ───────────
-const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // reduced XY P (less aggressive)
-const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // increased XY D (better damping)
-const KI_P: f32 = 0.025;  // slight increase to fight steady-state drift
+// ── Safe adjustment: only attitude gains (KR/KW) increased slightly ───────
+const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // unchanged
+const KV_X: f32 = 9.0;   const KV_Y: f32 = 9.0;   const KV_Z: f32 = 14.0;   // unchanged
+const KI_P: f32 = 0.025;
 const KI_LIMIT: f32 = 0.4;
 
-const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;
-const KW_X: f32 = 0.0013; const KW_Y: f32 = 0.0013; const KW_Z: f32 = 0.0019;
+const KR_X: f32 = 0.0125; const KR_Y: f32 = 0.0125; const KR_Z: f32 = 0.0145; // small increase
+const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.0021; // small increase
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
