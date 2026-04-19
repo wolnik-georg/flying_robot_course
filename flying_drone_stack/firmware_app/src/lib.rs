@@ -88,16 +88,14 @@ const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
-// ── Gains — conservative first-hover tuning ────────────────────────────────
-// ── Tuned gains for better ramp-up and stable hover (Flow Deck) ─────────────
-// ── Exact gains from official C Lee controller ─────────────────────────────
-const KP_X: f32 = 7.0;   const KP_Y: f32 = 7.0;   const KP_Z: f32 = 7.0;
-const KV_X: f32 = 4.0;   const KV_Y: f32 = 4.0;   const KV_Z: f32 = 4.0;
-const KI_P: f32 = 0.0;   // official uses 0.0
+// ── Current best starting gains (slightly more aggressive than official) ─────
+const KP_X: f32 = 8.0;   const KP_Y: f32 = 8.0;   const KP_Z: f32 = 9.0;
+const KV_X: f32 = 5.0;   const KV_Y: f32 = 5.0;   const KV_Z: f32 = 6.0;
+const KI_P: f32 = 0.0;   // start with 0, increase only if steady drift
 const KI_LIMIT: f32 = 2.0;
 
-const KR_X: f32 = 0.007; const KR_Y: f32 = 0.007; const KR_Z: f32 = 0.008;
-const KW_X: f32 = 0.00115; const KW_Y: f32 = 0.00115; const KW_Z: f32 = 0.002;
+const KR_X: f32 = 0.009; const KR_Y: f32 = 0.009; const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.0014; const KW_Y: f32 = 0.0014; const KW_Z: f32 = 0.0022;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
