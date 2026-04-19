@@ -1704,23 +1704,42 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     };
 
     // ── Ramp up ──────────────────────────────────────────────────────────────
-    // IMPORTANT: The OOT geometric controller only responds to setpoint_position
-    // (CRTP type 7, modeAbs on all axes).  setpoint_hover (type 10) sets
-    // mode.x/y = modeVelocity and the OOT controller correctly outputs zero for
-    // those — so we must use setpoint_position here.  We ramp the target height
-    // from 0.02 m to 0.30 m in 15 steps (100 ms each) so the OOT controller
-    // lifts the drone gradually rather than jumping straight to max thrust.
-    println!("Ramping up (OOT setpoint_position ramp 0.02→0.30 m)...");
-    for y in 0..15 {
-        let height = (y + 1) as f32 * 0.02;  // 0.02 m … 0.30 m
+    // Flight-data analysis showed that the previous 0.02 m/step slow ramp caused
+    // the PMW3901 optical-flow sensor to generate large false XY position errors
+    // while the drone was still on the floor (propwash vibrations at 1–3 cm height
+    // corrupt the flow pixels).  The EKF integrated those errors into pos_x/y
+    // offsets of up to 10 cm before liftoff, and the OOT controller tried to
+    // correct them by tilting — so the drone launched sideways.
+    //
+    // Two fixes applied here:
+    //
+    // 1. XY tracking: during the ramp we feed the CURRENT EKF pos_x/y back as
+    //    the setpoint's XY.  This keeps ep_xy ≈ 0 at all times regardless of
+    //    whatever the flow sensor is reporting, so the controller produces no
+    //    lateral correction during liftoff.
+    //
+    // 2. Fast initial escape: jump straight to 0.20 m on the first step (instead
+    //    of creeping up 0.02 m at a time) so the drone clears the propwash /
+    //    near-floor zone in one burst.  The remaining 0.10 m is covered in 5
+    //    small steps so the approach to target height is still controlled.
+    //    Profile: 0.20 m (step 0), then +0.02 m each step 1–5 → 0.30 m total.
+    println!("Ramping up (fast-escape + XY-tracking ramp)...");
+    let ramp_heights: [f32; 6] = [0.20, 0.22, 0.24, 0.26, 0.28, 0.30];
+    for &height in &ramp_heights {
         fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
-        cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
-        sleep(Duration::from_millis(100)).await;
+        // Track current EKF XY so the OOT controller sees ep_xy ≈ 0 during ramp.
+        let (ramp_x, ramp_y) = log_data.last().map(|e| (e.pos_x, e.pos_y)).unwrap_or((0.0, 0.0));
+        cf.commander.setpoint_position(ramp_x, ramp_y, height, 0.0).await?;
+        sleep(Duration::from_millis(150)).await;
     }
 
     // ── Stabilize for 8 s at 0.3 m ───────────────────────────────────────────
-    // Use setpoint_position so the OOT controller stays active the whole time.
-    println!("Stabilizing hover for 8 seconds...");
+    // Anchor the XY setpoint at the EKF position sampled right after the ramp
+    // (not hardcoded 0,0 — the EKF may have drifted slightly during liftoff).
+    // This prevents a sudden XY correction when we switch from tracking to holding.
+    let hover_anchor = log_data.last().map(|e| (e.pos_x, e.pos_y)).unwrap_or((0.0, 0.0));
+    println!("Stabilizing hover for 8 seconds at anchor ({:.3}, {:.3})...",
+             hover_anchor.0, hover_anchor.1);
     {
         let deadline = Instant::now() + Duration::from_secs(8);
         while Instant::now() < deadline {
@@ -1729,7 +1748,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             step_perception!(log_data, omap, mekf, mekf_seeded,
                              ai_kf_result, vo_traj, vo_seeded, pending_vo,
                              ai_loop_result, pose_graph, pending_pg);
-            cf.commander.setpoint_position(0.0, 0.0, 0.3, 0.0).await?;
+            cf.commander.setpoint_position(hover_anchor.0, hover_anchor.1, 0.3, 0.0).await?;
             sleep(Duration::from_millis(50)).await;
         }
     }
@@ -1745,7 +1764,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
             fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
-            cf.commander.setpoint_position(0.0, 0.0, 0.3, 0.0).await?;
+            cf.commander.setpoint_position(hover_anchor.0, hover_anchor.1, 0.3, 0.0).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
                 sum_y += last.pos_y;
