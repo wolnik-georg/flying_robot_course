@@ -976,6 +976,20 @@ struct FwLogEntry {
     // Pose-graph SLAM (Phase 6 — loop closure corrected position)
     pg_x: f32, pg_y: f32,   // Latest pose-graph node position [m]; 0 before first keyframe
     lc_count: u32,           // Total loop closures detected so far
+    // Supervisor diagnostics (Block 4 — logged every 50 ms)
+    // sys.canfly = 1 means supervisor is in ReadyToFly/Flying/Landed (motors allowed).
+    // If canfly=0 the whole flight, supervisorOverrideSetpoint() is zeroing the setpoint
+    // before the OOT controller sees it → mode guard always fails → thrust=0.
+    canfly: u8,              // sys.canfly
+    is_tumbled: u8,          // supervisor.isTumbled
+    // ctrltarget.z = position setpoint Z as seen by controller (after supervisorOverride).
+    // If this is 0.02-0.30m during ramp, the setpoint IS reaching OOT controller correctly.
+    // If it's 0, the setpoint is being overridden to zero before the controller runs.
+    ctrltarget_z: f32,       // ctrltarget.z [m]
+    // motor.m1req = motor 1 thrust request after battery compensation [raw int32].
+    // Non-zero means OOT controller IS outputting thrust and power_distribution is processing it.
+    // Zero means zero output from the controller or disabled motors.
+    motor_m1req: i32,        // motor.m1req [raw]
 }
 
 /// Describes the trajectory our shadow controller is tracking.
@@ -1142,11 +1156,21 @@ async fn fw_logging_step(
     if let Ok(p) = stream4.next().await {
         let d = &p.data;
         // range.zrange is uint16 in mm — convert to metres
-        entry.range_z = get_f32(d, "range.zrange") / 1000.0;
+        entry.range_z   = get_f32(d, "range.zrange") / 1000.0;
         // motion.deltaX/Y are int16 raw pixel counts (accumulated since last read)
-        entry.flow_dx = get_f32(d, "motion.deltaX");
-        entry.flow_dy = get_f32(d, "motion.deltaY");
-        entry.vbat    = get_f32(d, "pm.vbat");
+        entry.flow_dx   = get_f32(d, "motion.deltaX");
+        entry.flow_dy   = get_f32(d, "motion.deltaY");
+        entry.vbat      = get_f32(d, "pm.vbat");
+        // Supervisor health: 1 = motors allowed (ReadyToFly/Flying/Landed).
+        // 0 = supervisor is blocking motors — setpoint is being replaced with
+        // null setpoint before the OOT controller sees it (mode guard fails → thrust=0).
+        entry.canfly      = get_f32(d, "sys.canfly") as u8;
+        entry.is_tumbled  = get_f32(d, "supervisor.isTumbled") as u8;
+        // Setpoint Z that the controller ACTUALLY sees (after supervisorOverrideSetpoint).
+        // Should be 0.02-0.30 during ramp if position setpoints are getting through.
+        entry.ctrltarget_z = get_f32(d, "ctrltarget.z");
+        // Motor 1 thrust after battery compensation. Non-zero = OOT IS outputting thrust.
+        entry.motor_m1req  = get_f32(d, "motor.m1req") as i32;
     }
 
     if let Ok(p) = stream5.next().await {
@@ -1224,11 +1248,13 @@ async fn fw_logging_step(
 
     if last_print.elapsed() >= Duration::from_secs(1) {
         println!(
-            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2} | mekf x={:+5.3} y={:+5.3} z={:+5.3} | shadow roll={:+5.1} pitch={:+5.1} thr={:.3}",
+            "[t={:3}s] z={:+5.3} vx={:+5.3} vy={:+5.3} thrust={:5} roll={:+5.1} vbat={:.2} canfly={} | ctrltgt_z={:.3} m1req={} | mekf x={:+5.3} y={:+5.3} z={:+5.3} | shadow thr={:.3}",
             start.elapsed().as_secs(),
             entry.pos_z, entry.vel_x, entry.vel_y, entry.thrust, entry.roll, entry.vbat,
+            entry.canfly,
+            entry.ctrltarget_z, entry.motor_m1req,
             entry.mekf_x, entry.mekf_y, entry.mekf_z,
-            entry.our_roll_cmd, entry.our_pitch_cmd, entry.our_thrust,
+            entry.our_thrust,
         );
         *last_print = Instant::now();
     }
@@ -1245,7 +1271,7 @@ async fn fw_logging_step(
 
     // Write row immediately to disk so data survives a crash/panic.
     let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{},{:.4},{:.4},{:.4},{:.4},{:.4},{}",
+        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{},{:.4},{:.4},{:.4},{:.4},{:.4},{},{},{},{:.4},{}",
         entry.time_ms,
         entry.pos_x, entry.pos_y, entry.pos_z,
         entry.vel_x, entry.vel_y, entry.vel_z,
@@ -1266,6 +1292,8 @@ async fn fw_logging_step(
         entry.ai_feat_count,
         entry.vo_x, entry.vo_y, entry.vo_sigma,
         entry.pg_x, entry.pg_y, entry.lc_count,
+        entry.canfly, entry.is_tumbled,
+        entry.ctrltarget_z, entry.motor_m1req,
     );
     log_data.push(entry);
 }
@@ -1431,13 +1459,27 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     }
     let stream3 = block3.start(LogPeriod::from_millis(50)?).await?;
 
-    // Block 4: ToF range + optical flow + battery — 10 bytes @ 20 Hz.
-    // range.zrange : uint16 [mm]  → converted to [m] on read
-    // motion.deltaX: int16  [px]  → raw pixel accumulation since last read
-    // motion.deltaY: int16  [px]  → raw pixel accumulation since last read
-    // pm.vbat      : float  [V]
+    // Block 4: ToF range + optical flow + battery + supervisor diagnostics — 12 bytes @ 20 Hz.
+    // range.zrange  : uint16 [mm]  → converted to [m] on read
+    // motion.deltaX : int16  [px]  → raw pixel accumulation since last read
+    // motion.deltaY : int16  [px]  → raw pixel accumulation since last read
+    // pm.vbat       : float  [V]
+    // sys.canfly    : uint8  [0/1] → 1 when supervisor is in ReadyToFly/Flying/Landed
+    //                                (i.e. motors are allowed to run)
+    //                                If this is always 0, supervisorOverrideSetpoint()
+    //                                is zeroing every setpoint before the OOT controller
+    //                                sees it → mode guard fails → thrust = 0 always.
+    // supervisor.isTumbled : uint8 → 1 if tumble check is blocking arming
+    // ctrltarget.z         : float → position setpoint Z as seen by the controller
+    //                                after supervisorOverrideSetpoint. If this is
+    //                                0.02-0.30 during ramp, the setpoint IS reaching the
+    //                                OOT controller with correct values.
+    // motor.m1req           : int32 → motor 1 thrust after battery compensation [raw]
+    //                                0 = OOT controller outputting zero or motor disabled
     let mut block4 = cf.log.create_block().await?;
-    for v in ["range.zrange", "motion.deltaX", "motion.deltaY", "pm.vbat"] {
+    for v in ["range.zrange", "motion.deltaX", "motion.deltaY", "pm.vbat",
+              "sys.canfly", "supervisor.isTumbled",
+              "ctrltarget.z", "motor.m1req"] {
         add_var(&mut block4, v).await;
     }
     let stream4 = block4.start(LogPeriod::from_millis(50)?).await?;
@@ -1577,13 +1619,27 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count,vo_x,vo_y,vo_sigma,pg_x,pg_y,lc_count")?;
+    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count,vo_x,vo_y,vo_sigma,pg_x,pg_y,lc_count,canfly,is_tumbled,ctrltarget_z,motor_m1req")?;
     println!("Log file opened: {}", filename);
 
     println!("Starting maneuver '{}' in 3 seconds...", maneuver);
     sleep(Duration::from_secs(3)).await;
 
-    // ── Pre-takeoff: Kalman reset ─────────────────────────────────────────────
+    // ── Pre-takeoff: select OOT controller + Kalman reset ────────────────────
+    // CONFIG_CONTROLLER_OOT=y only *compiles* the OOT code into the firmware.
+    // The active controller is selected at runtime by the stabilizer.controller
+    // parameter.  Without this the firmware defaults to PID (value 1) and our
+    // Rust controllerOutOfTree() is never called → thrust stays 0 forever.
+    //
+    // ControllerType enum (controller.h):
+    //   0 = AutoSelect, 1 = PID, 2 = Mellinger, 3 = INDI,
+    //   4 = Brescianini, 5 = Lee, 6 = Oot
+    match cf.param.set("stabilizer.controller", 6u8).await {
+        Ok(_)  => println!("[Controller] OOT geometric controller selected (type 6)"),
+        Err(e) => println!("[Controller] WARNING: failed to set stabilizer.controller: {e}"),
+    }
+    sleep(Duration::from_millis(100)).await;
+
     // Pulse resetEstimation 1→0 then wait 1 s for the EKF to settle.
     // We do NOT poll variance here — on the ground the flow sensor reads garbage
     // (3 mm height) so variance never converges and the wait blocks forever.
@@ -1609,15 +1665,22 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     };
 
     // ── Ramp up ──────────────────────────────────────────────────────────────
-    println!("Ramping up...");
+    // IMPORTANT: The OOT geometric controller only responds to setpoint_position
+    // (CRTP type 7, modeAbs on all axes).  setpoint_hover (type 10) sets
+    // mode.x/y = modeVelocity and the OOT controller correctly outputs zero for
+    // those — so we must use setpoint_position here.  We ramp the target height
+    // from 0.02 m to 0.30 m in 15 steps (100 ms each) so the OOT controller
+    // lifts the drone gradually rather than jumping straight to max thrust.
+    println!("Ramping up (OOT setpoint_position ramp 0.02→0.30 m)...");
     for y in 0..15 {
-        let zdistance = y as f32 / 50.0;
+        let height = (y + 1) as f32 * 0.02;  // 0.02 m … 0.30 m
         fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
-        cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
+        cf.commander.setpoint_position(0.0, 0.0, height, 0.0).await?;
         sleep(Duration::from_millis(100)).await;
     }
 
     // ── Stabilize for 8 s at 0.3 m ───────────────────────────────────────────
+    // Use setpoint_position so the OOT controller stays active the whole time.
     println!("Stabilizing hover for 8 seconds...");
     {
         let deadline = Instant::now() + Duration::from_secs(8);
@@ -1627,7 +1690,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             step_perception!(log_data, omap, mekf, mekf_seeded,
                              ai_kf_result, vo_traj, vo_seeded, pending_vo,
                              ai_loop_result, pose_graph, pending_pg);
-            cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
+            cf.commander.setpoint_position(0.0, 0.0, 0.3, 0.0).await?;
             sleep(Duration::from_millis(50)).await;
         }
     }
@@ -1643,7 +1706,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
             fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
-            cf.commander.setpoint_hover(0.0, 0.0, 0.0, 0.3).await?;
+            cf.commander.setpoint_position(0.0, 0.0, 0.3, 0.0).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
                 sum_y += last.pos_y;
@@ -1823,7 +1886,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     for step in (0..40).rev() {
         let zdistance = step as f32 / 100.0;
         fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
-        cf.commander.setpoint_hover(0.0, 0.0, 0.0, zdistance).await?;
+        cf.commander.setpoint_position(cx, cy, zdistance, 0.0).await?;
         sleep(Duration::from_millis(120)).await;
     }
 
