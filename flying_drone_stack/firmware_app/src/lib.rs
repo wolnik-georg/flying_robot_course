@@ -93,8 +93,8 @@ const JZZ: f32 = 29.261652e-6;
 // ── Final tuned gains (based on your latest observation) ───────────────────
 const KP_X: f32 = 10.0;   const KP_Y: f32 = 10.0;   const KP_Z: f32 = 26.0;   // increased Z for better climb
 const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 14.0;
-const KI_P: f32 = 0.02;
-const KI_LIMIT: f32 = 0.5;
+const KI_P: f32 = 0.015;
+const KI_LIMIT: f32 = 0.4;
 
 const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;
 const KW_X: f32 = 0.0013; const KW_Y: f32 = 0.0013; const KW_Z: f32 = 0.0019;
