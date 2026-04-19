@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""plot_flight_diagnostic.py — Phase 0 flight diagnostic plots.
+"""plot_flight_diagnostic.py — Flight diagnostic plots.
 
-Loads a run CSV (43-column format from run_firmware_mode) and produces
-four diagnostic figures:
+Loads a run CSV (from run_firmware_mode) and produces five diagnostic figures:
 
   1. EKF position x/y/z over time + XY ground track
   2. EKF vs MEKF orientation (roll, pitch, yaw) + RMS errors
   3. Raw sensors: flow_dx/dy, range_z, battery voltage
   4. Multi-ranger front/back/left/right/up (if non-zero)
+  5. Controller diagnostics: setpoint tracking, motors, thrust (if columns present)
 
 Usage
 -----
@@ -154,6 +154,73 @@ if all(c in df.columns for c in multi_cols):
         save(fig, "multiranger")
     else:
         print("  Multi-ranger columns all zero — deck not attached or out of range, skipping.")
+
+# ── Figure 5: Controller diagnostics (firmware_app OOT SE(3) controller) ─────
+# Only shown when the new block-6 columns are present (post-Apr-2026 CSVs).
+motor_cols = ["motor_m1req", "motor_m2req", "motor_m3req", "motor_m4req"]
+has_motors = all(c in df.columns for c in motor_cols)
+has_ctrlxy  = "ctrltarget_x" in df.columns and "ctrltarget_y" in df.columns
+has_thrust  = "our_thrust" in df.columns
+
+if has_motors or has_ctrlxy or has_thrust:
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    fig.suptitle(f"OOT Controller Diagnostics — {stem}", fontsize=11)
+
+    # --- Panel 1: Setpoint Z vs actual Z vs ToF ---
+    ax = axes[0]
+    if "ctrltarget_z" in df.columns:
+        ax.plot(t, df["ctrltarget_z"], label="ctrltarget_z (setpoint seen by ctrl)", linewidth=1.2)
+    ax.plot(t, df["pos_z"], label="pos_z (EKF)", linewidth=1.0)
+    ax.plot(t, df["range_z"], label="range_z (ToF, truth)", linewidth=1.0, linestyle="--")
+    ax.axhline(0.30, color="grey", linewidth=0.8, linestyle=":", label="target 0.30 m")
+    ep_z = df["ctrltarget_z"] - df["pos_z"] if "ctrltarget_z" in df.columns else None
+    title = "Z setpoint tracking"
+    if ep_z is not None:
+        rms_z = float(np.sqrt(np.mean(ep_z[df["range_z"] > 0.08] ** 2))) if (df["range_z"] > 0.08).any() else float("nan")
+        title += f"  (Z error RMS in-flight = {rms_z:.3f} m)"
+    ax.set_ylabel("m"); ax.set_title(title); ax.legend(fontsize=8); ax.grid(True)
+
+    # --- Panel 2: Motor balance (all 4) ---
+    ax = axes[1]
+    if has_motors:
+        colors = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+        for col, color in zip(motor_cols, colors):
+            ax.plot(t, df[col], label=col, linewidth=0.9, color=color)
+        hover_val = df.loc[df["range_z"] > 0.10, motor_cols].mean().mean() if (df["range_z"] > 0.10).any() else float("nan")
+        ax.axhline(hover_val, color="grey", linewidth=0.8, linestyle=":",
+                   label=f"mean in-flight = {hover_val:.0f}")
+        ax.set_ylabel("raw PWM"); ax.set_title("Motor thrust requests (should be ~equal at hover)"); ax.legend(fontsize=8); ax.grid(True)
+    else:
+        ax.set_title("Motor data not available"); ax.grid(True)
+
+    # --- Panel 3: Shadow thrust + XY setpoint confirmation ---
+    ax = axes[2]
+    if has_thrust:
+        ax.plot(t, df["our_thrust"], label="our_thrust (shadow, N)", linewidth=1.0)
+        hover_thr = 0.031 * 9.81  # ~0.304 N
+        ax.axhline(hover_thr, color="grey", linewidth=0.8, linestyle=":", label=f"expected hover {hover_thr:.3f} N")
+        ax.set_ylabel("N"); ax.set_title("Shadow controller thrust + XY setpoint confirmation")
+    if has_ctrlxy:
+        ax2 = ax.twinx()
+        ax2.plot(t, df["ctrltarget_x"], label="ctrltgt_x", linewidth=0.8, linestyle="--", color="purple")
+        ax2.plot(t, df["ctrltarget_y"], label="ctrltgt_y", linewidth=0.8, linestyle="--", color="brown")
+        ax2.set_ylabel("m (XY setpoint)")
+        ax2.legend(fontsize=8, loc="upper right")
+    ax.legend(fontsize=8, loc="upper left"); ax.grid(True)
+    ax.set_xlabel("time [s]")
+
+    save(fig, "controller")
+
+    # Print motor balance summary
+    if has_motors and (df["range_z"] > 0.10).any():
+        inflight = df[df["range_z"] > 0.10]
+        means = [inflight[c].mean() for c in motor_cols]
+        stds  = [inflight[c].std()  for c in motor_cols]
+        print(f"\n  Motor balance (in-flight mean ± std):")
+        for col, m, s in zip(motor_cols, means, stds):
+            print(f"    {col}: {m:.0f} ± {s:.0f}")
+        imbalance = max(means) - min(means)
+        print(f"    Max imbalance: {imbalance:.0f} raw ({100*imbalance/max(means):.1f}%)")
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 print()
