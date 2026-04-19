@@ -89,12 +89,14 @@ const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
 // ── Gains — conservative first-hover tuning ────────────────────────────────
-const KP_X: f32 = 6.0;   const KP_Y: f32 = 6.0;   const KP_Z: f32 = 10.0;
-const KV_X: f32 = 5.0;   const KV_Y: f32 = 5.0;   const KV_Z: f32 = 7.0;
-const KI_P: f32 = 0.05;
-const KI_LIMIT: f32 = 0.4;
-const KR_X: f32 = 0.008; const KR_Y: f32 = 0.008; const KR_Z: f32 = 0.009;
-const KW_X: f32 = 0.0007; const KW_Y: f32 = 0.0007; const KW_Z: f32 = 0.0014;
+// ── Tuned gains for better ramp-up and stable hover (Flow Deck) ─────────────
+const KP_X: f32 = 15.0;   const KP_Y: f32 = 15.0;   const KP_Z: f32 = 18.0;
+const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 10.0;
+const KI_P: f32 = 0.03;   // reduced a bit to avoid windup
+const KI_LIMIT: f32 = 0.5;
+
+const KR_X: f32 = 0.012;  const KR_Y: f32 = 0.012;  const KR_Z: f32 = 0.014;  // increased for better attitude response
+const KW_X: f32 = 0.0014; const KW_Y: f32 = 0.0014; const KW_Z: f32 = 0.0020;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
@@ -223,8 +225,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     let sp = &*setpoint;
 
-    // TEMPORARY: Bypass mode check for testing (we know the output path works)
-    // We will restore a clean version later
+    // SAFE ARMING: only enable controller when test harness sends real position (z > 0.05 m)
+    let armed = sp.position.z > 0.05_f32;
+
     let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
     let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
     let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
@@ -234,14 +237,21 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     s.omega_prev = omega;
 
-    // Working output path
+    // Output
     let out = &mut *control;
     let union_ptr = (&mut out.__bindgen_anon_1) as *mut _ as *mut f32;
 
-    *union_ptr.add(0) = thrust_si;
-    *union_ptr.add(1) = torque.x;
-    *union_ptr.add(2) = torque.y;
-    *union_ptr.add(3) = torque.z;
+    if armed {
+        *union_ptr.add(0) = thrust_si;
+        *union_ptr.add(1) = torque.x;
+        *union_ptr.add(2) = torque.y;
+        *union_ptr.add(3) = torque.z;
+    } else {
+        *union_ptr.add(0) = 0.0;
+        *union_ptr.add(1) = 0.0;
+        *union_ptr.add(2) = 0.0;
+        *union_ptr.add(3) = 0.0;
+    }
 
     out.controlMode = bindings::control_mode_e_controlModeForceTorque;
 }
