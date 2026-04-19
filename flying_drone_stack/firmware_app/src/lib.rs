@@ -90,12 +90,13 @@ const JZZ: f32 = 29.261652e-6;
 
 // ── Current best starting gains (slightly more aggressive than official) ─────
 // ── Next tuned gains (reduce roll oscillation, improve XY tracking and Z height) ──
-const KP_X: f32 = 10.0;   const KP_Y: f32 = 10.0;   const KP_Z: f32 = 18.0;   // higher Z for better height
-const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 10.0;
+// ── Final tuned gains (based on your latest observation) ───────────────────
+const KP_X: f32 = 10.0;   const KP_Y: f32 = 10.0;   const KP_Z: f32 = 26.0;   // increased Z for better climb
+const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.02;
 const KI_LIMIT: f32 = 0.5;
 
-const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;  // reduced roll gains to calm oscillation
+const KR_X: f32 = 0.011;  const KR_Y: f32 = 0.011;  const KR_Z: f32 = 0.013;
 const KW_X: f32 = 0.0013; const KW_Y: f32 = 0.0013; const KW_Z: f32 = 0.0019;
 
 // ── Controller State ───────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ fn geometric_step(
     let ep = pd.sub(pos);
     let ev = vd.sub(vel);
 
+    // Integral with anti-windup
     s.i_ep = s.i_ep.add(ep.scale(dt));
     s.i_ep = Vec3::new(
         s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
@@ -147,6 +149,7 @@ fn geometric_step(
         s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
     );
 
+    // Desired force in world frame
     let f_d = ad
         .add(Vec3::new(KP_X*ep.x, KP_Y*ep.y, KP_Z*ep.z))
         .add(Vec3::new(KV_X*ev.x, KV_Y*ev.y, KV_Z*ev.z))
@@ -155,25 +158,29 @@ fn geometric_step(
 
     let thrust_vec = f_d.scale(MASS);
 
+    // Thrust = projection onto current body z-axis
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
-    let mut thrust = thrust_vec.dot(body_z).max(0.0);
+    let thrust = thrust_vec.dot(body_z).max(0.0);
 
-    // FORCE MINIMUM THRUST FOR DEBUG — this should make motors spin
-    if thrust < 0.15 {          // ~0.5 * hover thrust
-        thrust = 0.15;
-    }
-
-    if thrust < 0.01 {
+    // Reset integral when on the ground (stronger condition than before)
+    if thrust < 0.05 {
         s.i_ep = Vec3::zero();
     }
 
+    // Desired rotation matrix
     let rd = desired_rot(thrust_vec, yaw_d);
+
+    // Rotation error eR = ½ (Rd^T R − R^T Rd)^∨
     let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
+
+    // Angular velocity error (ω_d = 0 for hover)
     let e_omega = omega;
 
+    // Gyroscopic term
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
 
+    // Torque command
     let torque = Vec3::new(
         -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
         -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y,
