@@ -1,4 +1,4 @@
-//! Slow Circle Test — starts exactly like your working fw_test (0.5 m hover), then does a slow circle
+//! Practical Circle Test — short hover + one smooth circle
 //!
 //! Usage: cargo run --release --bin circle_test -- --controller 6
 
@@ -48,14 +48,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         4 => "Brescianini", 5 => "Lee (firmware)", 6 => "OOT Rust geometric",
         n => { eprintln!("Unknown controller type {n}"); return Ok(()); }
     };
-    println!("Controller: {ctrl_name} (type {controller})");
+    println!("Controller: {ctrl_name} (type {controller}) | Mode: Smooth Circle");
 
     let link_context = LinkContext::new();
     println!("Connecting to {CF_URI} ...");
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
-    // Log blocks - identical to fw_test
+    // Log blocks - identical to working fw_test
     let mut block_a = cf.log.create_block().await?;
     for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
               "stabilizer.yaw", "stabilizer.thrust"] {
@@ -72,8 +72,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     add_var(&mut block_b, "pm.vbat").await;
     let stream_b = block_b.start(LogPeriod::from_millis(50)?).await?;
 
-    // Select controller
-    println!("Setting stabilizer.controller = {controller} ({ctrl_name})...");
     let _ = cf.param.set("stabilizer.controller", controller).await;
     sleep(Duration::from_millis(100)).await;
 
@@ -130,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let mut last_print = Instant::now();
 
-    // ── Ramp + Hover — EXACTLY the same as your working fw_test ───────────────
+    // ── Ramp + Short Hover — identical to working fw_test ───────────────────
     println!("=== RAMP UP (0.02 -> 0.50 m) ===");
     for step in 0..25usize {
         let height = 0.02 + step as f32 * (0.48 / 24.0);
@@ -155,8 +153,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    println!("=== HOVER at 0.50 m for 15 s ===");
-    let hover_end = Instant::now() + Duration::from_secs(15);
+    println!("=== HOVER at 0.50 m for 7 seconds ===");
+    let hover_end = Instant::now() + Duration::from_secs(7);
     while Instant::now() < hover_end {
         cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
         sleep(Duration::from_millis(50)).await;
@@ -180,34 +178,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Smoother Slow Circle after hover ─────────────────────────────────────
-    println!("=== Smoother Slow Circle (radius 0.30 m) ===");
-    let radius = 0.30_f32;
-    let num_points = 120;                    // much smoother
-    let duration_per_circle = Duration::from_secs(25); // ~25 seconds per circle
-
+    // ── Smooth Circle ────────────────────────────────────────────────────────
+    println!("=== Smooth Circle (radius 0.25 m, one circle) ===");
+    let radius = 0.25_f32;
     let circle_start = Instant::now();
-    let total_time = Duration::from_secs(50);   // two full circles
+    let total_time = Duration::from_secs(30);   // one circle ~30 seconds
 
     while Instant::now() < circle_start + total_time {
         let t = (Instant::now() - circle_start).as_secs_f32();
-        let angle = 2.0 * std::f32::consts::PI * t / 25.0;
+        let angle = 2.0 * std::f32::consts::PI * t / 30.0;
 
         let cx = ox + radius * angle.cos();
         let cy = oy + radius * angle.sin();
 
         cf.commander.setpoint_position(cx, cy, 0.50, oyaw_rad).await?;
-        sleep(Duration::from_millis(50)).await;   // tighter timing for smoother motion
+        sleep(Duration::from_millis(60)).await;   // smooth timing
     }
 
-    // Return to center
+    // Return to center + land
     println!("Returning to center...");
-    for _ in 0..50 {
+    for _ in 0..40 {
         cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
         sleep(Duration::from_millis(100)).await;
     }
 
-    // Landing
     println!("=== LAND ===");
     for step in (0..20usize).rev() {
         let height = 0.04 + step as f32 * (0.46 / 19.0);
@@ -220,7 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     sleep(Duration::from_millis(500)).await;
 
-    println!("Slow Circle Test finished.");
+    println!("Smooth Circle Test finished.");
 
     Ok(())
 }

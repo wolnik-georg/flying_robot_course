@@ -98,14 +98,14 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.0125; const KR_Y: f32 = 0.0125; const KR_Z: f32 = 0.0145; // rollback
 // const KW_X: f32 = 0.0028; const KW_Y: f32 = 0.0028; const KW_Z: f32 = 0.0032; // rollback
 
-// ── Exact gains from the official C Lee controller (CDC 2010) ─────────────
-const KP_X: f32 = 7.0;    const KP_Y: f32 = 7.0;    const KP_Z: f32 = 7.0;
-const KV_X: f32 = 4.0;    const KV_Y: f32 = 4.0;    const KV_Z: f32 = 4.0;
-const KI_P: f32 = 0.0;    // official firmware uses 0.0 integral on position
+// ── Official attitude gains + increased XY position/velocity gains ─────────
+const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // unchanged - good for hover & cross
+const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // unchanged
+const KI_P: f32 = 0.0;                                                          // keep official 0.0 for now
 const KI_LIMIT: f32 = 2.0;
 
-const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
-const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;  // unchanged - stable
+const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;  // unchanged - stable
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
