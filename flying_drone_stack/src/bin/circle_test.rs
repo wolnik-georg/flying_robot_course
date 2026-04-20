@@ -181,14 +181,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ── Slow Circle after hover ──────────────────────────────────────────────
-    println!("=== Slow Circle (radius 0.30 m) ===");
-    let radius = 0.30_f32;           // safe size for most indoor spaces
-    let circle_duration = Duration::from_secs(25); // ~25 seconds per full circle (slow)
-
+    println!("=== Very Slow Circle (radius 0.30 m, ~38 seconds per circle) ===");
+    let radius = 0.30_f32;
     let circle_start = Instant::now();
-    while Instant::now() < circle_start + Duration::from_secs(50) {  // two full circles
+    let total_time = Duration::from_secs(76);   // two full slow circles
+
+    while Instant::now() < circle_start + total_time {
         let t = (Instant::now() - circle_start).as_secs_f32();
-        let angle = 2.0 * std::f32::consts::PI * t / 25.0;   // one circle every 25 s
+        let angle = 2.0 * std::f32::consts::PI * t / 38.0;   // one circle every 38 seconds
 
         let cx = ox + radius * angle.cos();
         let cy = oy + radius * angle.sin();
