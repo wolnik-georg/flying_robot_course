@@ -9,9 +9,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-// Adjust these imports to match your project structure
-use multirotor_simulator::trajectory::{SplineTrajectory, Waypoint, Trajectory};
-use multirotor_simulator::flatness::{compute_flatness, FlatOutput};
+use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
+use multirotor_simulator::planning::{compute_flatness, FlatOutput};
 
 const CF_URI: &str = "radio://0/80/2M/E7E7E7E7E7";
 const DEFAULT_CONTROLLER: u8 = 6;
@@ -227,7 +226,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             res.pos.x,
             res.pos.y,
             res.pos.z,
-            res.yaw   // or flat.yaw if you prefer
+            flat_out.yaw
         ).await?;
 
         sleep(Duration::from_millis(50)).await;

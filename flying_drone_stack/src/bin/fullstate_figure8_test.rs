@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Smooth Figure-8 using your existing SmoothFigure8Trajectory ───────────
     println!("=== Smooth Figure-8 Trajectory ===");
-    let mut traj = SmoothFigure8Trajectory::with_params(30.0, 0.50, 0.25); // duration, height, scale
+    let traj = SmoothFigure8Trajectory::with_params(30.0, 0.50, 0.25); // duration, height, scale
 
     let figure_start = Instant::now();
     let total_time = Duration::from_secs(60); // two figure-8 loops for better observation

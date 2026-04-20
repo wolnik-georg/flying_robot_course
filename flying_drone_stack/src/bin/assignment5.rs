@@ -183,7 +183,7 @@ fn main() {
     let mut cl_records: Vec<Record> = Vec::with_capacity(n_steps + 1);
 
     // Last commanded action (start with hover)
-    let mut last_action = MotorAction::hover();
+    let mut _last_action = MotorAction::hover();
     // For actuator slew-rate limiting: keep last commanded thrust/torque
     let mut last_cmd_thrust: f32 = params.mass as f32 * params.gravity as f32; // start near hover thrust
     let mut last_cmd_torque: Vec3 = Vec3::zero();
@@ -248,7 +248,7 @@ fn main() {
             (std::f32::NAN, std::f32::NAN, std::f32::NAN, std::f32::NAN, std::f32::NAN, std::f32::NAN)
         };
         // Construct estimated state for controller/safety
-        let estimated_state = if let Some(est_vec) = est {
+        let _estimated_state = if let Some(est_vec) = est {
             // est_vec = [roll, pitch, yaw, px, py, pz]
             let roll = est_vec[0];
             let pitch = est_vec[1];
@@ -304,7 +304,7 @@ fn main() {
         let ctrl_out = controller.compute_control(&true_state_for_ctrl, &exec_ref, &params, dt);
         // Desired controller outputs (before any actuator limits)
         let mut desired_thrust = ctrl_out.thrust;
-        let mut desired_torque = ctrl_out.torque * gain_scale; // apply experimental gain scaling on torque
+        let desired_torque = ctrl_out.torque * gain_scale; // apply experimental gain scaling on torque
 
         // Thrust finite check and clamp to absolute max
         if !desired_thrust.is_finite() {
@@ -329,7 +329,7 @@ fn main() {
 
         // Convert limited commands to motor action
         let action = MotorAction::from_thrust_torque(cmd_thrust, cmd_torque, &params);
-        last_action = action.clone();
+        _last_action = action.clone();
 
         // Record closed-loop data
         cl_records.push(Record { t,
