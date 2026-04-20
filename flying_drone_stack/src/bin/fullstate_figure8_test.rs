@@ -1,7 +1,6 @@
-//! Full-State Figure-8 Test using Differential Flatness
+//! Full-State Figure-8 Test — starts exactly like your working fw_test, then uses SmoothFigure8Trajectory
 //!
-//! Uses your existing SmoothFigure8Trajectory + flatness to send
-//! position + velocity + acceleration to the geometric controller.
+//! Usage: cargo run --release --bin fullstate_figure8_test -- --controller 6
 
 use crazyflie_lib::{Crazyflie, NoTocCache, Value};
 use crazyflie_lib::subsystems::log::{LogBlock, LogPeriod};
@@ -10,12 +9,10 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-use multirotor_simulator::trajectory::SmoothFigure8Trajectory;   // adjust path if needed
-use multirotor_simulator::flatness::{compute_flatness, FlatOutput}; // adjust path if needed
+use multirotor_simulator::trajectory::{SmoothFigure8Trajectory, Trajectory};  // adjust path if your crate name is different
 
 const CF_URI: &str = "radio://0/80/2M/E7E7E7E7E7";
 const DEFAULT_CONTROLLER: u8 = 6;
-const MASS: f32 = 0.031;
 
 async fn add_var(block: &mut LogBlock, name: &str) -> bool {
     match block.add_variable(name).await {
@@ -26,12 +23,12 @@ async fn add_var(block: &mut LogBlock, name: &str) -> bool {
 
 async fn add_var_first(block: &mut LogBlock, candidates: &[&'static str]) -> Option<&'static str> {
     for &name in candidates {
-        if block.add_variable(name).await.is_ok() {
-            println!("  [log] added: {name}");
-            return Some(name);
+        match block.add_variable(name).await {
+            Ok(_)  => { println!("  [log] added: {name} (from candidates)"); return Some(name); }
+            Err(_) => {}
         }
     }
-    println!("  [log] NONE of {:?} found", candidates);
+    println!("  [log] NONE of {:?} found in firmware TOC", candidates);
     None
 }
 
@@ -48,13 +45,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|s| s.parse().ok())
         .unwrap_or(DEFAULT_CONTROLLER);
 
-    println!("Full-State Figure-8 Test - Controller: {}", controller);
+    let ctrl_name = match controller {
+        5 => "Lee (firmware)", 6 => "OOT Rust geometric",
+        n => { eprintln!("Unknown controller type {n}"); return Ok(()); }
+    };
+    println!("Controller: {ctrl_name} (type {controller}) | Mode: Full-State Figure-8");
 
     let link_context = LinkContext::new();
+    println!("Connecting to {CF_URI} ...");
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
-    // Log blocks
+    // Log blocks - identical to your working fw_test
     let mut block_a = cf.log.create_block().await?;
     for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
               "stabilizer.yaw", "stabilizer.thrust"] {
@@ -64,79 +66,160 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut block_b = cf.log.create_block().await?;
     add_var(&mut block_b, "ctrltarget.z").await;
-    let _m1_var = add_var_first(&mut block_b, &["motor.m1req", "motor.m1pwm", "motor.m1"]).await;
+    let m1_var = add_var_first(&mut block_b,
+        &["motor.m1req", "motor.m1pwm", "motor.m1"]).await
+        .unwrap_or("motor.m1req");
     add_var(&mut block_b, "sys.canfly").await;
     add_var(&mut block_b, "pm.vbat").await;
-    let _stream_b = block_b.start(LogPeriod::from_millis(50)?).await?;
+    let stream_b = block_b.start(LogPeriod::from_millis(50)?).await?;
 
     let _ = cf.param.set("stabilizer.controller", controller).await;
     sleep(Duration::from_millis(100)).await;
 
-    // Kalman reset
+    // Kalman reset - identical
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     let _ = cf.param.set("kalman.resetEstimation", 1u8).await;
-    sleep(Duration::from_millis(300)).await;
+    sleep(Duration::from_millis(200)).await;
     let _ = cf.param.set("kalman.resetEstimation", 0u8).await;
+    println!("Kalman reset sent — place drone flat on pad, do NOT move it...");
 
-    for _ in 0..15 {
+    for _ in 0..20usize {
         cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
         sleep(Duration::from_millis(200)).await;
     }
 
-    // Sample origin
-    let mut xs = Vec::new();
-    let mut ys = Vec::new();
-    for _ in 0..40 {
+    // Sample EKF origin - identical
+    let mut xs: Vec<f32> = Vec::new();
+    let mut ys: Vec<f32> = Vec::new();
+    let mut yaws: Vec<f32> = Vec::new();
+    let n = 40usize;
+    println!("Sampling EKF origin ({n} packets ≈ 2 s)...");
+    for _ in 0..n {
         cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
         if let Ok(p) = stream_a.next().await {
             xs.push(get_f32(&p.data, "stateEstimate.x"));
             ys.push(get_f32(&p.data, "stateEstimate.y"));
+            yaws.push(get_f32(&p.data, "stabilizer.yaw"));
+        }
+        let _ = stream_b.next().await;
+    }
+
+    let mean_x = xs.iter().sum::<f32>() / n as f32;
+    let mean_y = ys.iter().sum::<f32>() / n as f32;
+    let mean_yaw = yaws.iter().sum::<f32>() / n as f32;
+    let spread = xs.iter().zip(ys.iter())
+        .map(|(x, y)| ((x - mean_x).powi(2) + (y - mean_y).powi(2)).sqrt())
+        .fold(0.0f32, f32::max);
+
+    let (ox, oy, oyaw_deg) = if (mean_x * mean_x + mean_y * mean_y).sqrt() > 0.15 || spread > 0.05 {
+        println!("WARNING: EKF origin unreliable, falling back to (0, 0)");
+        (0.0f32, 0.0f32, mean_yaw)
+    } else {
+        (mean_x, mean_y, mean_yaw)
+    };
+    let oyaw_rad = oyaw_deg * std::f32::consts::PI / 180.0;
+    println!("Using origin: x={ox:+.3} y={oy:+.3} yaw={oyaw_deg:+.1} deg");
+
+    println!("Takeoff in 3 s...");
+    for _ in 0..15usize {
+        cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
+        sleep(Duration::from_millis(200)).await;
+    }
+
+    let start = Instant::now();
+    let mut last_print = Instant::now();
+
+    // ── Ramp + Hover — EXACTLY the same as your working fw_test ───────────────
+    println!("=== RAMP UP (0.02 -> 0.50 m) ===");
+    for step in 0..25usize {
+        let height = 0.02 + step as f32 * (0.48 / 24.0);
+        cf.commander.setpoint_position(ox, oy, height, oyaw_rad).await?;
+        sleep(Duration::from_millis(120)).await;
+
+        if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
+            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
+            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
+            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
+            let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
+            let cz     = get_f32(&pb.data, "ctrltarget.z");
+            let m1     = get_f32(&pb.data, m1_var) as i32;
+            let canfly = get_f32(&pb.data, "sys.canfly") as u8;
+            let vbat   = get_f32(&pb.data, "pm.vbat");
+
+            if last_print.elapsed() >= Duration::from_millis(400) {
+                println!("  [ramp {:.1}s] sp_z={:.2} z={:+.3} xy=({:+.3},{:+.3}) cz={:+.3} m1={:6} fw_thr={} cf={} {:.2}V",
+                    start.elapsed().as_secs_f32(), height, ekf_z, ekf_x, ekf_y, cz, m1, fw_thr, canfly, vbat);
+                last_print = Instant::now();
+            }
         }
     }
-    let ox = xs.iter().sum::<f32>() / xs.len() as f32;
-    let oy = ys.iter().sum::<f32>() / ys.len() as f32;
-    println!("Using origin: x={ox:+.3} y={oy:+.3}");
 
-    // ── Stable Hover (7 seconds) ─────────────────────────────────────────────
-    println!("=== Stable Hover at 0.50 m for 7 seconds ===");
-    for _ in 0..70 {
-        cf.commander.setpoint_position(ox, oy, 0.50, 0.0).await?;
-        sleep(Duration::from_millis(100)).await;
+    println!("=== HOVER at 0.50 m for 7 seconds ===");
+    let hover_end = Instant::now() + Duration::from_secs(7);
+    while Instant::now() < hover_end {
+        cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
+        sleep(Duration::from_millis(50)).await;
+
+        if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
+            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
+            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
+            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
+            let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
+            let cz     = get_f32(&pb.data, "ctrltarget.z");
+            let m1     = get_f32(&pb.data, m1_var) as i32;
+            let canfly = get_f32(&pb.data, "sys.canfly") as u8;
+            let vbat   = get_f32(&pb.data, "pm.vbat");
+
+            if last_print.elapsed() >= Duration::from_secs(1) {
+                let drift = ((ekf_x - ox).powi(2) + (ekf_y - oy).powi(2)).sqrt();
+                println!("  [hover {:3}s] z={:+.3} drift={:.3}m cz={:+.3} m1={:6} fw_thr={} cf={} {:.2}V",
+                    start.elapsed().as_secs(), ekf_z, drift, cz, m1, fw_thr, canfly, vbat);
+                last_print = Instant::now();
+            }
+        }
     }
 
-    // ── Smooth Figure-8 using your existing trajectory code ──────────────────
+    // ── Smooth Figure-8 using your existing SmoothFigure8Trajectory ───────────
     println!("=== Smooth Figure-8 Trajectory ===");
-    let mut traj = SmoothFigure8Trajectory::with_params(25.0, 0.50, 0.25); // duration, height, scale
-    let traj_start = Instant::now();
-    let total_time = Duration::from_secs(50); // two figure-8 loops
+    let mut traj = SmoothFigure8Trajectory::with_params(30.0, 0.50, 0.25); // duration, height, scale
 
-    while Instant::now() < traj_start + total_time {
-        let t = (Instant::now() - traj_start).as_secs_f32();
-        let flat = traj.get_reference(t);   // wait, your SmoothFigure8Trajectory returns TrajectoryReference
+    let figure_start = Instant::now();
+    let total_time = Duration::from_secs(60); // two figure-8 loops for better observation
 
-        // For full-state we need to send position + velocity + acceleration
-        cf.commander.setpoint_position(flat.position.x, flat.position.y, flat.position.z, flat.yaw).await?;
-        // Note: Crazyflie high-level commander can accept velocity/acc, but for now we use position
-        // Later we can switch to full state if needed.
+    while Instant::now() < figure_start + total_time {
+        let t = (Instant::now() - figure_start).as_secs_f32();
+        let reference = traj.get_reference(t);
 
-        sleep(Duration::from_millis(50)).await;
+        cf.commander.setpoint_position(
+            reference.position.x,
+            reference.position.y,
+            reference.position.z,
+            reference.yaw
+        ).await?;
+
+        sleep(Duration::from_millis(60)).await;   // reasonably smooth timing
     }
 
     // Return to center + land
-    println!("Returning to center and landing...");
+    println!("Returning to center...");
     for _ in 0..50 {
-        cf.commander.setpoint_position(ox, oy, 0.50, 0.0).await?;
+        cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
         sleep(Duration::from_millis(100)).await;
     }
 
-    for step in (0..25usize).rev() {
-        let h = 0.04 + step as f32 * (0.46 / 24.0);
-        cf.commander.setpoint_position(ox, oy, h, 0.0).await?;
+    println!("=== LAND ===");
+    for step in (0..20usize).rev() {
+        let height = 0.04 + step as f32 * (0.46 / 19.0);
+        cf.commander.setpoint_position(ox, oy, height, oyaw_rad).await?;
         sleep(Duration::from_millis(150)).await;
+        let _ = stream_a.next().await;
+        let _ = stream_b.next().await;
     }
 
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
-    println!("Figure-8 Test finished.");
+    sleep(Duration::from_millis(500)).await;
+
+    println!("Full-State Figure-8 Test finished.");
 
     Ok(())
 }
