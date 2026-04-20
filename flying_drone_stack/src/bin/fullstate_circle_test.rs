@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Smooth Circle using your existing CircleTrajectory ───────────────────
     println!("=== Smooth Circle Trajectory ===");
-    let mut traj = CircleTrajectory::new(0.25, 0.50, 2.0 * std::f32::consts::PI / 30.0); // radius, height, omega (one circle ~30s)
+    let traj = CircleTrajectory::new(0.25, 0.50, 2.0 * std::f32::consts::PI / 30.0); // radius, height, omega (one circle ~30s)
 
     let circle_start = Instant::now();
     let total_time = Duration::from_secs(60); // two full circles
