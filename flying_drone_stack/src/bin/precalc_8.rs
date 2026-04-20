@@ -1,4 +1,4 @@
-//! Pre-calculated Polynomial Figure-8 Test — starts exactly like your working fw_test
+//! Pre-calculated Polynomial Figure-8 Test v3 — gentler (0.7× scale + 90 ms)
 //!
 //! Usage: cargo run --release --bin precalc_figure8_test -- --controller 6
 
@@ -34,18 +34,18 @@ fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
     map.get(key).map(|v| v.to_f64_lossy() as f32).unwrap_or(0.0)
 }
 
-// Pre-calculated figure-8 polynomial coefficients (10 segments)
+// Pre-calculated figure-8 coefficients — scaled to 0.7×
 const FIGURE8_COEFFS: [[f32; 33]; 10] = [
-    [1.050000, 0.000000, -0.000000, 0.000000, -0.000000, 0.830443, -0.276140, -0.384219, 0.180493, -0.000000, 0.000000, -0.000000, 0.000000, -1.356107, 0.688430, 0.587426, -0.329106, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.710000, 0.396058, 0.918033, 0.128965, -0.773546, 0.339704, 0.034310, -0.026417, -0.030049, -0.445604, -0.684403, 0.888433, 1.493630, -1.361618, -0.139316, 0.158875, 0.095799, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.620000, 0.922409, 0.405715, -0.582968, -0.092188, -0.114670, 0.101046, 0.075834, -0.037926, -0.291165, 0.967514, 0.421451, -1.086348, 0.545211, 0.030109, -0.050046, -0.068177, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.700000, 0.923174, -0.431533, -0.682975, 0.177173, 0.319468, -0.043852, -0.111269, 0.023166, 0.289869, 0.724722, -0.512011, -0.209623, -0.218710, 0.108797, 0.128756, -0.055461, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.560000, 0.405364, -0.834716, 0.158939, 0.288175, -0.373738, -0.054995, 0.036090, 0.078627, 0.450742, -0.385534, -0.954089, 0.128288, 0.442620, 0.055630, -0.060142, -0.076163, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.560000, 0.001062, -0.646270, -0.012560, -0.324065, 0.125327, 0.119738, 0.034567, -0.063130, 0.001593, -1.031457, 0.015159, 0.820816, -0.152665, -0.130729, -0.045679, 0.080444, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.700000, -0.402804, -0.820508, -0.132914, 0.236278, 0.235164, -0.053551, -0.088687, 0.031253, -0.449354, -0.411507, 0.902946, 0.185335, -0.239125, -0.041696, 0.016857, 0.016709, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.620000, -0.921641, -0.464596, 0.661875, 0.286582, -0.228921, -0.051987, 0.004669, 0.038463, -0.292459, 0.777682, 0.565788, -0.432472, -0.060568, -0.082048, -0.009439, 0.041158, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [0.710000, -0.923935, 0.447832, 0.627381, -0.259808, -0.042325, -0.032258, 0.001420, 0.005294, 0.288570, 0.873350, -0.515586, -0.730207, -0.026023, 0.288755, 0.215678, -0.148061, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
-    [1.053185, -0.398611, 0.850510, -0.144007, -0.485368, -0.079781, 0.176330, 0.234482, -0.153567, 0.447039, -0.532729, -0.855023, 0.878509, 0.775168, -0.391051, -0.713519, 0.391628, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [1.050000, 0.000000, -0.000000, 0.000000, -0.000000, 0.830443*0.7, -0.276140*0.7, -0.384219*0.7, 0.180493*0.7, -0.000000, 0.000000, -0.000000, 0.000000, -1.356107*0.7, 0.688430*0.7, 0.587426*0.7, -0.329106*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.710000, 0.396058*0.7, 0.918033*0.7, 0.128965*0.7, -0.773546*0.7, 0.339704*0.7, 0.034310*0.7, -0.026417*0.7, -0.030049*0.7, -0.445604*0.7, -0.684403*0.7, 0.888433*0.7, 1.493630*0.7, -1.361618*0.7, -0.139316*0.7, 0.158875*0.7, 0.095799*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.620000, 0.922409*0.7, 0.405715*0.7, -0.582968*0.7, -0.092188*0.7, -0.114670*0.7, 0.101046*0.7, 0.075834*0.7, -0.037926*0.7, -0.291165*0.7, 0.967514*0.7, 0.421451*0.7, -1.086348*0.7, 0.545211*0.7, 0.030109*0.7, -0.050046*0.7, -0.068177*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.700000, 0.923174*0.7, -0.431533*0.7, -0.682975*0.7, 0.177173*0.7, 0.319468*0.7, -0.043852*0.7, -0.111269*0.7, 0.023166*0.7, 0.289869*0.7, 0.724722*0.7, -0.512011*0.7, -0.209623*0.7, -0.218710*0.7, 0.108797*0.7, 0.128756*0.7, -0.055461*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.560000, 0.405364*0.7, -0.834716*0.7, 0.158939*0.7, 0.288175*0.7, -0.373738*0.7, -0.054995*0.7, 0.036090*0.7, 0.078627*0.7, 0.450742*0.7, -0.385534*0.7, -0.954089*0.7, 0.128288*0.7, 0.442620*0.7, 0.055630*0.7, -0.060142*0.7, -0.076163*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.560000, 0.001062*0.7, -0.646270*0.7, -0.012560*0.7, -0.324065*0.7, 0.125327*0.7, 0.119738*0.7, 0.034567*0.7, -0.063130*0.7, 0.001593*0.7, -1.031457*0.7, 0.015159*0.7, 0.820816*0.7, -0.152665*0.7, -0.130729*0.7, -0.045679*0.7, 0.080444*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.700000, -0.402804*0.7, -0.820508*0.7, -0.132914*0.7, 0.236278*0.7, 0.235164*0.7, -0.053551*0.7, -0.088687*0.7, 0.031253*0.7, -0.449354*0.7, -0.411507*0.7, 0.902946*0.7, 0.185335*0.7, -0.239125*0.7, -0.041696*0.7, 0.016857*0.7, 0.016709*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.620000, -0.921641*0.7, -0.464596*0.7, 0.661875*0.7, 0.286582*0.7, -0.228921*0.7, -0.051987*0.7, 0.004669*0.7, 0.038463*0.7, -0.292459*0.7, 0.777682*0.7, 0.565788*0.7, -0.432472*0.7, -0.060568*0.7, -0.082048*0.7, -0.009439*0.7, 0.041158*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [0.710000, -0.923935*0.7, 0.447832*0.7, 0.627381*0.7, -0.259808*0.7, -0.042325*0.7, -0.032258*0.7, 0.001420*0.7, 0.005294*0.7, 0.288570*0.7, 0.873350*0.7, -0.515586*0.7, -0.730207*0.7, -0.026023*0.7, 0.288755*0.7, 0.215678*0.7, -0.148061*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
+    [1.053185, -0.398611*0.7, 0.850510*0.7, -0.144007*0.7, -0.485368*0.7, -0.079781*0.7, 0.176330*0.7, 0.234482*0.7, -0.153567*0.7, 0.447039*0.7, -0.532729*0.7, -0.855023*0.7, 0.878509*0.7, 0.775168*0.7, -0.391051*0.7, -0.713519*0.7, 0.391628*0.7, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000],
 ];
 
 #[tokio::main]
@@ -61,26 +61,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         5 => "Lee (firmware)", 6 => "OOT Rust geometric",
         n => { eprintln!("Unknown controller type {n}"); return Ok(()); }
     };
-    println!("Controller: {ctrl_name} (type {controller}) | Mode: Precalculated Figure-8");
+    println!("Controller: {ctrl_name} (type {controller}) | Mode: Precalculated Figure-8 v3 (0.7× + 90ms)");
 
     let link_context = LinkContext::new();
     println!("Connecting to {CF_URI} ...");
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
-    // Log blocks - identical to working version
+    // Log blocks — identical
     let mut block_a = cf.log.create_block().await?;
-    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
-              "stabilizer.yaw", "stabilizer.thrust"] {
+    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z", "stabilizer.yaw", "stabilizer.thrust"] {
         add_var(&mut block_a, v).await;
     }
     let stream_a = block_a.start(LogPeriod::from_millis(50)?).await?;
 
     let mut block_b = cf.log.create_block().await?;
     add_var(&mut block_b, "ctrltarget.z").await;
-    let m1_var = add_var_first(&mut block_b,
-        &["motor.m1req", "motor.m1pwm", "motor.m1"]).await
-        .unwrap_or("motor.m1req");
+    let m1_var = add_var_first(&mut block_b, &["motor.m1req", "motor.m1pwm", "motor.m1"]).await.unwrap_or("motor.m1req");
     add_var(&mut block_b, "sys.canfly").await;
     add_var(&mut block_b, "pm.vbat").await;
     let stream_b = block_b.start(LogPeriod::from_millis(50)?).await?;
@@ -88,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = cf.param.set("stabilizer.controller", controller).await;
     sleep(Duration::from_millis(100)).await;
 
-    // Kalman reset - identical
+    // Kalman reset + origin sampling — identical
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     let _ = cf.param.set("kalman.resetEstimation", 1u8).await;
     sleep(Duration::from_millis(200)).await;
@@ -100,7 +97,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(200)).await;
     }
 
-    // Sample EKF origin - identical
     let mut xs: Vec<f32> = Vec::new();
     let mut ys: Vec<f32> = Vec::new();
     let mut yaws: Vec<f32> = Vec::new();
@@ -120,12 +116,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mean_y = ys.iter().sum::<f32>() / n as f32;
     let mean_yaw = yaws.iter().sum::<f32>() / n as f32;
     let spread = xs.iter().zip(ys.iter())
-        .map(|(x, y)| ((x - mean_x).powi(2) + (y - mean_y).powi(2)).sqrt())
+        .map(|(x,y)| ((x-mean_x).powi(2)+(y-mean_y).powi(2)).sqrt())
         .fold(0.0f32, f32::max);
 
-    let (ox, oy, oyaw_deg) = if (mean_x * mean_x + mean_y * mean_y).sqrt() > 0.15 || spread > 0.05 {
+    let (ox, oy, oyaw_deg) = if (mean_x*mean_x + mean_y*mean_y).sqrt() > 0.15 || spread > 0.05 {
         println!("WARNING: EKF origin unreliable, falling back to (0, 0)");
-        (0.0f32, 0.0f32, mean_yaw)
+        (0.0, 0.0, mean_yaw)
     } else {
         (mean_x, mean_y, mean_yaw)
     };
@@ -141,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let mut last_print = Instant::now();
 
-    // ── Ramp + Hover — EXACTLY the same as your working fw_test ───────────────
+    // Ramp + Hover — identical
     println!("=== RAMP UP (0.02 -> 0.50 m) ===");
     for step in 0..25usize {
         let height = 0.02 + step as f32 * (0.48 / 24.0);
@@ -149,14 +145,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(120)).await;
 
         if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
-            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
-            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
-            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
+            let ekf_z = get_f32(&pa.data, "stateEstimate.z");
+            let ekf_x = get_f32(&pa.data, "stateEstimate.x");
+            let ekf_y = get_f32(&pa.data, "stateEstimate.y");
             let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
-            let cz     = get_f32(&pb.data, "ctrltarget.z");
-            let m1     = get_f32(&pb.data, m1_var) as i32;
+            let cz = get_f32(&pb.data, "ctrltarget.z");
+            let m1 = get_f32(&pb.data, m1_var) as i32;
             let canfly = get_f32(&pb.data, "sys.canfly") as u8;
-            let vbat   = get_f32(&pb.data, "pm.vbat");
+            let vbat = get_f32(&pb.data, "pm.vbat");
 
             if last_print.elapsed() >= Duration::from_millis(400) {
                 println!("  [ramp {:.1}s] sp_z={:.2} z={:+.3} xy=({:+.3},{:+.3}) cz={:+.3} m1={:6} fw_thr={} cf={} {:.2}V",
@@ -173,14 +169,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(50)).await;
 
         if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
-            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
-            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
-            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
+            let ekf_z = get_f32(&pa.data, "stateEstimate.z");
+            let ekf_x = get_f32(&pa.data, "stateEstimate.x");
+            let ekf_y = get_f32(&pa.data, "stateEstimate.y");
             let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
-            let cz     = get_f32(&pb.data, "ctrltarget.z");
-            let m1     = get_f32(&pb.data, m1_var) as i32;
+            let cz = get_f32(&pb.data, "ctrltarget.z");
+            let m1 = get_f32(&pb.data, m1_var) as i32;
             let canfly = get_f32(&pb.data, "sys.canfly") as u8;
-            let vbat   = get_f32(&pb.data, "pm.vbat");
+            let vbat = get_f32(&pb.data, "pm.vbat");
 
             if last_print.elapsed() >= Duration::from_secs(1) {
                 let drift = ((ekf_x - ox).powi(2) + (ekf_y - oy).powi(2)).sqrt();
@@ -191,16 +187,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Pre-calculated Polynomial Figure-8 ───────────────────────────────────
-    println!("=== Pre-calculated Polynomial Figure-8 ===");
+    // ── Pre-calculated Polynomial Figure-8 (0.7× scale + 90 ms) ─────────────
+    println!("=== Pre-calculated Polynomial Figure-8 v3 (0.7× + 90ms) ===");
 
     let figure_start = Instant::now();
-    let total_time = Duration::from_secs(35);   // one full figure-8
+    let total_time = Duration::from_secs(45);   // slightly longer because slower steps
 
     while Instant::now() < figure_start + total_time {
         let t = (Instant::now() - figure_start).as_secs_f32();
 
-        // Find current segment
         let mut seg_idx = 0;
         let mut seg_time = t;
         for (i, coeff) in FIGURE8_COEFFS.iter().enumerate() {
@@ -216,7 +211,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let seg_duration = coeff[0];
         let s = if seg_duration > 0.0 { seg_time / seg_duration } else { 0.0 };
 
-        // Evaluate polynomials for x, y, z, yaw
         let mut x = 0.0f32;
         let mut y = 0.0f32;
         let mut z = 0.0f32;
@@ -231,7 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         cf.commander.setpoint_position(ox + x, oy + y, 0.50 + z, oyaw_rad + yaw).await?;
-        sleep(Duration::from_millis(60)).await;
+        sleep(Duration::from_millis(90)).await;   // gentler timing
     }
 
     // Return to center + land
@@ -253,7 +247,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     sleep(Duration::from_millis(500)).await;
 
-    println!("Pre-calculated Figure-8 Test finished.");
+    println!("Pre-calculated Figure-8 Test v3 finished.");
 
     Ok(())
 }
