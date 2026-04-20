@@ -180,21 +180,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Slow Circle after hover ──────────────────────────────────────────────
-    println!("=== Very Slow Circle (radius 0.30 m, ~38 seconds per circle) ===");
+    // ── Smoother Slow Circle after hover ─────────────────────────────────────
+    println!("=== Smoother Slow Circle (radius 0.30 m) ===");
     let radius = 0.30_f32;
+    let num_points = 120;                    // much smoother
+    let duration_per_circle = Duration::from_secs(25); // ~25 seconds per circle
+
     let circle_start = Instant::now();
-    let total_time = Duration::from_secs(76);   // two full slow circles
+    let total_time = Duration::from_secs(50);   // two full circles
 
     while Instant::now() < circle_start + total_time {
         let t = (Instant::now() - circle_start).as_secs_f32();
-        let angle = 2.0 * std::f32::consts::PI * t / 38.0;   // one circle every 38 seconds
+        let angle = 2.0 * std::f32::consts::PI * t / 25.0;
 
         let cx = ox + radius * angle.cos();
         let cy = oy + radius * angle.sin();
 
         cf.commander.setpoint_position(cx, cy, 0.50, oyaw_rad).await?;
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(50)).await;   // tighter timing for smoother motion
     }
 
     // Return to center
