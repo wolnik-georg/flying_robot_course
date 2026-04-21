@@ -249,12 +249,12 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
     let yaw_d = sp.attitude.yaw * deg2rad;
 
-    // Desired angular velocity from setpoint (fullState sets attitudeRate in deg/s;
+    // Desired angular velocity from setpoint (fullState decoder stores attitudeRate in rad/s;
     // positionType leaves it zero, so this is a no-op for hover/ramp phases).
     let omega_d = Vec3::new(
-        sp.attitudeRate.roll  * deg2rad,
-        sp.attitudeRate.pitch * deg2rad,
-        sp.attitudeRate.yaw   * deg2rad,
+        sp.attitudeRate.roll,
+        sp.attitudeRate.pitch,
+        sp.attitudeRate.yaw,
     );
 
     let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d, dt, s);

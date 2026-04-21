@@ -153,15 +153,19 @@ impl SplineTrajectory {
     /// Plan a minimum-snap spline through `waypoints` with per-segment durations.
     ///
     /// `durations[i]` is the time to travel from waypoint `i` to waypoint `i+1`.
-    pub fn plan(waypoints: &[Waypoint], durations: &[f32]) -> Result<Self, String> {
+    ///
+    /// If `periodic` is true, derivatives 1–4 at the end of the last segment are
+    /// constrained to match those at the start of the first segment (smooth looping).
+    /// The first and last waypoint positions must be equal when `periodic` is true.
+    pub fn plan(waypoints: &[Waypoint], durations: &[f32], periodic: bool) -> Result<Self, String> {
         let n_wp = waypoints.len();
         let n_seg = n_wp - 1;
         assert_eq!(durations.len(), n_seg, "need n_seg durations");
 
-        let cx = solve_axis(n_seg, |i| waypoints[i].pos.x, durations)?;
-        let cy = solve_axis(n_seg, |i| waypoints[i].pos.y, durations)?;
-        let cz = solve_axis(n_seg, |i| waypoints[i].pos.z, durations)?;
-        let cyaw = solve_axis(n_seg, |i| waypoints[i].yaw, durations)?;
+        let cx = solve_axis(n_seg, |i| waypoints[i].pos.x, durations, periodic)?;
+        let cy = solve_axis(n_seg, |i| waypoints[i].pos.y, durations, periodic)?;
+        let cz = solve_axis(n_seg, |i| waypoints[i].pos.z, durations, periodic)?;
+        let cyaw = solve_axis(n_seg, |i| waypoints[i].yaw, durations, periodic)?;
 
         let segments = (0..n_seg)
             .map(|i| SplineSegment {
@@ -235,7 +239,7 @@ impl SplineTrajectory {
 /// Returns a Vec of [f32; 9] coefficient arrays, one per segment, normalised
 /// to the unit interval [0, 1].  Physical-time derivatives are recovered by
 /// dividing by the appropriate power of `duration`.
-fn solve_axis<F>(n_seg: usize, wp: F, durations: &[f32]) -> Result<Vec<[f32; 9]>, String>
+fn solve_axis<F>(n_seg: usize, wp: F, durations: &[f32], periodic: bool) -> Result<Vec<[f32; 9]>, String>
 where
     F: Fn(usize) -> f32,
 {
@@ -261,23 +265,39 @@ where
     // ── Constraints ─────────────────────────────────────────────────────────
     let mut constraints = Vec::new();
 
-    // Boundary: start of first segment, derivatives 0..=4 fixed or zero
-    // Position at start
+    // Boundary: position at start and end always fixed
     constraints.push(constraint!(poly(&vars[0], 0.0) == wp(0)));
-    // Velocity = 0, acc = 0, jerk = 0, snap = 0  at start
-    constraints.push(constraint!(poly_d1(&vars[0], 0.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d2(&vars[0], 0.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d3(&vars[0], 0.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d4(&vars[0], 0.0) == 0.0_f32));
-
-    // Boundary: end of last segment
     let last = n_seg - 1;
     constraints.push(constraint!(poly(&vars[last], 1.0) == wp(n_seg)));
-    // Velocity = 0, acc = 0, jerk = 0, snap = 0  at end
-    constraints.push(constraint!(poly_d1(&vars[last], 1.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d2(&vars[last], 1.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d3(&vars[last], 1.0) == 0.0_f32));
-    constraints.push(constraint!(poly_d4(&vars[last], 1.0) == 0.0_f32));
+
+    if periodic {
+        // Periodic: derivatives 1–4 at end of last segment = at start of first segment.
+        // In physical time: (1/T_last^n) * poly_dn(last, 1) = (1/T_0^n) * poly_dn(0, 0)
+        // => T_0^n * poly_dn(last, 1) = T_last^n * poly_dn(0, 0)
+        let t0 = durations[0];
+        let tl = durations[last];
+        for deriv in 1u32..=4 {
+            let sl = t0.powi(deriv as i32);  // scale for end side
+            let sr = tl.powi(deriv as i32);  // scale for start side
+            match deriv {
+                1 => constraints.push(constraint!(poly_d1(&vars[last], 1.0) * sl == poly_d1(&vars[0], 0.0) * sr)),
+                2 => constraints.push(constraint!(poly_d2(&vars[last], 1.0) * sl == poly_d2(&vars[0], 0.0) * sr)),
+                3 => constraints.push(constraint!(poly_d3(&vars[last], 1.0) * sl == poly_d3(&vars[0], 0.0) * sr)),
+                4 => constraints.push(constraint!(poly_d4(&vars[last], 1.0) * sl == poly_d4(&vars[0], 0.0) * sr)),
+                _ => unreachable!(),
+            }
+        }
+    } else {
+        // Rest-to-rest: derivatives 1–4 zero at start and end
+        constraints.push(constraint!(poly_d1(&vars[0], 0.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d2(&vars[0], 0.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d3(&vars[0], 0.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d4(&vars[0], 0.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d1(&vars[last], 1.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d2(&vars[last], 1.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d3(&vars[last], 1.0) == 0.0_f32));
+        constraints.push(constraint!(poly_d4(&vars[last], 1.0) == 0.0_f32));
+    }
 
     // Interior waypoints: position match + continuity up to snap
     for k in 0..n_seg - 1 {
@@ -345,7 +365,7 @@ mod tests {
             Waypoint { pos: Vec3::new(1.0, 1.0, 1.0), yaw: 0.0 },
         ];
         let durs = vec![1.0, 1.0];
-        let traj = SplineTrajectory::plan(&wps, &durs).expect("plan failed");
+        let traj = SplineTrajectory::plan(&wps, &durs, false).expect("plan failed");
 
         assert_eq!(traj.segments.len(), 2);
 

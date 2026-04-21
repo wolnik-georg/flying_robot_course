@@ -60,7 +60,7 @@ fn main() {
     println!("  {} waypoints, {} segments, {:.1} s total",
         waypoints.len(), n_seg, durations.iter().sum::<f32>());
 
-    let traj = match SplineTrajectory::plan(&waypoints, &durations) {
+    let traj = match SplineTrajectory::plan(&waypoints, &durations, false) {
         Ok(t) => { println!("  QP solved successfully.\n"); t }
         Err(e) => { eprintln!("Spline planning failed: {}", e); return; }
     };

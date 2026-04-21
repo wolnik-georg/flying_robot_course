@@ -37,7 +37,7 @@ fn main() {
     eprintln!("Planning {} trajectory ({} waypoints, {:.1}s total)...",
         mode, wps.len(), durs.iter().sum::<f32>());
 
-    let traj = SplineTrajectory::plan(&wps, &durs)
+    let traj = SplineTrajectory::plan(&wps, &durs, false)
         .unwrap_or_else(|e| { eprintln!("Planning failed: {}", e); std::process::exit(1); });
 
     eprintln!("Simulating {} at 100 Hz...", mode);
