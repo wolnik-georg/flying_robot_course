@@ -16,6 +16,9 @@ tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
 jpeg-decoder = "0.3"       # pure Rust JPEG decode for AI Deck CPX frames
 
+[patch.crates-io]
+crazyflie-lib = { path = "vendor/crazyflie-lib" }
+
 [lib]
 name = "multirotor_simulator"
 path = "src/lib.rs"

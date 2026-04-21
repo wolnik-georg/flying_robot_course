@@ -1,6 +1,6 @@
-//! Full-State Smooth Circle Test — starts exactly like your working fw_test, then uses a smooth circle
+//! Spline-based Circle Test — SplineTrajectory → differential flatness → full-state setpoint
 //!
-//! Usage: cargo run --release --bin fullstate_circle_test -- --controller 6
+//! Usage: cargo run --release --bin spline_circle_test -- --controller 6
 
 use crazyflie_lib::{Crazyflie, NoTocCache, Value};
 use crazyflie_lib::subsystems::log::{LogBlock, LogPeriod};
@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-use multirotor_simulator::trajectory::{CircleTrajectory, Trajectory};
+use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
+use multirotor_simulator::planning::{compute_flatness, rot_to_quat, FlatOutput};
 
 const CF_URI: &str = "radio://0/80/2M/E7E7E7E7E7";
 const DEFAULT_CONTROLLER: u8 = 6;
@@ -49,14 +50,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         5 => "Lee (firmware)", 6 => "OOT Rust geometric",
         n => { eprintln!("Unknown controller type {n}"); return Ok(()); }
     };
-    println!("Controller: {ctrl_name} (type {controller}) | Mode: Full-State Smooth Circle");
+    println!("Controller: {ctrl_name} (type {controller}) | Mode: Spline Circle");
 
     let link_context = LinkContext::new();
     println!("Connecting to {CF_URI} ...");
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
-    // Log blocks - identical to your working fw_test
     let mut block_a = cf.log.create_block().await?;
     for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
               "stabilizer.yaw", "stabilizer.thrust"] {
@@ -76,7 +76,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = cf.param.set("stabilizer.controller", controller).await;
     sleep(Duration::from_millis(100)).await;
 
-    // Kalman reset - identical
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     let _ = cf.param.set("kalman.resetEstimation", 1u8).await;
     sleep(Duration::from_millis(200)).await;
@@ -88,7 +87,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(200)).await;
     }
 
-    // Sample EKF origin - identical
     let mut xs: Vec<f32> = Vec::new();
     let mut ys: Vec<f32> = Vec::new();
     let mut yaws: Vec<f32> = Vec::new();
@@ -129,7 +127,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
     let mut last_print = Instant::now();
 
-    // ── Ramp + Hover — EXACTLY the same as your working fw_test ───────────────
     println!("=== RAMP UP (0.02 -> 0.50 m) ===");
     for step in 0..25usize {
         let height = 0.02 + step as f32 * (0.48 / 24.0);
@@ -179,33 +176,61 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Smooth Circle using your existing CircleTrajectory ───────────────────
-    println!("=== Smooth Circle Trajectory ===");
-    let traj = CircleTrajectory::new(0.25, 0.50, 2.0 * std::f32::consts::PI / 30.0); // radius, height, omega (one circle ~30s)
+    // ── Spline circle: 8 waypoints evenly spaced on a circle ─────────────────
+    println!("=== Spline Circle Trajectory ===");
+    let n_pts = 8usize;
+    let r_circle = 0.25f32;
+    let omega = 0.6f32;    // rad/s → one lap ≈ 10.47 s
+    let seg_dur = 2.0 * std::f32::consts::PI / (n_pts as f32 * omega);  // ≈ 1.31 s per segment
+
+    // Close the loop: n_pts+1 waypoints (first == last)
+    let waypoints: Vec<Waypoint> = (0..=n_pts).map(|i| {
+        let theta = 2.0 * std::f32::consts::PI * i as f32 / n_pts as f32;
+        Waypoint {
+            pos: Vec3::new(ox + r_circle * theta.cos(), oy + r_circle * theta.sin(), 0.50),
+            yaw: theta + std::f32::consts::FRAC_PI_2,  // tangent direction
+        }
+    }).collect();
+    let durations = vec![seg_dur; n_pts];
+
+    let traj = SplineTrajectory::plan(&waypoints, &durations)
+        .map_err(|e| format!("Spline planning failed: {}", e))?;
 
     let circle_start = Instant::now();
-    let total_time = Duration::from_secs(60); // two full circles
+    let n_laps = 2u32;
+    let total_circle = Duration::from_secs_f32(traj.total_time * n_laps as f32);
+    println!("Total spline time: {:.1} s ({n_laps} laps)", total_circle.as_secs_f32());
 
-    while Instant::now() < circle_start + total_time {
+    while Instant::now() < circle_start + total_circle {
         let t = (Instant::now() - circle_start).as_secs_f32();
-        let reference = traj.get_reference(t);
+        // Loop the trajectory by wrapping t
+        let flat = traj.eval(t % traj.total_time);
 
-        // Yaw-only quaternion for flat (roll=pitch=0) trajectory
-        let half_yaw = reference.yaw / 2.0;
-        let (qw, qx, qy, qz) = (half_yaw.cos(), 0.0_f32, 0.0_f32, half_yaw.sin());
+        let flat_out = FlatOutput {
+            pos: flat.pos,
+            vel: flat.vel,
+            acc: flat.acc,
+            jerk: flat.jerk,
+            snap: flat.snap,
+            yaw: flat.yaw,
+            yaw_dot: flat.yaw_dot,
+            yaw_ddot: flat.yaw_ddot,
+        };
+
+        let res = compute_flatness(&flat_out, 0.031);
+        let q = rot_to_quat(&res.rot); // [w, x, y, z]
 
         cf.commander.setpoint_full_state(
-            reference.position.x, reference.position.y, reference.position.z,
-            reference.velocity.x, reference.velocity.y, reference.velocity.z,
-            reference.acceleration.x, reference.acceleration.y, reference.acceleration.z,
-            qw, qx, qy, qz,
-            0.0, 0.0, reference.yaw_rate,
+            res.pos.x, res.pos.y, res.pos.z,
+            res.vel.x, res.vel.y, res.vel.z,
+            flat_out.acc.x, flat_out.acc.y, flat_out.acc.z,
+            q[0], q[1], q[2], q[3],
+            res.omega.x, res.omega.y, res.omega.z,
         ).await?;
 
-        sleep(Duration::from_millis(40)).await;
+        sleep(Duration::from_millis(40)).await; // 25 Hz
     }
 
-    // Return to center + land
     println!("Returning to center...");
     for _ in 0..50 {
         cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
@@ -224,7 +249,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     sleep(Duration::from_millis(500)).await;
 
-    println!("Full-State Smooth Circle Test finished.");
+    println!("Spline Circle Test finished.");
 
     Ok(())
 }
