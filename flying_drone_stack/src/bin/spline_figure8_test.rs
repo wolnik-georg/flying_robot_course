@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
 use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
-use multirotor_simulator::planning::{compute_flatness, FlatOutput};
+use multirotor_simulator::planning::{compute_flatness, rot_to_quat, FlatOutput};
 
 const CF_URI: &str = "radio://0/80/2M/E7E7E7E7E7";
 const DEFAULT_CONTROLLER: u8 = 6;
@@ -220,13 +220,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         let res = compute_flatness(&flat_out, 0.031); // your mass
+        let q = rot_to_quat(&res.rot); // [w, x, y, z]
 
-        // Send position + yaw for now (we can extend to full state later)
-        cf.commander.setpoint_position(
-            res.pos.x,
-            res.pos.y,
-            res.pos.z,
-            flat_out.yaw
+        cf.commander.setpoint_full_state(
+            res.pos.x, res.pos.y, res.pos.z,
+            res.vel.x, res.vel.y, res.vel.z,
+            flat_out.acc.x, flat_out.acc.y, flat_out.acc.z,
+            q[0], q[1], q[2], q[3],
+            res.omega.x, res.omega.y, res.omega.z,
         ).await?;
 
         sleep(Duration::from_millis(50)).await;

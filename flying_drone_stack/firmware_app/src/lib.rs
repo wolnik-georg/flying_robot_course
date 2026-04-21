@@ -144,6 +144,7 @@ fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
 fn geometric_step(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
+    omega_d: Vec3,
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     let ep = pd.sub(pos);
@@ -181,8 +182,8 @@ fn geometric_step(
     // Rotation error eR = ½ (Rd^T R − R^T Rd)^∨
     let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
 
-    // Angular velocity error (ω_d = 0 for hover)
-    let e_omega = omega;
+    // Angular velocity tracking error (omega_d from setpoint, zero for hover/position setpoints)
+    let e_omega = omega.sub(omega_d);
 
     // Gyroscopic term
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
@@ -248,7 +249,15 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
     let yaw_d = sp.attitude.yaw * deg2rad;
 
-    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, dt, s);
+    // Desired angular velocity from setpoint (fullState sets attitudeRate in deg/s;
+    // positionType leaves it zero, so this is a no-op for hover/ramp phases).
+    let omega_d = Vec3::new(
+        sp.attitudeRate.roll  * deg2rad,
+        sp.attitudeRate.pitch * deg2rad,
+        sp.attitudeRate.yaw   * deg2rad,
+    );
+
+    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d, dt, s);
 
     s.omega_prev = omega;
 
