@@ -64,7 +64,7 @@ fn test_spline_waypoints_satisfied() {
         Waypoint { pos: Vec3::new(0.0, 1.0, 1.0), yaw: 0.0 },
     ];
     let durs = vec![1.0f32, 1.5, 0.8];
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, false).expect("plan");
 
     for (k, wp) in wps.iter().enumerate() {
         let t = junction_time(&durs, k);
@@ -101,7 +101,7 @@ fn test_spline_zero_boundary_conditions() {
         Waypoint { pos: Vec3::new(0.5, 0.5, 0.3), yaw: 0.0 },
     ];
     let durs = vec![1.0f32, 1.0];
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, false).expect("plan");
 
     let start = traj.eval(0.0);
     let end   = traj.eval(traj.total_time);
@@ -130,7 +130,7 @@ fn test_spline_c4_continuity() {
         Waypoint { pos: Vec3::new(0.0, 1.0, 0.3), yaw: 0.0 },
     ];
     let durs = vec![1.0f32, 1.0, 1.0];
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, false).expect("plan");
 
     // Probe slightly before and after each interior junction
     let eps = 1e-4f32;
@@ -161,7 +161,7 @@ fn test_spline_c4_continuity() {
 fn test_spline_circle_waypoints() {
     let n = 8;
     let (wps, durs) = circle_waypoints(n, 0.5, 0.3);
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("circle plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, true).expect("circle plan");
     assert_eq!(traj.segments.len(), n);
 
     for (k, wp) in wps.iter().enumerate() {
@@ -182,7 +182,7 @@ fn test_spline_circle_waypoints() {
 fn test_spline_figure8_waypoints() {
     let n = 8;
     let (wps, durs) = figure8_waypoints(n, 0.5, 0.3, 0.3);
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("figure8 plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, false).expect("figure8 plan");
     assert_eq!(traj.segments.len(), n);
 
     for (k, wp) in wps.iter().enumerate() {
@@ -201,7 +201,7 @@ fn test_spline_figure8_waypoints() {
 #[test]
 fn test_spline_snap_finite_and_bounded() {
     let (wps, durs) = circle_waypoints(6, 0.4, 0.3);
-    let traj = SplineTrajectory::plan(&wps, &durs).expect("plan");
+    let traj = SplineTrajectory::plan(&wps, &durs, true).expect("plan");
 
     let n_samples = 500;
     let dt = traj.total_time / n_samples as f32;

@@ -119,6 +119,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         (mean_x, mean_y, mean_yaw)
     };
     let oyaw_rad = oyaw_deg * std::f32::consts::PI / 180.0;
+    let half_yaw  = oyaw_rad * 0.5;
+    let (qw_h, qz_h) = (half_yaw.cos(), half_yaw.sin());
     println!("Using origin: x={ox:+.3} y={oy:+.3} yaw={oyaw_deg:+.1} deg");
 
     println!("Takeoff in 3 s...");
@@ -134,7 +136,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== RAMP UP (0.02 -> 0.50 m) ===");
     for step in 0..25usize {
         let height = 0.02 + step as f32 * (0.48 / 24.0);
-        cf.commander.setpoint_position(ox, oy, height, oyaw_rad).await?;
+        cf.commander.setpoint_full_state(
+            ox, oy, height, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
+        ).await?;
         sleep(Duration::from_millis(120)).await;
 
         if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
@@ -158,7 +163,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== HOVER at 0.50 m for 7 seconds ===");
     let hover_end = Instant::now() + Duration::from_secs(7);
     while Instant::now() < hover_end {
-        cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
+        cf.commander.setpoint_full_state(
+            ox, oy, 0.50, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
+        ).await?;
         sleep(Duration::from_millis(50)).await;
 
         if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
@@ -197,7 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Equal duration per segment for simplicity
     let durations = vec![4.0; 6];   // 6 segments × 4 s = 24 s for one figure-8
 
-    let traj = SplineTrajectory::plan(&waypoints, &durations)
+    let traj = SplineTrajectory::plan(&waypoints, &durations, false)  // rest-to-rest
         .map_err(|e| format!("Spline planning failed: {}", e))?;
 
     let spline_start = Instant::now();
@@ -236,14 +244,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Return to center + land
     println!("Returning to center...");
     for _ in 0..50 {
-        cf.commander.setpoint_position(ox, oy, 0.50, oyaw_rad).await?;
+        cf.commander.setpoint_full_state(
+            ox, oy, 0.50, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
+        ).await?;
         sleep(Duration::from_millis(100)).await;
     }
 
     println!("=== LAND ===");
     for step in (0..20usize).rev() {
         let height = 0.04 + step as f32 * (0.46 / 19.0);
-        cf.commander.setpoint_position(ox, oy, height, oyaw_rad).await?;
+        cf.commander.setpoint_full_state(
+            ox, oy, height, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
+        ).await?;
         sleep(Duration::from_millis(150)).await;
         let _ = stream_a.next().await;
         let _ = stream_b.next().await;
