@@ -101,8 +101,8 @@ const JZZ: f32 = 29.261652e-6;
 // ── Official attitude gains + increased XY position/velocity gains ─────────
 const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // unchanged - good for hover & cross
 const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // unchanged
-const KI_P: f32 = 0.0;                                                          // keep official 0.0 for now
-const KI_LIMIT: f32 = 2.0;
+const KI_P: f32 = 0.05;                                                         // light integral — corrects steady-state offset
+const KI_LIMIT: f32 = 2.0;   // max accumulator: KI_P × KI_LIMIT = 0.1 m/s² max contribution
 
 const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;  // unchanged - stable
 const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;  // unchanged - stable

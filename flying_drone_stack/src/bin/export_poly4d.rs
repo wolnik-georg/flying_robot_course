@@ -151,24 +151,29 @@ fn print_poly4d(name: &str, traj: &SplineTrajectory, waypoints: &[Waypoint]) {
 
 fn export_circle() {
     let radius   = 0.30_f32;   // m  — matches CIRCLE_RADIUS in Python script
-    let n_seg    = 8_usize;    // segments (every 45°)
+    let n_seg    = 16_usize;   // segments (every 22.5°) — smoother than 8
     let omega    = 0.6_f32;    // planned rad/s  (actual = omega × SPEED_SCALE)
-    let seg_dur  = std::f32::consts::TAU / (n_seg as f32 * omega);  // ≈ 1.309 s
+    let seg_dur  = std::f32::consts::TAU / (n_seg as f32 * omega);  // ≈ 0.654 s
 
     // Circle centered at (radius, 0, 0) relative to the drone's hover position.
     // Starts and ends at (0, 0, 0) so relative_position=True works seamlessly.
     // Counterclockwise when viewed from above.
+    // Yaw = tangent direction: atan2(dy/dφ, dx/dφ) = atan2(cos φ, sin φ) = π/2 − φ
+    // Unwrapped (not wrapped to ±π) so the polynomial is monotone — firmware
+    // trig (sinf/cosf) handles values outside ±π correctly.
     let waypoints: Vec<Waypoint> = (0..=n_seg).map(|i| {
         let phi = std::f32::consts::TAU * i as f32 / n_seg as f32;
+        let tangent_yaw = std::f32::consts::FRAC_PI_2 - phi;  // unwrapped, decreases by 2π
         Waypoint {
             pos: Vec3::new(radius * (1.0 - phi.cos()), radius * phi.sin(), 0.0),
-            yaw: 0.0,
+            yaw: tangent_yaw,
         }
     }).collect();
     let durations = vec![seg_dur; n_seg];
 
     eprintln!("=== Circle: r={:.2}m, {} segments, {:.3}s each, total={:.2}s ===",
         radius, n_seg, seg_dur, seg_dur * n_seg as f32);
+    eprintln!("Tangent yaw: drone faces direction of travel (yaw = π/2 − φ, unwrapped)");
     eprintln!("At SPEED_SCALE=0.5: {:.1}s actual flight", seg_dur * n_seg as f32 / 0.5);
     eprintln!("Solving QP...");
 

@@ -25,6 +25,10 @@ The --controller flag selects:
 import sys
 import time
 import argparse
+import csv
+import datetime
+import os
+import threading
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
@@ -411,6 +415,95 @@ figure8_poly4d = [
 TRAJ_PLANNED_DURATION = sum(row[0] for row in figure8_poly4d)  # 7.28 s
 
 # ---------------------------------------------------------------------------
+# Flight logger — saves CSV for post-flight trajectory analysis
+# ---------------------------------------------------------------------------
+
+
+class FlightLogger:
+    """Logs flight state to CSV at 20 Hz for trajectory analysis.
+
+    Usage:
+        logger = FlightLogger(cf, name='figure8')
+        logger.start()
+        logger.mark_traj_start()   # call just before first start_trajectory()
+        ...
+        logger.stop()              # before landing
+
+    Output: logs/figure8_YYYYMMDD_HHMMSS.csv
+    Columns: time_s, x, y, z, vx, vy, vz, roll_deg, pitch_deg, yaw_deg, thrust
+    """
+
+    _PERIOD_MS = 50  # 20 Hz
+    COLUMNS = ['time_s', 'x', 'y', 'z', 'vx', 'vy', 'vz',
+               'roll_deg', 'pitch_deg', 'yaw_deg', 'thrust']
+
+    def __init__(self, cf, name='flight'):
+        os.makedirs('logs', exist_ok=True)
+        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.path = os.path.join('logs', f'{name}_{ts}.csv')
+        self._t0 = None
+        self._lock = threading.Lock()
+        self._buf = {}
+        self._file = open(self.path, 'w', newline='')
+        self._csv = csv.writer(self._file)
+        self._csv.writerow(self.COLUMNS)
+
+        # Config 1: position + attitude (6 floats = 24 bytes, fits in one CRTP packet)
+        self._lc1 = LogConfig('FLpos', period_in_ms=self._PERIOD_MS)
+        for v in ('stateEstimate.x', 'stateEstimate.y', 'stateEstimate.z',
+                  'stabilizer.roll', 'stabilizer.pitch', 'stabilizer.yaw'):
+            self._lc1.add_variable(v, 'float')
+        self._lc1.data_received_cb.add_callback(self._cb1)
+        cf.log.add_config(self._lc1)
+
+        # Config 2: velocity + thrust (4 floats = 16 bytes)
+        self._lc2 = LogConfig('FLvel', period_in_ms=self._PERIOD_MS)
+        for v in ('stateEstimate.vx', 'stateEstimate.vy',
+                  'stateEstimate.vz', 'stabilizer.thrust'):
+            self._lc2.add_variable(v, 'float')
+        self._lc2.data_received_cb.add_callback(self._cb2)
+        cf.log.add_config(self._lc2)
+
+    def start(self):
+        self._lc1.start()
+        self._lc2.start()
+
+    def mark_traj_start(self):
+        """Set t=0. Call just before the first start_trajectory()."""
+        with self._lock:
+            self._t0 = time.time()
+
+    def _cb1(self, timestamp, data, logconf):
+        with self._lock:
+            self._buf.update(data)
+            if self._t0 is None:
+                return
+            t = time.time() - self._t0
+            s = self._buf
+            self._csv.writerow([
+                f'{t:.3f}',
+                s.get('stateEstimate.x', ''), s.get('stateEstimate.y', ''),
+                s.get('stateEstimate.z', ''),
+                s.get('stateEstimate.vx', ''), s.get('stateEstimate.vy', ''),
+                s.get('stateEstimate.vz', ''),
+                s.get('stabilizer.roll', ''), s.get('stabilizer.pitch', ''),
+                s.get('stabilizer.yaw', ''),
+                s.get('stabilizer.thrust', ''),
+            ])
+            self._file.flush()
+
+    def _cb2(self, timestamp, data, logconf):
+        with self._lock:
+            self._buf.update(data)
+
+    def stop(self):
+        self._lc1.stop()
+        self._lc2.stop()
+        self._file.close()
+        print(f'  [log] Saved: {self.path}')
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -534,8 +627,10 @@ def fly_figure8(scf, n_reps, controller):
     cf.param.set_value("stabilizer.controller", str(controller))
     time.sleep(0.1)
 
-    # Start persistent live log (single LogConfig, async callback — never reused)
+    # Start persistent live log (terminal output) + CSV flight logger
     log_cfg = start_live_log(cf)
+    logger = FlightLogger(cf, name='figure8')
+    logger.start()
 
     # Takeoff
     print(f"\nTakeoff to {HOVER_HEIGHT:.2f} m over 2 s...")
@@ -547,11 +642,14 @@ def fly_figure8(scf, n_reps, controller):
     for rep in range(1, n_reps + 1):
         print(f"\n--- Rep {rep}/{n_reps}: starting figure-8 ---")
         print(f"  Duration: {actual_s:.1f} s at SPEED_SCALE={SPEED_SCALE}")
+        if rep == 1:
+            logger.mark_traj_start()  # t=0 at first trajectory start
         hl.start_trajectory(traj_id, 1.0 / SPEED_SCALE, relative_position=True)
         time.sleep(max(0.5, actual_s - 0.05))  # 50ms early → no gap between reps
 
     # Land
     print("\nLanding...")
+    logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
     time.sleep(2.0)
