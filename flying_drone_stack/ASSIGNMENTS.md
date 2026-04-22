@@ -4,10 +4,17 @@ Four graded assignments (20 pts each) from the *Flying Robots* course (TU Berlin
 All implemented in Rust; real-hardware flights use a Crazyflie 2.1 with Flow Deck v2 + Multi-ranger Deck.
 
 > **Note on approach:** The assignments specify porting controller/estimator code *into* the Crazyflie
-> firmware (via `bindgen`, `no_std`, uSD-card logging). We took an equivalent but simpler route: all
-> algorithms run **PC-side in real time**, communicating with the drone over radio (Crazyradio PA).
-> The math is identical; the architecture avoids the firmware build toolchain while still running on
-> real hardware with real sensor data.
+> firmware (via `bindgen`, `no_std`, uSD-card logging). We implemented **both paths**:
+> - **Firmware controller** (`firmware_app/`): SE(3) geometric controller compiled into the Crazyflie
+>   STM32 as an out-of-tree controller (`CONTROLLER_OOT=y`), runs at 500 Hz onboard. Uses `bindgen`
+>   FFI from `stabilizer_types.h`, `#![no_std]`, and outputs `controlModeForceTorque` directly.
+> - **PC-side shadow track** (`src/bin/main.rs`): all algorithms run at 20 Hz on the laptop,
+>   communicating over Crazyradio PA. The shadow controller logs what it *would* command, enabling
+>   offline comparison without flight risk.
+>
+> The firmware app satisfies the lecture slide requirements exactly (`no_std`, `f32`, `bindgen`).
+> uSD logging is replaced by the equivalent radio CSV path (same data, different transport — the
+> Crazyflie used in this course does not carry a uSD deck).
 
 ---
 
@@ -37,7 +44,23 @@ cargo run --release --bin assignment1
 ~/.pyenv/versions/flying_robots/bin/python scripts/plot_assignment1.py
 ```
 
+Three validation scenarios are run automatically:
+
+| Scenario | Description | Key result |
+|----------|-------------|-----------|
+| 1 — Synthetic spin | Constant torque; RK4 ≫ Euler in drift | RK4: 0.03 mm, Euler: 68 mm at t=5 s |
+| 2 — Convergence | dt sweep 100→1 ms; confirm order | RK4 O(4), Euler O(1) as expected |
+| 3 — Real flight (k-step) | 165 windows from `circle_2026-03-17` CSV; k=1..10 | 13.7 mm at k=1 → 63.2 mm at k=10; all integrators within 1 mm of each other |
+
+**Scenario 3 interpretation:** On real 20 Hz data, all four integrators give virtually identical
+predictions (< 1 mm spread). The bottleneck is imperfect action reconstruction from IMU noise
+(thrust from `|acc|·m·g`, torque from finite-difference gyro), not integration order. This is
+the physically correct result: integrator choice matters for long time horizons with exact
+inputs; it is dominated by measurement noise in practice.
+
 <img src="results/assignment1/images/assignment1_position_comparison.png" width="48%"> <img src="results/assignment1/images/assignment1_accuracy_analysis.png" width="48%">
+
+<img src="results/assignment1/images/assignment1_real_flight_validation.png" width="60%">
 
 ---
 
@@ -51,11 +74,19 @@ Test and tune in simulation. Execute physical test flights and report tracking e
 Implemented the full SE(3) geometric controller in Rust (`src/controller/`).
 Tuned in simulation (`src/bin/assignment2.rs`, circle + figure-8 trajectories).
 
-**Physical flight approach:** Rather than compiling the controller into firmware, we run it
-PC-side at 100 Hz and send RPYT setpoints directly to the Crazyflie's attitude stabilizer.
-The firmware receives roll/pitch/yaw-rate/thrust commands and executes them; our code
-closes the outer position + attitude loop. This gives identical controller authority with a
-simpler build process.
+**Physical flight approach — two paths, both implemented:**
+
+1. **Onboard (firmware_app/)**: The SE(3) controller is compiled as an out-of-tree Crazyflie
+   controller (`CONTROLLER_OOT=y`, `no_std` Rust, `bindgen` FFI). It runs at **500 Hz** inside
+   the STM32 stabilizer task, reading Kalman EKF state and computing thrust + torques directly.
+   The laptop sends position setpoints (CRTP); the onboard controller closes the full SE(3) loop.
+   Flash: `cd firmware_app && make cload`.
+
+2. **PC-side (`my_circle` maneuver in main.rs)**: The controller runs on the laptop at 100 Hz
+   and sends RPYT setpoints to the Crazyflie's attitude rate stabilizer. This closes the outer
+   position + velocity loop offboard, useful for rapid iteration without reflashing.
+
+The real-flight results below were obtained using the PC-side path (`my_circle`).
 
 Maneuver: `my_circle` — 0.2 m radius circle at ω = 0.5 rad/s (~12.6 s/lap).
 Best flight: `runs/my_circle_2026-03-26_19-45-02.csv` (41 s airborne, clean tracking).
@@ -201,6 +232,36 @@ cargo run --release --bin assignment4
 <img src="results/assignment4/images/assignment4_3d.png" width="48%"> <img src="results/assignment4/images/assignment4_errors.png" width="48%">
 
 <img src="results/assignment4/images/assignment4_position.png" width="48%"> <img src="results/assignment4/images/assignment4_flatness_actions.png" width="48%">
+
+---
+
+## Real-Hardware Flight Modes
+
+Beyond the assignments, the stack supports two additional trajectory flight modes:
+
+### Mode 1 — HLC (High-Level Commander, Python)
+
+Pre-generates a min-snap spline trajectory, exports it as Poly4D coefficients (degree-7 after
+Hermite conversion), uploads to drone onboard memory, and executes via `start_trajectory`.
+The drone's built-in polynomial evaluator runs at ~100 Hz onboard — radio only needed to start.
+
+```bash
+# requires: firmware flashed with OOT controller (make cload from firmware_app/)
+~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py
+~/.pyenv/versions/flying_robots/bin/python Controls/autonomous_sequence_high_level.py
+```
+
+### Mode 2 — Rust live full-state (CRTP type 6)
+
+Laptop evaluates the degree-8 spline in real time, computes differential flatness, and sends
+CRTP full-state packets (pos + vel + acc + quaternion + ω) at 20–25 Hz. The onboard SE(3)
+controller receives all feedforward terms (velocity, acceleration, angular velocity) — not just
+position. Radio link must stay alive throughout.
+
+```bash
+cargo run --release --bin spline_circle_test
+cargo run --release --bin spline_figure8_test
+```
 
 ---
 

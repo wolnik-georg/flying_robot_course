@@ -21,6 +21,8 @@ cargo test
 
 ## Real Hardware Flight
 
+### Mode A — Main flight binary (position setpoints, 20 Hz, full SLAM stack)
+
 ```bash
 # Hover at 0.30 m for 30 s
 cargo run --release --bin main -- --maneuver hover
@@ -36,11 +38,28 @@ cargo run --release --bin main -- --maneuver explore
 
 # Any maneuver with AI Deck camera (VO + loop closure + SLAM enabled)
 cargo run --release --bin main -- --maneuver circle --ai-deck
-cargo run --release --bin main -- --maneuver explore --ai-deck
+```
+
+### Mode B — Rust live full-state (requires OOT firmware flashed)
+
+Laptop evaluates degree-8 spline in real time → differential flatness → CRTP full-state
+(pos+vel+acc+quaternion+ω) at 25 Hz. All feedforward terms reach the onboard SE(3) controller.
+
+```bash
+cd firmware_app && make cload          # flash OOT firmware first (once)
+cargo run --release --bin spline_circle_test
+cargo run --release --bin spline_figure8_test
+```
+
+### Mode C — HLC Python scripts (pre-generated Poly4D, onboard evaluation at ~100 Hz)
+
+```bash
+~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py
+~/.pyenv/versions/flying_robots/bin/python Controls/autonomous_sequence_high_level.py
 ```
 
 **Hardware required**: Crazyflie 2.1 + Flow Deck v2 + Multi-ranger Deck.
-Optional: AI Deck (enables full visual-SLAM path).
+Optional: AI Deck (enables full visual-SLAM path). Modes B and C require OOT firmware.
 
 Radio URI: `radio://0/80/2M/E7E7E7E7E7`
 
@@ -56,6 +75,10 @@ cargo run --release --bin slam_eval -- runs/<file>.csv
 # Build a 3D occupancy map from one or more flight CSVs → PLY file
 cargo run --release --bin build_map -- runs/<file>.csv
 
+# Export min-snap spline as Poly4D for HLC Python scripts
+cargo run --release --bin export_poly4d           # circle
+cargo run --release --bin export_poly4d figure8   # figure-8
+
 # Test AI Deck camera connection (bench test, no flight)
 cargo run --release --bin ai_deck_test -- --frames 50 --save-all
 ```
@@ -63,11 +86,13 @@ cargo run --release --bin ai_deck_test -- --frames 50 --save-all
 ## Post-Flight Scripts
 
 ```bash
+PYTHON=~/.pyenv/versions/flying_robots/bin/python
+
 # Diagnostic overview: EKF vs MEKF, shadow controller, multi-ranger
-python3 scripts/plot_flight_diagnostic.py          # auto-picks latest CSV
+$PYTHON scripts/plot_flight_diagnostic.py          # auto-picks latest CSV
 
 # Shadow controller evaluation: roll/pitch cmd vs actual
-python3 scripts/plot_shadow_eval.py runs/<file>.csv
+$PYTHON scripts/plot_shadow_eval.py runs/<file>.csv
 
 # View a saved map in MeshLab or CloudCompare
 meshlab results/data/map.ply
@@ -138,17 +163,22 @@ The binary auto-resets the Kalman filter, ramps up, hovers to stabilise, execute
          └──────────────┬──┘   └──────────┬───────────────┘
                         │                 │
              ┌──────────▼─────────────────▼──────────────┐
-             │  Firmware track (main.rs)                  │
-             │  setpoint_position → Crazyflie PID         │
-             │  Shadow track (main.rs)                    │
-             │  SE(3) geometric controller → CSV only     │
+             │  Laptop setpoint paths                     │
+             │  A (main.rs): setpoint_position, 20 Hz    │
+             │     + Shadow SE(3) → CSV only             │
+             │  B (spline_*_test): setpoint_full_state   │
+             │     pos+vel+acc+quat+ω, 25 Hz              │
+             │  C (Python HLC): Poly4D upload once,      │
+             │     drone evaluates onboard at 100 Hz     │
              └────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────┐
 │  firmware_app/ — Onboard SE(3) Controller (no_std Rust, STM32)       │
-│  controllerOutOfTree() runs at 500 Hz inside Crazyflie firmware      │
-│  Same gains as offboard shadow track; receives position setpoints     │
-│  from the laptop via CRTP radio; uses Crazyflie Kalman EKF state     │
+│  controllerOutOfTree() at 500 Hz — Lee et al. (2010) geometric ctrl  │
+│  Reads: Kalman EKF state (pos/vel/quat) + raw IMU gyro               │
+│  Receives: position+yaw (mode A) or full-state pos+vel+acc+quat+ω   │
+│            (modes B/C) — velocity+accel+omega_d feedforward used     │
+│  Outputs: thrustSi [N] + torque[3] [Nm] (controlModeForceTorque)    │
 │  Build: cd firmware_app && make    Flash: make cload                 │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -209,7 +239,12 @@ flying_drone_stack/
 │   ├── mapping/                      # OccupancyMap, KeyframeStore, VoTrajectory, PoseGraph (README.md)
 │   ├── perception/                   # Sensor traits, CPX camera, FAST-9/BRIEF features (README.md)
 │   └── bin/
-│       ├── main.rs                   # Real hardware flight (CLI maneuver arg + --ai-deck)
+│       ├── main.rs                   # Real hardware flight (CLI maneuver + --ai-deck)
+│       ├── spline_circle_test.rs     # Mode B: spline→flatness→full-state circle (25 Hz)
+│       ├── spline_figure8_test.rs    # Mode B: spline→flatness→full-state figure-8 (25 Hz)
+│       ├── fullstate_circle_test.rs  # Mode B: analytic circle→full-state
+│       ├── fullstate_figure8_test.rs # Mode B: analytic figure-8→full-state
+│       ├── export_poly4d.rs          # Export min-snap spline as Poly4D (Mode C prep)
 │       ├── mekf_eval.rs              # Offline MEKF vs firmware EKF RMSE
 │       ├── slam_eval.rs              # Offline VO/loop closure/pose graph analysis
 │       ├── build_map.rs              # Replay CSV → PLY occupancy map
@@ -243,14 +278,21 @@ loop closure age/spatial gates, pose graph Gauss-Seidel, spatial grid index, exp
 
 ## Key Design Decisions
 
-### Firmware track vs shadow track
+### Three setpoint modes
 
-The `main` binary runs two parallel tracks every loop iteration:
+**Mode A — `main.rs` position setpoints (20 Hz)**
+The `main` binary runs two parallel tracks every loop:
+1. **Firmware track** — `setpoint_position(x, y, z, yaw)` → Crazyflie onboard position controller.
+2. **Shadow track** — SE(3) geometric controller evaluates what it *would* command, logs to CSV, never touches motors.
 
-1. **Firmware track** — `setpoint_position(x, y, z, yaw)` commands the Crazyflie's onboard
-   position PID. This is what actually flies the drone.
-2. **Shadow track** — our SE(3) geometric controller evaluates what *it would command* given
-   the same state and reference trajectory, logs the result, and **never touches the motors**.
+**Mode B — Rust live full-state (25 Hz, `spline_*_test` binaries)**
+Laptop evaluates the degree-8 min-snap spline, computes differential flatness, and sends
+CRTP type-6 full-state packets: position + velocity + acceleration + quaternion + angular velocity.
+The onboard SE(3) controller uses all feedforward terms — not just position.
+
+**Mode C — HLC Python (onboard ~100 Hz, `Controls/` scripts)**
+Min-snap spline exported as Poly4D coefficients, uploaded once to drone onboard memory.
+The drone's trajectory evaluator runs at ~100 Hz autonomously; radio only needed to trigger start.
 
 ### SLAM pipeline (with `--ai-deck`)
 

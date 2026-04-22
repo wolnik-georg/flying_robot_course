@@ -149,18 +149,21 @@ validated on real hardware (Mar 2026, hover + circle + figure-8):
 
 | Constant | Value | Physical meaning |
 |----------|-------|-----------------|
-| `KP_X/Y` | 12.0 | Position proportional XY [m/s²/m] |
-| `KP_Z`   | 7.0  | Position proportional Z |
-| `KV_X/Y` | 8.0  | Position derivative XY [m/s²/(m/s)] |
-| `KV_Z`   | 4.0  | Position derivative Z |
-| `KI_P`   | 0.05 | Position integral, all axes |
-| `KI_LIMIT`| 0.5 | Anti-windup clamp [m/s²·s] |
-| `KR_X/Y` | 0.007| Attitude proportional [Nm/rad] |
-| `KR_Z`   | 0.008| Attitude proportional (yaw) |
+| `KP_X/Y` | 7.5   | Position proportional XY [m/s²/m] |
+| `KP_Z`   | 26.0  | Position proportional Z (stiff altitude hold) |
+| `KV_X/Y` | 9.0   | Position derivative XY [m/s²/(m/s)] |
+| `KV_Z`   | 14.0  | Position derivative Z |
+| `KI_P`   | 0.0   | Position integral (disabled — anti-windup included but gain=0) |
+| `KI_LIMIT`| 2.0  | Anti-windup clamp [m/s²·s] |
+| `KR_X/Y` | 0.007 | Attitude proportional [Nm/rad] |
+| `KR_Z`   | 0.008 | Attitude proportional (yaw) |
 | `KW_X/Y` | 0.00115 | Attitude derivative [Nm/(rad/s)] |
-| `KW_Z`   | 0.002| Attitude derivative (yaw) |
-| `MASS`   | 0.027 kg | Crazyflie 2.1 mass |
-| `JXX/JYY/JZZ` | 16.6/16.7/29.3 µN·m² | Inertia (ETHZ System ID) |
+| `KW_Z`   | 0.002 | Attitude derivative (yaw) |
+| `MASS`   | 0.027 kg | Crazyflie 2.1 + Flow Deck v2 |
+| `JXX/JYY/JZZ` | 16.571 / 16.656 / 29.262 µN·m² | Inertia (Crazyflie official System ID) |
+
+Arming threshold: controller outputs zero until `setpoint.position.z > 0.05 m` (prevents
+motors from spinning during the HLC takeoff ramp before the spline trajectory starts).
 
 ---
 
@@ -222,19 +225,23 @@ inner loop at 500 Hz.
 
 ## 8. INDI Extension Point
 
-The file is structured for a future INDI rate controller.  The `controllerOutOfTree`
-callback already has access to:
+The file is structured for a future INDI rate controller.  `controllerOutOfTree` already has:
 - `sensors.gyro` at 500 Hz — exact input for the incremental angular-rate term `Δω`
-- `omega` vector in `State` — add `omega_prev: Vec3` to `State` to store the previous sample
+- `CTRL.omega_prev: Vec3` **already stored** in `State` every cycle (updated at line ~262)
 
-Replace `geometric_step()` with an incremental law:
+The extension requires only replacing `geometric_step()` with an incremental attitude law:
 ```
-Δu = G⁻¹ (ν_des − ω̇_meas + G·u₀)
+Δτ = J · (ω̇_des − ω̇_filt)
+ω̇_filt ≈ (omega − omega_prev) / dt
 ```
-where `ω̇_meas ≈ (omega − omega_prev) / dt`.
 
-No other files need to change: the Kbuild, bindgen, and firmware integration are
-already in place.
+Steps:
+1. Add `omega_dot_filtered: Vec3` to `State` (optional low-pass)
+2. Compute `omega_dot ≈ (omega - s.omega_prev) / dt` in `controllerOutOfTree`
+3. Replace the attitude (KR/KW) terms in `geometric_step` with the incremental law
+4. Keep the position P+I outer loop unchanged
+
+No Kbuild, bindgen, or firmware integration changes needed — all scaffolding is in place.
 
 ---
 
@@ -243,7 +250,7 @@ already in place.
 | Direction | Component | What is exchanged |
 |-----------|-----------|------------------|
 | Uses math from | `src/controller/` | Same SE(3) algorithm and gains (two independent copies, both validated) |
-| Receives setpoints from | `src/bin/main.rs` | Position + yaw via CRTP `setpoint_position` |
+| Receives setpoints from | `src/bin/main.rs` | Position + yaw via CRTP `setpoint_position` (20 Hz); or full-state (pos+vel+acc+quat+ω) via CRTP type 6 from spline test binaries (25 Hz) |
 | Reads state from | Crazyflie Kalman EKF | `state_s`: pos, vel, quaternion at 500 Hz |
 | Reads sensors from | Crazyflie IMU | `sensorData_s.gyro` at 500 Hz |
 | Writes to | Crazyflie motor mixer | `control_s`: thrustSi [N] + torque[3] [Nm] |
