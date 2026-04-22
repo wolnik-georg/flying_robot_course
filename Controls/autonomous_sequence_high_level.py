@@ -43,6 +43,10 @@ from cflib.utils import uri_helper
 # URI to the Crazyflie to connect to
 uri = uri_helper.uri_from_env(default="radio://0/80/2M/E7E7E7E7E7")
 
+SCALE = 0.7  # scale down XY to fit small room (~1.3m x 1.4m footprint)
+DEFAULT_REPS = 1  # number of times to execute the trajectory by default
+
+
 # The trajectory to fly
 # See https://github.com/whoenig/uav_trajectories for a tool to generate
 # trajectories
@@ -582,10 +586,6 @@ def activate_outoftree_controller(cf):
     cf.param.set_value("stabilizer.controller", "6")
 
 
-SCALE = 0.7  # scale down XY to fit small room (~1.3m x 1.4m footprint)
-DEFAULT_REPS = 2  # number of times to execute the trajectory by default
-
-
 def upload_trajectory(cf, trajectory_id, trajectory):
     trajectory_mem = cf.mem.get_mems(MemoryElement.TYPE_TRAJ)[0]
     trajectory_mem.trajectory = []
@@ -654,13 +654,16 @@ def run_sequence(cf, trajectory_id, duration, n_reps=DEFAULT_REPS):
 
     commander.takeoff(0.5, 2.0)
     time.sleep(3.0)
-    cf.param.set_value("usd.logging", "1")
+    # usd.logging only exists when a micro-SD deck is attached — skip if absent
+    if "usd.logging" in cf.param.toc.toc:
+        cf.param.set_value("usd.logging", "1")
     relative = True
     for rep in range(1, n_reps + 1):
         print(f"Starting trajectory rep {rep}/{n_reps}...")
         commander.start_trajectory(trajectory_id, 1.0, relative)
         time.sleep(duration)
-    cf.param.set_value("usd.logging", "0")
+    if "usd.logging" in cf.param.toc.toc:
+        cf.param.set_value("usd.logging", "0")
     print("Trajectory done, landing...")
     log_config.stop()
     commander.land(0.0, 2.0)

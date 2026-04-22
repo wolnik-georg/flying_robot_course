@@ -49,6 +49,11 @@ KALMAN_THRESH = 0.0025
 **Controller**: `--controller 6` = OOT Rust geometric (default, requires flashed firmware),
 `--controller 2` = Mellinger (fallback, always available).
 
+**CRITICAL — cflib time_scale convention**: `start_trajectory(id, time_scale)` where
+`time_scale > 1.0 = slower`, `time_scale < 1.0 = faster`.
+So we pass `1.0 / SPEED_SCALE`: SPEED_SCALE=0.7 → time_scale=1.43 (43% slower = 70% speed).
+**Never pass SPEED_SCALE directly** — that would invert the intended speed direction.
+
 ## Poly4D format (33 columns per segment)
 
 ```
