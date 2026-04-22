@@ -122,6 +122,32 @@ def wait_for_kalman(scf, threshold=KALMAN_THRESH):
 # Main flight
 # ---------------------------------------------------------------------------
 
+def start_live_log(cf):
+    """Persistent async position log — started once, runs for the whole flight."""
+    log_cfg = LogConfig(name="FlightLog", period_in_ms=500)
+    log_cfg.add_variable("stateEstimate.x", "float")
+    log_cfg.add_variable("stateEstimate.y", "float")
+    log_cfg.add_variable("stateEstimate.z", "float")
+    log_cfg.add_variable("stabilizer.roll",  "float")
+    log_cfg.add_variable("stabilizer.pitch", "float")
+    log_cfg.add_variable("stabilizer.thrust", "float")
+
+    def _cb(timestamp, data, _logconf):
+        x   = data["stateEstimate.x"]
+        y   = data["stateEstimate.y"]
+        z   = data["stateEstimate.z"]
+        r   = data["stabilizer.roll"]
+        p   = data["stabilizer.pitch"]
+        thr = data["stabilizer.thrust"]
+        print(f"  [t={timestamp/1000:.1f}s] pos=({x:+.2f},{y:+.2f},{z:+.2f}) "
+              f"roll={r:+.1f} pitch={p:+.1f} thrust={thr:.0f}")
+
+    log_cfg.data_received_cb.add_callback(_cb)
+    cf.log.add_config(log_cfg)
+    log_cfg.start()
+    return log_cfg
+
+
 def fly_figure8(scf, n_reps, controller):
     cf = scf.cf
     hl = cf.high_level_commander
@@ -141,6 +167,10 @@ def fly_figure8(scf, n_reps, controller):
     cf.param.set_value("stabilizer.controller", str(controller))
     time.sleep(0.2)
 
+    # Arm (required by current firmware before takeoff)
+    cf.platform.send_arming_request(True)
+    time.sleep(1.0)
+
     # Reset Kalman estimator
     print("Resetting Kalman estimator...")
     cf.param.set_value("kalman.resetEstimation", "1")
@@ -149,40 +179,21 @@ def fly_figure8(scf, n_reps, controller):
 
     wait_for_kalman(scf)
 
+    # Start persistent live log (single LogConfig, async callback — never reused)
+    log_cfg = start_live_log(cf)
+
     # Takeoff
     print(f"\nTakeoff to {HOVER_HEIGHT:.2f} m over 2 s...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 5 s for climb + estimator stabilization...")
     time.sleep(5.0)
 
-    # Read EKF position to confirm we're hovering
-    pos_cfg = LogConfig(name="Pos", period_in_ms=100)
-    pos_cfg.add_variable("stateEstimate.x", "float")
-    pos_cfg.add_variable("stateEstimate.y", "float")
-    pos_cfg.add_variable("stateEstimate.z", "float")
-    with SyncLogger(scf, pos_cfg) as logger:
-        for entry in logger:
-            d = entry[1]
-            x, y, z = d["stateEstimate.x"], d["stateEstimate.y"], d["stateEstimate.z"]
-            print(f"  Hover position: x={x:+.3f}  y={y:+.3f}  z={z:.3f} m")
-            break
-
     # Execute trajectory (n_reps times; each rep starts from current position)
     for rep in range(1, n_reps + 1):
         print(f"\n--- Rep {rep}/{n_reps}: starting figure-8 ---")
         print(f"  Duration: {actual_s:.1f} s at SPEED_SCALE={SPEED_SCALE}")
         hl.start_trajectory(traj_id, SPEED_SCALE, relative_position=True)
-
-        # Log position during flight
-        t_end = time.time() + actual_s + 1.5
-        with SyncLogger(scf, pos_cfg) as logger:
-            for entry in logger:
-                d = entry[1]
-                x, y, z = d["stateEstimate.x"], d["stateEstimate.y"], d["stateEstimate.z"]
-                print(f"  rep {rep}  x={x:+.3f}  y={y:+.3f}  z={z:.3f}          ", end="\r")
-                if time.time() >= t_end:
-                    break
-        print()
+        time.sleep(actual_s)
 
         # Small pause between reps
         if rep < n_reps:
@@ -192,6 +203,7 @@ def fly_figure8(scf, n_reps, controller):
 
     # Land
     print("\nLanding...")
+    log_cfg.stop()
     hl.land(0.0, 3.0)
     time.sleep(4.0)
     hl.stop()
