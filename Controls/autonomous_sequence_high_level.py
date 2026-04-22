@@ -583,6 +583,7 @@ def activate_outoftree_controller(cf):
 
 
 SCALE = 0.7  # scale down XY to fit small room (~1.3m x 1.4m footprint)
+DEFAULT_REPS = 2  # number of times to execute the trajectory by default
 
 
 def upload_trajectory(cf, trajectory_id, trajectory):
@@ -638,7 +639,7 @@ def start_live_log(cf):
     return log_config
 
 
-def run_sequence(cf, trajectory_id, duration):
+def run_sequence(cf, trajectory_id, duration, n_reps=DEFAULT_REPS):
     commander = cf.high_level_commander
 
     # Arm the Crazyflie
@@ -655,9 +656,10 @@ def run_sequence(cf, trajectory_id, duration):
     time.sleep(3.0)
     cf.param.set_value("usd.logging", "1")
     relative = True
-    print("Starting figure-8 trajectory...")
-    commander.start_trajectory(trajectory_id, 1.0, relative)
-    time.sleep(duration)
+    for rep in range(1, n_reps + 1):
+        print(f"Starting trajectory rep {rep}/{n_reps}...")
+        commander.start_trajectory(trajectory_id, 1.0, relative)
+        time.sleep(duration)
     cf.param.set_value("usd.logging", "0")
     print("Trajectory done, landing...")
     log_config.stop()
@@ -690,4 +692,4 @@ if __name__ == "__main__":
         duration = upload_trajectory(cf, trajectory_id, figure8)
         print("The sequence is {:.1f} seconds long".format(duration))
         reset_estimator(cf)
-        run_sequence(cf, trajectory_id, duration)
+        run_sequence(cf, trajectory_id, duration, n_reps=DEFAULT_REPS)
