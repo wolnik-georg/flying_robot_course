@@ -1,6 +1,6 @@
 # Flying Drone Stack — Roadmap
 
-> Last updated: 2026-03-21
+> Last updated: 2026-04-22
 > Tests: 249 passing, 0 failures
 > Build: `cargo build --release` clean
 
@@ -8,23 +8,75 @@
 
 ## What is built (all phases complete)
 
-| Phase | Module | What it does |
-|-------|--------|--------------|
-| Dynamics & control | `dynamics/`, `controller/` | SE(3) geometric controller, RPYT pipeline |
-| Planning | `planning/spline.rs`, `flatness.rs`, `exploration.rs` | Min-snap spline, flatness, SCAN→NAVIGATE→LAND FSM |
-| MEKF estimation | `estimation/mekf.rs` | Mueller 2015 MEKF fusing flow + rangefinder; validated offline (roll 0.84°, pitch 2.39°, yaw 1.03° RMSE on real flights) |
-| 3-D occupancy map | `mapping/occupancy.rs` | Sparse log-odds voxel map (5 cm), ray-cast from multi-ranger |
-| Safety | `safety.rs`, `main.rs` | Multi-ranger repulsion + occupancy-map probe |
-| Visual odometry | `mapping/keyframe.rs`, `vo_trajectory.rs` | FAST-9 + BRIEF, 8-point essential matrix, metric scale from range_z; VoTrajectory chains relative poses |
-| VO–MEKF fusion | `estimation/mekf.rs` `mekf_update_vo` | Two scalar EKF updates for XY; reset after loop correction |
-| Loop closure / pose graph | `mapping/loop_closure.rs` | LoopConstraint, Gauss-Seidel pose graph (100 sweeps) |
-| Spatial grid index | `mapping/keyframe.rs` `SpatialGrid` | O(1) loop candidate lookup (3×3 cell neighbourhood, 1.5 m cells) |
+### Core simulation and control
+| Component | Module | What it does |
+|-----------|--------|--------------|
+| Dynamics & simulation | `dynamics/`, `integration/` | SE(3) rigid-body simulator; Euler, RK4, ExpEuler, ExpRK4 |
+| SE(3) geometric controller | `controller/` | Lee et al. 2010; RPYT pipeline; validated in sim + real flights |
+| Min-snap spline planner | `planning/spline.rs`, `flatness.rs` | Degree-8 QP (Clarabel), C3-continuous; differential flatness → thrust/torque/ω/ω̇ |
+| Frontier exploration FSM | `planning/exploration.rs` | SCAN→NAVIGATE→LAND; bugs fixed Apr 7, awaiting re-flight |
+
+### State estimation and SLAM
+| Component | Module | What it does |
+|-----------|--------|--------------|
+| MEKF | `estimation/mekf.rs` | Mueller 2015, fusing IMU + ToF + flow + VO; RMSE hover roll 0.84°/pitch 2.39° |
+| 3D occupancy map | `mapping/occupancy.rs` | Sparse log-odds 5 cm voxels, multi-ranger ray-cast |
+| Visual odometry | `mapping/keyframe.rs`, `vo_trajectory.rs` | FAST-9 + BRIEF, 8-point essential matrix, metric scale from range_z |
+| Loop closure + pose graph | `mapping/loop_closure.rs` | Gauss-Seidel 100 sweeps; validated: 12 closures, up to 0.24 m correction |
+| Spatial grid index | `mapping/keyframe.rs` `SpatialGrid` | O(1) loop candidate lookup (3×3 neighbourhood, 1.5 m cells) |
+
+### Onboard firmware controller
+| Component | Path | What it does |
+|-----------|------|--------------|
+| Out-of-tree SE(3) controller | `firmware_app/` | `no_std` Rust, `bindgen` FFI, `controlModeForceTorque` at 500 Hz on STM32 |
+| Full-state CRTP setpoint | `vendor/crazyflie-lib/` | `setpoint_full_state` (type 6): pos+vel+acc+quat+ω in 29-byte packet |
+| `omega_prev` INDI prep | `firmware_app/src/lib.rs` | Previous angular velocity stored every cycle; ready for incremental law |
+
+### Trajectory flight modes
+| Mode | What it does |
+|------|-------------|
+| `main.rs` maneuvers (position setpoints) | hover/circle/figure8/explore at 20 Hz, MEKF+SLAM+safety, CSV logging |
+| `spline_circle_test` / `spline_figure8_test` | Laptop evaluates degree-8 spline → flatness → CRTP full-state at 25 Hz |
+| HLC Python scripts (`Controls/`) | Pre-export Poly4D → upload once → HLC `start_trajectory`; drone evaluates onboard at 100 Hz |
+
+### Course assignments ✅ all complete
+| Assignment | Status |
+|-----------|--------|
+| A1 — Dynamics & integrators | ✅ 3 scenarios: synthetic, convergence, real-flight k-step (165 windows, 13→63 mm) |
+| A2 — SE(3) controller | ✅ Simulation + PC-side real flight (70.8 mm RMS 3D) + firmware onboard controller |
+| A3 — MEKF | ✅ Real flight validated (hover/circle/figure-8 vs firmware EKF) |
+| A4 — Min-snap + flatness | ✅ Simulation: open-loop 321 mm, closed-loop 2.2 mm RMS |
 
 **CSV format:** 49 columns — `time_ms … acc_x/y/z … mekf_* … our_* … vo_x/y/vo_sigma … pg_x/pg_y/lc_count`
 
 ---
 
-## Stage 1 — Validation (do this before anything else)
+## Stage 0 — Firmware + Full-State Flight Tests (immediate priority)
+
+These two flight modes are implemented and ready but need first real-hardware validation:
+
+### 0a. Onboard SE(3) controller (firmware_app)
+```bash
+cd firmware_app && make cload   # flash OOT firmware
+cargo run --release --bin main -- --maneuver circle
+```
+**Check:** drone tracks circle with noticeably tighter attitude (controller runs at 500 Hz vs 20 Hz RPYT mode).
+
+### 0b. Rust live full-state spline (CRTP type 6)
+```bash
+cargo run --release --bin spline_circle_test   # requires firmware flashed above
+```
+**Check:** terminal shows `[log]` lines with non-zero ctrltarget vel/acc; tracking smoother than position-only.
+
+### 0c. HLC Python circle
+```bash
+~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py
+```
+**Check:** drone executes 10.47 s circle lap; radio not needed after `start_trajectory`.
+
+---
+
+## Stage 1 — SLAM Validation (after Stage 0)
 
 These are sequential; each informs the next.
 
@@ -119,15 +171,32 @@ Allows loop detection when revisiting places from a different direction.
 cargo test                                          # 249 tests
 cargo build --release                               # clean build
 
-# Fly
+# Flash onboard controller (required for spline test binaries)
+cd firmware_app && make cload
+
+# Fly — position setpoints (20 Hz, full SLAM stack)
 cargo run --release --bin main -- --maneuver circle --ai-deck
 cargo run --release --bin main -- --maneuver explore --ai-deck
+
+# Fly — Rust live full-state (25 Hz, requires firmware flashed above)
+cargo run --release --bin spline_circle_test
+cargo run --release --bin spline_figure8_test
+
+# Fly — HLC Python (pre-generated poly4d, drone evaluates onboard)
+~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py
+~/.pyenv/versions/flying_robots/bin/python Controls/autonomous_sequence_high_level.py
+
+# Assignment simulations
+cargo run --release --bin assignment1    # A1: integrators + real-flight k-step
+cargo run --release --bin assignment2    # A2: geometric control sim
+cargo run --release --bin assignment4    # A4: min-snap + flatness sim
 
 # Offline analysis
 cargo run --release --bin slam_eval -- runs/<file>.csv
 cargo run --release --bin mekf_eval -- runs/<file>.csv
-python3 scripts/plot_flight_diagnostic.py           # latest CSV
+~/.pyenv/versions/flying_robots/bin/python scripts/plot_flight_diagnostic.py
 
 # View saved map
 # PLY files written to runs/ on explore landing
+meshlab runs/explore_map_<timestamp>.ply
 ```
