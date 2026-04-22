@@ -582,7 +582,7 @@ def activate_outoftree_controller(cf):
     cf.param.set_value("stabilizer.controller", "6")
 
 
-SCALE = 1.0  # scale down XY to fit small room (~1.3m x 1.4m footprint)
+SCALE = 0.7  # scale down XY to fit small room (~1.3m x 1.4m footprint)
 
 
 def upload_trajectory(cf, trajectory_id, trajectory):
