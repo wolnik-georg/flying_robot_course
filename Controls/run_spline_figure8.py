@@ -37,9 +37,9 @@ from cflib.utils import uri_helper
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-DEFAULT_URI   = "radio://0/80/2M/E7E7E7E7E7"
-HOVER_HEIGHT  = 0.50   # m  — matches prof's sequence
-SPEED_SCALE   = 1.0    # 1.0 = planned speed (durations already tuned to match prof's)
+DEFAULT_URI = "radio://0/80/2M/E7E7E7E7E7"
+HOVER_HEIGHT = 0.50  # m  — matches prof's sequence
+SPEED_SCALE = 0.7  # 1.0 = planned speed (durations already tuned to match prof's)
 KALMAN_THRESH = 0.001
 
 # ---------------------------------------------------------------------------
@@ -52,23 +52,364 @@ KALMAN_THRESH = 0.001
 # Path extent: x=[-0.92, +0.92]m, y=[-0.45, +0.45]m.
 # ---------------------------------------------------------------------------
 figure8_poly4d = [
-    [1.050000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     3.082633,    -5.338067,     2.569305,     0.000000,     0.000000,    -0.000000,     0.000000,     0.000000,    -5.181223,     9.604365,    -4.764174,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.710000,     0.396058,     0.894217,     0.119978,    -0.586455,    -0.197605,     1.382565,    -2.072845,     1.178378,    -0.445604,    -0.612846,     0.911715,     1.039294,    -0.322264,    -2.713845,     4.210705,    -2.307506,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.620000,     0.922409,     0.425094,    -0.600250,    -0.163530,    -0.023752,     0.123304,    -0.071028,     0.089850,    -0.291165,     0.907200,     0.475613,    -0.850656,     0.225286,     0.095785,     0.053085,    -0.187406,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.700000,     0.923174,    -0.445424,    -0.681107,     0.226650,     0.292463,    -0.018279,    -0.203570,     0.082443,     0.289869,     0.761427,    -0.542422,    -0.353518,     0.034986,    -0.076632,     0.230730,    -0.094084,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.560000,     0.405364,    -0.824251,     0.146024,     0.236002,    -0.316828,    -0.075270,     0.159675,    -0.037233,     0.450742,    -0.405717,    -0.938657,     0.192123,     0.406978,     0.020060,    -0.152845,     0.038669,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.560000,     0.000000,    -0.653540,     0.006420,    -0.278385,    -0.009254,     0.209047,     0.008962,    -0.047764,    -0.000000,    -1.022634,     0.004823,     0.765421,    -0.010724,    -0.225601,     0.007718,     0.036445,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.700000,    -0.402804,    -0.819292,    -0.153336,     0.224830,     0.328523,    -0.073666,    -0.163918,     0.066454,    -0.449354,    -0.405209,     0.927436,     0.184003,    -0.389432,     0.036973,     0.123482,    -0.051660,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.620000,    -0.921641,    -0.451349,     0.680038,     0.234193,    -0.297062,    -0.074358,     0.320671,    -0.204055,    -0.292459,     0.755025,     0.550873,    -0.343333,    -0.046558,     0.016891,    -0.429916,     0.361640,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [0.710000,    -0.923935,     0.421735,     0.602634,    -0.164286,     0.024900,    -0.353777,     0.762242,    -0.651308,     0.288570,     0.912522,    -0.470936,    -0.858025,    -0.223248,     1.006254,    -1.369258,     1.161683,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
-    [1.053185,    -0.398611,     0.895363,    -0.115272,    -0.585975,     0.194203,    -1.725167,     3.952804,    -2.177625,     0.447039,    -0.609322,    -0.918168,     1.034657,     0.325800,     3.167879,    -7.745848,     4.222881,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000,    -0.000000,    -0.000000,    -0.000000,     0.000000,     0.000000,     0.000000,     0.000000,     0.000000],
+    [
+        1.050000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.920060,
+        -0.422403,
+        -0.330819,
+        0.184887,
+        0.000000,
+        0.000000,
+        -0.000000,
+        0.000000,
+        -1.744998,
+        1.466438,
+        0.107645,
+        -0.241908,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.710000,
+        0.396058,
+        0.894217,
+        0.119978,
+        -0.586456,
+        -0.088417,
+        0.767407,
+        -0.773189,
+        0.263120,
+        -0.445604,
+        -0.612846,
+        0.911715,
+        1.039294,
+        -0.529370,
+        -1.547065,
+        1.745710,
+        -0.571617,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.620000,
+        0.922409,
+        0.425094,
+        -0.600250,
+        -0.163530,
+        -0.012154,
+        0.048479,
+        0.110009,
+        -0.056150,
+        -0.291165,
+        0.907200,
+        0.475613,
+        -0.850656,
+        0.203289,
+        0.237703,
+        -0.290271,
+        0.089495,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.700000,
+        0.923174,
+        -0.445424,
+        -0.681107,
+        0.226650,
+        0.293565,
+        -0.024591,
+        -0.190025,
+        0.072759,
+        0.289869,
+        0.761427,
+        -0.542422,
+        -0.353518,
+        0.032877,
+        -0.064582,
+        0.204906,
+        -0.075639,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.560000,
+        0.405364,
+        -0.824251,
+        0.146024,
+        0.236002,
+        -0.316721,
+        -0.076047,
+        0.161773,
+        -0.039131,
+        0.450742,
+        -0.405717,
+        -0.938657,
+        0.192123,
+        0.406789,
+        0.021473,
+        -0.156746,
+        0.042205,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.560000,
+        0.000000,
+        -0.653540,
+        0.006420,
+        -0.278385,
+        -0.009358,
+        0.209809,
+        0.006890,
+        -0.045898,
+        -0.000000,
+        -1.022634,
+        0.004823,
+        0.765421,
+        -0.010510,
+        -0.227116,
+        0.011757,
+        0.032847,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.700000,
+        -0.402804,
+        -0.819292,
+        -0.153336,
+        0.224830,
+        0.327403,
+        -0.067263,
+        -0.177646,
+        0.076262,
+        -0.449354,
+        -0.405209,
+        0.927436,
+        0.184003,
+        -0.387313,
+        0.024881,
+        0.149373,
+        -0.070147,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.620000,
+        -0.921641,
+        -0.451349,
+        0.680038,
+        0.234193,
+        -0.308640,
+        0.000361,
+        0.139849,
+        -0.058210,
+        -0.292459,
+        0.755025,
+        0.550873,
+        -0.343333,
+        -0.024645,
+        -0.124468,
+        -0.087936,
+        0.085862,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        0.710000,
+        -0.923935,
+        0.421735,
+        0.602634,
+        -0.164286,
+        -0.084256,
+        0.261179,
+        -0.536957,
+        0.263618,
+        0.288570,
+        0.912522,
+        -0.470936,
+        -0.858025,
+        -0.016914,
+        -0.156197,
+        1.086628,
+        -0.567817,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
+    [
+        1.053185,
+        -0.398611,
+        0.895363,
+        -0.115272,
+        -0.585975,
+        -0.724664,
+        1.764668,
+        -1.017567,
+        0.182051,
+        0.447039,
+        -0.609322,
+        -0.918168,
+        1.034657,
+        2.062702,
+        -3.428890,
+        1.649625,
+        -0.237630,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        -0.000000,
+        -0.000000,
+        -0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+        0.000000,
+    ],
 ]
 
-TRAJ_PLANNED_DURATION = sum(row[0] for row in figure8_poly4d)   # 7.28 s
+TRAJ_PLANNED_DURATION = sum(row[0] for row in figure8_poly4d)  # 7.28 s
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def upload_trajectory(cf, traj_id, trajectory):
     traj_mem = cf.mem.get_mems(MemoryElement.TYPE_TRAJ)[0]
@@ -79,8 +420,8 @@ def upload_trajectory(cf, traj_id, trajectory):
         traj_mem.trajectory.append(
             Poly4D(
                 dur,
-                Poly4D.Poly(row[1:9]),    # x coefficients
-                Poly4D.Poly(row[9:17]),   # y coefficients
+                Poly4D.Poly(row[1:9]),  # x coefficients
+                Poly4D.Poly(row[9:17]),  # y coefficients
                 Poly4D.Poly(row[17:25]),  # z coefficients (constant altitude)
                 Poly4D.Poly(row[25:33]),  # yaw coefficients (constant heading)
             )
@@ -105,9 +446,12 @@ def wait_for_kalman(scf, threshold=KALMAN_THRESH):
     with SyncLogger(scf, log_cfg) as logger:
         for entry in logger:
             d = entry[1]
-            hist_x.append(d["kalman.varPX"]); hist_x.pop(0)
-            hist_y.append(d["kalman.varPY"]); hist_y.pop(0)
-            hist_z.append(d["kalman.varPZ"]); hist_z.pop(0)
+            hist_x.append(d["kalman.varPX"])
+            hist_x.pop(0)
+            hist_y.append(d["kalman.varPY"])
+            hist_y.pop(0)
+            hist_z.append(d["kalman.varPZ"])
+            hist_z.pop(0)
             sx = max(hist_x) - min(hist_x)
             sy = max(hist_y) - min(hist_y)
             sz = max(hist_z) - min(hist_z)
@@ -122,25 +466,28 @@ def wait_for_kalman(scf, threshold=KALMAN_THRESH):
 # Main flight
 # ---------------------------------------------------------------------------
 
+
 def start_live_log(cf):
     """Persistent async position log — started once, runs for the whole flight."""
     log_cfg = LogConfig(name="FlightLog", period_in_ms=500)
     log_cfg.add_variable("stateEstimate.x", "float")
     log_cfg.add_variable("stateEstimate.y", "float")
     log_cfg.add_variable("stateEstimate.z", "float")
-    log_cfg.add_variable("stabilizer.roll",  "float")
+    log_cfg.add_variable("stabilizer.roll", "float")
     log_cfg.add_variable("stabilizer.pitch", "float")
     log_cfg.add_variable("stabilizer.thrust", "float")
 
     def _cb(timestamp, data, _logconf):
-        x   = data["stateEstimate.x"]
-        y   = data["stateEstimate.y"]
-        z   = data["stateEstimate.z"]
-        r   = data["stabilizer.roll"]
-        p   = data["stabilizer.pitch"]
+        x = data["stateEstimate.x"]
+        y = data["stateEstimate.y"]
+        z = data["stateEstimate.z"]
+        r = data["stabilizer.roll"]
+        p = data["stabilizer.pitch"]
         thr = data["stabilizer.thrust"]
-        print(f"  [t={timestamp/1000:.1f}s] pos=({x:+.2f},{y:+.2f},{z:+.2f}) "
-              f"roll={r:+.1f} pitch={p:+.1f} thrust={thr:.0f}")
+        print(
+            f"  [t={timestamp/1000:.1f}s] pos=({x:+.2f},{y:+.2f},{z:+.2f}) "
+            f"roll={r:+.1f} pitch={p:+.1f} thrust={thr:.0f}"
+        )
 
     log_cfg.data_received_cb.add_callback(_cb)
     cf.log.add_config(log_cfg)
@@ -157,27 +504,32 @@ def fly_figure8(scf, n_reps, controller):
     print(f"\nUploading figure-8 trajectory ({len(figure8_poly4d)} segments)...")
     duration = upload_trajectory(cf, traj_id, figure8_poly4d)
     actual_s = duration / SPEED_SCALE
-    print(f"  Planned duration: {duration:.2f} s  |  at SPEED_SCALE={SPEED_SCALE}: {actual_s:.1f} s per rep")
+    print(
+        f"  Planned duration: {duration:.2f} s  |  at SPEED_SCALE={SPEED_SCALE}: {actual_s:.1f} s per rep"
+    )
     print(f"  {n_reps} rep(s): {actual_s * n_reps:.1f} s total figure-8 flight")
-    print(f"  Path extent: x=[-0.92, +0.92]m  y=[-0.45, +0.45]m  — ensure ~2m × 1m clear space")
+    print(
+        f"  Path extent: x=[-0.92, +0.92]m  y=[-0.45, +0.45]m  — ensure ~2m × 1m clear space"
+    )
 
-    # Set controller
-    ctrl_names = {2: "Mellinger (firmware)", 6: "OOT Rust geometric"}
-    print(f"\nSetting controller: {ctrl_names.get(controller, str(controller))} (type {controller})")
-    cf.param.set_value("stabilizer.controller", str(controller))
-    time.sleep(0.2)
+    # Reset Kalman estimator first (matches prof's order)
+    print("Resetting Kalman estimator...")
+    cf.param.set_value("kalman.resetEstimation", "1")
+    time.sleep(0.1)
+    cf.param.set_value("kalman.resetEstimation", "0")
+    wait_for_kalman(scf)
 
     # Arm (required by current firmware before takeoff)
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    # Reset Kalman estimator
-    print("Resetting Kalman estimator...")
-    cf.param.set_value("kalman.resetEstimation", "1")
+    # Set controller
+    ctrl_names = {2: "Mellinger (firmware)", 6: "OOT Rust geometric"}
+    print(
+        f"\nSetting controller: {ctrl_names.get(controller, str(controller))} (type {controller})"
+    )
+    cf.param.set_value("stabilizer.controller", str(controller))
     time.sleep(0.1)
-    cf.param.set_value("kalman.resetEstimation", "0")
-
-    wait_for_kalman(scf)
 
     # Start persistent live log (single LogConfig, async callback — never reused)
     log_cfg = start_live_log(cf)
@@ -185,8 +537,8 @@ def fly_figure8(scf, n_reps, controller):
     # Takeoff
     print(f"\nTakeoff to {HOVER_HEIGHT:.2f} m over 2 s...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
-    print("  Waiting 5 s for climb + estimator stabilization...")
-    time.sleep(5.0)
+    print("  Waiting 3 s for climb + estimator stabilization...")
+    time.sleep(3.0)
 
     # Execute trajectory (n_reps times; each rep starts from current position)
     for rep in range(1, n_reps + 1):
@@ -204,8 +556,8 @@ def fly_figure8(scf, n_reps, controller):
     # Land
     print("\nLanding...")
     log_cfg.stop()
-    hl.land(0.0, 3.0)
-    time.sleep(4.0)
+    hl.land(0.0, 2.0)
+    time.sleep(2.0)
     hl.stop()
     print("Done.")
 
@@ -215,19 +567,36 @@ def fly_figure8(scf, n_reps, controller):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Spline figure-8 flight via HLC (our min-snap coefficients)")
-    parser.add_argument("--controller", type=int, default=6,
-                        help="Controller type: 6=OOT Rust geometric (default), 2=Mellinger")
-    parser.add_argument("--reps", type=int, default=1,
-                        help="Number of figure-8 repetitions (default: 1)")
-    parser.add_argument("--uri", default=None,
-                        help="Crazyflie URI (default: from environment or radio://0/80/2M/E7E7E7E7E7)")
+    parser = argparse.ArgumentParser(
+        description="Spline figure-8 flight via HLC (our min-snap coefficients)"
+    )
+    parser.add_argument(
+        "--controller",
+        type=int,
+        default=6,
+        help="Controller type: 6=OOT Rust geometric (default), 2=Mellinger",
+    )
+    parser.add_argument(
+        "--reps",
+        type=int,
+        default=1,
+        help="Number of figure-8 repetitions (default: 1)",
+    )
+    parser.add_argument(
+        "--uri",
+        default=None,
+        help="Crazyflie URI (default: from environment or radio://0/80/2M/E7E7E7E7E7)",
+    )
     args = parser.parse_args()
 
     uri = args.uri or uri_helper.uri_from_env(default=DEFAULT_URI)
     print(f"Connecting to {uri}...")
-    print(f"Controller: {args.controller}  |  Reps: {args.reps}  |  SPEED_SCALE: {SPEED_SCALE}")
-    print("NOTE: Our min-snap figure-8 — same waypoints as prof's, degree-8 QP replanning")
+    print(
+        f"Controller: {args.controller}  |  Reps: {args.reps}  |  SPEED_SCALE: {SPEED_SCALE}"
+    )
+    print(
+        "NOTE: Our min-snap figure-8 — same waypoints as prof's, degree-8 QP replanning"
+    )
 
     cflib.crtp.init_drivers()
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:

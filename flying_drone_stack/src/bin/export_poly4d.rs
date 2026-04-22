@@ -25,26 +25,85 @@ fn main() {
 
 // ── Coefficient conversion ─────────────────────────────────────────────────
 
-/// Convert 9 normalized-time (τ∈[0,1]) coefficients to 8 physical-time (t∈[0,T]).
-/// c_k = a_k / T^k for k=0..7.
+/// Convert 9 normalized-time (τ∈[0,1]) coefficients to 8 physical-time (t∈[0,T])
+/// via degree-7 Hermite interpolation.
 ///
-/// The degree-8 term a_8 cannot be stored in Poly4D (max degree 7).
-/// To preserve the endpoint position p(T) = Σ a_k exactly, we absorb the
-/// dropped contribution (a_8·T^8 / T^7 = a_8·T → contribution at t=T is a_8)
-/// into c_7:  c_7 += a_8 / T^7.
-/// This keeps p(0) = a_0 and p(T) = Σ a_k exact; velocity at t=T shifts by
-/// 7·a_8/T but remains small since a_8 is the optimizer's residual degree.
-fn to_phys8(norm: &[f32; 9], big_t: f32) -> [f32; 8] {
-    let mut out = [0.0f32; 8];
-    let mut tk = 1.0f32;
-    for k in 0..8 {
-        out[k] = norm[k] / tk;
-        tk *= big_t;
-    }
-    // Absorb the dropped degree-8 term into c_7 to close the segment endpoint.
-    // Without this, p(T) = Σ_{k=0}^{7} a_k instead of the correct Σ_{k=0}^{8} a_k.
-    out[7] += norm[8] / big_t.powi(7);
-    out
+/// The QP planner works in normalized time and returns degree-8 (9-coefficient)
+/// polynomials.  Poly4D only supports degree 7.  Simply dropping a_8 and patching
+/// c_7 (the old "absorb" trick) preserved POSITION but corrupted the endpoint
+/// velocity by a_8/T — causing 1+ m/s jumps at junctions with unequal durations.
+///
+/// This function instead:
+///   1. Extracts the 8 physical boundary conditions (pos, vel, acc, jerk at
+///      both t=0 and t=T) from the degree-8 normalized polynomial.
+///   2. Solves for the unique degree-7 Hermite polynomial that matches all 8
+///      conditions exactly (analytical 4×4 system).
+///
+/// Because the QP already enforced physical-time continuity at junctions, the
+/// boundary conditions are consistent across adjacent segments → the exported
+/// Poly4D is C3-continuous in physical time (no velocity jumps).
+fn to_hermite_phys7(norm: &[f32; 9], big_t: f32) -> [f32; 8] {
+    let t  = big_t;
+    let t2 = t * t;
+    let t3 = t2 * t;
+    let t4 = t2 * t2;
+    let t5 = t4 * t;
+    let t6 = t3 * t3;
+    let t7 = t6 * t;
+
+    // Physical boundary conditions at τ=0 (trivially from leading coefficients)
+    let p0 = norm[0];
+    let v0 = norm[1] / t;
+    let a0 = 2.0 * norm[2] / t2;
+    let j0 = 6.0 * norm[3] / t3;
+
+    // Physical boundary conditions at τ=1: evaluate degree-8 polynomial derivatives.
+    // d^k p / dτ^k |_{τ=1} = Σ_{i≥k} [i!/(i-k)!] · a_i
+    // Physical: d^k p / dt^k |_{t=T} = (d^k p / dτ^k |_{τ=1}) / T^k
+    let p1: f32 = norm.iter().sum();
+    let v1: f32 = norm.iter().enumerate().skip(1)
+                      .map(|(k, &a)| k as f32 * a).sum::<f32>() / t;
+    let a1: f32 = norm.iter().enumerate().skip(2)
+                      .map(|(k, &a)| (k * (k - 1)) as f32 * a).sum::<f32>() / t2;
+    let j1: f32 = norm.iter().enumerate().skip(3)
+                      .map(|(k, &a)| (k * (k - 1) * (k - 2)) as f32 * a).sum::<f32>() / t3;
+
+    // c[0..3] fixed by start conditions
+    let c0 = p0;
+    let c1 = v0;
+    let c2 = a0 / 2.0;
+    let c3 = j0 / 6.0;
+
+    // Residuals: what c[4..7] must contribute at t=T
+    let dp = p1 - (c0 + c1 * t + c2 * t2 + c3 * t3);
+    let dv = v1 - (c1 + 2.0 * c2 * t + 3.0 * c3 * t2);
+    let da = a1 - (2.0 * c2 + 6.0 * c3 * t);
+    let dj = j1 - 6.0 * c3;
+
+    // Solve the 4×4 Hermite system M·x = b' with M^{-1} precomputed.
+    // M = [[1,1,1,1],[4,5,6,7],[12,20,30,42],[24,60,120,210]]
+    // M^{-1} = [[ 35, -15,  5/2, -1/6],
+    //           [-84,  39,   -7,  1/2],
+    //           [ 70, -34, 13/2, -1/2],
+    //           [-20,  10,   -2,  1/6]]
+    // Scaled RHS: b' = [dp, dv·T, da·T², dj·T³]
+    let bp0 = dp;
+    let bp1 = dv * t;
+    let bp2 = da * t2;
+    let bp3 = dj * t3;
+
+    let x0 =  35.0 * bp0 - 15.0 * bp1 + 2.5          * bp2 - (1.0 / 6.0) * bp3;
+    let x1 = -84.0 * bp0 + 39.0 * bp1 - 7.0           * bp2 + 0.5         * bp3;
+    let x2 =  70.0 * bp0 - 34.0 * bp1 + 6.5           * bp2 - 0.5         * bp3;
+    let x3 = -20.0 * bp0 + 10.0 * bp1 - 2.0           * bp2 + (1.0 / 6.0) * bp3;
+
+    // Recover physical coefficients: x_i = c_{i+4} · T^{i+4}
+    let c4 = x0 / t4;
+    let c5 = x1 / t5;
+    let c6 = x2 / t6;
+    let c7 = x3 / t7;
+
+    [c0, c1, c2, c3, c4, c5, c6, c7]
 }
 
 /// Print one trajectory as a Python list and validate waypoint errors.
@@ -73,10 +132,10 @@ fn print_poly4d(name: &str, traj: &SplineTrajectory, waypoints: &[Waypoint]) {
     println!("{name} = [");
     for seg in &traj.segments {
         let t = seg.duration;
-        let cx   = to_phys8(&seg.cx,   t);
-        let cy   = to_phys8(&seg.cy,   t);
-        let cz   = to_phys8(&seg.cz,   t);
-        let cyaw = to_phys8(&seg.cyaw, t);
+        let cx   = to_hermite_phys7(&seg.cx,   t);
+        let cy   = to_hermite_phys7(&seg.cy,   t);
+        let cz   = to_hermite_phys7(&seg.cz,   t);
+        let cyaw = to_hermite_phys7(&seg.cyaw, t);
 
         print!("    [{:.6}", t);
         for &c in &cx   { print!(", {:12.6}", c); }
