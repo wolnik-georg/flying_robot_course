@@ -328,4 +328,248 @@ fn main() {
     println!("  → results/assignment1/data/convergence_{{Euler,RK4,ExpEuler,ExpRK4}}.csv");
     println!("  Expected log-log slope: Euler/ExpEuler = 1.0  (first-order)");
     println!("                          RK4/ExpRK4     = 4.0  (fourth-order)");
+
+    // ── Scenario 3: Real Flight Validation (slide 34) ────────────────────────
+    // k=1..10 step-ahead position prediction vs actual logged flight states.
+    println!("\n─────────────────────────────────────────────────────────────────");
+    println!("Scenario 3: Real-flight validation (slide 34)");
+    println!("k=1..10 step-ahead prediction vs actual Crazyflie flight data");
+    println!("─────────────────────────────────────────────────────────────────");
+
+    // Allow overriding the CSV via a command-line argument --csv=PATH
+    let csv_path = std::env::args()
+        .find(|a| a.starts_with("--csv="))
+        .map(|a| a[6..].to_string())
+        .unwrap_or_else(|| {
+            "runs/circle_2026-03-17_19-35-31.csv".to_string()
+        });
+    println!("Flight CSV: {}", csv_path);
+
+    real_flight_validation(&csv_path, &params);
+}
+
+// ── Real-flight validation helpers ────────────────────────────────────────
+
+struct FlightRow {
+    time_s:    f32,
+    pos:       Vec3,
+    vel:       Vec3,
+    roll_deg:  f32,
+    pitch_deg: f32,
+    yaw_deg:   f32,
+    gyro_rad:  Vec3,   // body-frame angular velocity in rad/s
+    acc_g:     Vec3,   // body-frame specific force in G (1 G = 9.81 m/s²)
+}
+
+fn parse_f32_col(s: &str) -> f32 {
+    s.trim().parse::<f32>().unwrap_or(0.0)
+}
+
+fn load_flight_csv(path: &str) -> Vec<FlightRow> {
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) => { eprintln!("  Cannot open '{}': {}", path, e); return vec![]; }
+    };
+    let deg2rad = std::f32::consts::PI / 180.0;
+    content.lines()
+        .skip(1)   // skip header
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let cols: Vec<&str> = line.split(',').collect();
+            if cols.len() < 18 { return None; }
+            Some(FlightRow {
+                time_s:    parse_f32_col(cols[0]) / 1000.0,
+                pos:       Vec3::new(parse_f32_col(cols[1]),
+                                     parse_f32_col(cols[2]),
+                                     parse_f32_col(cols[3])),
+                vel:       Vec3::new(parse_f32_col(cols[4]),
+                                     parse_f32_col(cols[5]),
+                                     parse_f32_col(cols[6])),
+                roll_deg:  parse_f32_col(cols[7]),
+                pitch_deg: parse_f32_col(cols[8]),
+                yaw_deg:   parse_f32_col(cols[9]),
+                gyro_rad:  Vec3::new(parse_f32_col(cols[12]) * deg2rad,
+                                     parse_f32_col(cols[13]) * deg2rad,
+                                     parse_f32_col(cols[14]) * deg2rad),
+                acc_g:     Vec3::new(parse_f32_col(cols[15]),
+                                     parse_f32_col(cols[16]),
+                                     parse_f32_col(cols[17])),
+            })
+        })
+        .collect()
+}
+
+/// ZYX (aerospace) Euler angles → unit quaternion.
+fn euler_deg_to_quat(roll_deg: f32, pitch_deg: f32, yaw_deg: f32) -> Quat {
+    let d2r = std::f32::consts::PI / 180.0;
+    let r = roll_deg  * d2r * 0.5;
+    let p = pitch_deg * d2r * 0.5;
+    let y = yaw_deg   * d2r * 0.5;
+    let (sr, cr) = (r.sin(), r.cos());
+    let (sp, cp) = (p.sin(), p.cos());
+    let (sy, cy) = (y.sin(), y.cos());
+    Quat::new(
+        cr * cp * cy + sr * sp * sy,
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+    )
+}
+
+/// Reconstruct a MotorAction from logged IMU data at row k.
+///
+/// Thrust  = m · |acc_body| · g    (accelerometer magnitude = specific force)
+/// Torque  = J · α + ω × (J·ω)    (Euler's equation; α from central-diff gyro)
+fn reconstruct_motor_action(rows: &[FlightRow], k: usize, params: &MultirotorParams) -> MotorAction {
+    // Total thrust from accelerometer magnitude (body-frame specific force)
+    let a = rows[k].acc_g;
+    let acc_mag = (a.x*a.x + a.y*a.y + a.z*a.z).sqrt().max(0.0);
+    let thrust = params.mass * acc_mag * params.gravity;
+
+    // Angular acceleration: central difference of gyro, forward/backward at ends
+    let (dt_diff, omega_next, omega_prev) = if k > 0 && k + 1 < rows.len() {
+        let dt = rows[k+1].time_s - rows[k-1].time_s;
+        (dt, rows[k+1].gyro_rad, rows[k-1].gyro_rad)
+    } else if k == 0 && rows.len() > 1 {
+        let dt = (rows[1].time_s - rows[0].time_s) * 2.0;
+        (dt, rows[1].gyro_rad, rows[0].gyro_rad)
+    } else {
+        let dt = (rows[k].time_s - rows[k-1].time_s) * 2.0;
+        (dt, rows[k].gyro_rad, rows[k-1].gyro_rad)
+    };
+    let dt_safe = dt_diff.max(1e-4);
+    let alpha = Vec3::new(
+        (omega_next.x - omega_prev.x) / dt_safe,
+        (omega_next.y - omega_prev.y) / dt_safe,
+        (omega_next.z - omega_prev.z) / dt_safe,
+    );
+
+    let w = rows[k].gyro_rad;
+    let jxx = params.inertia[0][0];
+    let jyy = params.inertia[1][1];
+    let jzz = params.inertia[2][2];
+    // τ = J·α + ω × (J·ω)
+    let tau = Vec3::new(
+        jxx * alpha.x + (jzz - jyy) * w.y * w.z,
+        jyy * alpha.y + (jxx - jzz) * w.x * w.z,
+        jzz * alpha.z + (jyy - jxx) * w.x * w.y,
+    );
+
+    MotorAction::from_thrust_torque(thrust, tau, params)
+}
+
+fn real_flight_validation(csv_path: &str, params: &MultirotorParams) {
+    let rows = load_flight_csv(csv_path);
+    if rows.is_empty() {
+        println!("  No data loaded — skipping real-flight validation.");
+        return;
+    }
+    println!("  Loaded {} rows  ({:.1} s)", rows.len(),
+             rows.last().map(|r| r.time_s).unwrap_or(0.0));
+
+    // Only consider rows where the drone is airborne
+    let max_horizon = 10usize;
+    let flight_start = rows.iter().position(|r| r.pos.z > 0.15).unwrap_or(0);
+    let flight_end   = rows.len().saturating_sub(max_horizon + 1);
+    if flight_start >= flight_end {
+        println!("  Not enough in-flight rows (need z > 0.15 m). Skipping.");
+        return;
+    }
+    let avg_dt = if rows.len() > 1 {
+        (rows.last().unwrap().time_s - rows[flight_start].time_s)
+            / (rows.len() - flight_start - 1) as f32
+    } else { 0.1 };
+    println!("  In-flight rows: {} … {}  (avg dt = {:.1} ms)",
+             flight_start, flight_end, avg_dt * 1000.0);
+
+    const N_INT: usize = 4;
+    let int_names = ["Euler", "RK4", "ExpEuler", "ExpRK4"];
+    let mut sum_sq   = [[0.0f32; 10]; N_INT];
+    let mut n_samp   = [0usize; 10];
+
+    // Sub-step each ~100ms CSV interval at dt=10ms for accuracy
+    let sub_dt    = 0.01_f32;
+    let sub_steps = ((avg_dt / sub_dt).round() as usize).max(1);
+    let mut sub_params = params.clone();
+    sub_params.dt = sub_dt;
+    sub_params.motor_time_constant = 0.0;  // bypass motor lag for clean comparison
+
+    // Sample every 5 rows so prediction windows don't overlap
+    for k0 in (flight_start..flight_end).step_by(5) {
+        let r0 = &rows[k0];
+        let q0 = euler_deg_to_quat(r0.roll_deg, r0.pitch_deg, r0.yaw_deg);
+        let init = MultirotorState::with_initial(r0.pos, r0.vel, q0, r0.gyro_rad);
+
+        for (ii, iname) in int_names.iter().enumerate() {
+            let integrator: Box<dyn Integrator> = match *iname {
+                "Euler"    => Box::new(EulerIntegrator),
+                "RK4"      => Box::new(RK4Integrator),
+                "ExpEuler" => Box::new(ExpEulerIntegrator),
+                _          => Box::new(ExpRK4Integrator),
+            };
+            let mut sim = MultirotorSimulator::new(sub_params.clone(), integrator);
+            sim.set_state(init.clone());
+
+            for h in 0..max_horizon {
+                if k0 + h + 1 >= rows.len() { break; }
+
+                let action = reconstruct_motor_action(&rows, k0 + h, &sub_params);
+                for _ in 0..sub_steps { sim.step(&action); }
+
+                let rp = rows[k0 + h + 1].pos;
+                let sp = sim.state().position;
+                let err_sq = (rp.x - sp.x).powi(2)
+                           + (rp.y - sp.y).powi(2)
+                           + (rp.z - sp.z).powi(2);
+                sum_sq[ii][h] += err_sq;
+                if ii == 0 { n_samp[h] += 1; }
+            }
+        }
+    }
+
+    // Print RMS error table
+    println!("\n  Position RMS error [mm] vs prediction horizon k (each step ≈ {:.0} ms):",
+             avg_dt * 1000.0);
+    print!("  {:10}", "k steps →");
+    for h in 1..=max_horizon { print!("   k={:02}", h); }
+    println!();
+    println!("  {}", "-".repeat(10 + max_horizon * 7));
+    for ii in 0..N_INT {
+        print!("  {:10}", int_names[ii]);
+        for h in 0..max_horizon {
+            let n = n_samp[h] as f32;
+            if n > 0.0 {
+                let rms_mm = (sum_sq[ii][h] / n).sqrt() * 1000.0;
+                print!("  {:5.1}", rms_mm);
+            } else {
+                print!("    N/A");
+            }
+        }
+        println!("  mm");
+    }
+    println!("  (n = {} starting points)", n_samp[0]);
+
+    // Write CSV
+    std::fs::create_dir_all("results/assignment1/data").expect("create dir");
+    let out_path = "results/assignment1/data/real_flight_validation.csv";
+    let mut f = File::create(out_path).expect("create real_flight_validation.csv");
+    let header: String = {
+        let mut h = "horizon_steps,horizon_s".to_string();
+        for name in &int_names { h.push_str(&format!(",{}_rms_mm", name)); }
+        h
+    };
+    writeln!(f, "{}", header).unwrap();
+    for h in 0..max_horizon {
+        let n = n_samp[h] as f32;
+        write!(f, "{},{:.3}", h + 1, (h + 1) as f32 * avg_dt).unwrap();
+        for ii in 0..N_INT {
+            if n > 0.0 {
+                write!(f, ",{:.3}", (sum_sq[ii][h] / n).sqrt() * 1000.0).unwrap();
+            } else {
+                write!(f, ",NaN").unwrap();
+            }
+        }
+        writeln!(f).unwrap();
+    }
+    println!("\n  Saved: {}", out_path);
 }

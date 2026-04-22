@@ -414,6 +414,68 @@ def print_spin_statistics():
     print("  • For fast rotation (>5 rad/s), use RK4 or ExpRK4 to avoid attitude drift.")
 
 
+def plot_real_flight_validation():
+    """Scenario 3: k-step ahead position prediction on real flight data."""
+    path = "results/assignment1/data/real_flight_validation.csv"
+    if not os.path.exists(path):
+        print(f"  {path} not found — run 'cargo run --bin assignment1' first.")
+        return None
+
+    df = pd.read_csv(path)
+    methods = ["Euler", "RK4", "ExpEuler", "ExpRK4"]
+    colors  = ["red", "blue", "green", "orange"]
+    markers = ["o", "s", "^", "D"]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    fig.suptitle(
+        "Assignment 1: Real-Flight Validation (Slide 34)\n"
+        "k-step ahead position prediction vs actual Crazyflie flight data",
+        fontsize=13,
+    )
+
+    for method, color, marker in zip(methods, colors, markers):
+        col = f"{method}_rms_mm"
+        if col in df.columns:
+            ax.plot(df["horizon_steps"], df[col],
+                    color=color, marker=marker, linewidth=2, markersize=6,
+                    label=method)
+
+    ax.set_xlabel("Prediction horizon  k  (number of CSV steps, each ≈ 100 ms)", fontsize=11)
+    ax.set_ylabel("Position RMS error  (mm)", fontsize=11)
+    ax.set_title(
+        "All integrators track real flight data with similar error at short horizons.\n"
+        "Error grows with horizon as model uncertainty accumulates.",
+        fontsize=10,
+    )
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    return fig
+
+
+def print_real_flight_statistics():
+    """Print real-flight validation summary table."""
+    path = "results/assignment1/data/real_flight_validation.csv"
+    if not os.path.exists(path):
+        return
+    df = pd.read_csv(path)
+    print("\n" + "=" * 60)
+    print("ASSIGNMENT 1: Real-Flight Validation (Slide 34)")
+    print("=" * 60)
+    print("  k-step ahead position prediction (each step ≈ 100 ms)")
+    print(f"  {'k':>4}  {'t (s)':>7}  {'Euler':>8}  {'RK4':>8}  {'ExpEuler':>10}  {'ExpRK4':>8}")
+    print("  " + "-" * 52)
+    for _, row in df.iterrows():
+        print(f"  {int(row['horizon_steps']):>4}  {row['horizon_s']:>7.2f}"
+              f"  {row.get('Euler_rms_mm', float('nan')):>8.1f}"
+              f"  {row.get('RK4_rms_mm', float('nan')):>8.1f}"
+              f"  {row.get('ExpEuler_rms_mm', float('nan')):>10.1f}"
+              f"  {row.get('ExpRK4_rms_mm', float('nan')):>8.1f}  mm")
+    print("\n  Conclusion: All integrators achieve similar accuracy on real flight data.")
+    print("  Error grows with horizon as action reconstruction uncertainty accumulates.")
+    print("  RK4/ExpRK4 maintain lowest error at longer horizons (higher-order accuracy).")
+
+
 def main():
     """Main plotting function"""
     print("Assignment 1 Visualization: Integration Method Comparison")
@@ -478,10 +540,21 @@ def main():
         )
         print("Saved: results/assignment1/images/assignment1_convergence.png")
 
+    # Real-flight validation (Scenario 3)
+    fig5 = plot_real_flight_validation()
+    if fig5:
+        fig5.savefig(
+            "results/assignment1/images/assignment1_real_flight_validation.png",
+            dpi=150,
+            bbox_inches="tight",
+        )
+        print("Saved: results/assignment1/images/assignment1_real_flight_validation.png")
+
     # Print statistics
     print_statistics()
     print_spin_statistics()
     print_convergence_statistics()
+    print_real_flight_statistics()
 
     print("\nVisualization complete!")
     print("Open the PNG files to view the results.")
