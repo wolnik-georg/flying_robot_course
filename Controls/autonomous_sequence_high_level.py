@@ -47,7 +47,7 @@ from cflib.utils import uri_helper
 # URI to the Crazyflie to connect to
 uri = uri_helper.uri_from_env(default="radio://0/80/2M/E7E7E7E7E7")
 
-SCALE = 0.7  # scale down XY to fit small room (~1.3m x 1.4m footprint)
+SCALE = 1.0  # scale down XY to fit small room (~1.3m x 1.4m footprint)
 DEFAULT_REPS = 1  # number of times to execute the trajectory by default
 
 
@@ -623,33 +623,54 @@ class FlightLogger:
     """
 
     _PERIOD_MS = 50  # 20 Hz
-    COLUMNS = ['time_s', 'x', 'y', 'z', 'vx', 'vy', 'vz',
-               'roll_deg', 'pitch_deg', 'yaw_deg', 'thrust']
+    COLUMNS = [
+        "time_s",
+        "x",
+        "y",
+        "z",
+        "vx",
+        "vy",
+        "vz",
+        "roll_deg",
+        "pitch_deg",
+        "yaw_deg",
+        "thrust",
+    ]
 
-    def __init__(self, cf, name='flight'):
-        os.makedirs('logs', exist_ok=True)
-        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.path = os.path.join('logs', f'{name}_{ts}.csv')
+    def __init__(self, cf, name="flight"):
+        os.makedirs("logs", exist_ok=True)
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.path = os.path.join("logs", f"{name}_{ts}.csv")
         self._t0 = None
         self._lock = threading.Lock()
         self._buf = {}
-        self._file = open(self.path, 'w', newline='')
+        self._file = open(self.path, "w", newline="")
         self._csv = csv.writer(self._file)
         self._csv.writerow(self.COLUMNS)
 
         # Config 1: position + attitude (6 floats = 24 bytes)
-        self._lc1 = LogConfig('FLpos', period_in_ms=self._PERIOD_MS)
-        for v in ('stateEstimate.x', 'stateEstimate.y', 'stateEstimate.z',
-                  'stabilizer.roll', 'stabilizer.pitch', 'stabilizer.yaw'):
-            self._lc1.add_variable(v, 'float')
+        self._lc1 = LogConfig("FLpos", period_in_ms=self._PERIOD_MS)
+        for v in (
+            "stateEstimate.x",
+            "stateEstimate.y",
+            "stateEstimate.z",
+            "stabilizer.roll",
+            "stabilizer.pitch",
+            "stabilizer.yaw",
+        ):
+            self._lc1.add_variable(v, "float")
         self._lc1.data_received_cb.add_callback(self._cb1)
         cf.log.add_config(self._lc1)
 
         # Config 2: velocity + thrust (4 floats = 16 bytes)
-        self._lc2 = LogConfig('FLvel', period_in_ms=self._PERIOD_MS)
-        for v in ('stateEstimate.vx', 'stateEstimate.vy',
-                  'stateEstimate.vz', 'stabilizer.thrust'):
-            self._lc2.add_variable(v, 'float')
+        self._lc2 = LogConfig("FLvel", period_in_ms=self._PERIOD_MS)
+        for v in (
+            "stateEstimate.vx",
+            "stateEstimate.vy",
+            "stateEstimate.vz",
+            "stabilizer.thrust",
+        ):
+            self._lc2.add_variable(v, "float")
         self._lc2.data_received_cb.add_callback(self._cb2)
         cf.log.add_config(self._lc2)
 
@@ -669,16 +690,21 @@ class FlightLogger:
                 return
             t = time.time() - self._t0
             s = self._buf
-            self._csv.writerow([
-                f'{t:.3f}',
-                s.get('stateEstimate.x', ''), s.get('stateEstimate.y', ''),
-                s.get('stateEstimate.z', ''),
-                s.get('stateEstimate.vx', ''), s.get('stateEstimate.vy', ''),
-                s.get('stateEstimate.vz', ''),
-                s.get('stabilizer.roll', ''), s.get('stabilizer.pitch', ''),
-                s.get('stabilizer.yaw', ''),
-                s.get('stabilizer.thrust', ''),
-            ])
+            self._csv.writerow(
+                [
+                    f"{t:.3f}",
+                    s.get("stateEstimate.x", ""),
+                    s.get("stateEstimate.y", ""),
+                    s.get("stateEstimate.z", ""),
+                    s.get("stateEstimate.vx", ""),
+                    s.get("stateEstimate.vy", ""),
+                    s.get("stateEstimate.vz", ""),
+                    s.get("stabilizer.roll", ""),
+                    s.get("stabilizer.pitch", ""),
+                    s.get("stabilizer.yaw", ""),
+                    s.get("stabilizer.thrust", ""),
+                ]
+            )
             self._file.flush()
 
     def _cb2(self, timestamp, data, logconf):
@@ -689,7 +715,7 @@ class FlightLogger:
         self._lc1.stop()
         self._lc2.stop()
         self._file.close()
-        print(f'  [log] Saved: {self.path}')
+        print(f"  [log] Saved: {self.path}")
 
 
 def start_live_log(cf):
@@ -733,7 +759,7 @@ def run_sequence(cf, trajectory_id, duration, n_reps=DEFAULT_REPS):
     print("Controller set to:", cf.param.get_value("stabilizer.controller"))
 
     log_config = start_live_log(cf)
-    logger = FlightLogger(cf, name='autonomous')
+    logger = FlightLogger(cf, name="autonomous")
     logger.start()
 
     commander.takeoff(0.5, 2.0)
