@@ -110,7 +110,7 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.01;
 // const KW_X: f32 = 0.0023; const KW_Y: f32 = 0.0023; const KW_Z: f32 = 0.003;
 
-// ── GAINS BLOCK C — current baseline ───────────────────────────────────────
+// ── GAINS BLOCK C  ───────────────────────────────────────
 // Confirmed better than Block A: XY RMSE 16.2 cm (was 21.2 cm, −24%).
 // Lag correlation −0.73 (was −0.92). Roll error halved. Pitch still ~10°.
 // Active — do NOT comment out unless switching to another block.
@@ -122,7 +122,7 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
 // const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
 
-// ── GAINS BLOCK D — current baseline (slight improvement over C) ────────────
+// ── GAINS BLOCK D — (slight improvement over C) ────────────
 // XY RMSE 15.9 cm (C: 16.4 cm, −3%). Diminishing returns — position gains near limit.
 // Pitch error stuck at ~10° across A/C/D → attitude loop is now the bottleneck.
 // Lag corr −0.77 (slightly worse than C −0.73) — sign of incipient overshoot.
@@ -140,7 +140,8 @@ const JZZ: f32 = 29.261652e-6;
 // Attitude gains (KR 0.007→0.010, KW 0.00115→0.0018) gave the extra jump.
 // Pitch error stuck at ~10° — structural: ~8.6° is position-correction demand,
 // not attitude lag. Will only fall if position tracking improves further.
-// Active — do NOT comment out unless switching to another block.
+// Analysis: zeta=1.96 (overdamped), dominant tau=1.10s, ctrl BW=0.14Hz = fig8 freq.
+// Comment out and activate Block G to test critically-damped position loop.
 const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
 const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.05;
@@ -148,6 +149,43 @@ const KI_LIMIT: f32 = 2.0;
 
 const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
 const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK G — conservative step toward critical damping ───────────────
+// zeta=1.21, dominant tau=0.57s, BW=0.28Hz (2x fig8 freq). KV=8 only.
+// If stable with no oscillation, proceed to Block H.
+// const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK H — near-critical damping ───────────────────────────────────
+// zeta=1.06 (just above critical), dominant tau=0.42s, BW=0.38Hz (2.8x fig8).
+// Theoretical optimum for KP=11 is KV=6.6 (zeta=1.0); KV=7 is a safe margin.
+// Dominant pole 2.4x faster than Block E. Try only if Block G shows no oscillation.
+// const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 7.0;    const KV_Y: f32 = 7.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK I — higher bandwidth at exact critical damping ───────────────
+// KP=16 raises omega_n to 4.0 rad/s. KV=8 gives zeta = 8/(2*4) = 1.00 exactly.
+// Dominant tau=0.25s, BW=0.64Hz (4.7x fig8 freq). Theoretically best tracking.
+// Note: KV=8 same as Block G — the difference is higher KP which raises the
+// natural frequency, making the whole loop 2.3x faster than Block G.
+// Risk: KP=16 is a large jump (+45%). Start with hover before running figure-8.
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
 
 
