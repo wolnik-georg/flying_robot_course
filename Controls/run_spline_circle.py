@@ -641,16 +641,11 @@ class FlightLogger:
     _PERIOD_MS = 50  # 20 Hz
     COLUMNS = [
         "time_s",
-        "x",
-        "y",
-        "z",
-        "vx",
-        "vy",
-        "vz",
-        "roll_deg",
-        "pitch_deg",
-        "yaw_deg",
+        "x", "y", "z",
+        "vx", "vy", "vz",
+        "roll_deg", "pitch_deg", "yaw_deg",
         "thrust",
+        "gyro_x", "gyro_y", "gyro_z",   # deg/s body-frame angular velocity
     ]
 
     def __init__(self, cf, name="flight"):
@@ -690,9 +685,17 @@ class FlightLogger:
         self._lc2.data_received_cb.add_callback(self._cb2)
         cf.log.add_config(self._lc2)
 
+        # Config 3: gyro angular velocity (3 floats = 12 bytes, deg/s)
+        self._lc3 = LogConfig("FLgyro", period_in_ms=self._PERIOD_MS)
+        for v in ("gyro.x", "gyro.y", "gyro.z"):
+            self._lc3.add_variable(v, "float")
+        self._lc3.data_received_cb.add_callback(self._cb2)  # same pattern: just update buf
+        cf.log.add_config(self._lc3)
+
     def start(self):
         self._lc1.start()
         self._lc2.start()
+        self._lc3.start()
 
     def mark_traj_start(self):
         """Set t=0. Call just before the first start_trajectory()."""
@@ -719,6 +722,9 @@ class FlightLogger:
                     s.get("stabilizer.pitch", ""),
                     s.get("stabilizer.yaw", ""),
                     s.get("stabilizer.thrust", ""),
+                    s.get("gyro.x", ""),
+                    s.get("gyro.y", ""),
+                    s.get("gyro.z", ""),
                 ]
             )
             self._file.flush()
@@ -730,6 +736,7 @@ class FlightLogger:
     def stop(self):
         self._lc1.stop()
         self._lc2.stop()
+        self._lc3.stop()
         self._file.close()
         print(f"  [log] Saved: {self.path}")
 

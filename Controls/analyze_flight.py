@@ -1438,6 +1438,23 @@ def eval_poly4d(segs, t_elapsed, speed_scale, xy_scale, loop=False):
     return _eval_one(segs, t_poly, xy_scale)
 
 
+def eval_poly4d_vel(segs, t_elapsed, speed_scale, xy_scale, loop=False):
+    """Evaluate planned velocity (1st derivative of poly4d) at real elapsed time t_elapsed.
+
+    Physical velocity = speed_scale * poly_1st_derivative (chain rule).
+    Returns (vx, vy, vz) in m/s.
+    """
+    total_planned = sum(s[0] for s in segs)
+    t_poly = t_elapsed * speed_scale
+    if loop:
+        t_poly = t_poly % total_planned
+    seg, t = _find_seg(segs, t_poly)
+    vx = speed_scale * _poly_eval_nth(seg[1:9], t, 1) * xy_scale
+    vy = speed_scale * _poly_eval_nth(seg[9:17], t, 1) * xy_scale
+    vz = speed_scale * _poly_eval_nth(seg[17:25], t, 1)
+    return vx, vy, vz
+
+
 # ── CSV loading ─────────────────────────────────────────────────────────────
 
 
@@ -1446,16 +1463,11 @@ def load_csv(path):
         c: []
         for c in [
             "time_s",
-            "x",
-            "y",
-            "z",
-            "vx",
-            "vy",
-            "vz",
-            "roll_deg",
-            "pitch_deg",
-            "yaw_deg",
+            "x", "y", "z",
+            "vx", "vy", "vz",
+            "roll_deg", "pitch_deg", "yaw_deg",
             "thrust",
+            "gyro_x", "gyro_y", "gyro_z",   # deg/s — present in new logs only
         ]
     }
     with open(path) as f:
@@ -1515,12 +1527,23 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     # Evaluate planned trajectory at each logged timestamp
     plan = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in times])
 
+    # Planned velocity from 1st derivative
+    plan_vel = np.array(
+        [eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in times]
+    )
+
     # Planned attitude from differential flatness
     planned_att = np.array(
         [compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times]
     )
     p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
     px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
+
+    # Planned angular rates: numerical diff of Euler angles (Euler rates ≈ body omega for small roll/pitch)
+    dt = np.gradient(times)
+    p_omega_x = np.gradient(planned_att[:, 0], times)   # droll/dt  [deg/s]
+    p_omega_y = np.gradient(planned_att[:, 1], times)   # dpitch/dt [deg/s]
+    p_omega_z = np.gradient(planned_att[:, 2], times)   # dyaw/dt   [deg/s]
 
     # Errors — Z uses relative coords (poly4d is relative_position=True)
     m = compute_metrics(data, plan, planned_att)
@@ -1534,7 +1557,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
         [eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan_full]
     )
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 10))
+    fig, axes = plt.subplots(3, 2, figsize=(13, 14))
     fig.suptitle(
         f"Trajectory Analysis — {traj_type}  "
         f"(SPEED_SCALE={speed_scale}, XY_SCALE={xy_scale})\n"
@@ -1615,6 +1638,45 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     ax.set_xlabel("time [s]")
     ax.set_ylabel("angle [deg]")
     ax.set_title("Attitude — actual vs planned (flatness)")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True)
+
+    # ── Panel 5: Velocity — actual vs planned ────────────────────────────────
+    ax = axes[2, 0]
+    for axis, actual, planned, col in [
+        ("vx", data["vx"], plan_vel[:, 0], "tab:blue"),
+        ("vy", data["vy"], plan_vel[:, 1], "tab:orange"),
+        ("vz", data["vz"], plan_vel[:, 2], "tab:green"),
+    ]:
+        mask = ~np.isnan(actual)
+        ax.plot(times[mask], actual[mask], color=col, lw=1.2, label=f"{axis} actual")
+        ax.plot(times, planned, color=col, lw=1.0, ls="--", alpha=0.65, label=f"{axis} planned")
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("velocity [m/s]")
+    ax.set_title("Velocity — actual vs planned")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True)
+
+    # ── Panel 6: Angular velocity — actual (gyro) vs planned (Euler rate) ────
+    ax = axes[2, 1]
+    has_gyro = not np.all(np.isnan(data["gyro_x"]))
+    for axis, actual, planned, col in [
+        ("wx", data["gyro_x"], p_omega_x, "tab:blue"),
+        ("wy", data["gyro_y"], p_omega_y, "tab:orange"),
+        ("wz", data["gyro_z"], p_omega_z, "tab:red"),
+    ]:
+        mask = ~np.isnan(actual)
+        if has_gyro and mask.any():
+            ax.plot(times[mask], actual[mask], color=col, lw=1.2, label=f"{axis} actual")
+        ax.plot(times, planned, color=col, lw=1.0, ls="--", alpha=0.65,
+                label=f"{axis} planned" if not has_gyro else f"{axis} plan")
+    if not has_gyro:
+        ax.text(0.5, 0.95, "gyro not logged in this CSV\n(re-run with updated script)",
+                transform=ax.transAxes, ha="center", va="top", fontsize=8,
+                color="gray", style="italic")
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("angular rate [deg/s]")
+    ax.set_title("Angular velocity — actual (gyro) vs planned (Euler rate)")
     ax.legend(fontsize=7, ncol=2)
     ax.grid(True)
 
