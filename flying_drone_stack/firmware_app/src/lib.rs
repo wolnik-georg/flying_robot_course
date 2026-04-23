@@ -88,24 +88,68 @@ const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
 
-// // ── Safe adjustment: only attitude gains (KR/KW) increased slightly ───────
-// // ── Only attitude gains increased to fight pitch/roll/yaw wobble during circle ─────
-// const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // unchanged - good for hover & cross
-// const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // unchanged
-// const KI_P: f32 = 0.025;                                                        // unchanged
-// const KI_LIMIT: f32 = 0.4;
+// ── GAINS BLOCK A — our tuned gains ────────────────────────────────────────
+// Increased KP_Z/KV_Z for stiff altitude hold; light integral for XY drift.
+// Comment out block A and uncomment block B to compare against stock firmware.
+// const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;                                                         // light integral — corrects steady-state offset
+// const KI_LIMIT: f32 = 2.0;
 
-// const KR_X: f32 = 0.0125; const KR_Y: f32 = 0.0125; const KR_Z: f32 = 0.0145; // rollback
-// const KW_X: f32 = 0.0028; const KW_Y: f32 = 0.0028; const KW_Z: f32 = 0.0032; // rollback
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
 
-// ── Official attitude gains + increased XY position/velocity gains ─────────
-const KP_X: f32 = 7.5;    const KP_Y: f32 = 7.5;    const KP_Z: f32 = 26.0;   // unchanged - good for hover & cross
-const KV_X: f32 = 9.0;    const KV_Y: f32 = 9.0;    const KV_Z: f32 = 14.0;   // unchanged
-const KI_P: f32 = 0.05;                                                         // light integral — corrects steady-state offset
-const KI_LIMIT: f32 = 2.0;   // max accumulator: KI_P × KI_LIMIT = 0.1 m/s² max contribution
+// ── GAINS BLOCK B — official Crazyflie Lee controller defaults ─────────────
+// Source: crazyflie-firmware controller_lee.c (Kpos_P/D/I, KR, Komega defaults).
+// Comment out block A above and uncomment these lines to use stock gains.
+// const KP_X: f32 = 6.0;    const KP_Y: f32 = 6.0;    const KP_Z: f32 = 6.0;
+// const KV_X: f32 = 4.0;    const KV_Y: f32 = 4.0;    const KV_Z: f32 = 4.0;
+// const KI_P: f32 = 0.0;
+// const KI_LIMIT: f32 = 2.0;
 
-const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;  // unchanged - stable
-const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;  // unchanged - stable
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.01;
+// const KW_X: f32 = 0.0023; const KW_Y: f32 = 0.0023; const KW_Z: f32 = 0.003;
+
+// ── GAINS BLOCK C — current baseline ───────────────────────────────────────
+// Confirmed better than Block A: XY RMSE 16.2 cm (was 21.2 cm, −24%).
+// Lag correlation −0.73 (was −0.92). Roll error halved. Pitch still ~10°.
+// Active — do NOT comment out unless switching to another block.
+// const KP_X: f32 = 9.0;    const KP_Y: f32 = 9.0;    const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 11.0;   const KV_Y: f32 = 11.0;   const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK D — current baseline (slight improvement over C) ────────────
+// XY RMSE 15.9 cm (C: 16.4 cm, −3%). Diminishing returns — position gains near limit.
+// Pitch error stuck at ~10° across A/C/D → attitude loop is now the bottleneck.
+// Lag corr −0.77 (slightly worse than C −0.73) — sign of incipient overshoot.
+// Active — do NOT comment out unless switching to another block.
+// const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK E — target: fix stuck pitch error via attitude loop ──────────
+// Pitch error ~10° unchanged through A/C/D → drone can't achieve commanded pitch
+// fast enough. Fix: increase KR_X/Y (attitude P, faster angle tracking) and
+// restore KW_X/Y toward stock (we're at 0.00115, stock=0.0023 — under-damped).
+// Position loop kept at Block D values.
+// To try: comment out block D above, uncomment block E, rebuild + flash.
+// Then compare: python analyze_flight.py --csv <new.csv> --compare logs/figure8_20260423_123743.csv
+//               --labels "Block E (KR=0.010, KW=0.0018),Block D (KR=0.007, KW=0.00115)"
+const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
+const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
+const KI_P: f32 = 0.05;
+const KI_LIMIT: f32 = 2.0;
+
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.0018; const KW_Y: f32 = 0.0018; const KW_Z: f32 = 0.002;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {

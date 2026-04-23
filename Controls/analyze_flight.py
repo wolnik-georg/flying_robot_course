@@ -1469,7 +1469,44 @@ def load_csv(path):
     return {k: np.array(v) for k, v in rows.items()}
 
 
-# ── Plotting ────────────────────────────────────────────────────────────────
+# ── Metrics ─────────────────────────────────────────────────────────────────
+
+def compute_metrics(data, plan, planned_att_arr):
+    """Return a dict of tracking quality metrics.
+
+    Z error uses relative coordinates (poly4d is relative_position=True):
+    err_z = |(z_actual − z_start) − pz_planned|
+    """
+    px, py, pz_rel = plan[:, 0], plan[:, 1], plan[:, 2]
+    z0 = data["z"][0]
+    err_xy = np.sqrt((data["x"] - px) ** 2 + (data["y"] - py) ** 2)
+    err_z  = np.abs((data["z"] - z0) - pz_rel)
+    err_3d = np.sqrt(err_xy ** 2 + err_z ** 2)
+
+    er = data["roll_deg"]  - planned_att_arr[:, 0]
+    ep = data["pitch_deg"] - planned_att_arr[:, 1]
+
+    ex = data["x"] - px
+    with np.errstate(invalid="ignore"):
+        lag_corr = float(np.corrcoef(ex, data["vx"])[0, 1])
+
+    return {
+        "xy_rms":        float(np.sqrt(np.nanmean(err_xy ** 2))),
+        "xy_max":        float(np.nanmax(err_xy)),
+        "z_rms":         float(np.sqrt(np.nanmean(err_z ** 2))),
+        "3d_rms":        float(np.sqrt(np.nanmean(err_3d ** 2))),
+        "roll_err_rms":  float(np.sqrt(np.nanmean(er ** 2))),
+        "pitch_err_rms": float(np.sqrt(np.nanmean(ep ** 2))),
+        "lag_corr":      lag_corr,
+        "err_xy":        err_xy,
+        "err_z":         err_z,
+        "err_3d":        err_3d,
+        "roll_err":      er,
+        "pitch_err":     ep,
+    }
+
+
+# ── Plotting ─────────────────────────────────────────────────────────────────
 
 
 def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
@@ -1485,12 +1522,11 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
     px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
 
-    # Errors
-    err_3d = np.sqrt(
-        (data["x"] - px) ** 2 + (data["y"] - py) ** 2 + (data["z"] - pz) ** 2
-    )
-    err_xy = np.sqrt((data["x"] - px) ** 2 + (data["y"] - py) ** 2)
-    err_z = np.abs(data["z"] - pz)
+    # Errors — Z uses relative coords (poly4d is relative_position=True)
+    m = compute_metrics(data, plan, planned_att)
+    err_xy = m["err_xy"]
+    err_z  = m["err_z"]
+    err_3d = m["err_3d"]
 
     # Planned full path for reference overlay
     t_plan_full = np.linspace(0, times[-1], 500)
@@ -1540,29 +1576,28 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     ax.plot(times, err_3d * 100, "k-", lw=1.5, label="3D error", alpha=0.9)
     ax.plot(times, err_xy * 100, "b--", lw=1.2, label="XY error")
     ax.plot(times, err_z * 100, color="g", lw=1.0, ls=":", label="Z error")
-    rmse_3d = np.sqrt(np.nanmean(err_3d**2))
-    rmse_xy = np.sqrt(np.nanmean(err_xy**2))
-    ax.axhline(
-        rmse_3d * 100,
-        color="k",
-        lw=0.8,
-        ls="--",
-        alpha=0.5,
-        label=f"RMSE 3D={rmse_3d*100:.1f} cm",
-    )
-    ax.axhline(
-        rmse_xy * 100,
-        color="b",
-        lw=0.8,
-        ls="--",
-        alpha=0.5,
-        label=f"RMSE XY={rmse_xy*100:.1f} cm",
-    )
+    ax.axhline(m["3d_rms"] * 100, color="k", lw=0.8, ls="--", alpha=0.5,
+               label=f"RMSE 3D={m['3d_rms']*100:.1f} cm")
+    ax.axhline(m["xy_rms"] * 100, color="b", lw=0.8, ls="--", alpha=0.5,
+               label=f"RMSE XY={m['xy_rms']*100:.1f} cm")
     ax.set_xlabel("time [s]")
     ax.set_ylabel("error [cm]")
     ax.set_title("Position Error")
     ax.legend(fontsize=8)
     ax.grid(True)
+    # Metrics summary box
+    box_txt = (
+        f"RMSE XY : {m['xy_rms']*100:.1f} cm\n"
+        f"RMSE Z  : {m['z_rms']*100:.1f} cm\n"
+        f"RMSE 3D : {m['3d_rms']*100:.1f} cm\n"
+        f"Max XY  : {m['xy_max']*100:.1f} cm\n"
+        f"Roll err: {m['roll_err_rms']:.1f}°\n"
+        f"Pitch err:{m['pitch_err_rms']:.1f}°\n"
+        f"Lag corr: {m['lag_corr']:.2f}"
+    )
+    ax.text(0.98, 0.97, box_txt, transform=ax.transAxes, fontsize=7.5,
+            verticalalignment="top", horizontalalignment="right",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.85))
 
     # ── Panel 4: Attitude — actual vs planned (differential flatness) ─────────
     ax = axes[1, 1]
@@ -1588,13 +1623,15 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     # Print statistics
     n = np.sum(~np.isnan(err_3d))
     print("\n── Tracking Error Statistics ─────────────────────────────────")
-    print(f"  Samples  : {n}  ({n / max(len(times), 1) * 100:.0f}%)")
-    print(f"  RMSE 3D  : {rmse_3d*100:.1f} cm")
-    print(f"  RMSE XY  : {rmse_xy*100:.1f} cm")
-    print(f"  RMSE Z   : {np.sqrt(np.nanmean(err_z**2))*100:.1f} cm")
-    print(f"  Max 3D   : {np.nanmax(err_3d)*100:.1f} cm")
-    print(f"  Max XY   : {np.nanmax(err_xy)*100:.1f} cm")
-    print(f"  Duration : {times[-1]:.1f} s")
+    print(f"  Samples   : {n}  ({n / max(len(times), 1) * 100:.0f}%)")
+    print(f"  RMSE 3D   : {m['3d_rms']*100:.1f} cm")
+    print(f"  RMSE XY   : {m['xy_rms']*100:.1f} cm")
+    print(f"  RMSE Z    : {m['z_rms']*100:.1f} cm  (relative to start height)")
+    print(f"  Max XY    : {m['xy_max']*100:.1f} cm")
+    print(f"  Roll err  : {m['roll_err_rms']:.1f}°  (actual vs flatness planned)")
+    print(f"  Pitch err : {m['pitch_err_rms']:.1f}°")
+    print(f"  Lag corr  : {m['lag_corr']:.3f}  (−1=max lag, 0=no lag)")
+    print(f"  Duration  : {times[-1]:.1f} s")
 
     out_path = os.path.splitext(csv_path)[0] + "_analysis.png"
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
@@ -1603,6 +1640,124 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
 
 
 # ── Entry point ─────────────────────────────────────────────────────────────
+
+
+def compare_plot(data_a, data_b, label_a, label_b,
+                 segs, traj_type, speed_scale, xy_scale, loop, out_path):
+    """Overlay two flights on the same 2×2 panels + metrics comparison table."""
+    times_a = data_a["time_s"]
+    times_b = data_b["time_s"]
+
+    plan_a = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in times_a])
+    plan_b = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in times_b])
+    patt_a = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_a])
+    patt_b = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_b])
+
+    ma = compute_metrics(data_a, plan_a, patt_a)
+    mb = compute_metrics(data_b, plan_b, patt_b)
+
+    t_plan = np.linspace(0, max(times_a[-1], times_b[-1]), 500)
+    plan_full = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
+
+    col_a, col_b = "#1f77b4", "#d62728"   # blue, red
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle(
+        f"Flight Comparison — {traj_type}  (SPEED_SCALE={speed_scale})\n"
+        f"{label_a}  vs  {label_b}",
+        fontsize=12,
+    )
+
+    # ── Panel 1: XY path ────────────────────────────────────────────────────
+    ax = axes[0, 0]
+    ax.plot(plan_full[:, 0], plan_full[:, 1], "k--", lw=1.2, label="Planned", alpha=0.5)
+    ax.plot(data_a["x"], data_a["y"], color=col_a, lw=1.5, label=label_a, alpha=0.9)
+    ax.plot(data_b["x"], data_b["y"], color=col_b, lw=1.5, label=label_b, alpha=0.9)
+    ax.plot(data_a["x"][0], data_a["y"][0], "o", color=col_a, ms=7, zorder=5)
+    ax.plot(data_b["x"][0], data_b["y"][0], "o", color=col_b, ms=7, zorder=5)
+    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
+    ax.set_title("XY Path"); ax.legend(fontsize=9); ax.grid(True); ax.set_aspect("equal")
+
+    # ── Panel 2: XY error vs time ────────────────────────────────────────────
+    ax = axes[0, 1]
+    ax.plot(times_a, ma["err_xy"] * 100, color=col_a, lw=1.4, label=f"{label_a}  RMSE={ma['xy_rms']*100:.1f} cm")
+    ax.plot(times_b, mb["err_xy"] * 100, color=col_b, lw=1.4, label=f"{label_b}  RMSE={mb['xy_rms']*100:.1f} cm")
+    ax.axhline(ma["xy_rms"] * 100, color=col_a, lw=0.8, ls="--", alpha=0.6)
+    ax.axhline(mb["xy_rms"] * 100, color=col_b, lw=0.8, ls="--", alpha=0.6)
+    ax.set_xlabel("time [s]"); ax.set_ylabel("XY error [cm]")
+    ax.set_title("XY Position Error vs Time"); ax.legend(fontsize=9); ax.grid(True)
+
+    # ── Panel 3: Attitude error vs time ──────────────────────────────────────
+    ax = axes[1, 0]
+    ax.plot(times_a, ma["roll_err"],  color=col_a, lw=1.3, ls="-",  label=f"{label_a} roll err")
+    ax.plot(times_a, ma["pitch_err"], color=col_a, lw=1.3, ls="--", label=f"{label_a} pitch err")
+    ax.plot(times_b, mb["roll_err"],  color=col_b, lw=1.3, ls="-",  label=f"{label_b} roll err")
+    ax.plot(times_b, mb["pitch_err"], color=col_b, lw=1.3, ls="--", label=f"{label_b} pitch err")
+    ax.axhline(0, color="k", lw=0.5, alpha=0.4)
+    ax.set_xlabel("time [s]"); ax.set_ylabel("attitude error [deg]")
+    ax.set_title("Attitude Error vs Planned (flatness)"); ax.legend(fontsize=8); ax.grid(True)
+
+    # ── Panel 4: Metrics comparison table ────────────────────────────────────
+    ax = axes[1, 1]
+    ax.axis("off")
+    metrics_rows = [
+        ("Metric", label_a, label_b, "Δ (B−A)", "Δ%"),
+        ("RMSE XY [cm]",
+         f"{ma['xy_rms']*100:.1f}", f"{mb['xy_rms']*100:.1f}",
+         f"{(mb['xy_rms']-ma['xy_rms'])*100:+.1f}",
+         f"{100*(mb['xy_rms']-ma['xy_rms'])/ma['xy_rms']:+.1f}%"),
+        ("Max XY [cm]",
+         f"{ma['xy_max']*100:.1f}", f"{mb['xy_max']*100:.1f}",
+         f"{(mb['xy_max']-ma['xy_max'])*100:+.1f}",
+         f"{100*(mb['xy_max']-ma['xy_max'])/ma['xy_max']:+.1f}%"),
+        ("RMSE Z [cm]",
+         f"{ma['z_rms']*100:.1f}", f"{mb['z_rms']*100:.1f}",
+         f"{(mb['z_rms']-ma['z_rms'])*100:+.1f}",
+         f"{100*(mb['z_rms']-ma['z_rms'])/ma['z_rms']:+.1f}%"),
+        ("RMSE 3D [cm]",
+         f"{ma['3d_rms']*100:.1f}", f"{mb['3d_rms']*100:.1f}",
+         f"{(mb['3d_rms']-ma['3d_rms'])*100:+.1f}",
+         f"{100*(mb['3d_rms']-ma['3d_rms'])/ma['3d_rms']:+.1f}%"),
+        ("Roll err [°]",
+         f"{ma['roll_err_rms']:.1f}", f"{mb['roll_err_rms']:.1f}",
+         f"{mb['roll_err_rms']-ma['roll_err_rms']:+.1f}",
+         f"{100*(mb['roll_err_rms']-ma['roll_err_rms'])/ma['roll_err_rms']:+.1f}%"),
+        ("Pitch err [°]",
+         f"{ma['pitch_err_rms']:.1f}", f"{mb['pitch_err_rms']:.1f}",
+         f"{mb['pitch_err_rms']-ma['pitch_err_rms']:+.1f}",
+         f"{100*(mb['pitch_err_rms']-ma['pitch_err_rms'])/ma['pitch_err_rms']:+.1f}%"),
+        ("Lag corr",
+         f"{ma['lag_corr']:.3f}", f"{mb['lag_corr']:.3f}",
+         f"{mb['lag_corr']-ma['lag_corr']:+.3f}", ""),
+    ]
+    # Color delta cells: green if negative (improvement), red if positive (worse)
+    cell_colors = []
+    for i, row in enumerate(metrics_rows):
+        if i == 0:
+            cell_colors.append(["#d0d0d0"] * 5)
+        else:
+            try:
+                delta = float(row[3])
+                dc = "#c8f0c8" if delta < 0 else "#f0c8c8"
+            except ValueError:
+                dc = "white"
+            cell_colors.append(["white", "white", "white", dc, dc])
+
+    tbl = ax.table(
+        cellText=metrics_rows,
+        cellLoc="center",
+        loc="center",
+        cellColours=cell_colors,
+    )
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(9)
+    tbl.scale(1.0, 1.7)
+    ax.set_title("Metrics Comparison  (green = improved)", fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  Comparison plot: {out_path}")
+    plt.show()
 
 
 def main():
@@ -1615,6 +1770,18 @@ def main():
         choices=["circle", "figure8", "autonomous"],
         default=None,
         help="Trajectory type (default: inferred from filename)",
+    )
+    parser.add_argument(
+        "--compare",
+        default=None,
+        metavar="CSV2",
+        help="Second CSV to compare against the primary. Generates a side-by-side comparison plot.",
+    )
+    parser.add_argument(
+        "--labels",
+        default=None,
+        metavar="'A,B'",
+        help="Comma-separated labels for the two runs when using --compare (default: filenames).",
     )
     args = parser.parse_args()
 
@@ -1655,7 +1822,27 @@ def main():
     print(
         f'Loaded {len(data["time_s"])} rows, t=[{data["time_s"][0]:.2f}, {data["time_s"][-1]:.2f}] s'
     )
-    plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path)
+
+    if args.compare:
+        data_b = load_csv(args.compare)
+        if len(data_b["time_s"]) == 0:
+            print(f"Second CSV is empty: {args.compare}")
+            sys.exit(1)
+        print(
+            f'Loaded {len(data_b["time_s"])} rows from {args.compare}'
+        )
+        if args.labels:
+            parts = args.labels.split(",")
+            label_a = parts[0].strip()
+            label_b = parts[1].strip() if len(parts) > 1 else os.path.basename(args.compare)
+        else:
+            label_a = os.path.basename(csv_path).removesuffix(".csv")
+            label_b = os.path.basename(args.compare).removesuffix(".csv")
+        out_path = os.path.splitext(csv_path)[0] + "_vs_" + os.path.splitext(os.path.basename(args.compare))[0] + ".png"
+        compare_plot(data, data_b, label_a, label_b,
+                     segs, traj_type, speed_scale, xy_scale, loop, out_path)
+    else:
+        plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path)
 
 
 if __name__ == "__main__":
