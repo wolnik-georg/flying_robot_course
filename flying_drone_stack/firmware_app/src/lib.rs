@@ -135,14 +135,12 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
 // const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
 
-// ── GAINS BLOCK E — target: fix stuck pitch error via attitude loop ──────────
-// Pitch error ~10° unchanged through A/C/D → drone can't achieve commanded pitch
-// fast enough. Fix: increase KR_X/Y (attitude P, faster angle tracking) and
-// restore KW_X/Y toward stock (we're at 0.00115, stock=0.0023 — under-damped).
-// Position loop kept at Block D values.
-// To try: comment out block D above, uncomment block E, rebuild + flash.
-// Then compare: python analyze_flight.py --csv <new.csv> --compare logs/figure8_20260423_123743.csv
-//               --labels "Block E (KR=0.010, KW=0.0018),Block D (KR=0.007, KW=0.00115)"
+// ── GAINS BLOCK E — current baseline ───────────────────────────────────────
+// Best so far: XY RMSE 13.9 cm (−35% vs Block A, −12% vs Block D).
+// Attitude gains (KR 0.007→0.010, KW 0.00115→0.0018) gave the extra jump.
+// Pitch error stuck at ~10° — structural: ~8.6° is position-correction demand,
+// not attitude lag. Will only fall if position tracking improves further.
+// Active — do NOT comment out unless switching to another block.
 const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
 const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.05;
@@ -150,6 +148,8 @@ const KI_LIMIT: f32 = 2.0;
 
 const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 const KW_X: f32 = 0.0018; const KW_Y: f32 = 0.0018; const KW_Z: f32 = 0.002;
+
+
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
