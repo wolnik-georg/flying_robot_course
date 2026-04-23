@@ -10,12 +10,10 @@ constraints.
 
 Usage:
     ~/.pyenv/versions/flying_robots/bin/python run_spline_circle.py
-    ~/.pyenv/versions/flying_robots/bin/python run_spline_circle.py --controller 6
     ~/.pyenv/versions/flying_robots/bin/python run_spline_circle.py --laps 2
 
-The --controller flag selects:
-    6  OOT Rust geometric controller (default — requires updated firmware)
-    2  Mellinger firmware controller  (fallback)
+Takeoff/landing use PID (type 1); trajectory uses OOT Rust geometric (type 6).
+Requires OOT firmware: cd firmware_app && make cload
 """
 
 import sys
@@ -254,7 +252,7 @@ def start_live_log(cf):
     return log_cfg
 
 
-def fly_circle(scf, n_laps, controller):
+def fly_circle(scf, n_laps):
     cf = scf.cf
     hl = cf.high_level_commander
     traj_id = 1
@@ -279,12 +277,9 @@ def fly_circle(scf, n_laps, controller):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    # Set controller
-    ctrl_names = {2: "Mellinger (firmware)", 6: "OOT Rust geometric"}
-    print(
-        f"\nSetting controller: {ctrl_names.get(controller, str(controller))} (type {controller})"
-    )
-    cf.param.set_value("stabilizer.controller", str(controller))
+    # Takeoff with PID — safe, reliable climb
+    print("\nSetting controller: PID (type 1) for takeoff")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     # Start persistent live log (terminal output) + CSV flight logger
@@ -292,11 +287,17 @@ def fly_circle(scf, n_laps, controller):
     logger = FlightLogger(cf, name='circle')
     logger.start()
 
-    # Takeoff
     print(f"\nTakeoff to {HOVER_HEIGHT:.2f} m over 2 s...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+
+    # Switch to OOT geometric controller and let it stabilize at hover height
+    # before starting the trajectory (prevents the brief drop on controller switch).
+    print("\nSwitching controller: OOT Rust geometric (type 6)")
+    cf.param.set_value("stabilizer.controller", "6")
+    print("  Stabilizing hover for 2.5 s...")
+    time.sleep(2.5)
 
     # Execute trajectory (n_laps times; each lap starts from current position)
     for lap in range(1, n_laps + 1):
@@ -307,8 +308,12 @@ def fly_circle(scf, n_laps, controller):
         hl.start_trajectory(traj_id, 1.0 / SPEED_SCALE, relative_position=True)
         time.sleep(max(0.5, actual_s - 0.05))  # 50ms early → no gap between laps
 
-    # Land
-    print("\nLanding...")
+    # Switch back to PID for safe landing
+    print("\nSwitching back to PID (type 1) for landing...")
+    cf.param.set_value("stabilizer.controller", "1")
+    time.sleep(0.2)
+
+    print("Landing...")
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
@@ -324,12 +329,6 @@ def fly_circle(scf, n_laps, controller):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Spline circle flight via HLC")
     parser.add_argument(
-        "--controller",
-        type=int,
-        default=6,
-        help="Controller type: 6=OOT Rust geometric (default), 2=Mellinger",
-    )
-    parser.add_argument(
         "--laps",
         type=int,
         default=DEFAULT_LAPS,
@@ -344,10 +343,9 @@ if __name__ == "__main__":
 
     uri = args.uri or uri_helper.uri_from_env(default=DEFAULT_URI)
     print(f"Connecting to {uri}...")
-    print(
-        f"Controller: {args.controller}  |  Laps: {args.laps}  |  SPEED_SCALE: {SPEED_SCALE}"
-    )
+    print(f"Laps: {args.laps}  |  SPEED_SCALE: {SPEED_SCALE}")
+    print("Takeoff/land: PID  |  Trajectory: OOT Rust geometric (type 6)")
 
     cflib.crtp.init_drivers()
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
-        fly_circle(scf, n_laps=args.laps, controller=args.controller)
+        fly_circle(scf, n_laps=args.laps)

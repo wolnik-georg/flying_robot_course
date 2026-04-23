@@ -14,12 +14,10 @@ Total path: ±0.92m in x, ±0.45m in y — requires ~2m × 1m clear floor space.
 
 Usage:
     ~/.pyenv/versions/flying_robots/bin/python run_spline_figure8.py
-    ~/.pyenv/versions/flying_robots/bin/python run_spline_figure8.py --controller 2
     ~/.pyenv/versions/flying_robots/bin/python run_spline_figure8.py --reps 2
 
-The --controller flag selects:
-    6  OOT Rust geometric controller (default — requires updated firmware)
-    2  Mellinger firmware controller  (fallback)
+Takeoff/landing use PID (type 1); trajectory uses OOT Rust geometric (type 6).
+Requires OOT firmware: cd firmware_app && make cload
 """
 
 import sys
@@ -617,7 +615,7 @@ def start_live_log(cf):
     return log_cfg
 
 
-def fly_figure8(scf, n_reps, controller):
+def fly_figure8(scf, n_reps):
     cf = scf.cf
     hl = cf.high_level_commander
     traj_id = 1
@@ -645,12 +643,9 @@ def fly_figure8(scf, n_reps, controller):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    # Set controller
-    ctrl_names = {2: "Mellinger (firmware)", 6: "OOT Rust geometric"}
-    print(
-        f"\nSetting controller: {ctrl_names.get(controller, str(controller))} (type {controller})"
-    )
-    cf.param.set_value("stabilizer.controller", str(controller))
+    # Takeoff with PID — safe, reliable climb (geometric arming threshold can interfere)
+    print("\nSetting controller: PID (type 1) for takeoff")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     # Start persistent live log (terminal output) + CSV flight logger
@@ -658,11 +653,17 @@ def fly_figure8(scf, n_reps, controller):
     logger = FlightLogger(cf, name="figure8")
     logger.start()
 
-    # Takeoff
     print(f"\nTakeoff to {HOVER_HEIGHT:.2f} m over 2 s...")
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+
+    # Switch to OOT geometric controller and let it stabilize at hover height
+    # before starting the trajectory (prevents the brief drop on controller switch).
+    print("\nSwitching controller: OOT Rust geometric (type 6)")
+    cf.param.set_value("stabilizer.controller", "6")
+    print("  Stabilizing hover for 2.5 s...")
+    time.sleep(2.5)
 
     # Execute trajectory (n_reps times; each rep starts from current position)
     for rep in range(1, n_reps + 1):
@@ -673,8 +674,12 @@ def fly_figure8(scf, n_reps, controller):
         hl.start_trajectory(traj_id, 1.0 / SPEED_SCALE, relative_position=True)
         time.sleep(max(0.5, actual_s - 0.05))  # 50ms early → no gap between reps
 
-    # Land
-    print("\nLanding...")
+    # Switch back to PID for safe landing
+    print("\nSwitching back to PID (type 1) for landing...")
+    cf.param.set_value("stabilizer.controller", "1")
+    time.sleep(0.2)
+
+    print("Landing...")
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
@@ -692,12 +697,6 @@ if __name__ == "__main__":
         description="Spline figure-8 flight via HLC (our min-snap coefficients)"
     )
     parser.add_argument(
-        "--controller",
-        type=int,
-        default=6,
-        help="Controller type: 6=OOT Rust geometric (default), 2=Mellinger",
-    )
-    parser.add_argument(
         "--reps",
         type=int,
         default=DEFAULT_REPS,
@@ -712,13 +711,9 @@ if __name__ == "__main__":
 
     uri = args.uri or uri_helper.uri_from_env(default=DEFAULT_URI)
     print(f"Connecting to {uri}...")
-    print(
-        f"Controller: {args.controller}  |  Reps: {args.reps}  |  SPEED_SCALE: {SPEED_SCALE}"
-    )
-    print(
-        "NOTE: Our min-snap figure-8 — same waypoints as prof's, degree-8 QP replanning"
-    )
+    print(f"Reps: {args.reps}  |  SPEED_SCALE: {SPEED_SCALE}")
+    print("Takeoff/land: PID  |  Trajectory: OOT Rust geometric (type 6)")
 
     cflib.crtp.init_drivers()
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
-        fly_figure8(scf, n_reps=args.reps, controller=args.controller)
+        fly_figure8(scf, n_reps=args.reps)
