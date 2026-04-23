@@ -146,8 +146,8 @@ const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.05;
 const KI_LIMIT: f32 = 2.0;
 
-const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.0018; const KW_Y: f32 = 0.0018; const KW_Z: f32 = 0.002;
+const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
 
 
