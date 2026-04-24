@@ -2,20 +2,33 @@
 """
 Trajectory Validation Plots
 ============================
-Evaluates planned Poly4D trajectories in physical time and produces visual
-validation plots including 2D paths, 3D perspective, speed/acceleration
-profiles, and expected tilt angles from differential flatness.
+Evaluates planned Poly4D trajectories in physical time and produces two
+figures per trajectory saved to trajectory_plots/<slug>/:
+
+  <slug>_path.png     — 2D XY path + 3D perspective (large, uncluttered)
+  <slug>_dynamics.png — 7 panels:
+      Row 0: Speed/tilt/yaw overview · Position x/y/z · Velocity vx/vy/vz
+      Row 1: Acceleration ax/ay/az  · Jerk jx/jy/jz  · Thrust feasibility
+      Row 2: Angular velocity wx/wy/wz [deg/s]  (wide, full-width)
+             Derived from differential flatness — matches expected gyro readings.
 
 Usage:
     ~/.pyenv/versions/flying_robots/bin/python plot_trajectories.py
 """
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (registers 3D projection)
 
-GRAVITY = 9.81  # m/s²
+GRAVITY    = 9.81   # m/s²
+HOVER_Z    = 1.0    # m — nominal hover height for 3D z-offset
+OUT_DIR    = "trajectory_plots"
+
+# Crazyflie 2.1 physical limits
+CF_MASS_KG      = 0.027   # kg
+CF_MAX_THRUST_N = 0.60    # N  (~4 × 0.15 N)
+CF_HOVER_N      = CF_MASS_KG * GRAVITY   # ≈ 0.265 N
 
 # ---------------------------------------------------------------------------
 # Trajectory data
@@ -43,8 +56,7 @@ circle_poly4d = [
 ]
 
 # ── Our min-snap figure-8 (run_figure8.py) ────────────────────────────────────
-# Same waypoints & durations as prof's, replanned with degree-8 QP.
-# Total = 7.28s. Path extent: x=[-0.92, +0.92]m, y=[-0.45, +0.45]m.
+# x ∈ [-0.92, +0.92]m, y ∈ [-0.45, +0.45]m, total=7.28s, rest-to-rest
 our_figure8_poly4d = [
     [1.050000, -0.000000, -0.000000,  0.000000,  0.000000,  0.920060, -0.422403, -0.330819,  0.184887,  0.000000,  0.000000, -0.000000,  0.000000, -1.744998,  1.466438,  0.107645, -0.241908, -0.000000, -0.000000, -0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000, -0.000000, -0.000000, -0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000],
     [0.710000,  0.396058,  0.894217,  0.119978, -0.586456, -0.088417,  0.767407, -0.773189,  0.263120, -0.445604, -0.612846,  0.911715,  1.039294, -0.529370, -1.547065,  1.745710, -0.571617, -0.000000, -0.000000, -0.000000, -0.000000,  0.000000,  0.000000,  0.000000,  0.000000, -0.000000, -0.000000, -0.000000, -0.000000,  0.000000,  0.000000,  0.000000,  0.000000],
@@ -77,59 +89,69 @@ def poly_eval(coeffs, t, n=0):
     return result
 
 
+def _eval_point(cx, cy, cz, cyaw, t_s, speed_scale):
+    ss = speed_scale
+    x  = poly_eval(cx, t_s)
+    y  = poly_eval(cy, t_s)
+    z  = poly_eval(cz, t_s)
+    vx = poly_eval(cx, t_s, 1) * ss
+    vy = poly_eval(cy, t_s, 1) * ss
+    vz = poly_eval(cz, t_s, 1) * ss
+    ax = poly_eval(cx, t_s, 2) * ss**2
+    ay = poly_eval(cy, t_s, 2) * ss**2
+    az = poly_eval(cz, t_s, 2) * ss**2
+    jx = poly_eval(cx, t_s, 3) * ss**3
+    jy = poly_eval(cy, t_s, 3) * ss**3
+    jz = poly_eval(cz, t_s, 3) * ss**3
+    f      = np.array([ax, ay, az + GRAVITY])
+    tilt   = np.degrees(np.arccos(np.clip(GRAVITY / np.linalg.norm(f), -1, 1)))
+    thrust = CF_MASS_KG * np.linalg.norm(f)
+    yaw_d  = np.degrees(poly_eval(cyaw, t_s))
+    yr_d   = np.degrees(poly_eval(cyaw, t_s, 1) * ss)
+    return x, y, z, vx, vy, vz, ax, ay, az, jx, jy, jz, tilt, thrust, yaw_d, yr_d
+
+
 def eval_traj(traj, speed_scale=1.0, pts_per_seg=80, hover_z=1.0):
     """Evaluate a Poly4D trajectory. Returns dict of arrays."""
-    ts, xs, ys, zs = [], [], [], []
-    vxs, vys, vzs  = [], [], []
-    axs, ays, azs  = [], [], []
-    tilts          = []
-    seg_starts     = []
+    ts, xs, ys, zs   = [], [], [], []
+    vxs, vys, vzs    = [], [], []
+    axs, ays, azs    = [], [], []
+    jxs, jys, jzs    = [], [], []
+    tilts, thrusts   = [], []
+    yaws, yaw_rates  = [], []
+    seg_starts       = []
     t_global = 0.0
 
     for row in traj:
         dur_stored = row[0]
         dur_actual = dur_stored / speed_scale
-        cx, cy, cz = row[1:9], row[9:17], row[17:25]
+        cx, cy, cz, cyaw = row[1:9], row[9:17], row[17:25], row[25:33]
         seg_starts.append(t_global)
 
         for t_local in np.linspace(0, dur_actual, pts_per_seg, endpoint=False):
-            t_s = t_local * speed_scale  # polynomial domain
-            xs.append(poly_eval(cx, t_s) )
-            ys.append(poly_eval(cy, t_s))
-            zs.append(hover_z + poly_eval(cz, t_s))
-
-            vx = poly_eval(cx, t_s, 1) * speed_scale
-            vy = poly_eval(cy, t_s, 1) * speed_scale
-            vz = poly_eval(cz, t_s, 1) * speed_scale
+            t_s = t_local * speed_scale
+            x, y, z, vx, vy, vz, ax, ay, az, jx, jy, jz, tilt, thr, yaw_d, yr_d = \
+                _eval_point(cx, cy, cz, cyaw, t_s, speed_scale)
+            xs.append(x);   ys.append(y);   zs.append(hover_z + z)
             vxs.append(vx); vys.append(vy); vzs.append(vz)
-
-            ax_ = poly_eval(cx, t_s, 2) * speed_scale**2
-            ay_ = poly_eval(cy, t_s, 2) * speed_scale**2
-            az_ = poly_eval(cz, t_s, 2) * speed_scale**2
-            axs.append(ax_); ays.append(ay_); azs.append(az_)
-
-            # Tilt angle from flatness: angle between thrust vector and vertical
-            f = np.array([ax_, ay_, az_ + GRAVITY])
-            tilt = np.degrees(np.arccos(np.clip(GRAVITY / np.linalg.norm(f), -1, 1)))
-            tilts.append(tilt)
-
+            axs.append(ax); ays.append(ay); azs.append(az)
+            jxs.append(jx); jys.append(jy); jzs.append(jz)
+            tilts.append(tilt); thrusts.append(thr)
+            yaws.append(yaw_d); yaw_rates.append(yr_d)
             ts.append(t_global + t_local)
         t_global += dur_actual
 
     # Final point
-    row = traj[-1]; dur_s = row[0]; cx, cy, cz = row[1:9], row[9:17], row[17:25]
-    xs.append(poly_eval(cx, dur_s)); ys.append(poly_eval(cy, dur_s))
-    zs.append(hover_z + poly_eval(cz, dur_s))
-    vx = poly_eval(cx, dur_s, 1) * speed_scale
-    vy = poly_eval(cy, dur_s, 1) * speed_scale
-    vz = poly_eval(cz, dur_s, 1) * speed_scale
+    row = traj[-1]; dur_s = row[0]
+    cx, cy, cz, cyaw = row[1:9], row[9:17], row[17:25], row[25:33]
+    x, y, z, vx, vy, vz, ax, ay, az, jx, jy, jz, tilt, thr, yaw_d, yr_d = \
+        _eval_point(cx, cy, cz, cyaw, dur_s, speed_scale)
+    xs.append(x);   ys.append(y);   zs.append(hover_z + z)
     vxs.append(vx); vys.append(vy); vzs.append(vz)
-    ax_ = poly_eval(cx, dur_s, 2) * speed_scale**2
-    ay_ = poly_eval(cy, dur_s, 2) * speed_scale**2
-    az_ = poly_eval(cz, dur_s, 2) * speed_scale**2
-    axs.append(ax_); ays.append(ay_); azs.append(az_)
-    f = np.array([ax_, ay_, az_ + GRAVITY])
-    tilts.append(np.degrees(np.arccos(np.clip(GRAVITY / np.linalg.norm(f), -1, 1))))
+    axs.append(ax); ays.append(ay); azs.append(az)
+    jxs.append(jx); jys.append(jy); jzs.append(jz)
+    tilts.append(tilt); thrusts.append(thr)
+    yaws.append(yaw_d); yaw_rates.append(yr_d)
     ts.append(t_global)
     seg_starts.append(t_global)
 
@@ -137,117 +159,291 @@ def eval_traj(traj, speed_scale=1.0, pts_per_seg=80, hover_z=1.0):
         t=np.array(ts), x=np.array(xs), y=np.array(ys), z=np.array(zs),
         vx=np.array(vxs), vy=np.array(vys), vz=np.array(vzs),
         ax=np.array(axs), ay=np.array(ays), az=np.array(azs),
+        jx=np.array(jxs), jy=np.array(jys), jz=np.array(jzs),
         speed=np.sqrt(np.array(vxs)**2 + np.array(vys)**2 + np.array(vzs)**2),
-        acc_h=np.sqrt(np.array(axs)**2 + np.array(ays)**2),  # horizontal accel
+        acc_h=np.sqrt(np.array(axs)**2 + np.array(ays)**2),
+        jerk_h=np.sqrt(np.array(jxs)**2 + np.array(jys)**2),
         tilt=np.array(tilts),
+        thrust_N=np.array(thrusts),
+        yaw=np.array(yaws),
+        yaw_rate=np.array(yaw_rates),
         seg_starts=np.array(seg_starts),
     )
 
 
-# ---------------------------------------------------------------------------
-# Per-trajectory plot function — 2×3 panel grid
-# ---------------------------------------------------------------------------
+def compute_angular_velocity(d):
+    """Derive body-frame angular velocity [deg/s] from the flatness rotation matrices.
 
-def plot_trajectory(traj, name, speed_scale, hover_z, fig_row, gs, fig):
+    Method: build R(t) = [x_B | y_B | z_B] at every sample using acc + yaw,
+    then central-difference R to get Ṙ, and extract ω from R^T Ṙ (skew-symmetric).
+
+    Convention (right-hand, body frame):
+        wx = roll rate  = (R^T Ṙ)[2,1]
+        wy = pitch rate = (R^T Ṙ)[0,2]
+        wz = yaw rate   = (R^T Ṙ)[1,0]
     """
-    Fill one row of the figure (3 columns) for a single trajectory:
-      col 0 — 2D XY path (colour = speed)
-      col 1 — 3D path (colour = speed, perspective view)
-      col 2 — Speed, tilt angle, and horizontal acceleration vs time
-    """
-    d = eval_traj(traj, speed_scale=speed_scale, hover_z=hover_z)
+    n = len(d['t'])
+    Rs = np.empty((n, 3, 3))
 
-    total_t  = d['t'][-1]
-    max_spd  = d['speed'].max()
-    max_tilt = d['tilt'].max()
-    max_acc  = d['acc_h'].max()
+    for i in range(n):
+        f_vec = np.array([d['ax'][i], d['ay'][i], d['az'][i] + GRAVITY])
+        f_mag = np.linalg.norm(f_vec)
+        z_B   = f_vec / max(f_mag, 1e-9)
 
-    seg_t = d['seg_starts']
+        yaw_rad = np.radians(d['yaw'][i])
+        x_C = np.array([np.cos(yaw_rad), np.sin(yaw_rad), 0.0])
 
-    # ── 2D XY path ────────────────────────────────────────────────────────────
-    ax2 = fig.add_subplot(gs[fig_row, 0])
-    sc = ax2.scatter(d['x'], d['y'], c=d['speed'], cmap='plasma',
-                     s=4, zorder=3, vmin=0, vmax=max_spd)
-    plt.colorbar(sc, ax=ax2, label='speed [m/s]', fraction=0.046, pad=0.04)
-    # Segment boundary markers
-    for seg_t_val in seg_t[:-1]:
-        idx = np.argmin(np.abs(d['t'] - seg_t_val))
-        ax2.plot(d['x'][idx], d['y'][idx], 'w+', ms=5, mew=1, zorder=4)
-    ax2.plot(d['x'][0], d['y'][0], 'go', ms=8, zorder=5, label='start')
-    ax2.plot(d['x'][-1], d['y'][-1], 'rs', ms=7, zorder=5, label='end')
-    ax2.set_xlabel('x [m]'); ax2.set_ylabel('y [m]')
-    ax2.set_title(f'{name} — XY path  ({len(traj)} segs, {total_t:.1f} s)\n'
-                  f'SPEED_SCALE={speed_scale}  max speed={max_spd:.2f} m/s')
-    ax2.set_aspect('equal'); ax2.grid(True, alpha=0.3); ax2.legend(fontsize=7)
+        y_B_raw = np.cross(z_B, x_C)
+        y_mag   = np.linalg.norm(y_B_raw)
+        if y_mag < 1e-9:                   # gimbal lock: z_B ∥ x_C
+            x_C     = np.array([0.0, 0.0, 1.0])
+            y_B_raw = np.cross(z_B, x_C)
+            y_mag   = np.linalg.norm(y_B_raw)
+        y_B = y_B_raw / y_mag
+        x_B = np.cross(y_B, z_B)
 
-    # ── 3D path ───────────────────────────────────────────────────────────────
-    ax3 = fig.add_subplot(gs[fig_row, 1], projection='3d')
-    # Colour segments by speed
+        Rs[i] = np.column_stack([x_B, y_B, z_B])   # columns = body axes in world frame
+
+    # Central differences for Ṙ; forward/backward at endpoints
+    wx = np.zeros(n); wy = np.zeros(n); wz = np.zeros(n)
+    dt = np.diff(d['t'])
+
+    for i in range(n):
+        if i == 0:
+            R_dot = (Rs[1] - Rs[0]) / dt[0]
+        elif i == n - 1:
+            R_dot = (Rs[-1] - Rs[-2]) / dt[-1]
+        else:
+            R_dot = (Rs[i+1] - Rs[i-1]) / (dt[i-1] + dt[i])
+
+        Omega = Rs[i].T @ R_dot          # skew-symmetric body angular velocity matrix
+        wx[i] = Omega[2, 1]              # roll rate
+        wy[i] = Omega[0, 2]              # pitch rate
+        wz[i] = Omega[1, 0]             # yaw rate
+
+    return np.degrees(wx), np.degrees(wy), np.degrees(wz)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _seg_lines(ax, seg_t):
+    for sv in seg_t:
+        ax.axvline(sv, color='gray', lw=0.5, alpha=0.4)
+
+
+def _save(fig, folder, filename):
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, filename)
+    fig.savefig(path, dpi=150, bbox_inches='tight')
+    print(f"  Saved: {path}")
+
+
+# ---------------------------------------------------------------------------
+# Figure 1 — Path  (2D + 3D, large and uncluttered)
+# ---------------------------------------------------------------------------
+
+def plot_path(d, traj, name, speed_scale, slug):
+    total_t = d['t'][-1]
+    max_spd = d['speed'].max()
+    seg_t   = d['seg_starts']
+    gap     = np.hypot(d['x'][-1] - d['x'][0], d['y'][-1] - d['y'][0])
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7),
+                             gridspec_kw={'width_ratios': [1, 1.1]})
+    fig.suptitle(
+        f"{name}  —  SPEED_SCALE={speed_scale}  |  {len(traj)} segments  |  "
+        f"{total_t:.2f} s  |  gap={gap*1000:.2f} mm",
+        fontsize=13, fontweight='bold',
+    )
+
+    # ── 2D XY ────────────────────────────────────────────────────────────────
+    ax = axes[0]
+    sc = ax.scatter(d['x'], d['y'], c=d['speed'], cmap='plasma',
+                    s=5, zorder=3, vmin=0, vmax=max_spd)
+    fig.colorbar(sc, ax=ax, label='speed [m/s]', fraction=0.046, pad=0.04)
+    for sv in seg_t[:-1]:
+        idx = np.argmin(np.abs(d['t'] - sv))
+        ax.plot(d['x'][idx], d['y'][idx], 'w+', ms=6, mew=1.2, zorder=4)
+    ax.plot(d['x'][0],  d['y'][0],  'go', ms=10, zorder=5, label='start')
+    ax.plot(d['x'][-1], d['y'][-1], 'rs', ms=9,  zorder=5, label='end')
+    ax.set_xlabel('x [m]', fontsize=11); ax.set_ylabel('y [m]', fontsize=11)
+    ax.set_title(f'XY Path  (max speed = {max_spd:.2f} m/s)', fontsize=11)
+    ax.set_aspect('equal'); ax.grid(True, alpha=0.3); ax.legend(fontsize=9)
+
+    # ── 3D ───────────────────────────────────────────────────────────────────
+    ax3 = fig.add_subplot(1, 2, 2, projection='3d')
+    axes[1].remove()
     for i in range(len(d['x']) - 1):
-        spd_norm = d['speed'][i] / max(max_spd, 1e-6)
-        colour = plt.cm.plasma(spd_norm)
-        ax3.plot(d['x'][i:i+2], d['y'][i:i+2], d['z'][i:i+2],
-                 color=colour, lw=1.5)
-    ax3.scatter([d['x'][0]], [d['y'][0]], [d['z'][0]],
-                color='green', s=60, zorder=5)
-    ax3.scatter([d['x'][-1]], [d['y'][-1]], [d['z'][-1]],
-                color='red', marker='s', s=50, zorder=5)
+        colour = plt.cm.plasma(d['speed'][i] / max(max_spd, 1e-6))
+        ax3.plot(d['x'][i:i+2], d['y'][i:i+2], d['z'][i:i+2], color=colour, lw=2.0)
+    ax3.scatter([d['x'][0]],  [d['y'][0]],  [d['z'][0]],  color='green', s=80, zorder=5)
+    ax3.scatter([d['x'][-1]], [d['y'][-1]], [d['z'][-1]], color='red', marker='s', s=70, zorder=5)
     ax3.set_xlabel('x [m]'); ax3.set_ylabel('y [m]'); ax3.set_zlabel('z [m]')
-    ax3.set_title(f'{name} — 3D path\ncolour = speed (blue→yellow)')
+    ax3.set_title('3D Path  (colour = speed, blue→yellow)', fontsize=11)
     ax3.view_init(elev=25, azim=-60)
 
-    # ── Speed + tilt + horizontal acceleration vs time ────────────────────────
-    ax_t = fig.add_subplot(gs[fig_row, 2])
-    ax_t2 = ax_t.twinx()
-
-    l1, = ax_t.plot(d['t'], d['speed'],  color='tab:blue',   lw=1.4, label='speed [m/s]')
-    l2, = ax_t.plot(d['t'], d['tilt'],   color='tab:orange', lw=1.2, ls='--', label='tilt [°]')
-    l3, = ax_t2.plot(d['t'], d['acc_h'], color='tab:red',    lw=1.0, ls=':', label='|a_xy| [m/s²]')
-
-    for sv in seg_t:
-        ax_t.axvline(sv, color='gray', lw=0.5, alpha=0.4)
-
-    ax_t.set_xlabel('time [s]')
-    ax_t.set_ylabel('speed [m/s] / tilt [°]', color='k')
-    ax_t2.set_ylabel('horiz. accel [m/s²]', color='tab:red')
-    ax_t.set_title(f'{name} — dynamics\n'
-                   f'max tilt={max_tilt:.1f}°  max |a_xy|={max_acc:.2f} m/s²')
-    all_lines = [l1, l2, l3]
-    ax_t.legend(all_lines, [l.get_label() for l in all_lines], fontsize=7, loc='upper right')
-    ax_t.grid(True, alpha=0.3)
+    folder = os.path.join(OUT_DIR, slug)
+    _save(fig, folder, f"{slug}_path.png")
+    return fig
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Figure 2 — Dynamics  (2×3 panels + 1 wide angular-velocity panel)
 # ---------------------------------------------------------------------------
 
-HOVER_Z = 1.0  # m — nominal hover height used for 3D z-offset
+def plot_dynamics(d, traj, name, speed_scale, slug):
+    total_t  = d['t'][-1]
+    max_tilt = d['tilt'].max()
+    max_acc  = d['acc_h'].max()
+    seg_t    = d['seg_starts']
+    feasible = bool(d['thrust_N'].max() <= CF_MAX_THRUST_N)
 
-# Trajectory definitions: (data, name, speed_scale)
+    wx_dps, wy_dps, wz_dps = compute_angular_velocity(d)
+    max_w = max(np.abs(wx_dps).max(), np.abs(wy_dps).max(), np.abs(wz_dps).max())
+
+    fig = plt.figure(figsize=(18, 14))
+    fig.suptitle(
+        f"{name}  —  Dynamics  |  SPEED_SCALE={speed_scale}  |  {total_t:.2f} s  |  "
+        f"thrust {'OK' if feasible else 'OVER LIMIT'}",
+        fontsize=13, fontweight='bold',
+        color='black' if feasible else 'red',
+    )
+    gs = fig.add_gridspec(3, 3, hspace=0.48, wspace=0.42,
+                          height_ratios=[1, 1, 0.85])
+
+    # ── Row 0, Panel 0: Overview (speed / tilt / yaw / yaw_rate / horiz-accel) ──
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1b = ax1.twinx()
+    ax1c = ax1.twinx()
+    ax1c.spines['right'].set_position(('axes', 1.16))
+    l1, = ax1.plot(d['t'], d['speed'],    color='tab:blue',   lw=1.4, label='speed [m/s]')
+    l2, = ax1.plot(d['t'], d['tilt'],     color='tab:orange', lw=1.2, ls='--', label='tilt [°]')
+    l3, = ax1b.plot(d['t'], d['acc_h'],   color='tab:red',    lw=1.0, ls=':',  label='|a_xy| [m/s²]')
+    l4, = ax1c.plot(d['t'], d['yaw'],     color='tab:purple', lw=1.0,          label='yaw [°]')
+    l5, = ax1c.plot(d['t'], d['yaw_rate'],color='tab:pink',   lw=0.9, ls='--', label='yaw_rate [°/s]')
+    _seg_lines(ax1, seg_t)
+    ax1.set_xlabel('time [s]')
+    ax1.set_ylabel('speed [m/s] / tilt [°]')
+    ax1b.set_ylabel('|a_xy| [m/s²]', color='tab:red')
+    ax1c.set_ylabel('yaw [°] / rate [°/s]', color='tab:purple')
+    ax1.set_title(f'Overview  (max tilt={max_tilt:.1f}°  |a_xy|={max_acc:.2f} m/s²)')
+    ax1.legend([l1,l2,l3,l4,l5], [l.get_label() for l in [l1,l2,l3,l4,l5]], fontsize=7)
+    ax1.grid(True, alpha=0.3)
+
+    # ── Row 0, Panel 1: Position ──────────────────────────────────────────────
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(d['t'], d['x'], color='tab:blue',   lw=1.3, label='x')
+    ax2.plot(d['t'], d['y'], color='tab:orange', lw=1.3, label='y')
+    ax2.plot(d['t'], d['z'], color='tab:green',  lw=1.3, label='z')
+    _seg_lines(ax2, seg_t)
+    ax2.set_xlabel('time [s]'); ax2.set_ylabel('position [m]')
+    ax2.set_title('Position vs Time')
+    ax2.legend(fontsize=8); ax2.grid(True, alpha=0.3)
+
+    # ── Row 0, Panel 2: Velocity ──────────────────────────────────────────────
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.plot(d['t'], d['vx'],    color='tab:blue',   lw=1.3, label='vx')
+    ax3.plot(d['t'], d['vy'],    color='tab:orange', lw=1.3, label='vy')
+    ax3.plot(d['t'], d['vz'],    color='tab:green',  lw=1.3, label='vz')
+    ax3.plot(d['t'], d['speed'], color='k',          lw=1.0, ls='--', label='|v|')
+    _seg_lines(ax3, seg_t)
+    ax3.set_xlabel('time [s]'); ax3.set_ylabel('velocity [m/s]')
+    ax3.set_title('Velocity vs Time')
+    ax3.legend(fontsize=8); ax3.grid(True, alpha=0.3)
+
+    # ── Row 1, Panel 0: Acceleration ─────────────────────────────────────────
+    ax4 = fig.add_subplot(gs[1, 0])
+    ax4.plot(d['t'], d['ax'],    color='tab:blue',   lw=1.3, label='ax')
+    ax4.plot(d['t'], d['ay'],    color='tab:orange', lw=1.3, label='ay')
+    ax4.plot(d['t'], d['az'],    color='tab:green',  lw=1.3, label='az')
+    ax4.plot(d['t'], d['acc_h'], color='k',          lw=1.0, ls='--', label='|a_xy|')
+    _seg_lines(ax4, seg_t)
+    ax4.set_xlabel('time [s]'); ax4.set_ylabel('acceleration [m/s²]')
+    ax4.set_title('Acceleration vs Time')
+    ax4.legend(fontsize=8); ax4.grid(True, alpha=0.3)
+
+    # ── Row 1, Panel 1: Jerk ─────────────────────────────────────────────────
+    ax5 = fig.add_subplot(gs[1, 1])
+    ax5.plot(d['t'], d['jx'],     color='tab:blue',   lw=1.3, label='jx')
+    ax5.plot(d['t'], d['jy'],     color='tab:orange', lw=1.3, label='jy')
+    ax5.plot(d['t'], d['jz'],     color='tab:green',  lw=1.3, label='jz')
+    ax5.plot(d['t'], d['jerk_h'], color='k',          lw=1.0, ls='--', label='|j_xy|')
+    _seg_lines(ax5, seg_t)
+    ax5.set_xlabel('time [s]'); ax5.set_ylabel('jerk [m/s³]')
+    ax5.set_title('Jerk vs Time  (spikes at segment joins = smoothness quality)')
+    ax5.legend(fontsize=8); ax5.grid(True, alpha=0.3)
+
+    # ── Row 1, Panel 2: Thrust feasibility ───────────────────────────────────
+    ax6 = fig.add_subplot(gs[1, 2])
+    ax6.plot(d['t'], d['thrust_N'], color='tab:blue', lw=1.4, label='required thrust')
+    ax6.axhline(CF_MAX_THRUST_N, color='red',  lw=1.2, ls='--',
+                label=f'max ({CF_MAX_THRUST_N:.2f} N)')
+    ax6.axhline(CF_HOVER_N,      color='gray', lw=1.0, ls=':',
+                label=f'hover ({CF_HOVER_N:.3f} N)')
+    ax6.fill_between(d['t'], d['thrust_N'], CF_MAX_THRUST_N,
+                     where=d['thrust_N'] > CF_MAX_THRUST_N,
+                     color='red', alpha=0.25, label='over limit')
+    margin_pct = 100 * (1 - d['thrust_N'].max() / CF_MAX_THRUST_N)
+    _seg_lines(ax6, seg_t)
+    ax6.set_xlabel('time [s]'); ax6.set_ylabel('thrust [N]')
+    status = f"margin={margin_pct:.1f}%" if feasible else "OVER LIMIT"
+    ax6.set_title(f'Thrust Feasibility  ({status})',
+                  color='black' if feasible else 'red')
+    ax6.set_ylim(bottom=0)
+    ax6.legend(fontsize=8); ax6.grid(True, alpha=0.3)
+
+    # ── Row 2, wide: Angular velocity (body frame) ────────────────────────────
+    ax7 = fig.add_subplot(gs[2, :])   # spans all 3 columns
+    ax7.plot(d['t'], wx_dps, color='tab:blue',   lw=1.3, label='ωx  roll rate')
+    ax7.plot(d['t'], wy_dps, color='tab:orange', lw=1.3, label='ωy  pitch rate')
+    ax7.plot(d['t'], wz_dps, color='tab:green',  lw=1.3, label='ωz  yaw rate')
+    ax7.axhline(0, color='k', lw=0.6, alpha=0.4)
+    _seg_lines(ax7, seg_t)
+    ax7.set_xlabel('time [s]', fontsize=10)
+    ax7.set_ylabel('angular velocity [°/s]', fontsize=10)
+    ax7.set_title(
+        f'Body-Frame Angular Velocity  (from differential flatness)  '
+        f'max |ω| = {max_w:.1f} °/s',
+        fontsize=10,
+    )
+    ax7.legend(fontsize=9, ncol=3, loc='upper right')
+    ax7.grid(True, alpha=0.3)
+
+    folder = os.path.join(OUT_DIR, slug)
+    _save(fig, folder, f"{slug}_dynamics.png")
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Main — define trajectories and run
+# ---------------------------------------------------------------------------
+
+# Add new trajectories here: (data, display_name, speed_scale, folder_slug)
 TRAJECTORIES = [
-    (circle_poly4d,      "Circle  (r=0.30m)",  1.0),
-    (circle_poly4d,      "Fast Circle  (2×)",  2.0),
-    (our_figure8_poly4d, "Figure-8",           1.0),
+    (circle_poly4d,      "Circle (r=0.30m)",  1.0, "circle"),
+    (circle_poly4d,      "Fast Circle (2×)",  2.0, "fast_circle"),
+    (our_figure8_poly4d, "Figure-8",          1.0, "figure8"),
 ]
 
-n_rows = len(TRAJECTORIES)
-fig = plt.figure(figsize=(18, 6 * n_rows))
-fig.suptitle("Trajectory Validation — Poly4D Plans", fontsize=14, fontweight='bold', y=1.01)
-gs = gridspec.GridSpec(n_rows, 3, figure=fig, hspace=0.55, wspace=0.38)
+print("\n── Trajectory Summary ─────────────────────────────────────────────────────────────")
+print(f"  {'Name':<22}  {'Duration':>9}  {'Max spd':>8}  {'Max tilt':>9}  "
+      f"{'Max thrust':>11}  {'Max |ω|':>9}  {'Gap':>8}")
+print(f"  {'-'*22}  {'-'*9}  {'-'*8}  {'-'*9}  {'-'*11}  {'-'*9}  {'-'*8}")
 
-for row, (traj, name, ss) in enumerate(TRAJECTORIES):
-    plot_trajectory(traj, name, ss, HOVER_Z, row, gs, fig)
+figs = []
+for traj, name, ss, slug in TRAJECTORIES:
+    d   = eval_traj(traj, speed_scale=ss, hover_z=HOVER_Z)
+    gap = np.hypot(d['x'][-1] - d['x'][0], d['y'][-1] - d['y'][0])
+    ok  = "OK" if d['thrust_N'].max() <= CF_MAX_THRUST_N else "OVER"
+    wx_dps, wy_dps, wz_dps = compute_angular_velocity(d)
+    max_w = max(np.abs(wx_dps).max(), np.abs(wy_dps).max(), np.abs(wz_dps).max())
+    print(f"  {name:<22}  {d['t'][-1]:>8.2f}s  {d['speed'].max():>7.2f}m/s"
+          f"  {d['tilt'].max():>8.1f}°  {d['thrust_N'].max():>8.3f}N {ok:<4}"
+          f"  {max_w:>8.1f}°/s  {gap*1000:>6.2f}mm")
+    figs.append(plot_path(d, traj, name, ss, slug))
+    figs.append(plot_dynamics(d, traj, name, ss, slug))
 
-# Summary stats printed to terminal
-print("\n── Trajectory Summary ────────────────────────────────────────────────")
-for traj, name, ss in TRAJECTORIES:
-    d = eval_traj(traj, speed_scale=ss, hover_z=HOVER_Z)
-    dur  = sum(r[0] for r in traj) / ss
-    gap  = np.hypot(d['x'][-1] - d['x'][0], d['y'][-1] - d['y'][0])
-    print(f"  {name:<22}  dur={dur:.2f}s  max_spd={d['speed'].max():.2f}m/s  "
-          f"max_tilt={d['tilt'].max():.1f}°  gap={gap*1000:.2f}mm")
-
-out = '/tmp/trajectory_validation.png'
-plt.savefig(out, dpi=150, bbox_inches='tight')
-print(f"\nPlot saved to {out}")
+print()
 plt.show()
