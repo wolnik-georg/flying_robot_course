@@ -42,6 +42,11 @@ AUTONOMOUS_SPEED_SCALE = 1.0  # time_scale=1.0 (no scaling)
 AUTONOMOUS_XY_SCALE = 1.0  # SCALE=0.7 in the script
 AUTONOMOUS_IS_LOOP = False
 
+# Fast circle (run_fast_circle.py) — same trajectory as circle at 2× speed
+FAST_CIRCLE_SPEED_SCALE = 2.0  # must match SPEED_SCALE in run_fast_circle.py
+FAST_CIRCLE_XY_SCALE = 1.0
+FAST_CIRCLE_IS_LOOP = True
+
 # ── Poly4D data — copied from the flight scripts ────────────────────────────
 # If you regenerate trajectories, update these to match the flight scripts.
 
@@ -1317,6 +1322,7 @@ autonomous_poly4d = [
 
 TRAJECTORIES = {
     "circle": (circle_poly4d, CIRCLE_SPEED_SCALE, CIRCLE_XY_SCALE, CIRCLE_IS_LOOP),
+    "fast_circle": (circle_poly4d, FAST_CIRCLE_SPEED_SCALE, FAST_CIRCLE_XY_SCALE, FAST_CIRCLE_IS_LOOP),
     "figure8": (figure8_poly4d, FIGURE8_SPEED_SCALE, FIGURE8_XY_SCALE, FIGURE8_IS_LOOP),
     "autonomous": (
         autonomous_poly4d,
@@ -1467,7 +1473,9 @@ def load_csv(path):
             "vx", "vy", "vz",
             "roll_deg", "pitch_deg", "yaw_deg",
             "thrust",
-            "gyro_x", "gyro_y", "gyro_z",   # deg/s — present in new logs only
+            "vbat",                          # battery voltage [V]
+            "gyro_x", "gyro_y", "gyro_z",   # deg/s — body angular velocity
+            "acc_x", "acc_y", "acc_z",       # g — body accelerometer
         ]
     }
     with open(path) as f:
@@ -1483,7 +1491,7 @@ def load_csv(path):
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
 
-def compute_metrics(data, plan, planned_att_arr):
+def compute_metrics(data, plan, plan_vel, planned_att_arr):
     """Return a dict of tracking quality metrics.
 
     Z error uses relative coordinates (poly4d is relative_position=True):
@@ -1502,6 +1510,13 @@ def compute_metrics(data, plan, planned_att_arr):
     with np.errstate(invalid="ignore"):
         lag_corr = float(np.corrcoef(ex, data["vx"])[0, 1])
 
+    speed_actual  = np.sqrt(data["vx"]**2 + data["vy"]**2 + data["vz"]**2)
+    speed_planned = np.sqrt(plan_vel[:, 0]**2 + plan_vel[:, 1]**2 + plan_vel[:, 2]**2)
+    speed_err = speed_actual - speed_planned
+
+    vbat = data.get("vbat", np.array([np.nan]))
+    vbat_min = float(np.nanmin(vbat)) if not np.all(np.isnan(vbat)) else float("nan")
+
     return {
         "xy_rms":        float(np.sqrt(np.nanmean(err_xy ** 2))),
         "xy_max":        float(np.nanmax(err_xy)),
@@ -1510,11 +1525,18 @@ def compute_metrics(data, plan, planned_att_arr):
         "roll_err_rms":  float(np.sqrt(np.nanmean(er ** 2))),
         "pitch_err_rms": float(np.sqrt(np.nanmean(ep ** 2))),
         "lag_corr":      lag_corr,
+        "speed_rms":     float(np.sqrt(np.nanmean(speed_err ** 2))),
+        "speed_max_actual": float(np.nanmax(speed_actual)),
+        "thrust_mean":   float(np.nanmean(data["thrust"])),
+        "thrust_max":    float(np.nanmax(data["thrust"])),
+        "vbat_min":      vbat_min,
         "err_xy":        err_xy,
         "err_z":         err_z,
         "err_3d":        err_3d,
         "roll_err":      er,
         "pitch_err":     ep,
+        "speed_actual":  speed_actual,
+        "speed_planned": speed_planned,
     }
 
 
@@ -1546,7 +1568,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     p_omega_z = np.gradient(planned_att[:, 2], times)   # dyaw/dt   [deg/s]
 
     # Errors — Z uses relative coords (poly4d is relative_position=True)
-    m = compute_metrics(data, plan, planned_att)
+    m = compute_metrics(data, plan, plan_vel, planned_att)
     err_xy = m["err_xy"]
     err_z  = m["err_z"]
     err_3d = m["err_3d"]
@@ -1557,7 +1579,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
         [eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan_full]
     )
 
-    fig, axes = plt.subplots(3, 2, figsize=(13, 14))
+    fig, axes = plt.subplots(4, 2, figsize=(13, 18))
     fig.suptitle(
         f"Trajectory Analysis — {traj_type}  "
         f"(SPEED_SCALE={speed_scale}, XY_SCALE={xy_scale})\n"
@@ -1680,6 +1702,67 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     ax.legend(fontsize=7, ncol=2)
     ax.grid(True)
 
+    # ── Panel 7: Thrust + speed + vbat ────────────────────────────────────────
+    ax = axes[3, 0]
+    ax2 = ax.twinx()
+    ax3 = ax.twinx()
+    ax3.spines["right"].set_position(("axes", 1.12))  # offset third axis
+
+    thrust_vals = data["thrust"]
+    mask_t = ~np.isnan(thrust_vals)
+    l1, = ax.plot(times[mask_t], thrust_vals[mask_t], color="tab:purple", lw=1.3,
+                  label="thrust [PWM]")
+    ax.axhline(m["thrust_mean"], color="tab:purple", lw=0.8, ls="--", alpha=0.5,
+               label=f"mean={m['thrust_mean']:.0f}")
+
+    l2,  = ax2.plot(times, m["speed_actual"],  color="tab:blue", lw=1.2, label="|v| actual [m/s]")
+    l2p, = ax2.plot(times, m["speed_planned"], color="tab:blue", lw=1.0, ls="--",
+                    alpha=0.6, label="|v| planned [m/s]")
+
+    vbat = data["vbat"]
+    has_vbat = not np.all(np.isnan(vbat))
+    if has_vbat:
+        mask_v = ~np.isnan(vbat)
+        l3, = ax3.plot(times[mask_v], vbat[mask_v], color="tab:olive", lw=1.0,
+                       ls="-.", alpha=0.8, label=f"vbat [V] (min={vbat[mask_v].min():.2f})")
+        ax3.set_ylabel("vbat [V]", color="tab:olive")
+        ax3.tick_params(axis="y", labelcolor="tab:olive")
+        all_lines = [l1, l2, l2p, l3]
+    else:
+        ax3.set_visible(False)
+        all_lines = [l1, l2, l2p]
+
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("thrust [PWM]", color="tab:purple")
+    ax2.set_ylabel("speed [m/s]", color="tab:blue")
+    ax.set_title(f"Thrust, Speed & Battery  "
+                 f"(max thrust={m['thrust_max']:.0f}, "
+                 f"max speed={m['speed_max_actual']:.2f} m/s)")
+    ax.legend(all_lines, [l.get_label() for l in all_lines], fontsize=7, ncol=2)
+    ax.grid(True)
+
+    # ── Panel 8: Body acceleration magnitude (acc.x/y/z) ─────────────────────
+    ax = axes[3, 1]
+    has_acc = not np.all(np.isnan(data["acc_x"]))
+    if has_acc:
+        acc_mag = np.sqrt(data["acc_x"]**2 + data["acc_y"]**2 + data["acc_z"]**2)
+        ax.plot(times, data["acc_x"], color="tab:blue",   lw=0.9, alpha=0.8, label="acc_x [g]")
+        ax.plot(times, data["acc_y"], color="tab:orange", lw=0.9, alpha=0.8, label="acc_y [g]")
+        ax.plot(times, data["acc_z"], color="tab:green",  lw=0.9, alpha=0.8, label="acc_z [g]")
+        ax.plot(times, acc_mag,       color="k",          lw=1.3,             label="|acc| [g]")
+        ax.axhline(1.0, color="k", lw=0.5, ls=":", alpha=0.4, label="1 g (hover)")
+        peak_g = float(np.nanmax(acc_mag))
+        ax.set_title(f"Body Accelerometer  (peak |acc|={peak_g:.2f} g)")
+    else:
+        ax.text(0.5, 0.5, "acc not logged in this CSV\n(re-run with updated flight script)",
+                transform=ax.transAxes, ha="center", va="center", fontsize=9,
+                color="gray", style="italic")
+        ax.set_title("Body Accelerometer [g]")
+    ax.set_xlabel("time [s]")
+    ax.set_ylabel("acceleration [g]")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True)
+
     plt.tight_layout()
 
     # Print statistics
@@ -1692,6 +1775,10 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     print(f"  Max XY    : {m['xy_max']*100:.1f} cm")
     print(f"  Roll err  : {m['roll_err_rms']:.1f}°  (actual vs flatness planned)")
     print(f"  Pitch err : {m['pitch_err_rms']:.1f}°")
+    print(f"  Speed RMSE: {m['speed_rms']:.3f} m/s  |  max actual: {m['speed_max_actual']:.2f} m/s")
+    print(f"  Thrust    : mean={m['thrust_mean']:.0f}  max={m['thrust_max']:.0f} PWM")
+    if not np.isnan(m["vbat_min"]):
+        print(f"  Vbat min  : {m['vbat_min']:.2f} V")
     print(f"  Lag corr  : {m['lag_corr']:.3f}  (−1=max lag, 0=no lag)")
     print(f"  Duration  : {times[-1]:.1f} s")
 
@@ -1715,8 +1802,10 @@ def compare_plot(data_a, data_b, label_a, label_b,
     patt_a = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_a])
     patt_b = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_b])
 
-    ma = compute_metrics(data_a, plan_a, patt_a)
-    mb = compute_metrics(data_b, plan_b, patt_b)
+    plan_vel_a = np.array([eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in times_a])
+    plan_vel_b = np.array([eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in times_b])
+    ma = compute_metrics(data_a, plan_a, plan_vel_a, patt_a)
+    mb = compute_metrics(data_b, plan_b, plan_vel_b, patt_b)
 
     t_plan = np.linspace(0, max(times_a[-1], times_b[-1]), 500)
     plan_full = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
@@ -1762,35 +1851,52 @@ def compare_plot(data_a, data_b, label_a, label_b,
     # ── Panel 4: Metrics comparison table ────────────────────────────────────
     ax = axes[1, 1]
     ax.axis("off")
+    def _pct(new, old):
+        return f"{100*(new-old)/old:+.1f}%" if old != 0 else "n/a"
+
     metrics_rows = [
         ("Metric", label_a, label_b, "Δ (B−A)", "Δ%"),
         ("RMSE XY [cm]",
          f"{ma['xy_rms']*100:.1f}", f"{mb['xy_rms']*100:.1f}",
          f"{(mb['xy_rms']-ma['xy_rms'])*100:+.1f}",
-         f"{100*(mb['xy_rms']-ma['xy_rms'])/ma['xy_rms']:+.1f}%"),
+         _pct(mb['xy_rms'], ma['xy_rms'])),
         ("Max XY [cm]",
          f"{ma['xy_max']*100:.1f}", f"{mb['xy_max']*100:.1f}",
          f"{(mb['xy_max']-ma['xy_max'])*100:+.1f}",
-         f"{100*(mb['xy_max']-ma['xy_max'])/ma['xy_max']:+.1f}%"),
+         _pct(mb['xy_max'], ma['xy_max'])),
         ("RMSE Z [cm]",
          f"{ma['z_rms']*100:.1f}", f"{mb['z_rms']*100:.1f}",
          f"{(mb['z_rms']-ma['z_rms'])*100:+.1f}",
-         f"{100*(mb['z_rms']-ma['z_rms'])/ma['z_rms']:+.1f}%"),
+         _pct(mb['z_rms'], ma['z_rms'])),
         ("RMSE 3D [cm]",
          f"{ma['3d_rms']*100:.1f}", f"{mb['3d_rms']*100:.1f}",
          f"{(mb['3d_rms']-ma['3d_rms'])*100:+.1f}",
-         f"{100*(mb['3d_rms']-ma['3d_rms'])/ma['3d_rms']:+.1f}%"),
+         _pct(mb['3d_rms'], ma['3d_rms'])),
         ("Roll err [°]",
          f"{ma['roll_err_rms']:.1f}", f"{mb['roll_err_rms']:.1f}",
          f"{mb['roll_err_rms']-ma['roll_err_rms']:+.1f}",
-         f"{100*(mb['roll_err_rms']-ma['roll_err_rms'])/ma['roll_err_rms']:+.1f}%"),
+         _pct(mb['roll_err_rms'], ma['roll_err_rms'])),
         ("Pitch err [°]",
          f"{ma['pitch_err_rms']:.1f}", f"{mb['pitch_err_rms']:.1f}",
          f"{mb['pitch_err_rms']-ma['pitch_err_rms']:+.1f}",
-         f"{100*(mb['pitch_err_rms']-ma['pitch_err_rms'])/ma['pitch_err_rms']:+.1f}%"),
+         _pct(mb['pitch_err_rms'], ma['pitch_err_rms'])),
+        ("Speed RMSE [m/s]",
+         f"{ma['speed_rms']:.3f}", f"{mb['speed_rms']:.3f}",
+         f"{mb['speed_rms']-ma['speed_rms']:+.3f}",
+         _pct(mb['speed_rms'], ma['speed_rms'])),
+        ("Max speed [m/s]",
+         f"{ma['speed_max_actual']:.2f}", f"{mb['speed_max_actual']:.2f}",
+         f"{mb['speed_max_actual']-ma['speed_max_actual']:+.2f}", ""),
+        ("Mean thrust [PWM]",
+         f"{ma['thrust_mean']:.0f}", f"{mb['thrust_mean']:.0f}",
+         f"{mb['thrust_mean']-ma['thrust_mean']:+.0f}", ""),
         ("Lag corr",
          f"{ma['lag_corr']:.3f}", f"{mb['lag_corr']:.3f}",
          f"{mb['lag_corr']-ma['lag_corr']:+.3f}", ""),
+        ("Vbat min [V]",
+         f"{ma['vbat_min']:.2f}" if not np.isnan(ma['vbat_min']) else "n/a",
+         f"{mb['vbat_min']:.2f}" if not np.isnan(mb['vbat_min']) else "n/a",
+         "", ""),
     ]
     # Color delta cells: green if negative (improvement), red if positive (worse)
     cell_colors = []
@@ -1829,7 +1935,7 @@ def main():
     )
     parser.add_argument(
         "--type",
-        choices=["circle", "figure8", "autonomous"],
+        choices=["circle", "fast_circle", "figure8", "autonomous"],
         default=None,
         help="Trajectory type (default: inferred from filename)",
     )
@@ -1861,15 +1967,21 @@ def main():
     traj_type = args.type
     if traj_type is None:
         base = os.path.basename(csv_path).lower()
-        if "circle" in base:
+        if "fast_circle" in base:          # check before "circle"
+            traj_type = "fast_circle"
+        elif "circle" in base:
             traj_type = "circle"
         elif "figure8" in base or "fig8" in base:
             traj_type = "figure8"
         elif "autonomous" in base:
             traj_type = "autonomous"
+        elif "hover" in base:
+            print("Hover flights have no planned trajectory — skipping trajectory comparison.")
+            print("CSV columns (position, attitude, gyro) are still valid for manual inspection.")
+            sys.exit(0)
         else:
             print(
-                "Cannot infer trajectory type from filename. Use --type circle|figure8|autonomous"
+                "Cannot infer trajectory type from filename. Use --type circle|fast_circle|figure8|autonomous"
             )
             sys.exit(1)
         print(f"Inferred trajectory type: {traj_type}")
