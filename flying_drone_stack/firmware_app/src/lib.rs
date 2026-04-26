@@ -187,27 +187,103 @@ const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 // const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
 // const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
+// ── INDI scaffold — set INDI_ENABLED = true to activate attitude INDI ────────
+// Zero runtime cost when false: compiler eliminates the dead branch entirely.
+// To activate: set INDI_ENABLED = true, flash, then tune FC_GYRO_HZ.
+// No other code changes needed — the incremental law is fully implemented below.
+const INDI_ENABLED: bool = false;
+const FC_GYRO_HZ:   f32  = 60.0;  // gyro LP filter cutoff [Hz] — typical range 30–80 Hz
+
 
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
-    i_ep: Vec3,          // position integral
+    i_ep: Vec3,             // position integral
     last_tick: u32,
-    omega_prev: Vec3,    // for future INDI
+    omega_prev: Vec3,       // previous angular velocity (INDI: gyro differentiation)
+    omega_dot_filt: Vec3,   // low-pass filtered angular acceleration (INDI)
+    tau_prev: Vec3,         // previous torque command (INDI memory)
 }
 
 impl State {
     const fn zero() -> Self {
-        Self { i_ep: Vec3::zero(), last_tick: 0, omega_prev: Vec3::zero() }
+        Self {
+            i_ep: Vec3::zero(), last_tick: 0,
+            omega_prev: Vec3::zero(),
+            omega_dot_filt: Vec3::zero(),
+            tau_prev: Vec3::zero(),
+        }
     }
     fn reset(&mut self) {
         self.i_ep = Vec3::zero();
         self.last_tick = 0;
         self.omega_prev = Vec3::zero();
+        self.omega_dot_filt = Vec3::zero();
+        self.tau_prev = Vec3::zero();
     }
 }
 
 static mut CTRL: State = State::zero();
+
+// ── Attitude INDI torque ────────────────────────────────────────────────────
+//
+// Incremental Nonlinear Dynamic Inversion (Smeur et al. 2016 / Faessler 2018).
+// Replaces the KR/KW model-based torque with an incremental correction:
+//
+//   α_des  = geometric virtual control / J  (same KR/KW as before, just rescaled)
+//   α_meas = (ω − ω_prev) / dt             (differentiated gyro, low-pass filtered)
+//   Δτ     = J · (α_des − α_meas)
+//   τ_new  = τ_prev + Δτ + gyro_comp
+//
+// Motor lag, blade flapping, and model errors are captured in α_meas and corrected
+// one timestep at a time — no model of those effects needed.
+//
+// Tuning: FC_GYRO_HZ is the only new parameter.
+//   Too high → noise in α_meas corrupts every correction.
+//   Too low  → phase lag destabilises the attitude loop.
+//   Start at 60 Hz; lower if oscillating at hover, raise only if response is sluggish.
+#[allow(dead_code)]
+fn indi_torque(
+    er: Vec3, e_omega: Vec3, omega: Vec3, gyro_comp: Vec3,
+    s: &mut State, dt: f32,
+) -> Vec3 {
+    // Desired angular acceleration × J  (virtual control from geometric law)
+    let v_des = Vec3::new(
+        -KR_X * er.x - KW_X * e_omega.x,
+        -KR_Y * er.y - KW_Y * e_omega.y,
+        -KR_Z * er.z - KW_Z * e_omega.z,
+    );
+
+    // Measured angular acceleration (raw, then filtered)
+    let alpha_raw = Vec3::new(
+        (omega.x - s.omega_prev.x) / dt,
+        (omega.y - s.omega_prev.y) / dt,
+        (omega.z - s.omega_prev.z) / dt,
+    );
+    // 1st-order IIR: k = dt / (dt + RC),  RC = 1 / (2π · fc)
+    let rc = 1.0 / (2.0 * core::f32::consts::PI * FC_GYRO_HZ);
+    let k  = dt / (dt + rc);
+    s.omega_dot_filt = Vec3::new(
+        k * alpha_raw.x + (1.0 - k) * s.omega_dot_filt.x,
+        k * alpha_raw.y + (1.0 - k) * s.omega_dot_filt.y,
+        k * alpha_raw.z + (1.0 - k) * s.omega_dot_filt.z,
+    );
+
+    // Δτ = J · (α_des − α_meas)
+    let delta_tau = Vec3::new(
+        v_des.x - JXX * s.omega_dot_filt.x,
+        v_des.y - JYY * s.omega_dot_filt.y,
+        v_des.z - JZZ * s.omega_dot_filt.z,
+    );
+
+    let tau = Vec3::new(
+        s.tau_prev.x + delta_tau.x + gyro_comp.x,
+        s.tau_prev.y + delta_tau.y + gyro_comp.y,
+        s.tau_prev.z + delta_tau.z + gyro_comp.z,
+    );
+    s.tau_prev = tau;
+    tau
+}
 
 // ── Desired rotation matrix ────────────────────────────────────────────────
 fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
@@ -270,12 +346,17 @@ fn geometric_step(
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
 
-    // Torque command
-    let torque = Vec3::new(
-        -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
-        -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y,
-        -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z,
-    );
+    // Torque command — geometric (INDI_ENABLED=false) or incremental (true).
+    // When INDI_ENABLED=false the compiler eliminates the indi_torque call entirely.
+    let torque = if INDI_ENABLED {
+        indi_torque(er, e_omega, omega, gyro_comp, s, dt)
+    } else {
+        Vec3::new(
+            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
+            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y,
+            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z,
+        )
+    };
 
     (thrust, torque)
 }
