@@ -187,12 +187,25 @@ const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 // const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
 // const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
-// ── INDI scaffold — set INDI_ENABLED = true to activate attitude INDI ────────
-// Zero runtime cost when false: compiler eliminates the dead branch entirely.
-// To activate: set INDI_ENABLED = true, flash, then tune FC_GYRO_HZ.
-// No other code changes needed — the incremental law is fully implemented below.
-const INDI_ENABLED: bool = false;
-const FC_GYRO_HZ:   f32  = 60.0;  // gyro LP filter cutoff [Hz] — typical range 30–80 Hz
+// ── Controller mode selector — change this one constant to switch controllers ─
+//
+//   0 = Geometric SE(3)  — current baseline, fully validated
+//   1 = Attitude INDI    — gyro-only incremental, no RPM deck needed
+//                          When ready: flash, tune FC_GYRO_HZ, re-run maneuver suite
+//   2 = Full INDI        — RPM-based incremental, requires RPM deck
+//                          DO NOT activate until: RPM deck fitted, KT identified on bench
+//
+// Unused controller paths are fully eliminated by the compiler (const branch).
+const CONTROLLER_MODE: u8 = 0;
+
+const FC_GYRO_HZ: f32 = 60.0;  // gyro LP filter cutoff [Hz] — modes 1 & 2, range 30–80 Hz
+
+// Motor model constants — needed for CONTROLLER_MODE = 2 (full INDI) only.
+// KT: identify on thrust stand (thrust vs RPM²) before first full-INDI flight.
+// Motor spin directions: verify against powerDistributionForceTorque.c in crazyflie-firmware.
+const KT:      f32 = 3.16e-10;    // thrust coefficient [N / RPM²]  — PLACEHOLDER, bench-identify
+const KQ_KT:   f32 = 0.005964552; // drag-to-thrust moment ratio (confirmed from CAD)
+const ARM_LEN: f32 = 0.046;       // motor arm length [m]
 
 
 
@@ -285,6 +298,85 @@ fn indi_torque(
     tau
 }
 
+// ── Full INDI torque ────────────────────────────────────────────────────────
+//
+// Same incremental law as attitude INDI but τ_current comes from actual per-motor
+// RPM² via the motor model G(Ω), instead of being carried from the previous step:
+//
+//   τ_current = G(Ω) · [Ω₁², Ω₂², Ω₃², Ω₄²]   ← from RPM measurements
+//   Δτ        = J · (α_des − α_meas)
+//   τ_new     = τ_current + Δτ
+//
+// More accurate than attitude INDI at high angular rates where commanded and actual
+// torque diverge due to motor lag and saturation.
+//
+// PREREQUISITES before setting CONTROLLER_MODE = 2:
+//   1. RPM deck physically fitted to the drone
+//   2. KT identified on bench (thrust vs RPM² sweep on thrust stand)
+//   3. Motor spin directions verified against powerDistributionForceTorque.c
+//   4. rpm_sq filled from actual sensor readings in the call site below
+#[allow(dead_code)]
+fn compute_tau_from_rpm(rpm_sq: [f32; 4]) -> Vec3 {
+    // F_i = KT * RPM_i²
+    let f = [KT*rpm_sq[0], KT*rpm_sq[1], KT*rpm_sq[2], KT*rpm_sq[3]];
+    // X-frame mixer (standard CF2.x, viewed from above):
+    //   M1 front-right CW,  M2 back-right CCW,  M3 back-left CW,  M4 front-left CCW
+    // Verify signs against powerDistributionForceTorque.c before first flight.
+    let lh = ARM_LEN * 0.707106781; // L / √2  (arm projected onto body x/y axis)
+    Vec3::new(
+        (-f[0] + f[1] + f[2] - f[3]) * lh,    // τ_x (roll)
+        (-f[0] - f[1] + f[2] + f[3]) * lh,    // τ_y (pitch)
+        (-f[0] + f[1] - f[2] + f[3]) * KQ_KT, // τ_z (yaw)
+    )
+}
+
+#[allow(dead_code)]
+fn full_indi_torque(
+    er: Vec3, e_omega: Vec3, omega: Vec3, gyro_comp: Vec3,
+    s: &mut State, dt: f32,
+    rpm_sq: [f32; 4],
+) -> Vec3 {
+    // Current torque state measured from RPM (replaces tau_prev from attitude INDI)
+    let tau_current = compute_tau_from_rpm(rpm_sq);
+
+    // Desired angular acceleration × J  (identical virtual control to attitude INDI)
+    let v_des = Vec3::new(
+        -KR_X * er.x - KW_X * e_omega.x,
+        -KR_Y * er.y - KW_Y * e_omega.y,
+        -KR_Z * er.z - KW_Z * e_omega.z,
+    );
+
+    // Measured angular acceleration — same IIR filter as attitude INDI
+    let alpha_raw = Vec3::new(
+        (omega.x - s.omega_prev.x) / dt,
+        (omega.y - s.omega_prev.y) / dt,
+        (omega.z - s.omega_prev.z) / dt,
+    );
+    let rc = 1.0 / (2.0 * core::f32::consts::PI * FC_GYRO_HZ);
+    let k  = dt / (dt + rc);
+    s.omega_dot_filt = Vec3::new(
+        k * alpha_raw.x + (1.0 - k) * s.omega_dot_filt.x,
+        k * alpha_raw.y + (1.0 - k) * s.omega_dot_filt.y,
+        k * alpha_raw.z + (1.0 - k) * s.omega_dot_filt.z,
+    );
+
+    // Δτ = J · (α_des − α_meas)
+    let delta_tau = Vec3::new(
+        v_des.x - JXX * s.omega_dot_filt.x,
+        v_des.y - JYY * s.omega_dot_filt.y,
+        v_des.z - JZZ * s.omega_dot_filt.z,
+    );
+
+    // τ_new = τ_current (from RPM, not tau_prev) + Δτ + gyro_comp
+    let tau = Vec3::new(
+        tau_current.x + delta_tau.x + gyro_comp.x,
+        tau_current.y + delta_tau.y + gyro_comp.y,
+        tau_current.z + delta_tau.z + gyro_comp.z,
+    );
+    s.tau_prev = tau; // keep in sync in case mode is switched mid-flight
+    tau
+}
+
 // ── Desired rotation matrix ────────────────────────────────────────────────
 fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
     let zdes = f_d.normalize();
@@ -346,10 +438,13 @@ fn geometric_step(
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
 
-    // Torque command — geometric (INDI_ENABLED=false) or incremental (true).
-    // When INDI_ENABLED=false the compiler eliminates the indi_torque call entirely.
-    let torque = if INDI_ENABLED {
+    // Torque command — selected by CONTROLLER_MODE (const → unused branches compiled out).
+    // Mode 2: replace [0.0; 4] with actual RPM² from deck when available, e.g.:
+    //   let rpm_sq = [sens.motor.m1 as f32 * sens.motor.m1 as f32, ...];
+    let torque = if CONTROLLER_MODE == 1 {
         indi_torque(er, e_omega, omega, gyro_comp, s, dt)
+    } else if CONTROLLER_MODE == 2 {
+        full_indi_torque(er, e_omega, omega, gyro_comp, s, dt, [0.0; 4]) // TODO: real RPM²
     } else {
         Vec3::new(
             -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
