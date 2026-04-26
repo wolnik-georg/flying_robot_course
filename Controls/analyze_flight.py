@@ -1603,6 +1603,103 @@ def compute_metrics(data, plan, plan_vel, planned_att_arr):
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
 
+def plot_helix_analysis(data, csv_path, lap_time=10.5):
+    """Post-flight analysis for helix (analytic reference, no Poly4D).
+
+    Aligns the analytic circle+linear-Z reference to the drone's logged
+    start position and compares against actual flight data.
+
+    lap_time: 10.5 s for normal helix, 5.25 s for fast helix.
+    """
+    import math as _math
+
+    HELIX_RADIUS = 0.30
+    HELIX_DZ     = 0.40
+    omega_c = 2.0 * np.pi / lap_time
+    vz_up   = HELIX_DZ / lap_time
+    t_total = 2.0 * lap_time
+
+    ts   = data["time_s"]
+    mask = np.isfinite(ts)
+    ts   = ts[mask]
+
+    # Align reference to logged start position
+    x0 = data["x"][mask][0]
+    y0 = data["y"][mask][0]
+    z0 = data["z"][mask][0]
+
+    # Analytic reference
+    cx = x0 + HELIX_RADIUS
+    phase0 = np.pi
+    ph = phase0 + omega_c * ts
+
+    xr = cx + HELIX_RADIUS * np.cos(ph)
+    yr = y0 + HELIX_RADIUS * np.sin(ph)
+    zr = np.where(ts <= lap_time,
+                  z0 + vz_up * ts,
+                  z0 + HELIX_DZ - vz_up * (ts - lap_time))
+
+    xa = data["x"][mask]
+    ya = data["y"][mask]
+    za = data["z"][mask]
+
+    err_xy = np.sqrt((xa - xr)**2 + (ya - yr)**2)
+    err_z  = np.abs(za - zr)
+    err_3d = np.sqrt(err_xy**2 + err_z**2)
+
+    rmse_xy = float(np.sqrt(np.nanmean(err_xy**2)))
+    rmse_z  = float(np.sqrt(np.nanmean(err_z**2)))
+    rmse_3d = float(np.sqrt(np.nanmean(err_3d**2)))
+
+    speed_label = "2×" if lap_time < 8 else "1×"
+    title = (f"Helix Analysis ({speed_label})  lap={lap_time:.2f}s  "
+             f"RMSE xy={rmse_xy*100:.1f}cm  z={rmse_z*100:.1f}cm  3D={rmse_3d*100:.1f}cm")
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle(title, fontsize=12, fontweight='bold')
+
+    # XY path
+    ax = axes[0, 0]
+    ax.plot(xr, yr, '--', color='tab:blue', lw=1.2, label='reference')
+    ax.plot(xa, ya,  '-', color='tab:orange', lw=1.2, label='actual')
+    ax.scatter([x0], [y0], color='green', s=40, zorder=5, label='start')
+    ax.set_xlabel('x [m]'); ax.set_ylabel('y [m]')
+    ax.set_title('XY Path'); ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+    ax.set_aspect('equal')
+
+    # Z vs time
+    ax = axes[0, 1]
+    ax.plot(ts, zr, '--', color='tab:blue', lw=1.2, label='reference z')
+    ax.plot(ts, za,  '-', color='tab:orange', lw=1.2, label='actual z')
+    ax.axvline(lap_time, color='gray', lw=0.8, ls=':', label='apex')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('z [m]')
+    ax.set_title('Altitude vs Time'); ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+
+    # XY error + Z error vs time
+    ax = axes[1, 0]
+    ax.plot(ts, err_xy * 100, color='tab:blue',   lw=1.2, label='XY error [cm]')
+    ax.plot(ts, err_z  * 100, color='tab:orange', lw=1.2, label='Z error [cm]')
+    ax.plot(ts, err_3d * 100, color='k', lw=1.0, ls='--', label='3D error [cm]')
+    ax.axvline(lap_time, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('error [cm]')
+    ax.set_title('Tracking Error vs Time'); ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+
+    # Roll / pitch / yaw
+    ax = axes[1, 1]
+    ax.plot(ts, data["roll_deg"][mask],  lw=1.2, label='roll [°]')
+    ax.plot(ts, data["pitch_deg"][mask], lw=1.2, label='pitch [°]')
+    ax.plot(ts, data["yaw_deg"][mask],   lw=1.2, label='yaw [°]')
+    ax.axvline(lap_time, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('angle [°]')
+    ax.set_title('Attitude vs Time'); ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    out = os.path.splitext(csv_path)[0] + "_helix_analysis.png"
+    fig.savefig(out, dpi=150)
+    print(f"Saved: {out}")
+    plt.show()
+
+
 def plot_flip_analysis(data, csv_path, segs=None, t_flip=None, height=None):
     """4-panel flip post-flight analysis.
 
@@ -2094,7 +2191,8 @@ def main():
     parser.add_argument(
         "--type",
         choices=["circle", "fast_circle", "figure8", "fast_figure8",
-                 "autonomous", "flip", "fast_flip", "fast_roll"],
+                 "autonomous", "flip", "fast_flip", "fast_roll",
+                 "helix", "fast_helix"],
         default=None,
         help="Trajectory type (default: inferred from filename)",
     )
@@ -2126,14 +2224,16 @@ def main():
     traj_type = args.type
     if traj_type is None:
         base = os.path.basename(csv_path).lower()
-        if "fast_circle" in base:          # check before "circle"
+        if "fast_circle" in base:                         # before "circle"
             traj_type = "fast_circle"
-        elif "fast_flip" in base:          # check before "flip"
+        elif "fast_flip" in base:                         # before "flip"
             traj_type = "fast_flip"
         elif "fast_roll" in base:
             traj_type = "fast_roll"
-        elif "fast_figure8" in base or "fast_fig8" in base:  # check before "figure8"
+        elif "fast_figure8" in base or "fast_fig8" in base:  # before "figure8"
             traj_type = "fast_figure8"
+        elif "fast_helix" in base:                        # before "helix"
+            traj_type = "fast_helix"
         elif "circle" in base:
             traj_type = "circle"
         elif "figure8" in base or "fig8" in base:
@@ -2142,6 +2242,8 @@ def main():
             traj_type = "autonomous"
         elif "flip" in base:
             traj_type = "flip"
+        elif "helix" in base:
+            traj_type = "helix"
         elif "hover" in base:
             print("Hover flights have no planned trajectory — skipping trajectory comparison.")
             print("CSV columns (position, attitude, gyro) are still valid for manual inspection.")
@@ -2149,7 +2251,8 @@ def main():
         else:
             print(
                 "Cannot infer trajectory type from filename. "
-                "Use --type circle|fast_circle|figure8|fast_figure8|autonomous|flip|fast_flip|fast_roll"
+                "Use --type circle|fast_circle|figure8|fast_figure8|autonomous|"
+                "flip|fast_flip|fast_roll|helix|fast_helix"
             )
             sys.exit(1)
         print(f"Inferred trajectory type: {traj_type}")
@@ -2163,6 +2266,15 @@ def main():
     print(
         f'Loaded {len(data["time_s"])} rows, t=[{data["time_s"][0]:.2f}, {data["time_s"][-1]:.2f}] s'
     )
+
+    # Helix uses analytic reference, not Poly4D
+    if traj_type in ("helix", "fast_helix"):
+        if args.compare:
+            print("--compare is not supported for helix flights.")
+            sys.exit(1)
+        lap_time = 5.25 if traj_type == "fast_helix" else 10.5
+        plot_helix_analysis(data, csv_path, lap_time=lap_time)
+        return
 
     # Flip / fast_flip / fast_roll use angle-tracking analysis, not Poly4D position analysis
     if traj_type in ("flip", "fast_flip", "fast_roll"):
