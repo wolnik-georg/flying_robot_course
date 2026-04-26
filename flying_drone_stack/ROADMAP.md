@@ -30,14 +30,14 @@
 |-----------|------|--------------|
 | Out-of-tree SE(3) controller | `firmware_app/` | `no_std` Rust, `bindgen` FFI, `controlModeForceTorque` at 500 Hz on STM32 |
 | Full-state CRTP setpoint | `vendor/crazyflie-lib/` | `setpoint_full_state` (type 6): pos+vel+acc+quat+ω in 29-byte packet |
-| `omega_prev` INDI prep | `firmware_app/src/lib.rs` | Previous angular velocity stored every cycle; ready for incremental law |
+| INDI scaffold (3-way) | `firmware_app/src/lib.rs` | `CONTROLLER_MODE` 0/1/2 = Geometric / Attitude INDI / Full INDI; all implemented, mode 0 active |
 
 ### Trajectory flight modes
 | Mode | What it does |
 |------|-------------|
 | `main.rs` maneuvers (position setpoints) | hover/circle/figure8/explore at 20 Hz, MEKF+SLAM+safety, CSV logging |
-| `spline_circle_test` / `spline_figure8_test` | Laptop evaluates degree-8 spline → flatness → CRTP full-state at 25 Hz |
-| HLC Python scripts (`Controls/`) | Pre-export Poly4D → upload once → HLC `start_trajectory`; drone evaluates onboard at 100 Hz |
+| Mode B Rust binaries (`*_test`) | `hover/helix/flip/roll/figure8/circle` + fast variants — spline→flatness→CRTP full-state at 25 Hz |
+| HLC Python scripts (`Controls/`) | `run_*.py` — same 10 maneuver variants; Poly4D upload → HLC `start_trajectory` at 100 Hz |
 
 ### Course assignments ✅ all complete
 | Assignment | Status |
@@ -178,13 +178,21 @@ cd firmware_app && make cload
 cargo run --release --bin main -- --maneuver circle --ai-deck
 cargo run --release --bin main -- --maneuver explore --ai-deck
 
-# Fly — Rust live full-state (25 Hz, requires firmware flashed above)
+# Fly — Rust live full-state Mode B (25 Hz, requires firmware flashed above)
+cargo run --release --bin hover_test
 cargo run --release --bin spline_circle_test
-cargo run --release --bin spline_figure8_test
+cargo run --release --bin helix_test        # and fast_helix_test
+cargo run --release --bin flip_test         # and fast_flip_test
+cargo run --release --bin roll_test         # and fast_roll_test
+cargo run --release --bin spline_figure8_test  # and fast_figure8_test
 
-# Fly — HLC Python (pre-generated poly4d, drone evaluates onboard)
-~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py
-~/.pyenv/versions/flying_robots/bin/python Controls/autonomous_sequence_high_level.py
+# Fly — HLC Python Mode C (10 maneuver variants)
+~/.pyenv/versions/flying_robots/bin/python Controls/run_hover.py
+~/.pyenv/versions/flying_robots/bin/python Controls/run_circle.py
+~/.pyenv/versions/flying_robots/bin/python Controls/run_helix.py
+~/.pyenv/versions/flying_robots/bin/python Controls/run_flip.py
+# ... same pattern for fast_* variants
+~/.pyenv/versions/flying_robots/bin/python Controls/run_spline_circle.py  # HLC Poly4D
 
 # Assignment simulations
 cargo run --release --bin assignment1    # A1: integrators + real-flight k-step

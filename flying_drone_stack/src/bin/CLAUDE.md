@@ -34,14 +34,29 @@ cf.commander.setpoint_position(sx, sy, sz, yaw).await?   // send to firmware
 
 ---
 
-### spline_circle_test.rs / spline_figure8_test.rs — Mode B (full-state, 25 Hz)
+### Mode B flight binaries (full-state setpoints, 25 Hz)
 
-Min-snap spline → differential flatness → CRTP type-6 `setpoint_full_state`.
-**Requires OOT firmware**: `cd firmware_app && make cload`
+All require OOT firmware: `cd firmware_app && make cload`
 
-Structure: connect → Kalman reset → sample origin → ramp → hover → **trajectory loop** → return → land.
+Structure for all: connect → Kalman reset → sample EKF origin → ramp → hover → **trajectory** → hold → land.
 
-Trajectory loop pattern (same in both):
+| Binary | Maneuver | Duration | Notes |
+|--------|----------|----------|-------|
+| `spline_circle_test` | Circle r=0.30m | 10.47s/lap | Min-snap spline → flatness |
+| `spline_figure8_test` | Figure-8 | 7.28s | Min-snap spline → flatness |
+| `fullstate_circle_test` | Circle | analytic | `CircleTrajectory`, no spline |
+| `fullstate_figure8_test` | Figure-8 | analytic | `Figure8Trajectory`, no spline |
+| `hover_test` | Hover | indefinite | Full-state hover at HOVER_HEIGHT |
+| `helix_test` | Ascending+descending helix | 2×10.5s | Analytic flatness, no spline |
+| `fast_helix_test` | Helix 2× speed | 2×5.25s | LAP_TIME=5.25s |
+| `flip_test` | 360° backflip | T=0.70s | QP angle polynomial, FLIP_HEIGHT=1.0m |
+| `fast_flip_test` | Backflip 2× speed | T=0.45s | FLIP_HEIGHT=1.3m |
+| `roll_test` | 360° roll | T=0.70s | QP angle polynomial |
+| `fast_roll_test` | Roll 2× speed | T=0.45s | FLIP_HEIGHT=1.3m |
+| `figure8_test` | Figure-8 | 7.28s | Spline variant |
+| `fast_figure8_test` | Figure-8 2× speed | 3.64s | QP re-solved with halved durations |
+
+Trajectory loop pattern (spline-based binaries):
 ```rust
 let flat = traj.eval(t % traj.total_time);
 let res = compute_flatness(&flat, 0.031);       // 0.031 kg = CF + decks
@@ -58,22 +73,18 @@ sleep(Duration::from_millis(40)).await;
 
 ---
 
-### fullstate_circle_test.rs / fullstate_figure8_test.rs — Mode B (analytic)
-
-Same CRTP type-6 path but uses `CircleTrajectory` / `Figure8Trajectory` instead of spline.
-For circle: yaw-only quaternion derived from `ref_.yaw`.
-
----
-
 ### export_poly4d.rs — Mode C prep
 
 Generates Poly4D coefficients for HLC Python scripts.
 ```bash
-cargo run --release --bin export_poly4d           # stdout: Python list; stderr: validation
-cargo run --release --bin export_poly4d figure8
-cargo run --release --bin export_poly4d figure8_match
+cargo run --release --bin export_poly4d                # circle
+cargo run --release --bin export_poly4d figure8_match  # figure-8 (QP re-plan of prof's waypoints)
+cargo run --release --bin export_poly4d fast_figure8   # figure-8 2× speed (separate QP solve)
+cargo run --release --bin export_poly4d flip           # flip angle profile
+cargo run --release --bin export_poly4d fast_flip      # flip at T=0.45s
+# stdout: Python list; stderr: validation (endpoint gap, velocity)
 ```
-Paste stdout into `Controls/run_spline_circle.py` or `Controls/autonomous_sequence_high_level.py`.
+Paste stdout into the corresponding `Controls/run_*.py` script.
 
 ---
 
