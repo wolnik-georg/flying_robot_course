@@ -1383,6 +1383,168 @@ def plot_helix_dynamics():
     return fig
 
 
+# ── Fast Helix (2×) ──────────────────────────────────────────────────────────
+# Same analytic formula as helix, LAP_TIME halved.  No QP re-solve needed.
+_FAST_LAP_TIME = _LAP_TIME / 2.0          # 5.25 s
+_FAST_OMEGA_C  = 2 * np.pi / _FAST_LAP_TIME
+_FAST_VZ_UP    = _HELIX_DZ / _FAST_LAP_TIME
+_T_FAST_HELIX  = 2.0 * _FAST_LAP_TIME
+
+
+def plot_fast_helix_path():
+    """3D helix spiral + height/speed profile at 2× speed."""
+    N    = 800
+    ts   = np.linspace(0, _T_FAST_HELIX, N)
+    ph   = np.pi + _FAST_OMEGA_C * ts
+
+    xs   = HOVER_Z + _HELIX_RADIUS * np.cos(ph)
+    ys   = _HELIX_RADIUS * np.sin(ph)
+    zs   = np.where(ts <= _FAST_LAP_TIME,
+                    HOVER_Z + _FAST_VZ_UP * ts,
+                    HOVER_Z + _HELIX_DZ - _FAST_VZ_UP * (ts - _FAST_LAP_TIME))
+
+    vxs  = -_HELIX_RADIUS * _FAST_OMEGA_C * np.sin(ph)
+    vys  =  _HELIX_RADIUS * _FAST_OMEGA_C * np.cos(ph)
+    vzs  = np.where(ts <= _FAST_LAP_TIME, _FAST_VZ_UP, -_FAST_VZ_UP)
+    speed = np.sqrt(vxs**2 + vys**2 + vzs**2)
+
+    folder = os.path.join(OUT_DIR, "fast_helix")
+    os.makedirs(folder, exist_ok=True)
+
+    fig = plt.figure(figsize=(14, 6))
+    fig.suptitle(
+        f"Fast Helix Path  —  r={_HELIX_RADIUS:.2f}m  dz={_HELIX_DZ:.2f}m  "
+        f"lap={_FAST_LAP_TIME:.2f}s  (2× speed)  max_spd={speed.max():.2f}m/s",
+        fontsize=12,
+    )
+    ax3 = fig.add_subplot(121, projection='3d')
+    sc = ax3.scatter(xs, ys, zs, c=speed, cmap='plasma', s=2)
+    plt.colorbar(sc, ax=ax3, label='speed [m/s]', shrink=0.6)
+    ax3.set_xlabel('x [m]'); ax3.set_ylabel('y [m]'); ax3.set_zlabel('z [m]')
+    ax3.set_title('3D Fast Helix  (colour = speed)', fontsize=11)
+
+    ax2 = fig.add_subplot(122)
+    ax2.plot(ts, zs, color='tab:blue', lw=1.5, label='z [m]')
+    ax2.plot(ts, speed, color='tab:orange', lw=1.5, label='speed [m/s]')
+    ax2.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.6, label='apex')
+    ax2.axhline(HOVER_Z + _HELIX_DZ, color='gold', lw=0.8, ls=':',
+                label=f'apex z={HOVER_Z+_HELIX_DZ:.1f}m')
+    ax2.set_xlabel('time [s]'); ax2.set_ylabel('value')
+    ax2.set_title('Height and Speed vs Time'); ax2.legend(fontsize=9); ax2.grid(True, alpha=0.3)
+
+    _save(fig, folder, "fast_helix_path.png")
+    return fig
+
+
+def plot_fast_helix_dynamics():
+    """7-panel dynamics figure for fast helix."""
+    _G    = 9.81
+    _MASS = 0.031
+    N     = 800
+    ts    = np.linspace(0, _T_FAST_HELIX, N)
+    ph    = np.pi + _FAST_OMEGA_C * ts
+
+    xs  = _HELIX_RADIUS * np.cos(ph)
+    ys  = _HELIX_RADIUS * np.sin(ph)
+    zs  = np.where(ts <= _FAST_LAP_TIME,
+                   HOVER_Z + _FAST_VZ_UP * ts,
+                   HOVER_Z + _HELIX_DZ - _FAST_VZ_UP * (ts - _FAST_LAP_TIME))
+    vxs = -_HELIX_RADIUS * _FAST_OMEGA_C * np.sin(ph)
+    vys =  _HELIX_RADIUS * _FAST_OMEGA_C * np.cos(ph)
+    vzs = np.where(ts <= _FAST_LAP_TIME, _FAST_VZ_UP, -_FAST_VZ_UP)
+    spd = np.sqrt(vxs**2 + vys**2 + vzs**2)
+    axs = -_HELIX_RADIUS * _FAST_OMEGA_C**2 * np.cos(ph)
+    ays = -_HELIX_RADIUS * _FAST_OMEGA_C**2 * np.sin(ph)
+    azs = np.zeros_like(ts)
+    jxs =  _HELIX_RADIUS * _FAST_OMEGA_C**3 * np.sin(ph)
+    jys = -_HELIX_RADIUS * _FAST_OMEGA_C**3 * np.cos(ph)
+    jzs = np.zeros_like(ts)
+    jerk_h = np.sqrt(jxs**2 + jys**2)
+    fxs = axs; fys = ays; fzs = np.full_like(ts, _G)
+    fn  = np.sqrt(fxs**2 + fys**2 + fzs**2)
+    tilt_deg = np.degrees(np.arctan2(np.sqrt(axs**2 + ays**2), _G))
+    thrust_N = _MASS * fn
+    xbxr = fzs; xbyr = np.zeros_like(ts); xbzr = -fxs
+    xbn  = np.sqrt(xbxr**2 + xbzr**2)
+    xBx  = xbxr / xbn; xBy  = xbyr / xbn; xBz  = xbzr / xbn
+    zBx = fxs / fn; zBy = fys / fn; zBz = fzs / fn
+    yBx = zBy*xBz - zBz*xBy; yBy = zBz*xBx - zBx*xBz; yBz = zBx*xBy - zBy*xBx
+    wx_dps = np.degrees((yBx*jxs + yBy*jys) / fn)
+    wy_dps = np.degrees(-(xBx*jxs + xBy*jys) / fn)
+    wz_dps = np.zeros_like(ts)
+    max_w  = max(np.abs(wx_dps).max(), np.abs(wy_dps).max())
+    feasible  = bool(thrust_N.max() <= CF_MAX_THRUST_N)
+    margin_pc = 100.0 * (1.0 - thrust_N.max() / CF_MAX_THRUST_N)
+
+    folder = os.path.join(OUT_DIR, "fast_helix")
+    os.makedirs(folder, exist_ok=True)
+
+    fig = plt.figure(figsize=(18, 14))
+    fig.suptitle(
+        f"Fast Helix Dynamics  —  r={_HELIX_RADIUS:.2f}m  dz={_HELIX_DZ:.2f}m  "
+        f"lap={_FAST_LAP_TIME:.2f}s  (analytic, 2× speed)",
+        fontsize=13, fontweight='bold',
+    )
+    gs = fig.add_gridspec(3, 3, hspace=0.45, wspace=0.35)
+
+    ax = fig.add_subplot(gs[0, 0])
+    ax.plot(ts, xs, label='x'); ax.plot(ts, ys, label='y'); ax.plot(ts, zs, label='z')
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('position [m]')
+    ax.set_title('Position vs Time'); ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[0, 1])
+    ax.plot(ts, vxs, label='vx'); ax.plot(ts, vys, label='vy'); ax.plot(ts, vzs, label='vz')
+    ax.plot(ts, spd, color='k', lw=1.0, ls='--', label='speed')
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('velocity [m/s]')
+    ax.set_title('Velocity vs Time'); ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[0, 2])
+    ax.plot(ts, tilt_deg, color='tab:purple', lw=1.4)
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('tilt [°]')
+    ax.set_title('Tilt Angle vs Time'); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[1, 0])
+    ax.plot(ts, axs, label='ax'); ax.plot(ts, ays, label='ay'); ax.plot(ts, azs, label='az')
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('acceleration [m/s²]')
+    ax.set_title('Acceleration vs Time'); ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[1, 1])
+    ax.plot(ts, jxs, label='jx'); ax.plot(ts, jys, label='jy'); ax.plot(ts, jzs, label='jz')
+    ax.plot(ts, jerk_h, color='k', lw=1.0, ls='--', label='|j_xy|')
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('jerk [m/s³]')
+    ax.set_title('Jerk vs Time'); ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[1, 2])
+    ax.plot(ts, thrust_N, color='tab:blue', lw=1.4, label='required thrust')
+    ax.axhline(CF_MAX_THRUST_N, color='red', lw=1.2, ls='--', label=f'max ({CF_MAX_THRUST_N:.2f} N)')
+    ax.axhline(CF_HOVER_N,      color='gray', lw=1.0, ls=':', label=f'hover ({CF_HOVER_N:.3f} N)')
+    ax.fill_between(ts, thrust_N, CF_MAX_THRUST_N, where=thrust_N > CF_MAX_THRUST_N,
+                    color='red', alpha=0.25, label='over limit')
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('thrust [N]')
+    ax.set_title(f'Thrust Feasibility  (margin={margin_pc:.1f}%)',
+                 color='black' if feasible else 'red')
+    ax.set_ylim(bottom=0); ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
+
+    ax = fig.add_subplot(gs[2, :])
+    ax.plot(ts, wx_dps, color='tab:blue',   lw=1.3, label='ωx  roll rate')
+    ax.plot(ts, wy_dps, color='tab:orange', lw=1.3, label='ωy  pitch rate')
+    ax.plot(ts, wz_dps, color='tab:green',  lw=1.3, label='ωz  yaw rate')
+    ax.axhline(0, color='k', lw=0.6, alpha=0.4)
+    ax.axvline(_FAST_LAP_TIME, color='gray', lw=0.8, ls='--', alpha=0.5, label='lap 1/2 boundary')
+    ax.set_xlabel('time [s]', fontsize=10); ax.set_ylabel('angular velocity [°/s]', fontsize=10)
+    ax.set_title(f'Body-Frame Angular Velocity  max |ω| = {max_w:.1f} °/s', fontsize=10)
+    ax.legend(fontsize=9, ncol=4, loc='upper right'); ax.grid(True, alpha=0.3)
+
+    _save(fig, folder, "fast_helix_dynamics.png")
+    return fig
+
+
 # Add new trajectories here: (data, display_name, speed_scale, folder_slug)
 TRAJECTORIES = [
     (circle_poly4d,      "Circle (r=0.30m)",  1.0, "circle"),
@@ -1453,6 +1615,18 @@ print(f"  {'Helix (2 laps)':<22}  {_T_HELIX:>8.2f}s  {helix_speed:>7.2f}m/s"
       f"  {helix_om_dps:>8.1f}°/s  {'~0mm':>8}")
 figs.append(plot_helix_path())
 figs.append(plot_helix_dynamics())
+
+# Fast Helix
+fast_helix_speed  = np.sqrt((_HELIX_RADIUS * _FAST_OMEGA_C)**2 + _FAST_VZ_UP**2)
+fast_helix_tilt   = np.degrees(np.arctan(_HELIX_RADIUS * _FAST_OMEGA_C**2 / 9.81))
+fast_helix_thrust = 0.031 * np.sqrt((_HELIX_RADIUS * _FAST_OMEGA_C**2)**2 + 9.81**2)
+fast_helix_om     = 0.031 * (_HELIX_RADIUS * _FAST_OMEGA_C**3) / (0.031 * 9.81)
+fast_helix_om_dps = np.degrees(fast_helix_om)
+print(f"  {'Fast Helix (2×)':<22}  {_T_FAST_HELIX:>8.2f}s  {fast_helix_speed:>7.2f}m/s"
+      f"  {fast_helix_tilt:>8.2f}°  {fast_helix_thrust:>8.3f}N {'OK':<4}"
+      f"  {fast_helix_om_dps:>8.1f}°/s  {'~0mm':>8}")
+figs.append(plot_fast_helix_path())
+figs.append(plot_fast_helix_dynamics())
 
 print()
 plt.show()
