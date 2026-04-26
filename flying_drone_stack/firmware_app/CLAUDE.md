@@ -84,32 +84,39 @@ This prevents spinning during HLC takeoff ramp before the trajectory setpoint re
 
 ```rust
 struct State {
-    i_ep: Vec3,          // position integral accumulator
-    last_tick: u32,      // previous tick for dt computation
-    omega_prev: Vec3,    // previous angular velocity — INDI extension point
+    i_ep: Vec3,             // position integral accumulator
+    last_tick: u32,         // previous tick for dt computation
+    omega_prev: Vec3,       // previous angular velocity (gyro differentiation for INDI)
+    omega_dot_filt: Vec3,   // low-pass filtered angular acceleration (INDI)
+    tau_prev: Vec3,         // previous torque command (attitude INDI memory)
 }
 ```
 
-`omega_prev` is updated every cycle. Use `(omega - s.omega_prev) / dt` to estimate `ω̇` for INDI.
+`omega_prev` is updated every cycle after the controller runs.
 
-## Gains (actual values in lib.rs — verified April 2026)
+## Gains (active block in lib.rs — Block E, verified April 2026)
 
-| Constant | Value | Notes |
-|----------|-------|-------|
-| `KP_X/Y` | 7.5 | Position proportional XY |
+Multiple gain blocks (A–I) are in lib.rs as commented-out alternatives. Block E is the active one.
+
+| Constant | Block E value | Notes |
+|----------|--------------|-------|
+| `KP_X/Y` | 11.0 | Position proportional XY — XY RMSE 13.9 cm (best so far) |
 | `KP_Z` | 26.0 | Stiff altitude hold |
-| `KV_X/Y` | 9.0 | Position derivative XY |
+| `KV_X/Y` | 13.0 | Position derivative XY |
 | `KV_Z` | 14.0 | |
-| `KI_P` | 0.0 | Integral disabled (gain zero) |
+| `KI_P` | 0.05 | Light integral — corrects steady-state drift |
 | `KI_LIMIT` | 2.0 | Anti-windup clamp [m/s²·s] |
-| `KR_X/Y` | 0.007 | Attitude proportional |
-| `KR_Z` | 0.008 | |
-| `KW_X/Y` | 0.00115 | Attitude derivative |
+| `KR_X/Y` | 0.009 | Attitude proportional |
+| `KR_Z` | 0.009 | |
+| `KW_X/Y` | 0.0016 | Attitude derivative |
 | `KW_Z` | 0.002 | |
 | `MASS` | 0.027 kg | CF 2.1 + Flow Deck |
 | `JXX` | 16.571710e-6 | |
 | `JYY` | 16.655602e-6 | |
 | `JZZ` | 29.261652e-6 | |
+
+Blocks G (KV=8, zeta=1.21), H (KV=7, zeta=1.06), I (KP=16/KV=8, critical damping) are
+ready to try — uncomment one block, comment E, reflash, test hover before aggressive maneuvers.
 
 ## Full-state setpoint (type 6)
 
@@ -121,14 +128,29 @@ When the laptop sends `setpoint_full_state` (CRTP type 6, `spline_*_test` binari
 When the laptop sends `setpoint_position` (type 7, `main.rs`):
 - `sp.velocity`, `sp.acceleration`, `sp.attitudeRate` all zero → pure P+I feedback
 
-## INDI extension
+## Controller mode (INDI scaffold)
 
-To add INDI inner loop (replace KR/KW attitude terms):
-1. Add `omega_dot_filt: Vec3` to `State`
-2. In `controllerOutOfTree`: compute `omega_dot = (omega - s.omega_prev) / dt`
-3. Replace attitude PD terms with `Δτ = J · (omega_dot_desired - omega_dot_filt)`
-4. Keep position P+I outer loop unchanged
-5. No Kbuild/bindgen/firmware changes needed — scaffolding is complete
+Three controllers are fully implemented in `src/lib.rs`. Switch by changing one constant and reflashing:
+
+```rust
+const CONTROLLER_MODE: u8 = 0;   // 0 = Geometric (current)
+                                  // 1 = Attitude INDI  (gyro only, no RPM deck)
+                                  // 2 = Full INDI      (RPM deck required — see prereqs below)
+const FC_GYRO_HZ: f32 = 60.0;    // gyro LP filter cutoff [Hz] — tune for modes 1 & 2
+```
+
+**Mode 0 (Geometric):** current baseline, model-based KR/KW torque + gyroscopic compensation.
+
+**Mode 1 (Attitude INDI):** replaces KR/KW torque with `Δτ = J·(α_des − α_meas)`.
+- `α_meas = IIR_filter((ω − ω_prev) / dt)` at `FC_GYRO_HZ`
+- No RPM deck needed. Only new tuning parameter: `FC_GYRO_HZ` (start 60 Hz).
+- To activate: set `CONTROLLER_MODE = 1`, `make cload`, hover-test, adjust `FC_GYRO_HZ`.
+
+**Mode 2 (Full INDI):** replaces `τ_prev` with `τ_current` computed from per-motor RPM².
+- Motor model constants: `KT = 3.16e-10` (placeholder — identify on bench), `KQ_KT = 0.005964552`, `ARM_LEN = 0.046 m`.
+- **Prerequisites before activating**: RPM deck fitted, `KT` identified on thrust stand, motor spin directions verified against `powerDistributionForceTorque.c`.
+
+**Note on omega_d**: `sp.attitudeRate` (desired ω from flatness) is available in Mode B but currently not used — `e_omega = omega` in all modes. The geometric controller is intentionally kept as the unmodified baseline for comparison against INDI.
 
 ## File structure
 

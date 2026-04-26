@@ -8,12 +8,37 @@ uploaded once to drone onboard memory, then executed autonomously at ~100 Hz.
 
 ## Key scripts
 
+### Shared infrastructure
 | Script | What it does |
 |--------|-------------|
-| `run_spline_circle.py` | Circle trajectory (r=0.30m, 8 segments, 1.309s each, 10.47s/lap) |
-| `run_spline_figure8.py` | Figure-8 trajectory via HLC |
+| `flight_common.py` | Shared utilities: `FlightLogger`, `upload_trajectory`, `wait_for_kalman`, `start_live_log`, `reset_kalman`, `DEFAULT_URI`, `HOVER_HEIGHT`, `KALMAN_THRESH` |
+| `analyze_flight.py` | Post-flight analysis for all maneuver types — pass a CSV from `runs/` |
+| `plot_trajectories.py` | Plots all trajectories without flying (validation + summary table) |
+
+### Mode B flight scripts (full-state setpoints, 25 Hz, requires OOT firmware)
+| Script | Maneuver | Duration | Max tilt |
+|--------|----------|----------|---------|
+| `run_hover.py` | Hover in place | — | ~0° |
+| `run_circle.py` | Circle r=0.30m | 10.47s/lap | 1.1° |
+| `run_helix.py` | Ascending + descending helix | 2×10.5s | 0.6° |
+| `run_fast_helix.py` | Helix 2× speed | 2×5.25s | 2.5° |
+| `run_figure8.py` | Figure-8 (QP spline) | 7.28s | 9.6° |
+| `run_fast_figure8.py` | Figure-8 2× speed (QP re-solved) | 3.64s | 48.3° |
+| `run_flip.py` | 360° backflip | T=0.70s | — |
+| `run_fast_flip.py` | Backflip 2× speed | T=0.45s | — |
+| `run_roll.py` | 360° roll | T=0.70s | — |
+| `run_fast_roll.py` | Roll 2× speed | T=0.45s | — |
+
+### HLC scripts (Mode C, Poly4D upload, drone evaluates onboard)
+| Script | What it does |
+|--------|-------------|
+| `run_spline_circle.py` | Circle via HLC (r=0.30m, 10.47s/lap at SPEED_SCALE=0.5) |
+| `run_spline_figure8.py` | Figure-8 via HLC |
 | `autonomous_sequence_high_level.py` | Full sequence: takeoff → figure-8 → land |
-| `plot_trajectories.py` | Plots Poly4D trajectories without flying (validation) |
+
+### Utility scripts
+| Script | What it does |
+|--------|-------------|
 | `minimal_hover.py` | Minimal hover test (development reference) |
 | `simple_high_level_commands.py` | HLC API examples |
 | `diagnose_sensors.py` | Check Flow Deck + Multi-ranger readings |
@@ -23,12 +48,15 @@ uploaded once to drone onboard memory, then executed autonomously at ~100 Hz.
 
 1. **Generate** coefficients in Rust:
    ```bash
-   cargo run --release --bin export_poly4d        # circle
-   cargo run --release --bin export_poly4d figure8
-   # stdout: Python list of [duration, cx0..cx7, cy0..cy7, cz0..cz7, cyaw0..cyaw7]
+   cargo run --release --bin export_poly4d              # circle
+   cargo run --release --bin export_poly4d figure8_match  # figure-8 (QP re-plan of prof's waypoints)
+   cargo run --release --bin export_poly4d fast_figure8   # figure-8 at 2× speed (separate QP solve)
+   cargo run --release --bin export_poly4d flip           # flip angle profile
+   cargo run --release --bin export_poly4d fast_flip      # flip at T=0.45s
+   # stdout: Python list; stderr: validation (gap, velocity at endpoint)
    ```
 
-2. **Paste** the output into the Python script as `circle_poly4d = [...]`
+2. **Paste** the output into the Python script as `<name>_poly4d = [...]`
 
 3. **Fly**:
    ```bash

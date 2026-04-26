@@ -431,7 +431,6 @@ fn geometric_step(
     // Rotation error eR = ½ (Rd^T R − R^T Rd)^∨
     let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
 
-    // Angular velocity error (ω_d = 0 for hover)
     let e_omega = omega;
 
     // Gyroscopic term
