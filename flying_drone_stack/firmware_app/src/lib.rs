@@ -142,15 +142,15 @@ const JZZ: f32 = 29.261652e-6;
 // not attitude lag. Will only fall if position tracking improves further.
 // Analysis: zeta=1.96 (overdamped), dominant tau=1.10s, ctrl BW=0.14Hz = fig8 freq.
 // Comment out and activate Block G to test critically-damped position loop.
-const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
-const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
-const KI_P: f32 = 0.05;
-const KI_LIMIT: f32 = 2.0;
+// const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 13.0;   const KV_Y: f32 = 13.0;   const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
 
-const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
-const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
-// ── GAINS BLOCK G — conservative step toward critical damping ───────────────
+// ── GAINS BLOCK G (seems better then E)— conservative step toward critical damping ───────────────
 // zeta=1.21, dominant tau=0.57s, BW=0.28Hz (2x fig8 freq). KV=8 only.
 // If stable with no oscillation, proceed to Block H.
 // const KP_X: f32 = 11.0;   const KP_Y: f32 = 11.0;   const KP_Z: f32 = 26.0;
@@ -161,7 +161,7 @@ const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 // const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
 // const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
-// ── GAINS BLOCK H — near-critical damping ───────────────────────────────────
+// ── GAINS BLOCK H (seems worse then g and maybe bit worse then E) — near-critical damping ───────────────────────────────────
 // zeta=1.06 (just above critical), dominant tau=0.42s, BW=0.38Hz (2.8x fig8).
 // Theoretical optimum for KP=11 is KV=6.6 (zeta=1.0); KV=7 is a safe margin.
 // Dominant pole 2.4x faster than Block E. Try only if Block G shows no oscillation.
@@ -173,19 +173,74 @@ const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 // const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
 // const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
 
-// ── GAINS BLOCK I — higher bandwidth at exact critical damping ───────────────
-// KP=16 raises omega_n to 4.0 rad/s. KV=8 gives zeta = 8/(2*4) = 1.00 exactly.
-// Dominant tau=0.25s, BW=0.64Hz (4.7x fig8 freq). Theoretically best tracking.
-// Note: KV=8 same as Block G — the difference is higher KP which raises the
-// natural frequency, making the whole loop 2.3x faster than Block G.
-// Risk: KP=16 is a large jump (+45%). Start with hover before running figure-8.
+// ── GAINS BLOCK I (best position loop; attitude still overdamped, current new baseline) ─────────────
+// Apr 27 2026 flights: XY RMSE 12.7–13.3 cm. Along-track lag −7.4 cm mean.
+// Worst errors at center crossing (segs 5-6): 20-21 cm XY RMSE.
+// Bottleneck analysis: attitude loop zeta=2.07, tau_dom=167ms — too overdamped.
+// KW_X=0.0016 is 2.07x the critical value for KR=0.009/JXX. Position BW adequate.
+// KP=16 raises omega_n to 4.0 rad/s. KV=8 gives zeta=1.00 exactly.
+// Dominant pos tau=0.25s, BW=0.64Hz (4.7x fig8 freq).
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
+// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+
+// ── GAINS BLOCK J (seems little worse then I) — first attitude fix: zeta 2.07→1.23 (2x faster) ────
+// Root cause: attitude loop zeta=2.07, tau_dom=167ms. Center crossing needs 560ms
+// to reverse — attitude loop never settles. Single change: KW 0.0016→0.0010.
+//   KR=0.010: omega_n=24.6 rad/s
+//   KW=0.0010: zeta=1.23, tau_dom=79ms  (was 167ms)
+// Position gains unchanged from Block I — not the bottleneck.
+// Start with hover, then figure-8. If stable with no oscillation: proceed to Block K.
 // const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
 // const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
 // const KI_P: f32 = 0.05;
 // const KI_LIMIT: f32 = 2.0;
 
-// const KR_X: f32 = 0.009;  const KR_Y: f32 = 0.009;  const KR_Z: f32 = 0.009;
-// const KW_X: f32 = 0.0016; const KW_Y: f32 = 0.0016; const KW_Z: f32 = 0.002;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.0010; const KW_Y: f32 = 0.0010; const KW_Z: f32 = 0.00125;
+
+// ── GAINS BLOCK K — true critical damping (zeta=1.0, tau=46ms) ──────────────────
+// Same KR as Block J. Only change: KW 0.0010→0.00082.
+//   zeta = 0.00082 / (2 * JXX * 24.6) = 1.007 ≈ 1.0 exactly.
+//   tau_dom = 46ms  (was 79ms in J — 1.7x faster)
+// One variable at a time: KW only, KR fixed. Isolates the damping effect cleanly.
+// Watch for any roll/pitch oscillation at hover. If clean: proceed to Block L.
+const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+const KI_P: f32 = 0.05;
+const KI_LIMIT: f32 = 2.0;
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.00082;const KW_Y: f32 = 0.00082;const KW_Z: f32 = 0.00103;
+
+// ── GAINS BLOCK L — higher stiffness + critical damping bad (zeta=1.0, tau=37ms) ────
+// After fixing damping in K, raise KR to increase attitude stiffness.
+//   KR=0.012: omega_n=26.9 rad/s (+9% vs Block K)
+//   KW=0.00089: zeta=0.998 ≈ 1.0, tau_dom=37ms  (was 46ms in K — 1.25x faster)
+// Combined effect vs Block I: omega_n 23.3→26.9 rad/s, tau 167→37ms = 4.5x faster.
+// Significant stiffness jump — hover carefully first.
+// If stable: proceed to Block M.
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.012;  const KR_Y: f32 = 0.012;  const KR_Z: f32 = 0.012;
+// const KW_X: f32 = 0.00089;const KW_Y: f32 = 0.00089;const KW_Z: f32 = 0.00111;
+
+// ── GAINS BLOCK M — slight underdamping for fastest rise time (zeta=0.84) ────────
+// Same KR as Block L. KW reduced to get zeta=0.84 (best-bandwidth point).
+//   KW=0.00075: zeta=0.841, omega_n=26.9 rad/s, tau_env=44ms.
+// Underdamped: faster to 90% than critical, only 0.77% overshoot (~1° max).
+// Risk: moderate. Hover 10s+ and watch for oscillation before figure-8.
+// If oscillation appears → revert to Block L. If clean → expect best-case tracking.
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.012;  const KR_Y: f32 = 0.012;  const KR_Z: f32 = 0.012;
+// const KW_X: f32 = 0.00075;const KW_Y: f32 = 0.00075;const KW_Z: f32 = 0.00094;
 
 // ── Controller mode selector — change this one constant to switch controllers ─
 //

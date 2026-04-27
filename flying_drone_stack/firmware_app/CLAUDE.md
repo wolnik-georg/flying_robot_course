@@ -94,29 +94,39 @@ struct State {
 
 `omega_prev` is updated every cycle after the controller runs.
 
-## Gains (active block in lib.rs — Block E, verified April 2026)
+## Gains (active block in lib.rs — Block J, Apr 27 2026)
 
-Multiple gain blocks (A–I) are in lib.rs as commented-out alternatives. Block E is the active one.
+Multiple gain blocks (A–J) are in lib.rs as commented-out alternatives. Block J is now active.
 
-| Constant | Block E value | Notes |
+| Constant | Block J value | Notes |
 |----------|--------------|-------|
-| `KP_X/Y` | 11.0 | Position proportional XY — XY RMSE 13.9 cm (best so far) |
+| `KP_X/Y` | 16.0 | Same as Block I — position BW adequate |
 | `KP_Z` | 26.0 | Stiff altitude hold |
-| `KV_X/Y` | 13.0 | Position derivative XY |
+| `KV_X/Y` | 8.0 | Same as Block I |
 | `KV_Z` | 14.0 | |
-| `KI_P` | 0.05 | Light integral — corrects steady-state drift |
-| `KI_LIMIT` | 2.0 | Anti-windup clamp [m/s²·s] |
-| `KR_X/Y` | 0.009 | Attitude proportional |
-| `KR_Z` | 0.009 | |
-| `KW_X/Y` | 0.0016 | Attitude derivative |
-| `KW_Z` | 0.002 | |
+| `KI_P` | 0.05 | |
+| `KI_LIMIT` | 2.0 | |
+| `KR_X/Y` | 0.010 | Slight bump from 0.009 |
+| `KR_Z` | 0.010 | |
+| `KW_X/Y` | **0.0010** | **Reduced from 0.0016** — fixes attitude overdamping |
+| `KW_Z` | 0.0014 | Proportionally reduced |
 | `MASS` | 0.027 kg | CF 2.1 + Flow Deck |
-| `JXX` | 16.571710e-6 | |
-| `JYY` | 16.655602e-6 | |
-| `JZZ` | 29.261652e-6 | |
 
-Blocks G (KV=8, zeta=1.21), H (KV=7, zeta=1.06), I (KP=16/KV=8, critical damping) are
-ready to try — uncomment one block, comment E, reflash, test hover before aggressive maneuvers.
+**Why Block J**: Block I analysis (Apr 27 2026) showed attitude loop zeta=2.07, tau_dom=167ms.
+That is 2× too high, causing the drone to lag in direction reversals (center crossing errors of 20cm).
+Block J lowers KW to get zeta=1.23, tau_dom=79ms — 2× faster attitude response.
+If stable, try Block K: KW=0.00082 (true critical, zeta=1.0, tau=46ms).
+
+## Block progression (RMSE measured on figure8 with `run_figure8.py`)
+
+| Block | KP | KV | KR | KW | XY RMSE | Lag corr | Notes |
+|-------|----|----|-----|------|---------|----------|-------|
+| A | 7.5 | 9.0 | 0.007 | 0.00115 | 21.2 cm | −0.92 | baseline |
+| C | 9.0 | 11.0 | 0.007 | 0.00115 | 16.2 cm | −0.73 | −24% |
+| D | 11.0 | 13.0 | 0.007 | 0.00115 | 15.9 cm | −0.77 | −3% |
+| E | 11.0 | 13.0 | 0.009 | 0.0016 | 13.9 cm | — | −12% |
+| I | 16.0 | 8.0 | 0.009 | 0.0016 | 12.7–13.3 cm | −0.28 | −8%; attitude still overdamped |
+| **J** | 16.0 | 8.0 | 0.010 | **0.0010** | TBD | TBD | **attitude fix: zeta 2.07→1.23** |
 
 ## Full-state setpoint (type 6)
 
