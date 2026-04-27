@@ -187,7 +187,7 @@ def fly_fast_circle(scf, n_laps):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -200,6 +200,7 @@ def fly_fast_circle(scf, n_laps):
     time.sleep(3.0)
 
     print("\nOOT Rust geometric controller active. Stabilizing hover for 2.5 s...")
+    cf.param.set_value("stabilizer.controller", "6")
     time.sleep(2.5)
 
     for lap in range(1, n_laps + 1):
@@ -211,6 +212,8 @@ def fly_fast_circle(scf, n_laps):
         time.sleep(max(0.5, actual_s - 0.05))
 
     print("\nLanding...")
+    time.sleep(1.5)
+    cf.param.set_value("stabilizer.controller", "1")
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)

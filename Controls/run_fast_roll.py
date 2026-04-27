@@ -88,7 +88,7 @@ def fly_fast_roll(scf):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -99,6 +99,10 @@ def fly_fast_roll(scf):
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+
+    print("\nOOT Rust geometric controller active.")
+    cf.param.set_value("stabilizer.controller", "6")
+    time.sleep(0.1)
 
     print(f"\nClimbing to fast roll height {FLIP_HEIGHT:.2f} m (+0.3 m clearance)...")
     cf.commander.send_position_setpoint(0.0, 0.0, FLIP_HEIGHT, 0.0)
@@ -138,10 +142,10 @@ def fly_fast_roll(scf):
         qx = math.sin(theta / 2.0)
 
         cf.commander.send_full_state_setpoint(
-            x0, y0, FLIP_HEIGHT,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            qx, 0.0, 0.0, qw,
+            [x0, y0, FLIP_HEIGHT],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [qx, 0.0, 0.0, qw],
             omega, 0.0, 0.0,
         )
 
@@ -151,15 +155,17 @@ def fly_fast_roll(scf):
     t_rec = time.time()
     while time.time() - t_rec < 1.0:
         cf.commander.send_full_state_setpoint(
-            x0, y0, FLIP_HEIGHT,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,
+            [x0, y0, FLIP_HEIGHT],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
             0.0, 0.0, 0.0,
         )
         time.sleep(FLIP_DT)
 
     print("\nLanding...")
+    cf.param.set_value("stabilizer.controller", "1")
+    time.sleep(0.2)
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
