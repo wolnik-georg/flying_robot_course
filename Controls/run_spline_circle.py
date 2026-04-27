@@ -856,7 +856,7 @@ def fly_circle(scf, n_laps):
 
     # Takeoff with PID — safe, reliable climb
     print("\nSetting controller: PID (type 1) for takeoff")
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     # Start persistent live log (terminal output) + CSV flight logger
@@ -872,7 +872,7 @@ def fly_circle(scf, n_laps):
     # Switch to OOT geometric controller and let it stabilize at hover height
     # before starting the trajectory (prevents the brief drop on controller switch).
     print("\nSwitching controller: OOT Rust geometric (type 6)")
-    # cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "6")
     print("  Stabilizing hover for 2.5 s...")
     time.sleep(2.5)
 
@@ -887,7 +887,7 @@ def fly_circle(scf, n_laps):
 
     # Switch back to PID for safe landing
     print("\nSwitching back to PID (type 1) for landing...")
-    # cf.param.set_value("stabilizer.controller", "1")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.2)
 
     print("Landing...")

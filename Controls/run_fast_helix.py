@@ -135,7 +135,7 @@ def fly_helix(scf):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -146,6 +146,10 @@ def fly_helix(scf):
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+
+    print("\nOOT Rust geometric controller active.")
+    cf.param.set_value("stabilizer.controller", "6")
+    time.sleep(0.1)
 
     # Latch XY origin from EKF
     pos_log = LogConfig(name="PosLatch", period_in_ms=100)
@@ -210,10 +214,10 @@ def fly_helix(scf):
         (qx, qy, qz, qw), (wx, wy, wz) = compute_flatness(ax, ay, 0.0, jx, jy, yaw0)
 
         cf.commander.send_full_state_setpoint(
-            px, py, pz,
-            vx, vy, vz,
-            ax, ay, 0.0,
-            qx, qy, qz, qw,
+            [px, py, pz],
+            [vx, vy, vz],
+            [ax, ay, 0.0],
+            [qx, qy, qz, qw],
             wx, wy, wz,
         )
 
@@ -227,6 +231,8 @@ def fly_helix(scf):
         time.sleep(HELIX_DT)
 
     print("\nLanding...")
+    cf.param.set_value("stabilizer.controller", "1")
+    time.sleep(0.2)
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)

@@ -23,15 +23,20 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
 
 from flight_common import (
-    DEFAULT_URI, HOVER_HEIGHT, KALMAN_THRESH,
-    FlightLogger, wait_for_kalman, start_live_log, reset_kalman,
+    DEFAULT_URI,
+    HOVER_HEIGHT,
+    KALMAN_THRESH,
+    FlightLogger,
+    wait_for_kalman,
+    start_live_log,
+    reset_kalman,
 )
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-FLIP_HEIGHT = HOVER_HEIGHT + 0.2   # 1.2 m — extra clearance during inversion
-FLIP_DT     = 0.04                 # 25 Hz loop period [s]
+FLIP_HEIGHT = HOVER_HEIGHT + 0.2  # 1.2 m — extra clearance during inversion
+FLIP_DT = 0.04  # 25 Hz loop period [s]
 
 # ---------------------------------------------------------------------------
 # Roll angle trajectory — identical to flip (same QP coefficients).
@@ -40,10 +45,28 @@ FLIP_DT     = 0.04                 # 25 Hz loop period [s]
 # theta(t_local) = sum(c_k * t_local^k),  t_local in [0, T_seg]  [radians]
 # ---------------------------------------------------------------------------
 roll_angle_segs = [
-    [0.350000, -0.000000247, +0.000003508, +0.000009778, +0.000002773,
-     +470.858642578, +113.301620483, -4221.361328125, +5036.835937500],
-    [0.350000, +3.141595602, +21.038593292, +0.000606730, -176.377578735,
-     -470.869232178, +4206.153320312, -8119.797363281, +5037.533691406],
+    [
+        0.350000,
+        -0.000000247,
+        +0.000003508,
+        +0.000009778,
+        +0.000002773,
+        +470.858642578,
+        +113.301620483,
+        -4221.361328125,
+        +5036.835937500,
+    ],
+    [
+        0.350000,
+        +3.141595602,
+        +21.038593292,
+        +0.000606730,
+        -176.377578735,
+        -470.869232178,
+        +4206.153320312,
+        -8119.797363281,
+        +5037.533691406,
+    ],
 ]
 
 T_ROLL = sum(row[0] for row in roll_angle_segs)
@@ -53,6 +76,7 @@ T_ROLL = sum(row[0] for row in roll_angle_segs)
 # Trajectory evaluation
 # ---------------------------------------------------------------------------
 
+
 def roll_eval(segs, t_global, deriv=0):
     """Evaluate roll angle trajectory at global time t_global."""
     t = t_global
@@ -61,22 +85,23 @@ def roll_eval(segs, t_global, deriv=0):
         if t <= dur + 1e-9:
             t_local = min(t, dur)
             if deriv == 0:
-                return sum(c * t_local ** i for i, c in enumerate(coeffs))
+                return sum(c * t_local**i for i, c in enumerate(coeffs))
             else:
-                return sum(i * c * t_local ** (i - 1)
-                           for i, c in enumerate(coeffs) if i > 0)
+                return sum(
+                    i * c * t_local ** (i - 1) for i, c in enumerate(coeffs) if i > 0
+                )
         t -= dur
     dur, coeffs = segs[-1][0], segs[-1][1:]
     if deriv == 0:
-        return sum(c * dur ** i for i, c in enumerate(coeffs))
+        return sum(c * dur**i for i, c in enumerate(coeffs))
     else:
-        return sum(i * c * dur ** (i - 1)
-                   for i, c in enumerate(coeffs) if i > 0)
+        return sum(i * c * dur ** (i - 1) for i, c in enumerate(coeffs) if i > 0)
 
 
 # ---------------------------------------------------------------------------
 # Flight function
 # ---------------------------------------------------------------------------
+
 
 def fly_roll(scf):
     cf = scf.cf
@@ -89,7 +114,7 @@ def fly_roll(scf):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -100,6 +125,7 @@ def fly_roll(scf):
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+    cf.param.set_value("stabilizer.controller", "6")
 
     print(f"\nClimbing to roll height {FLIP_HEIGHT:.2f} m...")
     cf.commander.send_position_setpoint(0.0, 0.0, FLIP_HEIGHT, 0.0)
@@ -131,7 +157,7 @@ def fly_roll(scf):
             break
 
         theta = roll_eval(roll_angle_segs, t)
-        omega = roll_eval(roll_angle_segs, t, deriv=1)   # rad/s
+        omega = roll_eval(roll_angle_segs, t, deriv=1)  # rad/s
 
         # Pure roll: rotate around body x-axis by theta.
         # [w, x, y, z] = [cos(θ/2), sin(θ/2), 0, 0]
@@ -140,11 +166,11 @@ def fly_roll(scf):
         qx = math.sin(theta / 2.0)
 
         cf.commander.send_full_state_setpoint(
-            x0, y0, FLIP_HEIGHT,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            qx, 0.0, 0.0, qw,        # qx, qy, qz, qw
-            omega, 0.0, 0.0,          # wx, wy, wz [rad/s]
+            [x0, y0, FLIP_HEIGHT],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [qx, 0.0, 0.0, qw],  # qx, qy, qz, qw
+            omega, 0.0, 0.0,  # wx, wy, wz [rad/s]
         )
 
         time.sleep(FLIP_DT)
@@ -154,14 +180,16 @@ def fly_roll(scf):
     t_rec = time.time()
     while time.time() - t_rec < 1.0:
         cf.commander.send_full_state_setpoint(
-            x0, y0, FLIP_HEIGHT,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0,     # identity quaternion (upright)
+            [x0, y0, FLIP_HEIGHT],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],  # identity quaternion (upright)
             0.0, 0.0, 0.0,
         )
         time.sleep(FLIP_DT)
 
+    time.sleep(1.5)
+    cf.param.set_value("stabilizer.controller", "1")
     print("\nLanding...")
     logger.stop()
     log_cfg.stop()

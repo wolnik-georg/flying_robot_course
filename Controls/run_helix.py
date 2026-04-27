@@ -30,51 +30,57 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
 
 from flight_common import (
-    DEFAULT_URI, HOVER_HEIGHT, KALMAN_THRESH,
-    FlightLogger, wait_for_kalman, start_live_log, reset_kalman,
+    DEFAULT_URI,
+    HOVER_HEIGHT,
+    KALMAN_THRESH,
+    FlightLogger,
+    wait_for_kalman,
+    start_live_log,
+    reset_kalman,
 )
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-HELIX_RADIUS = 0.30    # m — circle radius
-HELIX_DZ     = 0.40    # m — height gained over one ascending lap
-LAP_TIME     = 10.5    # s — one full circle
-HELIX_DT     = 0.04    # s — 25 Hz loop period
-MASS         = 0.031   # kg — CF 2.1 + decks
-GRAVITY      = 9.81    # m/s²
+HELIX_RADIUS = 0.30  # m — circle radius
+HELIX_DZ = 0.40  # m — height gained over one ascending lap
+LAP_TIME = 10.5  # s — one full circle
+HELIX_DT = 0.04  # s — 25 Hz loop period
+MASS = 0.031  # kg — CF 2.1 + decks
+GRAVITY = 9.81  # m/s²
 
-OMEGA_C = 2.0 * math.pi / LAP_TIME   # circle angular velocity [rad/s]
-VZ_UP   = HELIX_DZ / LAP_TIME        # vertical speed [m/s]
+OMEGA_C = 2.0 * math.pi / LAP_TIME  # circle angular velocity [rad/s]
+VZ_UP = HELIX_DZ / LAP_TIME  # vertical speed [m/s]
 
 
 # ---------------------------------------------------------------------------
 # Differential flatness helper
 # ---------------------------------------------------------------------------
 
+
 def _rot_to_quat_xyzw(R):
     """Convert 3×3 rotation matrix to (qx, qy, qz, qw) — cflib scalar-last."""
     trace = R[0, 0] + R[1, 1] + R[2, 2]
     if trace > 0:
-        s  = 0.5 / math.sqrt(trace + 1.0)
+        s = 0.5 / math.sqrt(trace + 1.0)
         qw = 0.25 / s
         qx = (R[2, 1] - R[1, 2]) * s
         qy = (R[0, 2] - R[2, 0]) * s
         qz = (R[1, 0] - R[0, 1]) * s
     elif R[0, 0] > R[1, 1] and R[0, 0] > R[2, 2]:
-        s  = 2.0 * math.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+        s = 2.0 * math.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
         qw = (R[2, 1] - R[1, 2]) / s
         qx = 0.25 * s
         qy = (R[0, 1] + R[1, 0]) / s
         qz = (R[0, 2] + R[2, 0]) / s
     elif R[1, 1] > R[2, 2]:
-        s  = 2.0 * math.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+        s = 2.0 * math.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
         qw = (R[0, 2] - R[2, 0]) / s
         qx = (R[0, 1] + R[1, 0]) / s
         qy = 0.25 * s
         qz = (R[1, 2] + R[2, 1]) / s
     else:
-        s  = 2.0 * math.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+        s = 2.0 * math.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
         qw = (R[1, 0] - R[0, 1]) / s
         qx = (R[0, 2] + R[2, 0]) / s
         qy = (R[1, 2] + R[2, 1]) / s
@@ -96,13 +102,13 @@ def compute_flatness(ax, ay, az, jx, jy, yaw):
 
     # Body x/y from yaw
     yc = np.array([-math.sin(yaw), math.cos(yaw), 0.0])  # yaw-aligned perpendicular
-    xc = np.array([ math.cos(yaw), math.sin(yaw), 0.0])
+    xc = np.array([math.cos(yaw), math.sin(yaw), 0.0])
 
     # xb = normalise(yc × (acc+g·ez))  — Faessler slide 8
     xb_raw = np.cross(yc, f)
     xb_n = float(np.linalg.norm(xb_raw))
     if xb_n < 1e-9:
-        xb_raw = np.cross(np.array([0., 0., 1.]), f)
+        xb_raw = np.cross(np.array([0.0, 0.0, 1.0]), f)
         xb_n = float(np.linalg.norm(xb_raw))
     x_B = xb_raw / xb_n
     y_B = np.cross(z_B, x_B)
@@ -112,9 +118,9 @@ def compute_flatness(ax, ay, az, jx, jy, yaw):
 
     # Angular rates from jerk (Faessler eq. ω_x = d2/c, ω_y = d1/c)
     j = np.array([jx, jy, 0.0])
-    wx = float(np.dot(y_B, j)) / fn     # ωx (roll rate)
-    wy = -float(np.dot(x_B, j)) / fn    # ωy (pitch rate)
-    wz = 0.0                             # constant yaw → yaw rate ≈ 0
+    wx = float(np.dot(y_B, j)) / fn  # ωx (roll rate)
+    wy = -float(np.dot(x_B, j)) / fn  # ωy (pitch rate)
+    wz = 0.0  # constant yaw → yaw rate ≈ 0
 
     return (qx, qy, qz, qw), (wx, wy, wz)
 
@@ -122,6 +128,7 @@ def compute_flatness(ax, ay, az, jx, jy, yaw):
 # ---------------------------------------------------------------------------
 # Flight function
 # ---------------------------------------------------------------------------
+
 
 def fly_helix(scf):
     cf = scf.cf
@@ -134,7 +141,7 @@ def fly_helix(scf):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -145,6 +152,7 @@ def fly_helix(scf):
     hl.takeoff(HOVER_HEIGHT, 2.0)
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
+    cf.param.set_value("stabilizer.controller", "6")
 
     # Latch XY origin from EKF
     pos_log = LogConfig(name="PosLatch", period_in_ms=100)
@@ -161,18 +169,22 @@ def fly_helix(scf):
             yaws.append(d["stabilizer.yaw"])
             if len(xs) >= 10:
                 break
-    x0   = sum(xs)   / len(xs)
-    y0   = sum(ys)   / len(ys)
+    x0 = sum(xs) / len(xs)
+    y0 = sum(ys) / len(ys)
     yaw0 = math.radians(sum(yaws) / len(yaws))
-    print(f"  Latched origin: x0={x0:+.3f}  y0={y0:+.3f}  yaw={math.degrees(yaw0):+.1f}°")
+    print(
+        f"  Latched origin: x0={x0:+.3f}  y0={y0:+.3f}  yaw={math.degrees(yaw0):+.1f}°"
+    )
 
     # Circle centre one radius ahead so drone starts on circle at (x0, y0)
     cx = x0 + HELIX_RADIUS
     cy = y0
-    phase0 = math.pi   # at phase=π: cos(π)=-1 → px = cx - r = x0 ✓
+    phase0 = math.pi  # at phase=π: cos(π)=-1 → px = cx - r = x0 ✓
 
     print(f"\nExecuting helix: 2 × {LAP_TIME:.1f} s laps at 25 Hz")
-    print(f"  z: {HOVER_HEIGHT:.2f} m → {HOVER_HEIGHT + HELIX_DZ:.2f} m → {HOVER_HEIGHT:.2f} m")
+    print(
+        f"  z: {HOVER_HEIGHT:.2f} m → {HOVER_HEIGHT + HELIX_DZ:.2f} m → {HOVER_HEIGHT:.2f} m"
+    )
     max_tilt = math.degrees(math.atan(HELIX_RADIUS * OMEGA_C**2 / GRAVITY))
     print(f"  Max tilt ≈ {max_tilt:.1f}°  (centripetal acceleration)")
     logger.mark_traj_start()
@@ -188,31 +200,34 @@ def fly_helix(scf):
         phase = phase0 + OMEGA_C * t
 
         # Position
-        px  = cx + HELIX_RADIUS * math.cos(phase)
-        py  = cy + HELIX_RADIUS * math.sin(phase)
-        vz  = VZ_UP if t < LAP_TIME else -VZ_UP
-        pz  = (HOVER_HEIGHT + VZ_UP * t) if t <= LAP_TIME \
-              else (HOVER_HEIGHT + HELIX_DZ - VZ_UP * (t - LAP_TIME))
+        px = cx + HELIX_RADIUS * math.cos(phase)
+        py = cy + HELIX_RADIUS * math.sin(phase)
+        vz = VZ_UP if t < LAP_TIME else -VZ_UP
+        pz = (
+            (HOVER_HEIGHT + VZ_UP * t)
+            if t <= LAP_TIME
+            else (HOVER_HEIGHT + HELIX_DZ - VZ_UP * (t - LAP_TIME))
+        )
 
         # Velocity (exact derivatives of analytic circle)
-        vx  = -HELIX_RADIUS * OMEGA_C * math.sin(phase)
-        vy  =  HELIX_RADIUS * OMEGA_C * math.cos(phase)
+        vx = -HELIX_RADIUS * OMEGA_C * math.sin(phase)
+        vy = HELIX_RADIUS * OMEGA_C * math.cos(phase)
 
         # Acceleration (centripetal only)
-        ax  = -HELIX_RADIUS * OMEGA_C**2 * math.cos(phase)
-        ay  = -HELIX_RADIUS * OMEGA_C**2 * math.sin(phase)
+        ax = -HELIX_RADIUS * OMEGA_C**2 * math.cos(phase)
+        ay = -HELIX_RADIUS * OMEGA_C**2 * math.sin(phase)
 
         # Jerk
-        jx  =  HELIX_RADIUS * OMEGA_C**3 * math.sin(phase)
-        jy  = -HELIX_RADIUS * OMEGA_C**3 * math.cos(phase)
+        jx = HELIX_RADIUS * OMEGA_C**3 * math.sin(phase)
+        jy = -HELIX_RADIUS * OMEGA_C**3 * math.cos(phase)
 
         (qx, qy, qz, qw), (wx, wy, wz) = compute_flatness(ax, ay, 0.0, jx, jy, yaw0)
 
         cf.commander.send_full_state_setpoint(
-            px, py, pz,
-            vx, vy, vz,
-            ax, ay, 0.0,
-            qx, qy, qz, qw,
+            [px, py, pz],
+            [vx, vy, vz],
+            [ax, ay, 0.0],
+            [qx, qy, qz, qw],
             wx, wy, wz,
         )
 
@@ -226,6 +241,8 @@ def fly_helix(scf):
         time.sleep(HELIX_DT)
 
     print("\nLanding...")
+    time.sleep(1.5)
+    cf.param.set_value("stabilizer.controller", "1")
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
@@ -239,7 +256,9 @@ def fly_helix(scf):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Helix flight via full-state setpoints")
+    parser = argparse.ArgumentParser(
+        description="Helix flight via full-state setpoints"
+    )
     parser.add_argument("--uri", default=None)
     args = parser.parse_args()
 

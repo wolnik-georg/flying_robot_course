@@ -74,6 +74,7 @@ def fly_fast_figure8(scf, n_reps):
     hl = cf.high_level_commander
     traj_id = 1
 
+    time.sleep(1.5)  # wait for drone memory enumeration to finish before upload
     print(f"\nUploading fast figure-8 trajectory ({len(fast_figure8_poly4d)} segments)...")
     duration = upload_trajectory(cf, traj_id, fast_figure8_poly4d)
     print(f"  Planned duration: {duration:.3f} s per rep  (QP-planned at 2× speed)")
@@ -87,7 +88,7 @@ def fly_fast_figure8(scf, n_reps):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -99,7 +100,8 @@ def fly_fast_figure8(scf, n_reps):
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
 
-    print("\nStabilizing hover for 2.5 s...")
+    print("\nOOT Rust geometric controller active. Stabilizing hover for 2.5 s...")
+    cf.param.set_value("stabilizer.controller", "6")
     time.sleep(2.5)
 
     for rep in range(1, n_reps + 1):
@@ -110,6 +112,8 @@ def fly_fast_figure8(scf, n_reps):
         time.sleep(max(0.5, duration - 0.05))
 
     print("\nLanding...")
+    time.sleep(1.5)
+    cf.param.set_value("stabilizer.controller", "1")
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)

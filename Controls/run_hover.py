@@ -17,12 +17,17 @@ import argparse
 
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflief
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.utils import uri_helper
 
 from flight_common import (
-    DEFAULT_URI, HOVER_HEIGHT, KALMAN_THRESH,
-    FlightLogger, wait_for_kalman, start_live_log, reset_kalman,
+    DEFAULT_URI,
+    HOVER_HEIGHT,
+    KALMAN_THRESH,
+    FlightLogger,
+    wait_for_kalman,
+    start_live_log,
+    reset_kalman,
 )
 
 # ---------------------------------------------------------------------------
@@ -46,7 +51,7 @@ def fly_hover(scf, duration):
     cf.platform.send_arming_request(True)
     time.sleep(1.0)
 
-    cf.param.set_value("stabilizer.controller", "6")
+    cf.param.set_value("stabilizer.controller", "1")
     time.sleep(0.1)
 
     log_cfg = start_live_log(cf)
@@ -58,11 +63,17 @@ def fly_hover(scf, duration):
     print("  Waiting 3 s for climb + estimator stabilization...")
     time.sleep(3.0)
 
+    print("\nOOT Rust geometric controller active.")
+    cf.param.set_value("stabilizer.controller", "6")
+    time.sleep(0.1)
+
     print(f"\nHovering for {duration:.1f} s...")
     logger.mark_traj_start()
     time.sleep(duration)
 
     print("\nLanding...")
+    cf.param.set_value("stabilizer.controller", "1")
+    time.sleep(0.2)
     logger.stop()
     log_cfg.stop()
     hl.land(0.0, 2.0)
@@ -77,10 +88,17 @@ def fly_hover(scf, duration):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Hover flight — takeoff, hold, land")
-    parser.add_argument("--duration", type=float, default=DEFAULT_DURATION,
-                        help=f"Hover duration in seconds (default: {DEFAULT_DURATION})")
-    parser.add_argument("--uri", default=None,
-                        help="Crazyflie URI (default: radio://0/80/2M/E7E7E7E7E7)")
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=DEFAULT_DURATION,
+        help=f"Hover duration in seconds (default: {DEFAULT_DURATION})",
+    )
+    parser.add_argument(
+        "--uri",
+        default=None,
+        help="Crazyflie URI (default: radio://0/80/2M/E7E7E7E7E7)",
+    )
     args = parser.parse_args()
 
     uri = args.uri or uri_helper.uri_from_env(default=DEFAULT_URI)
