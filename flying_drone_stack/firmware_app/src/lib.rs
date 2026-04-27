@@ -202,26 +202,21 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 // const KW_X: f32 = 0.0010; const KW_Y: f32 = 0.0010; const KW_Z: f32 = 0.00125;
 
-// ── GAINS BLOCK K — true critical damping (zeta=1.0, tau=46ms) ──────────────────
-// Same KR as Block J. Only change: KW 0.0010→0.00082.
-//   zeta = 0.00082 / (2 * JXX * 24.6) = 1.007 ≈ 1.0 exactly.
-//   tau_dom = 46ms  (was 79ms in J — 1.7x faster)
-// One variable at a time: KW only, KR fixed. Isolates the damping effect cleanly.
-// Watch for any roll/pitch oscillation at hover. If clean: proceed to Block L.
-const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
-const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
-const KI_P: f32 = 0.05;
-const KI_LIMIT: f32 = 2.0;
-const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.00082;const KW_Y: f32 = 0.00082;const KW_Z: f32 = 0.00103;
+// ── GAINS BLOCK K — flown Apr 27. XY RMSE 12.0-12.3cm. Better roll (15° vs 25°).
+// BUT: gyro jitter higher than I (dGx std 22-28 vs 17-21 °/s/step) — KW too low,
+// less damping of gyro noise. Marginally better tracking, visibly noisier gyro.
+// KR=0.010, KW=0.00082: zeta=1.01, tau_dom=46ms.
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00082;const KW_Y: f32 = 0.00082;const KW_Z: f32 = 0.00103;
 
-// ── GAINS BLOCK L — higher stiffness + critical damping bad (zeta=1.0, tau=37ms) ────
-// After fixing damping in K, raise KR to increase attitude stiffness.
-//   KR=0.012: omega_n=26.9 rad/s (+9% vs Block K)
-//   KW=0.00089: zeta=0.998 ≈ 1.0, tau_dom=37ms  (was 46ms in K — 1.25x faster)
-// Combined effect vs Block I: omega_n 23.3→26.9 rad/s, tau 167→37ms = 4.5x faster.
-// Significant stiffness jump — hover carefully first.
-// If stable: proceed to Block M.
+// ── GAINS BLOCK L — flown Apr 27. OSCILLATED. Do not use. ───────────────────────
+// KR=0.012 hit the stability margin: motor lag (~20-50ms) adds phase that the
+// simplified 2nd-order model ignores. KR ≤ 0.010 is the practical ceiling for the
+// geometric controller on this hardware. KR=0.012 causes heavy oscillations.
 // const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
 // const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
 // const KI_P: f32 = 0.05;
@@ -229,18 +224,29 @@ const KW_X: f32 = 0.00082;const KW_Y: f32 = 0.00082;const KW_Z: f32 = 0.00103;
 // const KR_X: f32 = 0.012;  const KR_Y: f32 = 0.012;  const KR_Z: f32 = 0.012;
 // const KW_X: f32 = 0.00089;const KW_Y: f32 = 0.00089;const KW_Z: f32 = 0.00111;
 
-// ── GAINS BLOCK M — slight underdamping for fastest rise time (zeta=0.84) ────────
-// Same KR as Block L. KW reduced to get zeta=0.84 (best-bandwidth point).
-//   KW=0.00075: zeta=0.841, omega_n=26.9 rad/s, tau_env=44ms.
-// Underdamped: faster to 90% than critical, only 0.77% overshoot (~1° max).
-// Risk: moderate. Hover 10s+ and watch for oscillation before figure-8.
-// If oscillation appears → revert to Block L. If clean → expect best-case tracking.
+// ── GAINS BLOCK M — flown Apr 27. OSCILLATED HEAVILY. Do not use. ───────────────
+// Same root cause as L: KR=0.012 with lower KW = even less stability margin.
 // const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
 // const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
 // const KI_P: f32 = 0.05;
 // const KI_LIMIT: f32 = 2.0;
 // const KR_X: f32 = 0.012;  const KR_Y: f32 = 0.012;  const KR_Z: f32 = 0.012;
 // const KW_X: f32 = 0.00075;const KW_Y: f32 = 0.00075;const KW_Z: f32 = 0.00094;
+
+// ── GAINS BLOCK N (active) — sweet spot between K and J ──────────────────────────
+// K (KW=0.00082) has better tracking but noisy gyro. J (KW=0.0010) is smoother.
+// N splits the difference: KW=0.0011, zeta=1.35, tau_dom=92ms.
+//   KR ceiling confirmed at 0.010 (KR=0.012 oscillates on real hardware).
+//   More damping than K → smoother angular velocity in plots.
+//   Still 1.8x faster response than Block I (tau 92ms vs 167ms).
+//   XY RMSE expected ~12-12.5cm, roll max ~16-18°, cleaner gyro than K.
+const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+const KI_P: f32 = 0.05;
+const KI_LIMIT: f32 = 2.0;
+
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 
 // ── Controller mode selector — change this one constant to switch controllers ─
 //
