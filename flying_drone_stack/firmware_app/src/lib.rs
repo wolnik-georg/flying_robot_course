@@ -240,8 +240,36 @@ const JZZ: f32 = 29.261652e-6;
 //   More damping than K → smoother angular velocity in plots.
 //   Still 1.8x faster response than Block I (tau 92ms vs 167ms).
 //   XY RMSE expected ~12-12.5cm, roll max ~16-18°, cleaner gyro than K.
-const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
-const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// current baseline
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 26.0;
+// const KV_X: f32 = 8.0;    const KV_Y: f32 = 8.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+
+// best one 
+// const KP_X: f32 = 24.0;   const KP_Y: f32 = 24.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+
+// // third best
+// const KP_X: f32 = 26.0;   const KP_Y: f32 = 26.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;
+// const KI_LIMIT: f32 = 2.0;
+
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+
+// second best
+const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.05;
 const KI_LIMIT: f32 = 2.0;
 
