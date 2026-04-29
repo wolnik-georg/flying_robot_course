@@ -368,6 +368,157 @@ impl State {
 
 static mut CTRL: State = State::zero();
 
+// ── Onboard trajectory state ───────────────────────────────────────────────
+// Set to current tick when traj.start=1 is received; cleared when mode→0.
+// Declared separately from CTRL so the trajectory engine is independent of the
+// geometric controller state machine.
+static mut TRAJ_T0: u32 = 0;
+
+// ── C trajectory interface (declared in firmware_app/traj_iface.c) ─────────
+// Layout of g_traj_coefs: [duration, cx0..cx8, cy0..cy8] × n_segs (19 f32 per seg).
+const TRAJ_MAX_SEGS: usize = 12;
+const TRAJ_FLOATS_PER_SEG: usize = 19;
+
+extern "C" {
+    static mut g_traj_coefs:   [f32; 228]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
+    static mut g_traj_n_segs:  u8;
+    static mut g_traj_mode:    u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
+    static mut g_traj_start:   u8;  // laptop writes 1; firmware latches T0
+    static mut g_traj_origin_x: f32;
+    static mut g_traj_origin_y: f32;
+    static mut g_traj_hover_z:  f32;
+    static mut g_traj_coef_ci:  u8;   // upload index
+    static mut g_traj_coef_cv:  f32;  // upload value
+    static mut g_traj_coef_cw:  u8;   // commit flag (1=write pending; we clear to 0)
+}
+
+// ── Spline evaluation helpers ───────────────────────────────────────────────
+//
+// Each segment stores a degree-8 polynomial for x and y separately, in normalised
+// time t ∈ [0, 1] (τ/T where τ is local time, T is segment duration).
+// Physical derivatives are recovered by dividing by Tⁿ:
+//   pos  = p(t)
+//   vel  = p'(t) / T
+//   acc  = p''(t) / T²
+//   jerk = p'''(t) / T³
+
+/// Evaluate position, velocity, acceleration and jerk of a single axis
+/// via Horner's method.
+///
+/// `c`     — 9 polynomial coefficients [c0 .. c8] in normalised time
+/// `t`     — normalised time ∈ [0, 1]
+/// `t_dur` — segment duration T [s]
+///
+/// Returns `(pos, vel/T, acc/T², jerk/T³)` in physical units.
+#[inline]
+fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32) {
+    // Position  p(t) — Horner from highest degree
+    let p = ((((((((c[8]) * t + c[7]) * t + c[6]) * t + c[5]) * t
+             + c[4]) * t + c[3]) * t + c[2]) * t + c[1]) * t + c[0];
+
+    // Velocity  p'(t) = c1 + 2c2·t + … + 8c8·t⁷
+    let v = (((((((8.0*c[8]) * t + 7.0*c[7]) * t + 6.0*c[6]) * t
+             + 5.0*c[5]) * t + 4.0*c[4]) * t + 3.0*c[3]) * t + 2.0*c[2]) * t + c[1];
+
+    // Acceleration  p''(t) = 2c2 + 6c3·t + … + 56c8·t⁶
+    let a = ((((((56.0*c[8]) * t + 42.0*c[7]) * t + 30.0*c[6]) * t
+             + 20.0*c[5]) * t + 12.0*c[4]) * t + 6.0*c[3]) * t + 2.0*c[2];
+
+    // Jerk  p'''(t) = 6c3 + 24c4·t + … + 336c8·t⁵
+    let j = (((((336.0*c[8]) * t + 210.0*c[7]) * t + 120.0*c[6]) * t
+             + 60.0*c[5]) * t + 24.0*c[4]) * t + 6.0*c[3];
+
+    let inv_t  = 1.0 / t_dur;
+    let inv_t2 = inv_t * inv_t;
+    let inv_t3 = inv_t2 * inv_t;
+    (p, v * inv_t, a * inv_t2, j * inv_t3)
+}
+
+/// Evaluate the onboard spline at global trajectory time `t_global` [s].
+///
+/// # Safety
+/// Caller must hold the `unsafe` context and ensure `n_segs ≤ TRAJ_MAX_SEGS`
+/// and that the coefficients have been fully uploaded before T0 is latched.
+///
+/// Returns `(pos_rel, vel, acc, jerk)` — pos_rel is relative to trajectory
+/// origin (caller adds `g_traj_origin_{x,y}` and `g_traj_hover_z`).
+unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, Vec3) {
+    // Compute total trajectory duration so we can wrap t for periodic reps.
+    let mut total_dur = 0.0_f32;
+    for i in 0..n_segs {
+        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+    }
+    // Wrap t into [0, total_dur) — handles reps=2+ without polynomial extrapolation.
+    // The figure-8 is a closed loop (start == end), so wrapping is C0-continuous.
+    let t = if total_dur > 0.0 {
+        t_global - libm::floorf(t_global / total_dur) * total_dur
+    } else {
+        t_global
+    };
+
+    // Find active segment
+    let mut t_start = 0.0_f32;
+    let mut seg = n_segs.saturating_sub(1);
+    for i in 0..n_segs {
+        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+        if t < t_start + dur {
+            seg = i;
+            break;
+        }
+        t_start += dur;
+    }
+
+    let base  = seg * TRAJ_FLOATS_PER_SEG;
+    let dur   = g_traj_coefs[base];
+    let tau   = (t - t_start).max(0.0).min(dur);
+    let t_n   = tau / dur; // normalised ∈ [0, 1]
+
+    // Extract coefficients into fixed-size arrays
+    let mut cx = [0.0_f32; 9];
+    let mut cy = [0.0_f32; 9];
+    for k in 0..9 {
+        cx[k] = g_traj_coefs[base + 1 + k];
+        cy[k] = g_traj_coefs[base + 10 + k];
+    }
+
+    let (px, vx, ax, jx) = poly_eval_axis(&cx, t_n, dur);
+    let (py, vy, ay, jy) = poly_eval_axis(&cy, t_n, dur);
+
+    (
+        Vec3::new(px, py, 0.0),
+        Vec3::new(vx, vy, 0.0),
+        Vec3::new(ax, ay, 0.0),
+        Vec3::new(jx, jy, 0.0),
+    )
+}
+
+/// Compute desired body angular velocity ω_d from flatness (yaw=const → ψ̇=0).
+///
+/// From Faessler et al. 2018, Appendix A, simplified for ψ̇ = 0:
+///   ωx = −(yb · jerk) / c
+///   ωy =  (xb · jerk) / c
+///   ωz = 0
+/// where `c = |acc + g·ez|` and `xb`, `yb` are the desired body x/y axes.
+#[inline]
+fn omega_desired(acc: Vec3, jerk: Vec3, yaw: f32) -> Vec3 {
+    let cos_psi = libm::cosf(yaw);
+    let sin_psi = libm::sinf(yaw);
+    let yc = Vec3::new(-sin_psi, cos_psi, 0.0);
+
+    let acc_g = Vec3::new(acc.x, acc.y, acc.z + GRAVITY);
+    let c = acc_g.norm();
+    if c < 0.1 { return Vec3::zero(); }
+
+    // Body axes from flatness (same construction as desired_rot)
+    let xb = yc.cross(acc_g).normalize();
+    let yb = acc_g.cross(xb).normalize();
+
+    let omega_x = -yb.dot(jerk) / c;
+    let omega_y =  xb.dot(jerk) / c;
+    // omega_z = 0 because yaw_dot = 0 for this trajectory
+    Vec3::new(omega_x, omega_y, 0.0)
+}
+
 // ── Attitude INDI torque ────────────────────────────────────────────────────
 //
 // Incremental Nonlinear Dynamic Inversion (Smeur et al. 2016 / Faessler 2018).
@@ -549,6 +700,7 @@ fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
 fn geometric_step(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
+    omega_d: Vec3,  // desired angular velocity feedforward (Vec3::zero() for Mode B passthrough)
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     let ep = pd.sub(pos);
@@ -590,7 +742,10 @@ fn geometric_step(
     // Attitude integral — zero cost when KI_ATT = 0.0 (compiler eliminates term)
     s.i_error_att = s.i_error_att.add(er.scale(dt));
 
-    let e_omega = omega;
+    // Angular velocity error: subtract desired ω_d feedforward.
+    // For Mode B passthrough omega_d = Vec3::zero() → identical to previous behaviour.
+    // For Mode D onboard eval omega_d comes from flatness → eliminates attitude lag.
+    let e_omega = omega.sub(omega_d);
 
     // Gyroscopic term
     let j_omega = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
@@ -656,15 +811,66 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     let sp = &*setpoint;
 
-    // SAFE ARMING: only enable controller when test harness sends real position (z > 0.05 m)
+    // ── Coefficient upload handler ─────────────────────────────────────────
+    // The laptop writes traj.ci (index) and traj.cv (value), then traj.cw=1.
+    // We copy cv to g_traj_coefs[ci] here and clear cw=0 so the laptop knows
+    // the write completed. Runs at 500 Hz so max latency is 2 ms — well within
+    // the radio round-trip time, making the poll-for-zero protocol safe.
+    if g_traj_coef_cw != 0 {
+        let ci = g_traj_coef_ci as usize;
+        if ci < TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG {
+            g_traj_coefs[ci] = g_traj_coef_cv;
+        }
+        g_traj_coef_cw = 0;
+    }
+
+    // ── Mode D: onboard trajectory eval ───────────────────────────────────
+    // When g_traj_mode == 1 and traj.start == 1, latch T0 on the first tick,
+    // then derive the position/velocity/acceleration/omega reference locally from
+    // the uploaded spline — no radio setpoints needed during the manoeuvre.
+    // When g_traj_mode == 0, reset T0 so the next Mode D activation gets a fresh start.
+    if g_traj_mode == 0 {
+        TRAJ_T0 = 0;
+    } else if g_traj_mode == 1 && g_traj_start == 1 && TRAJ_T0 == 0 {
+        TRAJ_T0 = tick; // latch start time
+    }
+
+    let (pd, vd, ad, omega_d) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
+        // Trajectory time in seconds (tick is in ms / FreeRTOS 1 kHz)
+        let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
+        let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
+        let (pos_rel, vel, acc, jerk) = eval_traj_onboard(t, n_segs);
+
+        let ox = g_traj_origin_x;
+        let oy = g_traj_origin_y;
+        let hz = g_traj_hover_z;
+
+        // World-frame reference: add EKF origin; z held at constant hover height
+        let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz);
+        let vd = Vec3::new(vel.x, vel.y, 0.0);
+        let ad = Vec3::new(acc.x, acc.y, 0.0);
+
+        // ω_d feedforward from flatness (the key Mode D improvement over Mode B)
+        let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, 0.0), 0.0_f32);
+
+        (pd, vd, ad, omega_d)
+    } else {
+        // Mode B passthrough: use incoming CRTP setpoint unchanged.
+        // omega_d = zero → e_omega = omega (identical to previous behaviour).
+        let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
+        let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
+        let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
+        (pd, vd, ad, Vec3::zero())
+    };
+
+    // SAFE ARMING: only enable controller when test harness sends real position
+    // (z > 0.05 m). In Mode D the laptop sends a hover keepalive, so z is always
+    // set and this check passes naturally.
     let armed = sp.position.z > 0.05_f32;
 
-    let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
-    let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
-    let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
     let yaw_d = sp.attitude.yaw * deg2rad;
 
-    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, dt, s);
+    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d, dt, s);
 
     s.omega_prev = omega;
 
