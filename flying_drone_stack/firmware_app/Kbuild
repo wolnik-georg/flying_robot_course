@@ -8,8 +8,13 @@
 # Name of the Rust crate (must match Cargo.toml [package].name with '-' → '_')
 CRATE_NAME := cf_controller_rs
 
-# Tell Kbuild to include app.o in the build
-obj-y += app.o
+# Tell Kbuild to include app.o (Rust staticlib) and traj_iface.o (C param glue) in the build
+obj-y += app.o traj_iface.o
+
+# Explicit compile rule for traj_iface.c — required because the OOT Kbuild
+# implicit C rule does not reliably resolve files in $(src) for all CF fw versions.
+$(obj)/traj_iface.o: $(src)/traj_iface.c FORCE
+	$(CC) $(c_flags) -c -o $@ $<
 
 # --whole-archive: include every symbol from the static lib (Rust uses LTO)
 # -z noexecstack:  matches LLVM's default, suppresses a linker warning
