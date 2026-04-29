@@ -267,7 +267,34 @@ const JZZ: f32 = 29.261652e-6;
 // const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 // const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 
-// second best
+// ── GAINS BLOCK OFFICIAL — exact defaults from crazyflie-firmware controller_lee.c ─────────────
+// Source: g_self defaults, Khaled Wahba (MIT licence), 2024 crazyflie-firmware.
+//
+// Official values:  KP=7, KV=4, KI_pos=0,  KR=0.007, KW=0.00115, KR_Z=0.008, KW_Z=0.002
+//                   KI_att=0.03 (attitude integral — now implemented, set 0.0 in all other blocks)
+//
+// Mathematical comparison vs our active (KP=28, KV=6, KR=0.010, KW=0.00110):
+//
+//                        att wn   att ζ  att τ_dom   pos wn   pos ζ  pos τ_dom  BW_pos  cascade
+//   Official             20.6     1.69    148 ms      16.1     4.60    565 ms    0.28Hz  3.81×
+//   Ours (KP=28)         24.6     1.35     92 ms      32.2     3.45    210 ms    0.76Hz  2.28×
+//   Our Block N (KP=16)  24.6     1.35     92 ms      24.3     6.09    497 ms    0.32Hz  5.40×
+//
+//   Figure-8 ω = 0.86 rad/s (7.28 s period):
+//     Official:    pos dominant pole = 1.8 rad/s →  2.1× trajectory  (barely adequate)
+//     Ours KP=28:  pos dominant pole = 4.8 rad/s →  5.5× trajectory  (3× better)
+//
+// VERDICT: Official position loop bandwidth is only 2.1× the figure-8 frequency (rule of
+// thumb: need ≥5×).  Our KP=28 gives 5.5×.  Prediction: official RMSE ≈ 18–22 cm.
+// KI_P set to 0.0 to match official exactly; change to 0.05 to add our position integral.
+// const KP_X: f32 = 7.0;    const KP_Y: f32 = 7.0;    const KP_Z: f32 = 7.0;
+// const KV_X: f32 = 4.0;    const KV_Y: f32 = 4.0;    const KV_Z: f32 = 4.0;
+// const KI_P: f32 = 0.0;    const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+// const KI_ATT: f32 = 0.03; // attitude integral — active only in this block
+
+// best baseline currently active
 const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
 const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
 const KI_P: f32 = 0.05;
@@ -275,6 +302,15 @@ const KI_LIMIT: f32 = 2.0;
 
 const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+const KI_ATT: f32 = 0.0;  // 0.0 = off (compiler eliminates term); set 0.03 in OFFICIAL block
+
+// ── INDI-specific attitude gains (Mode 1 & 2 only) ──────────────────────────
+// KW_INDI > KR_INDI required for 3rd-order Routh stability of the integrating τ_prev law.
+// Start conservative; raise KR_INDI slowly once hover confirmed stable.
+const KR_INDI_X: f32 = 0.003; const KR_INDI_Y: f32 = 0.003; const KR_INDI_Z: f32 = 0.003;
+const KW_INDI_X: f32 = 0.006; const KW_INDI_Y: f32 = 0.006; const KW_INDI_Z: f32 = 0.006;
+// Clamp on τ_prev to prevent runaway during startup transient
+const TAU_INDI_CLAMP: f32 = 0.05; // [Nm]
 
 // ── Controller mode selector — change this one constant to switch controllers ─
 //
@@ -301,27 +337,32 @@ const ARM_LEN: f32 = 0.046;       // motor arm length [m]
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
     i_ep: Vec3,             // position integral
+    i_error_att: Vec3,      // attitude integral (active when KI_ATT > 0, e.g. OFFICIAL block)
     last_tick: u32,
     omega_prev: Vec3,       // previous angular velocity (INDI: gyro differentiation)
     omega_dot_filt: Vec3,   // low-pass filtered angular acceleration (INDI)
-    tau_prev: Vec3,         // previous torque command (INDI memory)
+    tau_prev: Vec3,         // previous torque command (INDI memory, without gyro_comp)
+    indi_initialized: bool, // false until first INDI call seeds tau_prev
 }
 
 impl State {
     const fn zero() -> Self {
         Self {
-            i_ep: Vec3::zero(), last_tick: 0,
+            i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
             omega_prev: Vec3::zero(),
             omega_dot_filt: Vec3::zero(),
             tau_prev: Vec3::zero(),
+            indi_initialized: false,
         }
     }
     fn reset(&mut self) {
         self.i_ep = Vec3::zero();
+        self.i_error_att = Vec3::zero();
         self.last_tick = 0;
         self.omega_prev = Vec3::zero();
         self.omega_dot_filt = Vec3::zero();
         self.tau_prev = Vec3::zero();
+        self.indi_initialized = false;
     }
 }
 
@@ -330,31 +371,45 @@ static mut CTRL: State = State::zero();
 // ── Attitude INDI torque ────────────────────────────────────────────────────
 //
 // Incremental Nonlinear Dynamic Inversion (Smeur et al. 2016 / Faessler 2018).
-// Replaces the KR/KW model-based torque with an incremental correction:
 //
-//   α_des  = geometric virtual control / J  (same KR/KW as before, just rescaled)
-//   α_meas = (ω − ω_prev) / dt             (differentiated gyro, low-pass filtered)
-//   Δτ     = J · (α_des − α_meas)
-//   τ_new  = τ_prev + Δτ + gyro_comp
+//   v_des  = −KR_INDI·eR − KW_INDI·ω   (uses INDI-specific gains, NOT geometric KR/KW)
+//   α_meas = IIR_filter((ω − ω_prev) / dt)
+//   Δτ     = v_des − J · α_meas
+//   τ_base = clamp(τ_prev + Δτ)          (no gyro_comp here — feed-forward only)
+//   τ_out  = τ_base + gyro_comp
 //
-// Motor lag, blade flapping, and model errors are captured in α_meas and corrected
-// one timestep at a time — no model of those effects needed.
+// Why KW_INDI > KR_INDI: τ_prev integration makes closed-loop 3rd-order;
+// Routh–Hurwitz requires KW/J > KR/J for stability.
 //
-// Tuning: FC_GYRO_HZ is the only new parameter.
-//   Too high → noise in α_meas corrupts every correction.
-//   Too low  → phase lag destabilises the attitude loop.
-//   Start at 60 Hz; lower if oscillating at hover, raise only if response is sluggish.
+// Tuning: FC_GYRO_HZ controls the α_meas filter.
+//   Too high → gyro noise corrupts every step.  Too low → phase lag destabilises.
+//   Start at 60 Hz; lower if oscillating, raise only if response is sluggish.
 #[allow(dead_code)]
 fn indi_torque(
     er: Vec3, e_omega: Vec3, omega: Vec3, gyro_comp: Vec3,
     s: &mut State, dt: f32,
 ) -> Vec3 {
-    // Desired angular acceleration × J  (virtual control from geometric law)
+    // Virtual control using INDI-specific gains.
+    // KW_INDI > KR_INDI is required: the integrating τ_prev makes the closed-loop
+    // 3rd-order; Routh–Hurwitz demands KW/J > KR/J → KW > KR.
     let v_des = Vec3::new(
-        -KR_X * er.x - KW_X * e_omega.x,
-        -KR_Y * er.y - KW_Y * e_omega.y,
-        -KR_Z * er.z - KW_Z * e_omega.z,
+        -KR_INDI_X * er.x - KW_INDI_X * e_omega.x,
+        -KR_INDI_Y * er.y - KW_INDI_Y * e_omega.y,
+        -KR_INDI_Z * er.z - KW_INDI_Z * e_omega.z,
     );
+
+    // On first call omega_prev = 0, so α_raw = ω/dt is meaningless.
+    // Seed τ_prev from the geometric virtual control and return it directly.
+    if !s.indi_initialized {
+        s.tau_prev = v_des;
+        s.omega_dot_filt = Vec3::zero();
+        s.indi_initialized = true;
+        return Vec3::new(
+            v_des.x + gyro_comp.x,
+            v_des.y + gyro_comp.y,
+            v_des.z + gyro_comp.z,
+        );
+    }
 
     // Measured angular acceleration (raw, then filtered)
     let alpha_raw = Vec3::new(
@@ -371,20 +426,27 @@ fn indi_torque(
         k * alpha_raw.z + (1.0 - k) * s.omega_dot_filt.z,
     );
 
-    // Δτ = J · (α_des − α_meas)
+    // Δτ = v_des − J · α_meas
     let delta_tau = Vec3::new(
         v_des.x - JXX * s.omega_dot_filt.x,
         v_des.y - JYY * s.omega_dot_filt.y,
         v_des.z - JZZ * s.omega_dot_filt.z,
     );
 
-    let tau = Vec3::new(
-        s.tau_prev.x + delta_tau.x + gyro_comp.x,
-        s.tau_prev.y + delta_tau.y + gyro_comp.y,
-        s.tau_prev.z + delta_tau.z + gyro_comp.z,
+    // τ_base accumulates without gyro_comp (gyro_comp is a feed-forward, not a state).
+    // Clamp prevents runaway if noise accumulates over many steps.
+    let tau_base = Vec3::new(
+        (s.tau_prev.x + delta_tau.x).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
+        (s.tau_prev.y + delta_tau.y).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
+        (s.tau_prev.z + delta_tau.z).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
     );
-    s.tau_prev = tau;
-    tau
+    s.tau_prev = tau_base;
+
+    Vec3::new(
+        tau_base.x + gyro_comp.x,
+        tau_base.y + gyro_comp.y,
+        tau_base.z + gyro_comp.z,
+    )
 }
 
 // ── Full INDI torque ────────────────────────────────────────────────────────
@@ -428,11 +490,11 @@ fn full_indi_torque(
     // Current torque state measured from RPM (replaces tau_prev from attitude INDI)
     let tau_current = compute_tau_from_rpm(rpm_sq);
 
-    // Desired angular acceleration × J  (identical virtual control to attitude INDI)
+    // Virtual control — same INDI-specific gains as attitude INDI
     let v_des = Vec3::new(
-        -KR_X * er.x - KW_X * e_omega.x,
-        -KR_Y * er.y - KW_Y * e_omega.y,
-        -KR_Z * er.z - KW_Z * e_omega.z,
+        -KR_INDI_X * er.x - KW_INDI_X * e_omega.x,
+        -KR_INDI_Y * er.y - KW_INDI_Y * e_omega.y,
+        -KR_INDI_Z * er.z - KW_INDI_Z * e_omega.z,
     );
 
     // Measured angular acceleration — same IIR filter as attitude INDI
@@ -449,21 +511,25 @@ fn full_indi_torque(
         k * alpha_raw.z + (1.0 - k) * s.omega_dot_filt.z,
     );
 
-    // Δτ = J · (α_des − α_meas)
+    // Δτ = v_des − J · α_meas
     let delta_tau = Vec3::new(
         v_des.x - JXX * s.omega_dot_filt.x,
         v_des.y - JYY * s.omega_dot_filt.y,
         v_des.z - JZZ * s.omega_dot_filt.z,
     );
 
-    // τ_new = τ_current (from RPM, not tau_prev) + Δτ + gyro_comp
-    let tau = Vec3::new(
-        tau_current.x + delta_tau.x + gyro_comp.x,
-        tau_current.y + delta_tau.y + gyro_comp.y,
-        tau_current.z + delta_tau.z + gyro_comp.z,
+    // τ_new = τ_current (from RPM) + Δτ; gyro_comp is feed-forward, not stored in tau_prev
+    let tau_base = Vec3::new(
+        (tau_current.x + delta_tau.x).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
+        (tau_current.y + delta_tau.y).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
+        (tau_current.z + delta_tau.z).clamp(-TAU_INDI_CLAMP, TAU_INDI_CLAMP),
     );
-    s.tau_prev = tau; // keep in sync in case mode is switched mid-flight
-    tau
+    s.tau_prev = tau_base; // keep in sync in case mode is switched mid-flight
+    Vec3::new(
+        tau_base.x + gyro_comp.x,
+        tau_base.y + gyro_comp.y,
+        tau_base.z + gyro_comp.z,
+    )
 }
 
 // ── Desired rotation matrix ────────────────────────────────────────────────
@@ -509,9 +575,10 @@ fn geometric_step(
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
     let thrust = thrust_vec.dot(body_z).max(0.0);
 
-    // Reset integral when on the ground (stronger condition than before)
+    // Reset integrals on ground
     if thrust < 0.05 {
         s.i_ep = Vec3::zero();
+        s.i_error_att = Vec3::zero();
     }
 
     // Desired rotation matrix
@@ -519,6 +586,9 @@ fn geometric_step(
 
     // Rotation error eR = ½ (Rd^T R − R^T Rd)^∨
     let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
+
+    // Attitude integral — zero cost when KI_ATT = 0.0 (compiler eliminates term)
+    s.i_error_att = s.i_error_att.add(er.scale(dt));
 
     let e_omega = omega;
 
@@ -535,9 +605,9 @@ fn geometric_step(
         full_indi_torque(er, e_omega, omega, gyro_comp, s, dt, [0.0; 4]) // TODO: real RPM²
     } else {
         Vec3::new(
-            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x,
-            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y,
-            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z,
+            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - KI_ATT*s.i_error_att.x,
+            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - KI_ATT*s.i_error_att.y,
+            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - KI_ATT*s.i_error_att.z,
         )
     };
 
