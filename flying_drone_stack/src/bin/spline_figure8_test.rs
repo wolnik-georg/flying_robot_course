@@ -1,272 +1,304 @@
-//! Spline-based Figure-8 Test — starts exactly like your working fw_test, then uses full spline + flatness
+//! Mode B Figure-8 — our min-snap QP spline (degree-8) + full-state feedforward at ~20 Hz
 //!
-//! Usage: cargo run --release --bin spline_figure8_test -- --controller 6
+//! Why this beats Mode C (Python HLC Poly4D):
+//!   1. Trajectory evaluated at full degree-8 precision — Mode C exports a truncated
+//!      degree-7 Poly4D, losing the highest-frequency term.
+//!   2. Full-state setpoint: pos+vel+acc+quat+omega_d → firmware uses omega_d feedforward
+//!      so e_omega = omega - omega_d instead of e_omega = omega. This directly cancels the
+//!      attitude lag that was the bottleneck in Block I analysis.
+//!
+//! Trajectory: professor's figure-8 waypoints re-solved as our QP min-snap spline.
+//! Same as export_figure8_match: 10 segments, 7.28s rest-to-rest, ±0.92m × ±0.45m.
+//!
+//! Logs to ../Controls/logs/figure8_<YYYYMMDD_HHMMSS>.csv — same 18-column format as
+//! Python FlightLogger so analyze_flight.py works unchanged on both Mode B and Mode C data.
+//!
+//! Usage:
+//!   cargo run --release --bin spline_figure8_test
+//!   cargo run --release --bin spline_figure8_test -- --reps 3
+//!
+//! Requires OOT firmware: cd firmware_app && make cload
 
 use crazyflie_lib::{Crazyflie, NoTocCache, Value};
 use crazyflie_lib::subsystems::log::{LogBlock, LogPeriod};
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
+use std::fs;
+use std::io::{BufWriter, Write};
 use std::time::{Duration, Instant};
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
+use chrono::Local;
 
 use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
 use multirotor_simulator::planning::{compute_flatness, rot_to_quat, FlatOutput};
 
-const CF_URI: &str = "radio://0/80/2M/E7E7E7E7E7";
-const DEFAULT_CONTROLLER: u8 = 6;
+const CF_URI:       &str = "radio://0/80/2M/E7E7E7E7E7";
+const HOVER_HEIGHT: f32  = 1.0;   // m — matches Python run_figure8.py
+const MASS:         f32  = 0.031; // kg — CF2.1 + Flow Deck
+const LOG_MS:       u64  = 50;    // 20 Hz — matches Python FlightLogger period
 
-async fn add_var(block: &mut LogBlock, name: &str) -> bool {
-    match block.add_variable(name).await {
-        Ok(_)  => { println!("  [log] added: {name}"); true }
-        Err(e) => { println!("  [log] MISSING: {name} ({e})"); false }
-    }
+/// Our QP min-snap spline through the professor's figure-8 waypoints.
+/// Same spatial path as the Mode C Poly4D but evaluated at full degree-8 in Rust.
+fn figure8_trajectory() -> SplineTrajectory {
+    let waypoints = vec![
+        Waypoint { pos: Vec3::new( 0.000000,  0.000000, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.396058, -0.445604, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.922409, -0.291165, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.923174,  0.289869, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.405364,  0.450742, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.000000,  0.000000, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.402804, -0.449354, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.921641, -0.292459, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.923935,  0.288570, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.398611,  0.447039, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.000000,  0.000000, 0.0), yaw: 0.0 },
+    ];
+    let durations = vec![1.050000_f32, 0.710000, 0.620000, 0.700000, 0.560000,
+                         0.560000, 0.700000, 0.620000, 0.710000, 1.053185];
+    SplineTrajectory::plan(&waypoints, &durations, false)
+        .expect("Figure-8 QP planning failed")
 }
 
-async fn add_var_first(block: &mut LogBlock, candidates: &[&'static str]) -> Option<&'static str> {
-    for &name in candidates {
-        match block.add_variable(name).await {
-            Ok(_)  => { println!("  [log] added: {name} (from candidates)"); return Some(name); }
-            Err(_) => {}
-        }
-    }
-    println!("  [log] NONE of {:?} found in firmware TOC", candidates);
-    None
+struct Row {
+    time_s: f32, x: f32, y: f32, z: f32,
+    vx: f32, vy: f32, vz: f32,
+    roll: f32, pitch: f32, yaw: f32,
+    thrust: f32, vbat: f32,
+    gyro_x: f32, gyro_y: f32, gyro_z: f32,
+    acc_x: f32, acc_y: f32, acc_z: f32,
 }
 
-fn get_f32(map: &HashMap<String, Value>, key: &str) -> f32 {
-    map.get(key).map(|v| v.to_f64_lossy() as f32).unwrap_or(0.0)
+fn gf(map: &HashMap<String, Value>, k: &str) -> f32 {
+    map.get(k).map(|v| v.to_f64_lossy() as f32).unwrap_or(f32::NAN)
+}
+
+async fn add_var(block: &mut LogBlock, name: &str) {
+    if let Err(e) = block.add_variable(name).await {
+        eprintln!("  [log] MISSING: {name} ({e})");
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    let controller: u8 = args.iter()
-        .position(|a| a == "--controller")
+    let n_reps: u32 = args.iter()
+        .position(|a| a == "--reps")
         .and_then(|i| args.get(i + 1))
         .and_then(|s| s.parse().ok())
-        .unwrap_or(DEFAULT_CONTROLLER);
+        .unwrap_or(2);
 
-    let ctrl_name = match controller {
-        5 => "Lee (firmware)", 6 => "OOT Rust geometric",
-        n => { eprintln!("Unknown controller type {n}"); return Ok(()); }
-    };
-    println!("Controller: {ctrl_name} (type {controller}) | Mode: Spline Figure-8");
+    let traj = figure8_trajectory();
+    let traj_total = traj.total_time;
+    println!("Mode B Figure-8 | reps={n_reps} | traj={traj_total:.2}s/rep | hover={HOVER_HEIGHT}m");
+    println!("Requires OOT firmware: cd firmware_app && make cload");
 
     let link_context = LinkContext::new();
     println!("Connecting to {CF_URI} ...");
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
-    // Log blocks - identical to your working fw_test
-    let mut block_a = cf.log.create_block().await?;
-    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
-              "stabilizer.yaw", "stabilizer.thrust"] {
-        add_var(&mut block_a, v).await;
-    }
-    let stream_a = block_a.start(LogPeriod::from_millis(50)?).await?;
-
-    let mut block_b = cf.log.create_block().await?;
-    add_var(&mut block_b, "ctrltarget.z").await;
-    let m1_var = add_var_first(&mut block_b,
-        &["motor.m1req", "motor.m1pwm", "motor.m1"]).await
-        .unwrap_or("motor.m1req");
-    add_var(&mut block_b, "sys.canfly").await;
-    add_var(&mut block_b, "pm.vbat").await;
-    let stream_b = block_b.start(LogPeriod::from_millis(50)?).await?;
-
-    let _ = cf.param.set("stabilizer.controller", controller).await;
+    let _ = cf.param.set("stabilizer.controller", 6u8).await;
     sleep(Duration::from_millis(100)).await;
 
-    // Kalman reset - identical
+    // 3 log blocks — 18 variables matching Python FlightLogger columns exactly
+    let mut block_a = cf.log.create_block().await?;
+    for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
+              "stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw"] {
+        add_var(&mut block_a, v).await;
+    }
+    let stream_a = block_a.start(LogPeriod::from_millis(LOG_MS)?).await?;
+
+    let mut block_b = cf.log.create_block().await?;
+    for v in ["stateEstimate.vx", "stateEstimate.vy", "stateEstimate.vz",
+              "stabilizer.thrust", "pm.vbat"] {
+        add_var(&mut block_b, v).await;
+    }
+    let stream_b = block_b.start(LogPeriod::from_millis(LOG_MS)?).await?;
+
+    let mut block_c = cf.log.create_block().await?;
+    for v in ["gyro.x", "gyro.y", "gyro.z", "acc.x", "acc.y", "acc.z"] {
+        add_var(&mut block_c, v).await;
+    }
+    let stream_c = block_c.start(LogPeriod::from_millis(LOG_MS)?).await?;
+
+    // Kalman reset
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
     let _ = cf.param.set("kalman.resetEstimation", 1u8).await;
     sleep(Duration::from_millis(200)).await;
     let _ = cf.param.set("kalman.resetEstimation", 0u8).await;
-    println!("Kalman reset sent — place drone flat on pad, do NOT move it...");
-
-    for _ in 0..20usize {
+    println!("Kalman reset — place drone flat on pad. Waiting 4s...");
+    for _ in 0..40 {
         cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
-        sleep(Duration::from_millis(200)).await;
+        sleep(Duration::from_millis(100)).await;
     }
 
-    // Sample EKF origin - identical
-    let mut xs: Vec<f32> = Vec::new();
-    let mut ys: Vec<f32> = Vec::new();
-    let mut yaws: Vec<f32> = Vec::new();
-    let n = 40usize;
-    println!("Sampling EKF origin ({n} packets ≈ 2 s)...");
-    for _ in 0..n {
+    // Sample EKF origin (~2s)
+    let (mut xs, mut ys, mut yaws) = (Vec::new(), Vec::new(), Vec::new());
+    println!("Sampling EKF origin...");
+    for _ in 0..40 {
         cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
         if let Ok(p) = stream_a.next().await {
-            xs.push(get_f32(&p.data, "stateEstimate.x"));
-            ys.push(get_f32(&p.data, "stateEstimate.y"));
-            yaws.push(get_f32(&p.data, "stabilizer.yaw"));
+            xs.push(gf(&p.data, "stateEstimate.x"));
+            ys.push(gf(&p.data, "stateEstimate.y"));
+            yaws.push(gf(&p.data, "stabilizer.yaw"));
         }
         let _ = stream_b.next().await;
-    }
-
-    let mean_x = xs.iter().sum::<f32>() / n as f32;
-    let mean_y = ys.iter().sum::<f32>() / n as f32;
-    let mean_yaw = yaws.iter().sum::<f32>() / n as f32;
-    let spread = xs.iter().zip(ys.iter())
-        .map(|(x, y)| ((x - mean_x).powi(2) + (y - mean_y).powi(2)).sqrt())
-        .fold(0.0f32, f32::max);
-
-    let (ox, oy, oyaw_deg) = if (mean_x * mean_x + mean_y * mean_y).sqrt() > 0.15 || spread > 0.05 {
-        println!("WARNING: EKF origin unreliable, falling back to (0, 0)");
-        (0.0f32, 0.0f32, mean_yaw)
-    } else {
-        (mean_x, mean_y, mean_yaw)
-    };
-    let oyaw_rad = oyaw_deg * std::f32::consts::PI / 180.0;
-    let half_yaw  = oyaw_rad * 0.5;
-    let (qw_h, qz_h) = (half_yaw.cos(), half_yaw.sin());
-    println!("Using origin: x={ox:+.3} y={oy:+.3} yaw={oyaw_deg:+.1} deg");
-
-    println!("Takeoff in 3 s...");
-    for _ in 0..15usize {
-        cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
-        sleep(Duration::from_millis(200)).await;
-    }
-
-    let start = Instant::now();
-    let mut last_print = Instant::now();
-
-    // ── Ramp + Hover — EXACTLY the same as your working fw_test ───────────────
-    println!("=== RAMP UP (0.02 -> 0.50 m) ===");
-    for step in 0..25usize {
-        let height = 0.02 + step as f32 * (0.48 / 24.0);
-        cf.commander.setpoint_full_state(
-            ox, oy, height, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
-        ).await?;
-        sleep(Duration::from_millis(120)).await;
-
-        if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
-            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
-            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
-            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
-            let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
-            let cz     = get_f32(&pb.data, "ctrltarget.z");
-            let m1     = get_f32(&pb.data, m1_var) as i32;
-            let canfly = get_f32(&pb.data, "sys.canfly") as u8;
-            let vbat   = get_f32(&pb.data, "pm.vbat");
-
-            if last_print.elapsed() >= Duration::from_millis(400) {
-                println!("  [ramp {:.1}s] sp_z={:.2} z={:+.3} xy=({:+.3},{:+.3}) cz={:+.3} m1={:6} fw_thr={} cf={} {:.2}V",
-                    start.elapsed().as_secs_f32(), height, ekf_z, ekf_x, ekf_y, cz, m1, fw_thr, canfly, vbat);
-                last_print = Instant::now();
-            }
-        }
-    }
-
-    println!("=== HOVER at 0.50 m for 7 seconds ===");
-    let hover_end = Instant::now() + Duration::from_secs(7);
-    while Instant::now() < hover_end {
-        cf.commander.setpoint_full_state(
-            ox, oy, 0.50, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
-        ).await?;
+        let _ = stream_c.next().await;
         sleep(Duration::from_millis(50)).await;
+    }
+    let n = xs.len() as f32;
+    let ox = xs.iter().sum::<f32>() / n;
+    let oy = ys.iter().sum::<f32>() / n;
+    let oyaw_deg = yaws.iter().sum::<f32>() / n;
+    let oyaw_rad = oyaw_deg * std::f32::consts::PI / 180.0;
+    let half_yaw = oyaw_rad * 0.5;
+    let (qw0, qz0) = (half_yaw.cos(), half_yaw.sin());
+    println!("Origin: x={ox:+.3} y={oy:+.3} yaw={oyaw_deg:+.1}°");
 
-        if let (Ok(pa), Ok(pb)) = (stream_a.next().await, stream_b.next().await) {
-            let ekf_z  = get_f32(&pa.data, "stateEstimate.z");
-            let ekf_x  = get_f32(&pa.data, "stateEstimate.x");
-            let ekf_y  = get_f32(&pa.data, "stateEstimate.y");
-            let fw_thr = get_f32(&pa.data, "stabilizer.thrust") as u32;
-            let cz     = get_f32(&pb.data, "ctrltarget.z");
-            let m1     = get_f32(&pb.data, m1_var) as i32;
-            let canfly = get_f32(&pb.data, "sys.canfly") as u8;
-            let vbat   = get_f32(&pb.data, "pm.vbat");
-
-            if last_print.elapsed() >= Duration::from_secs(1) {
-                let drift = ((ekf_x - ox).powi(2) + (ekf_y - oy).powi(2)).sqrt();
-                println!("  [hover {:3}s] z={:+.3} drift={:.3}m cz={:+.3} m1={:6} fw_thr={} cf={} {:.2}V",
-                    start.elapsed().as_secs(), ekf_z, drift, cz, m1, fw_thr, canfly, vbat);
-                last_print = Instant::now();
-            }
-        }
+    // Ramp to HOVER_HEIGHT over ~5s (50 steps × ~100ms each)
+    println!("Ramp to {HOVER_HEIGHT:.1}m...");
+    for step in 0..50usize {
+        let h = 0.05 + step as f32 * (HOVER_HEIGHT - 0.05) / 49.0;
+        cf.commander.setpoint_full_state(
+            ox, oy, h, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw0, 0.0, 0.0, qz0, 0.0, 0.0, 0.0,
+        ).await?;
+        let _ = stream_a.next().await;
+        let _ = stream_b.next().await;
+        let _ = stream_c.next().await;
+        sleep(Duration::from_millis(50)).await;
     }
 
-    // ── Spline-based Figure-8 using your full motion planning code ───────────
-    println!("=== Spline Figure-8 Trajectory ===");
-
-    // Define waypoints for a nice figure-8 centered at (ox, oy)
-    let waypoints = vec![
-        Waypoint { pos: Vec3::new(ox, oy, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox + 0.25, oy, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox, oy + 0.18, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox - 0.25, oy, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox, oy - 0.18, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox + 0.25, oy, 0.50), yaw: 0.0 },
-        Waypoint { pos: Vec3::new(ox, oy, 0.50), yaw: 0.0 },
-    ];
-
-    // Equal duration per segment for simplicity
-    let durations = vec![4.0; 6];   // 6 segments × 4 s = 24 s for one figure-8
-
-    let traj = SplineTrajectory::plan(&waypoints, &durations, false)  // rest-to-rest
-        .map_err(|e| format!("Spline planning failed: {}", e))?;
-
-    let spline_start = Instant::now();
-    let total_time = Duration::from_secs(48); // two figure-8 loops
-
-    while Instant::now() < spline_start + total_time {
-        let t = (Instant::now() - spline_start).as_secs_f32();
-        let flat = traj.eval(t);
-
-        // Use flatness to get full state
-        let flat_out = FlatOutput {
-            pos: flat.pos,
-            vel: flat.vel,
-            acc: flat.acc,
-            jerk: flat.jerk,
-            snap: flat.snap,
-            yaw: flat.yaw,
-            yaw_dot: flat.yaw_dot,
-            yaw_ddot: flat.yaw_ddot,
-        };
-
-        let res = compute_flatness(&flat_out, 0.031); // your mass
-        let q = rot_to_quat(&res.rot); // [w, x, y, z]
-
+    // Hover settle 5s
+    println!("Hover settle 5s...");
+    let settle = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < settle {
         cf.commander.setpoint_full_state(
-            res.pos.x, res.pos.y, res.pos.z,
-            res.vel.x, res.vel.y, res.vel.z,
+            ox, oy, HOVER_HEIGHT, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw0, 0.0, 0.0, qz0, 0.0, 0.0, 0.0,
+        ).await?;
+        let _ = stream_a.next().await;
+        let _ = stream_b.next().await;
+        let _ = stream_c.next().await;
+    }
+
+    // ── Figure-8 trajectory ───────────────────────────────────────────────────
+    println!("=== Figure-8 x{n_reps} ({:.1}s total) ===", traj_total * n_reps as f32);
+    let traj_end = Duration::from_secs_f32(traj_total * n_reps as f32);
+    let mut rows: Vec<Row> = Vec::new();
+    let mut last_b: HashMap<String, Value> = HashMap::new();
+    let mut last_c: HashMap<String, Value> = HashMap::new();
+    let mut last_print = Instant::now();
+    let traj_start = Instant::now();
+
+    while Instant::now() < traj_start + traj_end {
+        let t = (Instant::now() - traj_start).as_secs_f32();
+        let flat = traj.eval(t % traj_total);
+
+        // Offset trajectory to world frame; z constant at hover height
+        let flat_out = FlatOutput {
+            pos:     Vec3::new(ox + flat.pos.x, oy + flat.pos.y, HOVER_HEIGHT),
+            vel:     Vec3::new(flat.vel.x, flat.vel.y, 0.0),
+            acc:     Vec3::new(flat.acc.x, flat.acc.y, 0.0),
+            jerk:    Vec3::new(flat.jerk.x, flat.jerk.y, 0.0),
+            snap:    Vec3::new(flat.snap.x, flat.snap.y, 0.0),
+            yaw: 0.0, yaw_dot: 0.0, yaw_ddot: 0.0,
+        };
+        let res = compute_flatness(&flat_out, MASS);
+        let q = rot_to_quat(&res.rot);
+
+        // Full-state setpoint: pos+vel+acc+quat+omega_d (the key Mode B advantage)
+        cf.commander.setpoint_full_state(
+            flat_out.pos.x, flat_out.pos.y, flat_out.pos.z,
+            res.vel.x,      res.vel.y,      res.vel.z,
             flat_out.acc.x, flat_out.acc.y, flat_out.acc.z,
             q[0], q[1], q[2], q[3],
             res.omega.x, res.omega.y, res.omega.z,
         ).await?;
 
-        sleep(Duration::from_millis(50)).await;
+        // stream_a drives the row rate (~20 Hz); B and C polled with short timeout
+        // so the setpoint loop is never stalled by a late log packet
+        if let Ok(pa) = stream_a.next().await {
+            if let Ok(Ok(pb)) = timeout(Duration::from_millis(15), stream_b.next()).await {
+                last_b = pb.data;
+            }
+            if let Ok(Ok(pc)) = timeout(Duration::from_millis(15), stream_c.next()).await {
+                last_c = pc.data;
+            }
+            let ts = (Instant::now() - traj_start).as_secs_f32();
+            rows.push(Row {
+                time_s: ts,
+                x:      gf(&pa.data, "stateEstimate.x"),
+                y:      gf(&pa.data, "stateEstimate.y"),
+                z:      gf(&pa.data, "stateEstimate.z"),
+                vx:     gf(&last_b,  "stateEstimate.vx"),
+                vy:     gf(&last_b,  "stateEstimate.vy"),
+                vz:     gf(&last_b,  "stateEstimate.vz"),
+                roll:   gf(&pa.data, "stabilizer.roll"),
+                pitch:  gf(&pa.data, "stabilizer.pitch"),
+                yaw:    gf(&pa.data, "stabilizer.yaw"),
+                thrust: gf(&last_b,  "stabilizer.thrust"),
+                vbat:   gf(&last_b,  "pm.vbat"),
+                gyro_x: gf(&last_c,  "gyro.x"),
+                gyro_y: gf(&last_c,  "gyro.y"),
+                gyro_z: gf(&last_c,  "gyro.z"),
+                acc_x:  gf(&last_c,  "acc.x"),
+                acc_y:  gf(&last_c,  "acc.y"),
+                acc_z:  gf(&last_c,  "acc.z"),
+            });
+
+            if last_print.elapsed() >= Duration::from_secs(1) {
+                let r = rows.last().unwrap();
+                let ref_x = ox + flat.pos.x;
+                let ref_y = oy + flat.pos.y;
+                let err_xy = ((r.x - ref_x).powi(2) + (r.y - ref_y).powi(2)).sqrt();
+                println!("  [t={t:.1}s rep={:.1}/{n_reps}] z={:.2}m xy_err={:.3}m {:.2}V",
+                    t / traj_total, r.z, err_xy, r.vbat);
+                last_print = Instant::now();
+            }
+        }
     }
 
-    // Return to center + land
-    println!("Returning to center...");
-    for _ in 0..50 {
+    // Hold at center before landing
+    println!("Hold 2s...");
+    let hold = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < hold {
         cf.commander.setpoint_full_state(
-            ox, oy, 0.50, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
+            ox, oy, HOVER_HEIGHT, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw0, 0.0, 0.0, qz0, 0.0, 0.0, 0.0,
+        ).await?;
+        let _ = stream_a.next().await;
+        let _ = stream_b.next().await;
+        let _ = stream_c.next().await;
+    }
+
+    // Land
+    println!("Landing...");
+    for step in (0..=40usize).rev() {
+        let h = (step as f32 * HOVER_HEIGHT / 40.0).max(0.05);
+        cf.commander.setpoint_full_state(
+            ox, oy, h, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            qw0, 0.0, 0.0, qz0, 0.0, 0.0, 0.0,
         ).await?;
         sleep(Duration::from_millis(100)).await;
     }
-
-    println!("=== LAND ===");
-    for step in (0..20usize).rev() {
-        let height = 0.04 + step as f32 * (0.46 / 19.0);
-        cf.commander.setpoint_full_state(
-            ox, oy, height, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            qw_h, 0.0, 0.0, qz_h, 0.0, 0.0, 0.0,
-        ).await?;
-        sleep(Duration::from_millis(150)).await;
-        let _ = stream_a.next().await;
-        let _ = stream_b.next().await;
-    }
-
     cf.commander.setpoint_rpyt(0.0, 0.0, 0.0, 0u16).await?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(200)).await;
 
-    println!("Spline Figure-8 Test finished.");
-
+    // ── Write CSV ─────────────────────────────────────────────────────────────
+    fs::create_dir_all("../Controls/logs")?;
+    let ts = Local::now().format("%Y%m%d_%H%M%S");
+    let csv_path = format!("../Controls/logs/figure8_{ts}.csv");
+    let file = fs::File::create(&csv_path)?;
+    let mut w = BufWriter::new(file);
+    writeln!(w, "time_s,x,y,z,vx,vy,vz,roll_deg,pitch_deg,yaw_deg,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z")?;
+    for r in &rows {
+        writeln!(w, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            r.time_s, r.x, r.y, r.z, r.vx, r.vy, r.vz,
+            r.roll, r.pitch, r.yaw, r.thrust, r.vbat,
+            r.gyro_x, r.gyro_y, r.gyro_z, r.acc_x, r.acc_y, r.acc_z)?;
+    }
+    println!("Saved {} rows → {csv_path}", rows.len());
+    println!("Done.");
     Ok(())
 }
