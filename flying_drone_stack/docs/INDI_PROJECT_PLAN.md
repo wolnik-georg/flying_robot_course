@@ -8,6 +8,22 @@
 
 ---
 
+## Implementation Status (updated 2026-04-30)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `IndiController` in `src/controller/indi.rs` | ✅ Complete | 9 unit tests + 8 integration tests passing |
+| Firmware Mode 1 (Attitude INDI, gyro-only) | ✅ Complete | Set `CONTROLLER_MODE=1`, `make cload` — no RPM deck needed |
+| Firmware Mode 2 (Full INDI, RPM-based) | ✅ Complete (software) | 4-line RPM read + bench `KT` ID needed before first flight |
+| G2 yaw coupling term | ✅ Complete | `du_prev_z` state + G2 patch in `indi_torque()` |
+| Sim validation vs geometric | ✅ Complete | 500 Hz figure-8: ratio=1.16× (instant actuators); phase analysis documented |
+| `tests/test_firmware_indi_equiv.rs` | ✅ 5/5 passing | Firmware INDI ↔ sim INDI equivalence verified |
+| All flight scripts (Rust + Python) | ✅ Work with all modes | Controller switch is internal to firmware |
+| **First hardware flight (Mode 1)** | 🔲 Next step | Flash, hover-test, compare CSV logs vs geometric |
+| **RPM deck integration (Mode 2)** | 🔲 Hardware needed | RPM deck + bench KT identification |
+
+---
+
 ## 1. Goal
 
 Leverage the **existing INDI controller in the Crazyflie firmware** (`controller_indi.c`,
@@ -186,13 +202,14 @@ The Rust stack currently runs on the laptop. Two upgrade paths exist:
 - [ ] Confirm control loop rate approach (firmware vs companion)
 
 ### Phase 1 — Simulation baseline + trajectory design (weeks 3–6, ~65 h)
-- [ ] Implement `IndiController` in `src/controller/indi.rs` matching firmware INDI law
+- [x] Implement `IndiController` in `src/controller/indi.rs` matching firmware INDI law
       (validates understanding of the algorithm before touching hardware)
-- [ ] Validate hover: INDI sim matches SE(3) geometric sim
+- [x] Validate hover: INDI sim matches SE(3) geometric sim
 - [ ] Design aggressive trajectory profiles: fast circle, flip thrust pulse, aggressive climb
 - [ ] Simulate flip: open-loop thrust spike → INDI stabilisation after rotation
-- [ ] Compare INDI vs SE(3) geometric in sim: tracking error, control effort, robustness
-- [ ] Identify expected G matrix values from sim dynamics (cross-check with hover ID)
+- [x] Compare INDI vs SE(3) geometric in sim: tracking error, control effort, robustness
+      (500 Hz figure-8: ratio=1.16× with instant actuators; phase analysis documents hardware vs sim difference)
+- [x] Identify expected G matrix values from sim dynamics (cross-check with hover ID)
 
 **Go/no-go for Phase 2:** INDI stable in hover sim, flip trajectory completes in sim.
 

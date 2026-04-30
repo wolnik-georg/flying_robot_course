@@ -5,6 +5,10 @@
 //! "Geometric tracking control of a quadrotor UAV on SE (3)." 49th IEEE Conference
 //! on Decision and Control (CDC), 2010.
 
+// INDI controller — additive submodule, does not touch any existing code.
+pub mod indi;
+pub use indi::{IndiController, Butterworth2};
+
 use crate::math::Vec3;
 use crate::dynamics::{MultirotorState, MultirotorParams};
 
