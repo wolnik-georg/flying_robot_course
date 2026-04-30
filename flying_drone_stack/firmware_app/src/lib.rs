@@ -325,6 +325,14 @@ const CONTROLLER_MODE: u8 = 0;
 
 const FC_GYRO_HZ: f32 = 60.0;  // gyro LP filter cutoff [Hz] — modes 1 & 2, range 30–80 Hz
 
+// G2 — propeller gyroscopic yaw coupling (Smeur et al. 2016, eqn 14).
+// Affects only the yaw torque increment: δτ_z = (α_err_z + G2·δτ_z_prev) / (G1_z + G2)
+// At zero spin rate the correction is zero; effect grows with yaw rate and δτ_z.
+// Set to 0.0 until bench-identified (safe: G2=0 reduces to standard INDI).
+// CF2.x firmware default is 0.14 (STABILIZATION_INDI_G2_R in controller_indi.c);
+// identify by measuring yaw step response and matching the model.
+const G2: f32 = 0.0;
+
 // Motor model constants — needed for CONTROLLER_MODE = 2 (full INDI) only.
 // KT: identify on thrust stand (thrust vs RPM²) before first full-INDI flight.
 // Motor spin directions: verify against powerDistributionForceTorque.c in crazyflie-firmware.
@@ -342,6 +350,7 @@ struct State {
     omega_prev: Vec3,       // previous angular velocity (INDI: gyro differentiation)
     omega_dot_filt: Vec3,   // low-pass filtered angular acceleration (INDI)
     tau_prev: Vec3,         // previous torque command (INDI memory, without gyro_comp)
+    du_prev_z: f32,         // previous yaw torque increment δτ_z [Nm] — G2 coupling term
     indi_initialized: bool, // false until first INDI call seeds tau_prev
 }
 
@@ -352,6 +361,7 @@ impl State {
             omega_prev: Vec3::zero(),
             omega_dot_filt: Vec3::zero(),
             tau_prev: Vec3::zero(),
+            du_prev_z: 0.0,
             indi_initialized: false,
         }
     }
@@ -362,6 +372,7 @@ impl State {
         self.omega_prev = Vec3::zero();
         self.omega_dot_filt = Vec3::zero();
         self.tau_prev = Vec3::zero();
+        self.du_prev_z = 0.0;
         self.indi_initialized = false;
     }
 }
@@ -586,10 +597,23 @@ fn indi_torque(
     );
 
     // Δτ = v_des − J · α_meas
+    //
+    // Roll and pitch axes: standard INDI increment.
+    //
+    // Yaw axis: G2 gyroscopic coupling correction (Smeur 2016, eq. 14).
+    //   δτ_z = (v_des.z − J_z · α_meas.z + G2 · δτ_z_prev) / (1 + G2)
+    //
+    // Firmware G1_z is implicitly 1.0 (gains already in [Nm/rad] scale, so
+    // dividing by g1=1 leaves units unchanged).  With G2=0 this is identical
+    // to the roll/pitch formula; with G2>0 previous yaw increment feeds back.
+    let g1z_g2 = 1.0_f32 + G2;
+    let delta_tau_z = (v_des.z - JZZ * s.omega_dot_filt.z + G2 * s.du_prev_z) / g1z_g2;
+    s.du_prev_z = delta_tau_z;
+
     let delta_tau = Vec3::new(
         v_des.x - JXX * s.omega_dot_filt.x,
         v_des.y - JYY * s.omega_dot_filt.y,
-        v_des.z - JZZ * s.omega_dot_filt.z,
+        delta_tau_z,
     );
 
     // τ_base accumulates without gyro_comp (gyro_comp is a feed-forward, not a state).
@@ -607,8 +631,6 @@ fn indi_torque(
         tau_base.z + gyro_comp.z,
     )
 }
-
-// ── Full INDI torque ────────────────────────────────────────────────────────
 //
 // Same incremental law as attitude INDI but τ_current comes from actual per-motor
 // RPM² via the motor model G(Ω), instead of being carried from the previous step:
@@ -670,11 +692,14 @@ fn full_indi_torque(
         k * alpha_raw.z + (1.0 - k) * s.omega_dot_filt.z,
     );
 
-    // Δτ = v_des − J · α_meas
+    // Δτ = v_des − J · α_meas (yaw axis: G2 coupling, same formula as indi_torque)
+    let g1z_g2      = 1.0_f32 + G2;
+    let delta_tau_z = (v_des.z - JZZ*s.omega_dot_filt.z + G2*s.du_prev_z) / g1z_g2;
+    s.du_prev_z     = delta_tau_z;
     let delta_tau = Vec3::new(
         v_des.x - JXX * s.omega_dot_filt.x,
         v_des.y - JYY * s.omega_dot_filt.y,
-        v_des.z - JZZ * s.omega_dot_filt.z,
+        delta_tau_z,
     );
 
     // τ_new = τ_current (from RPM) + Δτ; gyro_comp is feed-forward, not stored in tau_prev

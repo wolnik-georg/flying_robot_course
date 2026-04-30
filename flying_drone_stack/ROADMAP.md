@@ -1,7 +1,7 @@
 # Flying Drone Stack — Roadmap
 
-> Last updated: 2026-04-22
-> Tests: 249 passing, 0 failures
+> Last updated: 2026-04-30
+> Tests: 258 lib + 194 integration = **452 passing, 0 failures**
 > Build: `cargo build --release` clean
 
 ---
@@ -30,7 +30,7 @@
 |-----------|------|--------------|
 | Out-of-tree SE(3) controller | `firmware_app/` | `no_std` Rust, `bindgen` FFI, `controlModeForceTorque` at 500 Hz on STM32 |
 | Full-state CRTP setpoint | `vendor/crazyflie-lib/` | `setpoint_full_state` (type 6): pos+vel+acc+quat+ω in 29-byte packet |
-| INDI scaffold (3-way) | `firmware_app/src/lib.rs` | `CONTROLLER_MODE` 0/1/2 = Geometric / Attitude INDI / Full INDI; all implemented, mode 0 active |
+| INDI controller (3-mode) | `firmware_app/src/lib.rs`, `src/controller/indi.rs` | `CONTROLLER_MODE` 0/1/2 = Geometric / Attitude INDI / Full INDI; **all fully implemented**, mode 0 active |
 
 ### Trajectory flight modes
 | Mode | What it does |
@@ -168,10 +168,12 @@ Allows loop detection when revisiting places from a different direction.
 
 ```bash
 # Build & test
-cargo test                                          # 249 tests
+cargo test                                          # 452 tests (258 lib + 194 integration)
 cargo build --release                               # clean build
 
 # Flash onboard controller (required for spline test binaries)
+# Mode 0 = Geometric (default), Mode 1 = Attitude INDI, Mode 2 = Full INDI (RPM deck)
+# Change CONTROLLER_MODE in firmware_app/src/lib.rs, then:
 cd firmware_app && make cload
 
 # Fly — position setpoints (20 Hz, full SLAM stack)
@@ -180,6 +182,7 @@ cargo run --release --bin main -- --maneuver explore --ai-deck
 
 # Fly — Rust live full-state Mode B (25 Hz, requires firmware flashed above)
 cargo run --release --bin hover_test
+cargo run --release --bin indi_hover               # INDI hover validation (30 s, logs to runs/)
 cargo run --release --bin spline_circle_test
 cargo run --release --bin helix_test        # and fast_helix_test
 cargo run --release --bin flip_test         # and fast_flip_test

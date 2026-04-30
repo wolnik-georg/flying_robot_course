@@ -297,9 +297,60 @@ cargo run --release --bin main -- --maneuver hover   --ai-deck
 cargo run --release --bin main -- --maneuver circle  --ai-deck
 cargo run --release --bin main -- --maneuver explore --ai-deck
 
+# Tier 8 — INDI (set CONTROLLER_MODE=1 in firmware_app/src/lib.rs, then make cload)
+cargo run --release --bin indi_hover
+~/.pyenv/versions/flying_robots/bin/python Controls/run_figure8.py
+
 # Offline analysis
 cargo run --release --bin mekf_eval  -- runs/<file>.csv
 cargo run --release --bin slam_eval  -- runs/<file>.csv
 python3 scripts/plot_flight_diagnostic.py
 python3 scripts/plot_shadow_eval.py runs/<file>.csv
 ```
+
+---
+
+## Tier 8 — INDI Controller Validation (Mode 1, no RPM deck)
+
+**Goal:** confirm INDI Mode 1 (gyro-only) is stable in hover and tracks trajectories comparably
+to the geometric baseline. Run **after** Tiers 0–3 pass with geometric controller.
+
+**Prerequisites:**
+- Tiers 0–3 passed with `CONTROLLER_MODE = 0`
+- In `firmware_app/src/lib.rs`: set `CONTROLLER_MODE = 1`
+- Reflash: `cd firmware_app && make cload`
+
+### Step 1 — INDI hover (30 s)
+```bash
+cargo run --release --bin indi_hover
+```
+**Pass criteria:**
+
+| Metric | Threshold |
+|--------|-----------|
+| Position RMSE XY | < 0.15 m (same as geometric) |
+| Position RMSE Z | < 0.05 m |
+| Flight completes without crash | ✓ |
+| `indi_hover_<date>.csv` written to `runs/` | ✓ |
+
+**Tuning if unstable:** lower `FC_GYRO_HZ` (try 30 Hz) or adjust `ACT_DYN = dt/(dt + tau_motor)`.
+
+### Step 2 — Compare INDI vs geometric on figure-8
+Run back-to-back with both modes; compare XY RMSE from CSV files:
+```bash
+# With CONTROLLER_MODE=1 flashed:
+~/.pyenv/versions/flying_robots/bin/python Controls/run_figure8.py
+
+# Reflash CONTROLLER_MODE=0, then:
+~/.pyenv/versions/flying_robots/bin/python Controls/run_figure8.py
+```
+**Expected:** INDI XY RMSE ≤ geometric RMSE (motor-lag compensation active on hardware).
+If INDI is > 2× worse, check `ACT_DYN` matches drone motor time constant (bench-measure τ).
+
+### Step 3 — Full RPM INDI (Mode 2, requires RPM deck)
+1. Bench-identify `KT`: thrust-stand sweep at 4–5 throttle levels, fit `T = KT · RPM²`
+2. Update `const KT` in `firmware_app/src/lib.rs`
+3. Wire RPM sensor readings at the Mode 2 call site (4-line change using `sens.motor.m1–m4`)
+4. Set `CONTROLLER_MODE = 2`, reflash, repeat Steps 1–2
+5. Expected: further RMSE reduction vs Mode 1 (true actuator feedback, no model error)
+

@@ -223,25 +223,60 @@ inner loop at 500 Hz.
 
 ---
 
-## 8. INDI Extension Point
+## 8. INDI Controller (3-Mode System)
 
-The file is structured for a future INDI rate controller.  `controllerOutOfTree` already has:
-- `sensors.gyro` at 500 Hz — exact input for the incremental angular-rate term `Δω`
-- `CTRL.omega_prev: Vec3` **already stored** in `State` every cycle (updated at line ~262)
+The firmware implements three controllers selectable via `CONTROLLER_MODE` in `src/lib.rs`.
+All three are fully implemented and compile-ready — switch by changing the constant and reflashing.
 
-The extension requires only replacing `geometric_step()` with an incremental attitude law:
+```rust
+const CONTROLLER_MODE: u8 = 0;   // 0 = Geometric (default, validated)
+                                  // 1 = Attitude INDI  (gyro-only, no RPM deck needed)
+                                  // 2 = Full INDI      (RPM deck required — see prerequisites)
 ```
-Δτ = J · (ω̇_des − ω̇_filt)
-ω̇_filt ≈ (omega − omega_prev) / dt
+
+### Mode 0 — SE(3) Geometric (active default)
+Model-based `−KR·eR − KW·eω + ω×(J·ω)` torque. Unchanged from the course baseline.
+All existing Rust and Python flight scripts work with this mode.
+
+### Mode 1 — Attitude INDI (gyro-only)
+Replaces the KR/KW torque law with an incremental law:
 ```
+ω̇_filt ≈ IIR((ω − ω_prev) / dt,  fc = FC_GYRO_HZ)
+Δτ = J · (α_des − ω̇_filt)
+τ_new = τ_prev + Δτ
+```
+- No RPM deck needed. Uses `act_dyn` first-order motor model to estimate `τ_prev`.
+- G2 yaw coupling correction (Smeur 2016) implemented via `du_prev_z` state.
+- **To activate:** set `CONTROLLER_MODE = 1`, `make cload`, run `cargo run --release --bin indi_hover`.
+- All existing flight scripts work unchanged (controller switch is firmware-internal).
 
-Steps:
-1. Add `omega_dot_filtered: Vec3` to `State` (optional low-pass)
-2. Compute `omega_dot ≈ (omega - s.omega_prev) / dt` in `controllerOutOfTree`
-3. Replace the attitude (KR/KW) terms in `geometric_step` with the incremental law
-4. Keep the position P+I outer loop unchanged
+### Mode 2 — Full INDI (RPM-based)
+Replaces the modelled `τ_prev` with the actual torque computed from per-motor RPM²:
+```
+τ_current = G(Ω) · [Ω₁², Ω₂², Ω₃², Ω₄²]    ← measured via RPM deck
+```
+The math is fully implemented (`compute_tau_from_rpm`, `full_indi_torque`).
+The call site passes `[0.0; 4]` pending the 4-line RPM sensor read.
 
-No Kbuild, bindgen, or firmware integration changes needed — all scaffolding is in place.
+**Prerequisites before setting `CONTROLLER_MODE = 2`:**
+1. RPM deck physically fitted to the drone
+2. `KT` identified on bench (thrust-stand sweep; replace the placeholder `3.16e-10`)
+3. Replace `[0.0; 4]` at the Mode 2 call site with `[sens.motor.m1² … m4²]`
+
+### Key constants (Mode 1 & 2)
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `FC_GYRO_HZ` | 60.0 Hz | Butterworth cutoff for angular acceleration filter |
+| `ACT_DYN` | 0.1 | First-order motor model coefficient; `τ_motor = dt*(1−α)/α` |
+| `G2` | 0.0 | Yaw gyroscopic coupling; 0 = standard INDI (safe default) |
+| `KT` | 3.16e-10 | Thrust coefficient [N/RPM²] — **placeholder, bench-identify before Mode 2** |
+
+### Simulation equivalence
+`tests/test_firmware_indi_equiv.rs` (5/5 passing) verifies the firmware INDI law
+produces identical torques to `src/controller/indi.rs` at matching gains.
+`tests/test_indi_vs_geometric.rs` (5/5 passing) validates sim behaviour including
+a phase-stability analysis documenting the noise-free vs hardware difference.
 
 ---
 

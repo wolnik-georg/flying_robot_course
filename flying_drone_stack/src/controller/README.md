@@ -271,3 +271,67 @@ Default gains (`GeometricController::default`, `src/controller/mod.rs:91`):
 | `tests/test_geometric_controller.rs` | Gain sanity, hover, position tracking convergence direction |
 | `tests/test_controller_detailed.rs` | Detailed step-by-step: error directions, torque signs, jerk feedforward |
 | `tests/test_hover_control_loop.rs` | Closed-loop: controller + dynamics converges to 1m hover in <5 s |
+
+---
+
+## 10. INDI Controller — `src/controller/indi.rs`
+
+`IndiController` implements the same `Controller` trait as `GeometricController` and is a drop-in
+replacement. It uses an incremental control law that needs only angular rate measurements and a
+first-order motor model — robust to model uncertainty and motor-to-motor variation.
+
+### 10.1 Architecture
+
+The outer position loop is **identical** to the geometric controller (same `Kp`, `Kv`, `Ki`).
+Only the inner attitude loop differs:
+
+```
+Geometric:    τ = −K_R·e_R − K_ω·e_ω + ω×(J·ω)          ← model-based
+INDI:         Δτ = J·(α_des − ω̇_filt)                    ← incremental
+              τ_new = τ_prev + Δτ
+```
+
+Where:
+- `α_des = −(K_R/J)·e_R − (K_ω/J)·e_ω` — desired angular acceleration
+- `ω̇_filt` — measured angular acceleration (differentiated + Butterworth-filtered gyro)
+- `τ_prev` — previous torque (carried via first-order actuator dynamics model)
+
+### 10.2 Critical Gain Scale
+
+INDI gains must be in **angular-acceleration units** (rad/s²/rad), not Nm/rad:
+
+```
+kr_indi = kr_nm / J        // e.g. 0.007 / 16.6e-6 ≈ 421 rad/s²/rad
+kw_indi = kw_nm / J
+```
+
+Using firmware-scale gains (Nm/rad) directly produces torques ~5×10⁻⁸ Nm (invisible).
+The `g1 = 1/J` control effectiveness matrix ensures `du = alpha_err / g1 = kr_nm * e_r` Nm.
+
+### 10.3 Key Parameters
+
+| Parameter | Typical value | Description |
+|-----------|--------------|-------------|
+| `tau_filter_hz` | 60.0 Hz | Butterworth-2 cutoff for `ω̇_filt`; essential on hardware (gyro noise) |
+| `act_dyn` | 0.1 (500 Hz) | First-order motor lag: `τ_motor = dt*(1−α)/α`. **Rate-dependent**: use `dt/(dt+τ_motor)` |
+| `g1` | `[1/Jx, 1/Jy, 1/Jz]` | Control effectiveness (maps torque increment → angular acceleration) |
+
+**`act_dyn` rate dependency:** designed for 500 Hz. At 100 Hz, `α=0.1` gives 100 ms motor τ
+(5× too slow). Recompute as `act_dyn = dt / (dt + tau_motor)` when changing loop rate.
+
+### 10.4 Phase Stability Note
+
+In a **noise-free simulator**, `tau_filter` adds −27° phase at 10 Hz even without noise.
+With real motor lag (+−62°), total INDI phase ≈ −89° → near stability boundary in sim.
+On **hardware**, the filter is essential (gyro noise) and INDI outperforms geometric.
+Test 5 in `tests/test_indi_vs_geometric.rs` documents this with a `is_finite()` assertion
+rather than a ratio assertion.
+
+### 10.5 Tests
+
+| Test file | What it covers |
+|-----------|---------------|
+| `src/controller/indi.rs` (inline, 9 tests) | Gain scale, hover thrust, torque directions, Butterworth filter |
+| `tests/test_indi_controller.rs` (8 tests) | Hover matches geometric thrust; 3 s closed-loop stable < 2 cm |
+| `tests/test_indi_vs_geometric.rs` (5 tests) | Scale guards, hover stable, thrust equiv, 500 Hz figure-8, phase analysis |
+| `tests/test_firmware_indi_equiv.rs` (5 tests) | Firmware `indi_torque()` ↔ `IndiController` identical at matching gains |
