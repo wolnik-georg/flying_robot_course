@@ -1,28 +1,40 @@
-//! Mode D Figure-8 Speed Sweep — identical to onboard_figure8.rs but with a
-//! --speed flag that scales the trajectory to run faster.
+//! Mode D Figure-8 — onboard spline evaluation with ω_d feedforward at 500 Hz
+//!
+//! Architecture:
+//!   Laptop  → uploads 190 spline coefficients once before flight (≈3 s)
+//!           → sets traj.mode=1, traj.start=1
+//!           → sends hover keepalive setpoints during manoeuvre (safety watchdog)
+//!   Firmware → evaluates degree-8 spline locally at 500 Hz (every 2 ms tick)
+//!           → computes ω_d from jerk via flatness, uses e_ω = ω − ω_d
+//!           → NO radio setpoint lag during trajectory
+//!
+//! Why this beats Mode B (spline_figure8_test.rs):
+//!   Mode B: trajectory evaluated on laptop at 20 Hz, sent over radio → 25 ms stale
+//!           reference + jitter.  ω_d was computed but arrived too late to help.
+//!   Mode D: reference fresh every 2 ms; ω_d computed in the same controller tick
+//!           that uses it → zero stale lag, proper angular velocity feedforward.
+//!
+//! Expected improvement: XY RMSE 5–7 cm (vs ~10 cm for Mode B/C), pitch error 5–7°
+//! (vs ~11°), tighter corners on the direction reversals.
+//!
+//! Backwards compatibility: traj.mode defaults to 0, so this binary must be run
+//! explicitly; spline_figure8_test.rs (Mode B) is completely unchanged.
+//!
+//! Coefficient upload protocol:
+//!   for each coef (0..189):
+//!     set traj.ci = index
+//!     set traj.cv = value
+//!     set traj.cw = 1        (commit)
+//!     poll traj.cw == 0      (firmware clears within 2 ms)
+//!
+//! After flight the CSV is saved to ../Controls/logs/figure8_onboard_<timestamp>.csv
+//! in the same 18-column format as Mode B/C so analyze_flight.py works unchanged.
 //!
 //! Usage:
-//!   cargo run --release --bin onboard_figure8_speed                    # default 1.0× (identical to onboard_figure8)
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 1.2     # 20% faster
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 1.4     # 40% faster
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 1.6     # 60% faster
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 1.8     # 80% faster
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 2.0     # 2× faster
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 0.8     # 20% slower (useful for debugging)
-//!   cargo run --release --bin onboard_figure8_speed -- --speed 1.5 --reps 2
+//!   cargo run --release --bin onboard_figure8
+//!   cargo run --release --bin onboard_figure8 -- --reps 2
 //!
-//! How speed scaling works:
-//!   All segment durations are divided by the speed factor.
-//!   The waypoints (positions) are unchanged — same shape, just traversed faster.
-//!   The QP solver re-optimises the spline for the new timing, so acc/jerk scale
-//!   up automatically:  acc ∝ speed², jerk ∝ speed³.
-//!   This means at 1.8× the peak acceleration is ~3.2× higher — the geometric
-//!   controller and EKF will hit their limits somewhere in this range.
-//!
-//! The CSV is saved as figure8_speed<N>x_<timestamp>.csv so analyze_flight.py
-//! works unchanged and results are easy to compare across speeds.
-//!
-//! Nothing in onboard_figure8.rs or any other existing file is modified.
+//! Requires firmware with traj_iface.c: cd firmware_app && make cload
 
 use crazyflie_lib::{Crazyflie, NoTocCache, Value};
 use crazyflie_lib::subsystems::log::{LogBlock, LogPeriod};
@@ -37,12 +49,12 @@ use chrono::Local;
 use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
 
 const CF_URI:       &str = "radio://0/80/2M/E7E7E7E7E7";
-const HOVER_HEIGHT: f32  = 1.0;
-const LOG_MS:       u64  = 50;   // 20 Hz — same as baseline for fair comparison
+const HOVER_HEIGHT: f32  = 1.0;   // m — must match traj.hz uploaded to firmware
+const MASS:         f32  = 0.031; // kg — CF2.1 + Flow Deck
+const LOG_MS:       u64  = 50;    // 20 Hz logging (same as Mode B/C for fair comparison)
 
-/// Figure-8 waypoints (identical to onboard_figure8.rs).
-/// Durations are the baseline 1× timing; the speed factor is applied below.
-fn figure8_trajectory(speed: f32) -> SplineTrajectory {
+/// Same figure-8 trajectory as Mode B — professor's waypoints re-solved as QP min-snap.
+fn figure8_trajectory() -> SplineTrajectory {
     let waypoints = vec![
         Waypoint { pos: Vec3::new( 0.000000,  0.000000, 0.0), yaw: 0.0 },
         Waypoint { pos: Vec3::new( 0.396058, -0.445604, 0.0), yaw: 0.0 },
@@ -56,14 +68,15 @@ fn figure8_trajectory(speed: f32) -> SplineTrajectory {
         Waypoint { pos: Vec3::new(-0.398611,  0.447039, 0.0), yaw: 0.0 },
         Waypoint { pos: Vec3::new( 0.000000,  0.000000, 0.0), yaw: 0.0 },
     ];
-    // Baseline durations ÷ speed factor → shorter segments → faster traversal.
-    let base_durations = [1.050000_f32, 0.710000, 0.620000, 0.700000, 0.560000,
-                          0.560000, 0.700000, 0.620000, 0.710000, 1.053185];
-    let durations: Vec<f32> = base_durations.iter().map(|d| d / speed).collect();
+    let durations = vec![1.050000_f32, 0.710000, 0.620000, 0.700000, 0.560000,
+                         0.560000, 0.700000, 0.620000, 0.710000, 1.053185];
     SplineTrajectory::plan(&waypoints, &durations, false)
         .expect("Figure-8 QP planning failed")
 }
 
+/// Serialise trajectory segments into the firmware coefficient buffer layout.
+///
+/// Each segment → [duration, cx0..cx8, cy0..cy8] (19 f32 values).
 fn serialise_coefs(traj: &SplineTrajectory) -> Vec<f32> {
     let mut out = Vec::with_capacity(traj.segments.len() * 19);
     for seg in &traj.segments {
@@ -93,10 +106,15 @@ async fn add_var(block: &mut LogBlock, name: &str) {
     }
 }
 
+/// Upload a single f32 coefficient at `index` using the ci/cv/cw protocol.
+///
+/// No polling needed: radio RTT (~5 ms) >> firmware processing time (2 ms at 500 Hz).
+/// By the time the next param write reaches the drone, the previous cw has been cleared.
 async fn upload_coef(cf: &Crazyflie, index: u8, value: f32) -> Result<(), Box<dyn std::error::Error>> {
     cf.param.set("traj.ci", index).await?;
     cf.param.set("traj.cv", value).await?;
     cf.param.set("traj.cw", 1u8).await?;
+    // Small gap so radio doesn't saturate; firmware clears cw within 2 ms.
     sleep(Duration::from_millis(8)).await;
     Ok(())
 }
@@ -104,34 +122,20 @@ async fn upload_coef(cf: &Crazyflie, index: u8, value: f32) -> Result<(), Box<dy
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-
-    let speed: f32 = args.iter()
-        .position(|a| a == "--speed")
-        .and_then(|i| args.get(i + 1))
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(1.0);
-
     let n_reps: u32 = args.iter()
         .position(|a| a == "--reps")
         .and_then(|i| args.get(i + 1))
         .and_then(|s| s.parse().ok())
-        .unwrap_or(1);
-
-    if speed < 0.5 || speed > 3.0 {
-        eprintln!("--speed must be between 0.5 and 3.0. Got {speed}");
-        std::process::exit(1);
-    }
+        .unwrap_or(2);
 
     // ── Plan trajectory ───────────────────────────────────────────────────
-    let traj = figure8_trajectory(speed);
+    let traj = figure8_trajectory();
     let traj_total = traj.total_time;
     let coefs = serialise_coefs(&traj);
     let n_segs = traj.segments.len();
-    let peak_speed_ms = 1.34 * speed; // baseline peak was 1.34 m/s
-    println!("Mode D Speed Sweep | speed={speed:.1}× | traj={traj_total:.2}s/rep | \
-              peak≈{peak_speed_ms:.2}m/s | reps={n_reps}");
-    println!("  accel scales as speed²={:.2}×, jerk as speed³={:.2}×",
-             speed * speed, speed * speed * speed);
+    println!("Mode D Onboard Figure-8 | reps={n_reps} | traj={traj_total:.2}s/rep | \
+              {n_segs} segs | {} coefs", coefs.len());
+    println!("Requires updated OOT firmware: cd firmware_app && make cload");
 
     // ── Connect ───────────────────────────────────────────────────────────
     let link_context = LinkContext::new();
@@ -139,17 +143,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cf = Crazyflie::connect_from_uri(&link_context, CF_URI, NoTocCache).await?;
     println!("Connected.");
 
+    // Select geometric controller (mode 6)
     let _ = cf.param.set("stabilizer.controller", 6u8).await;
     sleep(Duration::from_millis(100)).await;
 
+    // ── Firmware check: verify traj params exist ──────────────────────────
+    // If traj.mode is missing the firmware hasn't been updated. Fail fast here
+    // rather than silently uploading to /dev/null and not flying.
     cf.param.set("traj.mode", 0u8).await
         .map_err(|e| format!(
             "traj.mode param not found ({e}). Flash updated firmware first:\n  \
-             cd firmware_app && make"
+             cd firmware_app && make cload"
         ))?;
     println!("Firmware OK — traj params present.");
 
-    // ── Log blocks ────────────────────────────────────────────────────────
+    // ── Log blocks (identical to Mode B for fair comparison) ──────────────
     let mut block_a = cf.log.create_block().await?;
     for v in ["stateEstimate.x", "stateEstimate.y", "stateEstimate.z",
               "stabilizer.roll", "stabilizer.pitch", "stabilizer.yaw"] {
@@ -181,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(100)).await;
     }
 
-    // ── Sample EKF origin ─────────────────────────────────────────────────
+    // ── Sample EKF origin (~2 s) ──────────────────────────────────────────
     let (mut xs, mut ys, mut yaws) = (Vec::new(), Vec::new(), Vec::new());
     println!("Sampling EKF origin...");
     for _ in 0..40 {
@@ -205,6 +213,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Origin: x={ox:+.3} y={oy:+.3} yaw={oyaw_deg:+.1}°");
 
     // ── Upload trajectory coefficients ────────────────────────────────────
+    // 190 coefficients (10 segs × 19 floats) at ~15 ms per coef ≈ 3 s total.
     println!("Uploading {} coefficients ({} segments)...", coefs.len(), n_segs);
     let upload_start = Instant::now();
     for (idx, &val) in coefs.iter().enumerate() {
@@ -215,13 +224,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("Upload complete in {:.1} s", upload_start.elapsed().as_secs_f32());
 
+    // Upload metadata: number of segments, EKF origin, hover height
     cf.param.set("traj.nseg",  n_segs as u8).await?;
     cf.param.set("traj.ox",    ox).await?;
     cf.param.set("traj.oy",    oy).await?;
     cf.param.set("traj.hz",    HOVER_HEIGHT).await?;
     println!("Metadata uploaded: nseg={n_segs} ox={ox:.3} oy={oy:.3} hz={HOVER_HEIGHT}");
 
-    // ── Ramp to hover ─────────────────────────────────────────────────────
+    // ── Ramp to hover (~5 s) ──────────────────────────────────────────────
     println!("Ramp to {HOVER_HEIGHT:.1} m ...");
     for step in 0..50usize {
         let h = 0.05 + step as f32 * (HOVER_HEIGHT - 0.05) / 49.0;
@@ -235,7 +245,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(50)).await;
     }
 
-    // ── Hover settle ──────────────────────────────────────────────────────
+    // ── Hover settle (5 s) ────────────────────────────────────────────────
     println!("Hover settle 5 s...");
     let settle = Instant::now() + Duration::from_secs(5);
     while Instant::now() < settle {
@@ -248,14 +258,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = stream_c.next().await;
     }
 
-    // ── Trigger onboard trajectory ────────────────────────────────────────
+    // ── Switch to Mode D and trigger onboard trajectory ───────────────────
+    // Set mode=1 FIRST so the firmware is ready, then set start=1 to latch T0.
     cf.param.set("traj.mode",  1u8).await?;
-    sleep(Duration::from_millis(50)).await;
+    sleep(Duration::from_millis(50)).await; // one controller tick safety margin
     cf.param.set("traj.start", 1u8).await?;
-    println!("=== Figure-8 at {speed:.1}× speed ×{n_reps} ({:.1} s total) ===",
+    println!("=== Mode D onboard Figure-8 ×{n_reps} ({:.1} s total) ===",
              traj_total * n_reps as f32);
 
-    // ── Log during flight ─────────────────────────────────────────────────
+    // ── Trajectory logging ────────────────────────────────────────────────
+    // The firmware drives the drone autonomously.  We send a hover keepalive
+    // setpoint every ~50 ms so the CF setpoint watchdog doesn't trigger a landing.
+    // We also log telemetry at 20 Hz for post-flight analysis.
     let traj_end = Duration::from_secs_f32(traj_total * n_reps as f32);
     let mut rows: Vec<Row> = Vec::new();
     let mut last_b: HashMap<String, Value> = HashMap::new();
@@ -266,6 +280,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while Instant::now() < traj_t0_wall + traj_end {
         let t = (Instant::now() - traj_t0_wall).as_secs_f32();
 
+        // Keepalive: hover setpoint so the CF watchdog stays satisfied.
+        // The firmware ignores this when traj.mode=1 but needs it for arming
+        // (sp.position.z > 0.05 check) and the CRTP watchdog.
         cf.commander.setpoint_full_state(
             ox, oy, HOVER_HEIGHT, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             qw0, 0.0, 0.0, qz0, 0.0, 0.0, 0.0,
@@ -309,11 +326,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // ── Revert to passthrough ─────────────────────────────────────────────
+    // ── Hand back control: switch to Mode B passthrough ───────────────────
     cf.param.set("traj.mode", 0u8).await?;
-    println!("Trajectory complete — reverting to passthrough.");
+    println!("Mode D complete — reverting to Mode B passthrough.");
 
-    // ── Hold then land ────────────────────────────────────────────────────
+    // ── Hold at hover before landing ──────────────────────────────────────
     println!("Hold 2 s...");
     let hold = Instant::now() + Duration::from_secs(2);
     while Instant::now() < hold {
@@ -326,6 +343,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = stream_c.next().await;
     }
 
+    // ── Land ──────────────────────────────────────────────────────────────
     println!("Landing...");
     for step in (0..=40usize).rev() {
         let h = (step as f32 * HOVER_HEIGHT / 40.0).max(0.05);
@@ -340,10 +358,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ── Write CSV ─────────────────────────────────────────────────────────
     fs::create_dir_all("../Controls/logs")?;
-    let ts_str = Local::now().format("%Y%m%d_%H%M%S");
-    // e.g. figure8_speed1.4x_20260430_120000.csv
-    let speed_tag = format!("{:.1}", speed).replace('.', "_");
-    let csv_path = format!("../Controls/logs/figure8_speed{speed_tag}x_{ts_str}.csv");
+    let ts = Local::now().format("%Y%m%d_%H%M%S");
+    let csv_path = format!("../Controls/logs/figure8_onboard_{ts}.csv");
     let file = fs::File::create(&csv_path)?;
     let mut w = BufWriter::new(file);
     writeln!(w, "time_s,x,y,z,vx,vy,vz,roll_deg,pitch_deg,yaw_deg,thrust,vbat,\
