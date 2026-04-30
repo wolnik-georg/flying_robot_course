@@ -18,6 +18,7 @@ pub mod planning;
 pub mod flight;
 pub mod perception;
 pub mod mapping;
+pub mod flight_common;
 
 /// Prelude for convenient imports
 pub mod prelude {
