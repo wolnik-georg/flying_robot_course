@@ -51,6 +51,7 @@ uint8_t g_traj_start     = 0;     /* laptop writes 1 to start; firmware latches 
 float   g_traj_origin_x  = 0.0f;  /* EKF x offset sampled before takeoff [m]             */
 float   g_traj_origin_y  = 0.0f;  /* EKF y offset sampled before takeoff [m]             */
 float   g_traj_hover_z   = 1.0f;  /* constant flight altitude [m]                        */
+float   g_traj_dz        = 0.0f;  /* Z gain per lap [m]; 0=flat, +0.40=ascending helix   */
 
 /* ── Upload protocol ─────────────────────────────────────────────────────── */
 uint8_t g_traj_coef_ci   = 0;     /* coefficient index (0..227)                          */
@@ -65,6 +66,7 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_FLOAT, ox,    &g_traj_origin_x)
   PARAM_ADD(PARAM_FLOAT, oy,    &g_traj_origin_y)
   PARAM_ADD(PARAM_FLOAT, hz,    &g_traj_hover_z)
+  PARAM_ADD(PARAM_FLOAT, dz,    &g_traj_dz)
   PARAM_ADD(PARAM_UINT8, ci,    &g_traj_coef_ci)
   PARAM_ADD(PARAM_FLOAT, cv,    &g_traj_coef_cv)
   PARAM_ADD(PARAM_UINT8, cw,    &g_traj_coef_cw)
