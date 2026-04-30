@@ -387,6 +387,7 @@ extern "C" {
     static mut g_traj_origin_x: f32;
     static mut g_traj_origin_y: f32;
     static mut g_traj_hover_z:  f32;
+    static mut g_traj_dz:       f32;  // Z gain per lap: 0=flat, +0.40=ascending helix
     static mut g_traj_coef_ci:  u8;   // upload index
     static mut g_traj_coef_cv:  f32;  // upload value
     static mut g_traj_coef_cw:  u8;   // commit flag (1=write pending; we clear to 0)
@@ -484,9 +485,16 @@ unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, 
     let (px, vx, ax, jx) = poly_eval_axis(&cx, t_n, dur);
     let (py, vy, ay, jy) = poly_eval_axis(&cy, t_n, dur);
 
+    // Z: linear ramp using t_global (not wrapped t) so multi-rep helices stack
+    // continuously upward instead of resetting each lap.
+    // For n_reps=1, t_global ∈ [0, total_dur) → lap_frac ∈ [0,1) — identical to before.
+    // When g_traj_dz=0 (circle, figure-8, loop), all z components are 0 → backward compatible.
+    let lap_frac = if total_dur > 0.0 { t_global / total_dur } else { 0.0 };
+    let vz = g_traj_dz / total_dur.max(0.001);
+
     (
-        Vec3::new(px, py, 0.0),
-        Vec3::new(vx, vy, 0.0),
+        Vec3::new(px, py, lap_frac * g_traj_dz),
+        Vec3::new(vx, vy, vz),
         Vec3::new(ax, ay, 0.0),
         Vec3::new(jx, jy, 0.0),
     )
@@ -831,11 +839,11 @@ pub unsafe extern "C" fn controllerOutOfTree(
     // When g_traj_mode == 0, reset T0 so the next Mode D activation gets a fresh start.
     if g_traj_mode == 0 {
         TRAJ_T0 = 0;
-    } else if g_traj_mode == 1 && g_traj_start == 1 && TRAJ_T0 == 0 {
+    } else if (g_traj_mode == 1 || g_traj_mode == 2) && g_traj_start == 1 && TRAJ_T0 == 0 {
         TRAJ_T0 = tick; // latch start time
     }
 
-    let (pd, vd, ad, omega_d) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
+    let (pd, vd, ad, omega_d) = if (g_traj_mode == 1 || g_traj_mode == 2) && TRAJ_T0 > 0 {
         // Trajectory time in seconds (tick is in ms / FreeRTOS 1 kHz)
         let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
         let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
@@ -845,15 +853,37 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let oy = g_traj_origin_y;
         let hz = g_traj_hover_z;
 
-        // World-frame reference: add EKF origin; z held at constant hover height
-        let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz);
-        let vd = Vec3::new(vel.x, vel.y, 0.0);
-        let ad = Vec3::new(acc.x, acc.y, 0.0);
-
-        // ω_d feedforward from flatness (the key Mode D improvement over Mode B)
-        let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, 0.0), 0.0_f32);
-
-        (pd, vd, ad, omega_d)
+        if g_traj_mode == 2 {
+            // ── Mode E: Vertical loop ────────────────────────────────────────
+            // cx polynomial → X axis (forward motion through the loop).
+            // cy polynomial → Z offset above hover_z  (encodes the circle height).
+            // Y is held fixed at oy — the loop is entirely in the X-Z plane.
+            //
+            // This reuses the existing 19-float/seg coefficient layout with no
+            // firmware buffer changes.  The laptop plans the loop as a circle in
+            // (x, z_offset) and uploads cx=X, cy=Z_offset.
+            //
+            // Flatness works through inversion: at the top of the loop
+            //   f_d_z = m*(az + g) = m*(g - R*omega^2) < 0  when R*omega^2 > g
+            // so desired_rot naturally produces an inverted body-Z axis.
+            // omega_desired must receive the full 3D jerk (jz ≠ 0 during the loop).
+            let pd = Vec3::new(ox + pos_rel.x, oy,           hz + pos_rel.y);
+            let vd = Vec3::new(vel.x,           0.0,          vel.y);
+            let ad = Vec3::new(acc.x,           0.0,          acc.y);
+            // Full 3D jerk: jerk.x = d³x/dt³, jerk.y used as jz (Z jerk of the loop).
+            // Without jz the pitch-rate feedforward is zero → we lose the key Mode D benefit.
+            let omega_d = omega_desired(ad, Vec3::new(jerk.x, 0.0, jerk.y), 0.0_f32);
+            (pd, vd, ad, omega_d)
+        } else {
+            // ── Mode D: flat XY trajectory + optional Z ramp (circle, figure-8, helix) ──
+            // World-frame reference: add EKF origin; z = hover_z + dz*lap_frac
+            let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz + pos_rel.z);
+            let vd = Vec3::new(vel.x, vel.y, vel.z);
+            let ad = Vec3::new(acc.x, acc.y, 0.0);
+            // ω_d feedforward from flatness (the key Mode D improvement over Mode B)
+            let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, 0.0), 0.0_f32);
+            (pd, vd, ad, omega_d)
+        }
     } else {
         // Mode B passthrough: use incoming CRTP setpoint unchanged.
         // omega_d = zero → e_omega = omega (identical to previous behaviour).
