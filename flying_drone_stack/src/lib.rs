@@ -55,8 +55,12 @@ pub mod prelude {
     };
     pub use crate::estimation::{Mekf, MekfState, MekfParams};
     pub use crate::planning::{
-        FlatOutput, FlatnessResult, compute_flatness, rot_to_quat, flatness_to_reference,
+        FlatOutput, FlatnessResult, body_torque_diagonal, compute_flatness, flatness_to_reference,
+        rot_to_quat,
         SplineTrajectory, SplineSegment, Waypoint,
+        RichterTrajectory, RichterWaypoint, FeasibilityReport,
+        TrajectoryPlanner,
+        Se3Trajectory, Se3Waypoint, Se3Output,
     };
     pub use crate::safety::{SafetyLimits, check_safety};
 }

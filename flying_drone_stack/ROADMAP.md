@@ -1,7 +1,7 @@
 # Flying Drone Stack — Roadmap
 
-> Last updated: 2026-04-30
-> Tests: 258 lib + 194 integration = **452 passing, 0 failures**
+> Last updated: 2026-05-01
+> Tests: 264 lib + 195 integration = **459 passing, 0 failures**
 > Build: `cargo build --release` clean
 
 ---
@@ -14,6 +14,7 @@
 | Dynamics & simulation | `dynamics/`, `integration/` | SE(3) rigid-body simulator; Euler, RK4, ExpEuler, ExpRK4 |
 | SE(3) geometric controller | `controller/` | Lee et al. 2010; RPYT pipeline; validated in sim + real flights |
 | Min-snap spline planner | `planning/spline.rs`, `flatness.rs` | Degree-8 QP (Clarabel), C3-continuous; differential flatness → thrust/torque/ω/ω̇ |
+| Richter auto-time planner | `planning/richter.rs` | Mode 1 wrapper: same QP + automatic T_i from single `k_t` scalar; pre-flight feasibility check |
 | Frontier exploration FSM | `planning/exploration.rs` | SCAN→NAVIGATE→LAND; bugs fixed Apr 7, awaiting re-flight |
 
 ### State estimation and SLAM
@@ -37,6 +38,7 @@
 |------|-------------|
 | `main.rs` maneuvers (position setpoints) | hover/circle/figure8/explore at 20 Hz, MEKF+SLAM+safety, CSV logging |
 | Mode B Rust binaries (`*_test`) | `hover/helix/flip/roll/figure8/circle` + fast variants — spline→flatness→CRTP full-state at 25 Hz |
+| Richter Mode 1 binary | `richter_figure8_test` — same figure-8 waypoints, duration from `k_t`; prints feasibility report before flight |
 | HLC Python scripts (`Controls/`) | `run_*.py` — same 10 maneuver variants; Poly4D upload → HLC `start_trajectory` at 100 Hz |
 
 ### Course assignments ✅ all complete
@@ -184,6 +186,9 @@ cargo run --release --bin main -- --maneuver explore --ai-deck
 cargo run --release --bin hover_test
 cargo run --release --bin indi_hover               # INDI hover validation (30 s, logs to runs/)
 cargo run --release --bin spline_circle_test
+cargo run --release --bin spline_figure8_test      # Mode 0: manual durations (7.28 s/rep)
+cargo run --release --bin richter_figure8_test     # Mode 1: auto durations from k_t=0.3 (default)
+cargo run --release --bin richter_figure8_test -- --kt 0.5 --reps 3  # faster / more reps
 cargo run --release --bin helix_test        # and fast_helix_test
 cargo run --release --bin flip_test         # and fast_flip_test
 cargo run --release --bin roll_test         # and fast_roll_test
