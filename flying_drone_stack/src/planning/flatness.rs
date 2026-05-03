@@ -215,6 +215,21 @@ pub fn compute_flatness(flat: &FlatOutput, mass: f32) -> FlatnessResult {
     }
 }
 
+/// Body-frame torque for a rigid body with diagonal inertia (same model as [`compute_flatness`]):
+/// **τ = J·α − (Jω)×ω**  (Faessler slide 12).
+///
+/// Use with SE(3) angular velocity and **body** angular acceleration `α`.
+pub fn body_torque_diagonal(omega: Vec3, alpha: Vec3) -> Vec3 {
+    let omega_a = [omega.x, omega.y, omega.z];
+    let j_omega = [J_XX * omega.x, J_YY * omega.y, J_ZZ * omega.z];
+    let jxw = cross3(j_omega, omega_a);
+    Vec3::new(
+        J_XX * alpha.x - jxw[0],
+        J_YY * alpha.y - jxw[1],
+        J_ZZ * alpha.z - jxw[2],
+    )
+}
+
 /// Convert the rotation matrix (column-major [xb,yb,zb]) to a unit quaternion [w,x,y,z].
 pub fn rot_to_quat(rot: &[[f32; 3]; 3]) -> [f32; 4] {
     // Extract columns: xb=rot[0], yb=rot[1], zb=rot[2]
