@@ -7,7 +7,7 @@
 //!   4. Circle and figure-8 waypoint patterns pass through all waypoints
 //!   5. Snap magnitude is finite and bounded everywhere
 
-use multirotor_simulator::planning::{SplineTrajectory, Waypoint};
+use multirotor_simulator::planning::{SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint};
 use multirotor_simulator::math::Vec3;
 
 const G_TOL: f32 = 1e-2;   // 1 cm positional tolerance (QP solve + f32)
@@ -215,4 +215,57 @@ fn test_spline_snap_finite_and_bounded() {
         let snap_mag = (out.snap.x.powi(2) + out.snap.y.powi(2) + out.snap.z.powi(2)).sqrt();
         assert!(snap_mag < 1000.0, "snap too large at t={:.3}: {:.1} m/s^4", t, snap_mag);
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// attitude_poly_coefs smoke test
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Verifies that Se3Trajectory::attitude_poly_coefs() returns the expected number
+/// of coefficient pairs and that all values are finite and reasonable.
+#[test]
+fn test_attitude_poly_coefs_circle() {
+    let n = 8usize;
+    let radius = 0.25_f32;
+    let omega  = 0.6_f32;
+    let seg_dur = 2.0 * std::f32::consts::PI / (n as f32 * omega);
+    let waypoints: Vec<Se3Waypoint> = (0..=n).map(|i| {
+        let theta = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
+        Se3Waypoint::flat(Vec3::new(radius * theta.cos(), radius * theta.sin(), 0.0), 0.0)
+    }).collect();
+    let durations = vec![seg_dur; n];
+    let planner = TrajectoryPlanner::se3(&waypoints, &durations, 0.031, true)
+        .expect("Circle Se3 QP failed");
+
+    let coefs = planner.attitude_poly_coefs();
+    assert_eq!(coefs.len(), n, "expected {} segment coef pairs, got {}", n, coefs.len());
+
+    for (seg, (cr, cp)) in coefs.iter().enumerate() {
+        for k in 0..9 {
+            assert!(cr[k].is_finite(), "croll[{}] seg {} is not finite: {}", k, seg, cr[k]);
+            assert!(cp[k].is_finite(), "cpitch[{}] seg {} is not finite: {}", k, seg, cp[k]);
+        }
+        // For a flat circle, peak roll/pitch should be small (< 25° at omega=0.6 r/s)
+        // Check that the constant term (τ=0 estimate) is in a reasonable range.
+        assert!(cr[0].abs() < 0.5, "croll constant too large: {}", cr[0]);
+        assert!(cp[0].abs() < 0.5, "cpitch constant too large: {}", cp[0]);
+    }
+}
+
+/// Mode 0/1 planners return empty att coef Vec (only Mode 2 uploads attitude).
+#[test]
+fn test_attitude_poly_coefs_mode01_empty() {
+    // Use a square path so the QP is well-conditioned for both planners.
+    let wps = vec![
+        Waypoint { pos: Vec3::new(0.0,  0.0, 1.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(0.3,  0.0, 1.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(0.3,  0.3, 1.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(0.0,  0.3, 1.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(0.0,  0.0, 1.0), yaw: 0.0 },
+    ];
+    let durs = vec![0.5_f32; 4];
+    let p0 = TrajectoryPlanner::spline(&wps, &durs, false).unwrap();
+    assert!(p0.attitude_poly_coefs().is_empty(), "Mode 0 should return empty coefs");
+    let p1 = TrajectoryPlanner::richter(&wps, 0.1, false).unwrap();
+    assert!(p1.attitude_poly_coefs().is_empty(), "Mode 1 should return empty coefs");
 }

@@ -78,6 +78,16 @@ pub fn serialise_coefs(traj: &SplineTrajectory) -> Vec<f32> {
     out
 }
 
+/// Serialise the Z-axis polynomials for the 3D trajectory firmware layout:
+/// [cz0..cz8] × n_segs  (9 floats/segment, no duration — shared with position buffer).
+pub fn serialise_z_coefs(traj: &SplineTrajectory) -> Vec<f32> {
+    let mut out = Vec::with_capacity(traj.segments.len() * 9);
+    for seg in &traj.segments {
+        out.extend_from_slice(&seg.cz);
+    }
+    out
+}
+
 /// Build a Row from already-collected log maps.
 pub fn collect_row(
     pa: &HashMap<String, Value>,
@@ -157,13 +167,15 @@ pub async fn connect_drone(
     Ok(cf)
 }
 
-/// Check that the trajectory firmware params exist (traj.mode + traj.dz).
+/// Check that the trajectory firmware params exist (traj.mode + traj.dz + traj.z_mode).
 /// Returns a clear error message if the firmware needs to be flashed.
 pub async fn verify_firmware(cf: &Crazyflie) -> Result<(), Box<dyn std::error::Error>> {
     cf.param.set("traj.mode", 0u8).await
         .map_err(|e| format!("traj params missing — flash firmware first: {e}"))?;
     cf.param.set("traj.dz", 0.0f32).await
-        .map_err(|e| format!("traj.dz missing — rebuild firmware (helix/loop update): {e}"))?;
+        .map_err(|e| format!("traj.dz missing — rebuild firmware: {e}"))?;
+    cf.param.set("traj.z_mode", 0u8).await
+        .map_err(|e| format!("traj.z_mode missing — rebuild firmware (3D trajectory update): {e}"))?;
     println!("Firmware OK.");
     Ok(())
 }
@@ -207,6 +219,53 @@ pub async fn upload_trajectory(
         if i % 20 == 19 { println!("  [{}/{}]", i + 1, coefs.len()); }
     }
     println!("Upload done in {:.1}s", t0.elapsed().as_secs_f32());
+    Ok(())
+}
+
+/// Upload Z-axis polynomial coefficients via the zci/zcv/zcw protocol.
+pub async fn upload_z_trajectory(
+    cf: &Crazyflie,
+    coefs: &[f32],
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Uploading {} z coefs...", coefs.len());
+    let t0 = Instant::now();
+    for (i, &v) in coefs.iter().enumerate() {
+        cf.param.set("traj.zci", i as u8).await?;
+        cf.param.set("traj.zcv", v).await?;
+        cf.param.set("traj.zcw", 1u8).await?;
+        sleep(Duration::from_millis(8)).await;
+        if i % 20 == 19 { println!("  [{}/{}]", i + 1, coefs.len()); }
+    }
+    println!("Z upload done in {:.1}s", t0.elapsed().as_secs_f32());
+    Ok(())
+}
+
+/// Serialise attitude polynomials to the flat firmware layout:
+/// [croll0..croll8, cpitch0..cpitch8] × n_segs  (18 floats/segment, no duration).
+pub fn serialise_att_coefs(coefs: &[([f32; 9], [f32; 9])]) -> Vec<f32> {
+    let mut out = Vec::with_capacity(coefs.len() * 18);
+    for (cr, cp) in coefs {
+        out.extend_from_slice(cr);
+        out.extend_from_slice(cp);
+    }
+    out
+}
+
+/// Upload attitude polynomial coefficients via the aci/acv/acw protocol.
+pub async fn upload_att_trajectory(
+    cf: &Crazyflie,
+    coefs: &[f32],
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Uploading {} att coefs...", coefs.len());
+    let t0 = Instant::now();
+    for (i, &v) in coefs.iter().enumerate() {
+        cf.param.set("traj.aci", i as u8).await?;
+        cf.param.set("traj.acv", v).await?;
+        cf.param.set("traj.acw", 1u8).await?;
+        sleep(Duration::from_millis(8)).await;
+        if i % 20 == 19 { println!("  [{}/{}]", i + 1, coefs.len()); }
+    }
+    println!("Att upload done in {:.1}s", t0.elapsed().as_secs_f32());
     Ok(())
 }
 

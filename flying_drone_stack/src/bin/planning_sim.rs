@@ -224,19 +224,6 @@ impl IndiSimState {
     }
 }
 
-/// Shared outer-loop: position error → thrust + desired rotation Rd
-fn outer_loop(
-    state: &MultirotorState,
-    reference: &TrajectoryReference,
-    params: &MultirotorParams,
-) -> (f32, [[f32; 3]; 3]) {
-    outer_loop_with_gains(
-        state, reference, params,
-        Vec3::new(12.0, 12.0, 7.0),
-        Vec3::new(8.0, 8.0, 4.0),
-    )
-}
-
 fn outer_loop_with_gains(
     state: &MultirotorState,
     reference: &TrajectoryReference,
@@ -625,17 +612,6 @@ fn append_planning_meta_kv(dir: &str, key: &str, value: &str) {
     writeln!(f, "{}={}", key, value).unwrap();
 }
 
-/// Same Richter time allocation as Mode 1 — used as the **position** segment basis for Mode 2.
-fn richter_segment_durations_like_mode1(
-    wps: &[Waypoint],
-    k_t: f32,
-    periodic: bool,
-) -> Vec<f32> {
-    TrajectoryPlanner::richter(wps, k_t, periodic)
-        .expect("Richter segment times for Mode 2 position")
-        .segment_durations()
-}
-
 fn export_flat_reference_bundle(
     dir: &str,
     planner: &TrajectoryPlanner,
@@ -884,7 +860,7 @@ fn export_planning_reference_only() {
     let fig8_se3_wps = to_se3_level_waypoints(&fig8_wps);
     let helix_se3_wps = to_se3_level_waypoints(&helix_wps);
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
-    let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 16, 0.4);
+    let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5);
 
     // Build Mode 1 planners first — their segment durations are reused for Mode 2 position
     // timing, avoiding 4 redundant Clarabel calls that would otherwise push the total
@@ -896,17 +872,12 @@ fn export_planning_reference_only() {
     ).expect("m1 helix");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
 
-    // Mode 2 position timing: circle/fig8 reuse Mode 1 durations (same waypoint count).
+    // Mode 2 position timing: reuse Mode 1 durations for all trajectories (same waypoint count).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
-    // Loop is an exception: Mode 2 loop uses 16 Se3 waypoints while Mode 1 loop uses only 8.
     let circle_m2_durs = p1_circle.segment_durations();
     let fig8_m2_durs   = p1_fig8.segment_durations();
     let helix_m2_durs  = helix_durs.clone();
-    let loop_se3_flat_wps: Vec<Waypoint> = loop_se3_wps
-        .iter()
-        .map(|w| Waypoint { pos: w.pos, yaw: 0.0 })
-        .collect();
-    let loop_m2_durs = richter_segment_durations_like_mode1(&loop_se3_flat_wps, 0.01, true);
+    let loop_m2_durs   = p1_loop.segment_durations();
 
     // Mode 2 (SE(3)) — plan immediately while QP call count is still low (~5+n_m2)
     {
@@ -1773,15 +1744,15 @@ fn to_se3_hover_waypoints(wps: &[Waypoint]) -> Vec<Se3Waypoint> {
 
 /// Vertical loop for Mode 2: explicit attitude through full inversion.
 ///
-/// Uses n=16 waypoints (22.5° each) for a smooth circular arc in X-Z.
-/// Se3Trajectory position planner uses rest-to-rest (start and end at rest) which is
-/// correct for a single-pass loop — use more waypoints (not periodic) for visual fidelity.
+/// Uses n=8 waypoints (45° each), matching onboard_loop.rs.
+/// Attitude = Ry(-θ): body-z tracks the centripetal direction throughout.
+/// q(θ) = [cos(θ/2), 0, −sin(θ/2), 0] — at bottom upright, at top inverted.
 fn loop_waypoints_se3(r: f32, n: usize, seg_t: f32) -> (Vec<Se3Waypoint>, Vec<f32>) {
     let wps: Vec<Se3Waypoint> = (0..=n).map(|i| {
         let theta = 2.0 * PI * i as f32 / n as f32;
         let pos = Vec3::new(r * theta.sin(), 0.0, Z + r * (1.0 - theta.cos()));
-        // At top (θ=π) the drone is inverted: pitch=π. SLERP interpolates smoothly.
-        Se3Waypoint::pitched(pos, theta)
+        let att = Quat::new((theta * 0.5).cos(), 0.0, -(theta * 0.5).sin(), 0.0);
+        Se3Waypoint::new(pos, att)
     }).collect();
     (wps, vec![seg_t; n])
 }
@@ -1818,7 +1789,7 @@ fn main() {
     let fig8_se3_wps   = to_se3_level_waypoints(&fig8_wps);
     let helix_se3_wps  = to_se3_level_waypoints(&helix_wps);
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
-    let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 16, 0.4); // n=16 → 22.5°/seg
+    let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5); // n=8 → 45°/seg
 
     // Build Mode 1 planners first — reuse for Mode 2 duration extraction (no redundant QP calls).
     // k_t = 0.01: v_avg = 0.5 + 1.5·√0.01 = 0.65 m/s
@@ -1836,17 +1807,12 @@ fn main() {
     ).expect("m1 helix");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
 
-    // Mode 2 position segment times: circle/fig8 reuse Mode 1 durations (same waypoints).
+    // Mode 2 position segment times: reuse Mode 1 durations for all trajectories (same waypoints).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
-    // Loop exception: Mode 2 loop uses 16 Se3 waypoints vs Mode 1's 8 → separate Richter call.
     let circle_m2_durs = p1_circle.segment_durations();
     let fig8_m2_durs   = p1_fig8.segment_durations();
     let helix_m2_durs  = helix_durs.clone();
-    let loop_se3_flat_wps: Vec<Waypoint> = loop_se3_wps
-        .iter()
-        .map(|w| Waypoint { pos: w.pos, yaw: 0.0 })
-        .collect();
-    let loop_m2_durs = richter_segment_durations_like_mode1(&loop_se3_flat_wps, 0.01, true);
+    let loop_m2_durs   = p1_loop.segment_durations();
 
     // Build Mode 0 planners (SplineTrajectory QP calls happen AFTER Mode 1 builds).
     let p0_circle = TrajectoryPlanner::spline(&circle_wps, &circle_durs, true ).expect("m0 circle");

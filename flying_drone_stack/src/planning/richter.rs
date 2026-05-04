@@ -44,7 +44,6 @@
 //!   *Polynomial Trajectory Planning for Aggressive Quadrotor Flight in Dense
 //!   Indoor Environments.* In: Robotics Research, Springer, pp. 649–666.
 
-use crate::math::Vec3;
 use super::flatness::{FlatOutput, compute_flatness};
 use super::spline::{SplineTrajectory, SplineSegment, Waypoint};
 
@@ -59,9 +58,6 @@ const T_MIN: f32 = 0.15;
 
 /// Feasibility check sample interval [s].
 const SAMPLE_DT: f32 = 0.02; // 50 Hz
-
-/// Gravity [m/s²]
-const G: f32 = 9.81;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -261,6 +257,12 @@ impl RichterTrajectory {
     /// Useful for inspecting polynomial coefficients or plotting.
     pub fn segments(&self) -> &[SplineSegment] {
         &self.inner.segments
+    }
+
+    /// Return a reference to the underlying `SplineTrajectory`.
+    /// Used by flight binaries to serialise position coefficients for firmware upload.
+    pub fn as_spline(&self) -> &SplineTrajectory {
+        &self.inner
     }
 }
 
