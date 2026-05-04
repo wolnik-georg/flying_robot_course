@@ -7,9 +7,26 @@
 //! Usage:
 //!   cargo run --release --bin onboard_helix
 //!   cargo run --release --bin onboard_helix -- --speed 1.2 --reps 2
+//!   cargo run --release --bin onboard_helix -- --mode 1 --kt 0.1
+//!   cargo run --release --bin onboard_helix -- --mode 2 --kt 0.3
 //!
-//! --speed : trajectory speed multiplier (0.5-3.0, default 1.0)
+//! --speed : trajectory speed multiplier for Mode 0 only (0.5-3.0, default 1.0)
+//!           Ignored for Mode 1/2 — use --kt to control speed there.
 //! --reps  : number of ascending laps, each adds HELIX_DZ (default 1)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --kt    : Richter aggressiveness for timing (Mode 1 and 2, default 0.1)
+//!
+//! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
+//! roll/pitch polynomials via least-squares, uploads via traj.aci/acv/acw, firmware evaluates
+
+//!
+//! Mode 0 baseline: r=0.30m, omega=0.6 rad/s, lap ~10.5s, v_avg ~0.18 m/s (conservative).
+//! Mode 1/2 is always faster — Richter v_avg starts at 0.5 m/s minimum.
+//! Mode 1/2 --kt reference table (circle r=0.30m, circumference ~1.88m):
+//!   --kt 0.05   →  v_avg ~0.84 m/s  ~2.2s/lap   ← gentle start for Mode 1/2
+//!   --kt 0.1    →  v_avg ~1.0  m/s  ~1.9s/lap   ← default
+//!   --kt 0.3    →  v_avg ~1.32 m/s  ~1.4s/lap   (moderate)
+//!   --kt 1.0    →  v_avg ~2.0  m/s  ~0.9s/lap   (fast)
 
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
@@ -18,13 +35,13 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{SplineTrajectory, Waypoint, Vec3};
+use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
 
 const HELIX_RADIUS: f32 = 0.30;
 const HELIX_DZ:     f32 = 0.40;
 const OMEGA:        f32 = 0.6;
 
-fn helix_trajectory(speed: f32) -> SplineTrajectory {
+fn helix_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
     let n = 8usize;
     let seg_dur = 2.0 * std::f32::consts::PI / (n as f32 * OMEGA) / speed;
     let waypoints: Vec<Waypoint> = (0..=n).map(|i| {
@@ -32,8 +49,28 @@ fn helix_trajectory(speed: f32) -> SplineTrajectory {
         Waypoint { pos: Vec3::new(HELIX_RADIUS * theta.cos(), HELIX_RADIUS * theta.sin(), 0.0), yaw: 0.0 }
     }).collect();
     let durations = vec![seg_dur; n];
-    SplineTrajectory::plan(&waypoints, &durations, true)
-        .expect("Helix QP planning failed")
+    (waypoints, durations)
+}
+
+fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
+    let (wps, durs) = helix_waypoints(speed);
+    match mode {
+        1 => TrajectoryPlanner::richter(&wps, k_t, true)
+            .expect("Helix Mode 1 QP failed"),
+        2 => {
+            // Use Richter timing (k_t) for duration allocation, same as Mode 1.
+            let m1 = TrajectoryPlanner::richter(&wps, k_t, true)
+                .expect("Helix Mode 2 timing (Richter) failed");
+            let kt_durs = m1.segment_durations();
+            let se3_wps: Vec<Se3Waypoint> = wps.iter()
+                .map(|w| Se3Waypoint::flat(w.pos, w.yaw))
+                .collect();
+            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
+                .expect("Helix Mode 2 QP failed")
+        }
+        _ => TrajectoryPlanner::spline(&wps, &durs, true)
+            .expect("Helix Mode 0 QP failed"),
+    }
 }
 
 #[tokio::main]
@@ -43,20 +80,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let n_reps: u32 = args.iter().position(|a| a == "--reps")
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(1);
+    let mode: u8 = args.iter().position(|a| a == "--mode")
+        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let k_t: f32 = args.iter().position(|a| a == "--kt")
+        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0.1);
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 10  { eprintln!("--reps must be 1-10");   std::process::exit(1); }
+    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
 
-    let traj = helix_trajectory(speed);
-    let traj_total = traj.total_time;
-    let coefs = serialise_coefs(&traj);
-    let n_segs = traj.segments.len();
+    let planner = build_planner(mode, speed, k_t);
+    let spline = planner.as_spline();
+    let traj_total = spline.total_time;
+    let coefs = serialise_coefs(spline);
+    let n_segs = spline.segments.len();
+    let att_coefs_raw = planner.attitude_poly_coefs();
+    let att_coefs = serialise_att_coefs(&att_coefs_raw);
     let total_dz = HELIX_DZ * n_reps as f32;
     let top_z    = HOVER_HEIGHT + total_dz;
-    println!("Mode D Helix | speed={:.1}x | lap={:.2}s | reps={} | r={}m | dz={}m/lap",
-             speed, traj_total, n_reps, HELIX_RADIUS, HELIX_DZ);
+    println!("Mode D Helix | planning_mode={} | speed={:.1}x | lap={:.2}s | reps={} | r={}m | dz={}m/lap",
+             mode, speed, traj_total, n_reps, HELIX_RADIUS, HELIX_DZ);
     println!("  z: {:.1}m -> {:.1}m over {:.1}s  ({}x{:.1}s)",
              HOVER_HEIGHT, top_z, traj_total * n_reps as f32, n_reps, traj_total);
+    if mode == 2 { println!("  Mode 2: uploading {} att coefs", att_coefs.len()); }
 
     let link_ctx = LinkContext::new();
     let cf = connect_drone(&link_ctx).await?;
@@ -67,11 +113,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = sample_origin(&cf, &sa, &sb, &sc).await?;
 
     upload_trajectory(&cf, &coefs).await?;
-    cf.param.set("traj.nseg", n_segs as u8).await?;
-    cf.param.set("traj.ox",   o.ox - HELIX_RADIUS).await?;
-    cf.param.set("traj.oy",   o.oy).await?;
-    cf.param.set("traj.hz",   HOVER_HEIGHT).await?;
-    cf.param.set("traj.dz",   HELIX_DZ).await?;
+    if mode == 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
+    cf.param.set("traj.nseg",     n_segs as u8).await?;
+    cf.param.set("traj.ox",       o.ox - HELIX_RADIUS).await?;
+    cf.param.set("traj.oy",       o.oy).await?;
+    cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
+    cf.param.set("traj.dz",       HELIX_DZ).await?;
+    cf.param.set("traj.att_mode", (mode == 2) as u8).await?;
     println!("Metadata: z {:.1} -> {:.1}m  ({} laps)", HOVER_HEIGHT, top_z, n_reps);
 
     ramp_to_hover(&cf, &o, &sa, &sb, &sc).await?;
@@ -111,15 +159,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    cf.param.set("traj.mode", 0u8).await?;
-    cf.param.set("traj.dz",   0.0f32).await?;
+    cf.param.set("traj.mode",     0u8).await?;
+    cf.param.set("traj.dz",       0.0f32).await?;
+    cf.param.set("traj.att_mode", 0u8).await?;
     println!("Helix done -- holding at top ({:.1}m) for 2s...", top_z);
     hold_and_land(&cf, &o, top_z, 2, &sa, &sb, &sc).await?;
 
     let ts_str = Local::now().format("%Y%m%d_%H%M%S");
     let speed_tag = format!("{:.1}", speed).replace('.', "-");
-    let csv_path = format!("../Controls/logs/helix_onboard_s{}x_r{}_{}.csv",
-                           speed_tag, n_reps, ts_str);
+    let csv_path = format!("../Controls/logs/helix_onboard_m{}_s{}x_r{}_{}.csv",
+                           mode, speed_tag, n_reps, ts_str);
     write_csv(&rows, &csv_path)?;
     println!("Saved {} rows -> {}", rows.len(), csv_path);
     Ok(())

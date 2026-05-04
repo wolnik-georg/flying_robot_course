@@ -451,6 +451,57 @@ impl Se3Trajectory {
         Ok(current)
     }
 
+    /// Return a reference to the underlying position `SplineTrajectory`.
+    /// Used by flight binaries to serialise position coefficients for firmware upload.
+    pub fn as_spline(&self) -> &SplineTrajectory {
+        &self.pos_traj
+    }
+
+    /// Fit degree-8 polynomials to the roll and pitch profiles of each segment.
+    ///
+    /// Returns `(croll[9], cpitch[9])` per segment in normalised time τ ∈ [0,1].
+    /// These coefficients are uploaded to firmware so it can evaluate roll_d/pitch_d
+    /// at 500 Hz without re-running the flatness map.
+    ///
+    /// Segments using `use_flatness = true` derive roll/pitch from differential flatness.
+    /// Segments with explicit SLERP attitude use the rotation matrix from `eval()`.
+    ///
+    /// 20 sample points per segment, Tikhonov λ = 1e-5.
+    pub fn attitude_poly_coefs(&self) -> Vec<([f32; 9], [f32; 9])> {
+        const N: usize = 20;
+        const LAMBDA: f32 = 1e-5;
+
+        let n_segs = self.segment_times.len();
+        let mut out = Vec::with_capacity(n_segs);
+
+        let mut t_start = 0.0_f32;
+        for seg in 0..n_segs {
+            let dur = self.segment_times[seg];
+            let mut roll_samples  = [(0.0_f32, 0.0_f32); N];
+            let mut pitch_samples = [(0.0_f32, 0.0_f32); N];
+
+            for k in 0..N {
+                let tau = (k as f32 + 0.5) / N as f32; // ∈ (0,1), avoids endpoints
+                let t   = t_start + tau * dur;
+                let out_k = self.eval(t);
+                let rot = &out_k.rot;
+                // ZYX Euler from rotation matrix (body→world layout: col j = body axis j in world)
+                // pitch = asin(-R[0][2]),  roll = atan2(R[1][2], R[2][2])
+                let pitch = (-rot[0][2].clamp(-1.0, 1.0)).asin();
+                let roll  = rot[1][2].atan2(rot[2][2]);
+                roll_samples[k]  = (tau, roll);
+                pitch_samples[k] = (tau, pitch);
+            }
+
+            let croll  = poly_fit_deg8(&roll_samples,  LAMBDA);
+            let cpitch = poly_fit_deg8(&pitch_samples, LAMBDA);
+            out.push((croll, cpitch));
+
+            t_start += dur;
+        }
+        out
+    }
+
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     /// Returns `true` if segment `seg` should use differential flatness.
@@ -480,6 +531,63 @@ impl Se3Trajectory {
         let q1 = self.att_waypoints[seg + 1];
         slerp(q0, q1, phase)
     }
+}
+
+// ---------------------------------------------------------------------------
+// Polynomial fitting helpers
+// ---------------------------------------------------------------------------
+
+/// Fit a degree-8 polynomial (9 coefficients) to N ≤ 64 sample points `(tau, y)`
+/// where tau ∈ [0, 1].  Uses normal equations with Tikhonov regularisation `lambda`.
+///
+/// Returns `c` such that `y ≈ c[0] + c[1]·τ + … + c[8]·τ⁸`.
+fn poly_fit_deg8(samples: &[(f32, f32)], lambda: f32) -> [f32; 9] {
+    const DEG: usize = 9;
+    let n = samples.len();
+
+    // Accumulate VᵀV and Vᵀy
+    let mut ata = [[0.0_f32; DEG]; DEG];
+    let mut aty = [0.0_f32; DEG];
+    for &(tau, y) in samples.iter().take(n) {
+        let mut basis = [0.0_f32; DEG];
+        let mut pw = 1.0_f32;
+        for j in 0..DEG { basis[j] = pw; pw *= tau; }
+        for i in 0..DEG {
+            for j in 0..DEG { ata[i][j] += basis[i] * basis[j]; }
+            aty[i] += basis[i] * y;
+        }
+    }
+    // Tikhonov: (VᵀV + λI)
+    for i in 0..DEG { ata[i][i] += lambda; }
+
+    // Solve 9×9 system via Gaussian elimination with partial pivoting
+    // Augmented matrix [ata | aty]
+    let mut aug = [[0.0_f32; DEG + 1]; DEG];
+    for i in 0..DEG {
+        for j in 0..DEG { aug[i][j] = ata[i][j]; }
+        aug[i][DEG] = aty[i];
+    }
+    for col in 0..DEG {
+        // Partial pivot
+        let mut max_row = col;
+        let mut max_val = aug[col][col].abs();
+        for row in (col+1)..DEG {
+            if aug[row][col].abs() > max_val { max_val = aug[row][col].abs(); max_row = row; }
+        }
+        aug.swap(col, max_row);
+        let pivot = aug[col][col];
+        if pivot.abs() < 1e-12 { continue; }
+        let inv = 1.0 / pivot;
+        for j in col..=DEG { aug[col][j] *= inv; }
+        for row in 0..DEG {
+            if row == col { continue; }
+            let factor = aug[row][col];
+            for j in col..=DEG { aug[row][j] -= factor * aug[col][j]; }
+        }
+    }
+    let mut c = [0.0_f32; DEG];
+    for i in 0..DEG { c[i] = aug[i][DEG]; }
+    c
 }
 
 // ---------------------------------------------------------------------------

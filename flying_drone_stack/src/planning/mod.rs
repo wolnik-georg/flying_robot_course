@@ -36,9 +36,10 @@
 //! whole binary — nothing else needs to change:
 //!
 //! ```ignore
-//! const PLANNER_MODE: u8 = 1; // 0 = spline, 1 = richter, (2 = se3 future)
+//! const PLANNER_MODE: u8 = 1; // 0 = spline, 1 = richter, 2 = se3 (Se3Waypoint + segment durs)
 //! let planner = match PLANNER_MODE {
 //!     1 => TrajectoryPlanner::richter(&wps, K_T, false).unwrap(),
+//!     2 => TrajectoryPlanner::se3(&se3_wps, &durs, mass_kg, false).unwrap(),
 //!     _ => TrajectoryPlanner::spline(&wps, &DURATIONS, false).unwrap(),
 //! };
 //! ```
@@ -194,6 +195,31 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.total_time,
             TrajectoryPlanner::Richter(r) => r.total_time,
             TrajectoryPlanner::Se3(s)     => s.total_time,
+        }
+    }
+
+    /// Return a reference to the underlying `SplineTrajectory` position polynomial.
+    ///
+    /// Used by onboard flight binaries to serialise coefficients for firmware upload.
+    /// All three modes store a `SplineTrajectory` internally for the position axes;
+    /// the attitude differences (Mode 2) are only relevant for Rust-side simulation.
+    pub fn as_spline(&self) -> &SplineTrajectory {
+        match self {
+            TrajectoryPlanner::Spline(s)  => s,
+            TrajectoryPlanner::Richter(r) => r.as_spline(),
+            TrajectoryPlanner::Se3(s)     => s.as_spline(),
+        }
+    }
+
+    /// Fit degree-8 polynomials to roll and pitch for each segment.
+    ///
+    /// Returns `(croll[9], cpitch[9])` per segment in normalised time τ ∈ [0,1].
+    /// Mode 0/1 return an empty Vec (firmware derives attitude from flatness).
+    /// Mode 2 returns one pair per segment for firmware upload.
+    pub fn attitude_poly_coefs(&self) -> Vec<([f32; 9], [f32; 9])> {
+        match self {
+            TrajectoryPlanner::Se3(s) => s.attitude_poly_coefs(),
+            _ => Vec::new(),
         }
     }
 

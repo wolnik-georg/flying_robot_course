@@ -386,22 +386,36 @@ static mut CTRL: State = State::zero();
 static mut TRAJ_T0: u32 = 0;
 
 // ── C trajectory interface (declared in firmware_app/traj_iface.c) ─────────
-// Layout of g_traj_coefs: [duration, cx0..cx8, cy0..cy8] × n_segs (19 f32 per seg).
+// Position layout: [duration, cx0..cx8, cy0..cy8] × n_segs (19 f32 per seg).
+// Z layout:        [cz0..cz8]                      × n_segs ( 9 f32 per seg, no duration).
+// Attitude layout: [croll0..croll8, cpitch0..cpitch8] × n_segs (18 f32 per seg).
 const TRAJ_MAX_SEGS: usize = 12;
-const TRAJ_FLOATS_PER_SEG: usize = 19;
+const TRAJ_FLOATS_PER_SEG:     usize = 19;
+const TRAJ_Z_FLOATS_PER_SEG:   usize = 9;
+const TRAJ_ATT_FLOATS_PER_SEG: usize = 18;
 
 extern "C" {
-    static mut g_traj_coefs:   [f32; 228]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
-    static mut g_traj_n_segs:  u8;
-    static mut g_traj_mode:    u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
-    static mut g_traj_start:   u8;  // laptop writes 1; firmware latches T0
-    static mut g_traj_origin_x: f32;
-    static mut g_traj_origin_y: f32;
-    static mut g_traj_hover_z:  f32;
-    static mut g_traj_dz:       f32;  // Z gain per lap: 0=flat, +0.40=ascending helix
-    static mut g_traj_coef_ci:  u8;   // upload index
-    static mut g_traj_coef_cv:  f32;  // upload value
-    static mut g_traj_coef_cw:  u8;   // commit flag (1=write pending; we clear to 0)
+    static mut g_traj_coefs:     [f32; 228]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
+    static mut g_traj_z_coefs:   [f32; 108]; // TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG
+    static mut g_traj_z_mode:    u8;  // 0=ramp (default), 1=polynomial (3D trajectories)
+    static mut g_traj_z_ci:      u8;  // z upload index
+    static mut g_traj_z_cv:      f32; // z upload value
+    static mut g_traj_z_cw:      u8;  // z commit flag
+    static mut g_traj_att_coefs: [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
+    static mut g_traj_att_mode:  u8;  // 0=flatness, 1=polynomial
+    static mut g_traj_att_ci:    u8;  // attitude upload index
+    static mut g_traj_att_cv:    f32; // attitude upload value
+    static mut g_traj_att_cw:    u8;  // attitude commit flag
+    static mut g_traj_n_segs:    u8;
+    static mut g_traj_mode:      u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
+    static mut g_traj_start:     u8;  // laptop writes 1; firmware latches T0
+    static mut g_traj_origin_x:  f32;
+    static mut g_traj_origin_y:  f32;
+    static mut g_traj_hover_z:   f32;
+    static mut g_traj_dz:        f32; // Z gain per lap: 0=flat, +0.40=ascending helix
+    static mut g_traj_coef_ci:   u8;  // position upload index
+    static mut g_traj_coef_cv:   f32; // position upload value
+    static mut g_traj_coef_cw:   u8;  // position commit flag
 }
 
 // ── Spline evaluation helpers ───────────────────────────────────────────────
@@ -509,6 +523,110 @@ unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, 
         Vec3::new(ax, ay, 0.0),
         Vec3::new(jx, jy, 0.0),
     )
+}
+
+/// Build rotation matrix from ZYX Euler angles (roll, pitch, yaw) in radians.
+///
+/// Returns R such that R · e₃ (body z in world) = desired thrust direction.
+#[inline]
+fn rot_from_euler(roll: f32, pitch: f32, yaw: f32) -> Mat3 {
+    let (cr, sr) = (libm::cosf(roll),  libm::sinf(roll));
+    let (cp, sp) = (libm::cosf(pitch), libm::sinf(pitch));
+    let (cy, sy) = (libm::cosf(yaw),   libm::sinf(yaw));
+    // ZYX: R = Rz(yaw) · Ry(pitch) · Rx(roll)  (row-major, body→world)
+    [
+        [ cp*cy,  sr*sp*cy - cr*sy,  cr*sp*cy + sr*sy],
+        [ cp*sy,  sr*sp*sy + cr*cy,  cr*sp*sy - sr*cy],
+        [-sp,     sr*cp,             cr*cp            ],
+    ]
+}
+
+/// Evaluate roll and pitch polynomials for the active segment at normalised time τ.
+///
+/// Returns `(roll_d [rad], pitch_d [rad], omega_d [rad/s body-frame])`.
+///
+/// # Safety
+/// Caller must hold the `unsafe` context.
+#[inline]
+unsafe fn eval_att_poly(t_global: f32, yaw_d: f32, n_segs: usize) -> (f32, f32, Vec3) {
+    // Find the same active segment as eval_traj_onboard.
+    let mut total_dur = 0.0_f32;
+    for i in 0..n_segs {
+        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+    }
+    let t = if total_dur > 0.0 {
+        t_global - libm::floorf(t_global / total_dur) * total_dur
+    } else {
+        t_global
+    };
+    let mut t_start = 0.0_f32;
+    let mut seg = n_segs.saturating_sub(1);
+    for i in 0..n_segs {
+        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+        if t < t_start + dur { seg = i; break; }
+        t_start += dur;
+    }
+    let dur   = g_traj_coefs[seg * TRAJ_FLOATS_PER_SEG];
+    let tau   = ((t - t_start).max(0.0).min(dur)) / dur; // ∈ [0,1]
+
+    let base = seg * TRAJ_ATT_FLOATS_PER_SEG;
+    let mut cr = [0.0_f32; 9];
+    let mut cp = [0.0_f32; 9];
+    for k in 0..9 {
+        cr[k] = g_traj_att_coefs[base + k];
+        cp[k] = g_traj_att_coefs[base + 9 + k];
+    }
+
+    let (roll_d,  roll_dot,  _, _) = poly_eval_axis(&cr, tau, dur);
+    let (pitch_d, pitch_dot, _, _) = poly_eval_axis(&cp, tau, dur);
+
+    // Body-frame ω from ZYX Euler rates (yaw_dot = 0 for all flat trajectories)
+    let cr_ = libm::cosf(roll_d);
+    let sr_ = libm::sinf(roll_d);
+    let omega_x =  roll_dot;
+    let omega_y =  pitch_dot * cr_;
+    let omega_z = -pitch_dot * sr_;
+    let _ = yaw_d; // yaw_dot = 0, no yaw contribution
+    (roll_d, pitch_d, Vec3::new(omega_x, omega_y, omega_z))
+}
+
+/// Evaluate the Z-axis polynomial at `t_global` [s] for 3D trajectories (z_mode=1).
+///
+/// Uses the same segment-finding logic as `eval_traj_onboard` (reads durations from
+/// the position coefficient buffer) but evaluates `g_traj_z_coefs` for the Z axis.
+///
+/// Returns `(pz [m], vz [m/s], az [m/s²], jz [m/s³])` — all relative to `hover_z`.
+///
+/// # Safety
+/// Caller must hold the `unsafe` context.
+#[inline]
+unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32) {
+    let mut total_dur = 0.0_f32;
+    for i in 0..n_segs {
+        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+    }
+    let t = if total_dur > 0.0 {
+        t_global - libm::floorf(t_global / total_dur) * total_dur
+    } else {
+        t_global
+    };
+    let mut t_start = 0.0_f32;
+    let mut seg = n_segs.saturating_sub(1);
+    for i in 0..n_segs {
+        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+        if t < t_start + dur { seg = i; break; }
+        t_start += dur;
+    }
+    let dur = g_traj_coefs[seg * TRAJ_FLOATS_PER_SEG];
+    let tau = ((t - t_start).max(0.0).min(dur)) / dur.max(1e-9);
+
+    let base = seg * TRAJ_Z_FLOATS_PER_SEG;
+    let mut cz = [0.0_f32; 9];
+    for k in 0..9 {
+        cz[k] = g_traj_z_coefs[base + k];
+    }
+    let (pz, vz, az, jz) = poly_eval_axis(&cz, tau, dur);
+    (pz, vz, az, jz)
 }
 
 /// Compute desired body angular velocity ω_d from flatness (yaw=const → ψ̇=0).
@@ -733,7 +851,8 @@ fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
 fn geometric_step(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
-    omega_d: Vec3,  // desired angular velocity feedforward (Vec3::zero() for Mode B passthrough)
+    omega_d: Vec3,      // desired angular velocity feedforward
+    rd_override: Option<&Mat3>, // Mode 2 att_mode=1: pre-computed desired rotation
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     let ep = pd.sub(pos);
@@ -766,11 +885,15 @@ fn geometric_step(
         s.i_error_att = Vec3::zero();
     }
 
-    // Desired rotation matrix
-    let rd = desired_rot(thrust_vec, yaw_d);
+    // Desired rotation matrix — use pre-computed override (att_mode=1) or derive from flatness.
+    let rd_flatness;
+    let rd: &Mat3 = match rd_override {
+        Some(r) => r,
+        None => { rd_flatness = desired_rot(thrust_vec, yaw_d); &rd_flatness }
+    };
 
     // Rotation error eR = ½ (Rd^T R − R^T Rd)^∨
-    let er = vee_half(&matsub(&mat_at_b(&rd, r), &mat_at_b(r, &rd)));
+    let er = vee_half(&matsub(&mat_at_b(rd, r), &mat_at_b(r, rd)));
 
     // Attitude integral — zero cost when KI_ATT = 0.0 (compiler eliminates term)
     s.i_error_att = s.i_error_att.add(er.scale(dt));
@@ -844,17 +967,29 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     let sp = &*setpoint;
 
-    // ── Coefficient upload handler ─────────────────────────────────────────
-    // The laptop writes traj.ci (index) and traj.cv (value), then traj.cw=1.
-    // We copy cv to g_traj_coefs[ci] here and clear cw=0 so the laptop knows
-    // the write completed. Runs at 500 Hz so max latency is 2 ms — well within
-    // the radio round-trip time, making the poll-for-zero protocol safe.
+    // ── Coefficient upload handlers ────────────────────────────────────────
+    // Position / Z / Attitude: laptop writes idx, value, commit=1; we store and clear.
+    // All run at 500 Hz → max latency 2 ms, well within the radio round-trip.
     if g_traj_coef_cw != 0 {
         let ci = g_traj_coef_ci as usize;
         if ci < TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG {
             g_traj_coefs[ci] = g_traj_coef_cv;
         }
         g_traj_coef_cw = 0;
+    }
+    if g_traj_z_cw != 0 {
+        let zci = g_traj_z_ci as usize;
+        if zci < TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG {
+            g_traj_z_coefs[zci] = g_traj_z_cv;
+        }
+        g_traj_z_cw = 0;
+    }
+    if g_traj_att_cw != 0 {
+        let aci = g_traj_att_ci as usize;
+        if aci < TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG {
+            g_traj_att_coefs[aci] = g_traj_att_cv;
+        }
+        g_traj_att_cw = 0;
     }
 
     // ── Mode D: onboard trajectory eval ───────────────────────────────────
@@ -864,12 +999,15 @@ pub unsafe extern "C" fn controllerOutOfTree(
     // When g_traj_mode == 0, reset T0 so the next Mode D activation gets a fresh start.
     if g_traj_mode == 0 {
         TRAJ_T0 = 0;
-    } else if (g_traj_mode == 1 || g_traj_mode == 2) && g_traj_start == 1 && TRAJ_T0 == 0 {
+    } else if g_traj_mode == 1 && g_traj_start == 1 && TRAJ_T0 == 0 {
         TRAJ_T0 = tick; // latch start time
     }
 
-    let (pd, vd, ad, omega_d) = if (g_traj_mode == 1 || g_traj_mode == 2) && TRAJ_T0 > 0 {
-        // Trajectory time in seconds (tick is in ms / FreeRTOS 1 kHz)
+    let (pd, vd, ad, omega_d) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
+        // ── Mode D: onboard trajectory eval ───────────────────────────────
+        // All trajectory types (flat, helix, loop) — Z source selected by z_mode:
+        //   z_mode=0: linear ramp via traj.dz (circle, figure-8, helix)
+        //   z_mode=1: degree-8 polynomial from g_traj_z_coefs (loop, any 3D path)
         let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
         let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
         let (pos_rel, vel, acc, jerk) = eval_traj_onboard(t, n_segs);
@@ -878,37 +1016,19 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let oy = g_traj_origin_y;
         let hz = g_traj_hover_z;
 
-        if g_traj_mode == 2 {
-            // ── Mode E: Vertical loop ────────────────────────────────────────
-            // cx polynomial → X axis (forward motion through the loop).
-            // cy polynomial → Z offset above hover_z  (encodes the circle height).
-            // Y is held fixed at oy — the loop is entirely in the X-Z plane.
-            //
-            // This reuses the existing 19-float/seg coefficient layout with no
-            // firmware buffer changes.  The laptop plans the loop as a circle in
-            // (x, z_offset) and uploads cx=X, cy=Z_offset.
-            //
-            // Flatness works through inversion: at the top of the loop
-            //   f_d_z = m*(az + g) = m*(g - R*omega^2) < 0  when R*omega^2 > g
-            // so desired_rot naturally produces an inverted body-Z axis.
-            // omega_desired must receive the full 3D jerk (jz ≠ 0 during the loop).
-            let pd = Vec3::new(ox + pos_rel.x, oy,           hz + pos_rel.y);
-            let vd = Vec3::new(vel.x,           0.0,          vel.y);
-            let ad = Vec3::new(acc.x,           0.0,          acc.y);
-            // Full 3D jerk: jerk.x = d³x/dt³, jerk.y used as jz (Z jerk of the loop).
-            // Without jz the pitch-rate feedforward is zero → we lose the key Mode D benefit.
-            let omega_d = omega_desired(ad, Vec3::new(jerk.x, 0.0, jerk.y), 0.0_f32);
-            (pd, vd, ad, omega_d)
+        // Z: polynomial override (3D) or linear ramp (flat/helix)
+        let (pz, vz, az, jz) = if g_traj_z_mode == 1 {
+            eval_z_poly(t, n_segs)
         } else {
-            // ── Mode D: flat XY trajectory + optional Z ramp (circle, figure-8, helix) ──
-            // World-frame reference: add EKF origin; z = hover_z + dz*lap_frac
-            let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz + pos_rel.z);
-            let vd = Vec3::new(vel.x, vel.y, vel.z);
-            let ad = Vec3::new(acc.x, acc.y, 0.0);
-            // ω_d feedforward from flatness (the key Mode D improvement over Mode B)
-            let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, 0.0), 0.0_f32);
-            (pd, vd, ad, omega_d)
-        }
+            (pos_rel.z, vel.z, acc.z, jerk.z)
+        };
+
+        let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz + pz);
+        let vd = Vec3::new(vel.x, vel.y, vz);
+        let ad = Vec3::new(acc.x, acc.y, az);
+        // ω_d feedforward: include Z jerk when z_mode=1 (non-zero for 3D paths).
+        let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, jz), 0.0_f32);
+        (pd, vd, ad, omega_d)
     } else {
         // Mode B passthrough: use incoming CRTP setpoint unchanged.
         // omega_d = zero → e_omega = omega (identical to previous behaviour).
@@ -925,7 +1045,24 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     let yaw_d = sp.attitude.yaw * deg2rad;
 
-    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d, dt, s);
+    // When att_mode=1 and a trajectory is active, use the uploaded attitude polynomial
+    // to compute rd and omega_d directly instead of re-running the flatness map.
+    let is_traj_active = g_traj_mode == 1 && TRAJ_T0 > 0;
+    let (rd_poly_storage, omega_d_poly, use_poly) = if g_traj_att_mode == 1 && is_traj_active {
+        let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
+        let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
+        let (roll_d, pitch_d, od) = eval_att_poly(t, yaw_d, n_segs);
+        (rot_from_euler(roll_d, pitch_d, yaw_d), od, true)
+    } else {
+        ([[0.0f32; 3]; 3], Vec3::zero(), false)
+    };
+    let (omega_d_final, rd_override) = if use_poly {
+        (omega_d_poly, Some(&rd_poly_storage))
+    } else {
+        (omega_d, None)
+    };
+
+    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s);
 
     s.omega_prev = omega;
 
