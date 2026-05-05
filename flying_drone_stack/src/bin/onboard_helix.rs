@@ -62,8 +62,9 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             let m1 = TrajectoryPlanner::richter(&wps, k_t, true)
                 .expect("Helix Mode 2 timing (Richter) failed");
             let kt_durs = m1.segment_durations();
+            // Mode 2 policy: explicit attitude waypoints (no flatness-derived attitude).
             let se3_wps: Vec<Se3Waypoint> = wps.iter()
-                .map(|w| Se3Waypoint::flat(w.pos, w.yaw))
+                .map(|w| Se3Waypoint::levelled(w.pos))
                 .collect();
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Helix Mode 2 QP failed")

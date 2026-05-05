@@ -231,7 +231,7 @@ fn test_attitude_poly_coefs_circle() {
     let seg_dur = 2.0 * std::f32::consts::PI / (n as f32 * omega);
     let waypoints: Vec<Se3Waypoint> = (0..=n).map(|i| {
         let theta = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
-        Se3Waypoint::flat(Vec3::new(radius * theta.cos(), radius * theta.sin(), 0.0), 0.0)
+        Se3Waypoint::levelled(Vec3::new(radius * theta.cos(), radius * theta.sin(), 0.0))
     }).collect();
     let durations = vec![seg_dur; n];
     let planner = TrajectoryPlanner::se3(&waypoints, &durations, 0.031, true)

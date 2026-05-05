@@ -18,16 +18,13 @@
 //! ## What Mode 2 adds
 //!
 //! Position:    same degree-8 minimum-snap polynomial (reuses `SplineTrajectory`)
-//! Orientation: two sub-modes per segment —
-//!   - `use_flatness = true`  → attitude derived from differential flatness
-//!     (Faessler 2018 / Tal & Karaman CDC 2018): jerk/snap feedforward for ω, ω̇.
-//!   - `use_flatness = false` → SLERP on SO(3) between explicit attitude waypoints.
+//! Orientation: explicit SO(3) attitude waypoints, interpolated with SLERP.
 //!
-//! These two sub-problems are planned **independently** — no coupling.  The
+//! Position and attitude are planned **independently** — no coupling.  The
 //! planner then computes:
 //!   thrust  = m · (a + g·e₃) · (R·e₃)   (can be 0 or negative → motor cut)
-//!   omega   = flatness-derived (jerk feedforward) or finite-diff of SLERP
-//!   alpha   = flatness-derived (snap feedforward) or finite-diff of SLERP
+//!   omega   = finite-diff of SLERP
+//!   alpha   = finite-diff of SLERP
 //!
 //! The result is a `Se3Output` that a geometric or INDI controller can consume
 //! directly without going through the flatness map.
@@ -38,9 +35,9 @@
 //! use crate::planning::se3_traj::{Se3Trajectory, Se3Waypoint};
 //! use crate::math::{Vec3, Quat};
 //!
-//! // Aggressive circle: flatness-derived attitude (bank angle automatic)
+//! // Aggressive circle: explicit level attitude waypoints
 //! let waypoints: Vec<Se3Waypoint> = circle_pts.iter()
-//!     .map(|p| Se3Waypoint::flat(*p, 0.0))
+//!     .map(|p| Se3Waypoint::levelled(*p))
 //!     .collect();
 //!
 //! // Flip: explicit attitude waypoints (flatness would be degenerate)
@@ -54,7 +51,7 @@
 //! let traj = Se3Trajectory::plan(&wps_flip, &durations, 0.027, false).unwrap();
 //!
 //! let out = traj.eval(0.2);   // Se3Output
-//! // out.rot    — rotation matrix (either flatness-derived or from explicit SLERP)
+//! // out.rot    — rotation matrix from explicit SLERP attitude
 //! // out.omega  — body-frame angular velocity [rad/s]
 //! // out.thrust — required thrust [N]  (may be 0 or negative for flips)
 //! ```
@@ -71,7 +68,7 @@
 //!   Flatness." CDC 2018.  (jerk/snap feedforward for attitude rates)
 
 use crate::math::{Vec3, Quat};
-use super::flatness::{FlatOutput, compute_flatness};
+use super::flatness::FlatOutput;
 use super::richter::FeasibilityReport;
 use super::spline::{SplineTrajectory, Waypoint};
 
@@ -82,10 +79,6 @@ use super::spline::{SplineTrajectory, Waypoint};
 const G: f32 = 9.81; // m/s²
 /// Small timestep used for finite-difference angular velocity / acceleration.
 const DT_FD: f32 = 1e-4; // s
-/// Minimum ‖a + g·e₃‖ [m/s²] required for the flatness attitude map to be
-/// numerically stable.  Below this the thrust direction is degenerate — the
-/// eval() falls back to SLERP using the most-recent attitude waypoint.
-const FLATNESS_EPSILON: f32 = 0.1;
 /// Feasibility check sample interval [s].
 const SAMPLE_DT: f32 = 0.02; // 50 Hz
 
@@ -93,43 +86,28 @@ const SAMPLE_DT: f32 = 0.02; // 50 Hz
 // Public types
 // ---------------------------------------------------------------------------
 
-/// A waypoint for the SE(3) planner: position + either an explicit attitude
-/// quaternion (for flips/rolls) or a flag to derive attitude via differential
-/// flatness (for aggressive but flat-output-feasible trajectories).
+/// A waypoint for the SE(3) planner: position + explicit attitude quaternion.
 ///
-/// **Choosing a mode**:
-/// - `Se3Waypoint::flat(pos, yaw)`: attitude derived from position polynomial
-///   jerk/snap via differential flatness.  Correct bank angles appear
-///   automatically.  Requires `‖a + g·e₃‖ > 0.1 m/s²` everywhere on the segment.
-/// - `Se3Waypoint::levelled/pitched/rolled/new(...)`: explicit attitude quaternion
-///   interpolated with SLERP.  Required for flips, vertical loops, or any
-///   manoeuvre where the net thrust vector passes through zero.
+/// Mode 2 policy is explicit-attitude-only. Use `new`/`levelled`/`pitched`/`rolled`
+/// to author the orientation profile directly on SO(3).
 #[derive(Debug, Clone, Copy)]
 pub struct Se3Waypoint {
     /// World-frame position [m].
     pub pos: Vec3,
     /// Desired body attitude — unit quaternion.
-    /// Only used when `use_flatness = false`.
     pub att: Quat,
-    /// If `true`, attitude is derived from the position polynomial via
-    /// differential flatness (jerk/snap feedforward).
-    /// If `false`, attitude is SLERP-interpolated between `att` waypoints.
-    pub use_flatness: bool,
-    /// Yaw reference [rad] for the flatness map.
-    /// Only used when `use_flatness = true`.
-    pub yaw: f32,
 }
 
 impl Se3Waypoint {
     /// Waypoint with explicit position and attitude (SLERP segment).
     pub fn new(pos: Vec3, att: Quat) -> Self {
-        Self { pos, att: att.normalize(), use_flatness: false, yaw: 0.0 }
+        Self { pos, att: att.normalize() }
     }
 
     /// Waypoint with the drone level (identity rotation: body z = world z).
     /// Uses SLERP attitude.
     pub fn levelled(pos: Vec3) -> Self {
-        Self { pos, att: Quat::identity(), use_flatness: false, yaw: 0.0 }
+        Self { pos, att: Quat::identity() }
     }
 
     /// Waypoint with the drone pitched by `angle_rad` around the body x-axis.
@@ -138,8 +116,6 @@ impl Se3Waypoint {
         Self {
             pos,
             att: Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), angle_rad).normalize(),
-            use_flatness: false,
-            yaw: 0.0,
         }
     }
 
@@ -149,20 +125,7 @@ impl Se3Waypoint {
         Self {
             pos,
             att: Quat::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), angle_rad).normalize(),
-            use_flatness: false,
-            yaw: 0.0,
         }
-    }
-
-    /// Waypoint where attitude is derived from differential flatness.
-    ///
-    /// Use for normal aggressive flight (circles, figure-8, banked turns) where
-    /// the thrust vector never passes through zero.  The planner automatically
-    /// computes the correct roll/pitch bank angle from jerk/snap feedforward.
-    ///
-    /// `yaw` is the desired heading [rad] at this waypoint.
-    pub fn flat(pos: Vec3, yaw: f32) -> Self {
-        Self { pos, att: Quat::identity(), use_flatness: true, yaw }
     }
 }
 
@@ -214,21 +177,15 @@ impl Se3Output {
     }
 }
 
-/// SE(3) trajectory: minimum-snap position + attitude on SO(3).
+/// SE(3) trajectory: minimum-snap position + explicit attitude on SO(3).
 ///
-/// Each segment independently chooses between:
-/// - **Flatness mode** (both endpoint waypoints have `use_flatness = true`):
-///   position polynomial jerk/snap feedforward → correct bank angles.
-/// - **SLERP mode** (either endpoint has explicit attitude):
-///   spherical linear interpolation between attitude quaternions.
+/// Attitude is interpolated with SLERP between waypoint quaternions.
 #[derive(Debug, Clone)]
 pub struct Se3Trajectory {
     /// Position polynomial (reuses Mode 0 solver, untouched).
     pos_traj: SplineTrajectory,
     /// Attitude quaternion at each waypoint (n_waypoints total).
     att_waypoints: Vec<Quat>,
-    /// Whether each waypoint uses differential flatness (`true`) or SLERP (`false`).
-    use_flatness: Vec<bool>,
     /// Original waypoints — kept for feasibility repair (replan with scaled times).
     waypoints: Vec<Se3Waypoint>,
     /// Per-segment durations [s] (length = n_waypoints - 1).
@@ -249,7 +206,7 @@ impl Se3Trajectory {
     /// Plan an SE(3) trajectory through `waypoints`.
     ///
     /// # Parameters
-    /// - `waypoints`: position + attitude/flatness flag at each waypoint.
+    /// - `waypoints`: position + explicit attitude at each waypoint.
     /// - `durations`: per-segment durations [s] (`len == waypoints.len() - 1`).
     /// - `mass`: drone mass [kg], used for thrust computation in `eval`.
     /// Plan a trajectory.
@@ -274,23 +231,20 @@ impl Se3Trajectory {
             return Err("mass must be positive".to_string());
         }
 
-        // Position + yaw: for flat waypoints use the waypoint yaw directly;
-        // for explicit-attitude waypoints extract yaw from the quaternion so
-        // that the yaw polynomial channel is always meaningful.
+        // Position + yaw channel: yaw is extracted from waypoint quaternions so
+        // the underlying position polynomial keeps a meaningful yaw signal.
         let pos_wps: Vec<Waypoint> = waypoints.iter().map(|w| Waypoint {
             pos: w.pos,
-            yaw: if w.use_flatness { w.yaw } else { quat_to_yaw(w.att) },
+            yaw: quat_to_yaw(w.att),
         }).collect();
 
         let pos_traj = SplineTrajectory::plan(&pos_wps, durations, periodic)?;
 
         let att_waypoints: Vec<Quat> = waypoints.iter().map(|w| w.att).collect();
-        let use_flatness:  Vec<bool> = waypoints.iter().map(|w| w.use_flatness).collect();
 
         Ok(Se3Trajectory {
             pos_traj,
             att_waypoints,
-            use_flatness,
             waypoints: waypoints.to_vec(),
             segment_times: durations.to_vec(),
             total_time: durations.iter().sum(),
@@ -301,42 +255,13 @@ impl Se3Trajectory {
 
     /// Evaluate SE(3) outputs at physical time `t` (clamped to [0, total_time]).
     ///
-    /// - For **flatness segments** (both endpoints `use_flatness = true` and
-    ///   ‖a + g·e₃‖ > ε): uses `compute_flatness` with jerk/snap feedforward
-    ///   to produce correct bank angle, angular velocity, and angular acceleration.
-    /// - For **SLERP segments** (explicit attitude): position from polynomial,
-    ///   attitude from SLERP, ω/α from finite differences.
+    /// Position comes from the polynomial; attitude is interpolated with SLERP.
+    /// Angular velocity/acceleration are estimated via finite differences.
     pub fn eval(&self, t: f32) -> Se3Output {
         let t = t.clamp(0.0, self.total_time);
 
         // Position, velocity, acceleration, jerk, snap, yaw — always from polynomial.
         let flat = self.pos_traj.eval(t);
-
-        let (seg, _) = self.segment_and_phase(t);
-
-        // ── Flatness path (jerk/snap feedforward) ────────────────────────────────
-        if self.segment_uses_flatness(seg) {
-            let acc_gx = flat.acc.x;
-            let acc_gy = flat.acc.y;
-            let acc_gz = flat.acc.z + G;
-            let acc_g_sq = acc_gx * acc_gx + acc_gy * acc_gy + acc_gz * acc_gz;
-            if acc_g_sq > FLATNESS_EPSILON * FLATNESS_EPSILON {
-                let fr = compute_flatness(&flat, self.mass);
-                return Se3Output {
-                    pos:    fr.pos,
-                    vel:    fr.vel,
-                    acc:    flat.acc,
-                    rot:    fr.rot,
-                    omega:  fr.omega,
-                    alpha:  fr.omega_dot,
-                    thrust: fr.thrust,
-                    yaw:    flat.yaw,
-                };
-            }
-            // Degenerate: thrust direction undefined — fall through to SLERP.
-        }
-
-        // ── SLERP attitude path ───────────────────────────────────────────────────
         let q = self.slerp_attitude(t);
 
         let t_fw = (t + DT_FD).min(self.total_time);
@@ -463,8 +388,7 @@ impl Se3Trajectory {
     /// These coefficients are uploaded to firmware so it can evaluate roll_d/pitch_d
     /// at 500 Hz without re-running the flatness map.
     ///
-    /// Segments using `use_flatness = true` derive roll/pitch from differential flatness.
-    /// Segments with explicit SLERP attitude use the rotation matrix from `eval()`.
+    /// Roll/pitch are sampled from the explicit SLERP attitude profile in `eval()`.
     ///
     /// 20 sample points per segment, Tikhonov λ = 1e-5.
     pub fn attitude_poly_coefs(&self) -> Vec<([f32; 9], [f32; 9])> {
@@ -503,13 +427,6 @@ impl Se3Trajectory {
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
-
-    /// Returns `true` if segment `seg` should use differential flatness.
-    /// Both endpoints must have `use_flatness = true`.
-    #[inline]
-    fn segment_uses_flatness(&self, seg: usize) -> bool {
-        self.use_flatness[seg] && self.use_flatness[seg + 1]
-    }
 
     /// Find which segment `t` falls in and return (segment index, t_local ∈ [0,1]).
     fn segment_and_phase(&self, t: f32) -> (usize, f32) {
@@ -802,18 +719,17 @@ mod tests {
         assert!(diff_w < 1e-5, "SLERP double-cover: w diff {}", diff_w);
     }
 
-    // ── T8: flat waypoints produce non-trivial omega during motion ───────────
+    // ── T8: explicit waypoints produce non-trivial omega during motion ───────
     #[test]
-    fn se3_flat_waypoints_produce_omega() {
-        // Straight flight with flatness: position changes → acceleration → omega
+    fn se3_level_waypoints_produce_omega() {
+        // Straight flight with explicit attitude interpolation.
         let wps = vec![
-            Se3Waypoint::flat(Vec3::new(0.0, 0.0, 1.0), 0.0),
-            Se3Waypoint::flat(Vec3::new(1.0, 0.0, 1.0), 0.0),
-            Se3Waypoint::flat(Vec3::new(2.0, 0.0, 1.0), 0.0),
+            Se3Waypoint::levelled(Vec3::new(0.0, 0.0, 1.0)),
+            Se3Waypoint::levelled(Vec3::new(1.0, 0.0, 1.0)),
+            Se3Waypoint::levelled(Vec3::new(2.0, 0.0, 1.0)),
         ];
         let traj = Se3Trajectory::plan(&wps, &[1.0, 1.0], 0.027, false).expect("plan");
-        // At t=0.5 (mid of first segment) there should be a non-zero acceleration
-        // and therefore non-zero omega from flatness
+        // At t=0.5 (mid of first segment) output should remain finite.
         let out = traj.eval(0.5);
         // Thrust must be positive (not inverted)
         assert!(out.thrust > 0.0, "thrust should be positive, got {}", out.thrust);
@@ -824,15 +740,15 @@ mod tests {
         }
     }
 
-    // ── T9: flat hover gives level attitude and correct thrust ────────────────
+    // ── T9: level hover gives level attitude and correct thrust ───────────────
     #[test]
-    fn se3_flat_hover_gives_level_attitude() {
+    fn se3_level_hover_gives_level_attitude() {
         // A hover: two waypoints at the same position → near-zero acceleration
-        // → acc_g ≈ g·e3 → zb ≈ e3 → attitude ≈ identity
+        // with explicit level quaternions.
         let wps = vec![
-            Se3Waypoint::flat(Vec3::new(0.0, 0.0, 1.0), 0.0),
-            Se3Waypoint::flat(Vec3::new(0.01, 0.0, 1.0), 0.0), // tiny motion
-            Se3Waypoint::flat(Vec3::new(0.02, 0.0, 1.0), 0.0),
+            Se3Waypoint::levelled(Vec3::new(0.0, 0.0, 1.0)),
+            Se3Waypoint::levelled(Vec3::new(0.01, 0.0, 1.0)), // tiny motion
+            Se3Waypoint::levelled(Vec3::new(0.02, 0.0, 1.0)),
         ];
         let traj = Se3Trajectory::plan(&wps, &[2.0, 2.0], 0.027, false).expect("plan");
         let out = traj.eval(2.0); // midpoint — near rest
@@ -852,9 +768,9 @@ mod tests {
     #[test]
     fn se3_check_feasibility_reports_peaks() {
         let wps = vec![
-            Se3Waypoint::flat(Vec3::new(0.0, 0.0, 1.0), 0.0),
-            Se3Waypoint::flat(Vec3::new(0.5, 0.0, 1.0), 0.0),
-            Se3Waypoint::flat(Vec3::new(1.0, 0.0, 1.0), 0.0),
+            Se3Waypoint::levelled(Vec3::new(0.0, 0.0, 1.0)),
+            Se3Waypoint::levelled(Vec3::new(0.5, 0.0, 1.0)),
+            Se3Waypoint::levelled(Vec3::new(1.0, 0.0, 1.0)),
         ];
         let traj = Se3Trajectory::plan(&wps, &[0.5, 0.5], 0.027, false).expect("plan");
         let report = traj.check_feasibility(1.0, 20.0);
@@ -879,18 +795,16 @@ mod tests {
         }
     }
 
-    // ── T12: mixed flat/SLERP segment — flat segment uses flatness map ────────
+    // ── T12: mixed explicit waypoints remain valid ─────────────────────────────
     #[test]
-    fn se3_flat_segment_uses_flatness_map() {
-        // Segment 0: flat, segment 1: explicit SLERP (transition to flat with identity)
+    fn se3_mixed_explicit_segment_is_valid() {
         let wps = vec![
-            Se3Waypoint::levelled(Vec3::new(0.0, 0.0, 1.0)), // SLERP endpoint
-            Se3Waypoint::flat(Vec3::new(0.5, 0.0, 1.0), 0.0), // mixed — SLERP wins
-            Se3Waypoint::flat(Vec3::new(1.0, 0.0, 1.0), 0.0), // flat segment
+            Se3Waypoint::levelled(Vec3::new(0.0, 0.0, 1.0)),
+            Se3Waypoint::pitched(Vec3::new(0.5, 0.0, 1.0), 0.2),
+            Se3Waypoint::levelled(Vec3::new(1.0, 0.0, 1.0)),
         ];
         let traj = Se3Trajectory::plan(&wps, &[0.5, 0.5], 0.027, false).expect("plan");
-        // Segment 1 (t=0.5..1.0) uses flatness → thrust should be positive
         let out = traj.eval(0.75);
-        assert!(out.thrust > 0.0, "thrust in flat segment: {}", out.thrust);
+        assert!(out.thrust.is_finite(), "thrust should be finite: {}", out.thrust);
     }
 }
