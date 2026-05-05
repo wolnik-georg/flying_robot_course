@@ -36,10 +36,199 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+from matplotlib.lines import Line2D
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REF_ROOT = os.path.join(_ROOT, "results", "planning_sim", "reference")
 CROSS_ROOT = os.path.join(_ROOT, "results", "planning_sim", "cross_mode")
+
+
+def _quat_to_rot(qw: np.ndarray, qx: np.ndarray, qy: np.ndarray, qz: np.ndarray) -> Tuple[np.ndarray, ...]:
+    """Quaternion [w,x,y,z] -> rotation matrix components (body->world)."""
+    r00 = 1.0 - 2.0 * (qy * qy + qz * qz)
+    r01 = 2.0 * (qx * qy - qz * qw)
+    r02 = 2.0 * (qx * qz + qy * qw)
+    r10 = 2.0 * (qx * qy + qz * qw)
+    r11 = 1.0 - 2.0 * (qx * qx + qz * qz)
+    r12 = 2.0 * (qy * qz - qx * qw)
+    r20 = 2.0 * (qx * qz - qy * qw)
+    r21 = 2.0 * (qy * qz + qx * qw)
+    r22 = 1.0 - 2.0 * (qx * qx + qy * qy)
+    return r00, r01, r02, r10, r11, r12, r20, r21, r22
+
+
+def _draw_orientation_glyphs(
+    ax: Any,
+    d: np.ndarray,
+    *,
+    color: str = "k",
+    axis_len: float = 0.08,
+    count: int = 14,
+    alpha: float = 0.55,
+) -> None:
+    """Draw sparse body-axis glyphs on a 3D path from qw/qx/qy/qz columns."""
+    req = {"px", "py", "pz", "qw", "qx", "qy", "qz"}
+    names = set(d.dtype.names or ())
+    if not req.issubset(names):
+        return
+    n = int(len(d["px"]))
+    if n < 3:
+        return
+    k = max(6, min(count, n))
+    idx = np.unique(np.linspace(0, n - 1, k, dtype=int))
+    qw, qx, qy, qz = d["qw"][idx], d["qx"][idx], d["qy"][idx], d["qz"][idx]
+    r00, _, r02, r10, _, r12, r20, _, r22 = _quat_to_rot(qw, qx, qy, qz)
+    # Draw body-x and body-z axes for readability.
+    ax.quiver(
+        d["px"][idx], d["py"][idx], d["pz"][idx],
+        r00, r10, r20,
+        length=axis_len, normalize=True, color=color, alpha=alpha * 0.75, linewidth=0.6
+    )
+    ax.quiver(
+        d["px"][idx], d["py"][idx], d["pz"][idx],
+        r02, r12, r22,
+        length=axis_len, normalize=True, color=color, alpha=alpha, linewidth=0.8
+    )
+
+
+def _euler_to_rot(roll: np.ndarray, pitch: np.ndarray, yaw: np.ndarray) -> Tuple[np.ndarray, ...]:
+    """ZYX Euler -> rotation matrix components (body->world)."""
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    r00 = cy * cp
+    r01 = cy * sp * sr - sy * cr
+    r02 = cy * sp * cr + sy * sr
+    r10 = sy * cp
+    r11 = sy * sp * sr + cy * cr
+    r12 = sy * sp * cr - cy * sr
+    r20 = -sp
+    r21 = cp * sr
+    r22 = cp * cr
+    return r00, r01, r02, r10, r11, r12, r20, r21, r22
+
+
+def _waypoint_ref_indices(d: np.ndarray, wps: Optional[np.ndarray]) -> np.ndarray:
+    """Map waypoint positions to nearest reference samples (ordered, unique)."""
+    n = int(len(d["px"]))
+    if n == 0:
+        return np.array([], dtype=int)
+    if wps is None or not getattr(wps, "size", 0):
+        k = min(12, n)
+        return np.unique(np.linspace(0, n - 1, k, dtype=int))
+    rx = d["px"][:, None]
+    ry = d["py"][:, None]
+    rz = d["pz"][:, None]
+    wx = np.atleast_1d(wps["px"])[None, :]
+    wy = np.atleast_1d(wps["py"])[None, :]
+    wz = np.atleast_1d(wps["pz"])[None, :]
+    dist2 = (rx - wx) ** 2 + (ry - wy) ** 2 + (rz - wz) ** 2
+    idx = np.argmin(dist2, axis=0)
+    # Preserve order, remove duplicates from closed-loop repeated waypoint.
+    return np.array(list(dict.fromkeys(int(i) for i in idx.tolist())), dtype=int)
+
+
+def _plot_trajectory_3d_orientation(folder: str, d: np.ndarray, wps: Optional[np.ndarray], title: str) -> None:
+    """
+    Dedicated large 3D trajectory plot with attitude triads at waypoint locations.
+    Triad colors: body-x red, body-y green, body-z blue.
+    """
+    fig = plt.figure(figsize=(11, 9))
+    ax = fig.add_subplot(111, projection="3d")
+
+    px, py, pz = d["px"], d["py"], d["pz"]
+    ax.plot(px, py, pz, color="black", lw=2.0, label="reference path")
+
+    if wps is not None and getattr(wps, "size", 0):
+        ax.scatter(
+            wps["px"], wps["py"], wps["pz"],
+            s=52, c="black", alpha=0.85, depthshade=True, label="waypoints"
+        )
+
+    idx = _waypoint_ref_indices(d, wps)
+    names = set(d.dtype.names or ())
+    if idx.size > 0:
+        if {"qw", "qx", "qy", "qz"}.issubset(names):
+            comps = _quat_to_rot(d["qw"][idx], d["qx"][idx], d["qy"][idx], d["qz"][idx])
+        elif {"euler_roll", "euler_pitch", "euler_yaw"}.issubset(names):
+            comps = _euler_to_rot(d["euler_roll"][idx], d["euler_pitch"][idx], d["euler_yaw"][idx])
+        else:
+            comps = None
+
+        if comps is not None:
+            r00, r01, r02, r10, r11, r12, r20, r21, r22 = comps
+            # Keep triads visually consistent within each figure:
+            # fixed physical glyph length derived from bbox (not per-axis, not per-vector).
+            span_x = float(np.max(px) - np.min(px))
+            span_y = float(np.max(py) - np.min(py))
+            span_z = float(np.max(pz) - np.min(pz))
+            diag = max(np.sqrt(span_x * span_x + span_y * span_y + span_z * span_z), 0.2)
+            axis_len = 0.085 * diag
+            # body-x (red)
+            ax.quiver(px[idx], py[idx], pz[idx], r00, r10, r20,
+                      length=axis_len, normalize=True, color="#d62728", linewidth=1.1, alpha=0.9)
+            # body-y (green)
+            ax.quiver(px[idx], py[idx], pz[idx], r01, r11, r21,
+                      length=axis_len, normalize=True, color="#2ca02c", linewidth=1.1, alpha=0.9)
+            # body-z (blue)
+            ax.quiver(px[idx], py[idx], pz[idx], r02, r12, r22,
+                      length=axis_len, normalize=True, color="#1f77b4", linewidth=1.2, alpha=0.95)
+
+    # Keep a minimum visual Z span for nearly-flat paths so the 3D frame
+    # remains interpretable (avoid "paper-thin" rendering).
+    xmin, xmax = float(np.min(px)), float(np.max(px))
+    ymin, ymax = float(np.min(py)), float(np.max(py))
+    zmin, zmax = float(np.min(pz)), float(np.max(pz))
+    span_x = xmax - xmin
+    span_y = ymax - ymin
+    span_z = zmax - zmin
+    xy_span = max(span_x, span_y, 1e-3)
+    # Ensure x/y are never singular (e.g. flip at fixed x,y).
+    xy_floor = 0.18 * max(xy_span, span_z, 0.2)
+    if span_x < xy_floor:
+        xc = 0.5 * (xmin + xmax)
+        xmin = xc - 0.5 * xy_floor
+        xmax = xc + 0.5 * xy_floor
+        span_x = xy_floor
+    if span_y < xy_floor:
+        yc = 0.5 * (ymin + ymax)
+        ymin = yc - 0.5 * xy_floor
+        ymax = yc + 0.5 * xy_floor
+        span_y = xy_floor
+    z_floor = 0.22 * xy_span
+    if span_z < z_floor:
+        zc = 0.5 * (zmin + zmax)
+        zmin = zc - 0.5 * z_floor
+        zmax = zc + 0.5 * z_floor
+        span_z = z_floor
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    ax.set_zlim(zmin, zmax)
+
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_zlabel("z [m]")
+    ax.set_title(f"3D trajectory + orientation triads (waypoints)\n{title}", fontsize=11)
+    ax.grid(True, alpha=0.3)
+
+    handles = [
+        Line2D([0], [0], color="black", lw=2.0, label="reference path"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="black", markersize=7, label="waypoints"),
+        Line2D([0], [0], color="#d62728", lw=2.0, label="body-x"),
+        Line2D([0], [0], color="#2ca02c", lw=2.0, label="body-y"),
+        Line2D([0], [0], color="#1f77b4", lw=2.0, label="body-z"),
+    ]
+    ax.legend(handles=handles, fontsize=9, loc="upper right")
+    # Avoid perspective/depth distortion that makes identical arrows look different.
+    ax.set_proj_type("ortho")
+    # Equalize visual scaling across x/y/z so axis lengths are comparable.
+    ax.set_box_aspect([max(span_x, 1e-3), max(span_y, 1e-3), max(span_z, 1e-3)])
+    ax.view_init(elev=26, azim=235)
+    plt.tight_layout()
+    out = os.path.join(folder, "trajectory_3d_orientation.png")
+    plt.savefig(out, dpi=160)
+    plt.close()
+    print(f"Saved {out}")
 
 
 def _read_feasibility_se3(dir_path: str) -> Optional[str]:
@@ -281,6 +470,7 @@ def _plot_reference_csv(csv_path: str) -> None:
     ax0.set_title("Position (world)", fontsize=9)
     ax0.legend(fontsize=7, loc="upper right")
     ax0.tick_params(labelsize=7)
+    _draw_orientation_glyphs(ax0, d, color="black", axis_len=0.07, count=12, alpha=0.45)
 
     ax = sp(2)
     ax.plot(t, px, label="px", lw=1.0)
@@ -465,6 +655,7 @@ def _plot_reference_csv(csv_path: str) -> None:
     plt.close()
     print(f"Saved {out}")
 
+    _plot_trajectory_3d_orientation(folder, d, wps, mode_traj)
     _plot_frenet_sanity(folder, d, t, junctions, mode_traj)
 
 
@@ -498,6 +689,7 @@ def plot_cross_mode_comparisons() -> None:
         ax3d = fig.add_subplot(2, 2, 1, projection="3d")
         for m, dat in loaded:
             ax3d.plot(dat["px"], dat["py"], dat["pz"], color=colors[m], lw=1.3, label=labels[m])
+            _draw_orientation_glyphs(ax3d, dat, color=colors[m], axis_len=0.06, count=10, alpha=0.28)
         ax3d.set_xlabel("x [m]")
         ax3d.set_ylabel("y [m]")
         ax3d.set_zlabel("z [m]")
