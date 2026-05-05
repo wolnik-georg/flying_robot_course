@@ -15,9 +15,9 @@
 //! ## Planning modes applied per trajectory
 //!   Mode 0 (SplineTrajectory — manual durations)  : circle, figure8, helix, loop
 //!   Mode 1 (RichterTrajectory — auto k_t timing)  : circle, figure8, helix, loop
-//!   Mode 2 (Se3Trajectory — flatness attitude for circle/fig8/helix, SLERP for flip/loop):
-//!     — circle, figure8, helix use `Se3Waypoint::flat` → bank angles from flatness (ω/α feedfwd)
-//!     — flip, loop use explicit pitched quaternion waypoints → SLERP attitude interpolation
+//!   Mode 2 (Se3Trajectory — explicit attitude on all trajectories):
+//!     — circle, figure8, helix use explicit levelled quaternion waypoints
+//!     — flip, loop use explicit pitched quaternion waypoints
 //!     — **position** segment times match **Mode 1 Richter** allocation (same `k_t` / `periodic`
 //!       per shape); flip keeps explicit manual segment times.
 //!
@@ -1727,19 +1727,18 @@ fn flip_waypoints_se3() -> (Vec<Se3Waypoint>, Vec<f32>) {
     (wps, vec![0.4, 0.4])  // 0.8 s total
 }
 
-/// Convert waypoints to Se3 **flat** waypoints — attitude derived via differential flatness.
+/// Convert flat waypoints to explicit SE(3) level attitude waypoints.
 ///
-/// Yaw is forwarded from the source waypoints so the flatness map uses the correct
-/// heading reference.  Bank angle (roll/pitch) emerges automatically from jerk/snap.
-/// Use for trajectories where thrust never passes through zero (circle, figure-8, helix).
+/// Mode 2 policy: attitude is authored explicitly (quaternion path),
+/// not derived from differential flatness.
 fn to_se3_level_waypoints(wps: &[Waypoint]) -> Vec<Se3Waypoint> {
-    wps.iter().map(|w| Se3Waypoint::flat(w.pos, w.yaw)).collect()
+    wps.iter().map(|w| Se3Waypoint::levelled(w.pos)).collect()
 }
 
-/// Convert waypoints to Se3 **flat** waypoints, forwarding the source yaw.
+/// Convert waypoints to explicit SE(3) level attitude waypoints.
 /// Identical to `to_se3_level_waypoints`; kept as a separate name for call-site clarity.
 fn to_se3_hover_waypoints(wps: &[Waypoint]) -> Vec<Se3Waypoint> {
-    wps.iter().map(|w| Se3Waypoint::flat(w.pos, w.yaw)).collect()
+    wps.iter().map(|w| Se3Waypoint::levelled(w.pos)).collect()
 }
 
 /// Vertical loop for Mode 2: explicit attitude through full inversion.

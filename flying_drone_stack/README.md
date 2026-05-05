@@ -6,6 +6,8 @@ simulation, SE(3) geometric control, MEKF state estimation, minimum-snap motion 
 exploration — all validated against real flight logs.
 
 > **Course assignments with results and plots → [ASSIGNMENTS.md](ASSIGNMENTS.md)**
+>
+> **Planning plot interpretation guide → [docs/PLANNING_VISUALIZATION_GUIDE.md](docs/PLANNING_VISUALIZATION_GUIDE.md)**
 
 ## Quick Start
 
