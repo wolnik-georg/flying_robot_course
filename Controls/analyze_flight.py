@@ -2,8 +2,21 @@
 """
 Post-flight trajectory analysis
 ================================
-Loads a CSV from FlightLogger (run_spline_circle.py or run_spline_figure8.py),
-evaluates the planned Poly4D trajectory at the same timestamps, and plots:
+Loads a CSV from FlightLogger (Python HLC / Mode C scripts), compares **actual**
+logged pose to a **maneuver-specific reference**, and writes plots.
+
+**Trajectory coverage** (each type uses the reference model that matches its script):
+
+| `--type` | Reference model | Primary plot output | 3D orientation PNG |
+|----------|----------------|----------------------|----------------------|
+| `circle`, `fast_circle`, `figure8`, `fast_figure8`, `autonomous` | Embedded Poly4D | `*_analysis.png` | `*_3d_orientation.png` |
+| `helix`, `fast_helix` | Analytic helix + flatness | `*_helix_analysis.png` | `*_3d_orientation.png` |
+| `yaw_spin` | Analytic yaw ramp + Z sine, XY hold | `*_yaw_spin_analysis.png` | `*_3d_orientation.png` |
+| `flip`, `fast_flip`, `fast_roll` | QP angle segments + hover pose | `*_flip_analysis.png` | `*_3d_orientation.png` |
+
+`--compare` is only supported for **Poly4D** types (same `TRAJECTORIES` entry for both CSVs).
+
+Default multi-panel layout for Poly4D types:
 
   Panel 1 — XY path: actual (blue) vs planned (red dashed)
   Panel 2 — Position vs time per axis (actual vs planned)
@@ -25,6 +38,7 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 # ── Trajectory parameters — must match the flight scripts ──────────────────
 # Circle (run_spline_circle.py) — 16 segments × 0.654s, tangent yaw
@@ -1602,6 +1616,165 @@ def compute_metrics(data, plan, plan_vel, planned_att_arr):
 
 # ── Plotting ─────────────────────────────────────────────────────────────────
 
+def _euler_deg_to_rot(roll_deg, pitch_deg, yaw_deg):
+    """ZYX Euler [deg] -> rotation matrix components (body->world)."""
+    roll = np.radians(roll_deg)
+    pitch = np.radians(pitch_deg)
+    yaw = np.radians(yaw_deg)
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    r00 = cy * cp
+    r01 = cy * sp * sr - sy * cr
+    r02 = cy * sp * cr + sy * sr
+    r10 = sy * cp
+    r11 = sy * sp * sr + cy * cr
+    r12 = sy * sp * cr - cy * sr
+    r20 = -sp
+    r21 = cp * sr
+    r22 = cp * cr
+    return r00, r01, r02, r10, r11, r12, r20, r21, r22
+
+
+def _draw_triad(ax, x, y, z, rot_comps, axis_len, alpha=0.9):
+    """Draw one body-axis triad at a point."""
+    r00, r01, r02, r10, r11, r12, r20, r21, r22 = rot_comps
+    # body x/y/z = red/green/blue
+    ax.quiver(x, y, z, r00, r10, r20, length=axis_len, normalize=True,
+              color="#d62728", linewidth=1.0, alpha=alpha)
+    ax.quiver(x, y, z, r01, r11, r21, length=axis_len, normalize=True,
+              color="#2ca02c", linewidth=1.0, alpha=alpha)
+    ax.quiver(x, y, z, r02, r12, r22, length=axis_len, normalize=True,
+              color="#1f77b4", linewidth=1.1, alpha=alpha)
+
+
+def _save_3d_traj_orientation_generic(
+    csv_path,
+    times,
+    x_a,
+    y_a,
+    z_a,
+    x_p,
+    y_p,
+    z_p,
+    roll_a_deg,
+    pitch_a_deg,
+    yaw_a_deg,
+    roll_p_deg,
+    pitch_p_deg,
+    yaw_p_deg,
+    marker_times,
+    *,
+    subtitle="",
+):
+    """
+    Save `<stem>_3d_orientation.png`: planned vs flown paths + orientation triads
+    (planned triads slightly transparent) at marker times.
+    All arrays must align with `times` (same length).
+    """
+    n = len(times)
+    if n == 0:
+        return
+
+    fig = plt.figure(figsize=(11, 9))
+    ax = fig.add_subplot(111, projection="3d")
+
+    ax.plot(x_p, y_p, z_p, "k--", lw=1.8, alpha=0.75, label="planned")
+    ax.plot(x_a, y_a, z_a, color="#1f77b4", lw=1.9, label="flown")
+
+    span_x = float(np.nanmax(np.r_[x_a, x_p]) - np.nanmin(np.r_[x_a, x_p]))
+    span_y = float(np.nanmax(np.r_[y_a, y_p]) - np.nanmin(np.r_[y_a, y_p]))
+    span_z = float(np.nanmax(np.r_[z_a, z_p]) - np.nanmin(np.r_[z_a, z_p]))
+    diag = max(np.sqrt(span_x * span_x + span_y * span_y + span_z * span_z), 0.3)
+    axis_len = 0.07 * diag
+
+    t0, t1 = float(times[0]), float(times[-1])
+    marker_times = np.unique(np.clip(np.asarray(marker_times, dtype=float), t0, t1))
+
+    for t_m in marker_times:
+        i = int(np.argmin(np.abs(times - t_m)))
+
+        rcp = _euler_deg_to_rot(roll_p_deg[i], pitch_p_deg[i], yaw_p_deg[i])
+        _draw_triad(ax, x_p[i], y_p[i], z_p[i], rcp, axis_len, alpha=0.55)
+
+        rca = _euler_deg_to_rot(roll_a_deg[i], pitch_a_deg[i], yaw_a_deg[i])
+        _draw_triad(ax, x_a[i], y_a[i], z_a[i], rca, axis_len, alpha=0.85)
+
+        ax.scatter([x_p[i]], [y_p[i]], [z_p[i]], c="black", s=16, alpha=0.6)
+        ax.scatter([x_a[i]], [y_a[i]], [z_a[i]], c="#1f77b4", s=20, alpha=0.9)
+        ax.text(x_a[i], y_a[i], z_a[i], f"t={times[i]:.1f}s", fontsize=7, color="#333333")
+
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_zlabel("z [m]")
+    ttl = "3D flown vs planned + orientation triads (x=red, y=green, z=blue)"
+    if subtitle:
+        ttl = ttl + "\n" + subtitle
+    ax.set_title(ttl, fontsize=11)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=9, loc="upper right")
+    ax.set_proj_type("ortho")
+
+    all_x = np.r_[x_a, x_p]
+    all_y = np.r_[y_a, y_p]
+    all_z = np.r_[z_a, z_p]
+    xmin, xmax = float(np.nanmin(all_x)), float(np.nanmax(all_x))
+    ymin, ymax = float(np.nanmin(all_y)), float(np.nanmax(all_y))
+    zmin, zmax = float(np.nanmin(all_z)), float(np.nanmax(all_z))
+    sx, sy, sz = xmax - xmin, ymax - ymin, zmax - zmin
+    xy_span = max(sx, sy, 1e-3)
+    z_floor = 0.22 * xy_span
+    if sz < z_floor:
+        zc = 0.5 * (zmin + zmax)
+        zmin, zmax, sz = zc - 0.5 * z_floor, zc + 0.5 * z_floor, z_floor
+    xy_floor = 0.18 * max(xy_span, sz, 0.2)
+    if sx < xy_floor:
+        xc = 0.5 * (xmin + xmax)
+        xmin, xmax, sx = xc - 0.5 * xy_floor, xc + 0.5 * xy_floor, xy_floor
+    if sy < xy_floor:
+        yc = 0.5 * (ymin + ymax)
+        ymin, ymax, sy = yc - 0.5 * xy_floor, yc + 0.5 * xy_floor, xy_floor
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
+    ax.set_zlim(zmin, zmax)
+    ax.set_box_aspect([max(sx, 1e-3), max(sy, 1e-3), max(sz, 1e-3)])
+    ax.view_init(elev=24, azim=230)
+
+    plt.tight_layout()
+    out = os.path.splitext(csv_path)[0] + "_3d_orientation.png"
+    fig.savefig(out, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  3D plot   : {out}")
+
+
+def _save_3d_traj_orientation_plot(csv_path, times, data, plan, planned_att, segs, speed_scale, loop):
+    """Poly4D path: marker times at segment boundaries (scaled) + sparse samples."""
+    x_a, y_a, z_a = data["x"], data["y"], data["z"]
+    x_p, y_p, z_p = plan[:, 0], plan[:, 1], plan[:, 2]
+    seg_times = np.cumsum([s[0] for s in segs]) / max(speed_scale, 1e-6)
+    if loop and len(times) > 0:
+        seg_times = seg_times[seg_times <= times[-1]]
+    sparse_times = np.linspace(times[0], times[-1], min(10, len(times)))
+    marker_times = np.unique(np.r_[seg_times, sparse_times])
+    _save_3d_traj_orientation_generic(
+        csv_path,
+        times,
+        x_a,
+        y_a,
+        z_a,
+        x_p,
+        y_p,
+        z_p,
+        data["roll_deg"],
+        data["pitch_deg"],
+        data["yaw_deg"],
+        planned_att[:, 0],
+        planned_att[:, 1],
+        planned_att[:, 2],
+        marker_times,
+        subtitle="Poly4D reference vs flown",
+    )
+
 
 def plot_helix_analysis(data, csv_path, lap_time=10.5):
     """Full 8-panel post-flight analysis for helix (analytic reference, no Poly4D).
@@ -1822,6 +1995,29 @@ def plot_helix_analysis(data, csv_path, lap_time=10.5):
     ax.set_xlabel('time [s]'); ax.set_ylabel('acceleration [g]')
     ax.legend(fontsize=7, ncol=2); ax.grid(True)
 
+    # Dedicated 3D + orientation (same artifact as Poly4D / flip / yaw_spin)
+    lap_markers = [n * lap_time for n in range(1, int(n_laps) + 3) if n * lap_time <= ts[-1]]
+    sparse_m = np.linspace(ts[0], ts[-1], min(12, len(ts)))
+    mtimes = np.unique(np.clip(np.r_[lap_markers, sparse_m], ts[0], ts[-1]))
+    _save_3d_traj_orientation_generic(
+        csv_path,
+        ts,
+        xa,
+        ya,
+        za,
+        xr,
+        yr,
+        zr,
+        roll_a,
+        pitch_a,
+        yaw_a,
+        p_roll,
+        p_pitch,
+        p_yaw,
+        mtimes,
+        subtitle=f"Helix analytic (lap={lap_time:.2f}s)",
+    )
+
     plt.tight_layout()
 
     print("\n── Helix Tracking Statistics ─────────────────────────────────")
@@ -1935,6 +2131,45 @@ def plot_flip_analysis(data, csv_path, segs=None, t_flip=None, height=None):
     ax.set_title("Pitch Tracking Error  (actual − planned)")
     ax.legend(fontsize=8); ax.grid(True, alpha=0.3)
 
+    # 3D: hover setpoint position + planned pitch profile vs flown
+    x_fu = np.asarray(data["x"], dtype=float)
+    y_fu = np.asarray(data["y"], dtype=float)
+    z_fu = np.asarray(z_actual, dtype=float)
+    x0, y0 = float(x_fu[0]), float(y_fu[0])
+    xp = np.full(len(times), x0)
+    yp = np.full(len(times), y0)
+    zp = np.full(len(times), float(height))
+    yaw0 = float(np.nanmedian(np.asarray(data["yaw_deg"], dtype=float)[: max(1, len(times) // 10)]))
+    roll_p = np.zeros(len(times))
+    pitch_p = planned_theta_deg
+    yaw_p = np.full(len(times), yaw0)
+    cum = 0.0
+    btimes = [0.0]
+    for seg in segs[:-1]:
+        cum += float(seg[0])
+        btimes.append(cum)
+    btimes.append(float(t_flip))
+    sparse_m = np.linspace(float(times[0]), float(min(times[-1], t_flip * 1.25 + 1e-6)), 10)
+    mtimes = np.unique(np.clip(np.r_[btimes, sparse_m], times[0], times[-1]))
+    _save_3d_traj_orientation_generic(
+        csv_path,
+        times,
+        x_fu,
+        y_fu,
+        z_fu,
+        xp,
+        yp,
+        zp,
+        np.asarray(data["roll_deg"], dtype=float),
+        np.asarray(data["pitch_deg"], dtype=float),
+        np.asarray(data["yaw_deg"], dtype=float),
+        roll_p,
+        pitch_p,
+        yaw_p,
+        mtimes,
+        subtitle="Flip: fixed XY + setpoint Z; planned pitch from angle poly",
+    )
+
     plt.tight_layout()
     out = os.path.splitext(csv_path)[0] + "_flip_analysis.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
@@ -2038,6 +2273,30 @@ def plot_yaw_spin_analysis(data, csv_path,
     ax.set_xlabel('time [s]'); ax.set_ylabel('deg  /  deg/s')
     ax.set_title('Yaw Rate + Attitude'); ax.legend(fontsize=9); ax.grid(True, alpha=0.3)
 
+    roll_p = np.zeros_like(ts, dtype=float)
+    pitch_p = np.zeros_like(ts, dtype=float)
+    xp = np.full_like(ts, x0, dtype=float)
+    yp = np.full_like(ts, y0, dtype=float)
+    mtimes = np.unique(np.linspace(ts[0], ts[-1], min(14, len(ts))))
+    _save_3d_traj_orientation_generic(
+        csv_path,
+        ts,
+        xa,
+        ya,
+        za,
+        xp,
+        yp,
+        z_ref,
+        roll_a,
+        pitch_a,
+        yaw_unwrap,
+        roll_p,
+        pitch_p,
+        yaw_ref,
+        mtimes,
+        subtitle="Yaw spin: XY hold + analytic yaw ramp + Z sine",
+    )
+
     plt.tight_layout()
     out = os.path.splitext(csv_path)[0] + "_yaw_spin_analysis.png"
     fig.savefig(out, dpi=150)
@@ -2062,6 +2321,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     )
     p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
     px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
+    _save_3d_traj_orientation_plot(csv_path, times, data, plan, planned_att, segs, speed_scale, loop)
 
     # Planned angular rates: numerical diff of Euler angles (Euler rates ≈ body omega for small roll/pitch)
     dt = np.gradient(times)

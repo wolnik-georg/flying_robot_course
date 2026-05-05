@@ -126,6 +126,46 @@ TRAJ_VIEW = {
 }
 
 
+def _euler_to_body_z(roll: np.ndarray, pitch: np.ndarray, yaw: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """ZYX Euler -> world body-z column of R."""
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+    # Third column of Rz(yaw) Ry(pitch) Rx(roll)
+    z_x = cy * sp * cr + sy * sr
+    z_y = sy * sp * cr - cy * sr
+    z_z = cp * cr
+    return z_x, z_y, z_z
+
+
+def _draw_attitude_arrows(
+    ax,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    roll: np.ndarray,
+    pitch: np.ndarray,
+    yaw: np.ndarray,
+    *,
+    color: str,
+    axis_len: float = 0.08,
+    count: int = 11,
+    alpha: float = 0.5,
+) -> None:
+    """Sparse body-z arrows over a 3D trajectory."""
+    n = len(x)
+    if n < 3:
+        return
+    k = max(6, min(count, n))
+    idx = np.unique(np.linspace(0, n - 1, k, dtype=int))
+    zx, zy, zz = _euler_to_body_z(roll[idx], pitch[idx], yaw[idx])
+    ax.quiver(
+        x[idx], y[idx], z[idx],
+        zx, zy, zz,
+        length=axis_len, normalize=True, color=color, alpha=alpha, linewidth=0.8
+    )
+
+
 def fmt_ax3d(ax, traj_key):
     xl, yl, zl = TRAJ_LIMS[traj_key]
     ax.set_xlim(xl); ax.set_ylim(yl); ax.set_zlim(zl)
@@ -178,7 +218,7 @@ M2_COLORS = {
 }
 
 fig = plt.figure(figsize=(26, 15))
-fig.suptitle("3-D Trajectories: Reference (gray--) | Geo (solid) | INDI (dotted)", fontsize=13)
+fig.suptitle("3-D Trajectories: path + sparse attitude arrows (body-z)", fontsize=13)
 
 # Row 1 — Mode 0
 for col, (base, tlbl, tk) in enumerate(MODE0_TRAJ):
@@ -188,6 +228,12 @@ for col, (base, tlbl, tk) in enumerate(MODE0_TRAJ):
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
     ax.plot(dg["sim_x"], dg["sim_y"], dg["sim_z"], color=M0_COLOR, ls="-",  lw=1.8, label="Geo")
     ax.plot(di["sim_x"], di["sim_y"], di["sim_z"], color=M0_COLOR, ls=":",  lw=2.2, label="INDI")
+    _draw_attitude_arrows(ax, dg["ref_x"], dg["ref_y"], dg["ref_z"], dg["ref_roll"], dg["ref_pitch"], dg["ref_yaw"],
+                          color="gray", axis_len=0.07, count=9, alpha=0.45)
+    _draw_attitude_arrows(ax, dg["sim_x"], dg["sim_y"], dg["sim_z"], dg["sim_roll"], dg["sim_pitch"], dg["sim_yaw"],
+                          color=M0_COLOR, axis_len=0.065, count=9, alpha=0.35)
+    _draw_attitude_arrows(ax, di["sim_x"], di["sim_y"], di["sim_z"], di["sim_roll"], di["sim_pitch"], di["sim_yaw"],
+                          color=M0_COLOR, axis_len=0.065, count=9, alpha=0.22)
     ax.set_title(f"Mode 0 — {tlbl}", fontsize=9)
     fmt_ax3d(ax, tk)
     if col == 0:
@@ -201,6 +247,12 @@ for col, (base, tlbl, tk) in enumerate(MODE1_TRAJ):
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
     ax.plot(dg["sim_x"], dg["sim_y"], dg["sim_z"], color=M1_COLOR, ls="-",  lw=1.8, label="Geo")
     ax.plot(di["sim_x"], di["sim_y"], di["sim_z"], color=M1_COLOR, ls=":",  lw=2.2, label="INDI")
+    _draw_attitude_arrows(ax, dg["ref_x"], dg["ref_y"], dg["ref_z"], dg["ref_roll"], dg["ref_pitch"], dg["ref_yaw"],
+                          color="gray", axis_len=0.07, count=9, alpha=0.45)
+    _draw_attitude_arrows(ax, dg["sim_x"], dg["sim_y"], dg["sim_z"], dg["sim_roll"], dg["sim_pitch"], dg["sim_yaw"],
+                          color=M1_COLOR, axis_len=0.065, count=9, alpha=0.35)
+    _draw_attitude_arrows(ax, di["sim_x"], di["sim_y"], di["sim_z"], di["sim_roll"], di["sim_pitch"], di["sim_yaw"],
+                          color=M1_COLOR, axis_len=0.065, count=9, alpha=0.22)
     ax.set_title(f"Mode 1 — {tlbl}", fontsize=9)
     fmt_ax3d(ax, tk)
     if col == 0:
@@ -215,6 +267,12 @@ for col, (base, tlbl, tk) in enumerate(MODE2_TRAJ):
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
     ax.plot(dg["sim_x"], dg["sim_y"], dg["sim_z"], color=clr, ls="-",  lw=1.8, label="Geo")
     ax.plot(di["sim_x"], di["sim_y"], di["sim_z"], color=clr, ls=":",  lw=2.2, label="INDI")
+    _draw_attitude_arrows(ax, dg["ref_x"], dg["ref_y"], dg["ref_z"], dg["ref_roll"], dg["ref_pitch"], dg["ref_yaw"],
+                          color="gray", axis_len=0.08, count=10, alpha=0.5)
+    _draw_attitude_arrows(ax, dg["sim_x"], dg["sim_y"], dg["sim_z"], dg["sim_roll"], dg["sim_pitch"], dg["sim_yaw"],
+                          color=clr, axis_len=0.075, count=10, alpha=0.38)
+    _draw_attitude_arrows(ax, di["sim_x"], di["sim_y"], di["sim_z"], di["sim_roll"], di["sim_pitch"], di["sim_yaw"],
+                          color=clr, axis_len=0.075, count=10, alpha=0.25)
     ax.set_title(f"Mode 2 — {tlbl}", fontsize=9)
     fmt_ax3d(ax, tk)
     ax.legend(fontsize=7)
