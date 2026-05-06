@@ -55,7 +55,7 @@ fn figure8_trajectory() -> SplineTrajectory {
     ];
     let durations = vec![1.050000_f32, 0.710000, 0.620000, 0.700000, 0.560000,
                          0.560000, 0.700000, 0.620000, 0.710000, 1.053185];
-    SplineTrajectory::plan(&waypoints, &durations, false)
+    SplineTrajectory::plan(&waypoints, &durations, true)
         .expect("Figure-8 QP planning failed")
 }
 

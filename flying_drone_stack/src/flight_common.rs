@@ -11,7 +11,7 @@
 //!   - Async sequences: connect_drone(), verify_firmware(), setup_log_blocks(),
 //!     kalman_reset(), sample_origin(), upload_trajectory(),
 //!     ramp_to_hover(), hover_settle(), hold_and_land()
-//!   - write_csv()
+//!   - write_csv(), write_csv_with_metadata()
 //!
 //! What stays in each binary:
 //!   - Trajectory-specific constants (radius, omega, etc.)
@@ -119,9 +119,24 @@ pub fn collect_row(
 
 /// Write all rows to a CSV file at `path`.
 pub fn write_csv(rows: &[Row], path: &str) -> std::io::Result<()> {
+    write_csv_with_metadata(rows, path, &[])
+}
+
+/// Write rows to CSV with optional run-signature metadata lines.
+///
+/// Metadata is emitted as comment lines before the header:
+///   # meta:key=value
+pub fn write_csv_with_metadata(
+    rows: &[Row],
+    path: &str,
+    metadata: &[(String, String)],
+) -> std::io::Result<()> {
     fs::create_dir_all("../Controls/logs")?;
     let file = fs::File::create(path)?;
     let mut w = BufWriter::new(file);
+    for (k, v) in metadata {
+        writeln!(w, "# meta:{}={}", k, v)?;
+    }
     writeln!(w, "time_s,x,y,z,vx,vy,vz,roll_deg,pitch_deg,yaw_deg,thrust,vbat,\
                  gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z")?;
     for r in rows {

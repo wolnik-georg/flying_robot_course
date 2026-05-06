@@ -13,13 +13,15 @@
 //!   cargo run --release --bin onboard_loop -- --speed 2.5 --radius 0.5 --reps 3
 //!   cargo run --release --bin onboard_loop -- --mode 1 --kt 0.5
 //!   cargo run --release --bin onboard_loop -- --mode 2 --kt 0.5
+//!   cargo run --release --bin onboard_loop -- --mode 3 --kt 0.5
+//!   cargo run --release --bin onboard_loop -- --mode 4 --kt 0.5
 //!
 //! --speed  : trajectory speed multiplier for Mode 0 only (default 1.0)
-//!            Ignored for Mode 1/2 — use --kt to control speed there.
+//!            Ignored for Mode 1/2/3/4 — use --kt to control speed there.
 //! --radius : loop radius in metres (default 0.5)
 //! --reps   : number of complete loops (default 1)
-//! --mode   : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
-//! --kt     : Richter aggressiveness for timing (Mode 1 and 2, default 0.5)
+//! --mode   : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
+//! --kt     : aggressiveness for timing (Mode 1/2/3/4, default 0.5)
 //!
 //! Planning mode comparison:
 //!   Mode 0/1: position polynomial in 3D; firmware derives attitude via flatness.
@@ -44,7 +46,7 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3, Quat};
+use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3, Quat};
 
 const GRAVITY:        f32 = 9.81;
 const RADIUS_DEFAULT: f32 = 0.5;
@@ -115,6 +117,16 @@ fn build_planner(mode: u8, radius: f32, t_lap: f32, k_t: f32) -> TrajectoryPlann
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Loop Mode 2 QP failed")
         }
+        3 => {
+            let (wps, _) = loop_waypoints_3d(radius, t_lap);
+            TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
+                .expect("Loop Mode 3 joint QP failed")
+        }
+        4 => {
+            let (wps, _) = loop_waypoints_3d(radius, t_lap);
+            TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::InvertAtApex)
+                .expect("Loop Mode 4 constrained joint QP failed")
+        }
         _ => {
             let (wps, durs) = loop_waypoints_3d(radius, t_lap);
             TrajectoryPlanner::spline(&wps, &durs, true)
@@ -138,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0.5);
 
     if n_reps == 0 || n_reps > 20 { eprintln!("--reps must be 1-20"); std::process::exit(1); }
-    if mode > 2                   { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
+    if mode > 4                   { eprintln!("--mode must be 0, 1, 2, 3, or 4"); std::process::exit(1); }
 
     let t_lap  = T_LAP_DEFAULT / speed;
     let omega  = 2.0 * std::f32::consts::PI / t_lap;
@@ -168,7 +180,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let att_coefs = serialise_att_coefs(&att_coefs_raw);
     println!("Planned: {} segs  {} pos coefs  {} z coefs  lap={:.2}s",
              n_segs, coefs.len(), z_coefs.len(), traj_total);
-    if mode == 2 { println!("  Mode 2: uploading {} att coefs", att_coefs.len()); }
+    if mode >= 2 { println!("  Mode {}: uploading {} att coefs", mode, att_coefs.len()); }
 
     let link_ctx = LinkContext::new();
     let cf = connect_drone(&link_ctx).await?;
@@ -180,14 +192,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     upload_trajectory(&cf, &coefs).await?;
     upload_z_trajectory(&cf, &z_coefs).await?;
-    if mode == 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
+    if mode >= 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
     cf.param.set("traj.nseg",     n_segs as u8).await?;
     cf.param.set("traj.ox",       o.ox).await?;
     cf.param.set("traj.oy",       o.oy).await?;
     cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
     cf.param.set("traj.dz",       0.0f32).await?;
     cf.param.set("traj.z_mode",   1u8).await?;
-    cf.param.set("traj.att_mode", (mode == 2) as u8).await?;
+    cf.param.set("traj.att_mode", (mode >= 2) as u8).await?;
 
     ramp_to_hover(&cf, &o, &sa, &sb, &sc).await?;
     hover_settle(&cf, &o, &sa, &sb, &sc).await?;
@@ -238,7 +250,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let speed_tag = format!("{:.1}", speed).replace('.', "-");
     let csv_path = format!("../Controls/logs/loop_onboard_m{}_s{}x_r{}_{}.csv",
                            mode, speed_tag, n_reps, ts_str);
-    write_csv(&rows, &csv_path)?;
+    let metadata = vec![
+        ("run_trajectory".to_string(), "loop".to_string()),
+        ("run_mode".to_string(), mode.to_string()),
+        ("run_kt".to_string(), format!("{k_t:.6}")),
+        ("run_speed".to_string(), format!("{speed:.6}")),
+        ("run_reps".to_string(), n_reps.to_string()),
+        ("run_periodic".to_string(), "true".to_string()),
+        ("run_att_poly".to_string(), ((mode >= 2) as u8).to_string()),
+        ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
+        ("run_radius_m".to_string(), format!("{radius:.6}")),
+    ];
+    write_csv_with_metadata(&rows, &csv_path, &metadata)?;
     println!("Saved {} rows -> {}", rows.len(), csv_path);
     println!("Analyse: ~/.pyenv/versions/flying_robots/bin/python \
               Controls/analyze_flight.py --csv {} --type loop", csv_path);

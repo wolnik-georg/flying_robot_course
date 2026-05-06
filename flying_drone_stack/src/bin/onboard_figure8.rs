@@ -8,12 +8,18 @@
 //!   cargo run --release --bin onboard_figure8 -- --speed 1.4 --reps 2
 //!   cargo run --release --bin onboard_figure8 -- --mode 1 --kt 0.008
 //!   cargo run --release --bin onboard_figure8 -- --mode 2 --kt 0.05
+//!   cargo run --release --bin onboard_figure8 -- --mode 3 --kt 0.008
+//!   cargo run --release --bin onboard_figure8 -- --mode 4 --kt 0.008
+//!   cargo run --release --bin onboard_figure8 -- --mode 3 --kt 0.02 --att-poly 1
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5–3.0, default 1.0)
-//!           Ignored for Mode 1/2 — use --kt to control speed there.
+//!           Ignored for Mode 1/2/3/4 — use --kt to control speed there.
 //! --reps  : number of full figure-8 repetitions (default 1)
-//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
-//! --kt    : Richter aggressiveness for timing (Mode 1 and 2, default 0.008)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
+//! --kt    : aggressiveness for timing (Mode 1/2/3/4, default 0.008)
+//! --att-poly : 0/1. For Mode >=2, upload/use attitude polynomials in firmware.
+//!              Default 0 (intermediate safety mode: keep planner mode, but let firmware
+//!              derive attitude from flatness to avoid hard-poly override failures).
 //!
 //! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
 //! roll/pitch polynomials via least-squares, uploads via traj.aci/acv/acw, firmware evaluates
@@ -33,7 +39,7 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
+use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
 
 const BASE_DURATIONS: [f32; 10] = [
     1.050000, 0.710000, 0.620000, 0.700000, 0.560000,
@@ -60,20 +66,24 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
     let wps = figure8_waypoints();
     let durs: Vec<f32> = BASE_DURATIONS.iter().map(|d| d / speed).collect();
     match mode {
-        1 => TrajectoryPlanner::richter(&wps, k_t, false)
+        1 => TrajectoryPlanner::richter(&wps, k_t, true)
             .expect("Figure-8 Mode 1 QP failed"),
         2 => {
             // Use Richter timing (k_t) for duration allocation, same as Mode 1.
-            let m1 = TrajectoryPlanner::richter(&wps, k_t, false)
+            let m1 = TrajectoryPlanner::richter(&wps, k_t, true)
                 .expect("Figure-8 Mode 2 timing (Richter) failed");
             let kt_durs = m1.segment_durations();
             // Mode 2 policy: provide attitude explicitly (SLERP path).
             let se3_wps: Vec<Se3Waypoint> = wps.iter()
                 .map(|w| Se3Waypoint::levelled(w.pos))
                 .collect();
-            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, false)
+            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Figure-8 Mode 2 QP failed")
         }
+        3 => TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
+            .expect("Figure-8 Mode 3 joint QP failed"),
+        4 => TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::None)
+            .expect("Figure-8 Mode 4 constrained joint QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, false)
             .expect("Figure-8 Mode 0 QP failed"),
     }
@@ -90,10 +100,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0);
     let k_t: f32 = args.iter().position(|a| a == "--kt")
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0.008);
+    let use_att_poly: bool = args.iter().position(|a| a == "--att-poly")
+        .and_then(|i| args.get(i+1))
+        .and_then(|s| s.parse::<u8>().ok())
+        .map(|v| v != 0)
+        .unwrap_or(false);
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20  { eprintln!("--reps must be 1-20");   std::process::exit(1); }
-    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
+    if mode > 4                    { eprintln!("--mode must be 0, 1, 2, 3, or 4"); std::process::exit(1); }
 
     let planner = build_planner(mode, speed, k_t);
     let spline = planner.as_spline();
@@ -106,7 +121,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Mode D Figure-8 | planning_mode={} | speed={:.1}x | lap={:.2}s | peak~{:.2}m/s | reps={}",
              mode, speed, traj_total, peak_ms, n_reps);
     println!("  accel ~{:.2}x  jerk ~{:.2}x", speed * speed, speed * speed * speed);
-    if mode == 2 { println!("  Mode 2: uploading {} att coefs", att_coefs.len()); }
+    if mode >= 2 {
+        if use_att_poly {
+            println!("  Mode {}: uploading {} att coefs (att_mode=1)", mode, att_coefs.len());
+        } else {
+            println!("  Mode {}: att-poly disabled (att_mode=0 flatness fallback)", mode);
+        }
+    }
 
     let link_ctx = LinkContext::new();
     let cf = connect_drone(&link_ctx).await?;
@@ -117,13 +138,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = sample_origin(&cf, &sa, &sb, &sc).await?;
 
     upload_trajectory(&cf, &coefs).await?;
-    if mode == 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
+    if mode >= 2 && use_att_poly { upload_att_trajectory(&cf, &att_coefs).await?; }
     cf.param.set("traj.nseg",     n_segs as u8).await?;
     cf.param.set("traj.ox",       o.ox).await?;
     cf.param.set("traj.oy",       o.oy).await?;
     cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
     cf.param.set("traj.dz",       0.0f32).await?;
-    cf.param.set("traj.att_mode", (mode == 2) as u8).await?;
+    cf.param.set("traj.att_mode", ((mode >= 2) && use_att_poly) as u8).await?;
 
     ramp_to_hover(&cf, &o, &sa, &sb, &sc).await?;
     hover_settle(&cf, &o, &sa, &sb, &sc).await?;
@@ -169,7 +190,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let speed_tag = format!("{:.1}", speed).replace('.', "-");
     let csv_path = format!("../Controls/logs/figure8_onboard_m{}_s{}x_r{}_{}.csv",
                            mode, speed_tag, n_reps, ts_str);
-    write_csv(&rows, &csv_path)?;
+    let run_periodic = if mode == 0 { false } else { true };
+    let metadata = vec![
+        ("run_trajectory".to_string(), "figure8".to_string()),
+        ("run_mode".to_string(), mode.to_string()),
+        ("run_kt".to_string(), format!("{k_t:.6}")),
+        ("run_speed".to_string(), format!("{speed:.6}")),
+        ("run_reps".to_string(), n_reps.to_string()),
+        ("run_periodic".to_string(), run_periodic.to_string()),
+        ("run_att_poly".to_string(), (((mode >= 2) && use_att_poly) as u8).to_string()),
+        ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
+    ];
+    write_csv_with_metadata(&rows, &csv_path, &metadata)?;
     println!("Saved {} rows -> {}", rows.len(), csv_path);
     println!("Analyse: ~/.pyenv/versions/flying_robots/bin/python \
               Controls/analyze_flight.py --csv {} --type figure8", csv_path);

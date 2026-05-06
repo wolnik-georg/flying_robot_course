@@ -16,7 +16,7 @@ Data per folder:
 Outputs:
   reference/mode<N>/<traj>/overview.png
   reference/mode<N>/<traj>/frenet_sanity.png   (Frenet + finite-diff consistency)
-  reference/cross_mode/<traj>/comparison.png   (Modes 0/1/2 overlaid where available)
+  reference/cross_mode/<traj>/comparison.png   (Modes 0/1/2/3/4 overlaid where available)
 
 Run:
   ~/.pyenv/versions/flying_robots/bin/python scripts/plot_planning_reference.py
@@ -660,16 +660,23 @@ def _plot_reference_csv(csv_path: str) -> None:
 
 
 def plot_cross_mode_comparisons() -> None:
-    """Overlay Mode 0 / 1 / 2 planner references for the same trajectory shape."""
+    """Overlay Mode 0 / 1 / 2 / 3 / 4 planner references for the same trajectory shape."""
     shapes: Tuple[Tuple[str, Tuple[int, ...]], ...] = (
-        ("circle", (0, 1, 2)),
-        ("figure8", (0, 1, 2)),
-        ("helix", (0, 1, 2)),
-        ("loop", (0, 1, 2)),
+        ("circle", (0, 1, 2, 3, 4)),
+        ("figure8", (0, 1, 2, 3, 4)),
+        ("helix", (0, 1, 2, 3, 4)),
+        ("corner", (0, 1, 2, 3, 4)),
+        ("loop", (0, 1, 2, 3, 4)),
         ("flip", (2,)),
     )
-    colors = {0: "#1f77b4", 1: "#ff7f0e", 2: "#2ca02c"}
-    labels = {0: "Mode 0 spline", 1: "Mode 1 Richter", 2: "Mode 2 SE(3)"}
+    colors = {0: "#1f77b4", 1: "#ff7f0e", 2: "#2ca02c", 3: "#9467bd", 4: "#8c564b"}
+    labels = {
+        0: "Mode 0 spline",
+        1: "Mode 1 Richter",
+        2: "Mode 2 SE(3)",
+        3: "Mode 3 joint",
+        4: "Mode 4 joint+constraints",
+    }
 
     os.makedirs(CROSS_ROOT, exist_ok=True)
 

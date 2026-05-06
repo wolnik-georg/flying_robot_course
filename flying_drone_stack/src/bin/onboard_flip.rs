@@ -10,6 +10,10 @@
 //! Usage:
 //!   cargo run --release --bin onboard_flip
 //!   cargo run --release --bin onboard_flip -- --tflip 0.70 --reps 2
+//!   cargo run --release --bin onboard_flip -- --mode 3 --tflip 0.70 --reps 2
+//!   cargo run --release --bin onboard_flip -- --mode 4 --tflip 0.70 --reps 2
+//!
+//! --mode  : planning mode 2=Se3 3=Joint-compatible 4=Joint+constraints-compatible (default 2)
 
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
@@ -23,7 +27,7 @@ use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Vec3, Quat};
 const FLIP_HEIGHT: f32 = 1.2; // m
 const T_FLIP_DEFAULT: f32 = 0.70; // s
 
-fn build_flip_planner(t_flip: f32) -> TrajectoryPlanner {
+fn build_flip_planner(mode: u8, t_flip: f32) -> TrajectoryPlanner {
     let pos = Vec3::new(0.0, 0.0, 0.0);
     let waypoints = vec![
         Se3Waypoint::new(pos, Quat::identity()),
@@ -31,8 +35,13 @@ fn build_flip_planner(t_flip: f32) -> TrajectoryPlanner {
         Se3Waypoint::new(pos, Quat::identity()),
     ];
     let durations = vec![t_flip * 0.5, t_flip * 0.5];
-    TrajectoryPlanner::se3(&waypoints, &durations, 0.031, false)
-        .expect("Flip Mode 2 QP failed")
+    match mode {
+        // Flip remains explicitly authored in attitude for all high-aggression
+        // modes; Mode 3/4 selection is accepted for workflow consistency.
+        4 | 3 | 2 => TrajectoryPlanner::se3(&waypoints, &durations, 0.031, false)
+            .expect("Flip Mode 2/3/4 QP failed"),
+        _ => unreachable!("onboard_flip only supports mode 2, 3, or 4"),
+    }
 }
 
 #[tokio::main]
@@ -42,11 +51,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(T_FLIP_DEFAULT);
     let n_reps: u32 = args.iter().position(|a| a == "--reps")
         .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(1);
+    let mode: u8 = args.iter().position(|a| a == "--mode")
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(2);
 
     if !(0.30..=2.0).contains(&t_flip) { eprintln!("--tflip must be 0.30-2.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20      { eprintln!("--reps must be 1-20"); std::process::exit(1); }
+    if mode != 2 && mode != 3 && mode != 4 { eprintln!("--mode must be 2, 3, or 4"); std::process::exit(1); }
 
-    let planner = build_flip_planner(t_flip);
+    let planner = build_flip_planner(mode, t_flip);
     let spline = planner.as_spline();
     let traj_total = spline.total_time;
     let coefs = serialise_coefs(spline);
@@ -54,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let att_coefs_raw = planner.attitude_poly_coefs();
     let att_coefs = serialise_att_coefs(&att_coefs_raw);
 
-    println!("Mode D Flip | planning_mode=2 (explicit quaternion attitude)");
+    println!("Mode D Flip | planning_mode={} (explicit quaternion attitude)", mode);
     println!("  t_flip={:.2}s  reps={}  segs={}", traj_total, n_reps, n_segs);
     println!("  uploading {} pos coefs, {} att coefs", coefs.len(), att_coefs.len());
 
@@ -117,8 +129,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ts_str = Local::now().format("%Y%m%d_%H%M%S");
     let tflip_tag = format!("{:.2}", t_flip).replace('.', "-");
-    let csv_path = format!("../Controls/logs/flip_onboard_m2_t{}_r{}_{}.csv", tflip_tag, n_reps, ts_str);
-    write_csv(&rows, &csv_path)?;
+    let csv_path = format!("../Controls/logs/flip_onboard_m{}_t{}_r{}_{}.csv", mode, tflip_tag, n_reps, ts_str);
+    let metadata = vec![
+        ("run_trajectory".to_string(), "flip".to_string()),
+        ("run_mode".to_string(), mode.to_string()),
+        ("run_tflip_s".to_string(), format!("{t_flip:.6}")),
+        ("run_reps".to_string(), n_reps.to_string()),
+        ("run_periodic".to_string(), "false".to_string()),
+        ("run_att_poly".to_string(), "1".to_string()),
+        ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
+    ];
+    write_csv_with_metadata(&rows, &csv_path, &metadata)?;
     println!("Saved {} rows -> {}", rows.len(), csv_path);
     println!("Analyse: ~/.pyenv/versions/flying_robots/bin/python \
               Controls/analyze_flight.py --csv {} --type flip", csv_path);
