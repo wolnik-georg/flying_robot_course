@@ -33,6 +33,7 @@ Usage:
 import argparse
 import csv
 import glob
+import io
 import os
 import sys
 
@@ -1539,6 +1540,12 @@ def eval_poly4d_vel(segs, t_elapsed, speed_scale, xy_scale, loop=False):
 
 
 def load_csv(path):
+    rows, _ = load_csv_with_meta(path)
+    return rows
+
+
+def load_csv_with_meta(path):
+    meta = {}
     rows = {
         c: []
         for c in [
@@ -1553,14 +1560,24 @@ def load_csv(path):
         ]
     }
     with open(path) as f:
-        reader = csv.DictReader(f)
+        data_lines = []
+        for line in f:
+            if line.startswith("#"):
+                line_s = line.strip()
+                if line_s.startswith("# meta:") and "=" in line_s:
+                    kv = line_s[len("# meta:"):]
+                    key, value = kv.split("=", 1)
+                    meta[key.strip()] = value.strip()
+                continue
+            data_lines.append(line)
+        reader = csv.DictReader(io.StringIO("".join(data_lines)))
         for row in reader:
             for k in rows:
                 try:
                     rows[k].append(float(row[k]))
                 except (KeyError, ValueError):
                     rows[k].append(float("nan"))
-    return {k: np.array(v) for k, v in rows.items()}
+    return {k: np.array(v) for k, v in rows.items()}, meta
 
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
@@ -2037,6 +2054,486 @@ def plot_helix_analysis(data, csv_path, lap_time=10.5):
     out = os.path.splitext(csv_path)[0] + "_helix_analysis.png"
     fig.savefig(out, dpi=150, bbox_inches='tight')
     print(f"  Plot      : {out}")
+    plt.show()
+
+
+def plot_onboard_circle_analysis(data, csv_path, n_reps=1):
+    """Post-flight analysis for onboard Mode D circle (onboard_circle.rs).
+
+    Reference: r=0.25 m circle centered LEFT of origin (traj.ox = o.ox - RADIUS).
+    Drone starts at origin (theta=0, rightmost point of circle), flies CCW.
+    """
+    import math as _math
+    RADIUS  = 0.25      # matches RADIUS in onboard_circle.rs
+    OMEGA   = 0.6       # rad/s — matches OMEGA in onboard_circle.rs
+    GRAVITY = 9.81
+    lap_time = 2.0 * np.pi / OMEGA
+    omega_c  = 2.0 * np.pi / lap_time
+
+    ts   = data["time_s"]
+    mask = np.isfinite(ts)
+    ts   = ts[mask]
+    xa   = data["x"][mask];   ya  = data["y"][mask];  za  = data["z"][mask]
+    vxa  = data["vx"][mask];  vya = data["vy"][mask]; vza = data["vz"][mask]
+    roll_a  = data["roll_deg"][mask]
+    pitch_a = data["pitch_deg"][mask]
+    yaw_a   = data["yaw_deg"][mask]
+    gz_a    = data["gyro_z"][mask]
+    thrust  = data["thrust"][mask]
+    vbat    = data["vbat"][mask]
+
+    x0 = xa[0]; y0 = ya[0]; z0 = za[0]
+    # Circle center is LEFT of origin: firmware sets traj.ox = o.ox - RADIUS
+    cx = x0 - RADIUS
+    cy = y0
+    ph = omega_c * ts          # phase0=0: drone starts at rightmost point = (x0, y0)
+
+    xr  = cx + RADIUS * np.cos(ph)
+    yr  = cy + RADIUS * np.sin(ph)
+    zr  = np.full_like(ts, z0)
+    vxr = -RADIUS * omega_c * np.sin(ph)
+    vyr =  RADIUS * omega_c * np.cos(ph)
+    axr = -RADIUS * omega_c**2 * np.cos(ph)
+    ayr = -RADIUS * omega_c**2 * np.sin(ph)
+
+    yaw0_rad = float(np.radians(np.nanmedian(yaw_a[:max(1, len(yaw_a)//10)])))
+    p_roll = np.zeros(len(ts)); p_pitch = np.zeros(len(ts))
+    p_yaw  = np.full(len(ts), np.degrees(yaw0_rad))
+    yc = np.array([-_math.sin(yaw0_rad), _math.cos(yaw0_rad), 0.0])
+    for i in range(len(ts)):
+        f = np.array([axr[i], ayr[i], GRAVITY]); fn = float(np.linalg.norm(f))
+        z_B = f / fn
+        xb_raw = np.cross(yc, f); xb_n = float(np.linalg.norm(xb_raw))
+        x_B = xb_raw / xb_n if xb_n > 1e-9 else np.array([1., 0., 0.])
+        R = np.column_stack([x_B, np.cross(z_B, x_B), z_B])
+        p_pitch[i] = _math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
+        p_roll[i]  = _math.degrees(_math.atan2(R[2, 1], R[2, 2]))
+
+    err_xy  = np.sqrt((xa - xr)**2 + (ya - yr)**2)
+    err_z   = np.abs(za - zr)
+    rmse_xy = float(np.sqrt(np.nanmean(err_xy**2)))
+    rmse_z  = float(np.sqrt(np.nanmean(err_z**2)))
+    max_xy  = float(np.nanmax(err_xy))
+    speed_a = np.sqrt(vxa**2 + vya**2 + vza**2)
+    speed_r = np.sqrt(vxr**2 + vyr**2)
+    n_laps  = ts[-1] / lap_time
+    thr_mean = float(np.nanmean(thrust)); thr_max = float(np.nanmax(thrust))
+    vbat_min = float(np.nanmin(vbat)) if not np.all(np.isnan(vbat)) else float('nan')
+
+    fig, axes = plt.subplots(4, 2, figsize=(13, 18))
+    fig.suptitle(
+        f"Onboard Circle (Mode D)  r={RADIUS}m  ω={OMEGA}rad/s  lap={lap_time:.2f}s  {n_laps:.1f} laps\n"
+        f"RMSE xy={rmse_xy*100:.1f}cm  z={rmse_z*100:.1f}cm  max_xy={max_xy*100:.1f}cm  "
+        f"{os.path.basename(csv_path)}",
+        fontsize=11, fontweight='bold'
+    )
+
+    ax = axes[0, 0]
+    th_full = np.linspace(0, 2*np.pi, 300)
+    ax.plot(cx + RADIUS*np.cos(th_full), cy + RADIUS*np.sin(th_full),
+            'r--', lw=1.5, label='Planned', alpha=0.7)
+    ax.plot(xa, ya, 'b-', lw=1.5, label='Actual', alpha=0.9)
+    ax.plot(xa[0], ya[0], 'go', ms=8, label='Start', zorder=5)
+    ax.set_xlabel('x [m]'); ax.set_ylabel('y [m]')
+    ax.set_title('XY Path'); ax.legend(fontsize=9); ax.grid(True); ax.set_aspect('equal')
+
+    ax = axes[0, 1]
+    for lbl, act, ref, col in [('x', xa, xr, 'tab:blue'), ('y', ya, yr, 'tab:orange'),
+                                 ('z', za, zr, 'tab:green')]:
+        ax.plot(ts, act, color=col, lw=1.5, label=f'{lbl} actual')
+        ax.plot(ts, ref, color=col, lw=1.0, ls='--', alpha=0.6, label=f'{lbl} plan')
+    for n in range(1, int(n_laps)+2):
+        t_l = n * lap_time
+        if t_l <= ts[-1]: ax.axvline(t_l, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('position [m]')
+    ax.set_title('Position vs Time'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[1, 0]
+    ax.plot(ts, err_xy*100, 'b-',  lw=1.5, label='XY error')
+    ax.plot(ts, err_z*100,  'g:',  lw=1.2, label='Z error')
+    ax.axhline(rmse_xy*100, color='b', lw=0.8, ls='--', alpha=0.5,
+               label=f'RMSE XY={rmse_xy*100:.1f}cm')
+    for n in range(1, int(n_laps)+2):
+        t_l = n * lap_time
+        if t_l <= ts[-1]: ax.axvline(t_l, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('error [cm]')
+    ax.set_title('Position Error'); ax.legend(fontsize=8); ax.grid(True)
+    ax.text(0.98, 0.97,
+            f"RMSE XY: {rmse_xy*100:.1f} cm\nRMSE Z : {rmse_z*100:.1f} cm\n"
+            f"Max XY : {max_xy*100:.1f} cm\nLaps   : {n_laps:.1f}",
+            transform=ax.transAxes, fontsize=8, va='top', ha='right',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.85))
+
+    ax = axes[1, 1]
+    for lbl, act, plan, col in [('roll', roll_a, p_roll, 'tab:blue'),
+                                  ('pitch', pitch_a, p_pitch, 'tab:orange'),
+                                  ('yaw', yaw_a, p_yaw, 'tab:red')]:
+        ax.plot(ts, act,  color=col, lw=1.2, label=f'{lbl} actual')
+        ax.plot(ts, plan, color=col, lw=1.0, ls='--', alpha=0.65, label=f'{lbl} planned')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('angle [°]')
+    ax.set_title('Attitude — actual vs planned (flatness)'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[2, 0]
+    for lbl, act, ref, col in [('vx', vxa, vxr, 'tab:blue'), ('vy', vya, vyr, 'tab:orange')]:
+        ax.plot(ts, act, color=col, lw=1.2, label=f'{lbl} actual')
+        ax.plot(ts, ref, color=col, lw=1.0, ls='--', alpha=0.65, label=f'{lbl} plan')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('velocity [m/s]')
+    ax.set_title('Velocity XY — actual vs planned'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[2, 1]
+    omega_ref_deg = np.degrees(omega_c)
+    ax.plot(ts, gz_a, color='tab:red', lw=1.2, label='gyro_z actual [°/s]')
+    ax.axhline(omega_ref_deg, color='r', lw=1.0, ls='--', alpha=0.65,
+               label=f'planned ω={omega_ref_deg:.1f}°/s')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('yaw rate [°/s]')
+    ax.set_title('Yaw Rate — actual vs planned'); ax.legend(fontsize=8); ax.grid(True)
+
+    ax = axes[3, 0]
+    ax2 = ax.twinx()
+    ax.plot(ts, thrust, color='tab:purple', lw=1.3, label=f'thrust (mean={thr_mean:.0f})')
+    ax2.plot(ts, speed_a, color='tab:blue', lw=1.2, label='|v| actual [m/s]')
+    ax2.plot(ts, speed_r, color='tab:blue', lw=1.0, ls='--', alpha=0.6, label='|v| plan')
+    ax.axhline(thr_mean, color='tab:purple', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('thrust [PWM]', color='tab:purple')
+    ax2.set_ylabel('speed [m/s]', color='tab:blue')
+    ax.set_title(f'Thrust & Speed  (max={float(np.nanmax(speed_a)):.2f} m/s, thr_max={thr_max:.0f})')
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1+lines2, labels1+labels2, fontsize=7); ax.grid(True)
+
+    ax = axes[3, 1]
+    if not np.all(np.isnan(vbat)):
+        ax.plot(ts, vbat, color='tab:olive', lw=1.2, label=f'vbat (min={vbat_min:.2f}V)')
+        ax.axhline(vbat_min, color='tab:olive', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('vbat [V]')
+    ax.set_title('Battery Voltage'); ax.legend(fontsize=8); ax.grid(True)
+
+    plt.tight_layout()
+    print("\n── Onboard Circle Tracking Statistics ─────────────────────────")
+    print(f"  Laps      : {n_laps:.1f}  (lap={lap_time:.2f}s)")
+    print(f"  RMSE XY   : {rmse_xy*100:.1f} cm")
+    print(f"  RMSE Z    : {rmse_z*100:.1f} cm")
+    print(f"  Max XY    : {max_xy*100:.1f} cm")
+    print(f"  Duration  : {ts[-1]:.1f} s")
+    out = os.path.splitext(csv_path)[0] + "_circle_analysis.png"
+    fig.savefig(out, dpi=150, bbox_inches='tight')
+    print(f"  Plot      : {out}")
+    plt.show()
+
+
+def plot_onboard_helix_analysis(data, csv_path, n_reps=1):
+    """Post-flight analysis for onboard Mode D ascending helix (onboard_helix.rs).
+
+    Reference: r=0.30 m circle centered LEFT of origin (traj.ox = o.ox - HELIX_RADIUS).
+    Drone starts at origin (theta=0, rightmost point), flies CCW while ascending.
+    Z rises linearly: HELIX_DZ=0.40 m per lap.
+    """
+    import math as _math
+    HELIX_RADIUS = 0.30   # matches HELIX_RADIUS in onboard_helix.rs
+    HELIX_DZ     = 0.40   # m per lap
+    OMEGA        = 0.6    # rad/s
+    GRAVITY      = 9.81
+    lap_time = 2.0 * np.pi / OMEGA
+    omega_c  = 2.0 * np.pi / lap_time
+    vz_up    = HELIX_DZ / lap_time
+
+    ts   = data["time_s"]
+    mask = np.isfinite(ts)
+    ts   = ts[mask]
+    xa   = data["x"][mask];   ya  = data["y"][mask];  za  = data["z"][mask]
+    vxa  = data["vx"][mask];  vya = data["vy"][mask]; vza = data["vz"][mask]
+    roll_a  = data["roll_deg"][mask]
+    pitch_a = data["pitch_deg"][mask]
+    yaw_a   = data["yaw_deg"][mask]
+    gz_a    = data["gyro_z"][mask]
+    thrust  = data["thrust"][mask]
+    vbat    = data["vbat"][mask]
+
+    x0 = xa[0]; y0 = ya[0]; z0 = za[0]
+    yaw0_rad = float(np.radians(np.nanmedian(yaw_a[:max(1, len(yaw_a)//10)])))
+    # Circle center is LEFT of origin: firmware sets traj.ox = o.ox - HELIX_RADIUS
+    cx = x0 - HELIX_RADIUS
+    ph = omega_c * ts           # phase0=0: drone starts at rightmost point = (x0, y0)
+
+    xr  = cx + HELIX_RADIUS * np.cos(ph)
+    yr  = y0 + HELIX_RADIUS * np.sin(ph)
+    zr  = z0 + vz_up * ts      # linear ascent for all reps
+    vxr = -HELIX_RADIUS * omega_c * np.sin(ph)
+    vyr =  HELIX_RADIUS * omega_c * np.cos(ph)
+    vzr = np.full_like(ts, vz_up)
+    axr = -HELIX_RADIUS * omega_c**2 * np.cos(ph)
+    ayr = -HELIX_RADIUS * omega_c**2 * np.sin(ph)
+
+    p_roll = np.zeros(len(ts)); p_pitch = np.zeros(len(ts))
+    p_yaw  = np.full(len(ts), np.degrees(yaw0_rad))
+    yc = np.array([-_math.sin(yaw0_rad), _math.cos(yaw0_rad), 0.0])
+    for i in range(len(ts)):
+        f = np.array([axr[i], ayr[i], GRAVITY]); fn = float(np.linalg.norm(f))
+        z_B = f / fn
+        xb_raw = np.cross(yc, f); xb_n = float(np.linalg.norm(xb_raw))
+        x_B = xb_raw / xb_n if xb_n > 1e-9 else np.array([1., 0., 0.])
+        R = np.column_stack([x_B, np.cross(z_B, x_B), z_B])
+        p_pitch[i] = _math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
+        p_roll[i]  = _math.degrees(_math.atan2(R[2, 1], R[2, 2]))
+
+    err_xy  = np.sqrt((xa - xr)**2 + (ya - yr)**2)
+    err_z   = np.abs(za - zr)
+    err_3d  = np.sqrt(err_xy**2 + err_z**2)
+    speed_a = np.sqrt(vxa**2 + vya**2 + vza**2)
+    speed_r = np.sqrt(vxr**2 + vyr**2 + vzr**2)
+    rmse_xy = float(np.sqrt(np.nanmean(err_xy**2)))
+    rmse_z  = float(np.sqrt(np.nanmean(err_z**2)))
+    rmse_3d = float(np.sqrt(np.nanmean(err_3d**2)))
+    max_xy  = float(np.nanmax(err_xy))
+    n_laps  = ts[-1] / lap_time
+    thr_mean = float(np.nanmean(thrust)); thr_max = float(np.nanmax(thrust))
+    vbat_min = float(np.nanmin(vbat)) if not np.all(np.isnan(vbat)) else float('nan')
+
+    fig, axes = plt.subplots(4, 2, figsize=(13, 18))
+    fig.suptitle(
+        f"Onboard Helix (Mode D)  r={HELIX_RADIUS}m  dz={HELIX_DZ}m/lap  lap={lap_time:.2f}s  {n_laps:.1f} laps\n"
+        f"RMSE xy={rmse_xy*100:.1f}cm  z={rmse_z*100:.1f}cm  3D={rmse_3d*100:.1f}cm  "
+        f"{os.path.basename(csv_path)}",
+        fontsize=11, fontweight='bold'
+    )
+
+    ax = axes[0, 0]
+    th_full = np.linspace(0, 2*np.pi, 300)
+    ax.plot(cx + HELIX_RADIUS*np.cos(th_full), y0 + HELIX_RADIUS*np.sin(th_full),
+            'r--', lw=1.5, label='Planned (XY)', alpha=0.7)
+    ax.plot(xa, ya, 'b-', lw=1.5, label='Actual', alpha=0.9)
+    ax.plot(xa[0], ya[0], 'go', ms=8, label='Start', zorder=5)
+    ax.set_xlabel('x [m]'); ax.set_ylabel('y [m]')
+    ax.set_title('XY Path'); ax.legend(fontsize=9); ax.grid(True); ax.set_aspect('equal')
+
+    ax = axes[0, 1]
+    for lbl, act, ref, col in [('x', xa, xr, 'tab:blue'), ('y', ya, yr, 'tab:orange'),
+                                 ('z', za, zr, 'tab:green')]:
+        ax.plot(ts, act, color=col, lw=1.5, label=f'{lbl} actual')
+        ax.plot(ts, ref, color=col, lw=1.0, ls='--', alpha=0.6, label=f'{lbl} plan')
+    for n in range(1, int(n_laps)+2):
+        t_l = n * lap_time
+        if t_l <= ts[-1]: ax.axvline(t_l, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('position [m]')
+    ax.set_title('Position vs Time'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[1, 0]
+    ax.plot(ts, err_3d*100, 'k-',  lw=1.5, label='3D error')
+    ax.plot(ts, err_xy*100, 'b--', lw=1.2, label='XY error')
+    ax.plot(ts, err_z*100,  'g:',  lw=1.0, label='Z error')
+    ax.axhline(rmse_xy*100, color='b', lw=0.8, ls='--', alpha=0.5,
+               label=f'RMSE XY={rmse_xy*100:.1f}cm')
+    for n in range(1, int(n_laps)+2):
+        t_l = n * lap_time
+        if t_l <= ts[-1]: ax.axvline(t_l, color='gray', lw=0.8, ls=':')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('error [cm]')
+    ax.set_title('Position Error'); ax.legend(fontsize=8); ax.grid(True)
+    ax.text(0.98, 0.97,
+            f"RMSE XY: {rmse_xy*100:.1f} cm\nRMSE Z : {rmse_z*100:.1f} cm\n"
+            f"RMSE 3D: {rmse_3d*100:.1f} cm\nMax XY : {max_xy*100:.1f} cm\n"
+            f"Laps   : {n_laps:.1f}",
+            transform=ax.transAxes, fontsize=8, va='top', ha='right',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.85))
+
+    ax = axes[1, 1]
+    for lbl, act, plan, col in [('roll', roll_a, p_roll, 'tab:blue'),
+                                  ('pitch', pitch_a, p_pitch, 'tab:orange'),
+                                  ('yaw', yaw_a, p_yaw, 'tab:red')]:
+        ax.plot(ts, act,  color=col, lw=1.2, label=f'{lbl} actual')
+        ax.plot(ts, plan, color=col, lw=1.0, ls='--', alpha=0.65, label=f'{lbl} planned')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('angle [°]')
+    ax.set_title('Attitude — actual vs planned (flatness)'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[2, 0]
+    for lbl, act, ref, col in [('vx', vxa, vxr, 'tab:blue'), ('vy', vya, vyr, 'tab:orange'),
+                                 ('vz', vza, vzr, 'tab:green')]:
+        ax.plot(ts, act, color=col, lw=1.2, label=f'{lbl} actual')
+        ax.plot(ts, ref, color=col, lw=1.0, ls='--', alpha=0.65, label=f'{lbl} plan')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('velocity [m/s]')
+    ax.set_title('Velocity — actual vs planned'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
+
+    ax = axes[2, 1]
+    ax.plot(ts, gz_a, color='tab:red', lw=1.2, label='gyro_z actual [°/s]')
+    ax.axhline(np.degrees(omega_c), color='r', lw=1.0, ls='--', alpha=0.65,
+               label=f'planned ω={np.degrees(omega_c):.1f}°/s')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('yaw rate [°/s]')
+    ax.set_title('Yaw Rate — actual vs planned'); ax.legend(fontsize=8); ax.grid(True)
+
+    ax = axes[3, 0]
+    ax2 = ax.twinx()
+    ax.plot(ts, thrust, color='tab:purple', lw=1.3, label=f'thrust (mean={thr_mean:.0f})')
+    ax2.plot(ts, speed_a, color='tab:blue', lw=1.2, label='|v| actual')
+    ax2.plot(ts, speed_r, color='tab:blue', lw=1.0, ls='--', alpha=0.6, label='|v| plan')
+    ax.axhline(thr_mean, color='tab:purple', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('thrust [PWM]', color='tab:purple')
+    ax2.set_ylabel('speed [m/s]', color='tab:blue')
+    ax.set_title(f'Thrust & Speed  (max={float(np.nanmax(speed_a)):.2f} m/s, thr_max={thr_max:.0f})')
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1+lines2, labels1+labels2, fontsize=7); ax.grid(True)
+
+    ax = axes[3, 1]
+    if not np.all(np.isnan(vbat)):
+        ax.plot(ts, vbat, color='tab:olive', lw=1.2, label=f'vbat (min={vbat_min:.2f}V)')
+        ax.axhline(vbat_min, color='tab:olive', lw=0.8, ls='--', alpha=0.5)
+    ax.set_xlabel('time [s]'); ax.set_ylabel('vbat [V]')
+    ax.set_title('Battery Voltage'); ax.legend(fontsize=8); ax.grid(True)
+
+    plt.tight_layout()
+    print("\n── Onboard Helix Tracking Statistics ─────────────────────────")
+    print(f"  Laps      : {n_laps:.1f}  (lap={lap_time:.2f}s)")
+    print(f"  RMSE 3D   : {rmse_3d*100:.1f} cm")
+    print(f"  RMSE XY   : {rmse_xy*100:.1f} cm")
+    print(f"  RMSE Z    : {rmse_z*100:.1f} cm")
+    print(f"  Max XY    : {max_xy*100:.1f} cm")
+    print(f"  Duration  : {ts[-1]:.1f} s")
+    out = os.path.splitext(csv_path)[0] + "_helix_analysis.png"
+    fig.savefig(out, dpi=150, bbox_inches='tight')
+    print(f"  Plot      : {out}")
+    plt.show()
+
+
+def plot_onboard_figure8_analysis(data, csv_path, n_reps=1):
+    """Post-flight analysis for onboard Mode D figure-8.
+
+    Uses geometry-based nearest-shape error so metrics remain meaningful even
+    when run-specific timing (e.g. Mode 1/2/3/4 with --kt) differs.
+    """
+    ts = data["time_s"]
+    mask = np.isfinite(ts)
+    ts = ts[mask]
+    xa = data["x"][mask]; ya = data["y"][mask]; za = data["z"][mask]
+    vxa = data["vx"][mask]; vya = data["vy"][mask]; vza = data["vz"][mask]
+    roll_a = data["roll_deg"][mask]
+    pitch_a = data["pitch_deg"][mask]
+    yaw_a = data["yaw_deg"][mask]
+    thrust = data["thrust"][mask]
+    vbat = data["vbat"][mask]
+
+    # Same waypoint geometry as onboard_figure8.rs (relative frame).
+    wps = np.array([
+        [0.000000,  0.000000, 0.0],
+        [0.396058, -0.445604, 0.0],
+        [0.922409, -0.291165, 0.0],
+        [0.923174,  0.289869, 0.0],
+        [0.405364,  0.450742, 0.0],
+        [0.000000,  0.000000, 0.0],
+        [-0.402804, -0.449354, 0.0],
+        [-0.921641, -0.292459, 0.0],
+        [-0.923935,  0.288570, 0.0],
+        [-0.398611,  0.447039, 0.0],
+        [0.000000,  0.000000, 0.0],
+    ], dtype=float)
+
+    x0, y0, z0 = float(xa[0]), float(ya[0]), float(za[0])
+    ref_wps = wps.copy()
+    ref_wps[:, 0] += x0
+    ref_wps[:, 1] += y0
+    ref_wps[:, 2] += z0
+
+    # Dense polyline approximation of planned path.
+    dense = []
+    for i in range(len(ref_wps) - 1):
+        a = ref_wps[i]
+        b = ref_wps[i + 1]
+        for s in np.linspace(0.0, 1.0, 60, endpoint=False):
+            dense.append((1.0 - s) * a + s * b)
+    dense.append(ref_wps[-1])
+    ref_dense = np.asarray(dense)
+
+    err_xy = np.zeros_like(ts)
+    err_3d = np.zeros_like(ts)
+    for i in range(len(ts)):
+        dx = ref_dense[:, 0] - xa[i]
+        dy = ref_dense[:, 1] - ya[i]
+        dz = ref_dense[:, 2] - za[i]
+        dxy2 = dx * dx + dy * dy
+        j = int(np.argmin(dxy2))
+        err_xy[i] = np.sqrt(dxy2[j])
+        err_3d[i] = np.sqrt(dxy2[j] + dz[j] * dz[j])
+
+    rmse_xy = float(np.sqrt(np.nanmean(err_xy ** 2)))
+    rmse_3d = float(np.sqrt(np.nanmean(err_3d ** 2)))
+    max_xy = float(np.nanmax(err_xy))
+    speed_a = np.sqrt(vxa ** 2 + vya ** 2 + vza ** 2)
+    thr_mean = float(np.nanmean(thrust)); thr_max = float(np.nanmax(thrust))
+    vbat_min = float(np.nanmin(vbat)) if not np.all(np.isnan(vbat)) else float('nan')
+    lap_time = float(ts[-1]) / max(int(n_reps), 1)
+
+    fig, axes = plt.subplots(3, 2, figsize=(13, 14))
+    fig.suptitle(
+        f"Onboard Figure-8 (Mode D)  reps={n_reps}  lap~{lap_time:.2f}s\n"
+        f"Geom RMSE xy={rmse_xy*100:.1f}cm  3D={rmse_3d*100:.1f}cm  max_xy={max_xy*100:.1f}cm  "
+        f"{os.path.basename(csv_path)}",
+        fontsize=11, fontweight='bold'
+    )
+
+    ax = axes[0, 0]
+    ax.plot(ref_dense[:, 0], ref_dense[:, 1], 'r--', lw=1.5, label='Reference shape')
+    ax.plot(xa, ya, 'b-', lw=1.4, label='Actual')
+    ax.plot(xa[0], ya[0], 'go', ms=7, label='Start', zorder=5)
+    ax.scatter(ref_wps[:, 0], ref_wps[:, 1], s=18, c='darkred', alpha=0.7, label='Waypoints')
+    ax.set_title('XY path (geometry-based)')
+    ax.set_xlabel('x [m]'); ax.set_ylabel('y [m]')
+    ax.set_aspect('equal'); ax.grid(True); ax.legend(fontsize=8)
+
+    ax = axes[0, 1]
+    ax.plot(ts, za, color='tab:green', lw=1.2, label='z actual')
+    ax.axhline(z0, color='tab:green', lw=1.0, ls='--', alpha=0.6, label='z ref')
+    ax.set_title('Altitude vs time')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('z [m]')
+    ax.grid(True); ax.legend(fontsize=8)
+
+    ax = axes[1, 0]
+    ax.plot(ts, err_xy * 100.0, 'b-', lw=1.3, label='XY error')
+    ax.plot(ts, err_3d * 100.0, 'k--', lw=1.0, label='3D error')
+    ax.axhline(rmse_xy * 100.0, color='b', lw=0.9, ls=':', alpha=0.6, label=f'RMSE XY={rmse_xy*100:.1f}cm')
+    ax.set_title('Nearest-shape tracking error')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('error [cm]')
+    ax.grid(True); ax.legend(fontsize=8)
+
+    ax = axes[1, 1]
+    ax.plot(ts, roll_a, color='tab:blue', lw=1.1, label='roll')
+    ax.plot(ts, pitch_a, color='tab:orange', lw=1.1, label='pitch')
+    ax.plot(ts, yaw_a, color='tab:red', lw=1.1, label='yaw')
+    ax.set_title('Attitude')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('angle [deg]')
+    ax.grid(True); ax.legend(fontsize=8)
+
+    ax = axes[2, 0]
+    ax2 = ax.twinx()
+    ax.plot(ts, thrust, color='tab:purple', lw=1.2, label='thrust')
+    ax2.plot(ts, speed_a, color='tab:blue', lw=1.2, label='|v| actual')
+    ax.set_title('Thrust and speed')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('thrust [PWM]', color='tab:purple')
+    ax2.set_ylabel('speed [m/s]', color='tab:blue')
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, fontsize=8)
+    ax.grid(True)
+
+    ax = axes[2, 1]
+    if not np.all(np.isnan(vbat)):
+        ax.plot(ts, vbat, color='tab:olive', lw=1.2, label=f'vbat (min={vbat_min:.2f}V)')
+        ax.axhline(vbat_min, color='tab:olive', lw=0.8, ls='--', alpha=0.5)
+    ax.set_title('Battery Voltage')
+    ax.set_xlabel('time [s]'); ax.set_ylabel('vbat [V]')
+    ax.grid(True); ax.legend(fontsize=8)
+
+    plt.tight_layout()
+    print("\n── Onboard Figure-8 Tracking Statistics ───────────────────────")
+    print(f"  Reps      : {n_reps}  (lap~{lap_time:.2f}s)")
+    print(f"  Geom RMSE XY : {rmse_xy*100:.1f} cm")
+    print(f"  Geom RMSE 3D : {rmse_3d*100:.1f} cm")
+    print(f"  Max XY       : {max_xy*100:.1f} cm")
+    print(f"  Speed max    : {float(np.nanmax(speed_a)):.2f} m/s")
+    print(f"  Thrust       : mean={thr_mean:.0f}  max={thr_max:.0f} PWM")
+    if not np.isnan(vbat_min):
+        print(f"  Vbat min     : {vbat_min:.2f} V")
+    print(f"  Duration     : {ts[-1]:.1f} s")
+    out = os.path.splitext(csv_path)[0] + "_figure8_analysis.png"
+    fig.savefig(out, dpi=150, bbox_inches='tight')
+    print(f"  Plot         : {out}")
     plt.show()
 
 
@@ -2547,6 +3044,85 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     out_path = os.path.splitext(csv_path)[0] + "_analysis.png"
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
     print(f"  Plot     : {out_path}")
+
+    # Additional companion figure: same subplot style for grouped signals.
+    # Row 1: position (x/y/z), Row 2: attitude (roll/pitch/yaw),
+    # Row 3: velocity (vx/vy/vz), Row 4: angular rate (wx/wy/wz).
+    fig_axes, ax_grid = plt.subplots(4, 3, figsize=(18, 15), sharex=True)
+    fig_axes.suptitle(
+        f"Per-axis Tracking Subplots — {traj_type}\n{os.path.basename(csv_path)}",
+        fontsize=11,
+    )
+
+    grouped_specs = [
+        [
+            ("x [m]", data["x"], px, "tab:blue"),
+            ("y [m]", data["y"], py, "tab:orange"),
+            ("z [m]", data["z"], pz, "tab:green"),
+        ],
+        [
+            ("roll [deg]", data["roll_deg"], p_roll, "tab:blue"),
+            ("pitch [deg]", data["pitch_deg"], p_pitch, "tab:orange"),
+            ("yaw [deg]", data["yaw_deg"], p_yaw, "tab:red"),
+        ],
+        [
+            ("vx [m/s]", data["vx"], plan_vel[:, 0], "tab:blue"),
+            ("vy [m/s]", data["vy"], plan_vel[:, 1], "tab:orange"),
+            ("vz [m/s]", data["vz"], plan_vel[:, 2], "tab:green"),
+        ],
+        [
+            ("wx [deg/s]", data["gyro_x"], p_omega_x, "tab:blue"),
+            ("wy [deg/s]", data["gyro_y"], p_omega_y, "tab:orange"),
+            ("wz [deg/s]", data["gyro_z"], p_omega_z, "tab:red"),
+        ],
+    ]
+    row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
+
+    for r_idx, row in enumerate(grouped_specs):
+        for c_idx, (ylabel, actual, planned, col) in enumerate(row):
+            ax_i = ax_grid[r_idx, c_idx]
+            ax_i.plot(times, planned, color=col, lw=1.1, ls="--", alpha=0.8, label="planned")
+            mask = ~np.isnan(actual)
+            if mask.any():
+                ax_i.plot(times[mask], actual[mask], color=col, lw=1.3, label="actual")
+            else:
+                ax_i.text(
+                    0.5,
+                    0.5,
+                    "actual unavailable",
+                    transform=ax_i.transAxes,
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color="gray",
+                    style="italic",
+                )
+            ax_i.set_ylabel(ylabel)
+            if r_idx == 0:
+                ax_i.set_title(ylabel.split()[0])
+            if c_idx == 0:
+                ax_i.text(
+                    -0.2,
+                    0.5,
+                    row_titles[r_idx],
+                    transform=ax_i.transAxes,
+                    rotation=90,
+                    va="center",
+                    ha="center",
+                    fontsize=10,
+                    fontweight="bold",
+                )
+            ax_i.grid(True, alpha=0.3)
+            ax_i.legend(fontsize=7, loc="upper right")
+
+    for c_idx in range(3):
+        ax_grid[-1, c_idx].set_xlabel("time [s]")
+
+    fig_axes.tight_layout(rect=(0.03, 0, 1, 0.97))
+    out_axes = os.path.splitext(csv_path)[0] + "_analysis_axes.png"
+    fig_axes.savefig(out_axes, dpi=150, bbox_inches="tight")
+    print(f"  Plot     : {out_axes}")
+
     plt.show()
 
 
@@ -2699,7 +3275,8 @@ def main():
         "--type",
         choices=["circle", "fast_circle", "figure8", "fast_figure8",
                  "autonomous", "flip", "fast_flip", "fast_roll",
-                 "helix", "fast_helix", "yaw_spin"],
+                 "helix", "fast_helix", "yaw_spin",
+                 "onboard_circle", "onboard_helix"],
         default=None,
         help="Trajectory type (default: inferred from filename)",
     )
@@ -2741,6 +3318,10 @@ def main():
             traj_type = "fast_figure8"
         elif "fast_helix" in base:                        # before "helix"
             traj_type = "fast_helix"
+        elif "onboard" in base and "circle" in base:      # before generic "circle"
+            traj_type = "onboard_circle"
+        elif "onboard" in base and "helix" in base:       # before generic "helix"
+            traj_type = "onboard_helix"
         elif "circle" in base:
             traj_type = "circle"
         elif "figure8" in base or "fig8" in base:
@@ -2766,7 +3347,7 @@ def main():
             sys.exit(1)
         print(f"Inferred trajectory type: {traj_type}")
 
-    data = load_csv(csv_path)
+    data, run_meta = load_csv_with_meta(csv_path)
 
     if len(data["time_s"]) == 0:
         print("CSV is empty.")
@@ -2775,6 +3356,39 @@ def main():
     print(
         f'Loaded {len(data["time_s"])} rows, t=[{data["time_s"][0]:.2f}, {data["time_s"][-1]:.2f}] s'
     )
+    if run_meta:
+        run_sig = ", ".join(
+            f"{k}={v}" for k, v in run_meta.items()
+            if k in ("run_trajectory", "run_mode", "run_kt", "run_speed", "run_periodic", "run_reps", "run_att_poly")
+        )
+        if run_sig:
+            print(f"Run signature: {run_sig}")
+        meta_traj = run_meta.get("run_trajectory")
+        if meta_traj and meta_traj in TRAJECTORIES:
+            if args.type is None and traj_type != meta_traj:
+                print(f"Using run signature trajectory: {meta_traj} (instead of filename-inferred {traj_type})")
+                traj_type = meta_traj
+            elif args.type is not None and traj_type != meta_traj:
+                print(
+                    f"Warning: --type {traj_type} differs from run signature {meta_traj}. "
+                    f"Proceeding with --type."
+                )
+
+    # Onboard Mode D circle/helix — use correct reference (left-offset center, phase0=0)
+    if traj_type in ("onboard_circle", "onboard_helix"):
+        if args.compare:
+            print("--compare is not supported for onboard circle/helix flights.")
+            sys.exit(1)
+        import re as _re
+        n_reps = int(run_meta.get("run_reps", "0") or "0")
+        if n_reps <= 0:
+            m = _re.search(r'_r(\d+)_', os.path.basename(csv_path))
+            n_reps = int(m.group(1)) if m else 1
+        if traj_type == "onboard_circle":
+            plot_onboard_circle_analysis(data, csv_path, n_reps=n_reps)
+        else:
+            plot_onboard_helix_analysis(data, csv_path, n_reps=n_reps)
+        return
 
     # Helix uses analytic reference, not Poly4D
     if traj_type in ("helix", "fast_helix"):
@@ -2814,6 +3428,24 @@ def main():
         return
 
     segs, speed_scale, xy_scale, loop = TRAJECTORIES[traj_type]
+
+    # For onboard figure-8 logs, trajectory duration can differ from the static
+    # Poly4D baseline (e.g. Richter/SE3/joint modes with different k_t). Keep
+    # the full analysis plots, but retime the reference to the measured lap
+    # duration so RMSE is not dominated by phase mismatch.
+    base = os.path.basename(csv_path).lower()
+    if "onboard" in base and traj_type in ("figure8", "fast_figure8"):
+        import re as _re
+        n_reps = int(run_meta.get("run_reps", "0") or "0")
+        if n_reps <= 0:
+            m = _re.search(r"_r(\d+)_", base)
+            n_reps = int(m.group(1)) if m else 1
+        t_end = float(data["time_s"][-1])
+        nominal_lap = sum(float(s[0]) for s in segs) / max(speed_scale, 1e-6)
+        actual_lap = t_end / max(n_reps, 1)
+        if actual_lap > 1e-6:
+            speed_scale = speed_scale * (nominal_lap / actual_lap)
+            print(f"Adjusted onboard figure-8 timing: lap {actual_lap:.3f}s (speed_scale -> {speed_scale:.4f})")
 
     if args.compare:
         data_b = load_csv(args.compare)

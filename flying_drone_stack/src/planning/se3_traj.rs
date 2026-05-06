@@ -409,10 +409,13 @@ impl Se3Trajectory {
                 let t   = t_start + tau * dur;
                 let out_k = self.eval(t);
                 let rot = &out_k.rot;
-                // ZYX Euler from rotation matrix (body→world layout: col j = body axis j in world)
-                // pitch = asin(-R[0][2]),  roll = atan2(R[1][2], R[2][2])
-                let pitch = (-rot[0][2].clamp(-1.0, 1.0)).asin();
-                let roll  = rot[1][2].atan2(rot[2][2]);
+                // ZYX Euler from rotation matrix (body→world layout: col j = body axis j in world).
+                // Must match firmware `rot_from_euler()` convention:
+                //   pitch = asin(-R[2][0]),  roll = atan2(R[2][1], R[2][2]).
+                // Using [0][2]/[1][2] here flips/sign-swaps attitude and can destabilise
+                // uploaded-attitude modes (att_mode=1) at segment boundaries.
+                let pitch = (-rot[2][0].clamp(-1.0, 1.0)).asin();
+                let roll  = rot[2][1].atan2(rot[2][2]);
                 roll_samples[k]  = (tau, roll);
                 pitch_samples[k] = (tau, pitch);
             }

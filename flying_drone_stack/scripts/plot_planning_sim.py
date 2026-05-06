@@ -5,6 +5,8 @@ Planning Mode Simulation — Visualisation
 Reads closed-loop CSVs from results/planning_sim/closed_loop/:
   mode{0,1}/<circle|figure8|helix|loop>/{geo,indi}.csv
   mode2/<circle|figure8|helix|loop|flip>/{geo,indi}.csv
+  mode3/<circle|figure8|helix|corner|loop>/{geo,indi}.csv
+  mode4/<circle|figure8|helix|corner|loop>/{geo,indi}.csv
 
 Each trajectory is run with GeometricController (geo) and IndiController (indi).
 
@@ -58,6 +60,8 @@ RUNS = {
     "m0_fig8_indi":   (_cl(0, "figure8", "indi"), "Mode 0", "fig8",   "INDI", "#ff7f0e"),
     "m0_helix_geo":   (_cl(0, "helix", "geo"),    "Mode 0", "helix",  "Geo",  "#2ca02c"),
     "m0_helix_indi":  (_cl(0, "helix", "indi"),   "Mode 0", "helix",  "INDI", "#2ca02c"),
+    "m0_corner_geo":  (_cl(0, "corner", "geo"),   "Mode 0", "corner", "Geo",  "#17becf"),
+    "m0_corner_indi": (_cl(0, "corner", "indi"),  "Mode 0", "corner", "INDI", "#17becf"),
     "m0_loop_geo":    (_cl(0, "loop", "geo"),     "Mode 0", "loop",   "Geo",  "#d62728"),
     "m0_loop_indi":   (_cl(0, "loop", "indi"),    "Mode 0", "loop",   "INDI", "#d62728"),
     "m1_circle_geo":  (_cl(1, "circle", "geo"),   "Mode 1", "circle", "Geo",  "#1f77b4"),
@@ -66,6 +70,8 @@ RUNS = {
     "m1_fig8_indi":   (_cl(1, "figure8", "indi"),  "Mode 1", "fig8",   "INDI", "#ff7f0e"),
     "m1_helix_geo":   (_cl(1, "helix", "geo"),     "Mode 1", "helix",  "Geo",  "#2ca02c"),
     "m1_helix_indi":  (_cl(1, "helix", "indi"),    "Mode 1", "helix",  "INDI", "#2ca02c"),
+    "m1_corner_geo":  (_cl(1, "corner", "geo"),    "Mode 1", "corner", "Geo",  "#17becf"),
+    "m1_corner_indi": (_cl(1, "corner", "indi"),   "Mode 1", "corner", "INDI", "#17becf"),
     "m1_loop_geo":    (_cl(1, "loop", "geo"),      "Mode 1", "loop",   "Geo",  "#d62728"),
     "m1_loop_indi":   (_cl(1, "loop", "indi"),     "Mode 1", "loop",   "INDI", "#d62728"),
     "m2_circle_geo":  (_cl(2, "circle", "geo"),   "Mode 2", "circle", "Geo",  "#1f77b4"),
@@ -74,10 +80,32 @@ RUNS = {
     "m2_fig8_indi":   (_cl(2, "figure8", "indi"),  "Mode 2", "fig8",   "INDI", "#ff7f0e"),
     "m2_helix_geo":   (_cl(2, "helix", "geo"),     "Mode 2", "helix",  "Geo",  "#2ca02c"),
     "m2_helix_indi":  (_cl(2, "helix", "indi"),    "Mode 2", "helix",  "INDI", "#2ca02c"),
+    "m2_corner_geo":  (_cl(2, "corner", "geo"),    "Mode 2", "corner(SE3)", "Geo",  "#17becf"),
+    "m2_corner_indi": (_cl(2, "corner", "indi"),   "Mode 2", "corner(SE3)", "INDI", "#17becf"),
     "m2_loop_geo":    (_cl(2, "loop", "geo"),      "Mode 2", "loop(SE3)", "Geo",  "#8c564b"),
     "m2_loop_indi":   (_cl(2, "loop", "indi"),     "Mode 2", "loop(SE3)", "INDI", "#8c564b"),
     "m2_flip_geo":    (_cl(2, "flip", "geo"),      "Mode 2", "flip",   "Geo",  "#9467bd"),
     "m2_flip_indi":   (_cl(2, "flip", "indi"),     "Mode 2", "flip",   "INDI", "#9467bd"),
+    "m3_circle_geo":  (_cl(3, "circle", "geo"),    "Mode 3", "circle(joint)", "Geo",  "#1f77b4"),
+    "m3_circle_indi": (_cl(3, "circle", "indi"),   "Mode 3", "circle(joint)", "INDI", "#1f77b4"),
+    "m3_fig8_geo":    (_cl(3, "figure8", "geo"),   "Mode 3", "fig8(joint)",   "Geo",  "#ff7f0e"),
+    "m3_fig8_indi":   (_cl(3, "figure8", "indi"),  "Mode 3", "fig8(joint)",   "INDI", "#ff7f0e"),
+    "m3_helix_geo":   (_cl(3, "helix", "geo"),     "Mode 3", "helix(joint)",  "Geo",  "#2ca02c"),
+    "m3_helix_indi":  (_cl(3, "helix", "indi"),    "Mode 3", "helix(joint)",  "INDI", "#2ca02c"),
+    "m3_corner_geo":  (_cl(3, "corner", "geo"),    "Mode 3", "corner(joint)", "Geo",  "#17becf"),
+    "m3_corner_indi": (_cl(3, "corner", "indi"),   "Mode 3", "corner(joint)", "INDI", "#17becf"),
+    "m3_loop_geo":    (_cl(3, "loop", "geo"),      "Mode 3", "loop(joint)",   "Geo",  "#8c564b"),
+    "m3_loop_indi":   (_cl(3, "loop", "indi"),     "Mode 3", "loop(joint)",   "INDI", "#8c564b"),
+    "m4_circle_geo":  (_cl(4, "circle", "geo"),    "Mode 4", "circle(joint+constr)", "Geo",  "#1f77b4"),
+    "m4_circle_indi": (_cl(4, "circle", "indi"),   "Mode 4", "circle(joint+constr)", "INDI", "#1f77b4"),
+    "m4_fig8_geo":    (_cl(4, "figure8", "geo"),   "Mode 4", "fig8(joint+constr)",   "Geo",  "#ff7f0e"),
+    "m4_fig8_indi":   (_cl(4, "figure8", "indi"),  "Mode 4", "fig8(joint+constr)",   "INDI", "#ff7f0e"),
+    "m4_helix_geo":   (_cl(4, "helix", "geo"),     "Mode 4", "helix(joint+constr)",  "Geo",  "#2ca02c"),
+    "m4_helix_indi":  (_cl(4, "helix", "indi"),    "Mode 4", "helix(joint+constr)",  "INDI", "#2ca02c"),
+    "m4_corner_geo":  (_cl(4, "corner", "geo"),    "Mode 4", "corner(joint+constr)", "Geo",  "#17becf"),
+    "m4_corner_indi": (_cl(4, "corner", "indi"),   "Mode 4", "corner(joint+constr)", "INDI", "#17becf"),
+    "m4_loop_geo":    (_cl(4, "loop", "geo"),      "Mode 4", "loop(joint+constr)",   "Geo",  "#8c564b"),
+    "m4_loop_indi":   (_cl(4, "loop", "indi"),     "Mode 4", "loop(joint+constr)",   "INDI", "#8c564b"),
 }
 
 # Controller line styles: Geo=solid, INDI=dotted
@@ -113,6 +141,7 @@ TRAJ_LIMS = {
     "circle": ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 1.5)),
     "fig8":   ((-1.5, 1.5),  (-1.5, 1.5),  (0.0, 1.5)),
     "helix":  ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.0)),
+    "corner": ((-1.1, 0.5),  (-0.4, 1.3),  (0.0, 1.6)),
     "loop":   ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 2.5)),
     "flip":   ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.5)),
 }
@@ -121,6 +150,7 @@ TRAJ_VIEW = {
     "circle": (25, 225),
     "fig8":   (25, 225),
     "helix":  (25, 225),
+    "corner": (30, 240),
     "loop":   (15, 270),
     "flip":   (15, 270),
 }
@@ -196,14 +226,17 @@ print()
 MODE0_TRAJ = [("m0_circle", "circle",  "circle"),
               ("m0_fig8",   "figure8", "fig8"),
               ("m0_helix",  "helix",   "helix"),
+              ("m0_corner", "corner",  "corner"),
               ("m0_loop",   "loop",    "loop")]
 MODE1_TRAJ = [("m1_circle", "circle",  "circle"),
               ("m1_fig8",   "figure8", "fig8"),
               ("m1_helix",  "helix",   "helix"),
+              ("m1_corner", "corner",  "corner"),
               ("m1_loop",   "loop",    "loop")]
 MODE2_TRAJ = [("m2_circle", "circle",  "circle"),
               ("m2_fig8",   "figure8", "fig8"),
               ("m2_helix",  "helix",   "helix"),
+              ("m2_corner", "corner(SE3)", "corner"),
               ("m2_loop",   "loop(SE3)", "loop"),
               ("m2_flip",   "flip",    "flip")]
 
@@ -213,16 +246,18 @@ M2_COLORS = {
     "m2_circle": "#1f77b4",
     "m2_fig8": "#ff7f0e",
     "m2_helix": "#2ca02c",
+    "m2_corner": "#17becf",
     "m2_loop": "#8c564b",
     "m2_flip": "#9467bd",
 }
 
-fig = plt.figure(figsize=(26, 15))
+NCOLS = 6
+fig = plt.figure(figsize=(30, 15))
 fig.suptitle("3-D Trajectories: path + sparse attitude arrows (body-z)", fontsize=13)
 
 # Row 1 — Mode 0
 for col, (base, tlbl, tk) in enumerate(MODE0_TRAJ):
-    ax = fig.add_subplot(3, 5, col + 1, projection="3d")
+    ax = fig.add_subplot(3, NCOLS, col + 1, projection="3d")
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
@@ -241,7 +276,7 @@ for col, (base, tlbl, tk) in enumerate(MODE0_TRAJ):
 
 # Row 2 — Mode 1
 for col, (base, tlbl, tk) in enumerate(MODE1_TRAJ):
-    ax = fig.add_subplot(3, 5, col + 6, projection="3d")
+    ax = fig.add_subplot(3, NCOLS, col + 1 + NCOLS, projection="3d")
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
@@ -261,7 +296,7 @@ for col, (base, tlbl, tk) in enumerate(MODE1_TRAJ):
 # Row 3 — Mode 2
 for col, (base, tlbl, tk) in enumerate(MODE2_TRAJ):
     clr = M2_COLORS[base]
-    ax = fig.add_subplot(3, 5, col + 11, projection="3d")
+    ax = fig.add_subplot(3, NCOLS, col + 1 + 2 * NCOLS, projection="3d")
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
     ax.plot(dg["ref_x"], dg["ref_y"], dg["ref_z"], color="gray", ls="--", lw=1.0, alpha=0.7, label="ref")
@@ -287,10 +322,10 @@ plt.close()
 # Figure 2 — Position tracking errors over time (M0 vs M1, geo + indi each)
 # ---------------------------------------------------------------------------
 
-TRAJ_LABELS = ["circle", "fig8", "helix", "loop"]
-TRAJ_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+TRAJ_LABELS = ["circle", "fig8", "helix", "corner", "loop"]
+TRAJ_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728"]
 
-fig, axes = plt.subplots(5, 4, figsize=(20, 16), sharex="col")
+fig, axes = plt.subplots(5, 5, figsize=(24, 16), sharex="col")
 fig.suptitle("Position Tracking Error (ref − sim) per axis  |  solid=Geo, dotted=INDI", fontsize=13)
 
 for col, (traj, clr) in enumerate(zip(TRAJ_LABELS, TRAJ_COLORS)):
@@ -380,14 +415,14 @@ plt.close()
 # Figure 4 — Thrust profiles Modes 0 and 1
 # ---------------------------------------------------------------------------
 
-fig, axes = plt.subplots(2, 4, figsize=(20, 8))
+fig, axes = plt.subplots(2, 5, figsize=(24, 8))
 fig.suptitle("Commanded Thrust [N] — solid=Geo, dotted=INDI", fontsize=13)
 
 THRUST_BASES = [f"m0_{t}" for t in TRAJ_LABELS] + [f"m1_{t}" for t in TRAJ_LABELS]
 THRUST_COLORS_LIST = TRAJ_COLORS * 2
 
 for i, (base, clr) in enumerate(zip(THRUST_BASES, THRUST_COLORS_LIST)):
-    row, col = divmod(i, 4)
+    row, col = divmod(i, 5)
     ax = axes[row, col]
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
@@ -395,8 +430,8 @@ for i, (base, clr) in enumerate(zip(THRUST_BASES, THRUST_COLORS_LIST)):
     ax.plot(dg["t"], dg["cmd_thrust"], ls="-",  color=clr,     lw=1.4, alpha=0.85, label="Geo cmd")
     ax.plot(di["t"], di["cmd_thrust"], ls=":",  color=clr,     lw=1.8, alpha=0.85, label="INDI cmd")
     ax.axhline(0, color="k", lw=0.5, ls=":")
-    mode = "M0" if i < 4 else "M1"
-    ax.set_title(f"{mode} {TRAJ_LABELS[i % 4]}", fontsize=9)
+    mode = "M0" if i < 5 else "M1"
+    ax.set_title(f"{mode} {TRAJ_LABELS[i % 5]}", fontsize=9)
     ax.set_xlabel("t [s]", fontsize=8)
     ax.set_ylabel("T [N]", fontsize=8)
     ax.legend(fontsize=7)
@@ -443,17 +478,17 @@ fig.suptitle("RMS 3-D Position Error — Geo vs INDI per Run", fontsize=13)
 BASES_ORDERED = (
     [f"m0_{t}" for t in TRAJ_LABELS] +
     [f"m1_{t}" for t in TRAJ_LABELS] +
-    ["m2_circle", "m2_fig8", "m2_helix", "m2_loop", "m2_flip"]
+    ["m2_circle", "m2_fig8", "m2_helix", "m2_corner", "m2_loop", "m2_flip"]
 )
 XLABELS = (
-    [f"M0\n{t}" for t in ["circle", "fig8", "helix", "loop"]] +
-    [f"M1\n{t}" for t in ["circle", "fig8", "helix", "loop"]] +
-    ["M2\ncircle", "M2\nfig8", "M2\nhelix", "M2\nloop(SE3)", "M2\nflip"]
+    [f"M0\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop"]] +
+    [f"M1\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop"]] +
+    ["M2\ncircle", "M2\nfig8", "M2\nhelix", "M2\ncorner(SE3)", "M2\nloop(SE3)", "M2\nflip"]
 )
 BASE_COLORS = (
-    ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"] +
-    ["#aec7e8", "#ffbb78", "#98df8a", "#ff9896"] +
-    ["#1f77b4", "#ff7f0e", "#2ca02c", "#8c564b", "#9467bd"]
+    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728"] +
+    ["#aec7e8", "#ffbb78", "#98df8a", "#9edae5", "#ff9896"] +
+    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#8c564b", "#9467bd"]
 )
 
 n = len(BASES_ORDERED)
@@ -514,9 +549,11 @@ CROSS_SPECS = [
      [("m0_fig8",   M0_COLOR), ("m1_fig8",   M1_COLOR), ("m2_fig8", "#ff7f0e")]),
     (3, "helix",  "helix",
      [("m0_helix",  M0_COLOR), ("m1_helix",  M1_COLOR), ("m2_helix", "#2ca02c")]),
-    (4, "loop",   "loop (M0/M1 horizontal, M2 vertical SE3)",
+    (4, "corner", "racing corner (banked in M2)",
+     [("m0_corner", M0_COLOR), ("m1_corner", M1_COLOR), ("m2_corner", "#17becf")]),
+    (5, "loop",   "loop (M0/M1 horizontal, M2 vertical SE3)",
      [("m0_loop",   M0_COLOR), ("m1_loop",   M1_COLOR), ("m2_loop", "#8c564b")]),
-    (5, "flip",   "flip (Mode 2 only)",
+    (6, "flip",   "flip (Mode 2 only)",
      [("m2_flip", "#9467bd")]),
 ]
 

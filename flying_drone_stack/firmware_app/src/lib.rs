@@ -1047,7 +1047,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     // When att_mode=1 and a trajectory is active, use the uploaded attitude polynomial
     // to compute rd and omega_d directly instead of re-running the flatness map.
-    let is_traj_active = g_traj_mode == 1 && TRAJ_T0 > 0;
+    let is_traj_active = (g_traj_mode == 1 || g_traj_mode == 2) && TRAJ_T0 > 0;
     let (rd_poly_storage, omega_d_poly, use_poly) = if g_traj_att_mode == 1 && is_traj_active {
         let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
         let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);

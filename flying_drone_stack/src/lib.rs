@@ -61,6 +61,7 @@ pub mod prelude {
         RichterTrajectory, RichterWaypoint, FeasibilityReport,
         TrajectoryPlanner,
         Se3Trajectory, Se3Waypoint, Se3Output,
+        JointAttitudeConstraint, JointSe3Config, JointSe3Trajectory,
     };
     pub use crate::safety::{SafetyLimits, check_safety};
 }

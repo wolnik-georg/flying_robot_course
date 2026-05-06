@@ -120,8 +120,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Everything from here down is identical for both modes.
     let waypoints = figure8_waypoints();
     let planner = match PLANNER_MODE {
-        1 => TrajectoryPlanner::richter(&waypoints, k_t, false),
-        _ => TrajectoryPlanner::spline(&waypoints, DURATIONS, false),
+        1 => TrajectoryPlanner::richter(&waypoints, k_t, true),
+        _ => TrajectoryPlanner::spline(&waypoints, DURATIONS, true),
     }.unwrap_or_else(|e| { eprintln!("Planning failed: {e}"); std::process::exit(1); });
 
     // ── Pre-flight report ─────────────────────────────────────────────────────

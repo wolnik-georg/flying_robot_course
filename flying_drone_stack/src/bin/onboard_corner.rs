@@ -1,30 +1,20 @@
-//! Mode D Onboard Circle — 8-segment min-snap circle, onboard spline eval at 500 Hz.
+//! Mode D Onboard Racing Corner — explicit bank profile in Mode 2.
 //!
 //! Usage:
-//!   cargo run --release --bin onboard_circle
-//!   cargo run --release --bin onboard_circle -- --speed 1.4 --reps 3
-//!   cargo run --release --bin onboard_circle -- --mode 1 --kt 0.1
-//!   cargo run --release --bin onboard_circle -- --mode 2 --kt 0.3
-//!   cargo run --release --bin onboard_circle -- --mode 3 --kt 0.1
-//!   cargo run --release --bin onboard_circle -- --mode 4 --kt 0.1
+//!   cargo run --release --bin onboard_corner
+//!   cargo run --release --bin onboard_corner -- --speed 1.2 --reps 3
+//!   cargo run --release --bin onboard_corner -- --mode 1 --kt 0.2
+//!   cargo run --release --bin onboard_corner -- --mode 2 --kt 0.2
+//!   cargo run --release --bin onboard_corner -- --mode 3 --kt 0.2
+//!   cargo run --release --bin onboard_corner -- --mode 4 --kt 0.2
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5-3.0, default 1.0)
 //!           Ignored for Mode 1/2/3/4 — use --kt to control speed there.
-//! --reps  : number of full circles (default 2)
+//! --reps  : number of corner repetitions (default 2)
 //! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
-//! --kt    : aggressiveness for timing (Mode 1/2/3/4, default 0.1)
+//! --kt    : aggressiveness for timing (Mode 1/2/3/4, default 0.2)
 //!
-//! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
-//! roll/pitch polynomials via least-squares, uploads via traj.aci/acv/acw, firmware evaluates
-
-//!
-//! Mode 0 baseline: r=0.25m, omega=0.6 rad/s, lap ~10.5s, v_avg ~0.15 m/s (conservative).
-//! Mode 1/2 is always faster — Richter v_avg starts at 0.5 m/s minimum.
-//! Mode 1/2 --kt reference table (circle r=0.25m, circumference ~1.57m):
-//!   --kt 0.05   →  v_avg ~0.84 m/s  ~1.9s/lap   ← gentle start for Mode 1/2
-//!   --kt 0.1    →  v_avg ~1.0  m/s  ~1.6s/lap   ← default
-//!   --kt 0.3    →  v_avg ~1.32 m/s  ~1.2s/lap   (moderate)
-//!   --kt 1.0    →  v_avg ~2.0  m/s  ~0.8s/lap   (fast)
+//! Mode 2 uses explicit attitude waypoints with pre-bank -> apex bank -> unload.
 
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
@@ -33,45 +23,49 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
+use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3, Quat};
 
-const RADIUS: f32 = 0.25;
-const OMEGA:  f32 = 0.6;
-
-fn circle_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
-    let n = 8usize;
-    let seg_dur = 2.0 * std::f32::consts::PI / (n as f32 * OMEGA) / speed;
-    let waypoints: Vec<Waypoint> = (0..=n).map(|i| {
-        let theta = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
-        Waypoint { pos: Vec3::new(RADIUS * theta.cos(), RADIUS * theta.sin(), 0.0), yaw: 0.0 }
-    }).collect();
-    let durations = vec![seg_dur; n];
-    (waypoints, durations)
+fn corner_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
+    let wps = vec![
+        Waypoint { pos: Vec3::new(-0.9, -0.2, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.5, -0.2, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.15, -0.10, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.05,  0.10, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.18,  0.42, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.22,  0.78, 0.0), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.22,  1.10, 0.0), yaw: 0.0 },
+    ];
+    let durs = [0.55_f32, 0.40, 0.34, 0.34, 0.42, 0.55];
+    let durations: Vec<f32> = durs.iter().map(|d| d / speed).collect();
+    (wps, durations)
 }
 
 fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
-    let (wps, durs) = circle_waypoints(speed);
+    let (wps, durs) = corner_waypoints(speed);
     match mode {
-        1 => TrajectoryPlanner::richter(&wps, k_t, true)
-            .expect("Circle Mode 1 QP failed"),
+        1 => TrajectoryPlanner::richter(&wps, k_t, false)
+            .expect("Corner Mode 1 QP failed"),
         2 => {
-            // Use Richter timing (k_t) for duration allocation, same as Mode 1.
-            let m1 = TrajectoryPlanner::richter(&wps, k_t, true)
-                .expect("Circle Mode 2 timing (Richter) failed");
+            let m1 = TrajectoryPlanner::richter(&wps, k_t, false)
+                .expect("Corner Mode 2 timing (Richter) failed");
             let kt_durs = m1.segment_durations();
-            // Mode 2 policy: explicit attitude waypoints (no flatness-derived attitude).
-            let se3_wps: Vec<Se3Waypoint> = wps.iter()
-                .map(|w| Se3Waypoint::levelled(w.pos))
+            // Explicit bank schedule around corner apex.
+            let bank = [0.0_f32, 0.18, 0.38, 0.52, 0.36, 0.16, 0.0];
+            let se3_wps: Vec<Se3Waypoint> = wps.iter().zip(bank.iter())
+                .map(|(w, &phi)| {
+                    let q = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), phi);
+                    Se3Waypoint::new(w.pos, q)
+                })
                 .collect();
-            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
-                .expect("Circle Mode 2 QP failed")
+            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, false)
+                .expect("Corner Mode 2 QP failed")
         }
-        3 => TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
-            .expect("Circle Mode 3 joint QP failed"),
-        4 => TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::None)
-            .expect("Circle Mode 4 constrained joint QP failed"),
-        _ => TrajectoryPlanner::spline(&wps, &durs, true)
-            .expect("Circle Mode 0 QP failed"),
+        3 => TrajectoryPlanner::joint(&wps, k_t, 0.031, false)
+            .expect("Corner Mode 3 joint QP failed"),
+        4 => TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, false, JointAttitudeConstraint::None)
+            .expect("Corner Mode 4 constrained joint QP failed"),
+        _ => TrajectoryPlanner::spline(&wps, &durs, false)
+            .expect("Corner Mode 0 QP failed"),
     }
 }
 
@@ -79,13 +73,13 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let speed: f32 = args.iter().position(|a| a == "--speed")
-        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(1.0);
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let n_reps: u32 = args.iter().position(|a| a == "--reps")
-        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(2);
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(2);
     let mode: u8 = args.iter().position(|a| a == "--mode")
-        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0);
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);
     let k_t: f32 = args.iter().position(|a| a == "--kt")
-        .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0.1);
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0.2);
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20  { eprintln!("--reps must be 1-20");   std::process::exit(1); }
@@ -98,8 +92,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n_segs = spline.segments.len();
     let att_coefs_raw = planner.attitude_poly_coefs();
     let att_coefs = serialise_att_coefs(&att_coefs_raw);
-    println!("Mode D Circle | planning_mode={} | speed={:.1}x | lap={:.2}s | r={}m | reps={}",
-             mode, speed, traj_total, RADIUS, n_reps);
+    println!("Mode D Corner | planning_mode={} | speed={:.1}x | run={:.2}s | reps={}",
+             mode, speed, traj_total, n_reps);
     if mode >= 2 { println!("  Mode {}: uploading {} att coefs", mode, att_coefs.len()); }
 
     let link_ctx = LinkContext::new();
@@ -113,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     upload_trajectory(&cf, &coefs).await?;
     if mode >= 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
     cf.param.set("traj.nseg",     n_segs as u8).await?;
-    cf.param.set("traj.ox",       o.ox - RADIUS).await?;
+    cf.param.set("traj.ox",       o.ox).await?;
     cf.param.set("traj.oy",       o.oy).await?;
     cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
     cf.param.set("traj.dz",       0.0f32).await?;
@@ -125,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     cf.param.set("traj.mode",  1u8).await?;
     sleep(Duration::from_millis(50)).await;
     cf.param.set("traj.start", 1u8).await?;
-    println!("=== Circle {:.1}x x{} reps ({:.1}s total) ===",
+    println!("=== Corner {:.1}x x{} reps ({:.1}s total) ===",
              speed, n_reps, traj_total * n_reps as f32);
 
     let traj_end = Duration::from_secs_f32(traj_total * n_reps as f32);
@@ -148,8 +142,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             rows.push(collect_row(&pa.data, &last_b, &last_c, ts));
             if last_print.elapsed() >= Duration::from_secs(1) {
                 let r = rows.last().unwrap();
-                println!("  [t={:.1}s rep={:.1}/{}] z={:.2}m {:.2}V",
-                         t, t / traj_total, n_reps, r.z, r.vbat);
+                println!("  [t={:.1}s rep={:.1}/{}] z={:.2}m roll={:.1}deg {:.2}V",
+                         t, t / traj_total, n_reps, r.z, r.roll, r.vbat);
                 last_print = Instant::now();
             }
         }
@@ -161,21 +155,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ts_str = Local::now().format("%Y%m%d_%H%M%S");
     let speed_tag = format!("{:.1}", speed).replace('.', "-");
-    let csv_path = format!("../Controls/logs/circle_onboard_m{}_s{}x_r{}_{}.csv",
+    let csv_path = format!("../Controls/logs/corner_onboard_m{}_s{}x_r{}_{}.csv",
                            mode, speed_tag, n_reps, ts_str);
     let metadata = vec![
-        ("run_trajectory".to_string(), "circle".to_string()),
+        ("run_trajectory".to_string(), "corner".to_string()),
         ("run_mode".to_string(), mode.to_string()),
         ("run_kt".to_string(), format!("{k_t:.6}")),
         ("run_speed".to_string(), format!("{speed:.6}")),
         ("run_reps".to_string(), n_reps.to_string()),
-        ("run_periodic".to_string(), "true".to_string()),
+        ("run_periodic".to_string(), "false".to_string()),
         ("run_att_poly".to_string(), ((mode >= 2) as u8).to_string()),
         ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
     ];
     write_csv_with_metadata(&rows, &csv_path, &metadata)?;
     println!("Saved {} rows -> {}", rows.len(), csv_path);
     println!("Analyse: ~/.pyenv/versions/flying_robots/bin/python \
-              Controls/analyze_flight.py --csv {} --type circle", csv_path);
+              Controls/analyze_flight.py --csv {} --type corner", csv_path);
     Ok(())
 }

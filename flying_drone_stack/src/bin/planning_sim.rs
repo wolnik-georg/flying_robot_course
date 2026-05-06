@@ -1,7 +1,7 @@
 //! Planning Mode Simulation
 //!
-//! Completely separate from Assignment 4. This binary validates all three
-//! planning modes across five trajectory shapes in closed-loop simulation
+//! Completely separate from Assignment 4. This binary validates all planning
+//! planning modes across six trajectory shapes in closed-loop simulation
 //! before any real hardware flight.
 //!
 //! ## Trajectories
@@ -9,17 +9,26 @@
 //!   figure8  — Poly4D-matched 11 waypoints / 10 segments (same as onboard_figure8 /
 //!              spline_figure8_test), periodic min-snap closure
 //!   helix    — ascending spiral, 8 waypoints per lap
+//!   corner   — racing-style banked corner (open path, non-periodic)
 //!   flip     — forward 360° pitch flip (Mode 2 only; Mode 0/1 motor cut expected)
 //!   loop     — vertical loop in X-Z plane, R=0.5 m (requires enough speed to invert)
 //!
 //! ## Planning modes applied per trajectory
-//!   Mode 0 (SplineTrajectory — manual durations)  : circle, figure8, helix, loop
-//!   Mode 1 (RichterTrajectory — auto k_t timing)  : circle, figure8, helix, loop
+//!   Mode 0 (SplineTrajectory — manual durations)  : circle, figure8, helix, corner, loop
+//!   Mode 1 (RichterTrajectory — auto k_t timing)  : circle, figure8, helix, corner, loop
 //!   Mode 2 (Se3Trajectory — explicit attitude on all trajectories):
 //!     — circle, figure8, helix use explicit levelled quaternion waypoints
+//!     — corner uses explicit roll-bias profile (pre-bank -> apex bank -> unload)
 //!     — flip, loop use explicit pitched quaternion waypoints
 //!     — **position** segment times match **Mode 1 Richter** allocation (same `k_t` / `periodic`
 //!       per shape); flip keeps explicit manual segment times.
+//!   Mode 3 (JointSe3Trajectory — coupled timing + attitude from position waypoints):
+//!     — attitude knots are generated from flatness-consistent states at trajectory knots
+//!     — timing and SE(3) feasibility are iteratively co-tuned (time scaling repair loop)
+//!     — no explicit attitude waypoints required from user
+//!   Mode 4 (JointSe3Trajectory + constraints):
+//!     — same joint optimization as Mode 3, with optional attitude constraints
+//!     — loop currently enforces inversion at apex
 //!
 //! ## Controllers simulated
 //!   Geo  — GeometricController::default()          (Lee SE(3) — model-based torque)
@@ -40,10 +49,10 @@
 //!
 //! ## Run
 //!   cargo run --release --bin planning_sim
-//!   python scripts/plot_planning_sim.py
+//!   scripts/plot_planning_all.sh
 //!
 //!   cargo run --release --bin planning_sim -- --export-reference-only
-//!   ~/.pyenv/versions/flying_robots/bin/python scripts/plot_planning_reference.py
+//!   scripts/plot_planning_all.sh
 
 use multirotor_simulator::prelude::*;
 use multirotor_simulator::planning::se3_traj::{Se3Trajectory, Se3Waypoint};
@@ -58,6 +67,7 @@ use std::io::Write;
 const DT:   f32 = 0.001;  // 1 kHz physics
 const MASS: f32 = 0.027;  // Crazyflie 2.1 [kg]
 const Z:    f32 = 1.0;    // default hover height [m]
+const FIG8_PERIODIC: bool = false;
 
 // ---------------------------------------------------------------------------
 // INDI-with-feedforward for simulation
@@ -320,10 +330,25 @@ fn rot_to_euler(rot: &[[f32; 3]; 3]) -> (f32, f32, f32) {
 /// to keep file sizes reasonable for plotting.
 const REF_DT: f32 = 0.002;
 
-const MAX_THRUST_FEAS: f32 = 0.55;
-const MAX_OMEGA_FEAS: f32 = 12.0;
-/// Per-axis torque cap for planning feasibility (same order as INDI nominal clamp in this binary).
-const MAX_TORQUE_AXIS_FEAS: f32 = 0.004;
+#[derive(Clone, Copy)]
+struct FeasibilityLimits {
+    max_thrust_n: f32,
+    max_omega_rad_s: f32,
+    max_torque_axis_nm: f32,
+}
+
+const FEAS_CF2: FeasibilityLimits = FeasibilityLimits {
+    max_thrust_n: 0.55,
+    max_omega_rad_s: 12.0,
+    max_torque_axis_nm: 0.004,
+};
+
+// Bitcraze brushless (Bolt-class) planning envelope used for Mode 3 reference checks.
+const FEAS_BRUSHLESS: FeasibilityLimits = FeasibilityLimits {
+    max_thrust_n: 2.5,
+    max_omega_rad_s: 25.0,
+    max_torque_axis_nm: 0.5,
+};
 
 fn reference_dir(mode: u8, traj_folder: &str) -> String {
     format!("results/planning_sim/reference/mode{}/{}", mode, traj_folder)
@@ -552,6 +577,7 @@ fn write_planning_meta_txt(
     traj: &str,
     planner_kind: &str,
     se3_jerk_snap_zero: bool,
+    lim: FeasibilityLimits,
 ) {
     let path = format!("{}/planning_meta.txt", dir);
     ensure_parent(&path);
@@ -562,19 +588,19 @@ fn write_planning_meta_txt(
     writeln!(
         f,
         "feasibility_max_thrust_N={:.6}",
-        MAX_THRUST_FEAS
+        lim.max_thrust_n
     )
     .unwrap();
     writeln!(
         f,
         "feasibility_max_omega_rad_s={:.6}",
-        MAX_OMEGA_FEAS
+        lim.max_omega_rad_s
     )
     .unwrap();
     writeln!(
         f,
         "feasibility_max_torque_axis_Nm={:.6}",
-        MAX_TORQUE_AXIS_FEAS
+        lim.max_torque_axis_nm
     )
     .unwrap();
     writeln!(
@@ -628,7 +654,7 @@ fn export_flat_reference_bundle(
         &format!("{}/segment_junctions.csv", dir),
         &planner.segment_junction_times(),
     );
-    write_planning_meta_txt(dir, folder_mode, traj, planner_kind, false);
+    write_planning_meta_txt(dir, folder_mode, traj, planner_kind, false, FEAS_CF2);
     if richter_feas_report {
         write_richter_feasibility_sidecar(dir, planner);
     }
@@ -638,7 +664,7 @@ fn export_flat_reference_bundle(
     println!("  wrote {} (reference + sidecars)", dir);
 }
 
-fn write_se3_feasibility_sidecar(dir: &str, traj: &Se3Trajectory) {
+fn write_se3_feasibility_sidecar(dir: &str, traj: &Se3Trajectory, lim: FeasibilityLimits) {
     let total = traj.total_time;
     let steps = ((total / REF_DT).ceil() as usize).saturating_add(1).max(2);
     let mut max_th = 0.0_f32;
@@ -667,9 +693,9 @@ fn write_se3_feasibility_sidecar(dir: &str, traj: &Se3Trajectory) {
             t_at_tau = t;
         }
     }
-    let feasible = max_th <= MAX_THRUST_FEAS + 1e-5
-        && max_om <= MAX_OMEGA_FEAS + 1e-3
-        && max_tau_ax <= MAX_TORQUE_AXIS_FEAS + 1e-6;
+    let feasible = max_th <= lim.max_thrust_n + 1e-5
+        && max_om <= lim.max_omega_rad_s + 1e-3
+        && max_tau_ax <= lim.max_torque_axis_nm + 1e-6;
     let path = format!("{}/feasibility_se3.txt", dir);
     ensure_parent(&path);
     let mut f = File::create(&path).unwrap_or_else(|e| panic!("cannot create {path}: {e}"));
@@ -680,9 +706,9 @@ fn write_se3_feasibility_sidecar(dir: &str, traj: &Se3Trajectory) {
     writeln!(f, "peak_omega_time_s={:.6}", t_at_om).unwrap();
     writeln!(f, "peak_torque_axis_abs_Nm={:.6}", max_tau_ax).unwrap();
     writeln!(f, "peak_torque_time_s={:.6}", t_at_tau).unwrap();
-    writeln!(f, "limits_thrust_N={:.6}", MAX_THRUST_FEAS).unwrap();
-    writeln!(f, "limits_omega_rad_s={:.6}", MAX_OMEGA_FEAS).unwrap();
-    writeln!(f, "limits_torque_axis_Nm={:.6}", MAX_TORQUE_AXIS_FEAS).unwrap();
+    writeln!(f, "limits_thrust_N={:.6}", lim.max_thrust_n).unwrap();
+    writeln!(f, "limits_omega_rad_s={:.6}", lim.max_omega_rad_s).unwrap();
+    writeln!(f, "limits_torque_axis_Nm={:.6}", lim.max_torque_axis_nm).unwrap();
 }
 
 fn write_sampled_feasibility_flat(dir: &str, planner: &TrajectoryPlanner) {
@@ -714,9 +740,9 @@ fn write_sampled_feasibility_flat(dir: &str, planner: &TrajectoryPlanner) {
             t_tau = t;
         }
     }
-    let feasible = max_th <= MAX_THRUST_FEAS + 1e-5
-        && max_om <= MAX_OMEGA_FEAS + 1e-3
-        && max_tau_ax <= MAX_TORQUE_AXIS_FEAS + 1e-6;
+    let feasible = max_th <= FEAS_CF2.max_thrust_n + 1e-5
+        && max_om <= FEAS_CF2.max_omega_rad_s + 1e-3
+        && max_tau_ax <= FEAS_CF2.max_torque_axis_nm + 1e-6;
     let path = format!("{}/feasibility_sampled.txt", dir);
     ensure_parent(&path);
     let mut f = File::create(&path).unwrap_or_else(|e| panic!("cannot create {path}: {e}"));
@@ -727,9 +753,9 @@ fn write_sampled_feasibility_flat(dir: &str, planner: &TrajectoryPlanner) {
     writeln!(f, "peak_omega_time_s={:.6}", t_om).unwrap();
     writeln!(f, "peak_torque_axis_abs_Nm={:.6}", max_tau_ax).unwrap();
     writeln!(f, "peak_torque_time_s={:.6}", t_tau).unwrap();
-    writeln!(f, "limits_thrust_N={:.6}", MAX_THRUST_FEAS).unwrap();
-    writeln!(f, "limits_omega_rad_s={:.6}", MAX_OMEGA_FEAS).unwrap();
-    writeln!(f, "limits_torque_axis_Nm={:.6}", MAX_TORQUE_AXIS_FEAS).unwrap();
+    writeln!(f, "limits_thrust_N={:.6}", FEAS_CF2.max_thrust_n).unwrap();
+    writeln!(f, "limits_omega_rad_s={:.6}", FEAS_CF2.max_omega_rad_s).unwrap();
+    writeln!(f, "limits_torque_axis_Nm={:.6}", FEAS_CF2.max_torque_axis_nm).unwrap();
     writeln!(
         f,
         "note=grid_sampled_same_dt_as_reference_csv_differential_flatness"
@@ -807,6 +833,9 @@ fn export_se3_reference_bundle(
     wps: &[Se3Waypoint],
     traj_name: &str,
     position_segment_times_basis: &str,
+    folder_mode: u8,
+    planner_kind: &str,
+    lim: FeasibilityLimits,
 ) {
     std::fs::create_dir_all(dir).expect("mkdir");
     write_se3_reference_csv(&format!("{}/reference.csv", dir), traj);
@@ -815,16 +844,16 @@ fn export_se3_reference_bundle(
         &format!("{}/segment_junctions.csv", dir),
         &junction_times_from_durations(&traj.segment_times),
     );
-    write_planning_meta_txt(dir, 2, traj_name, "Se3Trajectory", false);
+    write_planning_meta_txt(dir, folder_mode, traj_name, planner_kind, false, lim);
     append_planning_meta_kv(dir, "se3_position_segment_times_basis", position_segment_times_basis);
-    write_se3_feasibility_sidecar(dir, traj);
+    write_se3_feasibility_sidecar(dir, traj, lim);
     let params_cf = MultirotorParams::crazyflie();
     write_motor_mixing_summary_se3(dir, traj, &params_cf);
     println!("  wrote {} (reference + sidecars)", dir);
 }
 
 fn write_richter_feasibility_sidecar(dir: &str, planner: &TrajectoryPlanner) {
-    if let Some(rep) = planner.check_feasibility(MASS, MAX_THRUST_FEAS, MAX_OMEGA_FEAS) {
+    if let Some(rep) = planner.check_feasibility(MASS, FEAS_CF2.max_thrust_n, FEAS_CF2.max_omega_rad_s) {
         let path = format!("{}/feasibility.txt", dir);
         let mut f = File::create(&path).unwrap_or_else(|e| panic!("cannot create {path}: {e}"));
         writeln!(f, "feasible={}", rep.feasible).unwrap();
@@ -855,10 +884,12 @@ fn export_planning_reference_only() {
     // Richter's auto time-allocation clamps all 48 segments to T_MIN=0.15s (arc ~0.080m
     // gives T_i=0.127s < T_MIN). Fix: use plan_from_times with uniform 0.375s.
     let (helix_wps, helix_durs) = helix_waypoints(0.3, 0.4, 24, 0.375);
+    let (corner_wps, corner_durs) = corner_waypoints();
     let (loop_wps, loop_durs) = loop_waypoints(0.5, 8, 0.5);
     let circle_se3_wps = to_se3_hover_waypoints(&circle_wps);
     let fig8_se3_wps = to_se3_level_waypoints(&fig8_wps);
     let helix_se3_wps = to_se3_level_waypoints(&helix_wps);
+    let (corner_se3_wps, _corner_se3_durs_manual) = corner_waypoints_se3();
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
     let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5);
 
@@ -866,10 +897,11 @@ fn export_planning_reference_only() {
     // timing, avoiding 4 redundant Clarabel calls that would otherwise push the total
     // sequential QP count past Clarabel's stability limit (~10-15 calls per process).
     let p1_circle = TrajectoryPlanner::richter(&circle_wps, 0.01,  true ).expect("m1 circle");
-    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, true ).expect("m1 fig8");
+    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, FIG8_PERIODIC).expect("m1 fig8");
     let p1_helix  = TrajectoryPlanner::richter_from_times(
         &helix_wps, &helix_durs, 0.008, false, 0,
     ).expect("m1 helix");
+    let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
 
     // Mode 2 position timing: reuse Mode 1 durations for all trajectories (same waypoint count).
@@ -877,6 +909,7 @@ fn export_planning_reference_only() {
     let circle_m2_durs = p1_circle.segment_durations();
     let fig8_m2_durs   = p1_fig8.segment_durations();
     let helix_m2_durs  = helix_durs.clone();
+    let corner_m2_durs = p1_corner.segment_durations();
     let loop_m2_durs   = p1_loop.segment_durations();
 
     // Mode 2 (SE(3)) — plan immediately while QP call count is still low (~5+n_m2)
@@ -889,16 +922,22 @@ fn export_planning_reference_only() {
             &circle_se3_wps,
             "circle",
             "Richter_same_as_mode1_circle",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
         );
     }
     {
-        let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, true).expect("m2 fig8");
+        let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, FIG8_PERIODIC).expect("m2 fig8");
         export_se3_reference_bundle(
             &reference_dir(2, "figure8"),
             &traj,
             &fig8_se3_wps,
             "figure8",
             "Richter_same_as_mode1_figure8",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
         );
     }
     {
@@ -910,6 +949,23 @@ fn export_planning_reference_only() {
             &helix_se3_wps,
             "helix",
             "Richter_same_as_mode1_helix",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+    {
+        let traj = Se3Trajectory::plan(&corner_se3_wps, &corner_m2_durs, MASS, false)
+            .expect("m2 corner");
+        export_se3_reference_bundle(
+            &reference_dir(2, "corner"),
+            &traj,
+            &corner_se3_wps,
+            "corner",
+            "Richter_same_as_mode1_corner_banked_se3_waypoints",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
         );
     }
     {
@@ -920,6 +976,9 @@ fn export_planning_reference_only() {
             &flip_se3_wps,
             "flip",
             "manual_flip_segments",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
         );
     }
     {
@@ -930,6 +989,159 @@ fn export_planning_reference_only() {
             &loop_se3_wps,
             "loop",
             "Richter_same_as_mode1_loop_se3_waypoints",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+
+    // Mode 3 (Joint) — coupled timing + attitude from position waypoints.
+    {
+        let traj = JointSe3Trajectory::plan(&circle_wps, joint_cfg(0.01, true)).expect("m3 circle");
+        export_se3_reference_bundle(
+            &reference_dir(3, "circle"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "circle",
+            "joint_position_attitude_coupled",
+            3,
+            "JointSe3Trajectory",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&fig8_wps, joint_cfg(0.008, FIG8_PERIODIC)).expect("m3 fig8");
+        export_se3_reference_bundle(
+            &reference_dir(3, "figure8"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "figure8",
+            "joint_position_attitude_coupled",
+            3,
+            "JointSe3Trajectory",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan_from_times(&helix_wps, &helix_durs, joint_cfg(0.008, false))
+            .expect("m3 helix");
+        export_se3_reference_bundle(
+            &reference_dir(3, "helix"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "helix",
+            "joint_position_attitude_coupled",
+            3,
+            "JointSe3Trajectory",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&corner_wps, joint_cfg(0.02, false)).expect("m3 corner");
+        export_se3_reference_bundle(
+            &reference_dir(3, "corner"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "corner",
+            "joint_position_attitude_coupled",
+            3,
+            "JointSe3Trajectory",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&loop_wps, joint_cfg(0.01, true)).expect("m3 loop");
+        export_se3_reference_bundle(
+            &reference_dir(3, "loop"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "loop",
+            "joint_position_attitude_coupled",
+            3,
+            "JointSe3Trajectory",
+            FEAS_BRUSHLESS,
+        );
+    }
+
+    // Mode 4 (Joint + optional attitude constraints).
+    {
+        let traj = JointSe3Trajectory::plan(&circle_wps, joint_cfg_mode4(0.01, true, JointAttitudeConstraint::None))
+            .expect("m4 circle");
+        export_se3_reference_bundle(
+            &reference_dir(4, "circle"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "circle",
+            "joint_position_attitude_time_with_constraints",
+            4,
+            "JointSe3TrajectoryConstrained",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(
+            &fig8_wps,
+            joint_cfg_mode4(0.008, FIG8_PERIODIC, JointAttitudeConstraint::None),
+        )
+            .expect("m4 fig8");
+        export_se3_reference_bundle(
+            &reference_dir(4, "figure8"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "figure8",
+            "joint_position_attitude_time_with_constraints",
+            4,
+            "JointSe3TrajectoryConstrained",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan_from_times(
+            &helix_wps,
+            &helix_durs,
+            joint_cfg_mode4(0.008, false, JointAttitudeConstraint::None),
+        )
+        .expect("m4 helix");
+        export_se3_reference_bundle(
+            &reference_dir(4, "helix"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "helix",
+            "joint_position_attitude_time_with_constraints",
+            4,
+            "JointSe3TrajectoryConstrained",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&corner_wps, joint_cfg_mode4(0.02, false, JointAttitudeConstraint::None))
+            .expect("m4 corner");
+        export_se3_reference_bundle(
+            &reference_dir(4, "corner"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "corner",
+            "joint_position_attitude_time_with_constraints",
+            4,
+            "JointSe3TrajectoryConstrained",
+            FEAS_BRUSHLESS,
+        );
+    }
+    {
+        let traj = JointSe3Trajectory::plan(
+            &loop_wps,
+            joint_cfg_mode4(0.01, true, JointAttitudeConstraint::InvertAtApex),
+        )
+        .expect("m4 loop");
+        export_se3_reference_bundle(
+            &reference_dir(4, "loop"),
+            traj.as_se3(),
+            traj.se3_waypoints(),
+            "loop",
+            "joint_position_attitude_time_with_constraints",
+            4,
+            "JointSe3TrajectoryConstrained",
+            FEAS_BRUSHLESS,
         );
     }
 
@@ -944,6 +1156,9 @@ fn export_planning_reference_only() {
         &reference_dir(1, "helix"),   &p1_helix,  &helix_wps, "helix", 1, "RichterTrajectory", true,
     );
     export_flat_reference_bundle(
+        &reference_dir(1, "corner"),  &p1_corner, &corner_wps, "corner", 1, "RichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
         &reference_dir(1, "loop"),    &p1_loop,   &loop_wps,   "loop",    1, "RichterTrajectory", true,
     );
 
@@ -955,7 +1170,7 @@ fn export_planning_reference_only() {
         );
     }
     {
-        let p = TrajectoryPlanner::spline(&fig8_wps, &fig8_durs, true).expect("m0 fig8");
+        let p = TrajectoryPlanner::spline(&fig8_wps, &fig8_durs, false).expect("m0 fig8");
         export_flat_reference_bundle(
             &reference_dir(0, "figure8"), &p, &fig8_wps, "figure8", 0, "SplineTrajectory", false,
         );
@@ -967,13 +1182,19 @@ fn export_planning_reference_only() {
         );
     }
     {
+        let p = TrajectoryPlanner::spline(&corner_wps, &corner_durs, false).expect("m0 corner");
+        export_flat_reference_bundle(
+            &reference_dir(0, "corner"), &p, &corner_wps, "corner", 0, "SplineTrajectory", false,
+        );
+    }
+    {
         let p = TrajectoryPlanner::spline(&loop_wps, &loop_durs, true).expect("m0 loop");
         export_flat_reference_bundle(
             &reference_dir(0, "loop"), &p, &loop_wps, "loop", 0, "SplineTrajectory", false,
         );
     }
 
-    println!("\nNext: ~/.pyenv/versions/flying_robots/bin/python scripts/plot_planning_reference.py");
+    println!("\nNext: scripts/plot_planning_all.sh");
 }
 
 fn quat_to_euler(q: &Quat) -> (f32, f32, f32) {
@@ -1540,6 +1761,169 @@ fn run_se3_indi(
     recs
 }
 
+/// Mode 3 runner: use joint SE(3) output for logging, but keep controller yaw/derivatives
+/// tied to the joint position-flat channel (same channel used during joint construction).
+fn run_joint(
+    traj:   &JointSe3Trajectory,
+    params: &MultirotorParams,
+    ctrl:   &mut dyn Controller,
+    label:  &str,
+) -> Vec<Rec> {
+    let total = traj.total_time();
+    let n     = (total / DT) as usize;
+
+    let out0 = traj.eval(0.0);
+    let flat0 = traj.as_richter().eval(0.0);
+    let fr0 = compute_flatness(&flat0, params.mass);
+    let q0 = rot_to_quat(&fr0.rot);
+
+    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
+    sim.state_mut().position         = out0.pos;
+    sim.state_mut().velocity         = out0.vel;
+    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
+    sim.state_mut().angular_velocity = Vec3::zero();
+
+    let mut recs = Vec::with_capacity(n);
+
+    for k in 0..n {
+        let t = k as f32 * DT;
+        let out = traj.eval(t);
+        let flat_ctrl = traj.as_richter().eval(t);
+        let state = sim.state().clone();
+
+        let reference = TrajectoryReference {
+            position:         flat_ctrl.pos,
+            velocity:         flat_ctrl.vel,
+            acceleration:     flat_ctrl.acc,
+            jerk:             flat_ctrl.jerk,
+            yaw:              flat_ctrl.yaw,
+            yaw_rate:         flat_ctrl.yaw_dot,
+            yaw_acceleration: flat_ctrl.yaw_ddot,
+        };
+        let ctrl_out = ctrl.compute_control(&state, &reference, params, DT);
+
+        let dx = out.pos.x - state.position.x;
+        let dy = out.pos.y - state.position.y;
+        let dz = out.pos.z - state.position.z;
+
+        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
+        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&out.rot);
+
+        recs.push(Rec {
+            t,
+            ref_x: out.pos.x, ref_y: out.pos.y, ref_z: out.pos.z,
+            ref_roll, ref_pitch, ref_yaw,
+            ref_thrust: out.thrust,
+            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
+            sim_roll, sim_pitch, sim_yaw,
+            cmd_thrust: ctrl_out.thrust,
+            cmd_tx: ctrl_out.torque.x, cmd_ty: ctrl_out.torque.y, cmd_tz: ctrl_out.torque.z,
+            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
+        });
+
+        let t_clamped = ctrl_out.thrust.max(0.0);
+        let action = MotorAction::from_thrust_torque(t_clamped, ctrl_out.torque, params);
+        sim.step(&action);
+    }
+
+    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
+    recs
+}
+
+fn run_joint_indi(
+    traj:   &JointSe3Trajectory,
+    params: &MultirotorParams,
+    label:  &str,
+) -> Vec<Rec> {
+    let total = traj.total_time();
+    let n     = (total / DT) as usize;
+
+    let out0 = traj.eval(0.0);
+    let flat0 = traj.as_richter().eval(0.0);
+    let fr0 = compute_flatness(&flat0, params.mass);
+    let q0 = rot_to_quat(&fr0.rot);
+
+    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
+    sim.state_mut().position         = out0.pos;
+    sim.state_mut().velocity         = out0.vel;
+    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
+    sim.state_mut().angular_velocity = out0.omega;
+
+    let mut recs = Vec::with_capacity(n);
+    let mut indi = IndiSimState::new();
+    let mut yaw_ref_unwrapped = flat0.yaw;
+    // Corner/circle are more sensitive to attitude feedforward mismatch in joint mode.
+    // Use a conservative feedforward cap to avoid over-driving INDI increments.
+    let ff_cap = if label.contains("corner") {
+        0.0
+    } else if label.contains("circle") {
+        0.50
+    } else {
+        0.80
+    };
+
+    for k in 0..n {
+        let t = k as f32 * DT;
+        let out = traj.eval(t);
+        let flat_ctrl = traj.as_richter().eval(t);
+        let state = sim.state().clone();
+
+        let mut dyaw = flat_ctrl.yaw - yaw_ref_unwrapped;
+        while dyaw > PI { dyaw -= 2.0 * PI; }
+        while dyaw < -PI { dyaw += 2.0 * PI; }
+        yaw_ref_unwrapped += dyaw;
+
+        let reference = TrajectoryReference {
+            position:         flat_ctrl.pos,
+            velocity:         flat_ctrl.vel,
+            acceleration:     flat_ctrl.acc,
+            jerk:             Vec3::zero(),
+            yaw:              yaw_ref_unwrapped,
+            yaw_rate:         0.0,
+            yaw_acceleration: 0.0,
+        };
+
+        let (thrust, rd) = outer_loop_with_gains(
+            &state,
+            &reference,
+            params,
+            Vec3::new(12.0, 12.0, 8.5),
+            Vec3::new(8.0, 8.0, 5.0),
+        );
+        let ff_mismatch = rot_angle_between(&rd, &out.rot);
+        let ff_gain = ff_cap * ((0.45 - ff_mismatch) / (0.45 - 0.15)).clamp(0.0, 1.0);
+        let omega_ff = out.omega * ff_gain;
+        let alpha_ff = out.alpha * ff_gain;
+        let rot_ff = if ff_gain > 0.0 { &out.rot } else { &rd };
+        let tau = indi.compute(&state, &rd, rot_ff, omega_ff, alpha_ff, thrust, params);
+
+        let dx = out.pos.x - state.position.x;
+        let dy = out.pos.y - state.position.y;
+        let dz = out.pos.z - state.position.z;
+
+        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
+        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&out.rot);
+
+        recs.push(Rec {
+            t,
+            ref_x: out.pos.x, ref_y: out.pos.y, ref_z: out.pos.z,
+            ref_roll, ref_pitch, ref_yaw,
+            ref_thrust: out.thrust,
+            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
+            sim_roll, sim_pitch, sim_yaw,
+            cmd_thrust: thrust,
+            cmd_tx: tau.x, cmd_ty: tau.y, cmd_tz: tau.z,
+            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
+        });
+
+        let action = MotorAction::from_thrust_torque(thrust.max(0.0), tau, params);
+        sim.step(&action);
+    }
+
+    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
+    recs
+}
+
 /// [`run_se3_scaled`] counterpart for INDI (matches Mode 1 helix time-stretch).
 fn run_se3_indi_scaled(
     traj:   &Se3Trajectory,
@@ -1647,10 +2031,10 @@ fn circle_waypoints(r: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>, f32) {
 ///
 /// Z is set to hover height `Z` (onboard uses relative z=0 and adds `HOVER_HEIGHT` in firmware).
 ///
-/// Callers must use **`periodic = true`** for min-snap so the loop closes smoothly (same as
-/// `Se3Trajectory::plan`, which auto-enables periodic when first and last positions match).
-/// Using `periodic = false` on a closed path pins **rest-to-rest** at the repeated origin and
-/// badly skews the lemniscate compared to Mode 2.
+/// All callers use **`periodic = false`** (rest-to-rest) to match the professor's waypoint design
+/// and the actual onboard flight behaviour. The drone decelerates to zero at the origin crossing
+/// between reps; this avoids the rep-boundary jerk that `periodic = true` causes when tracking
+/// error prevents a perfectly smooth velocity wrap-around.
 fn figure8_waypoints() -> (Vec<Waypoint>, Vec<f32>) {
     let wps = vec![
         Waypoint { pos: Vec3::new(0.000000, 0.000000, Z), yaw: 0.0 },
@@ -1693,6 +2077,26 @@ fn helix_waypoints(r: f32, dz: f32, n: usize, seg_t: f32) -> (Vec<Waypoint>, Vec
         wps.push(Waypoint { pos: Vec3::new(r * theta.cos(), r * theta.sin(), z), yaw: 0.0 });
         durs.push(seg_t);
     }
+    (wps, durs)
+}
+
+/// Racing-style corner (open path, XY plane) with manually-shaped durations.
+///
+/// Geometry: straight entry -> curved apex -> straight exit.
+/// This is intentionally non-periodic and keeps z constant at hover height.
+fn corner_waypoints() -> (Vec<Waypoint>, Vec<f32>) {
+    let z = Z;
+    let wps = vec![
+        Waypoint { pos: Vec3::new(-0.9, -0.2, z), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.5, -0.2, z), yaw: 0.0 },
+        Waypoint { pos: Vec3::new(-0.15, -0.10, z), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.05,  0.10, z), yaw: 0.0 }, // apex neighborhood
+        Waypoint { pos: Vec3::new( 0.18,  0.42, z), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.22,  0.78, z), yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.22,  1.10, z), yaw: 0.0 },
+    ];
+    // Slightly slower at entry/exit, faster around apex.
+    let durs = vec![0.55, 0.40, 0.34, 0.34, 0.42, 0.55];
     (wps, durs)
 }
 
@@ -1756,6 +2160,45 @@ fn loop_waypoints_se3(r: f32, n: usize, seg_t: f32) -> (Vec<Se3Waypoint>, Vec<f3
     (wps, vec![seg_t; n])
 }
 
+/// Banked-corner Se3 waypoints with explicit roll profile.
+///
+/// Same position as `corner_waypoints()`, but attitude includes pre-bank, apex bank,
+/// and unload phases to emulate racing-style cornering.
+fn corner_waypoints_se3() -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let (flat_wps, durs) = corner_waypoints();
+    // Roll schedule [rad], aligned with corner progression.
+    let bank = [0.0_f32, 0.18, 0.38, 0.52, 0.36, 0.16, 0.0];
+    let wps: Vec<Se3Waypoint> = flat_wps
+        .iter()
+        .zip(bank.iter())
+        .map(|(w, &phi)| {
+            let q = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), phi);
+            Se3Waypoint::new(w.pos, q)
+        })
+        .collect();
+    (wps, durs)
+}
+
+fn joint_cfg(k_t: f32, periodic: bool) -> JointSe3Config {
+    JointSe3Config {
+        k_t,
+        periodic,
+        mass: MASS,
+        max_thrust_n: FEAS_BRUSHLESS.max_thrust_n,
+        max_omega_rad_s: FEAS_BRUSHLESS.max_omega_rad_s,
+        max_iters: 2,
+        time_scale_margin: 1.03,
+        attitude_constraint: JointAttitudeConstraint::None,
+    }
+}
+
+fn joint_cfg_mode4(k_t: f32, periodic: bool, c: JointAttitudeConstraint) -> JointSe3Config {
+    JointSe3Config {
+        attitude_constraint: c,
+        ..joint_cfg(k_t, periodic)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -1769,8 +2212,8 @@ fn main() {
 
     println!("Planning Mode Simulation");
     println!("========================\n");
-    println!("Modes:       0=Spline(manual durations)  1=Richter(auto k_t=0.01)  2=SE3(SLERP attitude)");
-    println!("Trajectories: circle  figure8  helix  loop  flip\n");
+    println!("Modes:       0=Spline(manual durations)  1=Richter(auto k_t)  2=SE3(explicit attitude)  3=Joint(coupled)  4=Joint+constraints");
+    println!("Trajectories: circle  figure8  helix  corner  loop  flip\n");
 
     std::fs::create_dir_all("results/planning_sim").expect("cannot create output dir");
 
@@ -1783,10 +2226,12 @@ fn main() {
     // All modes use n=24 helix (15 deg/segment). plan_from_times bypasses Richter's
     // auto-allocation (which would clamp 48 short-arc segments to T_MIN=0.15s).
     let (helix_wps,    helix_durs)      = helix_waypoints(0.3, 0.4, 24, 0.375); // n=24 = 15 deg/seg
+    let (corner_wps,   corner_durs)     = corner_waypoints();
     let (loop_wps,     loop_durs)       = loop_waypoints(0.5, 8, 0.5);
     let circle_se3_wps = to_se3_hover_waypoints(&circle_wps);
     let fig8_se3_wps   = to_se3_level_waypoints(&fig8_wps);
     let helix_se3_wps  = to_se3_level_waypoints(&helix_wps);
+    let (corner_se3_wps, _corner_se3_durs_manual) = corner_waypoints_se3();
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
     let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5); // n=8 → 45°/seg
 
@@ -1800,10 +2245,11 @@ fn main() {
     const MAX_THRUST: f32 = 0.55;  // N (total, including decks)
     const MAX_OMEGA:  f32 = 12.0;  // rad/s
     let p1_circle = TrajectoryPlanner::richter(&circle_wps, 0.01,  true ).expect("m1 circle");
-    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, true ).expect("m1 fig8");
+    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, FIG8_PERIODIC).expect("m1 fig8");
     let p1_helix  = TrajectoryPlanner::richter_from_times(
         &helix_wps, &helix_durs, 0.008, false, 0,
     ).expect("m1 helix");
+    let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
 
     // Mode 2 position segment times: reuse Mode 1 durations for all trajectories (same waypoints).
@@ -1811,12 +2257,14 @@ fn main() {
     let circle_m2_durs = p1_circle.segment_durations();
     let fig8_m2_durs   = p1_fig8.segment_durations();
     let helix_m2_durs  = helix_durs.clone();
+    let corner_m2_durs = p1_corner.segment_durations();
     let loop_m2_durs   = p1_loop.segment_durations();
 
     // Build Mode 0 planners (SplineTrajectory QP calls happen AFTER Mode 1 builds).
     let p0_circle = TrajectoryPlanner::spline(&circle_wps, &circle_durs, true ).expect("m0 circle");
-    let p0_fig8   = TrajectoryPlanner::spline(&fig8_wps,   &fig8_durs,   true ).expect("m0 fig8");
+    let p0_fig8   = TrajectoryPlanner::spline(&fig8_wps,   &fig8_durs,   false).expect("m0 fig8");
     let p0_helix  = TrajectoryPlanner::spline(&helix_wps,  &helix_durs,  false).expect("m0 helix");
+    let p0_corner = TrajectoryPlanner::spline(&corner_wps, &corner_durs, false).expect("m0 corner");
     let p0_loop   = TrajectoryPlanner::spline(&loop_wps,   &loop_durs,   true ).expect("m0 loop");
 
     // Set in Mode 1 helix (same stretch factor as `run_flat_scaled` for Mode 2 helix sim).
@@ -1847,6 +2295,14 @@ fn main() {
         println!("  [INDI]");
         let ri = run_flat_indi(&p0_helix, &params, 1.0, "mode0 helix indi");
         write_closed_loop_csv(0, "helix", "indi", &ri);
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p0_corner, &params, &mut GeometricController::default(), 1.0, "mode0 corner geo");
+        write_closed_loop_csv(0, "corner", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_flat_indi(&p0_corner, &params, 1.0, "mode0 corner indi");
+        write_closed_loop_csv(0, "corner", "indi", &ri);
     }
     {
         println!("  [Geo]");
@@ -1902,6 +2358,19 @@ fn main() {
         write_closed_loop_csv(1, "helix", "indi", &ri);
     }
     {
+        println!("    corner  total_time = {:.2} s", p1_corner.total_time());
+        if let Some(rep) = p1_corner.check_feasibility(MASS, MAX_THRUST, MAX_OMEGA) {
+            println!("    corner  feasible={} peak_T={:.3}N peak_ω={:.2}rad/s scale={:.2}",
+                rep.feasible, rep.max_thrust_n, rep.max_omega_rad_s, rep.suggested_time_scale);
+        }
+        println!("  [Geo]");
+        let rg = run_flat(&p1_corner, &params, &mut GeometricController::default(), 1.0, "mode1 corner geo");
+        write_closed_loop_csv(1, "corner", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_flat_indi(&p1_corner, &params, 1.0, "mode1 corner indi");
+        write_closed_loop_csv(1, "corner", "indi", &ri);
+    }
+    {
         println!("    loop    total_time = {:.2} s", p1_loop.total_time());
         if let Some(rep) = p1_loop.check_feasibility(MASS, MAX_THRUST, MAX_OMEGA) {
             println!("    loop    feasible={} peak_T={:.3}N peak_ω={:.2}rad/s scale={:.2}",
@@ -1916,7 +2385,7 @@ fn main() {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    println!("\n── Mode 2 (Se3Trajectory — flatness attitude circle/fig8/helix, SLERP flip/loop) ────");
+    println!("\n── Mode 2 (Se3Trajectory — explicit attitude, incl. banked corner) ────");
     {
         let traj =
             Se3Trajectory::plan(&circle_se3_wps, &circle_m2_durs, MASS, true).expect("m2 circle");
@@ -1931,7 +2400,7 @@ fn main() {
         write_closed_loop_csv(2, "circle", "indi", &ri);
     }
     {
-        let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, true).expect("m2 fig8");
+        let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, FIG8_PERIODIC).expect("m2 fig8");
         let mut geo_m2 = GeometricController::default();
         geo_m2.ki_pos = Vec3::zero();
         geo_m2.ki = Vec3::zero();
@@ -1960,6 +2429,19 @@ fn main() {
         println!("  [INDI]");
         let ri = run_se3_indi_scaled(&traj, &params, helix_sim_time_scale, "mode2 helix indi");
         write_closed_loop_csv(2, "helix", "indi", &ri);
+    }
+    {
+        let traj = Se3Trajectory::plan(&corner_se3_wps, &corner_m2_durs, MASS, false)
+            .expect("m2 corner");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corner geo");
+        write_closed_loop_csv(2, "corner", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 corner indi");
+        write_closed_loop_csv(2, "corner", "indi", &ri);
     }
     {
         // Flip — position held, attitude does a full 360° pitch (Option A hover flip)
@@ -2007,9 +2489,151 @@ fn main() {
     }
 
     // ────────────────────────────────────────────────────────────────────────
+    println!("\n── Mode 3 (JointSe3Trajectory — coupled timing + attitude) ─────");
+    {
+        let traj = JointSe3Trajectory::plan(&circle_wps, joint_cfg(0.01, true)).expect("m3 circle");
+        let mut geo_m3 = GeometricController::default();
+        geo_m3.ki_pos = Vec3::zero();
+        geo_m3.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m3, "mode3 circle geo");
+        write_closed_loop_csv(3, "circle", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode3 circle indi");
+        write_closed_loop_csv(3, "circle", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&fig8_wps, joint_cfg(0.008, FIG8_PERIODIC)).expect("m3 fig8");
+        let mut geo_m3 = GeometricController::default();
+        geo_m3.ki_pos = Vec3::zero();
+        geo_m3.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m3, "mode3 figure8 geo");
+        write_closed_loop_csv(3, "figure8", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode3 figure8 indi");
+        write_closed_loop_csv(3, "figure8", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan_from_times(&helix_wps, &helix_durs, joint_cfg(0.008, false))
+            .expect("m3 helix");
+        let mut geo_m3 = GeometricController::default();
+        geo_m3.ki_pos = Vec3::zero();
+        geo_m3.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m3, "mode3 helix geo");
+        write_closed_loop_csv(3, "helix", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode3 helix indi");
+        write_closed_loop_csv(3, "helix", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&corner_wps, joint_cfg(0.02, false)).expect("m3 corner");
+        let mut geo_m3 = GeometricController::default();
+        geo_m3.ki_pos = Vec3::zero();
+        geo_m3.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m3, "mode3 corner geo");
+        write_closed_loop_csv(3, "corner", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode3 corner indi");
+        write_closed_loop_csv(3, "corner", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&loop_wps, joint_cfg(0.01, true)).expect("m3 loop");
+        let mut geo_m3 = GeometricController::default();
+        geo_m3.ki_pos = Vec3::zero();
+        geo_m3.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m3, "mode3 loop geo");
+        write_closed_loop_csv(3, "loop", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode3 loop indi");
+        write_closed_loop_csv(3, "loop", "indi", &ri);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    println!("\n── Mode 4 (JointSe3Trajectory + attitude constraints) ───────────");
+    {
+        let traj = JointSe3Trajectory::plan(&circle_wps, joint_cfg_mode4(0.01, true, JointAttitudeConstraint::None))
+            .expect("m4 circle");
+        let mut geo_m4 = GeometricController::default();
+        geo_m4.ki_pos = Vec3::zero();
+        geo_m4.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m4, "mode4 circle geo");
+        write_closed_loop_csv(4, "circle", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode4 circle indi");
+        write_closed_loop_csv(4, "circle", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(
+            &fig8_wps,
+            joint_cfg_mode4(0.008, FIG8_PERIODIC, JointAttitudeConstraint::None),
+        )
+            .expect("m4 fig8");
+        let mut geo_m4 = GeometricController::default();
+        geo_m4.ki_pos = Vec3::zero();
+        geo_m4.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m4, "mode4 figure8 geo");
+        write_closed_loop_csv(4, "figure8", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode4 figure8 indi");
+        write_closed_loop_csv(4, "figure8", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan_from_times(
+            &helix_wps,
+            &helix_durs,
+            joint_cfg_mode4(0.008, false, JointAttitudeConstraint::None),
+        )
+        .expect("m4 helix");
+        let mut geo_m4 = GeometricController::default();
+        geo_m4.ki_pos = Vec3::zero();
+        geo_m4.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m4, "mode4 helix geo");
+        write_closed_loop_csv(4, "helix", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode4 helix indi");
+        write_closed_loop_csv(4, "helix", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(&corner_wps, joint_cfg_mode4(0.02, false, JointAttitudeConstraint::None))
+            .expect("m4 corner");
+        let mut geo_m4 = GeometricController::default();
+        geo_m4.ki_pos = Vec3::zero();
+        geo_m4.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m4, "mode4 corner geo");
+        write_closed_loop_csv(4, "corner", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode4 corner indi");
+        write_closed_loop_csv(4, "corner", "indi", &ri);
+    }
+    {
+        let traj = JointSe3Trajectory::plan(
+            &loop_wps,
+            joint_cfg_mode4(0.01, true, JointAttitudeConstraint::InvertAtApex),
+        )
+        .expect("m4 loop");
+        let mut geo_m4 = GeometricController::default();
+        geo_m4.ki_pos = Vec3::zero();
+        geo_m4.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_joint(&traj, &params, &mut geo_m4, "mode4 loop geo");
+        write_closed_loop_csv(4, "loop", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_joint_indi(&traj, &params, "mode4 loop indi");
+        write_closed_loop_csv(4, "loop", "indi", &ri);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
     println!("\n── Output files ────────────────────────────────────────────────");
     println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/{{geo,indi}}.csv");
-    println!("  Trajectories: circle, figure8, helix, loop  (+ flip for mode 2 only)");
-    println!("\nNext: ~/.pyenv/versions/flying_robots/bin/python scripts/plot_planning_sim.py");
+    println!("  Trajectories: circle, figure8, helix, corner, loop  (+ flip for mode 2 only)");
+    println!("\nNext: scripts/plot_planning_all.sh");
     println!("Planner-only reference export: cargo run --release --bin planning_sim -- --export-reference-only");
 }
