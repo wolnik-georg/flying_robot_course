@@ -3,10 +3,8 @@
 Planning Mode Simulation — Visualisation
 =========================================
 Reads closed-loop CSVs from results/planning_sim/closed_loop/:
-  mode{0,1}/<circle|figure8|helix|loop>/{geo,indi}.csv
-  mode2/<circle|figure8|helix|loop|flip>/{geo,indi}.csv
-  mode3/<circle|figure8|helix|corner|loop>/{geo,indi}.csv
-  mode4/<circle|figure8|helix|corner|loop>/{geo,indi}.csv
+  mode{0,1}/<circle|figure8|helix|corner|loop|corkscrew>/{geo,indi}.csv
+  mode2/<circle|figure8|helix|corner|loop|flip|corkscrew|roll>/{geo,indi}.csv
 
 Each trajectory is run with GeometricController (geo) and IndiController (indi).
 
@@ -55,58 +53,52 @@ def _cl(mode: int, traj: str, kind: str) -> str:
 
 # key → (csv_relpath, mode_label, traj_label, ctrl_label, color)
 RUNS = {
-    "m0_circle_geo":  (_cl(0, "circle", "geo"),  "Mode 0", "circle",  "Geo",  "#1f77b4"),
-    "m0_circle_indi": (_cl(0, "circle", "indi"),  "Mode 0", "circle",  "INDI", "#1f77b4"),
-    "m0_fig8_geo":    (_cl(0, "figure8", "geo"),  "Mode 0", "fig8",   "Geo",  "#ff7f0e"),
-    "m0_fig8_indi":   (_cl(0, "figure8", "indi"), "Mode 0", "fig8",   "INDI", "#ff7f0e"),
-    "m0_helix_geo":   (_cl(0, "helix", "geo"),    "Mode 0", "helix",  "Geo",  "#2ca02c"),
-    "m0_helix_indi":  (_cl(0, "helix", "indi"),   "Mode 0", "helix",  "INDI", "#2ca02c"),
-    "m0_corner_geo":  (_cl(0, "corner", "geo"),   "Mode 0", "corner", "Geo",  "#17becf"),
-    "m0_corner_indi": (_cl(0, "corner", "indi"),  "Mode 0", "corner", "INDI", "#17becf"),
-    "m0_loop_geo":    (_cl(0, "loop", "geo"),     "Mode 0", "loop",   "Geo",  "#d62728"),
-    "m0_loop_indi":   (_cl(0, "loop", "indi"),    "Mode 0", "loop",   "INDI", "#d62728"),
-    "m1_circle_geo":  (_cl(1, "circle", "geo"),   "Mode 1", "circle", "Geo",  "#1f77b4"),
-    "m1_circle_indi": (_cl(1, "circle", "indi"),  "Mode 1", "circle", "INDI", "#1f77b4"),
-    "m1_fig8_geo":    (_cl(1, "figure8", "geo"),   "Mode 1", "fig8",   "Geo",  "#ff7f0e"),
-    "m1_fig8_indi":   (_cl(1, "figure8", "indi"),  "Mode 1", "fig8",   "INDI", "#ff7f0e"),
-    "m1_helix_geo":   (_cl(1, "helix", "geo"),     "Mode 1", "helix",  "Geo",  "#2ca02c"),
-    "m1_helix_indi":  (_cl(1, "helix", "indi"),    "Mode 1", "helix",  "INDI", "#2ca02c"),
-    "m1_corner_geo":  (_cl(1, "corner", "geo"),    "Mode 1", "corner", "Geo",  "#17becf"),
-    "m1_corner_indi": (_cl(1, "corner", "indi"),   "Mode 1", "corner", "INDI", "#17becf"),
-    "m1_loop_geo":    (_cl(1, "loop", "geo"),      "Mode 1", "loop",   "Geo",  "#d62728"),
-    "m1_loop_indi":   (_cl(1, "loop", "indi"),     "Mode 1", "loop",   "INDI", "#d62728"),
-    "m2_circle_geo":  (_cl(2, "circle", "geo"),   "Mode 2", "circle", "Geo",  "#1f77b4"),
-    "m2_circle_indi": (_cl(2, "circle", "indi"),  "Mode 2", "circle", "INDI", "#1f77b4"),
-    "m2_fig8_geo":    (_cl(2, "figure8", "geo"),   "Mode 2", "fig8",   "Geo",  "#ff7f0e"),
-    "m2_fig8_indi":   (_cl(2, "figure8", "indi"),  "Mode 2", "fig8",   "INDI", "#ff7f0e"),
-    "m2_helix_geo":   (_cl(2, "helix", "geo"),     "Mode 2", "helix",  "Geo",  "#2ca02c"),
-    "m2_helix_indi":  (_cl(2, "helix", "indi"),    "Mode 2", "helix",  "INDI", "#2ca02c"),
-    "m2_corner_geo":  (_cl(2, "corner", "geo"),    "Mode 2", "corner(SE3)", "Geo",  "#17becf"),
-    "m2_corner_indi": (_cl(2, "corner", "indi"),   "Mode 2", "corner(SE3)", "INDI", "#17becf"),
-    "m2_loop_geo":    (_cl(2, "loop", "geo"),      "Mode 2", "loop(SE3)", "Geo",  "#8c564b"),
-    "m2_loop_indi":   (_cl(2, "loop", "indi"),     "Mode 2", "loop(SE3)", "INDI", "#8c564b"),
-    "m2_flip_geo":    (_cl(2, "flip", "geo"),      "Mode 2", "flip",   "Geo",  "#9467bd"),
-    "m2_flip_indi":   (_cl(2, "flip", "indi"),     "Mode 2", "flip",   "INDI", "#9467bd"),
-    "m3_circle_geo":  (_cl(3, "circle", "geo"),    "Mode 3", "circle(joint)", "Geo",  "#1f77b4"),
-    "m3_circle_indi": (_cl(3, "circle", "indi"),   "Mode 3", "circle(joint)", "INDI", "#1f77b4"),
-    "m3_fig8_geo":    (_cl(3, "figure8", "geo"),   "Mode 3", "fig8(joint)",   "Geo",  "#ff7f0e"),
-    "m3_fig8_indi":   (_cl(3, "figure8", "indi"),  "Mode 3", "fig8(joint)",   "INDI", "#ff7f0e"),
-    "m3_helix_geo":   (_cl(3, "helix", "geo"),     "Mode 3", "helix(joint)",  "Geo",  "#2ca02c"),
-    "m3_helix_indi":  (_cl(3, "helix", "indi"),    "Mode 3", "helix(joint)",  "INDI", "#2ca02c"),
-    "m3_corner_geo":  (_cl(3, "corner", "geo"),    "Mode 3", "corner(joint)", "Geo",  "#17becf"),
-    "m3_corner_indi": (_cl(3, "corner", "indi"),   "Mode 3", "corner(joint)", "INDI", "#17becf"),
-    "m3_loop_geo":    (_cl(3, "loop", "geo"),      "Mode 3", "loop(joint)",   "Geo",  "#8c564b"),
-    "m3_loop_indi":   (_cl(3, "loop", "indi"),     "Mode 3", "loop(joint)",   "INDI", "#8c564b"),
-    "m4_circle_geo":  (_cl(4, "circle", "geo"),    "Mode 4", "circle(joint+constr)", "Geo",  "#1f77b4"),
-    "m4_circle_indi": (_cl(4, "circle", "indi"),   "Mode 4", "circle(joint+constr)", "INDI", "#1f77b4"),
-    "m4_fig8_geo":    (_cl(4, "figure8", "geo"),   "Mode 4", "fig8(joint+constr)",   "Geo",  "#ff7f0e"),
-    "m4_fig8_indi":   (_cl(4, "figure8", "indi"),  "Mode 4", "fig8(joint+constr)",   "INDI", "#ff7f0e"),
-    "m4_helix_geo":   (_cl(4, "helix", "geo"),     "Mode 4", "helix(joint+constr)",  "Geo",  "#2ca02c"),
-    "m4_helix_indi":  (_cl(4, "helix", "indi"),    "Mode 4", "helix(joint+constr)",  "INDI", "#2ca02c"),
-    "m4_corner_geo":  (_cl(4, "corner", "geo"),    "Mode 4", "corner(joint+constr)", "Geo",  "#17becf"),
-    "m4_corner_indi": (_cl(4, "corner", "indi"),   "Mode 4", "corner(joint+constr)", "INDI", "#17becf"),
-    "m4_loop_geo":    (_cl(4, "loop", "geo"),      "Mode 4", "loop(joint+constr)",   "Geo",  "#8c564b"),
-    "m4_loop_indi":   (_cl(4, "loop", "indi"),     "Mode 4", "loop(joint+constr)",   "INDI", "#8c564b"),
+    "m0_circle_geo":    (_cl(0, "circle",    "geo"),  "Mode 0", "circle",    "Geo",  "#1f77b4"),
+    "m0_circle_indi":   (_cl(0, "circle",    "indi"), "Mode 0", "circle",    "INDI", "#1f77b4"),
+    "m0_fig8_geo":      (_cl(0, "figure8",   "geo"),  "Mode 0", "fig8",      "Geo",  "#ff7f0e"),
+    "m0_fig8_indi":     (_cl(0, "figure8",   "indi"), "Mode 0", "fig8",      "INDI", "#ff7f0e"),
+    "m0_helix_geo":     (_cl(0, "helix",     "geo"),  "Mode 0", "helix",     "Geo",  "#2ca02c"),
+    "m0_helix_indi":    (_cl(0, "helix",     "indi"), "Mode 0", "helix",     "INDI", "#2ca02c"),
+    "m0_corner_geo":    (_cl(0, "corner",    "geo"),  "Mode 0", "corner",    "Geo",  "#17becf"),
+    "m0_corner_indi":   (_cl(0, "corner",    "indi"), "Mode 0", "corner",    "INDI", "#17becf"),
+    "m0_loop_geo":      (_cl(0, "loop",      "geo"),  "Mode 0", "loop",      "Geo",  "#d62728"),
+    "m0_loop_indi":     (_cl(0, "loop",      "indi"), "Mode 0", "loop",      "INDI", "#d62728"),
+    "m0_corkscrew_geo": (_cl(0, "corkscrew", "geo"),  "Mode 0", "corkscrew", "Geo",  "#8c564b"),
+    "m0_corkscrew_indi":(_cl(0, "corkscrew", "indi"), "Mode 0", "corkscrew", "INDI", "#8c564b"),
+    "m1_circle_geo":    (_cl(1, "circle",    "geo"),  "Mode 1", "circle",    "Geo",  "#1f77b4"),
+    "m1_circle_indi":   (_cl(1, "circle",    "indi"), "Mode 1", "circle",    "INDI", "#1f77b4"),
+    "m1_fig8_geo":      (_cl(1, "figure8",   "geo"),  "Mode 1", "fig8",      "Geo",  "#ff7f0e"),
+    "m1_fig8_indi":     (_cl(1, "figure8",   "indi"), "Mode 1", "fig8",      "INDI", "#ff7f0e"),
+    "m1_helix_geo":     (_cl(1, "helix",     "geo"),  "Mode 1", "helix",     "Geo",  "#2ca02c"),
+    "m1_helix_indi":    (_cl(1, "helix",     "indi"), "Mode 1", "helix",     "INDI", "#2ca02c"),
+    "m1_corner_geo":    (_cl(1, "corner",    "geo"),  "Mode 1", "corner",    "Geo",  "#17becf"),
+    "m1_corner_indi":   (_cl(1, "corner",    "indi"), "Mode 1", "corner",    "INDI", "#17becf"),
+    "m1_loop_geo":      (_cl(1, "loop",      "geo"),  "Mode 1", "loop",      "Geo",  "#d62728"),
+    "m1_loop_indi":     (_cl(1, "loop",      "indi"), "Mode 1", "loop",      "INDI", "#d62728"),
+    "m1_corkscrew_geo": (_cl(1, "corkscrew", "geo"),  "Mode 1", "corkscrew", "Geo",  "#8c564b"),
+    "m1_corkscrew_indi":(_cl(1, "corkscrew", "indi"), "Mode 1", "corkscrew", "INDI", "#8c564b"),
+    "m2_circle_geo":    (_cl(2, "circle",    "geo"),  "Mode 2", "circle",        "Geo",  "#1f77b4"),
+    "m2_circle_indi":   (_cl(2, "circle",    "indi"), "Mode 2", "circle",        "INDI", "#1f77b4"),
+    "m2_fig8_geo":      (_cl(2, "figure8",   "geo"),  "Mode 2", "fig8",          "Geo",  "#ff7f0e"),
+    "m2_fig8_indi":     (_cl(2, "figure8",   "indi"), "Mode 2", "fig8",          "INDI", "#ff7f0e"),
+    "m2_helix_geo":     (_cl(2, "helix",     "geo"),  "Mode 2", "helix",         "Geo",  "#2ca02c"),
+    "m2_helix_indi":    (_cl(2, "helix",     "indi"), "Mode 2", "helix",         "INDI", "#2ca02c"),
+    "m2_corner_geo":    (_cl(2, "corner",    "geo"),  "Mode 2", "corner(SE3)",   "Geo",  "#17becf"),
+    "m2_corner_indi":   (_cl(2, "corner",    "indi"), "Mode 2", "corner(SE3)",   "INDI", "#17becf"),
+    "m2_loop_geo":      (_cl(2, "loop",      "geo"),  "Mode 2", "loop(SE3)",     "Geo",  "#d62728"),
+    "m2_loop_indi":     (_cl(2, "loop",      "indi"), "Mode 2", "loop(SE3)",     "INDI", "#d62728"),
+    "m2_flip_geo":      (_cl(2, "flip",      "geo"),  "Mode 2", "flip",          "Geo",  "#9467bd"),
+    "m2_flip_indi":     (_cl(2, "flip",      "indi"), "Mode 2", "flip",          "INDI", "#9467bd"),
+    "m2_corkscrew_geo": (_cl(2, "corkscrew", "geo"),  "Mode 2", "corkscrew(SE3)","Geo",  "#8c564b"),
+    "m2_corkscrew_indi":(_cl(2, "corkscrew", "indi"), "Mode 2", "corkscrew(SE3)","INDI", "#8c564b"),
+    "m2_roll_geo":      (_cl(2, "roll",      "geo"),  "Mode 2", "roll(y-axis)",  "Geo",  "#e377c2"),
+    "m2_roll_indi":     (_cl(2, "roll",      "indi"), "Mode 2", "roll(y-axis)",  "INDI", "#e377c2"),
+    "m2_immelmann_geo": (_cl(2, "immelmann", "geo"),  "Mode 2", "immelmann",     "Geo",  "#bcbd22"),
+    "m2_immelmann_indi":(_cl(2, "immelmann", "indi"), "Mode 2", "immelmann",     "INDI", "#bcbd22"),
+    "m2_splits_geo":    (_cl(2, "splits",    "geo"),  "Mode 2", "splits",        "Geo",  "#7f7f7f"),
+    "m2_splits_indi":   (_cl(2, "splits",    "indi"), "Mode 2", "splits",        "INDI", "#7f7f7f"),
+    "m2_screw_geo":     (_cl(2, "screw",     "geo"),  "Mode 2", "screw(x-roll)", "Geo",  "#c49c94"),
+    "m2_screw_indi":    (_cl(2, "screw",     "indi"), "Mode 2", "screw(x-roll)", "INDI", "#c49c94"),
 }
 
 # Controller line styles: Geo=solid, INDI=dotted
@@ -161,21 +153,31 @@ def ref_kinematics(d):
 # ---------------------------------------------------------------------------
 
 TRAJ_LIMS = {
-    "circle": ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 1.5)),
-    "fig8":   ((-1.5, 1.5),  (-1.5, 1.5),  (0.0, 1.5)),
-    "helix":  ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.0)),
-    "corner": ((-1.1, 0.5),  (-0.4, 1.3),  (0.0, 1.6)),
-    "loop":   ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 2.5)),
-    "flip":   ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.5)),
+    "circle":    ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 1.5)),
+    "fig8":      ((-1.5, 1.5),  (-1.5, 1.5),  (0.0, 1.5)),
+    "helix":     ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.0)),
+    "corner":    ((-1.1, 0.5),  (-0.4, 1.3),  (0.0, 1.6)),
+    "loop":      ((-0.7, 0.7),  (-0.7, 0.7),  (0.0, 2.5)),
+    "flip":      ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.5)),
+    "corkscrew": ((-0.5, 0.5),  (-0.5, 0.5),  (0.8, 1.6)),
+    "roll":      ((-0.5, 0.5),  (-0.5, 0.5),  (0.0, 2.5)),
+    "immelmann": ((-0.7, 0.7),  (-0.3, 0.3),  (0.0, 2.5)),
+    "splits":    ((-0.7, 0.7),  (-0.3, 0.3),  (0.0, 2.5)),
+    "screw":     ((-0.3, 0.3),  (-0.3, 0.3),  (0.5, 2.0)),
 }
 
 TRAJ_VIEW = {
-    "circle": (25, 225),
-    "fig8":   (25, 225),
-    "helix":  (25, 225),
-    "corner": (30, 240),
-    "loop":   (15, 270),
-    "flip":   (15, 270),
+    "circle":    (25, 225),
+    "fig8":      (25, 225),
+    "helix":     (25, 225),
+    "corner":    (30, 240),
+    "loop":      (15, 270),
+    "flip":      (15, 270),
+    "corkscrew": (25, 225),
+    "roll":      (15, 270),
+    "immelmann": (15, 270),
+    "splits":    (15, 270),
+    "screw":     (20, 45),
 }
 
 
@@ -246,36 +248,48 @@ print()
 # Figure 1 — 3-D trajectories: geo (solid) + indi (dotted), per mode row
 # ---------------------------------------------------------------------------
 
-MODE0_TRAJ = [("m0_circle", "circle",  "circle"),
-              ("m0_fig8",   "figure8", "fig8"),
-              ("m0_helix",  "helix",   "helix"),
-              ("m0_corner", "corner",  "corner"),
-              ("m0_loop",   "loop",    "loop")]
-MODE1_TRAJ = [("m1_circle", "circle",  "circle"),
-              ("m1_fig8",   "figure8", "fig8"),
-              ("m1_helix",  "helix",   "helix"),
-              ("m1_corner", "corner",  "corner"),
-              ("m1_loop",   "loop",    "loop")]
-MODE2_TRAJ = [("m2_circle", "circle",  "circle"),
-              ("m2_fig8",   "figure8", "fig8"),
-              ("m2_helix",  "helix",   "helix"),
-              ("m2_corner", "corner(SE3)", "corner"),
-              ("m2_loop",   "loop(SE3)", "loop"),
-              ("m2_flip",   "flip",    "flip")]
+MODE0_TRAJ = [("m0_circle",    "circle",    "circle"),
+              ("m0_fig8",      "figure8",   "fig8"),
+              ("m0_helix",     "helix",     "helix"),
+              ("m0_corner",    "corner",    "corner"),
+              ("m0_loop",      "loop",      "loop"),
+              ("m0_corkscrew", "corkscrew", "corkscrew")]
+MODE1_TRAJ = [("m1_circle",    "circle",    "circle"),
+              ("m1_fig8",      "figure8",   "fig8"),
+              ("m1_helix",     "helix",     "helix"),
+              ("m1_corner",    "corner",    "corner"),
+              ("m1_loop",      "loop",      "loop"),
+              ("m1_corkscrew", "corkscrew", "corkscrew")]
+MODE2_TRAJ = [("m2_circle",    "circle",        "circle"),
+              ("m2_fig8",      "figure8",        "fig8"),
+              ("m2_helix",     "helix",          "helix"),
+              ("m2_corner",    "corner(SE3)",    "corner"),
+              ("m2_loop",      "loop(SE3)",      "loop"),
+              ("m2_flip",      "flip",           "flip"),
+              ("m2_corkscrew", "corkscrew(SE3)", "corkscrew"),
+              ("m2_roll",      "roll(y-axis)",   "roll"),
+              ("m2_immelmann", "immelmann",      "immelmann"),
+              ("m2_splits",    "splits",         "splits"),
+              ("m2_screw",     "screw(x-roll)",  "screw")]
 
 M0_COLOR = "#1f77b4"
 M1_COLOR = "#d62728"
 M2_COLORS = {
-    "m2_circle": "#1f77b4",
-    "m2_fig8": "#ff7f0e",
-    "m2_helix": "#2ca02c",
-    "m2_corner": "#17becf",
-    "m2_loop": "#8c564b",
-    "m2_flip": "#9467bd",
+    "m2_circle":    "#1f77b4",
+    "m2_fig8":      "#ff7f0e",
+    "m2_helix":     "#2ca02c",
+    "m2_corner":    "#17becf",
+    "m2_loop":      "#d62728",
+    "m2_flip":      "#9467bd",
+    "m2_corkscrew": "#8c564b",
+    "m2_roll":      "#e377c2",
+    "m2_immelmann": "#bcbd22",
+    "m2_splits":    "#7f7f7f",
+    "m2_screw":     "#c49c94",
 }
 
-NCOLS = 6
-fig = plt.figure(figsize=(30, 15))
+NCOLS = 11
+fig = plt.figure(figsize=(55, 15))
 fig.suptitle("3-D Trajectories: path + sparse attitude arrows (body-z)", fontsize=13)
 
 # Row 1 — Mode 0
@@ -345,10 +359,10 @@ plt.close()
 # Figure 2 — Position tracking errors over time (M0 vs M1, geo + indi each)
 # ---------------------------------------------------------------------------
 
-TRAJ_LABELS = ["circle", "fig8", "helix", "corner", "loop"]
-TRAJ_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728"]
+TRAJ_LABELS = ["circle", "fig8", "helix", "corner", "loop", "corkscrew"]
+TRAJ_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728", "#8c564b"]
 
-fig, axes = plt.subplots(5, 5, figsize=(24, 16), sharex="col")
+fig, axes = plt.subplots(5, 6, figsize=(28, 16), sharex="col")
 fig.suptitle("Position Tracking Error (ref − sim) per axis  |  solid=Geo, dotted=INDI", fontsize=13)
 
 for col, (traj, clr) in enumerate(zip(TRAJ_LABELS, TRAJ_COLORS)):
@@ -438,14 +452,14 @@ plt.close()
 # Figure 4 — Thrust profiles Modes 0 and 1
 # ---------------------------------------------------------------------------
 
-fig, axes = plt.subplots(2, 5, figsize=(24, 8))
+fig, axes = plt.subplots(2, 6, figsize=(28, 8))
 fig.suptitle("Commanded Thrust [N] — solid=Geo, dotted=INDI", fontsize=13)
 
 THRUST_BASES = [f"m0_{t}" for t in TRAJ_LABELS] + [f"m1_{t}" for t in TRAJ_LABELS]
 THRUST_COLORS_LIST = TRAJ_COLORS * 2
 
 for i, (base, clr) in enumerate(zip(THRUST_BASES, THRUST_COLORS_LIST)):
-    row, col = divmod(i, 5)
+    row, col = divmod(i, 6)
     ax = axes[row, col]
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
@@ -453,8 +467,8 @@ for i, (base, clr) in enumerate(zip(THRUST_BASES, THRUST_COLORS_LIST)):
     ax.plot(dg["t"], dg["cmd_thrust"], ls="-",  color=clr,     lw=1.4, alpha=0.85, label="Geo cmd")
     ax.plot(di["t"], di["cmd_thrust"], ls=":",  color=clr,     lw=1.8, alpha=0.85, label="INDI cmd")
     ax.axhline(0, color="k", lw=0.5, ls=":")
-    mode = "M0" if i < 5 else "M1"
-    ax.set_title(f"{mode} {TRAJ_LABELS[i % 5]}", fontsize=9)
+    mode = "M0" if i < 6 else "M1"
+    ax.set_title(f"{mode} {TRAJ_LABELS[i % 6]}", fontsize=9)
     ax.set_xlabel("t [s]", fontsize=8)
     ax.set_ylabel("T [N]", fontsize=8)
     ax.legend(fontsize=7)
@@ -465,14 +479,21 @@ plt.savefig(out, dpi=140)
 print(f"Saved {os.path.basename(out)}")
 plt.close()
 
-# Mode 2 thrust
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-fig.suptitle("Mode 2 Thrust Profiles — Inversion Events  |  solid=Geo, dotted=INDI", fontsize=12)
+# Mode 2 thrust — inversion trajectories + screw (yaw-spin, no inversion, shown for comparison)
+fig, axes4b = plt.subplots(1, 7, figsize=(38, 4))
+fig.suptitle("Mode 2 Thrust Profiles — Inversion Events + screw (yaw-only, T≈mg)  |  solid=Geo, dotted=INDI", fontsize=12)
 
-for ax, base, clr in [(ax1, "m2_flip", "#9467bd"), (ax2, "m2_loop", "#8c564b")]:
+_m2_inv = [("m2_flip",      "flip",              "#9467bd"),
+           ("m2_loop",      "loop(SE3)",          "#d62728"),
+           ("m2_corkscrew", "corkscrew(SE3)",     "#8c564b"),
+           ("m2_roll",      "roll(y-axis)",       "#e377c2"),
+           ("m2_immelmann", "immelmann",          "#bcbd22"),
+           ("m2_splits",    "splits",             "#7f7f7f"),
+           ("m2_screw",     "screw(yaw,T≈mg)",    "#c49c94")]
+
+for ax, (base, traj_lbl, clr) in zip(axes4b, _m2_inv):
     dg = data[base + "_geo"]
     di = data[base + "_indi"]
-    traj_lbl = "flip" if "flip" in base else "loop(SE3)"
     ax.plot(dg["t"], dg["ref_thrust"], ls="--", color="gray",  lw=1.4, label="ref (planner)")
     ax.plot(dg["t"], dg["cmd_thrust"], ls="-",  color=clr,     lw=2.0, alpha=0.85, label="Geo cmd")
     ax.plot(di["t"], di["cmd_thrust"], ls=":",  color=clr,     lw=2.4, alpha=0.85, label="INDI cmd")
@@ -497,21 +518,24 @@ plt.close()
 fig, ax = plt.subplots(figsize=(16, 6))
 fig.suptitle("RMS 3-D Position Error — Geo vs INDI per Run", fontsize=13)
 
-# Group order: m0_*, m1_*, m2_*
-BASES_ORDERED = (
+# Group order: m0_*, m1_*, m2_*  (TRAJ_LABELS includes corkscrew)
+BASES_ORDERED = (  # noqa: E501
     [f"m0_{t}" for t in TRAJ_LABELS] +
     [f"m1_{t}" for t in TRAJ_LABELS] +
-    ["m2_circle", "m2_fig8", "m2_helix", "m2_corner", "m2_loop", "m2_flip"]
+    ["m2_circle", "m2_fig8", "m2_helix", "m2_corner", "m2_loop", "m2_flip",
+     "m2_corkscrew", "m2_roll", "m2_immelmann", "m2_splits", "m2_screw"]
 )
 XLABELS = (
-    [f"M0\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop"]] +
-    [f"M1\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop"]] +
-    ["M2\ncircle", "M2\nfig8", "M2\nhelix", "M2\ncorner(SE3)", "M2\nloop(SE3)", "M2\nflip"]
+    [f"M0\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop", "cork"]] +
+    [f"M1\n{t}" for t in ["circle", "fig8", "helix", "corner", "loop", "cork"]] +
+    ["M2\ncircle", "M2\nfig8", "M2\nhelix", "M2\ncorner", "M2\nloop",
+     "M2\nflip", "M2\ncork", "M2\nroll", "M2\nimmel", "M2\nsplits", "M2\nscrew"]
 )
 BASE_COLORS = (
-    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728"] +
-    ["#aec7e8", "#ffbb78", "#98df8a", "#9edae5", "#ff9896"] +
-    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#8c564b", "#9467bd"]
+    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728", "#8c564b"] +
+    ["#aec7e8", "#ffbb78", "#98df8a", "#9edae5", "#ff9896", "#c49c94"] +
+    ["#1f77b4", "#ff7f0e", "#2ca02c", "#17becf", "#d62728", "#9467bd",
+     "#8c564b", "#e377c2", "#bcbd22", "#7f7f7f", "#c49c94"]
 )
 
 n = len(BASES_ORDERED)
@@ -559,29 +583,39 @@ plt.close()
 # Figure 6 — Cross-mode comparison (all modes on same trajectory shape)
 # ---------------------------------------------------------------------------
 
-fig = plt.figure(figsize=(18, 14))
+fig = plt.figure(figsize=(60, 10))
 fig.suptitle(
     "Cross-Mode: Reference (gray--) | M0 Geo (solid blue) | M0 INDI (dotted blue) | M1 / M2",
     fontsize=12,
 )
 
 CROSS_SPECS = [
-    (1, "circle", "circle",
-     [("m0_circle", M0_COLOR), ("m1_circle", M1_COLOR), ("m2_circle", "#1f77b4")]),
-    (2, "fig8",   "figure8",
-     [("m0_fig8",   M0_COLOR), ("m1_fig8",   M1_COLOR), ("m2_fig8", "#ff7f0e")]),
-    (3, "helix",  "helix",
-     [("m0_helix",  M0_COLOR), ("m1_helix",  M1_COLOR), ("m2_helix", "#2ca02c")]),
-    (4, "corner", "racing corner (banked in M2)",
-     [("m0_corner", M0_COLOR), ("m1_corner", M1_COLOR), ("m2_corner", "#17becf")]),
-    (5, "loop",   "loop (M0/M1 horizontal, M2 vertical SE3)",
-     [("m0_loop",   M0_COLOR), ("m1_loop",   M1_COLOR), ("m2_loop", "#8c564b")]),
-    (6, "flip",   "flip (Mode 2 only)",
-     [("m2_flip", "#9467bd")]),
+    (1,  "circle",    "circle",
+     [("m0_circle",    M0_COLOR), ("m1_circle",    M1_COLOR), ("m2_circle", "#1f77b4")]),
+    (2,  "fig8",      "figure8",
+     [("m0_fig8",      M0_COLOR), ("m1_fig8",      M1_COLOR), ("m2_fig8",   "#ff7f0e")]),
+    (3,  "helix",     "helix",
+     [("m0_helix",     M0_COLOR), ("m1_helix",     M1_COLOR), ("m2_helix",  "#2ca02c")]),
+    (4,  "corner",    "corner (banked in M2)",
+     [("m0_corner",    M0_COLOR), ("m1_corner",    M1_COLOR), ("m2_corner", "#17becf")]),
+    (5,  "loop",      "loop (M0/M1 flat, M2 vertical SE3)",
+     [("m0_loop",      M0_COLOR), ("m1_loop",      M1_COLOR), ("m2_loop",   "#d62728")]),
+    (6,  "flip",      "flip (Mode 2 only, x-axis roll)",
+     [("m2_flip",      "#9467bd")]),
+    (7,  "corkscrew", "corkscrew (M0/M1 helix pos; M2 + roll)",
+     [("m0_corkscrew", M0_COLOR), ("m1_corkscrew", M1_COLOR), ("m2_corkscrew", "#8c564b")]),
+    (8,  "roll",      "roll (Mode 2 only, y-axis backflip)",
+     [("m2_roll",      "#e377c2")]),
+    (9,  "immelmann", "immelmann (Mode 2 only, half-loop + apex roll)",
+     [("m2_immelmann", "#bcbd22")]),
+    (10, "splits",    "splits (Mode 2 only, roll-inverted + descent)",
+     [("m2_splits",    "#7f7f7f")]),
+    (11, "screw",     "screw (Mode 2 only, vert. ascent + x-roll)",
+     [("m2_screw",     "#c49c94")]),
 ]
 
 for sp_idx, tk, title, entries in CROSS_SPECS:
-    ax = fig.add_subplot(2, 3, sp_idx, projection="3d")
+    ax = fig.add_subplot(2, 6, sp_idx, projection="3d")
     d_ref = data[entries[0][0] + "_geo"]
     ax.plot(d_ref["ref_x"], d_ref["ref_y"], d_ref["ref_z"],
             color="gray", ls="--", lw=1.0, alpha=0.7, label="reference")
@@ -609,9 +643,9 @@ plt.close()
 # Figure 7 — Reference kinematics: |a|, |j|, |s| per mode/trajectory
 # ---------------------------------------------------------------------------
 
-traj_keys = ["circle", "fig8", "helix", "corner", "loop"]
-mode_rows = [0, 1, 2, 3, 4]
-fig, axes = plt.subplots(len(mode_rows), len(traj_keys), figsize=(24, 16), sharex=False, sharey=False)
+traj_keys = ["circle", "fig8", "helix", "corner", "loop", "corkscrew"]
+mode_rows = [0, 1, 2]
+fig, axes = plt.subplots(len(mode_rows), len(traj_keys), figsize=(28, 10), sharex=False, sharey=False)
 fig.suptitle("Planned reference kinematics (numerical from ref xyz): |a|, |j|, |s|", fontsize=12)
 
 for r, mode in enumerate(mode_rows):

@@ -12,16 +12,21 @@
 //!   corner   — racing-style banked corner (open path, non-periodic)
 //!   flip     — forward 360° pitch flip (Mode 2 only; Mode 0/1 motor cut expected)
 //!   loop     — vertical loop in X-Z plane, R=0.5 m (requires enough speed to invert)
+//!   corkscrew— ascending helix + rolling 360° per lap (Mode 0/1 helix position; Mode 2 explicit roll)
+//!   roll     — stationary 360° pitch maneuver / backflip (Mode 2 only, y-axis rotation)
+//!   screw    — stationary XY, ascending Z + 360° yaw spin (Mode 2 only; body-z always up, no inversion)
 //!
 //! ## Planning modes applied per trajectory
-//!   Mode 0 (SplineTrajectory — manual durations)  : circle, figure8, helix, corner, loop
-//!   Mode 1 (RichterTrajectory — auto k_t timing)  : circle, figure8, helix, corner, loop
+//!   Mode 0 (SplineTrajectory — manual durations)  : circle, figure8, helix, corner, loop, corkscrew
+//!   Mode 1 (RichterTrajectory — auto k_t timing)  : circle, figure8, helix, corner, loop, corkscrew
 //!   Mode 2 (Se3Trajectory — explicit attitude on all trajectories):
 //!     — circle, figure8, helix use explicit levelled quaternion waypoints
 //!     — corner uses explicit roll-bias profile (pre-bank -> apex bank -> unload)
-//!     — flip, loop use explicit pitched quaternion waypoints
+//!     — corkscrew uses explicit x-axis roll schedule (0→2π per lap, passes through zero thrust)
+//!     — flip, roll, loop use explicit quaternion waypoints (zero-thrust inversion)
+//!     — screw uses Rz yaw-spin waypoints (body-z always up, no inversion)
 //!     — **position** segment times match **Mode 1 Richter** allocation (same `k_t` / `periodic`
-//!       per shape); flip keeps explicit manual segment times.
+//!       per shape); flip and roll keep explicit manual segment times.
 //!
 //! ## Controllers simulated
 //!   Geo  — GeometricController::default()          (Lee SE(3) — model-based torque)
@@ -878,6 +883,9 @@ fn export_planning_reference_only() {
     let (corner_se3_wps, _corner_se3_durs_manual) = corner_waypoints_se3();
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
     let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5);
+    let (corkscrew_wps, corkscrew_durs) = corkscrew_waypoints(0.3, 0.4, 8);
+    let (corkscrew_se3_wps, _) = corkscrew_waypoints_se3(0.3, 0.4, 8);
+    let (roll_se3_wps, roll_se3_durs) = roll_waypoints_se3();
 
     // Build Mode 1 planners first — their segment durations are reused for Mode 2 position
     // timing, avoiding 4 redundant Clarabel calls that would otherwise push the total
@@ -889,6 +897,8 @@ fn export_planning_reference_only() {
     ).expect("m1 helix");
     let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
+    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, 0.01, false).expect("m1 corkscrew");
+    let corkscrew_m2_durs = p1_corkscrew.segment_durations();
 
     // Mode 2 position timing: reuse Mode 1 durations for all trajectories (same waypoint count).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
@@ -980,8 +990,109 @@ fn export_planning_reference_only() {
             FEAS_CF2,
         );
     }
-
-
+    {
+        let traj = Se3Trajectory::plan(&corkscrew_se3_wps, &corkscrew_m2_durs, MASS, false)
+            .expect("m2 corkscrew");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    corkscrew thrust range [{t_min:.3}, {t_max:.3}] N");
+        export_se3_reference_bundle(
+            &reference_dir(2, "corkscrew"),
+            &traj,
+            &corkscrew_se3_wps,
+            "corkscrew",
+            "Richter_same_as_mode1_corkscrew_x_axis_roll",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+    {
+        let traj = Se3Trajectory::plan(&roll_se3_wps, &roll_se3_durs, MASS, false)
+            .expect("m2 roll");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    roll thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at apex)");
+        export_se3_reference_bundle(
+            &reference_dir(2, "roll"),
+            &traj,
+            &roll_se3_wps,
+            "roll",
+            "manual_roll_segments_y_axis",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+    {
+        let (immelmann_se3_wps, immelmann_se3_durs) = immelmann_waypoints_se3(0.5);
+        let traj = Se3Trajectory::plan(&immelmann_se3_wps, &immelmann_se3_durs, MASS, false)
+            .expect("m2 immelmann");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    immelmann thrust range [{t_min:.3}, {t_max:.3}] N");
+        export_se3_reference_bundle(
+            &reference_dir(2, "immelmann"),
+            &traj,
+            &immelmann_se3_wps,
+            "immelmann",
+            "manual_half_loop_segments_Ry_neg_theta",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+    {
+        let (splits_se3_wps, splits_se3_durs) = splits_waypoints_se3(0.5);
+        let traj = Se3Trajectory::plan(&splits_se3_wps, &splits_se3_durs, MASS, false)
+            .expect("m2 splits");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    splits thrust range [{t_min:.3}, {t_max:.3}] N");
+        export_se3_reference_bundle(
+            &reference_dir(2, "splits"),
+            &traj,
+            &splits_se3_wps,
+            "splits",
+            "manual_roll_then_half_loop_Ry_pi_plus_psi",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
+    {
+        let (screw_se3_wps, screw_se3_durs) = screw_waypoints_se3(0.5, 2.0);
+        let traj = Se3Trajectory::plan(&screw_se3_wps, &screw_se3_durs, MASS, false)
+            .expect("m2 screw");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    screw   thrust range [{t_min:.3}, {t_max:.3}] N");
+        export_se3_reference_bundle(
+            &reference_dir(2, "screw"),
+            &traj,
+            &screw_se3_wps,
+            "screw",
+            "vertical_ascent_body_x_roll_Rx_theta",
+            2,
+            "Se3Trajectory",
+            FEAS_CF2,
+        );
+    }
 
     // Mode 1 — export using already-built planners (no extra QP calls)
     export_flat_reference_bundle(
@@ -998,6 +1109,9 @@ fn export_planning_reference_only() {
     );
     export_flat_reference_bundle(
         &reference_dir(1, "loop"),    &p1_loop,   &loop_wps,   "loop",    1, "RichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(1, "corkscrew"), &p1_corkscrew, &corkscrew_wps, "corkscrew", 1, "RichterTrajectory", false,
     );
 
     // Mode 0 — SplineTrajectory plans (QP calls come last, after Mode 2 is safely done)
@@ -1029,6 +1143,12 @@ fn export_planning_reference_only() {
         let p = TrajectoryPlanner::spline(&loop_wps, &loop_durs, true).expect("m0 loop");
         export_flat_reference_bundle(
             &reference_dir(0, "loop"), &p, &loop_wps, "loop", 0, "SplineTrajectory", false,
+        );
+    }
+    {
+        let p = TrajectoryPlanner::spline(&corkscrew_wps, &corkscrew_durs, false).expect("m0 corkscrew");
+        export_flat_reference_bundle(
+            &reference_dir(0, "corkscrew"), &p, &corkscrew_wps, "corkscrew", 0, "SplineTrajectory", false,
         );
     }
 
@@ -1854,6 +1974,141 @@ fn corner_waypoints_se3() -> (Vec<Se3Waypoint>, Vec<f32>) {
     (wps, durs)
 }
 
+/// Corkscrew helix: one ascending lap with n=8 waypoints for Modes 0 and 1 (flatness attitude).
+fn corkscrew_waypoints(r: f32, dz: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    // seg_t: uniform segment duration at omega=0.6 rad/s
+    let seg_t = 2.0 * PI / (n as f32 * 0.6_f32);
+    let wps: Vec<Waypoint> = (0..=n).map(|i| {
+        let frac = i as f32 / n as f32;
+        let theta = 2.0 * PI * frac;
+        Waypoint {
+            pos: Vec3::new(r * theta.cos(), r * theta.sin(), Z + dz * frac),
+            yaw: 0.0,
+        }
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
+/// Corkscrew helix Mode 2: same geometry + explicit roll schedule (one 360° roll per lap).
+///
+/// Roll quaternion at waypoint k: `Rx(2π · k/n)` — body rolls around x-axis continuously.
+/// At k=n/2 (halfway) the drone is inverted → thrust crosses zero → motor cut in simulation.
+fn corkscrew_waypoints_se3(r: f32, dz: f32, n: usize) -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let seg_t = 2.0 * PI / (n as f32 * 0.6_f32);
+    let wps: Vec<Se3Waypoint> = (0..=n).map(|i| {
+        let frac = i as f32 / n as f32;
+        let theta = 2.0 * PI * frac;
+        let pos = Vec3::new(r * theta.cos(), r * theta.sin(), Z + dz * frac);
+        let roll_angle = 2.0 * PI * frac;  // 0 at start, 2π at end (identity again)
+        let q = Quat::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), roll_angle);
+        Se3Waypoint::new(pos, q)
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
+/// Stationary roll (y-axis inversion, pitch maneuver, distinct from flip's x-axis).
+///
+/// Position held constant; attitude rotates around y-axis: level → inverted → level.
+/// This is aerobatically a "backflip" (nose-over-tail), distinct from `flip` (aileron roll around x).
+/// Zero thrust at 180° apex → motor cut in simulation.
+fn roll_waypoints_se3() -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let pos = Vec3::new(0.0, 0.0, Z);
+    let wps = vec![
+        Se3Waypoint::levelled(pos),
+        Se3Waypoint::rolled(pos, PI),    // y-axis: pitch nose down → inverted
+        Se3Waypoint::levelled(pos),
+    ];
+    (wps, vec![0.4, 0.4])
+}
+
+/// Immelmann turn: ascending half-loop (θ: 0→π) + stationary roll recovery at apex.
+///
+/// Phase 1 (4 segs): half vertical loop in XZ.  q = Ry(-θ) — body-z centripetal toward center.
+///   θ=0: upright at (0,0,Z).  θ=π: inverted at (0,0,Z+2R).
+/// Phase 2 (1 seg): stationary at apex — Ry(-π) → Rz(π) = upright, heading reversed.
+/// Zero thrust at inversion → motor cut, same as loop Mode 2.
+fn immelmann_waypoints_se3(r: f32) -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let n     = 4usize;
+    let t_seg = (PI * r / 1.05_f32) / n as f32; // half circumference at ~1.05 m/s per segment
+    let t_roll = 0.35_f32;
+
+    let mut wps  = Vec::new();
+    let mut durs = Vec::new();
+
+    // Phase 1: ascending half-loop
+    for i in 0..=n {
+        let theta = PI * i as f32 / n as f32;
+        let pos = Vec3::new(r * theta.sin(), 0.0, Z + r * (1.0 - theta.cos()));
+        // Ry(-θ): body-z = (-sin θ, 0, cos θ) = centripetal toward loop center
+        let q = Quat::new((theta * 0.5).cos(), 0.0, -(theta * 0.5).sin(), 0.0);
+        wps.push(Se3Waypoint::new(pos, q));
+        if i < n { durs.push(t_seg); }
+    }
+
+    // Phase 2: roll recovery at apex — Ry(-π) → Rz(π) [0,0,0,1]
+    let apex = Vec3::new(0.0, 0.0, Z + 2.0 * r);
+    wps.push(Se3Waypoint::new(apex, Quat::new(0.0, 0.0, 0.0, 1.0)));
+    durs.push(t_roll);
+
+    (wps, durs)
+}
+
+/// Split-S: stationary half-roll to inverted + descending half-loop.
+///
+/// Starts at elevated position (Z + 2R) — sim initialises drone there automatically.
+/// Phase 1 (1 seg): stationary at (0,0,Z+2R) — identity → Ry(π) = inverted.
+/// Phase 2 (4 segs): descending half-loop. q = Ry(π+ψ).
+///   ψ=0: inverted at top (0,0,Z+2R).  ψ=π: upright at (0,0,Z).
+/// Zero thrust at inversion → motor cut.
+fn splits_waypoints_se3(r: f32) -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let n      = 4usize;
+    let t_seg  = (PI * r / 1.05_f32) / n as f32;
+    let t_roll = 0.35_f32;
+
+    let start_z = Z + 2.0 * r;
+    let start   = Vec3::new(0.0, 0.0, start_z);
+
+    // Phase 1: roll to inverted (identity → Ry(π) = [0,0,1,0])
+    let mut wps = vec![
+        Se3Waypoint::levelled(start),
+        Se3Waypoint::new(start, Quat::new(0.0, 0.0, 1.0, 0.0)), // Ry(π)
+    ];
+    let mut durs = vec![t_roll];
+
+    // Phase 2: descending half-loop (ψ: 0→π)
+    // Loop center at (0,0,Z+R). Position: (R·sin ψ, 0, Z+R + R·cos ψ) = (R·sin ψ, 0, start_z − R + R·cos ψ).
+    // Quaternion Ry(π+ψ): w=cos((π+ψ)/2), y=sin((π+ψ)/2) — w: 0→-1, continuous through inversion.
+    // ψ=0 position already at start (Phase 1 end), so add ψ = π·i/n for i=1..=n.
+    for i in 1..=n {
+        let psi = PI * i as f32 / n as f32;
+        let pos = Vec3::new(r * psi.sin(), 0.0, start_z - r + r * psi.cos());
+        let half = (PI + psi) * 0.5;
+        let q = Quat::new(half.cos(), 0.0, half.sin(), 0.0);
+        wps.push(Se3Waypoint::new(pos, q));
+        durs.push(t_seg);
+    }
+
+    (wps, durs)
+}
+
+/// Screw ascent: stationary XY, linear Z ascent, continuous yaw rotation (0 → 2π).
+///
+/// n=4 segments × 90° yaw per segment. Z rises from Z to Z+dz. XY stays at (0,0).
+/// Quaternion Rz(θ) = [cos(θ/2), 0, 0, sin(θ/2)] — body-z ALWAYS points up.
+/// Thrust is constant ≈ mg throughout — no inversion, no motor cut.
+/// Distinct from corkscrew (circular XY helix + body roll): path is a vertical line.
+fn screw_waypoints_se3(dz: f32, t_screw: f32) -> (Vec<Se3Waypoint>, Vec<f32>) {
+    let n = 4usize;
+    let seg_t = t_screw / n as f32;
+    let wps: Vec<Se3Waypoint> = (0..=n).map(|i| {
+        let frac = i as f32 / n as f32;
+        let theta = 2.0 * PI * frac;
+        let q = Quat::new((theta * 0.5).cos(), 0.0, 0.0, (theta * 0.5).sin()); // Rz(θ)
+        Se3Waypoint::new(Vec3::new(0.0, 0.0, Z + dz * frac), q)
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
 // ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
@@ -1868,7 +2123,7 @@ fn main() {
     println!("Planning Mode Simulation");
     println!("========================\n");
     println!("Modes:       0=Spline(manual durations)  1=Richter(auto k_t)  2=SE3(explicit attitude)");
-    println!("Trajectories: circle  figure8  helix  corner  loop  flip\n");
+    println!("Trajectories: circle  figure8  helix  corner  loop  flip  corkscrew  roll  immelmann  splits  screw\n");
 
     std::fs::create_dir_all("results/planning_sim").expect("cannot create output dir");
 
@@ -1889,6 +2144,12 @@ fn main() {
     let (corner_se3_wps, _corner_se3_durs_manual) = corner_waypoints_se3();
     let (flip_se3_wps, flip_se3_durs) = flip_waypoints_se3();
     let (loop_se3_wps, _loop_se3_durs_manual) = loop_waypoints_se3(0.5, 8, 0.5); // n=8 → 45°/seg
+    let (corkscrew_wps,    corkscrew_durs)    = corkscrew_waypoints(0.3, 0.4, 8);
+    let (corkscrew_se3_wps, _)               = corkscrew_waypoints_se3(0.3, 0.4, 8);
+    let (roll_se3_wps,    roll_se3_durs)     = roll_waypoints_se3();
+    let (immelmann_se3_wps, immelmann_se3_durs) = immelmann_waypoints_se3(0.5);
+    let (splits_se3_wps,    splits_se3_durs)    = splits_waypoints_se3(0.5);
+    let (screw_se3_wps,     screw_se3_durs)     = screw_waypoints_se3(0.5, 2.0);
 
     // Build Mode 1 planners first — reuse for Mode 2 duration extraction (no redundant QP calls).
     // k_t = 0.01: v_avg = 0.5 + 1.5·√0.01 = 0.65 m/s
@@ -1906,6 +2167,8 @@ fn main() {
     ).expect("m1 helix");
     let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
     let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
+    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, 0.01, false).expect("m1 corkscrew");
+    let corkscrew_m2_durs = p1_corkscrew.segment_durations();
 
     // Mode 2 position segment times: reuse Mode 1 durations for all trajectories (same waypoints).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
@@ -1921,6 +2184,7 @@ fn main() {
     let p0_helix  = TrajectoryPlanner::spline(&helix_wps,  &helix_durs,  false).expect("m0 helix");
     let p0_corner = TrajectoryPlanner::spline(&corner_wps, &corner_durs, false).expect("m0 corner");
     let p0_loop   = TrajectoryPlanner::spline(&loop_wps,   &loop_durs,   true ).expect("m0 loop");
+    let p0_corkscrew = TrajectoryPlanner::spline(&corkscrew_wps, &corkscrew_durs, false).expect("m0 corkscrew");
 
     // Set in Mode 1 helix (same stretch factor as `run_flat_scaled` for Mode 2 helix sim).
     let helix_sim_time_scale: f32;
@@ -1966,6 +2230,14 @@ fn main() {
         println!("  [INDI]");
         let ri = run_flat_indi(&p0_loop, &params, 1.0, "mode0 loop indi");
         write_closed_loop_csv(0, "loop", "indi", &ri);
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p0_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode0 corkscrew geo");
+        write_closed_loop_csv(0, "corkscrew", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_flat_indi(&p0_corkscrew, &params, 1.0, "mode0 corkscrew indi");
+        write_closed_loop_csv(0, "corkscrew", "indi", &ri);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2037,6 +2309,19 @@ fn main() {
         println!("  [INDI]");
         let ri = run_flat_indi(&p1_loop, &params, 1.0, "mode1 loop indi");
         write_closed_loop_csv(1, "loop", "indi", &ri);
+    }
+    {
+        println!("    corkscrew total_time = {:.2} s", p1_corkscrew.total_time());
+        if let Some(rep) = p1_corkscrew.check_feasibility(MASS, MAX_THRUST, MAX_OMEGA) {
+            println!("    corkscrew feasible={} peak_T={:.3}N peak_ω={:.2}rad/s scale={:.2}",
+                rep.feasible, rep.max_thrust_n, rep.max_omega_rad_s, rep.suggested_time_scale);
+        }
+        println!("  [Geo]");
+        let rg = run_flat(&p1_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode1 corkscrew geo");
+        write_closed_loop_csv(1, "corkscrew", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_flat_indi(&p1_corkscrew, &params, 1.0, "mode1 corkscrew indi");
+        write_closed_loop_csv(1, "corkscrew", "indi", &ri);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2142,11 +2427,113 @@ fn main() {
         let ri = run_se3_indi(&traj, &params, "mode2 loop indi");
         write_closed_loop_csv(2, "loop", "indi", &ri);
     }
+    {
+        // Corkscrew: helix + explicit 360° roll per lap (x-axis rotation; zero thrust at 180°)
+        let traj = Se3Trajectory::plan(&corkscrew_se3_wps, &corkscrew_m2_durs, MASS, false)
+            .expect("m2 corkscrew");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    corkscrew thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at roll apex)");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corkscrew geo");
+        write_closed_loop_csv(2, "corkscrew", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 corkscrew indi");
+        write_closed_loop_csv(2, "corkscrew", "indi", &ri);
+    }
+    {
+        // Roll: stationary y-axis inversion (pitch maneuver / backflip, distinct from flip's x-axis)
+        let traj = Se3Trajectory::plan(&roll_se3_wps, &roll_se3_durs, MASS, false)
+            .expect("m2 roll");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    roll  thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at apex)");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 roll geo");
+        write_closed_loop_csv(2, "roll", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 roll indi");
+        write_closed_loop_csv(2, "roll", "indi", &ri);
+    }
+
+    {
+        // Immelmann — ascending half-loop + apex roll recovery (Mode 2 only)
+        let traj = Se3Trajectory::plan(&immelmann_se3_wps, &immelmann_se3_durs, MASS, false)
+            .expect("m2 immelmann");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    immelmann thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at inversion)");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 immelmann geo");
+        write_closed_loop_csv(2, "immelmann", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 immelmann indi");
+        write_closed_loop_csv(2, "immelmann", "indi", &ri);
+    }
+    {
+        // Split-S — half-roll to inverted + descending half-loop (Mode 2 only)
+        // Sim starts at Z + 2R = 2.0m; ends at Z = 1.0m.
+        let traj = Se3Trajectory::plan(&splits_se3_wps, &splits_se3_durs, MASS, false)
+            .expect("m2 splits");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    splits  thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at inversion)");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 splits geo");
+        write_closed_loop_csv(2, "splits", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 splits indi");
+        write_closed_loop_csv(2, "splits", "indi", &ri);
+    }
+    {
+        // Screw — stationary XY, ascending Z, body x-axis roll (Mode 2 only)
+        let traj = Se3Trajectory::plan(&screw_se3_wps, &screw_se3_durs, MASS, false)
+            .expect("m2 screw");
+        let thrusts: Vec<f32> = (0..=100)
+            .map(|i| traj.eval(traj.total_time * i as f32 / 100.0).thrust)
+            .collect();
+        let t_min = thrusts.iter().cloned().fold(f32::MAX, f32::min);
+        let t_max = thrusts.iter().cloned().fold(f32::MIN, f32::max);
+        println!("    screw   thrust range [{t_min:.3}, {t_max:.3}] N  (negative = motor cut at inversion)");
+        let mut geo_m2 = GeometricController::default();
+        geo_m2.ki_pos = Vec3::zero();
+        geo_m2.ki = Vec3::zero();
+        println!("  [Geo]");
+        let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 screw geo");
+        write_closed_loop_csv(2, "screw", "geo", &rg);
+        println!("  [INDI]");
+        let ri = run_se3_indi(&traj, &params, "mode2 screw indi");
+        write_closed_loop_csv(2, "screw", "indi", &ri);
+    }
 
     // ────────────────────────────────────────────────────────────────────────
     println!("\n── Output files ────────────────────────────────────────────────");
     println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/{{geo,indi}}.csv");
-    println!("  Trajectories: circle, figure8, helix, corner, loop  (+ flip for mode 2 only)");
+    println!("  Trajectories: circle, figure8, helix, corner, loop, corkscrew  (+ flip, roll, immelmann, splits, screw for mode 2 only)");
     println!("\nNext: scripts/plot_planning_all.sh");
     println!("Planner-only reference export: cargo run --release --bin planning_sim -- --export-reference-only");
 }
