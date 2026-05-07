@@ -753,20 +753,20 @@ def _plot_reference_csv(csv_path: str) -> None:
 def plot_cross_mode_comparisons() -> None:
     """Overlay Mode 0 / 1 / 2 / 3 / 4 planner references for the same trajectory shape."""
     shapes: Tuple[Tuple[str, Tuple[int, ...]], ...] = (
-        ("circle", (0, 1, 2, 3, 4)),
-        ("figure8", (0, 1, 2, 3, 4)),
-        ("helix", (0, 1, 2, 3, 4)),
-        ("corner", (0, 1, 2, 3, 4)),
-        ("loop", (0, 1, 2, 3, 4)),
-        ("flip", (2,)),
+        ("circle",    (0, 1, 2)),
+        ("figure8",   (0, 1, 2)),
+        ("helix",     (0, 1, 2)),
+        ("corner",    (0, 1, 2)),
+        ("loop",      (0, 1, 2)),
+        ("flip",      (2,)),
+        ("corkscrew", (0, 1, 2)),
+        ("roll",      (2,)),
     )
-    colors = {0: "#1f77b4", 1: "#ff7f0e", 2: "#2ca02c", 3: "#9467bd", 4: "#8c564b"}
+    colors = {0: "#1f77b4", 1: "#ff7f0e", 2: "#2ca02c"}
     labels = {
         0: "Mode 0 spline",
         1: "Mode 1 Richter",
         2: "Mode 2 SE(3)",
-        3: "Mode 3 joint",
-        4: "Mode 4 joint+constraints",
     }
 
     os.makedirs(CROSS_ROOT, exist_ok=True)
