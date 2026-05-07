@@ -10,10 +10,8 @@
 //! Usage:
 //!   cargo run --release --bin onboard_flip
 //!   cargo run --release --bin onboard_flip -- --tflip 0.70 --reps 2
-//!   cargo run --release --bin onboard_flip -- --mode 3 --tflip 0.70 --reps 2
-//!   cargo run --release --bin onboard_flip -- --mode 4 --tflip 0.70 --reps 2
 //!
-//! --mode  : planning mode 2=Se3 3=Joint-compatible 4=Joint+constraints-compatible (default 2)
+//! --mode  : planning mode 2=Se3 (default 2)
 
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
@@ -36,11 +34,9 @@ fn build_flip_planner(mode: u8, t_flip: f32) -> TrajectoryPlanner {
     ];
     let durations = vec![t_flip * 0.5, t_flip * 0.5];
     match mode {
-        // Flip remains explicitly authored in attitude for all high-aggression
-        // modes; Mode 3/4 selection is accepted for workflow consistency.
-        4 | 3 | 2 => TrajectoryPlanner::se3(&waypoints, &durations, 0.031, false)
-            .expect("Flip Mode 2/3/4 QP failed"),
-        _ => unreachable!("onboard_flip only supports mode 2, 3, or 4"),
+        2 => TrajectoryPlanner::se3(&waypoints, &durations, 0.031, false)
+            .expect("Flip Mode 2 QP failed"),
+        _ => unreachable!("onboard_flip only supports mode 2"),
     }
 }
 
@@ -56,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if !(0.30..=2.0).contains(&t_flip) { eprintln!("--tflip must be 0.30-2.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20      { eprintln!("--reps must be 1-20"); std::process::exit(1); }
-    if mode != 2 && mode != 3 && mode != 4 { eprintln!("--mode must be 2, 3, or 4"); std::process::exit(1); }
+    if mode != 2 { eprintln!("--mode must be 2"); std::process::exit(1); }
 
     let planner = build_flip_planner(mode, t_flip);
     let spline = planner.as_spline();

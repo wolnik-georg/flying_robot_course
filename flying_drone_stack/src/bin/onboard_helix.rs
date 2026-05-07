@@ -9,14 +9,12 @@
 //!   cargo run --release --bin onboard_helix -- --speed 1.2 --reps 2
 //!   cargo run --release --bin onboard_helix -- --mode 1 --kt 0.1
 //!   cargo run --release --bin onboard_helix -- --mode 2 --kt 0.3
-//!   cargo run --release --bin onboard_helix -- --mode 3 --kt 0.1
-//!   cargo run --release --bin onboard_helix -- --mode 4 --kt 0.1
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5-3.0, default 1.0)
-//!           Ignored for Mode 1/2/3/4 — use --kt to control speed there.
+//!           Ignored for Mode 1/2 — use --kt to control speed there.
 //! --reps  : number of ascending laps, each adds HELIX_DZ (default 1)
-//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
-//! --kt    : aggressiveness for timing (Mode 1/2/3/4, default 0.1)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --kt    : aggressiveness for timing (Mode 1/2, default 0.1)
 //!
 //! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
 //! roll/pitch polynomials via least-squares, uploads via traj.aci/acv/acw, firmware evaluates
@@ -37,7 +35,7 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
+use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
 
 const HELIX_RADIUS: f32 = 0.30;
 const HELIX_DZ:     f32 = 0.40;
@@ -71,10 +69,6 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Helix Mode 2 QP failed")
         }
-        3 => TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
-            .expect("Helix Mode 3 joint QP failed"),
-        4 => TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::None)
-            .expect("Helix Mode 4 constrained joint QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, true)
             .expect("Helix Mode 0 QP failed"),
     }
@@ -94,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 10  { eprintln!("--reps must be 1-10");   std::process::exit(1); }
-    if mode > 4                    { eprintln!("--mode must be 0, 1, 2, 3, or 4"); std::process::exit(1); }
+    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
 
     let planner = build_planner(mode, speed, k_t);
     let spline = planner.as_spline();
@@ -121,12 +115,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     upload_trajectory(&cf, &coefs).await?;
     if mode >= 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
-    cf.param.set("traj.nseg",     n_segs as u8).await?;
-    cf.param.set("traj.ox",       o.ox - HELIX_RADIUS).await?;
-    cf.param.set("traj.oy",       o.oy).await?;
-    cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
-    cf.param.set("traj.dz",       HELIX_DZ).await?;
-    cf.param.set("traj.att_mode", (mode >= 2) as u8).await?;
+    cf.param.set("traj.nseg",          n_segs as u8).await?;
+    cf.param.set("traj.ox",            o.ox - HELIX_RADIUS).await?;
+    cf.param.set("traj.oy",            o.oy).await?;
+    cf.param.set("traj.hz",            HOVER_HEIGHT).await?;
+    cf.param.set("traj.dz",            HELIX_DZ).await?;
+    cf.param.set("traj.att_mode",      (mode >= 2) as u8).await?;
+    cf.param.set("traj.att_ctrl_mode", 1u8).await?;
     println!("Metadata: z {:.1} -> {:.1}m  ({} laps)", HOVER_HEIGHT, top_z, n_reps);
 
     ramp_to_hover(&cf, &o, &sa, &sb, &sc).await?;
@@ -166,9 +161,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    cf.param.set("traj.mode",     0u8).await?;
-    cf.param.set("traj.dz",       0.0f32).await?;
-    cf.param.set("traj.att_mode", 0u8).await?;
+    cf.param.set("traj.mode",          0u8).await?;
+    cf.param.set("traj.dz",            0.0f32).await?;
+    cf.param.set("traj.att_mode",      0u8).await?;
+    cf.param.set("traj.att_ctrl_mode", 1u8).await?;
     println!("Helix done -- holding at top ({:.1}m) for 2s...", top_z);
     hold_and_land(&cf, &o, top_z, 2, &sa, &sb, &sc).await?;
 

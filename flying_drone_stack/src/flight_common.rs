@@ -191,6 +191,8 @@ pub async fn verify_firmware(cf: &Crazyflie) -> Result<(), Box<dyn std::error::E
         .map_err(|e| format!("traj.dz missing — rebuild firmware: {e}"))?;
     cf.param.set("traj.z_mode", 0u8).await
         .map_err(|e| format!("traj.z_mode missing — rebuild firmware (3D trajectory update): {e}"))?;
+    cf.param.set("traj.att_ctrl_mode", 1u8).await
+        .map_err(|e| format!("traj.att_ctrl_mode missing — rebuild firmware (att_ctrl_mode update): {e}"))?;
     println!("Firmware OK.");
     Ok(())
 }

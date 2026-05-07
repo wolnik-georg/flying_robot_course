@@ -401,11 +401,12 @@ extern "C" {
     static mut g_traj_z_ci:      u8;  // z upload index
     static mut g_traj_z_cv:      f32; // z upload value
     static mut g_traj_z_cw:      u8;  // z commit flag
-    static mut g_traj_att_coefs: [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
-    static mut g_traj_att_mode:  u8;  // 0=flatness, 1=polynomial
-    static mut g_traj_att_ci:    u8;  // attitude upload index
-    static mut g_traj_att_cv:    f32; // attitude upload value
-    static mut g_traj_att_cw:    u8;  // attitude commit flag
+    static mut g_traj_att_coefs:     [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
+    static mut g_traj_att_mode:      u8;  // 0=flatness, 1=polynomial
+    static mut g_traj_att_ctrl_mode: u8;  // 0=hard override, 1=hybrid (flatness rd + poly omega_d)
+    static mut g_traj_att_ci:        u8;  // attitude upload index
+    static mut g_traj_att_cv:        f32; // attitude upload value
+    static mut g_traj_att_cw:        u8;  // attitude commit flag
     static mut g_traj_n_segs:    u8;
     static mut g_traj_mode:      u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
     static mut g_traj_start:     u8;  // laptop writes 1; firmware latches T0
@@ -1045,8 +1046,18 @@ pub unsafe extern "C" fn controllerOutOfTree(
 
     let yaw_d = sp.attitude.yaw * deg2rad;
 
-    // When att_mode=1 and a trajectory is active, use the uploaded attitude polynomial
-    // to compute rd and omega_d directly instead of re-running the flatness map.
+    // Attitude polynomial dispatch (att_mode=1 only, trajectory must be active).
+    //
+    // att_ctrl_mode=0 (hard override):
+    //   rd = polynomial(t) — ignores position-loop feedback in rotation command.
+    //   omega_d = polynomial angular velocity derivative.
+    //   Required for loop/flip where flatness is undefined at zero-thrust events.
+    //
+    // att_ctrl_mode=1 (hybrid, default):
+    //   rd = desired_rot(f_d, yaw) — derived from total feedback force (position tracking
+    //   errors always reflected in the rotation command → globally stable position loop).
+    //   omega_d = polynomial angular velocity derivative — pre-planned, smooth feedforward.
+    //   Recommended for all flat trajectories (circle, figure-8, helix, corner).
     let is_traj_active = (g_traj_mode == 1 || g_traj_mode == 2) && TRAJ_T0 > 0;
     let (rd_poly_storage, omega_d_poly, use_poly) = if g_traj_att_mode == 1 && is_traj_active {
         let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
@@ -1057,7 +1068,13 @@ pub unsafe extern "C" fn controllerOutOfTree(
         ([[0.0f32; 3]; 3], Vec3::zero(), false)
     };
     let (omega_d_final, rd_override) = if use_poly {
-        (omega_d_poly, Some(&rd_poly_storage))
+        if g_traj_att_ctrl_mode == 0 {
+            // Hard override: polynomial sets both rd and omega_d.
+            (omega_d_poly, Some(&rd_poly_storage))
+        } else {
+            // Hybrid: polynomial provides omega_d feedforward only; rd comes from flatness.
+            (omega_d_poly, None)
+        }
     } else {
         (omega_d, None)
     };

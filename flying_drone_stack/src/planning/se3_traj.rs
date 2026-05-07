@@ -68,7 +68,7 @@
 //!   Flatness." CDC 2018.  (jerk/snap feedforward for attitude rates)
 
 use crate::math::{Vec3, Quat};
-use super::flatness::FlatOutput;
+use super::flatness::{FlatOutput, compute_flatness};
 use super::richter::FeasibilityReport;
 use super::spline::{SplineTrajectory, Waypoint};
 
@@ -388,12 +388,26 @@ impl Se3Trajectory {
     /// These coefficients are uploaded to firmware so it can evaluate roll_d/pitch_d
     /// at 500 Hz without re-running the flatness map.
     ///
-    /// Roll/pitch are sampled from the explicit SLERP attitude profile in `eval()`.
+    /// **Source selection**: If all attitude waypoints are identity (all `levelled`),
+    /// roll/pitch are sampled from differential flatness of the position polynomial —
+    /// this gives the physically correct attitude for the manoeuvre instead of zeros.
+    /// Otherwise (explicit quaternion waypoints: loop, flip, banked corners), roll/pitch
+    /// are sampled from the SLERP attitude profile in `eval()`.
     ///
-    /// 20 sample points per segment, Tikhonov λ = 1e-5.
+    /// 22 sample points per segment (20 interior + 2 boundary) for C0 polynomial
+    /// continuity at segment junctions. Tikhonov λ = 1e-5.
     pub fn attitude_poly_coefs(&self) -> Vec<([f32; 9], [f32; 9])> {
-        const N: usize = 20;
+        const N_INT: usize = 20;           // interior samples
+        const N_TOTAL: usize = N_INT + 2;  // +2 boundary samples at τ=0 and τ=1
         const LAMBDA: f32 = 1e-5;
+        const MASS: f32 = 0.031;           // CF + decks [kg]
+
+        // Detect whether all waypoints are identity (levelled) — then derive attitude
+        // from differential flatness of the position polynomial so the polynomial is
+        // non-trivial and meaningful for the firmware to use.
+        let all_levelled = self.att_waypoints.iter().all(|q| {
+            (q.w - 1.0_f32).abs() < 1e-4 && q.x.abs() < 1e-4 && q.y.abs() < 1e-4 && q.z.abs() < 1e-4
+        });
 
         let n_segs = self.segment_times.len();
         let mut out = Vec::with_capacity(n_segs);
@@ -401,23 +415,46 @@ impl Se3Trajectory {
         let mut t_start = 0.0_f32;
         for seg in 0..n_segs {
             let dur = self.segment_times[seg];
-            let mut roll_samples  = [(0.0_f32, 0.0_f32); N];
-            let mut pitch_samples = [(0.0_f32, 0.0_f32); N];
+            let mut roll_samples  = [(0.0_f32, 0.0_f32); N_TOTAL];
+            let mut pitch_samples = [(0.0_f32, 0.0_f32); N_TOTAL];
 
-            for k in 0..N {
-                let tau = (k as f32 + 0.5) / N as f32; // ∈ (0,1), avoids endpoints
-                let t   = t_start + tau * dur;
-                let out_k = self.eval(t);
-                let rot = &out_k.rot;
-                // ZYX Euler from rotation matrix (body→world layout: col j = body axis j in world).
-                // Must match firmware `rot_from_euler()` convention:
-                //   pitch = asin(-R[2][0]),  roll = atan2(R[2][1], R[2][2]).
-                // Using [0][2]/[1][2] here flips/sign-swaps attitude and can destabilise
-                // uploaded-attitude modes (att_mode=1) at segment boundaries.
+            // Helper: extract roll/pitch from a rotation matrix (ZYX Euler convention,
+            // matches firmware `rot_from_euler()`: pitch=asin(-R[2][0]), roll=atan2(R[2][1],R[2][2])).
+            let rot_to_rp = |rot: &[[f32; 3]; 3]| -> (f32, f32) {
                 let pitch = (-rot[2][0].clamp(-1.0, 1.0)).asin();
                 let roll  = rot[2][1].atan2(rot[2][2]);
-                roll_samples[k]  = (tau, roll);
-                pitch_samples[k] = (tau, pitch);
+                (roll, pitch)
+            };
+
+            let sample_at = |tau: f32| -> (f32, f32) {
+                let t = t_start + tau * dur;
+                if all_levelled {
+                    // Derive attitude from flatness of the position polynomial.
+                    // The position polynomial's jerk/snap give the correct body attitude.
+                    let flat = self.eval_position_flat(t);
+                    let res  = compute_flatness(&flat, MASS);
+                    rot_to_rp(&res.rot)
+                } else {
+                    // Use SLERP attitude from explicit waypoint quaternions (loop, flip, banked).
+                    let out_k = self.eval(t);
+                    rot_to_rp(&out_k.rot)
+                }
+            };
+
+            // Boundary samples at τ=0 and τ=1 enforce C0 polynomial continuity at junctions.
+            let (r0, p0) = sample_at(0.0);
+            roll_samples[0]          = (0.0, r0);
+            pitch_samples[0]         = (0.0, p0);
+            let (r1, p1) = sample_at(1.0);
+            roll_samples[N_TOTAL - 1]  = (1.0, r1);
+            pitch_samples[N_TOTAL - 1] = (1.0, p1);
+
+            // Interior samples uniformly in (0, 1).
+            for k in 0..N_INT {
+                let tau = (k as f32 + 0.5) / N_INT as f32;
+                let (r, p) = sample_at(tau);
+                roll_samples[k + 1]  = (tau, r);
+                pitch_samples[k + 1] = (tau, p);
             }
 
             let croll  = poly_fit_deg8(&roll_samples,  LAMBDA);

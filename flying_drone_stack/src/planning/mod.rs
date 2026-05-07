@@ -4,7 +4,6 @@
 //! - Mode 0: Minimum-snap 8th-order polynomial spline planner (`spline`) — Mellinger (2012)
 //! - Mode 1: Richter planner with automatic time allocation (`richter`) — Richter et al. (2016)
 //! - Mode 2: SE(3) collocation planner (`se3_traj`) — orientation explicitly prescribed on SO(3)
-//! - Mode 3: Joint SE(3) planner (`joint_se3`) — timing + attitude co-designed iteratively
 //! - Differential flatness for multirotors (`flatness`)
 //! - Frontier-based autonomous exploration (`exploration`)
 //!
@@ -41,10 +40,6 @@
 //! let planner = match PLANNER_MODE {
 //!     1 => TrajectoryPlanner::richter(&wps, K_T, false).unwrap(),
 //!     2 => TrajectoryPlanner::se3(&se3_wps, &durs, mass_kg, false).unwrap(),
-//!     3 => TrajectoryPlanner::joint(&wps, K_T, mass_kg, false).unwrap(),
-//!     4 => TrajectoryPlanner::joint_constrained(
-//!         &wps, K_T, mass_kg, false, JointAttitudeConstraint::None
-//!     ).unwrap(),
 //!     _ => TrajectoryPlanner::spline(&wps, &DURATIONS, false).unwrap(),
 //! };
 //! ```
@@ -53,7 +48,6 @@ pub mod flatness;
 pub mod spline;
 pub mod richter;
 pub mod se3_traj;
-pub mod joint_se3;
 pub mod exploration;
 
 pub use flatness::{
@@ -63,7 +57,6 @@ pub use flatness::{
 pub use spline::{SplineSegment, SplineTrajectory, Waypoint};
 pub use richter::{RichterTrajectory, RichterWaypoint, FeasibilityReport};
 pub use se3_traj::{Se3Trajectory, Se3Waypoint, Se3Output};
-pub use joint_se3::{JointAttitudeConstraint, JointSe3Config, JointSe3Trajectory};
 
 // ---------------------------------------------------------------------------
 // Unified planner interface
@@ -81,8 +74,6 @@ pub use joint_se3::{JointAttitudeConstraint, JointSe3Config, JointSe3Trajectory}
 /// | 0 | `Spline` | `durations: &[f32]` | Fixed, hand-tuned timing |
 /// | 1 | `Richter` | `k_t: f32` | Automatic timing, aggressiveness knob |
 /// | 2 | `Se3` | `waypoints: &[Se3Waypoint]` | Flips/rolls, explicit attitude on SO(3) |
-/// | 3 | `Joint` | `waypoints + k_t` | Coupled timing+attitude for aggressive flight |
-/// | 4 | `JointConstrained` | `waypoints + k_t + constraints` | Joint planning with enforced attitudes |
 #[derive(Debug, Clone)]
 pub enum TrajectoryPlanner {
     /// Mode 0 — Mellinger (2012) minimum-snap, manually specified segment durations.
@@ -92,10 +83,6 @@ pub enum TrajectoryPlanner {
     /// Mode 2 — SE(3) planner: minimum-snap position + SLERP attitude on SO(3).
     /// For flips / rolls where flatness breaks down (thrust through zero).
     Se3(Se3Trajectory),
-    /// Mode 3 — joint timing+attitude planning from position waypoints.
-    Joint(JointSe3Trajectory),
-    /// Mode 4 — joint timing+attitude with optional attitude constraints.
-    JointConstrained(JointSe3Trajectory),
 }
 
 impl TrajectoryPlanner {
@@ -157,43 +144,6 @@ impl TrajectoryPlanner {
         Se3Trajectory::plan(waypoints, durations, mass, periodic).map(TrajectoryPlanner::Se3)
     }
 
-    /// Build a **Mode 3** planner (JointSe3Trajectory — coupled timing + attitude).
-    ///
-    /// Starts from Richter timing, generates attitude from flatness-consistent knot states,
-    /// then iteratively repairs time scaling against thrust/body-rate limits.
-    pub fn joint(
-        waypoints: &[Waypoint],
-        k_t: f32,
-        mass: f32,
-        periodic: bool,
-    ) -> Result<Self, String> {
-        let cfg = JointSe3Config {
-            k_t,
-            mass,
-            periodic,
-            ..JointSe3Config::default()
-        };
-        JointSe3Trajectory::plan(waypoints, cfg).map(TrajectoryPlanner::Joint)
-    }
-
-    /// Build a **Mode 4** planner (joint + optional attitude constraints).
-    pub fn joint_constrained(
-        waypoints: &[Waypoint],
-        k_t: f32,
-        mass: f32,
-        periodic: bool,
-        attitude_constraint: JointAttitudeConstraint,
-    ) -> Result<Self, String> {
-        let cfg = JointSe3Config {
-            k_t,
-            mass,
-            periodic,
-            attitude_constraint,
-            ..JointSe3Config::default()
-        };
-        JointSe3Trajectory::plan(waypoints, cfg).map(TrajectoryPlanner::JointConstrained)
-    }
-
     /// Evaluate flat outputs at time `t` — **identical interface for all modes**.
     ///
     /// `t` is clamped to `[0, total_time()]`.  Call this at your control rate
@@ -208,8 +158,6 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.eval(t),
             TrajectoryPlanner::Richter(r) => r.eval(t),
             TrajectoryPlanner::Se3(s)     => s.eval_flat(t),
-            TrajectoryPlanner::Joint(j)   => j.eval_flat(t),
-            TrajectoryPlanner::JointConstrained(j) => j.eval_flat(t),
         }
     }
 
@@ -223,8 +171,6 @@ impl TrajectoryPlanner {
     pub fn eval_se3(&self, t: f32) -> Se3Output {
         match self {
             TrajectoryPlanner::Se3(s) => s.eval(t),
-            TrajectoryPlanner::Joint(j) => j.eval(t),
-            TrajectoryPlanner::JointConstrained(j) => j.eval(t),
             _ => {
                 // Fall back: run flatness on the flat output and convert
                 let flat = self.eval(t);
@@ -249,8 +195,6 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.total_time,
             TrajectoryPlanner::Richter(r) => r.total_time,
             TrajectoryPlanner::Se3(s)     => s.total_time,
-            TrajectoryPlanner::Joint(j)   => j.total_time(),
-            TrajectoryPlanner::JointConstrained(j) => j.total_time(),
         }
     }
 
@@ -264,8 +208,6 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s,
             TrajectoryPlanner::Richter(r) => r.as_spline(),
             TrajectoryPlanner::Se3(s)     => s.as_spline(),
-            TrajectoryPlanner::Joint(j)   => j.as_spline(),
-            TrajectoryPlanner::JointConstrained(j) => j.as_spline(),
         }
     }
 
@@ -277,21 +219,17 @@ impl TrajectoryPlanner {
     pub fn attitude_poly_coefs(&self) -> Vec<([f32; 9], [f32; 9])> {
         match self {
             TrajectoryPlanner::Se3(s) => s.attitude_poly_coefs(),
-            TrajectoryPlanner::Joint(j) => j.attitude_poly_coefs(),
-            TrajectoryPlanner::JointConstrained(j) => j.attitude_poly_coefs(),
             _ => Vec::new(),
         }
     }
 
-    /// Which mode is active.  0 = Spline, 1 = Richter, 2 = Se3, 3 = Joint, 4 = JointConstrained.
+    /// Which mode is active.  0 = Spline, 1 = Richter, 2 = Se3.
     #[inline]
     pub fn mode(&self) -> u8 {
         match self {
             TrajectoryPlanner::Spline(_)  => 0,
             TrajectoryPlanner::Richter(_) => 1,
             TrajectoryPlanner::Se3(_)     => 2,
-            TrajectoryPlanner::Joint(_)   => 3,
-            TrajectoryPlanner::JointConstrained(_) => 4,
         }
     }
 
@@ -301,8 +239,6 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.segments.iter().map(|seg| seg.duration).collect(),
             TrajectoryPlanner::Richter(r) => r.segment_times.clone(),
             TrajectoryPlanner::Se3(s)     => s.segment_times.clone(),
-            TrajectoryPlanner::Joint(j)   => j.segment_durations(),
-            TrajectoryPlanner::JointConstrained(j) => j.segment_durations(),
         }
     }
 
@@ -337,31 +273,6 @@ impl TrajectoryPlanner {
                 Some(r.check_feasibility(mass_kg, max_thrust_n, max_omega_rad_s)),
             TrajectoryPlanner::Se3(s) =>
                 Some(s.check_feasibility(max_thrust_n, max_omega_rad_s)),
-            TrajectoryPlanner::Joint(j) => {
-                let mut rep = j.check_feasibility();
-                // Keep API contract: use caller-provided limits in report scaling.
-                rep.feasible = rep.max_thrust_n <= max_thrust_n && rep.max_omega_rad_s <= max_omega_rad_s;
-                let scale_thrust = if rep.max_thrust_n > max_thrust_n {
-                    (rep.max_thrust_n / max_thrust_n).sqrt()
-                } else { 1.0 };
-                let scale_omega = if rep.max_omega_rad_s > max_omega_rad_s {
-                    rep.max_omega_rad_s / max_omega_rad_s
-                } else { 1.0 };
-                rep.suggested_time_scale = scale_thrust.max(scale_omega);
-                Some(rep)
-            }
-            TrajectoryPlanner::JointConstrained(j) => {
-                let mut rep = j.check_feasibility();
-                rep.feasible = rep.max_thrust_n <= max_thrust_n && rep.max_omega_rad_s <= max_omega_rad_s;
-                let scale_thrust = if rep.max_thrust_n > max_thrust_n {
-                    (rep.max_thrust_n / max_thrust_n).sqrt()
-                } else { 1.0 };
-                let scale_omega = if rep.max_omega_rad_s > max_omega_rad_s {
-                    rep.max_omega_rad_s / max_omega_rad_s
-                } else { 1.0 };
-                rep.suggested_time_scale = scale_thrust.max(scale_omega);
-                Some(rep)
-            }
             _ => None,
         }
     }

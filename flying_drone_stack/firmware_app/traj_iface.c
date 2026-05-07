@@ -74,6 +74,15 @@ uint8_t g_traj_z_cw      = 0;     /* commit flag: laptop sets 1; Rust clears    
 float   g_traj_att_coefs[TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG]; /* zero-initialised */
 uint8_t g_traj_att_mode  = 0;    /* 0 = derive from flatness (default), 1 = polynomial */
 
+/* att_ctrl_mode controls HOW the polynomial is blended with feedback (when att_mode=1):
+ *   0 = hard override: polynomial sets rd AND omega_d (both replaced by polynomial).
+ *       Required for loop/flip where flatness is undefined at zero-thrust events.
+ *   1 = hybrid: polynomial provides omega_d feedforward ONLY; rd is still derived from
+ *       the total feedback force via flatness — position tracking errors are always
+ *       reflected in the rotation command. Recommended for normal flat trajectories.
+ */
+uint8_t g_traj_att_ctrl_mode = 1; /* 1 = hybrid (default — stable for all flat trajectories) */
+
 /* ── Attitude upload protocol ────────────────────────────────────────────── */
 uint8_t g_traj_att_ci    = 0;     /* attitude coefficient index (0..215)                 */
 float   g_traj_att_cv    = 0.0f;  /* attitude coefficient value to write at g_traj_att_ci */
@@ -109,8 +118,9 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, zci,      &g_traj_z_ci)
   PARAM_ADD(PARAM_FLOAT, zcv,      &g_traj_z_cv)
   PARAM_ADD(PARAM_UINT8, zcw,      &g_traj_z_cw)
-  PARAM_ADD(PARAM_UINT8, att_mode, &g_traj_att_mode)
-  PARAM_ADD(PARAM_UINT8, aci,      &g_traj_att_ci)
-  PARAM_ADD(PARAM_FLOAT, acv,      &g_traj_att_cv)
-  PARAM_ADD(PARAM_UINT8, acw,      &g_traj_att_cw)
+  PARAM_ADD(PARAM_UINT8, att_mode,      &g_traj_att_mode)
+  PARAM_ADD(PARAM_UINT8, att_ctrl_mode, &g_traj_att_ctrl_mode)
+  PARAM_ADD(PARAM_UINT8, aci,           &g_traj_att_ci)
+  PARAM_ADD(PARAM_FLOAT, acv,           &g_traj_att_cv)
+  PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
 PARAM_GROUP_STOP(traj)
