@@ -388,6 +388,7 @@ fn optimize_times(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::math::Vec3;
 
     fn three_wp() -> Vec<RichterWaypoint> {
         vec![

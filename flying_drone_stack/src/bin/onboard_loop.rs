@@ -13,15 +13,13 @@
 //!   cargo run --release --bin onboard_loop -- --speed 2.5 --radius 0.5 --reps 3
 //!   cargo run --release --bin onboard_loop -- --mode 1 --kt 0.5
 //!   cargo run --release --bin onboard_loop -- --mode 2 --kt 0.5
-//!   cargo run --release --bin onboard_loop -- --mode 3 --kt 0.5
-//!   cargo run --release --bin onboard_loop -- --mode 4 --kt 0.5
 //!
 //! --speed  : trajectory speed multiplier for Mode 0 only (default 1.0)
-//!            Ignored for Mode 1/2/3/4 — use --kt to control speed there.
+//!            Ignored for Mode 1/2 — use --kt to control speed there.
 //! --radius : loop radius in metres (default 0.5)
 //! --reps   : number of complete loops (default 1)
-//! --mode   : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
-//! --kt     : aggressiveness for timing (Mode 1/2/3/4, default 0.5)
+//! --mode   : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --kt     : aggressiveness for timing (Mode 1/2, default 0.5)
 //!
 //! Planning mode comparison:
 //!   Mode 0/1: position polynomial in 3D; firmware derives attitude via flatness.
@@ -46,7 +44,7 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3, Quat};
+use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3, Quat};
 
 const GRAVITY:        f32 = 9.81;
 const RADIUS_DEFAULT: f32 = 0.5;
@@ -117,16 +115,6 @@ fn build_planner(mode: u8, radius: f32, t_lap: f32, k_t: f32) -> TrajectoryPlann
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Loop Mode 2 QP failed")
         }
-        3 => {
-            let (wps, _) = loop_waypoints_3d(radius, t_lap);
-            TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
-                .expect("Loop Mode 3 joint QP failed")
-        }
-        4 => {
-            let (wps, _) = loop_waypoints_3d(radius, t_lap);
-            TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::InvertAtApex)
-                .expect("Loop Mode 4 constrained joint QP failed")
-        }
         _ => {
             let (wps, durs) = loop_waypoints_3d(radius, t_lap);
             TrajectoryPlanner::spline(&wps, &durs, true)
@@ -150,7 +138,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|i| args.get(i+1)).and_then(|s| s.parse().ok()).unwrap_or(0.5);
 
     if n_reps == 0 || n_reps > 20 { eprintln!("--reps must be 1-20"); std::process::exit(1); }
-    if mode > 4                   { eprintln!("--mode must be 0, 1, 2, 3, or 4"); std::process::exit(1); }
+    if mode > 2                   { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
 
     let t_lap  = T_LAP_DEFAULT / speed;
     let omega  = 2.0 * std::f32::consts::PI / t_lap;

@@ -5,14 +5,12 @@
 //!   cargo run --release --bin onboard_circle -- --speed 1.4 --reps 3
 //!   cargo run --release --bin onboard_circle -- --mode 1 --kt 0.1
 //!   cargo run --release --bin onboard_circle -- --mode 2 --kt 0.3
-//!   cargo run --release --bin onboard_circle -- --mode 3 --kt 0.1
-//!   cargo run --release --bin onboard_circle -- --mode 4 --kt 0.1
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5-3.0, default 1.0)
-//!           Ignored for Mode 1/2/3/4 — use --kt to control speed there.
+//!           Ignored for Mode 1/2 — use --kt to control speed there.
 //! --reps  : number of full circles (default 2)
-//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Joint 4=Joint+constraints (default 0)
-//! --kt    : aggressiveness for timing (Mode 1/2/3/4, default 0.1)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --kt    : aggressiveness for timing (Mode 1/2, default 0.1)
 //!
 //! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
 //! roll/pitch polynomials via least-squares, uploads via traj.aci/acv/acw, firmware evaluates
@@ -33,7 +31,7 @@ use tokio::time::{sleep, timeout};
 use chrono::Local;
 
 use multirotor_simulator::flight_common::*;
-use multirotor_simulator::prelude::{JointAttitudeConstraint, TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
+use multirotor_simulator::prelude::{TrajectoryPlanner, Se3Waypoint, Waypoint, Vec3};
 
 const RADIUS: f32 = 0.25;
 const OMEGA:  f32 = 0.6;
@@ -66,10 +64,6 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Circle Mode 2 QP failed")
         }
-        3 => TrajectoryPlanner::joint(&wps, k_t, 0.031, true)
-            .expect("Circle Mode 3 joint QP failed"),
-        4 => TrajectoryPlanner::joint_constrained(&wps, k_t, 0.031, true, JointAttitudeConstraint::None)
-            .expect("Circle Mode 4 constrained joint QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, true)
             .expect("Circle Mode 0 QP failed"),
     }
@@ -89,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20  { eprintln!("--reps must be 1-20");   std::process::exit(1); }
-    if mode > 4                    { eprintln!("--mode must be 0, 1, 2, 3, or 4"); std::process::exit(1); }
+    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
 
     let planner = build_planner(mode, speed, k_t);
     let spline = planner.as_spline();
@@ -112,12 +106,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     upload_trajectory(&cf, &coefs).await?;
     if mode >= 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
-    cf.param.set("traj.nseg",     n_segs as u8).await?;
-    cf.param.set("traj.ox",       o.ox - RADIUS).await?;
-    cf.param.set("traj.oy",       o.oy).await?;
-    cf.param.set("traj.hz",       HOVER_HEIGHT).await?;
-    cf.param.set("traj.dz",       0.0f32).await?;
-    cf.param.set("traj.att_mode", (mode >= 2) as u8).await?;
+    cf.param.set("traj.nseg",          n_segs as u8).await?;
+    cf.param.set("traj.ox",            o.ox - RADIUS).await?;
+    cf.param.set("traj.oy",            o.oy).await?;
+    cf.param.set("traj.hz",            HOVER_HEIGHT).await?;
+    cf.param.set("traj.dz",            0.0f32).await?;
+    cf.param.set("traj.att_mode",      (mode >= 2) as u8).await?;
+    // att_ctrl_mode=1 (hybrid): polynomial omega_d feedforward + flatness-derived rd.
+    // Position tracking errors remain reflected in the rotation command → stable.
+    cf.param.set("traj.att_ctrl_mode", 1u8).await?;
 
     ramp_to_hover(&cf, &o, &sa, &sb, &sc).await?;
     hover_settle(&cf, &o, &sa, &sb, &sc).await?;
@@ -155,8 +152,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    cf.param.set("traj.mode",     0u8).await?;
-    cf.param.set("traj.att_mode", 0u8).await?;
+    cf.param.set("traj.mode",          0u8).await?;
+    cf.param.set("traj.att_mode",      0u8).await?;
+    cf.param.set("traj.att_ctrl_mode", 1u8).await?;
     hold_and_land(&cf, &o, HOVER_HEIGHT, 2, &sa, &sb, &sc).await?;
 
     let ts_str = Local::now().format("%Y%m%d_%H%M%S");

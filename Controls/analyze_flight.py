@@ -3276,7 +3276,7 @@ def main():
         choices=["circle", "fast_circle", "figure8", "fast_figure8",
                  "autonomous", "flip", "fast_flip", "fast_roll",
                  "helix", "fast_helix", "yaw_spin",
-                 "onboard_circle", "onboard_helix"],
+                 "onboard_circle", "onboard_helix", "onboard_figure8"],
         default=None,
         help="Trajectory type (default: inferred from filename)",
     )
@@ -3322,6 +3322,8 @@ def main():
             traj_type = "onboard_circle"
         elif "onboard" in base and "helix" in base:       # before generic "helix"
             traj_type = "onboard_helix"
+        elif "onboard" in base and ("figure8" in base or "fig8" in base):  # before generic
+            traj_type = "onboard_figure8"
         elif "circle" in base:
             traj_type = "circle"
         elif "figure8" in base or "fig8" in base:
@@ -3364,7 +3366,8 @@ def main():
         if run_sig:
             print(f"Run signature: {run_sig}")
         meta_traj = run_meta.get("run_trajectory")
-        if meta_traj and meta_traj in TRAJECTORIES:
+        _onboard_types = {"onboard_circle", "onboard_helix", "onboard_figure8"}
+        if meta_traj and meta_traj in TRAJECTORIES and traj_type not in _onboard_types:
             if args.type is None and traj_type != meta_traj:
                 print(f"Using run signature trajectory: {meta_traj} (instead of filename-inferred {traj_type})")
                 traj_type = meta_traj
@@ -3374,10 +3377,10 @@ def main():
                     f"Proceeding with --type."
                 )
 
-    # Onboard Mode D circle/helix — use correct reference (left-offset center, phase0=0)
-    if traj_type in ("onboard_circle", "onboard_helix"):
+    # Onboard Mode D circle/helix/figure8 — use geometry-based reference
+    if traj_type in ("onboard_circle", "onboard_helix", "onboard_figure8"):
         if args.compare:
-            print("--compare is not supported for onboard circle/helix flights.")
+            print("--compare is not supported for onboard Mode D flights.")
             sys.exit(1)
         import re as _re
         n_reps = int(run_meta.get("run_reps", "0") or "0")
@@ -3386,8 +3389,10 @@ def main():
             n_reps = int(m.group(1)) if m else 1
         if traj_type == "onboard_circle":
             plot_onboard_circle_analysis(data, csv_path, n_reps=n_reps)
-        else:
+        elif traj_type == "onboard_helix":
             plot_onboard_helix_analysis(data, csv_path, n_reps=n_reps)
+        else:
+            plot_onboard_figure8_analysis(data, csv_path, n_reps=n_reps)
         return
 
     # Helix uses analytic reference, not Poly4D
