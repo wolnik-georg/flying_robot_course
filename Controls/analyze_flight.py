@@ -3123,6 +3123,61 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     fig_axes.savefig(out_axes, dpi=150, bbox_inches="tight")
     print(f"  Plot     : {out_axes}")
 
+    # Additional companion figure: planned vs actual kinematic derivatives.
+    # Both are computed from world-frame position traces via numerical differentiation.
+    # (actual from logged xyz; planned from reference xyz).
+    p_ax = np.gradient(plan_vel[:, 0], times)
+    p_ay = np.gradient(plan_vel[:, 1], times)
+    p_az = np.gradient(plan_vel[:, 2], times)
+    p_jx = np.gradient(p_ax, times)
+    p_jy = np.gradient(p_ay, times)
+    p_jz = np.gradient(p_az, times)
+    p_sx = np.gradient(p_jx, times)
+    p_sy = np.gradient(p_jy, times)
+    p_sz = np.gradient(p_jz, times)
+    a_ax = np.gradient(data["vx"], times)
+    a_ay = np.gradient(data["vy"], times)
+    a_az = np.gradient(data["vz"], times)
+    a_jx = np.gradient(a_ax, times)
+    a_jy = np.gradient(a_ay, times)
+    a_jz = np.gradient(a_az, times)
+    a_sx = np.gradient(a_jx, times)
+    a_sy = np.gradient(a_jy, times)
+    a_sz = np.gradient(a_jz, times)
+    fig_kin, kin_axes = plt.subplots(3, 3, figsize=(16, 11), sharex=True)
+    fig_kin.suptitle(
+        f"Kinematic Derivatives Per Axis — planned vs actual (numerical from xyz)\n{os.path.basename(csv_path)}",
+        fontsize=11,
+    )
+    col_specs = [
+        ("x", "tab:blue"),
+        ("y", "tab:orange"),
+        ("z", "tab:green"),
+    ]
+    row_specs = [
+        ("Acceleration", "[m/s²]", (p_ax, p_ay, p_az), (a_ax, a_ay, a_az)),
+        ("Jerk", "[m/s³]", (p_jx, p_jy, p_jz), (a_jx, a_jy, a_jz)),
+        ("Snap", "[m/s⁴]", (p_sx, p_sy, p_sz), (a_sx, a_sy, a_sz)),
+    ]
+    for r_idx, (row_name, yunit, pvals, avals) in enumerate(row_specs):
+        for c_idx, (axis_name, col) in enumerate(col_specs):
+            ax = kin_axes[r_idx, c_idx]
+            ax.plot(times, pvals[c_idx], color=col, lw=1.1, ls="--", label=f"{axis_name} planned")
+            ax.plot(times, avals[c_idx], color=col, lw=1.2, label=f"{axis_name} actual")
+            if r_idx == 0:
+                ax.set_title(f"{axis_name}-axis", fontsize=10)
+            if c_idx == 0:
+                ax.set_ylabel(f"{row_name}\n{yunit}", fontsize=9)
+            if r_idx == 2:
+                ax.set_xlabel("time [s]")
+            ax.grid(True, alpha=0.3)
+            ax.legend(fontsize=8, loc="upper right")
+
+    fig_kin.tight_layout(rect=(0, 0, 1, 0.97))
+    out_kin = os.path.splitext(csv_path)[0] + "_analysis_kinematics.png"
+    fig_kin.savefig(out_kin, dpi=150, bbox_inches="tight")
+    print(f"  Plot     : {out_kin}")
+
     plt.show()
 
 

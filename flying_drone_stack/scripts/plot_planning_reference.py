@@ -408,6 +408,95 @@ def _plot_frenet_sanity(folder: str, d: np.ndarray, t: np.ndarray, junctions: Li
     print(f"Saved {out}")
 
 
+def _plot_kinematics_axes(folder: str, d: np.ndarray, title: str) -> None:
+    """Planned-only per-axis split for acceleration, jerk, snap."""
+    t = d["t"]
+    fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True)
+    fig.suptitle(f"Kinematics per axis (planned): {title}", fontsize=11)
+
+    rows = [
+        ("Acceleration", ("ax", "ay", "az"), "[m/s²]"),
+        ("Jerk", ("jx", "jy", "jz"), "[m/s³]"),
+        ("Snap", ("sx", "sy", "sz"), "[m/s⁴]"),
+    ]
+    cols = [("x", "C0"), ("y", "C1"), ("z", "C2")]
+
+    for r, (row_lbl, keys, units) in enumerate(rows):
+        for c, (col_lbl, color) in enumerate(cols):
+            ax = axes[r, c]
+            ax.plot(t, d[keys[c]], color=color, lw=1.2, label=keys[c])
+            if r == 0:
+                ax.set_title(f"{col_lbl}-axis", fontsize=9)
+            if c == 0:
+                ax.set_ylabel(f"{row_lbl}\n{units}", fontsize=8)
+            if r == 2:
+                ax.set_xlabel("t [s]", fontsize=8)
+            ax.legend(fontsize=7, loc="upper right")
+            ax.grid(True, alpha=0.3)
+
+    plt.tight_layout(rect=(0, 0, 1, 0.97))
+    out = os.path.join(folder, "kinematics_axes.png")
+    plt.savefig(out, dpi=140)
+    plt.close(fig)
+    print(f"Saved {out}")
+
+
+def _plot_state_axes(folder: str, d: np.ndarray, title: str) -> None:
+    """Planned-only per-axis split for velocity, Euler angles, and quaternion."""
+    t = d["t"]
+    fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True)
+    fig.suptitle(f"State components per axis (planned): {title}", fontsize=11)
+
+    vel_rows = [("vx", "C0"), ("vy", "C1"), ("vz", "C2")]
+    eul_rows = [("euler_roll", "C0"), ("euler_pitch", "C1"), ("euler_yaw", "C2")]
+    quat_keys = [("qw", "C0"), ("qx", "C1"), ("qy", "C2")]
+
+    # Row 1: velocity x/y/z (one per column)
+    for c, (k, color) in enumerate(vel_rows):
+        ax = axes[0, c]
+        ax.plot(t, d[k], color=color, lw=1.2, label=k)
+        ax.set_title(f"{k}", fontsize=9)
+        if c == 0:
+            ax.set_ylabel("Velocity\n[m/s]", fontsize=8)
+        ax.legend(fontsize=7, loc="upper right")
+        ax.grid(True, alpha=0.3)
+
+    # Row 2: Euler roll/pitch/yaw (one per column)
+    for c, (k, color) in enumerate(eul_rows):
+        ax = axes[1, c]
+        ax.plot(t, d[k], color=color, lw=1.2, label=k)
+        ax.set_title(f"{k}", fontsize=9)
+        if c == 0:
+            ax.set_ylabel("Euler\n[rad]", fontsize=8)
+        ax.legend(fontsize=7, loc="upper right")
+        ax.grid(True, alpha=0.3)
+
+    # Row 3: quaternion components (qw/qx/qy in columns; qz overlaid in last panel)
+    has_q = d.dtype.names and "qw" in d.dtype.names
+    for c, (k, color) in enumerate(quat_keys):
+        ax = axes[2, c]
+        if has_q and k in d.dtype.names:
+            ax.plot(t, d[k], color=color, lw=1.2, label=k)
+            if c == 2 and "qz" in d.dtype.names:
+                ax.plot(t, d["qz"], color="C3", lw=1.0, ls="--", label="qz")
+            ax.set_title(f"{k}" if c < 2 else f"{k} (+ qz)", fontsize=9)
+            ax.legend(fontsize=7, loc="upper right")
+        else:
+            ax.text(0.5, 0.5, "quaternion unavailable", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=8, color="gray", style="italic")
+            ax.set_title("quaternion", fontsize=9)
+        if c == 0:
+            ax.set_ylabel("Quaternion\n[-]", fontsize=8)
+        ax.set_xlabel("t [s]", fontsize=8)
+        ax.grid(True, alpha=0.3)
+
+    plt.tight_layout(rect=(0, 0, 1, 0.97))
+    out = os.path.join(folder, "state_axes.png")
+    plt.savefig(out, dpi=140)
+    plt.close(fig)
+    print(f"Saved {out}")
+
+
 def _plot_reference_csv(csv_path: str) -> None:
     d = np.genfromtxt(csv_path, delimiter=",", names=True)
     t = d["t"]
@@ -657,6 +746,8 @@ def _plot_reference_csv(csv_path: str) -> None:
 
     _plot_trajectory_3d_orientation(folder, d, wps, mode_traj)
     _plot_frenet_sanity(folder, d, t, junctions, mode_traj)
+    _plot_kinematics_axes(folder, d, mode_traj)
+    _plot_state_axes(folder, d, mode_traj)
 
 
 def plot_cross_mode_comparisons() -> None:

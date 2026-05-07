@@ -19,6 +19,7 @@ Produces PNG plots in results/planning_sim/closed_loop/images/:
   fig4b_thrust_mode2.png     — Mode 2 thrust profiles showing negative-thrust regions
   fig5_rms_summary.png       — grouped bar chart: geo vs indi RMS per trajectory/mode
   fig6_cross_mode.png        — all applicable modes overlaid per trajectory shape
+  fig7_ref_kinematics.png    — planned |a|, |j|, |s| (numerical from ref xyz)
 
 Run:
   cargo run --release --bin planning_sim
@@ -131,6 +132,28 @@ if missing:
 
 def rms3d(d):
     return float(np.sqrt(np.mean(d["error_3d"] ** 2)))
+
+
+def ref_kinematics(d):
+    """Numerical reference derivatives from ref xyz."""
+    t = d["t"]
+    x, y, z = d["ref_x"], d["ref_y"], d["ref_z"]
+    vx = np.gradient(x, t)
+    vy = np.gradient(y, t)
+    vz = np.gradient(z, t)
+    ax = np.gradient(vx, t)
+    ay = np.gradient(vy, t)
+    az = np.gradient(vz, t)
+    jx = np.gradient(ax, t)
+    jy = np.gradient(ay, t)
+    jz = np.gradient(az, t)
+    sx = np.gradient(jx, t)
+    sy = np.gradient(jy, t)
+    sz = np.gradient(jz, t)
+    am = np.sqrt(ax * ax + ay * ay + az * az)
+    jm = np.sqrt(jx * jx + jy * jy + jz * jz)
+    sm = np.sqrt(sx * sx + sy * sy + sz * sz)
+    return t, am, jm, sm
 
 
 # ---------------------------------------------------------------------------
@@ -578,6 +601,43 @@ for sp_idx, tk, title, entries in CROSS_SPECS:
 
 plt.tight_layout()
 out = os.path.join(IMG_DIR, "fig6_cross_mode.png")
+plt.savefig(out, dpi=140)
+print(f"Saved {os.path.basename(out)}")
+plt.close()
+
+# ---------------------------------------------------------------------------
+# Figure 7 — Reference kinematics: |a|, |j|, |s| per mode/trajectory
+# ---------------------------------------------------------------------------
+
+traj_keys = ["circle", "fig8", "helix", "corner", "loop"]
+mode_rows = [0, 1, 2, 3, 4]
+fig, axes = plt.subplots(len(mode_rows), len(traj_keys), figsize=(24, 16), sharex=False, sharey=False)
+fig.suptitle("Planned reference kinematics (numerical from ref xyz): |a|, |j|, |s|", fontsize=12)
+
+for r, mode in enumerate(mode_rows):
+    for c, tk in enumerate(traj_keys):
+        ax = axes[r, c]
+        key = f"m{mode}_{tk}_geo"
+        if key not in data:
+            ax.text(0.5, 0.5, "n/a", ha="center", va="center", transform=ax.transAxes, fontsize=9)
+            ax.axis("off")
+            continue
+        t, am, jm, sm = ref_kinematics(data[key])
+        ax.plot(t, am, color="tab:blue", lw=1.2, label="|a| [m/s²]")
+        ax.plot(t, jm, color="tab:orange", lw=1.1, label="|j| [m/s³]")
+        ax.plot(t, sm, color="tab:green", lw=1.0, label="|s| [m/s⁴]")
+        if r == 0:
+            ax.set_title(tk, fontsize=9)
+        if c == 0:
+            ax.set_ylabel(f"Mode {mode}", fontsize=8)
+        if r == len(mode_rows) - 1:
+            ax.set_xlabel("t [s]", fontsize=8)
+        ax.grid(True, alpha=0.3)
+        if r == 0 and c == 0:
+            ax.legend(fontsize=7, loc="upper right")
+
+plt.tight_layout()
+out = os.path.join(IMG_DIR, "fig7_ref_kinematics.png")
 plt.savefig(out, dpi=140)
 print(f"Saved {os.path.basename(out)}")
 plt.close()
