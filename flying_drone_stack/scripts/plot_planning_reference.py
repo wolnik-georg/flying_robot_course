@@ -308,7 +308,242 @@ def _junction_lines(ax: Any, times: Sequence[float]) -> None:
         ax.axvline(jt, color="#444444", ls=":", lw=0.95, alpha=0.55, zorder=0)
 
 
-def _plot_frenet_sanity(folder: str, d: np.ndarray, t: np.ndarray, junctions: List[float], title: str) -> None:
+def _hardware_utilization(
+    d: np.ndarray, max_t: float, max_w: float, max_tau: float
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    om = np.sqrt(d["omega_x"] ** 2 + d["omega_y"] ** 2 + d["omega_z"] ** 2)
+    tau_inf = np.maximum(np.abs(d["torque_x"]), np.maximum(np.abs(d["torque_y"]), np.abs(d["torque_z"])))
+    u_t = np.abs(d["thrust_N"]) / max(max_t, 1e-6)
+    u_w = om / max(max_w, 1e-6)
+    u_tau = tau_inf / max(max_tau, 1e-9)
+    u_max = np.maximum(u_t, np.maximum(u_w, u_tau))
+    viol_any = u_max > 1.0
+    return u_t, u_w, u_tau, u_max, viol_any
+
+
+def _shade_violation_windows(ax: Any, t: np.ndarray, viol_any: np.ndarray) -> None:
+    if len(t) < 2 or not np.any(viol_any):
+        return
+    in_seg = False
+    start = float(t[0])
+    for i in range(len(t)):
+        active = bool(viol_any[i])
+        if active and not in_seg:
+            in_seg = True
+            start = float(t[i])
+        elif (not active) and in_seg:
+            in_seg = False
+            ax.axvspan(start, float(t[i]), color="red", alpha=0.08, lw=0.0, zorder=0)
+    if in_seg:
+        ax.axvspan(start, float(t[-1]), color="red", alpha=0.08, lw=0.0, zorder=0)
+
+
+def _longest_true_duration(t: np.ndarray, mask: np.ndarray) -> float:
+    if len(t) < 2 or not np.any(mask):
+        return 0.0
+    best = 0.0
+    start = None
+    for i, m in enumerate(mask):
+        if bool(m) and start is None:
+            start = float(t[i])
+        elif (not bool(m)) and start is not None:
+            best = max(best, float(t[i]) - start)
+            start = None
+    if start is not None:
+        best = max(best, float(t[-1]) - start)
+    return best
+
+
+def _motor_omega_sq_unclamped_np(
+    thrust: np.ndarray,
+    tx: np.ndarray,
+    ty: np.ndarray,
+    tz: np.ndarray,
+    kf: float,
+    kt: float,
+    arm_length: float,
+) -> np.ndarray:
+    sqrt2 = np.sqrt(2.0)
+    l_sqrt2 = arm_length / sqrt2
+    thrust_term = thrust / (4.0 * max(kf, 1e-12))
+    roll_term = tx / (4.0 * max(kf, 1e-12) * max(l_sqrt2, 1e-12))
+    pitch_term = ty / (4.0 * max(kf, 1e-12) * max(l_sqrt2, 1e-12))
+    yaw_term = tz / (4.0 * max(kt, 1e-12))
+    w1 = thrust_term - roll_term - pitch_term + yaw_term
+    w2 = thrust_term + roll_term - pitch_term - yaw_term
+    w3 = thrust_term + roll_term + pitch_term + yaw_term
+    w4 = thrust_term - roll_term + pitch_term - yaw_term
+    return np.stack([w1, w2, w3, w4], axis=1)
+
+
+def _plot_limits_dashboard(
+    folder: str,
+    d: np.ndarray,
+    t: np.ndarray,
+    junctions: List[float],
+    title: str,
+    meta: Dict[str, str],
+) -> None:
+    max_t = float(meta.get("feasibility_max_thrust_N", "0.55"))
+    max_w = float(meta.get("feasibility_max_omega_rad_s", "12.0"))
+    max_tau = float(meta.get("feasibility_max_torque_axis_Nm", "0.004"))
+    kf = float(meta.get("motor_kf", "2.5e-6"))
+    kt = float(meta.get("motor_kt", "1.0e-7"))
+    arm = float(meta.get("motor_arm_length_m", "0.046"))
+    per_motor_thrust_max = float(meta.get("per_motor_thrust_max_N", f"{max_t/4.0:.6f}"))
+    omega_motor_max = float(meta.get("motor_omega_max_rad_s", str(np.sqrt(max(per_motor_thrust_max / max(kf, 1e-12), 1e-12)))))
+    dthrust_dt_max = float(meta.get("proxy_dthrust_dt_max_N_s", "8.0"))
+    dtau_dt_max = float(meta.get("proxy_dtau_dt_max_Nm_s", "0.25"))
+    domega_dt_max = float(meta.get("proxy_domega_dt_max_rad_s2", "2500.0"))
+
+    u_t, u_w, u_tau, u_max, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+    tau_inf = np.maximum(np.abs(d["torque_x"]), np.maximum(np.abs(d["torque_y"]), np.abs(d["torque_z"])))
+
+    w_sq = _motor_omega_sq_unclamped_np(
+        d["thrust_N"], d["torque_x"], d["torque_y"], d["torque_z"], kf, kt, arm
+    )
+    neg_mix = np.any(w_sq < 0.0, axis=1)
+    w_sq_clamped = np.clip(w_sq, 0.0, None)
+    w = np.sqrt(w_sq_clamped)
+    f_motor = kf * w_sq_clamped
+    u_wm = w / max(omega_motor_max, 1e-6)
+    u_fm = f_motor / max(per_motor_thrust_max, 1e-9)
+
+    dthrust_dt = np.gradient(d["thrust_N"], t)
+    dtau_dt = np.gradient(tau_inf, t)
+    domega_dt = np.gradient(np.max(w, axis=1), t)
+    u_dthrust = np.abs(dthrust_dt) / max(dthrust_dt_max, 1e-6)
+    u_dtau = np.abs(dtau_dt) / max(dtau_dt_max, 1e-9)
+    u_domega = np.abs(domega_dt) / max(domega_dt_max, 1e-6)
+
+    # Simple battery sag margin estimate (model): available thrust scales with V^2.
+    # If V drops to r*V_nom, utilization scales by 1/r^2.
+    peak_u = float(np.max(u_max))
+    sag_r = np.linspace(0.75, 1.0, 120)
+    est_u_under_sag = peak_u / np.maximum(sag_r * sag_r, 1e-6)
+
+    fig, axes = plt.subplots(4, 2, figsize=(15, 12), sharex=True)
+    fig.suptitle(f"Limits dashboard — {title}", fontsize=11)
+
+    ax = axes[0, 0]
+    ax.plot(t, u_t, label="|T|/Tmax", lw=1.1, color="C3")
+    ax.plot(t, u_w, label="|ω|/ωmax", lw=1.1, color="C2")
+    ax.plot(t, u_tau, label="|τ|∞/τmax", lw=1.1, color="C4")
+    ax.plot(t, u_max, label="max util", lw=1.3, color="black")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.85)
+    _junction_lines(ax, junctions)
+    _shade_violation_windows(ax, t, viol_any)
+    ax.set_ylabel("ratio [-]")
+    ax.set_title("Core control/actuation utilization")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[0, 1]
+    ax.step(t, neg_mix.astype(float), where="post", lw=1.1, color="tab:red", label="negative ω² before clamp")
+    _junction_lines(ax, junctions)
+    ax.set_yticks([0.0, 1.0])
+    ax.set_yticklabels(["feasible", "infeasible"])
+    ax.set_title("Motor-mix feasibility over time")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 0]
+    for i in range(4):
+        ax.plot(t, u_wm[:, i], lw=0.9, label=f"ωm{i+1}/ωmax")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.85)
+    _junction_lines(ax, junctions)
+    ax.set_ylabel("ratio [-]")
+    ax.set_title("Per-motor speed usage")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[1, 1]
+    for i in range(4):
+        ax.plot(t, u_fm[:, i], lw=0.9, label=f"Fm{i+1}/Fmax")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.85)
+    _junction_lines(ax, junctions)
+    ax.set_ylabel("ratio [-]")
+    ax.set_title("Per-motor thrust usage")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[2, 0]
+    ax.plot(t, u_dthrust, lw=1.0, color="C3", label="|dT/dt| / proxy max")
+    ax.plot(t, u_dtau, lw=1.0, color="C4", label="|d|τ|∞/dt| / proxy max")
+    ax.plot(t, u_domega, lw=1.0, color="C2", label="|dωm_max/dt| / proxy max")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.85)
+    _junction_lines(ax, junctions)
+    ax.set_ylabel("ratio [-]")
+    ax.set_title("Rate-of-change proxy checks")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[2, 1]
+    labels = ["core util>1", "neg mix", "dTdt>1", "dtaudt>1", "domegadt>1"]
+    masks = [
+        viol_any,
+        neg_mix,
+        u_dthrust > 1.0,
+        u_dtau > 1.0,
+        u_domega > 1.0,
+    ]
+    fracs = [100.0 * float(np.mean(m)) for m in masks]
+    longest = [_longest_true_duration(t, m) for m in masks]
+    y = np.arange(len(labels))
+    ax.barh(y, fracs, color=["black", "tab:red", "C3", "C4", "C2"], alpha=0.75)
+    for yi, (f, l) in enumerate(zip(fracs, longest)):
+        ax.text(f + 0.8, yi, f"{f:.2f}% | longest {l:.3f}s", va="center", fontsize=8)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xlabel("active duration [% of trajectory]")
+    ax.set_title("Sustained saturation / violation duration")
+    ax.grid(True, axis="x", alpha=0.3)
+
+    ax = axes[3, 0]
+    ax.plot(sag_r, est_u_under_sag, lw=1.2, color="tab:purple", label="estimated peak utilization under sag")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.85, label="limit boundary")
+    ax.axvline(1.0, color="gray", ls=":", lw=0.8)
+    ax.set_xlabel("battery voltage ratio r = V/V_nom [-]")
+    ax.set_ylabel("estimated peak utilization [-]")
+    ax.set_title("Battery-sag margin estimate (model: thrust capability ∝ V²)")
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.3)
+
+    ax = axes[3, 1]
+    ax.axis("off")
+    txt = (
+        f"Limits used\n"
+        f"  Tmax={max_t:.3f} N, ωmax={max_w:.3f} rad/s, τmax={max_tau:.6f} Nm\n"
+        f"Motor model\n"
+        f"  kf={kf:.3e}, kt={kt:.3e}, arm={arm:.3f} m\n"
+        f"  per-motor Fmax={per_motor_thrust_max:.4f} N, ωm_max={omega_motor_max:.1f} rad/s\n"
+        f"Rate proxy limits\n"
+        f"  |dT/dt|max={dthrust_dt_max:.2f} N/s\n"
+        f"  |d|τ|∞/dt|max={dtau_dt_max:.4f} Nm/s\n"
+        f"  |dωm/dt|max={domega_dt_max:.1f} rad/s²\n"
+        f"Notes\n"
+        f"  - rate and battery checks are model/proxy based\n"
+        f"  - closed-loop controller clipping must be checked in closed-loop logs"
+    )
+    ax.text(0.02, 0.98, txt, va="top", ha="left", fontsize=8, family="monospace")
+
+    plt.tight_layout(rect=(0, 0, 1, 0.97))
+    out = os.path.join(folder, "limits_dashboard.png")
+    plt.savefig(out, dpi=140)
+    plt.close(fig)
+    print(f"Saved {out}")
+
+
+def _plot_frenet_sanity(
+    folder: str,
+    d: np.ndarray,
+    t: np.ndarray,
+    junctions: List[float],
+    title: str,
+    max_t: float,
+    max_w: float,
+    max_tau: float,
+) -> None:
     """Frenet-style path scalars + numerical consistency (gradient vs CSV derivatives)."""
     px, py, pz = d["px"], d["py"], d["pz"]
     vx, vy, vz = d["vx"], d["vy"], d["vz"]
@@ -387,19 +622,19 @@ def _plot_frenet_sanity(folder: str, d: np.ndarray, t: np.ndarray, junctions: Li
     ax.set_title(f"‖∇v/∇t − a‖ / scale  (max {np.nanmax(rel_a):.2e})")
     ax.grid(True, alpha=0.3)
 
+    u_t, u_w, u_tau, u_max, _ = _hardware_utilization(d, max_t, max_w, max_tau)
     ax = axes[1, 2]
-    ax.axis("off")
-    ax.text(
-        0.02,
-        0.98,
-        "Finite differences use numpy.gradient(..., t).\n"
-        "Large spikes often occur at segment joins or very small |v|.\n"
-        "Frenet scalars use analytic v,a from the CSV.",
-        va="top",
-        ha="left",
-        fontsize=8,
-        family="monospace",
-    )
+    ax.plot(t, u_t, lw=0.9, label="|T|/Tmax", color="C3")
+    ax.plot(t, u_w, lw=0.9, label="|ω|/ωmax", color="C2")
+    ax.plot(t, u_tau, lw=0.9, label="|τ|∞/τmax", color="C4")
+    ax.plot(t, u_max, lw=1.2, label="max util", color="black")
+    ax.axhline(1.0, color="red", ls="--", lw=0.9, alpha=0.8, label="limit")
+    _junction_lines(ax, junctions)
+    ax.set_title("Hardware utilization quick check")
+    ax.set_ylabel("ratio [-]")
+    ax.set_xlabel("t [s]")
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
     out = os.path.join(folder, "frenet_sanity.png")
@@ -408,7 +643,14 @@ def _plot_frenet_sanity(folder: str, d: np.ndarray, t: np.ndarray, junctions: Li
     print(f"Saved {out}")
 
 
-def _plot_kinematics_axes(folder: str, d: np.ndarray, title: str) -> None:
+def _plot_kinematics_axes(
+    folder: str,
+    d: np.ndarray,
+    title: str,
+    max_t: float,
+    max_w: float,
+    max_tau: float,
+) -> None:
     """Planned-only per-axis split for acceleration, jerk, snap."""
     t = d["t"]
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True)
@@ -424,6 +666,8 @@ def _plot_kinematics_axes(folder: str, d: np.ndarray, title: str) -> None:
     for r, (row_lbl, keys, units) in enumerate(rows):
         for c, (col_lbl, color) in enumerate(cols):
             ax = axes[r, c]
+            _, _, _, _, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+            _shade_violation_windows(ax, t, viol_any)
             ax.plot(t, d[keys[c]], color=color, lw=1.2, label=keys[c])
             if r == 0:
                 ax.set_title(f"{col_lbl}-axis", fontsize=9)
@@ -441,7 +685,14 @@ def _plot_kinematics_axes(folder: str, d: np.ndarray, title: str) -> None:
     print(f"Saved {out}")
 
 
-def _plot_state_axes(folder: str, d: np.ndarray, title: str) -> None:
+def _plot_state_axes(
+    folder: str,
+    d: np.ndarray,
+    title: str,
+    max_t: float,
+    max_w: float,
+    max_tau: float,
+) -> None:
     """Planned-only per-axis split for velocity, Euler angles, and quaternion."""
     t = d["t"]
     fig, axes = plt.subplots(3, 3, figsize=(14, 10), sharex=True)
@@ -454,6 +705,8 @@ def _plot_state_axes(folder: str, d: np.ndarray, title: str) -> None:
     # Row 1: velocity x/y/z (one per column)
     for c, (k, color) in enumerate(vel_rows):
         ax = axes[0, c]
+        _, _, _, _, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+        _shade_violation_windows(ax, t, viol_any)
         ax.plot(t, d[k], color=color, lw=1.2, label=k)
         ax.set_title(f"{k}", fontsize=9)
         if c == 0:
@@ -464,6 +717,8 @@ def _plot_state_axes(folder: str, d: np.ndarray, title: str) -> None:
     # Row 2: Euler roll/pitch/yaw (one per column)
     for c, (k, color) in enumerate(eul_rows):
         ax = axes[1, c]
+        _, _, _, _, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+        _shade_violation_windows(ax, t, viol_any)
         ax.plot(t, d[k], color=color, lw=1.2, label=k)
         ax.set_title(f"{k}", fontsize=9)
         if c == 0:
@@ -475,6 +730,8 @@ def _plot_state_axes(folder: str, d: np.ndarray, title: str) -> None:
     has_q = d.dtype.names and "qw" in d.dtype.names
     for c, (k, color) in enumerate(quat_keys):
         ax = axes[2, c]
+        _, _, _, _, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+        _shade_violation_windows(ax, t, viol_any)
         if has_q and k in d.dtype.names:
             ax.plot(t, d[k], color=color, lw=1.2, label=k)
             if c == 2 and "qz" in d.dtype.names:
@@ -517,6 +774,7 @@ def _plot_reference_csv(csv_path: str) -> None:
 
     max_t = float(meta.get("feasibility_max_thrust_N", "0.55"))
     max_w = float(meta.get("feasibility_max_omega_rad_s", "12.0"))
+    max_tau = float(meta.get("feasibility_max_torque_axis_Nm", "0.004"))
     se3_zero = meta.get("se3_export_jerk_snap_zero", "0") == "1"
 
     px, py, pz = d["px"], d["py"], d["pz"]
@@ -529,10 +787,10 @@ def _plot_reference_csv(csv_path: str) -> None:
 
     has_q = d.dtype.names and "qw" in d.dtype.names
 
-    fig = plt.figure(figsize=(14, 25))
+    fig = plt.figure(figsize=(14, 28))
     fig.suptitle(f"Planner-only reference: {mode_traj}{title_extra}", fontsize=11, y=0.995)
 
-    nrow, ncol = 8, 2
+    nrow, ncol = 9, 2
 
     gs = mgridspec.GridSpec(nrow, ncol, figure=fig)
 
@@ -560,6 +818,10 @@ def _plot_reference_csv(csv_path: str) -> None:
     ax0.legend(fontsize=7, loc="upper right")
     ax0.tick_params(labelsize=7)
     _draw_orientation_glyphs(ax0, d, color="black", axis_len=0.07, count=12, alpha=0.45)
+    # Mark 3D points where any hardware utilization exceeds 1.0.
+    _, _, _, _, viol_any = _hardware_utilization(d, max_t, max_w, max_tau)
+    if np.any(viol_any):
+        ax0.scatter(px[viol_any], py[viol_any], pz[viol_any], s=8, c="red", alpha=0.35, label="limit exceed")
 
     ax = sp(2)
     ax.plot(t, px, label="px", lw=1.0)
@@ -718,14 +980,57 @@ def _plot_reference_csv(csv_path: str) -> None:
     ax.legend(fontsize=7)
     ax.grid(True, alpha=0.3)
 
+    # Hardware utilization summary (ratio > 1 means limit exceeded)
+    u_t = np.abs(d["thrust_N"]) / max(max_t, 1e-6)
+    u_w = om / max(max_w, 1e-6)
+    tau_inf = np.maximum(np.abs(d["torque_x"]), np.maximum(np.abs(d["torque_y"]), np.abs(d["torque_z"])))
+    u_tau = tau_inf / max(max_tau, 1e-9)
+    u_max = np.maximum(u_t, np.maximum(u_w, u_tau))
+
+    ax = sp(15)
+    ax.plot(t, u_t, lw=1.0, label="|T| / T_max", color="C3")
+    ax.plot(t, u_w, lw=1.0, label="|ω| / ω_max", color="C2")
+    ax.plot(t, u_tau, lw=1.0, label="|τ|∞ / τ_axis_max", color="C4")
+    ax.plot(t, u_max, lw=1.3, label="max utilization", color="black")
+    ax.axhline(1.0, color="red", ls="--", lw=1.0, alpha=0.8, label="limit boundary")
+    _junction_lines(ax, junctions)
+    ax.set_ylabel("utilization ratio [-]")
+    ax.set_xlabel("t [s]")
+    ax.set_title("Hardware-limit utilization (crossing 1.0 = violation)", fontsize=9)
+    ax.legend(fontsize=7, ncol=2)
+    ax.grid(True, alpha=0.3)
+
+    ax = sp(16)
+    v_t = (u_t > 1.0).astype(float)
+    v_w = (u_w > 1.0).astype(float)
+    v_tau = (u_tau > 1.0).astype(float)
+    # stack as 0/1 lanes for quick visual scan
+    ax.step(t, v_t + 2.0, where="post", lw=1.0, label="thrust violation", color="C3")
+    ax.step(t, v_w + 1.0, where="post", lw=1.0, label="omega violation", color="C2")
+    ax.step(t, v_tau + 0.0, where="post", lw=1.0, label="torque violation", color="C4")
+    _junction_lines(ax, junctions)
+    ax.set_yticks([0.0, 1.0, 2.0, 3.0])
+    ax.set_yticklabels(["τ lane", "ω lane", "T lane", "active"])
+    ax.set_xlabel("t [s]")
+    ax.set_title("Violation timeline (lane high means active limit crossing)", fontsize=9)
+    ax.legend(fontsize=7, ncol=2, loc="upper right")
+    ax.grid(True, alpha=0.3)
+
     ax = fig.add_subplot(gs[nrow - 1, :])
     ax.axis("off")
+    pct_t = 100.0 * float(np.mean(u_t > 1.0))
+    pct_w = 100.0 * float(np.mean(u_w > 1.0))
+    pct_tau = 100.0 * float(np.mean(u_tau > 1.0))
+    peak_u = float(np.max(u_max))
     lines = [
         "planning_meta.txt",
         f"  max thrust (feasibility) = {max_t} N",
         f"  max |ω| (feasibility) = {max_w} rad/s",
+        f"  max |τ_axis| (feasibility) = {max_tau} N·m",
         f"  planner_kind = {meta.get('planner_kind', '?')}",
         f"  SE(3) jerk/snap placeholder flag: {bool(se3_zero)}",
+        f"  peak utilization max(|T/Tmax|, |ω/ωmax|, |τ|∞/τmax) = {peak_u:.3f}",
+        f"  violation % of samples: thrust={pct_t:.2f}%  omega={pct_w:.2f}%  torque={pct_tau:.2f}%",
         "",
         "Sidecars:",
         "  waypoints.csv — QP / SLERP inputs",
@@ -745,9 +1050,10 @@ def _plot_reference_csv(csv_path: str) -> None:
     print(f"Saved {out}")
 
     _plot_trajectory_3d_orientation(folder, d, wps, mode_traj)
-    _plot_frenet_sanity(folder, d, t, junctions, mode_traj)
-    _plot_kinematics_axes(folder, d, mode_traj)
-    _plot_state_axes(folder, d, mode_traj)
+    _plot_frenet_sanity(folder, d, t, junctions, mode_traj, max_t, max_w, max_tau)
+    _plot_kinematics_axes(folder, d, mode_traj, max_t, max_w, max_tau)
+    _plot_state_axes(folder, d, mode_traj, max_t, max_w, max_tau)
+    _plot_limits_dashboard(folder, d, t, junctions, mode_traj, meta)
 
 
 def plot_cross_mode_comparisons() -> None:

@@ -5,11 +5,12 @@
 //!   cargo run --release --bin onboard_circle -- --speed 1.4 --reps 3
 //!   cargo run --release --bin onboard_circle -- --mode 1 --kt 0.1
 //!   cargo run --release --bin onboard_circle -- --mode 2 --kt 0.3
+//!   cargo run --release --bin onboard_circle -- --mode 3 --kt 0.3
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5-3.0, default 1.0)
 //!           Ignored for Mode 1/2 — use --kt to control speed there.
 //! --reps  : number of full circles (default 2)
-//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Paper (default 0)
 //! --kt    : aggressiveness for timing (Mode 1/2, default 0.1)
 //!
 //! --mode 2: attitude polynomial uploaded and evaluated onboard at 500 Hz. Laptop fits degree-8
@@ -64,6 +65,8 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Circle Mode 2 QP failed")
         }
+        3 => TrajectoryPlanner::paper(&wps, k_t, true)
+            .expect("Circle Mode 3 paper QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, true)
             .expect("Circle Mode 0 QP failed"),
     }
@@ -83,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20  { eprintln!("--reps must be 1-20");   std::process::exit(1); }
-    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
+    if mode > 3                    { eprintln!("--mode must be 0, 1, 2, or 3"); std::process::exit(1); }
 
     let planner = build_planner(mode, speed, k_t);
     let spline = planner.as_spline();
@@ -94,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let att_coefs = serialise_att_coefs(&att_coefs_raw);
     println!("Mode D Circle | planning_mode={} | speed={:.1}x | lap={:.2}s | r={}m | reps={}",
              mode, speed, traj_total, RADIUS, n_reps);
-    if mode >= 2 { println!("  Mode {}: uploading {} att coefs", mode, att_coefs.len()); }
+    if mode >= 2 && mode != 3 { println!("  Mode {}: uploading {} att coefs", mode, att_coefs.len()); }
 
     let link_ctx = LinkContext::new();
     let cf = connect_drone(&link_ctx).await?;
@@ -105,13 +108,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = sample_origin(&cf, &sa, &sb, &sc).await?;
 
     upload_trajectory(&cf, &coefs).await?;
-    if mode >= 2 { upload_att_trajectory(&cf, &att_coefs).await?; }
+    if mode >= 2 && mode != 3 { upload_att_trajectory(&cf, &att_coefs).await?; }
     cf.param.set("traj.nseg",          n_segs as u8).await?;
     cf.param.set("traj.ox",            o.ox - RADIUS).await?;
     cf.param.set("traj.oy",            o.oy).await?;
     cf.param.set("traj.hz",            HOVER_HEIGHT).await?;
     cf.param.set("traj.dz",            0.0f32).await?;
-    cf.param.set("traj.att_mode",      (mode >= 2) as u8).await?;
+    cf.param.set("traj.att_mode",      ((mode >= 2) && (mode != 3)) as u8).await?;
     // att_ctrl_mode=1 (hybrid): polynomial omega_d feedforward + flatness-derived rd.
     // Position tracking errors remain reflected in the rotation command → stable.
     cf.param.set("traj.att_ctrl_mode", 1u8).await?;
@@ -168,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("run_speed".to_string(), format!("{speed:.6}")),
         ("run_reps".to_string(), n_reps.to_string()),
         ("run_periodic".to_string(), "true".to_string()),
-        ("run_att_poly".to_string(), ((mode >= 2) as u8).to_string()),
+        ("run_att_poly".to_string(), (((mode >= 2) && (mode != 3)) as u8).to_string()),
         ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
     ];
     write_csv_with_metadata(&rows, &csv_path, &metadata)?;

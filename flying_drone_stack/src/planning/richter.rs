@@ -125,6 +125,19 @@ impl RichterTrajectory {
         Self::plan_with_iters(waypoints, k_t, periodic, 0)
     }
 
+    /// Paper-aligned variant: same Richter formulation but with nonzero timing iterations.
+    ///
+    /// This keeps the same `k_t` semantics while running the time-redistribution loop,
+    /// giving stronger position-time coupling than the default single-pass allocation.
+    pub fn plan_paper(
+        waypoints: &[RichterWaypoint],
+        k_t: f32,
+        periodic: bool,
+    ) -> Result<Self, String> {
+        // A small fixed number is stable in practice and keeps runtime predictable.
+        Self::plan_with_iters(waypoints, k_t, periodic, 8)
+    }
+
     /// Same as `plan` but with explicit iteration count for the time-redistribution loop.
     ///
     /// **Note**: The Clarabel QP solver can exhibit numerical instability when called
