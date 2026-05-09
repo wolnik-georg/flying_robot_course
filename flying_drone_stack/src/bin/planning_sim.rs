@@ -1183,6 +1183,60 @@ fn run_kt_scan(args: &[String]) {
         }
     }
 
+    // Modes 1 and 3 scan for trajectories that require plan_from_times (SE3-derived durations).
+    {
+        let (immelmann_se3_wps, immelmann_se3_durs) = immelmann_waypoints_se3(0.5);
+        let (splits_se3_wps,    splits_se3_durs)    = splits_waypoints_se3(0.5);
+        let (screw_se3_wps,     screw_se3_durs)     = screw_waypoints_se3(0.5, 2.0);
+        let immelmann_wps = se3_to_flat_waypoints(&immelmann_se3_wps);
+        let splits_wps    = se3_to_flat_waypoints(&splits_se3_wps);
+        let screw_wps     = se3_to_flat_waypoints(&screw_se3_wps);
+        let fixed_time_trajs: [(&str, &[Waypoint], &[f32]); 3] = [
+            ("immelmann", &immelmann_wps, &immelmann_se3_durs),
+            ("splits",    &splits_wps,    &splits_se3_durs),
+            ("screw",     &screw_wps,     &screw_se3_durs),
+        ];
+        for (mode, label) in [(1_u8, "Richter"), (3_u8, "Paper")] {
+            for (traj_name, wps, durs) in fixed_time_trajs {
+                let mut candidates: Vec<(f32, f32)> = Vec::new();
+                for &kt in &kts {
+                    let planner = if mode == 1 {
+                        match RichterTrajectory::plan_from_times(wps, durs, kt, false, 0) {
+                            Ok(r) => TrajectoryPlanner::Richter(r),
+                            Err(_) => continue,
+                        }
+                    } else {
+                        match RichterTrajectory::plan_from_times(wps, durs, kt, false, 0) {
+                            Ok(r) => TrajectoryPlanner::Paper(r),
+                            Err(_) => continue,
+                        }
+                    };
+                    let util = sampled_util_flat(&planner, FEAS_CF2);
+                    candidates.push((kt, util));
+                }
+                if let Some((kt, util, ok)) = select_kt_candidate(&candidates, target_util_min, target_util_max) {
+                    println!(
+                        "mode {} {:<8} {:<10} -> k_t={:.4}  util={:.3}  {}",
+                        mode,
+                        label,
+                        traj_name,
+                        kt,
+                        util,
+                        if ok { "within target band" } else { "closest feasible fallback" }
+                    );
+                    rows.push(KtScanRow {
+                        mode,
+                        trajectory: traj_name,
+                        recommended_kt: kt,
+                        utilization: util,
+                        feasible_under_target: ok,
+                        status: classify_status(util, target_util_min, target_util_max),
+                    });
+                }
+            }
+        }
+    }
+
     // Mode 2 scan: k_t controls Richter timing that is reused for Se3 position segment times.
     let mode2_specs: [(&str, &[Se3Waypoint], &[Waypoint], bool); 6] = [
         ("circle", &circle_se3_wps, &circle_wps, true),
@@ -1545,7 +1599,7 @@ fn export_planning_reference_only() {
             &traj,
             &screw_se3_wps,
             "screw",
-            "vertical_ascent_body_x_roll_Rx_theta",
+            "vertical_ascent_yaw_spin_Rz_theta",
             2,
             "Se3Trajectory",
             FEAS_CF2,
@@ -3165,12 +3219,19 @@ fn main() {
         }
     }
     {
+        println!("    loop    total_time = {:.2} s", p3_loop.total_time());
+        let mut loop_time_scale_m3 = 1.0_f32;
+        if let Some(rep) = p3_loop.check_feasibility(MASS, MAX_THRUST, MAX_OMEGA) {
+            loop_time_scale_m3 = rep.suggested_time_scale.max(1.0);
+        }
+        loop_time_scale_m3 = loop_time_scale_m3.max(MODE1_LOOP_GEO_TIME_SCALE_MIN);
+        println!("    loop    closed-loop sim time_scale={:.2}", loop_time_scale_m3);
         println!("  [Geo]");
-        let rg = run_flat(&p3_loop, &params, &mut GeometricController::default(), 1.0, "mode3 loop geo");
+        let rg = run_flat_scaled(&p3_loop, &params, &mut GeometricController::default(), 1.0, loop_time_scale_m3, "mode3 loop geo");
         write_closed_loop_csv(3, "loop", "geo", &rg);
         if RUN_INDI_CLOSED_LOOP {
             println!("  [INDI]");
-            let ri = run_flat_indi(&p3_loop, &params, 1.0, "mode3 loop indi");
+            let ri = run_flat_indi_scaled(&p3_loop, &params, 1.0, loop_time_scale_m3, "mode3 loop indi");
             write_closed_loop_csv(3, "loop", "indi", &ri);
         }
     }
