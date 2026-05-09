@@ -45,6 +45,7 @@ impl Vec3 {
 type Mat3 = [[f32; 3]; 3];
 
 #[inline]
+// ToDo: double check quat to rot transformation to find sign flip in y-axis pitch
 fn quat_to_rot(qw: f32, qx: f32, qy: f32, qz: f32) -> Mat3 {
     [
         [qw*qw + qx*qx - qy*qy - qz*qz, 2.0*(qx*qy - qw*qz), 2.0*(qx*qz + qw*qy)],

@@ -31,11 +31,11 @@
 //! ## Controllers simulated
 //!   Geo  — GeometricController::default()          (Lee SE(3) — model-based torque)
 //!   INDI — indi_for_sim()   (incremental inner loop, same outer)
-//!   Each trajectory is run with both; CSVs named <mode>_<traj>_geo.csv / _indi.csv.
+//!   Current closed-loop batch run is Geo-only by default; INDI code paths remain available.
 //!
 //! ## Outputs
 //!   **Closed-loop** (controller + simulator), one folder per mode and trajectory shape:
-//!   `results/planning_sim/closed_loop/mode{N}/{trajectory}/{geo,indi}.csv`
+//!   `results/planning_sim/closed_loop/mode{N}/{trajectory}/{geo}.csv`
 //!   columns: t, ref_x/y/z, sim_x/y/z, ref_roll/pitch/yaw, sim_roll/pitch/yaw,
 //!            ref_thrust, cmd_thrust, cmd_tx/ty/tz, error_3d
 //!
@@ -54,6 +54,8 @@
 
 use multirotor_simulator::prelude::*;
 use multirotor_simulator::planning::se3_traj::{Se3Trajectory, Se3Waypoint};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::f32::consts::PI;
 use std::fs::File;
 use std::io::Write;
@@ -66,6 +68,85 @@ const DT:   f32 = 0.001;  // 1 kHz physics
 const MASS: f32 = 0.027;  // Crazyflie 2.1 [kg]
 const Z:    f32 = 1.0;    // default hover height [m]
 const FIG8_PERIODIC: bool = false;
+const RUN_INDI_CLOSED_LOOP: bool = false;
+const MODE1_LOOP_GEO_TIME_SCALE_MIN: f32 = 2.5;
+
+const KT_CFG_PATH: &str = "config/planning_kt.yaml";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PlanningKtConfig {
+    mode1: BTreeMap<String, f32>,
+    mode2: BTreeMap<String, f32>,
+    mode3: BTreeMap<String, f32>,
+}
+
+impl PlanningKtConfig {
+    fn defaults() -> Self {
+        let mut mode1 = BTreeMap::new();
+        mode1.insert("circle".to_string(), 0.01);
+        mode1.insert("figure8".to_string(), 0.008);
+        mode1.insert("helix".to_string(), 0.008);
+        mode1.insert("corner".to_string(), 0.02);
+        mode1.insert("loop".to_string(), 0.01);
+        mode1.insert("corkscrew".to_string(), 0.01);
+
+        let mut mode2 = BTreeMap::new();
+        mode2.insert("circle".to_string(), 0.01);
+        mode2.insert("figure8".to_string(), 0.008);
+        mode2.insert("helix".to_string(), 0.008);
+        mode2.insert("corner".to_string(), 0.02);
+        mode2.insert("loop".to_string(), 0.01);
+        mode2.insert("corkscrew".to_string(), 0.01);
+
+        let mut mode3 = BTreeMap::new();
+        mode3.insert("circle".to_string(), 0.01);
+        mode3.insert("figure8".to_string(), 0.008);
+        mode3.insert("helix".to_string(), 0.008);
+        mode3.insert("corner".to_string(), 0.02);
+        mode3.insert("loop".to_string(), 0.01);
+        mode3.insert("corkscrew".to_string(), 0.01);
+
+        Self { mode1, mode2, mode3 }
+    }
+
+    fn get(&self, mode: u8, traj: &str, fallback: f32) -> f32 {
+        match mode {
+            1 => self.mode1.get(traj).copied().unwrap_or(fallback),
+            2 => self.mode2.get(traj).copied().unwrap_or(fallback),
+            3 => self.mode3.get(traj).copied().unwrap_or(fallback),
+            _ => fallback,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PlanningKtConfigFile {
+    target_utilization: f32,
+    target_utilization_min: Option<f32>,
+    target_utilization_max: Option<f32>,
+    notes: String,
+    values: PlanningKtConfig,
+    status: Option<BTreeMap<String, String>>,
+}
+
+fn load_planning_kt_config() -> PlanningKtConfig {
+    let defaults = PlanningKtConfig::defaults();
+    match std::fs::read_to_string(KT_CFG_PATH) {
+        Ok(txt) => {
+            match serde_yaml::from_str::<PlanningKtConfigFile>(&txt) {
+                Ok(cfg) => cfg.values,
+                Err(_) => match serde_yaml::from_str::<PlanningKtConfig>(&txt) {
+                    Ok(flat_cfg) => flat_cfg,
+                    Err(e) => {
+                        eprintln!("Warning: could not parse {} ({}). Using defaults.", KT_CFG_PATH, e);
+                        defaults
+                    }
+                },
+            }
+        }
+        Err(_) => defaults,
+    }
+}
 
 // ---------------------------------------------------------------------------
 // INDI-with-feedforward for simulation
@@ -340,6 +421,11 @@ const FEAS_CF2: FeasibilityLimits = FeasibilityLimits {
     max_omega_rad_s: 12.0,
     max_torque_axis_nm: 0.004,
 };
+
+// Limits used by plotting-side actuator proxy checks.
+const PROXY_DTHRUST_DT_MAX_N_S: f32 = 8.0;
+const PROXY_DTAU_DT_MAX_NM_S: f32 = 0.25;
+const PROXY_DOMEGA_DT_MAX_RAD_S2: f32 = 2500.0;
 
 fn reference_dir(mode: u8, traj_folder: &str) -> String {
     format!("results/planning_sim/reference/mode{}/{}", mode, traj_folder)
@@ -617,6 +703,17 @@ fn write_planning_meta_txt(
         "euler_note=ZYX_from_rotation_matrix_gimbal_possible_near_pitch_pm_pi2_prefer_quaternion_columns"
     )
     .unwrap();
+    let p = MultirotorParams::crazyflie();
+    let per_motor_thrust_max_n = lim.max_thrust_n / 4.0;
+    let motor_omega_max_rad_s = (per_motor_thrust_max_n / p.kf.max(1e-12)).sqrt();
+    writeln!(f, "motor_kf={:.8e}", p.kf).unwrap();
+    writeln!(f, "motor_kt={:.8e}", p.kt).unwrap();
+    writeln!(f, "motor_arm_length_m={:.6}", p.arm_length).unwrap();
+    writeln!(f, "per_motor_thrust_max_N={:.6}", per_motor_thrust_max_n).unwrap();
+    writeln!(f, "motor_omega_max_rad_s={:.6}", motor_omega_max_rad_s).unwrap();
+    writeln!(f, "proxy_dthrust_dt_max_N_s={:.6}", PROXY_DTHRUST_DT_MAX_N_S).unwrap();
+    writeln!(f, "proxy_dtau_dt_max_Nm_s={:.6}", PROXY_DTAU_DT_MAX_NM_S).unwrap();
+    writeln!(f, "proxy_domega_dt_max_rad_s2={:.6}", PROXY_DOMEGA_DT_MAX_RAD_S2).unwrap();
 }
 
 fn append_planning_meta_kv(dir: &str, key: &str, value: &str) {
@@ -861,6 +958,332 @@ fn write_richter_feasibility_sidecar(dir: &str, planner: &TrajectoryPlanner) {
     }
 }
 
+#[derive(Debug, Clone)]
+struct KtScanRow {
+    mode: u8,
+    trajectory: &'static str,
+    recommended_kt: f32,
+    utilization: f32,
+    feasible_under_target: bool,
+    status: &'static str,
+}
+
+fn sampled_util_flat(planner: &TrajectoryPlanner, lim: FeasibilityLimits) -> f32 {
+    let total = planner.total_time();
+    let steps = ((total / REF_DT).ceil() as usize).saturating_add(1).max(2);
+    let mut peak_util = 0.0_f32;
+    for k in 0..steps {
+        let t = (k as f32 * REF_DT).min(total);
+        let flat = planner.eval(t);
+        let fr = compute_flatness(&flat, MASS);
+        let ta_u = fr.thrust.abs() / lim.max_thrust_n.max(1e-6);
+        let om = (fr.omega.x * fr.omega.x + fr.omega.y * fr.omega.y + fr.omega.z * fr.omega.z).sqrt();
+        let om_u = om / lim.max_omega_rad_s.max(1e-6);
+        let tau_ax = fr.torque.x.abs().max(fr.torque.y.abs()).max(fr.torque.z.abs());
+        let tau_u = tau_ax / lim.max_torque_axis_nm.max(1e-9);
+        peak_util = peak_util.max(ta_u.max(om_u).max(tau_u));
+    }
+    peak_util
+}
+
+fn sampled_util_se3(traj: &Se3Trajectory, lim: FeasibilityLimits) -> f32 {
+    let total = traj.total_time;
+    let steps = ((total / REF_DT).ceil() as usize).saturating_add(1).max(2);
+    let mut peak_util = 0.0_f32;
+    for k in 0..steps {
+        let t = (k as f32 * REF_DT).min(total);
+        let out = traj.eval(t);
+        let tau = body_torque_diagonal(out.omega, out.alpha);
+        let ta_u = out.thrust.abs() / lim.max_thrust_n.max(1e-6);
+        let om = (out.omega.x * out.omega.x + out.omega.y * out.omega.y + out.omega.z * out.omega.z).sqrt();
+        let om_u = om / lim.max_omega_rad_s.max(1e-6);
+        let tau_ax = tau.x.abs().max(tau.y.abs()).max(tau.z.abs());
+        let tau_u = tau_ax / lim.max_torque_axis_nm.max(1e-9);
+        peak_util = peak_util.max(ta_u.max(om_u).max(tau_u));
+    }
+    peak_util
+}
+
+fn select_kt_candidate(
+    candidates: &[(f32, f32)],
+    target_util_min: f32,
+    target_util_max: f32,
+) -> Option<(f32, f32, bool)> {
+    if candidates.is_empty() {
+        return None;
+    }
+    let mut in_band: Vec<(f32, f32)> = candidates
+        .iter()
+        .copied()
+        .filter(|(_, u)| *u >= target_util_min - 1e-6 && *u <= target_util_max + 1e-6)
+        .collect();
+    if !in_band.is_empty() {
+        // Pick closest to upper edge in-band (most aggressive while respecting band).
+        in_band.sort_by(|a, b| {
+            (target_util_max - a.1)
+                .abs()
+                .partial_cmp(&(target_util_max - b.1).abs())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let best = in_band[0];
+        return Some((best.0, best.1, true));
+    }
+
+    // Fallback priority:
+    // 1) closest below lower bound, then
+    // 2) closest above upper bound.
+    let mut below: Vec<(f32, f32)> = candidates
+        .iter()
+        .copied()
+        .filter(|(_, u)| *u < target_util_min)
+        .collect();
+    below.sort_by(|a, b| {
+        (a.1 - target_util_min)
+            .abs()
+            .partial_cmp(&(b.1 - target_util_min).abs())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    if let Some((k, u)) = below.last().copied() {
+        return Some((k, u, false));
+    }
+    let mut above: Vec<(f32, f32)> = candidates
+        .iter()
+        .copied()
+        .filter(|(_, u)| *u > target_util_max)
+        .collect();
+    above.sort_by(|a, b| {
+        (a.1 - target_util_max)
+            .abs()
+            .partial_cmp(&(b.1 - target_util_max).abs())
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    above.first().copied().map(|(k, u)| (k, u, false))
+}
+
+fn classify_status(util: f32, target_util_min: f32, target_util_max: f32) -> &'static str {
+    if util < target_util_min {
+        "below_band"
+    } else if util > target_util_max {
+        "above_band"
+    } else {
+        "in_band"
+    }
+}
+
+fn parse_arg_f32(args: &[String], key: &str, default: f32) -> f32 {
+    args.iter()
+        .position(|a| a == key)
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| s.parse::<f32>().ok())
+        .unwrap_or(default)
+}
+
+fn parse_arg_usize(args: &[String], key: &str, default: usize) -> usize {
+    args.iter()
+        .position(|a| a == key)
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(default)
+}
+
+fn run_kt_scan(args: &[String]) {
+    let kt_min = parse_arg_f32(args, "--kt-min", 0.01).max(0.0001);
+    let kt_max = parse_arg_f32(args, "--kt-max", 1.0).max(kt_min + 1e-5);
+    let steps = parse_arg_usize(args, "--kt-steps", 25).max(2);
+    let target_util_min = parse_arg_f32(args, "--kt-target-util-min", 0.9).clamp(0.1, 0.99);
+    let target_util_max = parse_arg_f32(args, "--kt-target-util-max", 0.95).clamp(target_util_min, 0.99);
+
+    println!("k_t auto-scan (aggressive but feasible)");
+    println!("====================================");
+    println!(
+        "range: [{:.4}, {:.4}]  steps: {}  target_util_band: [{:.2}, {:.2}]",
+        kt_min, kt_max, steps, target_util_min, target_util_max
+    );
+    println!("utilization = max(|T|/Tmax, |ω|/ωmax, |τ|∞/τmax)\n");
+
+    let mut kts = Vec::with_capacity(steps);
+    for i in 0..steps {
+        let a = i as f32 / (steps as f32 - 1.0);
+        kts.push(kt_min + a * (kt_max - kt_min));
+    }
+
+    let (circle_wps, _, _) = circle_waypoints(0.5, 8);
+    let (fig8_wps, _) = figure8_waypoints();
+    let (helix_wps, helix_durs) = helix_waypoints(0.3, 0.4, 24, 0.375);
+    let (corner_wps, _) = corner_waypoints();
+    let (loop_wps, _,) = loop_waypoints(0.5, 8, 0.5);
+    let (corkscrew_wps, _,) = corkscrew_waypoints(0.3, 0.4, 8);
+    let circle_se3_wps = to_se3_hover_waypoints(&circle_wps);
+    let fig8_se3_wps = to_se3_level_waypoints(&fig8_wps);
+    let helix_se3_wps = to_se3_level_waypoints(&helix_wps);
+    let (corner_se3_wps, _) = corner_waypoints_se3();
+    let (loop_se3_wps, _) = loop_waypoints_se3(0.5, 8, 0.5);
+    let (corkscrew_se3_wps, _) = corkscrew_waypoints_se3(0.3, 0.4, 8);
+
+    let mut rows: Vec<KtScanRow> = Vec::new();
+    let trajs: [(&str, &[Waypoint], bool); 6] = [
+        ("circle", &circle_wps, true),
+        ("figure8", &fig8_wps, FIG8_PERIODIC),
+        ("helix", &helix_wps, false),
+        ("corner", &corner_wps, false),
+        ("loop", &loop_wps, true),
+        ("corkscrew", &corkscrew_wps, false),
+    ];
+
+    // Mode 1 and Mode 3 scans (flat-output modes using k_t directly).
+    for (mode, label) in [(1_u8, "Richter"), (3_u8, "Paper")] {
+        for (traj_name, wps, periodic) in trajs {
+            let mut candidates: Vec<(f32, f32)> = Vec::new();
+            for &kt in &kts {
+                let planner = if mode == 1 {
+                    if traj_name == "helix" {
+                        TrajectoryPlanner::Richter(
+                            RichterTrajectory::plan_from_times(wps, &helix_durs, kt, periodic, 0)
+                                .unwrap_or_else(|_| RichterTrajectory::plan(wps, kt, periodic).unwrap()),
+                        )
+                    } else {
+                        match TrajectoryPlanner::richter(wps, kt, periodic) {
+                            Ok(p) => p,
+                            Err(_) => continue,
+                        }
+                    }
+                } else if traj_name == "helix" {
+                    match RichterTrajectory::plan_from_times(wps, &helix_durs, kt, periodic, 0) {
+                        Ok(r) => TrajectoryPlanner::Paper(r),
+                        Err(_) => continue,
+                    }
+                } else {
+                    match TrajectoryPlanner::paper(wps, kt, periodic) {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    }
+                };
+                let util = sampled_util_flat(&planner, FEAS_CF2);
+                candidates.push((kt, util));
+            }
+            if let Some((kt, util, ok)) = select_kt_candidate(&candidates, target_util_min, target_util_max) {
+                println!(
+                    "mode {} {:<8} {:<10} -> k_t={:.4}  util={:.3}  {}",
+                    mode,
+                    label,
+                    traj_name,
+                    kt,
+                    util,
+                    if ok { "within target band" } else { "closest feasible fallback" }
+                );
+                rows.push(KtScanRow {
+                    mode,
+                    trajectory: traj_name,
+                    recommended_kt: kt,
+                    utilization: util,
+                    feasible_under_target: ok,
+                    status: classify_status(util, target_util_min, target_util_max),
+                });
+            }
+        }
+    }
+
+    // Mode 2 scan: k_t controls Richter timing that is reused for Se3 position segment times.
+    let mode2_specs: [(&str, &[Se3Waypoint], &[Waypoint], bool); 6] = [
+        ("circle", &circle_se3_wps, &circle_wps, true),
+        ("figure8", &fig8_se3_wps, &fig8_wps, FIG8_PERIODIC),
+        ("helix", &helix_se3_wps, &helix_wps, false),
+        ("corner", &corner_se3_wps, &corner_wps, false),
+        ("loop", &loop_se3_wps, &loop_wps, true),
+        ("corkscrew", &corkscrew_se3_wps, &corkscrew_wps, false),
+    ];
+    for (traj_name, se3_wps, wps_flat, periodic) in mode2_specs {
+        let mut candidates: Vec<(f32, f32)> = Vec::new();
+        for &kt in &kts {
+            let base = if traj_name == "helix" {
+                TrajectoryPlanner::Richter(
+                    match RichterTrajectory::plan_from_times(wps_flat, &helix_durs, kt, periodic, 0) {
+                        Ok(r) => r,
+                        Err(_) => continue,
+                    },
+                )
+            } else {
+                match TrajectoryPlanner::richter(wps_flat, kt, periodic) {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                }
+            };
+            let durs = if traj_name == "helix" { helix_durs.clone() } else { base.segment_durations() };
+            let se3 = match Se3Trajectory::plan(se3_wps, &durs, MASS, periodic) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            let util = sampled_util_se3(&se3, FEAS_CF2);
+            candidates.push((kt, util));
+        }
+        if let Some((kt, util, ok)) = select_kt_candidate(&candidates, target_util_min, target_util_max) {
+            println!(
+                "mode 2 Se3      {:<10} -> k_t={:.4}  util={:.3}  {}",
+                traj_name,
+                kt,
+                util,
+                if ok { "within target band" } else { "closest feasible fallback" }
+            );
+            rows.push(KtScanRow {
+                mode: 2,
+                trajectory: traj_name,
+                recommended_kt: kt,
+                utilization: util,
+                feasible_under_target: ok,
+                status: classify_status(util, target_util_min, target_util_max),
+            });
+        }
+    }
+
+    let out = "results/planning_sim/kt_scan_recommendations.csv";
+    ensure_parent(out);
+    let mut f = File::create(out).expect("create kt scan csv");
+    writeln!(f, "mode,trajectory,recommended_kt,utilization,within_target,status").unwrap();
+    for r in &rows {
+        writeln!(
+            f,
+            "{},{},{:.6},{:.6},{},{}",
+            r.mode,
+            r.trajectory,
+            r.recommended_kt,
+            r.utilization,
+            if r.feasible_under_target { 1 } else { 0 },
+            r.status,
+        )
+        .unwrap();
+    }
+    println!("\nSaved recommendations: {}", out);
+    let mut mode1 = BTreeMap::new();
+    let mut mode2 = BTreeMap::new();
+    let mut mode3 = BTreeMap::new();
+    for r in &rows {
+        let dst = match r.mode {
+            1 => &mut mode1,
+            2 => &mut mode2,
+            3 => &mut mode3,
+            _ => continue,
+        };
+        dst.insert(r.trajectory.to_string(), r.recommended_kt);
+    }
+    let mut status_map = BTreeMap::new();
+    for r in &rows {
+        status_map.insert(format!("mode{}_{}", r.mode, r.trajectory), r.status.to_string());
+    }
+    let cfg_file = PlanningKtConfigFile {
+        target_utilization: target_util_max,
+        target_utilization_min: Some(target_util_min),
+        target_utilization_max: Some(target_util_max),
+        notes: "Auto-generated by planning_sim --scan-kt. Edit manually if needed.".to_string(),
+        values: PlanningKtConfig { mode1, mode2, mode3 },
+        status: Some(status_map),
+    };
+    ensure_parent(KT_CFG_PATH);
+    let yml = serde_yaml::to_string(&cfg_file).expect("serialize yaml");
+    std::fs::write(KT_CFG_PATH, yml).expect("write planning kt yaml");
+    println!("Saved k_t config: {}", KT_CFG_PATH);
+    println!("Tip: tune --kt-target-util-min/--kt-target-util-max per platform confidence.");
+}
+
 fn export_planning_reference_only() {
     println!("Planner-only reference export (no simulation)");
     println!("===========================================\n");
@@ -886,27 +1309,62 @@ fn export_planning_reference_only() {
     let (corkscrew_wps, corkscrew_durs) = corkscrew_waypoints(0.3, 0.4, 8);
     let (corkscrew_se3_wps, _) = corkscrew_waypoints_se3(0.3, 0.4, 8);
     let (roll_se3_wps, roll_se3_durs) = roll_waypoints_se3();
+    let (immelmann_se3_wps, immelmann_se3_durs) = immelmann_waypoints_se3(0.5);
+    let (splits_se3_wps, splits_se3_durs) = splits_waypoints_se3(0.5);
+    let (screw_se3_wps, screw_se3_durs) = screw_waypoints_se3(0.5, 2.0);
+    let immelmann_wps = se3_to_flat_waypoints(&immelmann_se3_wps);
+    let splits_wps = se3_to_flat_waypoints(&splits_se3_wps);
+    let screw_wps = se3_to_flat_waypoints(&screw_se3_wps);
 
-    // Build Mode 1 planners first — their segment durations are reused for Mode 2 position
-    // timing, avoiding 4 redundant Clarabel calls that would otherwise push the total
-    // sequential QP count past Clarabel's stability limit (~10-15 calls per process).
-    let p1_circle = TrajectoryPlanner::richter(&circle_wps, 0.01,  true ).expect("m1 circle");
-    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, FIG8_PERIODIC).expect("m1 fig8");
+    let kt_cfg = load_planning_kt_config();
+    // Build Mode 1 / 3 planners from YAML k_t config.
+    let p1_circle = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(1, "circle", 0.01), true).expect("m1 circle");
+    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   kt_cfg.get(1, "figure8", 0.008), FIG8_PERIODIC).expect("m1 fig8");
     let p1_helix  = TrajectoryPlanner::richter_from_times(
-        &helix_wps, &helix_durs, 0.008, false, 0,
+        &helix_wps, &helix_durs, kt_cfg.get(1, "helix", 0.008), false, 0,
     ).expect("m1 helix");
-    let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
-    let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
-    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, 0.01, false).expect("m1 corkscrew");
-    let corkscrew_m2_durs = p1_corkscrew.segment_durations();
+    let p1_corner = TrajectoryPlanner::richter(&corner_wps, kt_cfg.get(1, "corner", 0.02), false).expect("m1 corner");
+    let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   kt_cfg.get(1, "loop", 0.01), true).expect("m1 loop");
+    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, kt_cfg.get(1, "corkscrew", 0.01), false).expect("m1 corkscrew");
+    let p3_circle = TrajectoryPlanner::paper(&circle_wps, kt_cfg.get(3, "circle", 0.01), true).expect("m3 circle");
+    let p3_fig8   = TrajectoryPlanner::paper(&fig8_wps, kt_cfg.get(3, "figure8", 0.008), FIG8_PERIODIC).expect("m3 fig8");
+    let p3_helix  = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&helix_wps, &helix_durs, kt_cfg.get(3, "helix", 0.008), false, 0).expect("m3 helix"),
+    );
+    let p3_corner = TrajectoryPlanner::paper(&corner_wps, kt_cfg.get(3, "corner", 0.02), false).expect("m3 corner");
+    let p3_loop   = TrajectoryPlanner::paper(&loop_wps, kt_cfg.get(3, "loop", 0.01), true).expect("m3 loop");
+    let p3_corkscrew = TrajectoryPlanner::paper(&corkscrew_wps, kt_cfg.get(3, "corkscrew", 0.01), false).expect("m3 corkscrew");
+    let p3_immelmann = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&immelmann_wps, &immelmann_se3_durs, kt_cfg.get(3, "immelmann", 0.02), false, 0)
+            .expect("m3 immelmann"),
+    );
+    let p3_splits = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&splits_wps, &splits_se3_durs, kt_cfg.get(3, "splits", 0.02), false, 0)
+            .expect("m3 splits"),
+    );
+    let p3_screw = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&screw_wps, &screw_se3_durs, kt_cfg.get(3, "screw", 0.02), false, 0)
+            .expect("m3 screw"),
+    );
+
+    // Mode 2 timing can have its own k_t profile in config.
+    let m2_circle_t = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(2, "circle", 0.01), true).expect("m2 timing circle");
+    let m2_fig8_t   = TrajectoryPlanner::richter(&fig8_wps, kt_cfg.get(2, "figure8", 0.008), FIG8_PERIODIC).expect("m2 timing fig8");
+    let m2_helix_t  = TrajectoryPlanner::richter_from_times(
+        &helix_wps, &helix_durs, kt_cfg.get(2, "helix", 0.008), false, 0,
+    ).expect("m2 timing helix");
+    let m2_corner_t = TrajectoryPlanner::richter(&corner_wps, kt_cfg.get(2, "corner", 0.02), false).expect("m2 timing corner");
+    let m2_loop_t   = TrajectoryPlanner::richter(&loop_wps, kt_cfg.get(2, "loop", 0.01), true).expect("m2 timing loop");
+    let m2_corkscrew_t = TrajectoryPlanner::richter(&corkscrew_wps, kt_cfg.get(2, "corkscrew", 0.01), false).expect("m2 timing corkscrew");
+    let corkscrew_m2_durs = m2_corkscrew_t.segment_durations();
 
     // Mode 2 position timing: reuse Mode 1 durations for all trajectories (same waypoint count).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
-    let circle_m2_durs = p1_circle.segment_durations();
-    let fig8_m2_durs   = p1_fig8.segment_durations();
-    let helix_m2_durs  = helix_durs.clone();
-    let corner_m2_durs = p1_corner.segment_durations();
-    let loop_m2_durs   = p1_loop.segment_durations();
+    let circle_m2_durs = m2_circle_t.segment_durations();
+    let fig8_m2_durs   = m2_fig8_t.segment_durations();
+    let helix_m2_durs  = m2_helix_t.segment_durations();
+    let corner_m2_durs = m2_corner_t.segment_durations();
+    let loop_m2_durs   = m2_loop_t.segment_durations();
 
     // Mode 2 (SE(3)) — plan immediately while QP call count is still low (~5+n_m2)
     {
@@ -1112,6 +1570,34 @@ fn export_planning_reference_only() {
     );
     export_flat_reference_bundle(
         &reference_dir(1, "corkscrew"), &p1_corkscrew, &corkscrew_wps, "corkscrew", 1, "RichterTrajectory", false,
+    );
+    // Mode 3 — paper-aligned flatness-coupled planning (no explicit attitude waypoints)
+    export_flat_reference_bundle(
+        &reference_dir(3, "circle"),  &p3_circle, &circle_wps, "circle",  3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "figure8"), &p3_fig8,   &fig8_wps,   "figure8", 3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "helix"),   &p3_helix,  &helix_wps,  "helix",   3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "corner"),  &p3_corner, &corner_wps, "corner",  3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "loop"),    &p3_loop,   &loop_wps,   "loop",    3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "corkscrew"), &p3_corkscrew, &corkscrew_wps, "corkscrew", 3, "PaperRichterTrajectory", false,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "immelmann"), &p3_immelmann, &immelmann_wps, "immelmann", 3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "splits"), &p3_splits, &splits_wps, "splits", 3, "PaperRichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(3, "screw"), &p3_screw, &screw_wps, "screw", 3, "PaperRichterTrajectory", true,
     );
 
     // Mode 0 — SplineTrajectory plans (QP calls come last, after Mode 2 is safely done)
@@ -1940,6 +2426,23 @@ fn to_se3_hover_waypoints(wps: &[Waypoint]) -> Vec<Se3Waypoint> {
     wps.iter().map(|w| Se3Waypoint::levelled(w.pos)).collect()
 }
 
+fn yaw_from_quat(q: Quat) -> f32 {
+    let w = q.w;
+    let x = q.x;
+    let y = q.y;
+    let z = q.z;
+    (2.0 * (w * z + x * y)).atan2(1.0 - 2.0 * (y * y + z * z))
+}
+
+fn se3_to_flat_waypoints(wps: &[Se3Waypoint]) -> Vec<Waypoint> {
+    wps.iter()
+        .map(|w| Waypoint {
+            pos: w.pos,
+            yaw: yaw_from_quat(w.att),
+        })
+        .collect()
+}
+
 /// Vertical loop for Mode 2: explicit attitude through full inversion.
 ///
 /// Uses n=8 waypoints (45° each), matching onboard_loop.rs.
@@ -2115,6 +2618,10 @@ fn screw_waypoints_se3(dz: f32, t_screw: f32) -> (Vec<Se3Waypoint>, Vec<f32>) {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--scan-kt") {
+        run_kt_scan(&args);
+        return;
+    }
     if args.iter().any(|a| a == "--export-reference-only") {
         export_planning_reference_only();
         return;
@@ -2122,7 +2629,7 @@ fn main() {
 
     println!("Planning Mode Simulation");
     println!("========================\n");
-    println!("Modes:       0=Spline(manual durations)  1=Richter(auto k_t)  2=SE3(explicit attitude)");
+    println!("Modes:       0=Spline(manual durations)  1=Richter(auto k_t)  2=SE3(explicit attitude)  3=Paper(flatness-coupled)");
     println!("Trajectories: circle  figure8  helix  corner  loop  flip  corkscrew  roll  immelmann  splits  screw\n");
 
     std::fs::create_dir_all("results/planning_sim").expect("cannot create output dir");
@@ -2150,33 +2657,61 @@ fn main() {
     let (immelmann_se3_wps, immelmann_se3_durs) = immelmann_waypoints_se3(0.5);
     let (splits_se3_wps,    splits_se3_durs)    = splits_waypoints_se3(0.5);
     let (screw_se3_wps,     screw_se3_durs)     = screw_waypoints_se3(0.5, 2.0);
+    let immelmann_wps = se3_to_flat_waypoints(&immelmann_se3_wps);
+    let splits_wps = se3_to_flat_waypoints(&splits_se3_wps);
+    let screw_wps = se3_to_flat_waypoints(&screw_se3_wps);
 
-    // Build Mode 1 planners first — reuse for Mode 2 duration extraction (no redundant QP calls).
-    // k_t = 0.01: v_avg = 0.5 + 1.5·√0.01 = 0.65 m/s
-    //   → circle 0.59 s/seg, helix 0.36 s/seg, loop 0.59 s/seg.
-    // 1/T^7 conditioning: T=0.36 s → 3.5e3 (ok); T=0.15 s (T_MIN) → 2.2e7 (bad).
-    // k_t=0.1 → T_helix≈0.24 s → 1/T^7≈2.2e4 → Clarabel diverges.
-    //
+    let kt_cfg = load_planning_kt_config();
+    // Build planners from YAML k_t config (config/planning_kt.yaml).
     // CF 2.1 limits used for feasibility check:
     const MAX_THRUST: f32 = 0.55;  // N (total, including decks)
     const MAX_OMEGA:  f32 = 12.0;  // rad/s
-    let p1_circle = TrajectoryPlanner::richter(&circle_wps, 0.01,  true ).expect("m1 circle");
-    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   0.008, FIG8_PERIODIC).expect("m1 fig8");
+    let p1_circle = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(1, "circle", 0.01), true).expect("m1 circle");
+    let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   kt_cfg.get(1, "figure8", 0.008), FIG8_PERIODIC).expect("m1 fig8");
     let p1_helix  = TrajectoryPlanner::richter_from_times(
-        &helix_wps, &helix_durs, 0.008, false, 0,
+        &helix_wps, &helix_durs, kt_cfg.get(1, "helix", 0.008), false, 0,
     ).expect("m1 helix");
-    let p1_corner = TrajectoryPlanner::richter(&corner_wps, 0.02, false).expect("m1 corner");
-    let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   0.01,  true ).expect("m1 loop");
-    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, 0.01, false).expect("m1 corkscrew");
-    let corkscrew_m2_durs = p1_corkscrew.segment_durations();
+    let p1_corner = TrajectoryPlanner::richter(&corner_wps, kt_cfg.get(1, "corner", 0.02), false).expect("m1 corner");
+    let p1_loop   = TrajectoryPlanner::richter(&loop_wps,   kt_cfg.get(1, "loop", 0.01), true).expect("m1 loop");
+    let p1_corkscrew = TrajectoryPlanner::richter(&corkscrew_wps, kt_cfg.get(1, "corkscrew", 0.01), false).expect("m1 corkscrew");
+    let p3_circle = TrajectoryPlanner::paper(&circle_wps, kt_cfg.get(3, "circle", 0.01), true).expect("m3 circle");
+    let p3_fig8   = TrajectoryPlanner::paper(&fig8_wps, kt_cfg.get(3, "figure8", 0.008), FIG8_PERIODIC).expect("m3 fig8");
+    let p3_helix  = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&helix_wps, &helix_durs, kt_cfg.get(3, "helix", 0.008), false, 0).expect("m3 helix"),
+    );
+    let p3_corner = TrajectoryPlanner::paper(&corner_wps, kt_cfg.get(3, "corner", 0.02), false).expect("m3 corner");
+    let p3_loop   = TrajectoryPlanner::paper(&loop_wps,   kt_cfg.get(3, "loop", 0.01), true).expect("m3 loop");
+    let p3_corkscrew = TrajectoryPlanner::paper(&corkscrew_wps, kt_cfg.get(3, "corkscrew", 0.01), false).expect("m3 corkscrew");
+    let p3_immelmann = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&immelmann_wps, &immelmann_se3_durs, kt_cfg.get(3, "immelmann", 0.02), false, 0)
+            .expect("m3 immelmann"),
+    );
+    let p3_splits = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&splits_wps, &splits_se3_durs, kt_cfg.get(3, "splits", 0.02), false, 0)
+            .expect("m3 splits"),
+    );
+    let p3_screw = TrajectoryPlanner::Paper(
+        RichterTrajectory::plan_from_times(&screw_wps, &screw_se3_durs, kt_cfg.get(3, "screw", 0.02), false, 0)
+            .expect("m3 screw"),
+    );
+
+    let m2_circle_t = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(2, "circle", 0.01), true).expect("m2 timing circle");
+    let m2_fig8_t   = TrajectoryPlanner::richter(&fig8_wps, kt_cfg.get(2, "figure8", 0.008), FIG8_PERIODIC).expect("m2 timing fig8");
+    let m2_helix_t  = TrajectoryPlanner::richter_from_times(
+        &helix_wps, &helix_durs, kt_cfg.get(2, "helix", 0.008), false, 0,
+    ).expect("m2 timing helix");
+    let m2_corner_t = TrajectoryPlanner::richter(&corner_wps, kt_cfg.get(2, "corner", 0.02), false).expect("m2 timing corner");
+    let m2_loop_t   = TrajectoryPlanner::richter(&loop_wps, kt_cfg.get(2, "loop", 0.01), true).expect("m2 timing loop");
+    let m2_corkscrew_t = TrajectoryPlanner::richter(&corkscrew_wps, kt_cfg.get(2, "corkscrew", 0.01), false).expect("m2 timing corkscrew");
+    let corkscrew_m2_durs = m2_corkscrew_t.segment_durations();
 
     // Mode 2 position segment times: reuse Mode 1 durations for all trajectories (same waypoints).
     // Helix: all modes share helix_durs (uniform 0.375s, 48 segments).
-    let circle_m2_durs = p1_circle.segment_durations();
-    let fig8_m2_durs   = p1_fig8.segment_durations();
-    let helix_m2_durs  = helix_durs.clone();
-    let corner_m2_durs = p1_corner.segment_durations();
-    let loop_m2_durs   = p1_loop.segment_durations();
+    let circle_m2_durs = m2_circle_t.segment_durations();
+    let fig8_m2_durs   = m2_fig8_t.segment_durations();
+    let helix_m2_durs  = m2_helix_t.segment_durations();
+    let corner_m2_durs = m2_corner_t.segment_durations();
+    let loop_m2_durs   = m2_loop_t.segment_durations();
 
     // Build Mode 0 planners (SplineTrajectory QP calls happen AFTER Mode 1 builds).
     let p0_circle = TrajectoryPlanner::spline(&circle_wps, &circle_durs, true ).expect("m0 circle");
@@ -2195,49 +2730,61 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p0_circle, &params, &mut GeometricController::default(), 1.0, "mode0 circle geo");
         write_closed_loop_csv(0, "circle", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_circle, &params, 1.0, "mode0 circle indi");
-        write_closed_loop_csv(0, "circle", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_circle, &params, 1.0, "mode0 circle indi");
+            write_closed_loop_csv(0, "circle", "indi", &ri);
+        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_fig8, &params, &mut GeometricController::default(), 0.5, "mode0 figure8 geo");
         write_closed_loop_csv(0, "figure8", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_fig8, &params, 0.5, "mode0 figure8 indi");
-        write_closed_loop_csv(0, "figure8", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_fig8, &params, 0.5, "mode0 figure8 indi");
+            write_closed_loop_csv(0, "figure8", "indi", &ri);
+        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_helix, &params, &mut GeometricController::default(), 1.0, "mode0 helix geo");
         write_closed_loop_csv(0, "helix", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_helix, &params, 1.0, "mode0 helix indi");
-        write_closed_loop_csv(0, "helix", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_helix, &params, 1.0, "mode0 helix indi");
+            write_closed_loop_csv(0, "helix", "indi", &ri);
+        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_corner, &params, &mut GeometricController::default(), 1.0, "mode0 corner geo");
         write_closed_loop_csv(0, "corner", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_corner, &params, 1.0, "mode0 corner indi");
-        write_closed_loop_csv(0, "corner", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_corner, &params, 1.0, "mode0 corner indi");
+            write_closed_loop_csv(0, "corner", "indi", &ri);
+        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_loop, &params, &mut GeometricController::default(), 1.0, "mode0 loop geo");
         write_closed_loop_csv(0, "loop", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_loop, &params, 1.0, "mode0 loop indi");
-        write_closed_loop_csv(0, "loop", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_loop, &params, 1.0, "mode0 loop indi");
+            write_closed_loop_csv(0, "loop", "indi", &ri);
+        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode0 corkscrew geo");
         write_closed_loop_csv(0, "corkscrew", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p0_corkscrew, &params, 1.0, "mode0 corkscrew indi");
-        write_closed_loop_csv(0, "corkscrew", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p0_corkscrew, &params, 1.0, "mode0 corkscrew indi");
+            write_closed_loop_csv(0, "corkscrew", "indi", &ri);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2251,9 +2798,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_circle, &params, &mut GeometricController::default(), 1.0, "mode1 circle geo");
         write_closed_loop_csv(1, "circle", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p1_circle, &params, 1.0, "mode1 circle indi");
-        write_closed_loop_csv(1, "circle", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p1_circle, &params, 1.0, "mode1 circle indi");
+            write_closed_loop_csv(1, "circle", "indi", &ri);
+        }
     }
     {
         println!("    figure8 total_time = {:.2} s", p1_fig8.total_time());
@@ -2264,9 +2813,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_fig8, &params, &mut GeometricController::default(), 0.5, "mode1 figure8 geo");
         write_closed_loop_csv(1, "figure8", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p1_fig8, &params, 0.5, "mode1 figure8 indi");
-        write_closed_loop_csv(1, "figure8", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p1_fig8, &params, 0.5, "mode1 figure8 indi");
+            write_closed_loop_csv(1, "figure8", "indi", &ri);
+        }
     }
     {
         println!("    helix   total_time = {:.2} s", p1_helix.total_time());
@@ -2280,9 +2831,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat_scaled(&p1_helix, &params, &mut GeometricController::default(), 1.0, helix_time_scale, "mode1 helix geo");
         write_closed_loop_csv(1, "helix", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi_scaled(&p1_helix, &params, 1.0, helix_time_scale, "mode1 helix indi");
-        write_closed_loop_csv(1, "helix", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi_scaled(&p1_helix, &params, 1.0, helix_time_scale, "mode1 helix indi");
+            write_closed_loop_csv(1, "helix", "indi", &ri);
+        }
     }
     {
         println!("    corner  total_time = {:.2} s", p1_corner.total_time());
@@ -2293,22 +2846,37 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_corner, &params, &mut GeometricController::default(), 1.0, "mode1 corner geo");
         write_closed_loop_csv(1, "corner", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p1_corner, &params, 1.0, "mode1 corner indi");
-        write_closed_loop_csv(1, "corner", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p1_corner, &params, 1.0, "mode1 corner indi");
+            write_closed_loop_csv(1, "corner", "indi", &ri);
+        }
     }
     {
         println!("    loop    total_time = {:.2} s", p1_loop.total_time());
+        let mut loop_time_scale = 1.0_f32;
         if let Some(rep) = p1_loop.check_feasibility(MASS, MAX_THRUST, MAX_OMEGA) {
             println!("    loop    feasible={} peak_T={:.3}N peak_ω={:.2}rad/s scale={:.2}",
                 rep.feasible, rep.max_thrust_n, rep.max_omega_rad_s, rep.suggested_time_scale);
+            loop_time_scale = rep.suggested_time_scale.max(1.0);
         }
+        loop_time_scale = loop_time_scale.max(MODE1_LOOP_GEO_TIME_SCALE_MIN);
+        println!("    loop    closed-loop sim time_scale={:.2}", loop_time_scale);
         println!("  [Geo]");
-        let rg = run_flat(&p1_loop, &params, &mut GeometricController::default(), 1.0, "mode1 loop geo");
+        let rg = run_flat_scaled(
+            &p1_loop,
+            &params,
+            &mut GeometricController::default(),
+            1.0,
+            loop_time_scale,
+            "mode1 loop geo",
+        );
         write_closed_loop_csv(1, "loop", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p1_loop, &params, 1.0, "mode1 loop indi");
-        write_closed_loop_csv(1, "loop", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi_scaled(&p1_loop, &params, 1.0, loop_time_scale, "mode1 loop indi");
+            write_closed_loop_csv(1, "loop", "indi", &ri);
+        }
     }
     {
         println!("    corkscrew total_time = {:.2} s", p1_corkscrew.total_time());
@@ -2319,9 +2887,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode1 corkscrew geo");
         write_closed_loop_csv(1, "corkscrew", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_flat_indi(&p1_corkscrew, &params, 1.0, "mode1 corkscrew indi");
-        write_closed_loop_csv(1, "corkscrew", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p1_corkscrew, &params, 1.0, "mode1 corkscrew indi");
+            write_closed_loop_csv(1, "corkscrew", "indi", &ri);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2335,9 +2905,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 circle geo");
         write_closed_loop_csv(2, "circle", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 circle indi");
-        write_closed_loop_csv(2, "circle", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 circle indi");
+            write_closed_loop_csv(2, "circle", "indi", &ri);
+        }
     }
     {
         let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, FIG8_PERIODIC).expect("m2 fig8");
@@ -2347,9 +2919,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 figure8 geo");
         write_closed_loop_csv(2, "figure8", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 figure8 indi");
-        write_closed_loop_csv(2, "figure8", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 figure8 indi");
+            write_closed_loop_csv(2, "figure8", "indi", &ri);
+        }
     }
     {
         let traj =
@@ -2366,9 +2940,11 @@ fn main() {
             "mode2 helix geo",
         );
         write_closed_loop_csv(2, "helix", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi_scaled(&traj, &params, helix_sim_time_scale, "mode2 helix indi");
-        write_closed_loop_csv(2, "helix", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi_scaled(&traj, &params, helix_sim_time_scale, "mode2 helix indi");
+            write_closed_loop_csv(2, "helix", "indi", &ri);
+        }
     }
     {
         let traj = Se3Trajectory::plan(&corner_se3_wps, &corner_m2_durs, MASS, false)
@@ -2379,9 +2955,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corner geo");
         write_closed_loop_csv(2, "corner", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 corner indi");
-        write_closed_loop_csv(2, "corner", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 corner indi");
+            write_closed_loop_csv(2, "corner", "indi", &ri);
+        }
     }
     {
         // Flip — position held, attitude does a full 360° pitch (Option A hover flip)
@@ -2399,9 +2977,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 flip geo");
         write_closed_loop_csv(2, "flip", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 flip indi");
-        write_closed_loop_csv(2, "flip", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 flip indi");
+            write_closed_loop_csv(2, "flip", "indi", &ri);
+        }
     }
     {
         // Loop — vertical circle with explicit attitude through inversion.
@@ -2423,9 +3003,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 loop geo");
         write_closed_loop_csv(2, "loop", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 loop indi");
-        write_closed_loop_csv(2, "loop", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 loop indi");
+            write_closed_loop_csv(2, "loop", "indi", &ri);
+        }
     }
     {
         // Corkscrew: helix + explicit 360° roll per lap (x-axis rotation; zero thrust at 180°)
@@ -2443,9 +3025,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corkscrew geo");
         write_closed_loop_csv(2, "corkscrew", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 corkscrew indi");
-        write_closed_loop_csv(2, "corkscrew", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 corkscrew indi");
+            write_closed_loop_csv(2, "corkscrew", "indi", &ri);
+        }
     }
     {
         // Roll: stationary y-axis inversion (pitch maneuver / backflip, distinct from flip's x-axis)
@@ -2463,9 +3047,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 roll geo");
         write_closed_loop_csv(2, "roll", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 roll indi");
-        write_closed_loop_csv(2, "roll", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 roll indi");
+            write_closed_loop_csv(2, "roll", "indi", &ri);
+        }
     }
 
     {
@@ -2484,9 +3070,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 immelmann geo");
         write_closed_loop_csv(2, "immelmann", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 immelmann indi");
-        write_closed_loop_csv(2, "immelmann", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 immelmann indi");
+            write_closed_loop_csv(2, "immelmann", "indi", &ri);
+        }
     }
     {
         // Split-S — half-roll to inverted + descending half-loop (Mode 2 only)
@@ -2505,9 +3093,11 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 splits geo");
         write_closed_loop_csv(2, "splits", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 splits indi");
-        write_closed_loop_csv(2, "splits", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 splits indi");
+            write_closed_loop_csv(2, "splits", "indi", &ri);
+        }
     }
     {
         // Screw — stationary XY, ascending Z, body x-axis roll (Mode 2 only)
@@ -2525,15 +3115,114 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 screw geo");
         write_closed_loop_csv(2, "screw", "geo", &rg);
-        println!("  [INDI]");
-        let ri = run_se3_indi(&traj, &params, "mode2 screw indi");
-        write_closed_loop_csv(2, "screw", "indi", &ri);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_se3_indi(&traj, &params, "mode2 screw indi");
+            write_closed_loop_csv(2, "screw", "indi", &ri);
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    println!("\n── Mode 3 (PaperRichterTrajectory — flatness-coupled position/time) ────");
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_circle, &params, &mut GeometricController::default(), 1.0, "mode3 circle geo");
+        write_closed_loop_csv(3, "circle", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_circle, &params, 1.0, "mode3 circle indi");
+            write_closed_loop_csv(3, "circle", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_fig8, &params, &mut GeometricController::default(), 0.5, "mode3 figure8 geo");
+        write_closed_loop_csv(3, "figure8", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_fig8, &params, 0.5, "mode3 figure8 indi");
+            write_closed_loop_csv(3, "figure8", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat_scaled(&p3_helix, &params, &mut GeometricController::default(), 1.0, helix_sim_time_scale, "mode3 helix geo");
+        write_closed_loop_csv(3, "helix", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi_scaled(&p3_helix, &params, 1.0, helix_sim_time_scale, "mode3 helix indi");
+            write_closed_loop_csv(3, "helix", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_corner, &params, &mut GeometricController::default(), 1.0, "mode3 corner geo");
+        write_closed_loop_csv(3, "corner", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_corner, &params, 1.0, "mode3 corner indi");
+            write_closed_loop_csv(3, "corner", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_loop, &params, &mut GeometricController::default(), 1.0, "mode3 loop geo");
+        write_closed_loop_csv(3, "loop", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_loop, &params, 1.0, "mode3 loop indi");
+            write_closed_loop_csv(3, "loop", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode3 corkscrew geo");
+        write_closed_loop_csv(3, "corkscrew", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_corkscrew, &params, 1.0, "mode3 corkscrew indi");
+            write_closed_loop_csv(3, "corkscrew", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_immelmann, &params, &mut GeometricController::default(), 1.0, "mode3 immelmann geo");
+        write_closed_loop_csv(3, "immelmann", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_immelmann, &params, 1.0, "mode3 immelmann indi");
+            write_closed_loop_csv(3, "immelmann", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_splits, &params, &mut GeometricController::default(), 1.0, "mode3 splits geo");
+        write_closed_loop_csv(3, "splits", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_splits, &params, 1.0, "mode3 splits indi");
+            write_closed_loop_csv(3, "splits", "indi", &ri);
+        }
+    }
+    {
+        println!("  [Geo]");
+        let rg = run_flat(&p3_screw, &params, &mut GeometricController::default(), 1.0, "mode3 screw geo");
+        write_closed_loop_csv(3, "screw", "geo", &rg);
+        if RUN_INDI_CLOSED_LOOP {
+            println!("  [INDI]");
+            let ri = run_flat_indi(&p3_screw, &params, 1.0, "mode3 screw indi");
+            write_closed_loop_csv(3, "screw", "indi", &ri);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
     println!("\n── Output files ────────────────────────────────────────────────");
-    println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/{{geo,indi}}.csv");
-    println!("  Trajectories: circle, figure8, helix, corner, loop, corkscrew  (+ flip, roll, immelmann, splits, screw for mode 2 only)");
+    if RUN_INDI_CLOSED_LOOP {
+        println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/{{geo,indi}}.csv");
+    } else {
+        println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/geo.csv");
+    }
+    println!("  Trajectories: circle, figure8, helix, corner, loop, corkscrew, immelmann, splits, screw  (+ flip, roll for mode 2 only)");
     println!("\nNext: scripts/plot_planning_all.sh");
     println!("Planner-only reference export: cargo run --release --bin planning_sim -- --export-reference-only");
 }

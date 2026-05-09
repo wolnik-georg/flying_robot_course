@@ -4,6 +4,7 @@
 //! - Mode 0: Minimum-snap 8th-order polynomial spline planner (`spline`) — Mellinger (2012)
 //! - Mode 1: Richter planner with automatic time allocation (`richter`) — Richter et al. (2016)
 //! - Mode 2: SE(3) collocation planner (`se3_traj`) — orientation explicitly prescribed on SO(3)
+//! - Mode 3: Paper-aligned Richter variant (`paper`) — flatness-coupled position/time planning
 //! - Differential flatness for multirotors (`flatness`)
 //! - Frontier-based autonomous exploration (`exploration`)
 //!
@@ -36,10 +37,11 @@
 //! whole binary — nothing else needs to change:
 //!
 //! ```ignore
-//! const PLANNER_MODE: u8 = 1; // 0 = spline, 1 = richter, 2 = se3 (Se3Waypoint + segment durs)
+//! const PLANNER_MODE: u8 = 1; // 0 = spline, 1 = richter, 2 = se3, 3 = paper
 //! let planner = match PLANNER_MODE {
 //!     1 => TrajectoryPlanner::richter(&wps, K_T, false).unwrap(),
 //!     2 => TrajectoryPlanner::se3(&se3_wps, &durs, mass_kg, false).unwrap(),
+//!     3 => TrajectoryPlanner::paper(&wps, K_T, false).unwrap(),
 //!     _ => TrajectoryPlanner::spline(&wps, &DURATIONS, false).unwrap(),
 //! };
 //! ```
@@ -74,6 +76,7 @@ pub use se3_traj::{Se3Trajectory, Se3Waypoint, Se3Output};
 /// | 0 | `Spline` | `durations: &[f32]` | Fixed, hand-tuned timing |
 /// | 1 | `Richter` | `k_t: f32` | Automatic timing, aggressiveness knob |
 /// | 2 | `Se3` | `waypoints: &[Se3Waypoint]` | Flips/rolls, explicit attitude on SO(3) |
+/// | 3 | `Paper` | `k_t: f32` | Paper-aligned flatness-coupled planning |
 #[derive(Debug, Clone)]
 pub enum TrajectoryPlanner {
     /// Mode 0 — Mellinger (2012) minimum-snap, manually specified segment durations.
@@ -83,6 +86,8 @@ pub enum TrajectoryPlanner {
     /// Mode 2 — SE(3) planner: minimum-snap position + SLERP attitude on SO(3).
     /// For flips / rolls where flatness breaks down (thrust through zero).
     Se3(Se3Trajectory),
+    /// Mode 3 — paper-aligned Richter variant with iterative time coupling.
+    Paper(RichterTrajectory),
 }
 
 impl TrajectoryPlanner {
@@ -144,6 +149,18 @@ impl TrajectoryPlanner {
         Se3Trajectory::plan(waypoints, durations, mass, periodic).map(TrajectoryPlanner::Se3)
     }
 
+    /// Build a **Mode 3** planner (paper-aligned Richter variant).
+    ///
+    /// Position and timing are optimized in the flat-output pipeline and attitude is
+    /// expected to be derived from flatness by the consumer/controller.
+    pub fn paper(
+        waypoints: &[Waypoint],
+        k_t: f32,
+        periodic: bool,
+    ) -> Result<Self, String> {
+        RichterTrajectory::plan_paper(waypoints, k_t, periodic).map(TrajectoryPlanner::Paper)
+    }
+
     /// Evaluate flat outputs at time `t` — **identical interface for all modes**.
     ///
     /// `t` is clamped to `[0, total_time()]`.  Call this at your control rate
@@ -158,6 +175,7 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.eval(t),
             TrajectoryPlanner::Richter(r) => r.eval(t),
             TrajectoryPlanner::Se3(s)     => s.eval_flat(t),
+            TrajectoryPlanner::Paper(r)   => r.eval(t),
         }
     }
 
@@ -195,6 +213,7 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.total_time,
             TrajectoryPlanner::Richter(r) => r.total_time,
             TrajectoryPlanner::Se3(s)     => s.total_time,
+            TrajectoryPlanner::Paper(r)   => r.total_time,
         }
     }
 
@@ -208,6 +227,7 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s,
             TrajectoryPlanner::Richter(r) => r.as_spline(),
             TrajectoryPlanner::Se3(s)     => s.as_spline(),
+            TrajectoryPlanner::Paper(r)   => r.as_spline(),
         }
     }
 
@@ -223,13 +243,14 @@ impl TrajectoryPlanner {
         }
     }
 
-    /// Which mode is active.  0 = Spline, 1 = Richter, 2 = Se3.
+    /// Which mode is active.  0 = Spline, 1 = Richter, 2 = Se3, 3 = Paper.
     #[inline]
     pub fn mode(&self) -> u8 {
         match self {
             TrajectoryPlanner::Spline(_)  => 0,
             TrajectoryPlanner::Richter(_) => 1,
             TrajectoryPlanner::Se3(_)     => 2,
+            TrajectoryPlanner::Paper(_)   => 3,
         }
     }
 
@@ -239,6 +260,7 @@ impl TrajectoryPlanner {
             TrajectoryPlanner::Spline(s)  => s.segments.iter().map(|seg| seg.duration).collect(),
             TrajectoryPlanner::Richter(r) => r.segment_times.clone(),
             TrajectoryPlanner::Se3(s)     => s.segment_times.clone(),
+            TrajectoryPlanner::Paper(r)   => r.segment_times.clone(),
         }
     }
 
@@ -273,6 +295,8 @@ impl TrajectoryPlanner {
                 Some(r.check_feasibility(mass_kg, max_thrust_n, max_omega_rad_s)),
             TrajectoryPlanner::Se3(s) =>
                 Some(s.check_feasibility(max_thrust_n, max_omega_rad_s)),
+            TrajectoryPlanner::Paper(r) =>
+                Some(r.check_feasibility(mass_kg, max_thrust_n, max_omega_rad_s)),
             _ => None,
         }
     }

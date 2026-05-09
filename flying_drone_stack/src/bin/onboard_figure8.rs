@@ -8,11 +8,12 @@
 //!   cargo run --release --bin onboard_figure8 -- --speed 1.4 --reps 2
 //!   cargo run --release --bin onboard_figure8 -- --mode 1 --kt 0.008
 //!   cargo run --release --bin onboard_figure8 -- --mode 2 --kt 0.05
+//!   cargo run --release --bin onboard_figure8 -- --mode 3 --kt 0.05
 //!
 //! --speed : trajectory speed multiplier for Mode 0 only (0.5–3.0, default 1.0)
 //!           Ignored for Mode 1/2 — use --kt to control speed there.
 //! --reps  : number of full figure-8 repetitions (default 1)
-//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 (default 0)
+//! --mode  : planning mode 0=Spline 1=Richter 2=Se3 3=Paper (default 0)
 //! --kt    : aggressiveness for timing (Mode 1/2, default 0.008)
 //! --att-poly : 0/1. For Mode >=2, upload/use attitude polynomials in firmware.
 //!              Default 0 (intermediate safety mode: keep planner mode, but let firmware
@@ -77,6 +78,8 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Figure-8 Mode 2 QP failed")
         }
+        3 => TrajectoryPlanner::paper(&wps, k_t, true)
+            .expect("Figure-8 Mode 3 paper QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, false)
             .expect("Figure-8 Mode 0 QP failed"),
     }
@@ -101,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if speed < 0.5 || speed > 3.0 { eprintln!("--speed must be 0.5-3.0"); std::process::exit(1); }
     if n_reps == 0 || n_reps > 20  { eprintln!("--reps must be 1-20");   std::process::exit(1); }
-    if mode > 2                    { eprintln!("--mode must be 0, 1, or 2"); std::process::exit(1); }
+    if mode > 3                    { eprintln!("--mode must be 0, 1, 2, or 3"); std::process::exit(1); }
 
     let planner = build_planner(mode, speed, k_t);
     let spline = planner.as_spline();
@@ -114,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Mode D Figure-8 | planning_mode={} | speed={:.1}x | lap={:.2}s | peak~{:.2}m/s | reps={}",
              mode, speed, traj_total, peak_ms, n_reps);
     println!("  accel ~{:.2}x  jerk ~{:.2}x", speed * speed, speed * speed * speed);
-    if mode >= 2 {
+    if mode >= 2 && mode != 3 {
         if use_att_poly {
             println!("  Mode {}: uploading {} att coefs (att_mode=1)", mode, att_coefs.len());
         } else {
@@ -131,13 +134,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let o = sample_origin(&cf, &sa, &sb, &sc).await?;
 
     upload_trajectory(&cf, &coefs).await?;
-    if mode >= 2 && use_att_poly { upload_att_trajectory(&cf, &att_coefs).await?; }
+    if mode >= 2 && mode != 3 && use_att_poly { upload_att_trajectory(&cf, &att_coefs).await?; }
     cf.param.set("traj.nseg",          n_segs as u8).await?;
     cf.param.set("traj.ox",            o.ox).await?;
     cf.param.set("traj.oy",            o.oy).await?;
     cf.param.set("traj.hz",            HOVER_HEIGHT).await?;
     cf.param.set("traj.dz",            0.0f32).await?;
-    cf.param.set("traj.att_mode",      ((mode >= 2) && use_att_poly) as u8).await?;
+    cf.param.set("traj.att_mode",      ((mode >= 2) && (mode != 3) && use_att_poly) as u8).await?;
     // Hybrid (1): polynomial omega_d feedforward + flatness-derived rd — stable for flat trajectories.
     // Hard (0): full polynomial override — needed for loop/flip where flatness breaks.
     cf.param.set("traj.att_ctrl_mode", 1u8).await?;
@@ -195,7 +198,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("run_speed".to_string(), format!("{speed:.6}")),
         ("run_reps".to_string(), n_reps.to_string()),
         ("run_periodic".to_string(), run_periodic.to_string()),
-        ("run_att_poly".to_string(), (((mode >= 2) && use_att_poly) as u8).to_string()),
+        ("run_att_poly".to_string(), (((mode >= 2) && (mode != 3) && use_att_poly) as u8).to_string()),
         ("run_lap_time_s".to_string(), format!("{traj_total:.6}")),
     ];
     write_csv_with_metadata(&rows, &csv_path, &metadata)?;
