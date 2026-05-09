@@ -1478,7 +1478,9 @@ def compute_planned_attitude(segs, t_elapsed, speed_scale, xy_scale, loop=False)
 
     # ZYX Euler angles
     roll_rad = np.arctan2(R[2, 1], R[2, 2])
-    pitch_rad = np.arcsin(-float(np.clip(R[2, 0], -1.0, 1.0)))
+    # Match Crazyflie log convention: pitch sign is opposite of the raw ZYX extraction
+    # used in the flatness frame derivation.
+    pitch_rad = -np.arcsin(-float(np.clip(R[2, 0], -1.0, 1.0)))
     yaw_rad = np.arctan2(R[1, 0], R[0, 0])
 
     return np.degrees(roll_rad), np.degrees(pitch_rad), np.degrees(yaw_rad)
@@ -1858,10 +1860,11 @@ def plot_helix_analysis(data, csv_path, lap_time=10.5):
         x_B = xb_raw / xb_n if xb_n > 1e-9 else np.array([1., 0., 0.])
         y_B = np.cross(z_B, x_B)
         R = np.column_stack([x_B, y_B, z_B])
-        p_pitch[i] = _math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
+        p_pitch[i] = -_math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
         p_roll[i]  = _math.degrees(_math.atan2(R[2, 1], R[2, 2]))
     p_omega_x = np.gradient(p_roll,  ts)
-    p_omega_y = np.gradient(p_pitch, ts)
+    # Gyro Y in logs is opposite of d(pitch)/dt from this Euler convention.
+    p_omega_y = -np.gradient(p_pitch, ts)
     p_omega_z = np.zeros(len(ts))   # yaw constant
 
     # ── Errors ────────────────────────────────────────────────────────────
@@ -2106,7 +2109,7 @@ def plot_onboard_circle_analysis(data, csv_path, n_reps=1):
         xb_raw = np.cross(yc, f); xb_n = float(np.linalg.norm(xb_raw))
         x_B = xb_raw / xb_n if xb_n > 1e-9 else np.array([1., 0., 0.])
         R = np.column_stack([x_B, np.cross(z_B, x_B), z_B])
-        p_pitch[i] = _math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
+        p_pitch[i] = -_math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
         p_roll[i]  = _math.degrees(_math.atan2(R[2, 1], R[2, 2]))
 
     err_xy  = np.sqrt((xa - xr)**2 + (ya - yr)**2)
@@ -2273,7 +2276,7 @@ def plot_onboard_helix_analysis(data, csv_path, n_reps=1):
         xb_raw = np.cross(yc, f); xb_n = float(np.linalg.norm(xb_raw))
         x_B = xb_raw / xb_n if xb_n > 1e-9 else np.array([1., 0., 0.])
         R = np.column_stack([x_B, np.cross(z_B, x_B), z_B])
-        p_pitch[i] = _math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
+        p_pitch[i] = -_math.degrees(_math.asin(max(-1., min(1., -R[2, 0]))))
         p_roll[i]  = _math.degrees(_math.atan2(R[2, 1], R[2, 2]))
 
     err_xy  = np.sqrt((xa - xr)**2 + (ya - yr)**2)
@@ -2823,7 +2826,8 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
     # Planned angular rates: numerical diff of Euler angles (Euler rates ≈ body omega for small roll/pitch)
     dt = np.gradient(times)
     p_omega_x = np.gradient(planned_att[:, 0], times)   # droll/dt  [deg/s]
-    p_omega_y = np.gradient(planned_att[:, 1], times)   # dpitch/dt [deg/s]
+    # Keep wy sign consistent with logged gyro_y convention.
+    p_omega_y = -np.gradient(planned_att[:, 1], times)  # dpitch/dt [deg/s]
     p_omega_z = np.gradient(planned_att[:, 2], times)   # dyaw/dt   [deg/s]
 
     # Errors — Z uses relative coords (poly4d is relative_position=True)
@@ -3063,7 +3067,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
         [
             ("roll [deg]", data["roll_deg"], p_roll, "tab:blue"),
             ("pitch [deg]", data["pitch_deg"], p_pitch, "tab:orange"),
-            ("yaw [deg]", data["yaw_deg"], p_yaw, "tab:red"),
+            ("yaw [deg]", data["yaw_deg"], p_yaw, "tab:green"),
         ],
         [
             ("vx [m/s]", data["vx"], plan_vel[:, 0], "tab:blue"),
@@ -3073,7 +3077,7 @@ def plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path):
         [
             ("wx [deg/s]", data["gyro_x"], p_omega_x, "tab:blue"),
             ("wy [deg/s]", data["gyro_y"], p_omega_y, "tab:orange"),
-            ("wz [deg/s]", data["gyro_z"], p_omega_z, "tab:red"),
+            ("wz [deg/s]", data["gyro_z"], p_omega_z, "tab:green"),
         ],
     ]
     row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
@@ -3361,8 +3365,24 @@ def main():
 
     # Infer trajectory type from filename
     traj_type = args.type
+    base = os.path.basename(csv_path).lower()
+    forced_onboard = None
+    if "onboard" in base and "circle" in base:
+        forced_onboard = "onboard_circle"
+    elif "onboard" in base and "helix" in base:
+        forced_onboard = "onboard_helix"
+    elif "onboard" in base and ("figure8" in base or "fig8" in base):
+        forced_onboard = "onboard_figure8"
+
+    if forced_onboard and traj_type != forced_onboard:
+        if args.type is not None:
+            print(
+                f"Detected onboard log from filename; overriding --type {traj_type} "
+                f"with {forced_onboard}."
+            )
+        traj_type = forced_onboard
+
     if traj_type is None:
-        base = os.path.basename(csv_path).lower()
         if "fast_circle" in base:                         # before "circle"
             traj_type = "fast_circle"
         elif "fast_flip" in base:                         # before "flip"

@@ -78,7 +78,7 @@ fn build_planner(mode: u8, speed: f32, k_t: f32) -> TrajectoryPlanner {
             TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Figure-8 Mode 2 QP failed")
         }
-        3 => TrajectoryPlanner::paper(&wps, k_t, true)
+        3 => TrajectoryPlanner::paper(&wps, k_t, false)
             .expect("Figure-8 Mode 3 paper QP failed"),
         _ => TrajectoryPlanner::spline(&wps, &durs, false)
             .expect("Figure-8 Mode 0 QP failed"),
