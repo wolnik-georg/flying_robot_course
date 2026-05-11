@@ -264,6 +264,16 @@ impl TrajectoryPlanner {
         }
     }
 
+    /// Richter/Paper aggressiveness knob used to allocate segment times (`k_t`), when applicable.
+    #[inline]
+    pub fn aggressiveness_k_t(&self) -> Option<f32> {
+        match self {
+            TrajectoryPlanner::Richter(r) => Some(r.k_t),
+            TrajectoryPlanner::Paper(r) => Some(r.k_t),
+            _ => None,
+        }
+    }
+
     /// Times **between** segment polynomials at interior junctions only
     /// (excludes `t=0` and `t=total_time`). Empty when there is only one segment.
     pub fn segment_junction_times(&self) -> Vec<f32> {

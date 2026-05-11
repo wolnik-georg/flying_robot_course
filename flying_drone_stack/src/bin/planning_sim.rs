@@ -726,6 +726,56 @@ fn append_planning_meta_kv(dir: &str, key: &str, value: &str) {
     writeln!(f, "{}={}", key, value).unwrap();
 }
 
+/// Append `k_t` (Richter/Paper only), segment durations, and timing metadata for plotting sidecars.
+fn append_flat_timing_meta(dir: &str, planner: &TrajectoryPlanner) {
+    let durs = planner.segment_durations();
+    let n = durs.len();
+    let tt = planner.total_time();
+    let sum_d: f32 = durs.iter().sum();
+    append_planning_meta_kv(dir, "n_segments", &n.to_string());
+    append_planning_meta_kv(dir, "total_time_s", &format!("{:.6}", tt));
+    append_planning_meta_kv(dir, "segment_durations_sum_s", &format!("{:.6}", sum_d));
+    let joined = durs
+        .iter()
+        .map(|d| format!("{:.6}", d))
+        .collect::<Vec<_>>()
+        .join(",");
+    append_planning_meta_kv(dir, "segment_durations_s", &joined);
+    match planner.aggressiveness_k_t() {
+        Some(k) => {
+            append_planning_meta_kv(dir, "k_t", &format!("{:.6}", k));
+            append_planning_meta_kv(dir, "timing_source", "richter_k_t");
+        }
+        None => {
+            let src = if planner.mode() == 0 {
+                "manual_segment_durations"
+            } else {
+                "implicit_segment_times"
+            };
+            append_planning_meta_kv(dir, "timing_source", src);
+        }
+    }
+}
+
+fn append_se3_timing_meta(dir: &str, traj: &Se3Trajectory, position_timing_k_t: Option<f32>) {
+    let durs = &traj.segment_times;
+    let n = durs.len();
+    let tt = traj.total_time;
+    let sum_d: f32 = durs.iter().sum();
+    append_planning_meta_kv(dir, "n_segments", &n.to_string());
+    append_planning_meta_kv(dir, "total_time_s", &format!("{:.6}", tt));
+    append_planning_meta_kv(dir, "segment_durations_sum_s", &format!("{:.6}", sum_d));
+    let joined = durs
+        .iter()
+        .map(|d| format!("{:.6}", d))
+        .collect::<Vec<_>>()
+        .join(",");
+    append_planning_meta_kv(dir, "segment_durations_s", &joined);
+    if let Some(k) = position_timing_k_t {
+        append_planning_meta_kv(dir, "position_segment_timing_k_t", &format!("{:.6}", k));
+    }
+}
+
 fn export_flat_reference_bundle(
     dir: &str,
     planner: &TrajectoryPlanner,
@@ -743,6 +793,7 @@ fn export_flat_reference_bundle(
         &planner.segment_junction_times(),
     );
     write_planning_meta_txt(dir, folder_mode, traj, planner_kind, false, FEAS_CF2);
+    append_flat_timing_meta(dir, planner);
     if richter_feas_report {
         write_richter_feasibility_sidecar(dir, planner);
     }
@@ -915,6 +966,7 @@ fn write_motor_mixing_summary_se3(dir: &str, traj: &Se3Trajectory, params: &Mult
     .unwrap();
 }
 
+// `position_timing_k_t`: when SE(3) position segment times were produced from a Richter plan, store the k_t used (YAML).
 fn export_se3_reference_bundle(
     dir: &str,
     traj: &Se3Trajectory,
@@ -924,6 +976,7 @@ fn export_se3_reference_bundle(
     folder_mode: u8,
     planner_kind: &str,
     lim: FeasibilityLimits,
+    position_timing_k_t: Option<f32>,
 ) {
     std::fs::create_dir_all(dir).expect("mkdir");
     write_se3_reference_csv(&format!("{}/reference.csv", dir), traj);
@@ -934,6 +987,7 @@ fn export_se3_reference_bundle(
     );
     write_planning_meta_txt(dir, folder_mode, traj_name, planner_kind, false, lim);
     append_planning_meta_kv(dir, "se3_position_segment_times_basis", position_segment_times_basis);
+    append_se3_timing_meta(dir, traj, position_timing_k_t);
     write_se3_feasibility_sidecar(dir, traj, lim);
     let params_cf = MultirotorParams::crazyflie();
     write_motor_mixing_summary_se3(dir, traj, &params_cf);
@@ -1012,40 +1066,27 @@ fn select_kt_candidate(
     if candidates.is_empty() {
         return None;
     }
-    let mut in_band: Vec<(f32, f32)> = candidates
+
+    let mut feasible: Vec<(f32, f32)> = candidates
         .iter()
         .copied()
-        .filter(|(_, u)| *u >= target_util_min - 1e-6 && *u <= target_util_max + 1e-6)
+        .filter(|(_, u)| *u <= target_util_max + 1e-6)
         .collect();
-    if !in_band.is_empty() {
-        // Pick closest to upper edge in-band (most aggressive while respecting band).
-        in_band.sort_by(|a, b| {
-            (target_util_max - a.1)
-                .abs()
-                .partial_cmp(&(target_util_max - b.1).abs())
+    if !feasible.is_empty() {
+        // Pick the largest k_t that still respects the utilization limit.
+        // Higher k_t candidates may fail to solve or exceed limits; those should not
+        // erase the best safe value already found.
+        feasible.sort_by(|a, b| {
+            a.0.partial_cmp(&b.0)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let best = in_band[0];
-        return Some((best.0, best.1, true));
+        let best = feasible[feasible.len() - 1];
+        let in_band = best.1 >= target_util_min - 1e-6;
+        return Some((best.0, best.1, in_band));
     }
 
-    // Fallback priority:
-    // 1) closest below lower bound, then
-    // 2) closest above upper bound.
-    let mut below: Vec<(f32, f32)> = candidates
-        .iter()
-        .copied()
-        .filter(|(_, u)| *u < target_util_min)
-        .collect();
-    below.sort_by(|a, b| {
-        (a.1 - target_util_min)
-            .abs()
-            .partial_cmp(&(b.1 - target_util_min).abs())
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    if let Some((k, u)) = below.last().copied() {
-        return Some((k, u, false));
-    }
+    // If every solved candidate is over the limit, keep the least-over-limit
+    // candidate as a diagnostic row instead of dropping the trajectory entirely.
     let mut above: Vec<(f32, f32)> = candidates
         .iter()
         .copied()
@@ -1433,6 +1474,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "circle", 0.01)),
         );
     }
     {
@@ -1446,6 +1488,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "figure8", 0.008)),
         );
     }
     {
@@ -1460,6 +1503,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "helix", 0.008)),
         );
     }
     {
@@ -1474,6 +1518,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "corner", 0.02)),
         );
     }
     {
@@ -1487,6 +1532,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            None,
         );
     }
     {
@@ -1500,6 +1546,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "loop", 0.01)),
         );
     }
     {
@@ -1520,6 +1567,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            Some(kt_cfg.get(2, "corkscrew", 0.01)),
         );
     }
     {
@@ -1540,6 +1588,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            None,
         );
     }
     {
@@ -1561,6 +1610,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            None,
         );
     }
     {
@@ -1582,6 +1632,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            None,
         );
     }
     {
@@ -1603,6 +1654,7 @@ fn export_planning_reference_only() {
             2,
             "Se3Trajectory",
             FEAS_CF2,
+            None,
         );
     }
 
