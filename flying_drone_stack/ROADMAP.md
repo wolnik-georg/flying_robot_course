@@ -1,6 +1,6 @@
 # Flying Drone Stack — Roadmap
 
-> Last updated: 2026-05-01
+> Last updated: 2026-05-09
 > Tests: 264 lib + 195 integration = **459 passing, 0 failures**
 > Build: `cargo build --release` clean
 
@@ -14,7 +14,8 @@
 | Dynamics & simulation | `dynamics/`, `integration/` | SE(3) rigid-body simulator; Euler, RK4, ExpEuler, ExpRK4 |
 | SE(3) geometric controller | `controller/` | Lee et al. 2010; RPYT pipeline; validated in sim + real flights |
 | Min-snap spline planner | `planning/spline.rs`, `flatness.rs` | Degree-8 QP (Clarabel), C3-continuous; differential flatness → thrust/torque/ω/ω̇ |
-| Richter auto-time planner | `planning/richter.rs` | Mode 1 wrapper: same QP + automatic T_i from single `k_t` scalar; pre-flight feasibility check |
+| Richter auto-time planner | `planning/richter.rs` | Modes 1 + 3: same QP + automatic T_i from `k_t`; Mode 1 = 0 redistribution iters, Mode 3 = 8 iters (full paper) |
+| Limits dashboard | `scripts/plot_planning_reference.py` | Per-trajectory actuation feasibility dashboard: motor-mix, sustained violations, battery sag |
 | Frontier exploration FSM | `planning/exploration.rs` | SCAN→NAVIGATE→LAND; bugs fixed Apr 7, awaiting re-flight |
 
 ### State estimation and SLAM

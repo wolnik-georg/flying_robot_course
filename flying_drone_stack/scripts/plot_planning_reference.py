@@ -255,6 +255,35 @@ def _read_feasibility(dir_path: str) -> Optional[str]:
         return None
 
 
+def _timing_meta_footer_lines(meta: Dict[str, str]) -> List[str]:
+    """Human-readable timing / k_t summary for overview footer (from planning_meta.txt)."""
+    lines: List[str] = []
+    ts = meta.get("timing_source")
+    if ts:
+        lines.append(f"timing_source = {ts}")
+    kt = meta.get("k_t")
+    if kt:
+        lines.append(f"k_t = {kt}")
+    pkt = meta.get("position_segment_timing_k_t")
+    if pkt:
+        lines.append(f"position_segment_timing_k_t (mode 2) = {pkt}")
+    nseg = meta.get("n_segments")
+    tt = meta.get("total_time_s")
+    if nseg or tt:
+        lines.append(
+            "segments / duration: "
+            + (f"n={nseg}" if nseg else "n=?")
+            + (f"  total_time_s={tt}" if tt else "")
+        )
+    sd = meta.get("segment_durations_s", "")
+    if sd:
+        if len(sd) > 220:
+            lines.append("segment_durations_s [s] = " + sd[:220] + " …")
+        else:
+            lines.append("segment_durations_s [s] = " + sd)
+    return lines
+
+
 def _parse_meta(dir_path: str) -> Dict[str, str]:
     defaults = {
         "feasibility_max_thrust_N": "0.55",
@@ -1032,13 +1061,22 @@ def _plot_reference_csv(csv_path: str) -> None:
         f"  peak utilization max(|T/Tmax|, |ω/ωmax|, |τ|∞/τmax) = {peak_u:.3f}",
         f"  violation % of samples: thrust={pct_t:.2f}%  omega={pct_w:.2f}%  torque={pct_tau:.2f}%",
         "",
-        "Sidecars:",
-        "  waypoints.csv — QP / SLERP inputs",
-        "  segment_junctions.csv — interior polynomial joins",
-        "  feasibility_se3.txt — sampled |T|,|ω| vs limits (Mode 2)",
-        "",
-        meta.get("euler_note", "")[:80] + "…" if len(meta.get("euler_note", "")) > 80 else meta.get("euler_note", ""),
+        "Timing (also in planning_meta.txt):",
     ]
+    lines.extend(["  " + ln for ln in _timing_meta_footer_lines(meta)])
+    lines.extend(
+        [
+            "",
+            "Sidecars:",
+            "  waypoints.csv — QP / SLERP inputs",
+            "  segment_junctions.csv — interior polynomial joins",
+            "  feasibility_se3.txt — sampled |T|,|ω| vs limits (Mode 2)",
+            "",
+            meta.get("euler_note", "")[:80] + "…"
+            if len(meta.get("euler_note", "")) > 80
+            else meta.get("euler_note", ""),
+        ]
+    )
     if feas_txt:
         lines.extend(["", "feasibility.txt (Richter):", feas_txt[:200]])
     ax.text(0.02, 0.98, "\n".join(lines), va="top", ha="left", fontsize=7, family="monospace", wrap=True)
