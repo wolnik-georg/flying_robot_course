@@ -1,0 +1,369 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+
+\definecolor{frcblue}{RGB}{28,45,68}
+\definecolor{frcaccent}{RGB}{18,118,150}
+\setbeamercolor{structure}{fg=frcblue}
+\setbeamercolor{frametitle}{fg=white,bg=frcblue}
+\setbeamertemplate{headline}{}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=0.62cm,dp=0.22cm,leftskip=0.45cm,rightskip=0.45cm]{frametitle}
+    \usebeamerfont{frametitle}\insertframetitle
+  \end{beamercolorbox}%
+}
+
+\title[Advanced Flying Robots -- INDI Controller]{Advanced Flying Robots -- INDI Controller}
+\subtitle{Current Progress CW4}
+\author{Georg Wolnik}
+\date{Milestone 1: Geometrical Controller \\ Milestone 2: Motion Planning}
+
+\newcommand{\img}[2]{%
+  \begin{center}
+    \includegraphics[width=#1\linewidth,height=0.72\textheight,keepaspectratio]{#2}
+  \end{center}
+}
+
+\newcommand{\twopics}[4]{%
+  \begin{columns}[c,totalwidth=\textwidth]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{#2}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{#4}
+    \end{column}
+  \end{columns}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Current Progress: Two Major Milestones}
+\begin{block}{Milestone 1 --- Geometrical controller working on hardware}
+\begin{itemize}
+  \item Geometrical controller is running reliably enough for Figure-8 flight tests.
+  \item Gain tuning improved tracking quality, reaching approximately \(8\,\mathrm{cm}\) RMSE in the best current Figure-8 result.
+  \item Flight logs and analysis plots provide the main evidence for this milestone.
+\end{itemize}
+\end{block}
+
+\begin{block}{Milestone 2 --- Motion planning pipeline}
+\begin{itemize}
+  \item Four planning modes are implemented and comparable: fixed-time spline, Richter timing, explicit SE(3), and paper-style time redistribution.
+  \item The \(k_t\) scan functionality searches aggressive but feasible timing parameters.
+  \item Reference, limits, state, kinematics, and 3D orientation plots visualize and validate the planned trajectories.
+\end{itemize}
+\end{block}
+\end{frame}
+
+\section{Hardware Progress}
+
+\begin{frame}{Geometric Controller On Hardware: Initial State}
+\framesubtitle{\texttt{figure8\_20260423\_145011.csv}}
+\twopics{Main analysis}{Controls/logs/figure8_20260423_145011_analysis.png}
+        {3D orientation}{Controls/logs/figure8_20260423_145011_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Milestone 1 Evidence: Full Analysis And 3D Trajectory}
+\framesubtitle{\texttt{figure8\_onboard\_m0\_s1-0x\_r1\_20260506\_162613.csv}}
+\twopics{Full analysis}{Controls/logs/figure8_onboard_m0_s1-0x_r1_20260506_162613_analysis.png}
+        {3D trajectory}{Controls/logs/figure8_onboard_m0_s1-0x_r1_20260506_162613_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Milestone 1 Evidence: Kinematics And State Axes}
+\twopics{Kinematics}{Controls/logs/figure8_onboard_m0_s1-0x_r1_20260506_162613_analysis_kinematics.png}
+        {State axes}{Controls/logs/figure8_onboard_m0_s1-0x_r1_20260506_162613_analysis_axes.png}
+\end{frame}
+
+\section{Motion Planning}
+
+\begin{frame}{Milestone 2 Overview: Motion Planning Modes}
+\small
+\begin{tabular}{p{0.08\textwidth}p{0.32\textwidth}p{0.20\textwidth}p{0.22\textwidth}}
+\toprule
+Mode & Core idea & Attitude source & Time scaling \\
+\midrule
+0 & Base spline trajectory & Flatness-derived & Manual / fixed \\
+1 & Richter-like minimum-snap with time allocation & Flatness-derived & \(k_t\)-based \\
+2 & Explicit SE(3): authored attitude + position & Explicit quaternion/SO(3) path & Richter timing + SO(3)/SLERP attitude \\
+3 & Paper-style flat-output planning & Flatness-derived & Iterative time redistribution \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.4cm}
+\begin{block}{Key point}
+The modes are not four unrelated planners. They share a smooth-polynomial trajectory backbone; the important differences are segment timing and attitude generation.
+\end{block}
+\end{frame}
+
+\begin{frame}{Planning Formulation: Polynomial And Snap Cost}
+\begin{block}{Normalized segment polynomial}
+\[
+\hat t=\frac{\tau}{T_i},\qquad \hat t\in[0,1],
+\qquad
+\sigma_i(\hat t)=\sum_{k=0}^{8}c_{i,k}\hat t^k
+\]
+\end{block}
+
+\begin{block}{Physical-time derivative scaling}
+\[
+\frac{d^r\sigma_i}{d\tau^r}
+=
+\frac{1}{T_i^r}
+\frac{d^r\sigma_i}{d\hat t^r}
+\]
+\end{block}
+
+\begin{block}{Per-axis snap cost}
+\[
+J_i
+=
+\frac{1}{T_i^7}
+\int_0^1
+\left(
+\frac{d^4\sigma_i}{d\hat t^4}
+\right)^2
+d\hat t,
+\qquad
+J=\sum_i J_i
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{Planning Formulation: QP Form And Equality Constraints}
+\begin{block}{Current QP form}
+\[
+\min_{\mathbf c}\frac{1}{2}\mathbf c^\top Q\mathbf c+\mathbf q^\top\mathbf c
+\quad\text{s.t.}\quad
+A_{eq}\mathbf c=b_{eq}
+\]
+\small Solved independently for \(x,y,z\) and yaw where applicable; coupling re-enters through flatness and feasibility checks.
+\end{block}
+
+\begin{block}{Waypoint interpolation}
+\[
+\sigma_i(0)=w_i,\qquad \sigma_i(1)=w_{i+1}
+\]
+\end{block}
+
+\begin{block}{Derivative continuity at segment junctions}
+\[
+\frac{1}{T_i^r}\sigma_i^{(r)}(1)
+=
+\frac{1}{T_{i+1}^r}\sigma_{i+1}^{(r)}(0),
+\qquad r=1,\dots,4
+\]
+\end{block}
+\end{frame}
+
+\begin{frame}{Planning Formulation: Boundary Conditions}
+\begin{block}{Non-periodic rest-to-rest endpoint constraints}
+\[
+\frac{d^r\sigma}{d\tau^r}(0)=0,
+\qquad
+\frac{d^r\sigma}{d\tau^r}(T)=0,
+\qquad r=1,\dots,4
+\]
+\end{block}
+
+\begin{block}{Periodic-loop condition}
+\[
+\frac{d^r\sigma_{\mathrm{last}}}{d\tau^r}(T_{\mathrm{last}})
+=
+\frac{d^r\sigma_{\mathrm{first}}}{d\tau^r}(0),
+\qquad r=1,\dots,4
+\]
+\end{block}
+
+\begin{block}{Important limitation}
+The current spline/Richter QP uses equality constraints only. Thrust, body-rate, torque, and motor limits are checked after planning, not enforced as QP inequalities.
+\end{block}
+\end{frame}
+
+\begin{frame}{Planning Formulation: Differential Flatness}
+\begin{block}{Force direction}
+\[
+f=m(a+g e_3),\qquad z_B=\frac{f}{\|f\|}
+\]
+\end{block}
+
+\begin{block}{Attitude from desired yaw}
+\[
+x_C=
+\begin{bmatrix}
+\cos\psi\\
+\sin\psi\\
+0
+\end{bmatrix},
+\qquad
+y_B=\frac{z_B\times x_C}{\|z_B\times x_C\|},
+\qquad
+x_B=y_B\times z_B
+\]
+\[
+R=\begin{bmatrix}x_B & y_B & z_B\end{bmatrix}
+\]
+\end{block}
+
+\small Modes 0/1/3 use this flatness path for attitude, thrust, angular-rate, and feasibility references.
+\end{frame}
+
+\begin{frame}{Planning Validation: Feasibility Is Post-Solve}
+\begin{block}{Core utilization ratios}
+\[
+u_T=\frac{|T|}{T_{\max}},
+\qquad
+u_\omega=\frac{\|\omega\|}{\omega_{\max}},
+\qquad
+u_\tau=\frac{\|\tau\|_\infty}{\tau_{\max}}
+\]
+\[
+u_{\max}=\max(u_T,u_\omega,u_\tau)
+\]
+\end{block}
+
+\begin{itemize}
+  \item The limits dashboard visualizes sampled feasibility after the polynomial trajectory has been solved.
+  \item Additional checks include motor-mixing feasibility, per-motor usage, rate proxies, sustained violation duration, and battery-sag proxy.
+  \item These are model/proxy checks for planning risk, not direct proof of hardware saturation behavior.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Planning Modes: What Changes Between Modes?}
+\small
+\begin{tabular}{p{0.10\textwidth}p{0.25\textwidth}p{0.47\textwidth}}
+\toprule
+Mode & What stands out & Formulation / explanation \\
+\midrule
+0 & Fixed timing baseline & Segment times \(T_s\) are provided directly; the optimizer solves only for polynomial coefficients. \\
+1 & \(k_t\)-based timing & \(v_{avg}=0.5+1.5\sqrt{k_t}\), \quad \(T_i=\max(\|p_{i+1}-p_i\|/v_{avg},0.15)\). \\
+2 & Explicit attitude & Position uses Richter-like timing, but attitude waypoints use \(q(s)=\operatorname{SLERP}(q_i,q_{i+1},s)\). \\
+3 & Time redistribution & Starts from Mode 1 timing and iterates \(T_i^{target}=\max(T_{total}J_i/\sum_jJ_j,T_{\min})\), then \(T_i\leftarrow T_i+0.5(T_i^{target}-T_i)\), with safety clamps on segment time. \\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+\begin{frame}{Timing Selection: Latest Figure-8 \(k_t\) Scan}
+\small
+The scan selected the largest sampled \(k_t\) values that stayed below the configured planning-side utilization limit for the Figure-8 planners shown in the main evidence:
+\[
+\texttt{target\_utilization\_max}=0.99
+\]
+
+\vspace{0.2cm}
+\begin{tabular}{cccc}
+\toprule
+Mode & Figure-8 \(k_t\) & Status & Interpretation \\
+\midrule
+1 & \(0.3107\) & below\_band & Highest safe sampled Richter timing value \\
+3 & \(0.7116\) & below\_band & Highest safe sampled paper-style timing value \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.4cm}
+\footnotesize
+\textbf{Note:} Mode 2 is shown in the appendix with a vertical loop, because explicit attitude planning is most meaningful for inversion-capable manoeuvres.
+\end{frame}
+
+\section{Main Planning Evidence}
+
+\begin{frame}{Main Planning Evidence: Mode 1 Overview}
+\framesubtitle{Minimum-snap with automatic \(k_t\) timing}
+\img{0.86}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/overview.png}
+\end{frame}
+
+\begin{frame}{Main Planning Evidence: Mode 1 Limits And Orientation}
+\twopics{Limits dashboard}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/limits_dashboard.png}
+        {3D trajectory + orientation}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Main Planning Evidence: Mode 1 Kinematics And State Axes}
+\twopics{Kinematics}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/kinematics_axes.png}
+        {State axes}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/state_axes.png}
+\end{frame}
+
+\begin{frame}{Main Planning Evidence: Mode 3 Overview}
+\framesubtitle{Richter-family planner plus iterative time redistribution}
+\img{0.86}{flying_drone_stack/results/planning_sim/reference/mode3/figure8/overview.png}
+\end{frame}
+
+\begin{frame}{Main Planning Evidence: Mode 3 Limits And Orientation}
+\twopics{Limits dashboard}{flying_drone_stack/results/planning_sim/reference/mode3/figure8/limits_dashboard.png}
+        {3D trajectory + orientation}{flying_drone_stack/results/planning_sim/reference/mode3/figure8/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Main Planning Evidence: Mode 3 Kinematics And State Axes}
+\twopics{Kinematics}{flying_drone_stack/results/planning_sim/reference/mode3/figure8/kinematics_axes.png}
+        {State axes}{flying_drone_stack/results/planning_sim/reference/mode3/figure8/state_axes.png}
+\end{frame}
+
+\begin{frame}{Roadmap: Milestones 3 And 4}
+\begin{block}{Milestone 3 --- Motion capture integration}
+\begin{itemize}
+  \item Switch to the mocap system and make it work with our full setup.
+  \item Run the geometrical controller on the drone using mocap-based state feedback.
+  \item Expected result: significantly improved tracking error compared with optical-flow-only state estimation.
+\end{itemize}
+\end{block}
+
+\begin{block}{Milestone 4 --- INDI controller implementation and validation}
+\begin{enumerate}
+  \item Implement / integrate the INDI controller path.
+  \item Validate behavior in simulation first.
+  \item Tune gains, filters, and sensor/noise handling.
+  \item Validate safely on real hardware, starting with simple maneuvers.
+  \item Extend to trajectory tracking experiments and compare against the geometrical controller.
+\end{enumerate}
+\end{block}
+\end{frame}
+
+\appendix
+\section{Appendix}
+
+\begin{frame}{Appendix: Mode 0 Fixed-Time Baseline}
+\framesubtitle{Reference baseline with manually selected segment times}
+\img{0.86}{flying_drone_stack/results/planning_sim/reference/mode0/figure8/overview.png}
+\end{frame}
+
+\begin{frame}{Appendix: Mode 0 Limits And Orientation}
+\twopics{Limits dashboard}{flying_drone_stack/results/planning_sim/reference/mode0/figure8/limits_dashboard.png}
+        {3D trajectory + orientation}{flying_drone_stack/results/planning_sim/reference/mode0/figure8/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Appendix: Mode 0 Kinematics And State Axes}
+\twopics{Kinematics}{flying_drone_stack/results/planning_sim/reference/mode0/figure8/kinematics_axes.png}
+        {State axes}{flying_drone_stack/results/planning_sim/reference/mode0/figure8/state_axes.png}
+\end{frame}
+
+\begin{frame}{Appendix: Mode 2 Vertical Loop Overview}
+\framesubtitle{Explicit SE(3) attitude path for inversion-capable maneuvers}
+\img{0.86}{flying_drone_stack/results/planning_sim/reference/mode2/loop/overview.png}
+\end{frame}
+
+\begin{frame}{Appendix: Mode 2 Vertical Loop Limits And Orientation}
+\twopics{Limits dashboard}{flying_drone_stack/results/planning_sim/reference/mode2/loop/limits_dashboard.png}
+        {3D trajectory + orientation}{flying_drone_stack/results/planning_sim/reference/mode2/loop/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Appendix: Mode 2 Vertical Loop Kinematics And State Axes}
+\twopics{Kinematics}{flying_drone_stack/results/planning_sim/reference/mode2/loop/kinematics_axes.png}
+        {State axes}{flying_drone_stack/results/planning_sim/reference/mode2/loop/state_axes.png}
+\end{frame}
+
+\end{document}
