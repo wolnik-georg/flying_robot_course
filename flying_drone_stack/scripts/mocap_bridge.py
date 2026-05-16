@@ -44,11 +44,12 @@ class MocapBridge(Node):
                 continue
             p = pose.pose.position
             q = pose.pose.orientation
-            # Drop invalid packets (OptiTrack sends NaN position when marker lost)
             if math.isnan(p.x) or math.isnan(q.x):
+                print(f"[mocap] NaN — markers lost, dropping")
                 return
             data = struct.pack("<7f", p.x, p.y, p.z, q.x, q.y, q.z, q.w)
             sock.sendto(data, (UDP_HOST, UDP_PORT))
+            print(f"[mocap] sent pos=({p.x:+.3f}, {p.y:+.3f}, {p.z:+.3f}) to {UDP_HOST}:{UDP_PORT}")
             return  # only one entry per name
 
 def main():
