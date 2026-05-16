@@ -27,6 +27,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::time::{Duration, Instant};
+use tokio::net::UdpSocket;
+use tokio::sync::mpsc;
 use tokio::time::sleep;
 
 use crate::prelude::SplineTrajectory;
@@ -144,6 +146,48 @@ pub fn write_csv_with_metadata(
             r.time_s, r.x, r.y, r.z, r.vx, r.vy, r.vz,
             r.roll, r.pitch, r.yaw, r.thrust, r.vbat,
             r.gyro_x, r.gyro_y, r.gyro_z, r.acc_x, r.acc_y, r.acc_z)?;
+    }
+    Ok(())
+}
+
+// ── Mocap UDP bridge ───────────────────────────────────────────────────────
+
+pub const MOCAP_UDP_PORT: u16 = 9872;
+
+/// Receives decoded mocap poses from the background UDP task.
+pub struct MocapRx(mpsc::Receiver<([f32; 3], [f32; 4])>);
+
+/// Spawn a background task that reads UDP pose packets from `mocap_bridge.py`
+/// and queues them. Call `forward_mocap` in your flight loop to drain the queue
+/// and send each pose to the CF EKF.
+pub fn start_mocap_udp_task() -> MocapRx {
+    let (tx, rx) = mpsc::channel(64);
+    tokio::spawn(async move {
+        let sock = UdpSocket::bind(format!("127.0.0.1:{MOCAP_UDP_PORT}"))
+            .await
+            .expect("mocap UDP bind failed — is port 9872 free?");
+        println!("[mocap] Listening on UDP port {MOCAP_UDP_PORT}");
+        let mut buf = [0u8; 28]; // 7 × f32
+        loop {
+            if sock.recv(&mut buf).await.is_ok() {
+                let f = |i: usize| f32::from_le_bytes(buf[i*4..i*4+4].try_into().unwrap());
+                let pos  = [f(0), f(1), f(2)];
+                let quat = [f(3), f(4), f(5), f(6)];
+                let _ = tx.try_send((pos, quat)); // drop if queue full (never blocks)
+            }
+        }
+    });
+    MocapRx(rx)
+}
+
+/// Drain all queued mocap poses and send each one to the CF EKF.
+/// Call this once per iteration of your flight loop.
+pub async fn forward_mocap(
+    rx: &mut MocapRx,
+    cf: &Crazyflie,
+) -> Result<(), Box<dyn std::error::Error>> {
+    while let Ok((pos, quat)) = rx.0.try_recv() {
+        cf.localization.external_pose.send_external_pose(pos, quat).await?;
     }
     Ok(())
 }

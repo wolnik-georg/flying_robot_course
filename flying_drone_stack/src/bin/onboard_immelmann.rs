@@ -103,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let link_ctx = LinkContext::new();
     let cf = connect_drone(&link_ctx).await?;
+    let mut mocap = start_mocap_udp_task();
     verify_firmware(&cf).await?;
 
     let (sa, sb, sc) = setup_log_blocks(&cf).await?;
@@ -138,6 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while Instant::now() < t0 + traj_end {
         let t = (Instant::now() - t0).as_secs_f32();
+        forward_mocap(&mut mocap, &cf).await?;
         cf.commander.setpoint_full_state(
             o.ox, o.oy, HOVER_HEIGHT, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             o.qw0, 0.0, 0.0, o.qz0, 0.0, 0.0, 0.0,
