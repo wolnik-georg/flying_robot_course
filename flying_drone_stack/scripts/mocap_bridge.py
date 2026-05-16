@@ -21,6 +21,7 @@ import socket
 import math
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from motion_capture_tracking_interfaces.msg import NamedPoseArray
 
 DRONE_NAME = "cf231"
@@ -32,7 +33,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 class MocapBridge(Node):
     def __init__(self):
         super().__init__("mocap_bridge")
-        self.create_subscription(NamedPoseArray, "/poses", self._cb, 10)
+        self.create_subscription(NamedPoseArray, "/poses", self._cb, qos_profile_sensor_data)
         self.get_logger().info(
             f"Bridging /poses[{DRONE_NAME}] → UDP {UDP_HOST}:{UDP_PORT}"
         )
