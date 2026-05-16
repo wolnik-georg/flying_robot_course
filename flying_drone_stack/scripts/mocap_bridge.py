@@ -44,12 +44,17 @@ class MocapBridge(Node):
                 continue
             p = pose.pose.position
             q = pose.pose.orientation
-            if math.isnan(p.x) or math.isnan(q.x):
-                print(f"[mocap] NaN — markers lost, dropping")
+            if math.isnan(p.x):
+                print("[mocap] NaN position — markers lost, dropping")
                 return
-            data = struct.pack("<7f", p.x, p.y, p.z, q.x, q.y, q.z, q.w)
+            if math.isnan(q.x):
+                # orientation not available — send identity quaternion with position
+                data = struct.pack("<7f", p.x, p.y, p.z, 0.0, 0.0, 0.0, 1.0)
+                print(f"[mocap] sent pos=({p.x:+.3f}, {p.y:+.3f}, {p.z:+.3f}) quat=identity (no orientation)")
+            else:
+                data = struct.pack("<7f", p.x, p.y, p.z, q.x, q.y, q.z, q.w)
+                print(f"[mocap] sent pos=({p.x:+.3f}, {p.y:+.3f}, {p.z:+.3f}) quat=({q.x:+.3f}, {q.y:+.3f}, {q.z:+.3f}, {q.w:+.3f})")
             sock.sendto(data, (UDP_HOST, UDP_PORT))
-            print(f"[mocap] sent pos=({p.x:+.3f}, {p.y:+.3f}, {p.z:+.3f}) to {UDP_HOST}:{UDP_PORT}")
             return  # only one entry per name
 
 def main():
