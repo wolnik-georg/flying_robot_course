@@ -288,22 +288,95 @@ const JZZ: f32 = 29.261652e-6;
 // VERDICT: Official position loop bandwidth is only 2.1× the figure-8 frequency (rule of
 // thumb: need ≥5×).  Our KP=28 gives 5.5×.  Prediction: official RMSE ≈ 18–22 cm.
 // KI_P set to 0.0 to match official exactly; change to 0.05 to add our position integral.
+// OFFICIAL block — INACTIVE
 // const KP_X: f32 = 7.0;    const KP_Y: f32 = 7.0;    const KP_Z: f32 = 7.0;
 // const KV_X: f32 = 4.0;    const KV_Y: f32 = 4.0;    const KV_Z: f32 = 4.0;
 // const KI_P: f32 = 0.0;    const KI_LIMIT: f32 = 2.0;
 // const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
 // const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
-// const KI_ATT: f32 = 0.03; // attitude integral — active only in this block
+// const KI_ATT: f32 = 0.03;
 
-// best baseline currently active
+// ★ BEST OPTICAL FLOW BASELINE (Block N equivalent) — DO NOT MODIFY ★
+// Best result with optical flow + traj.mode=1 (Rust upload): smooth figure-8,
+// XY RMSE ~12–12.5 cm, gyro cleaner than K, roll max ~16–18°.
+// KP=28/KV=6 gave zeta≈1.35, tau_dom=92ms. Reactivate for optical flow sessions.
+// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOCAP GAIN BLOCKS — tuned with OptiTrack / CS2 / traj.mode=0
+// Key difference vs optical flow: EKF derives velocity by differentiating accurate
+// mocap positions → KV must be significantly lower to avoid amplifying that noise.
+// Strategy: keep KP high (positions are accurate), drop KV, attitude gains from Block N.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── MOCAP BLOCK O — starting point: high KP, low KV ─────────────────────────
+// Hypothesis: KP=28 is fine (accurate mocap positions), KV=3 avoids noise amplification.
+// KP_Z/KV_Z also reduced. Attitude from Block N (proven stable with optical flow).
+// ACTIVE — first mocap tuning attempt.
+// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 7.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ── MOCAP BLOCK P — if O wobbles: reduce KP to match lower KV ───────────────
+// Reduce KP to keep zeta reasonable. Target: zeta ≈ 1.0 for KP=16, KV=2.83.
+// Uncomment and comment out O if Block O still oscillates.
+// const KP_X: f32 = 16.0;   const KP_Y: f32 = 16.0;   const KP_Z: f32 = 20.0;
+// const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 5.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ── MOCAP BLOCK Q — if O is stable but tracks poorly: raise KP ──────────────
+// If O is smooth but too sluggish (large XY error on figure-8), try KP=36, KV=4.
+// const KP_X: f32 = 36.0;   const KP_Y: f32 = 36.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 4.0;    const KV_Y: f32 = 4.0;    const KV_Z: f32 = 7.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ── MOCAP BLOCK R — cut KV further: KV=2 ────────────────────────────────────
+// O (KV=3) still wobbly → push KV even lower. KP stays high, attitude unchanged.
+// If this fixes wobble: R is the new mocap position baseline, tune KP from here.
+// If still wobbly: problem is attitude gains, not position — try Block S.
+// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ── MOCAP BLOCK S — ★ BEST MOCAP RESULT SO FAR (2026-05-16) ★ ── ACTIVE ─────
+// KV=2 + mellinger attitude gains → slightly better than R and O.
+// Key finding: attitude gains KR=0.010 were contributing to wobble with mocap.
+// KR=0.007, KW=0.00115 (mellinger defaults) proven stable on this exact setup.
+// Position tracking likely still sluggish (KP=28, KV=2) — improve with Block T.
 const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-const KV_X: f32 = 6.0;    const KV_Y: f32 = 6.0;    const KV_Z: f32 = 14.0;
-const KI_P: f32 = 0.05;
-const KI_LIMIT: f32 = 2.0;
+const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
+const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+const KI_ATT: f32 = 0.0;
 
-const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
-const KI_ATT: f32 = 0.0;  // 0.0 = off (compiler eliminates term); set 0.03 in OFFICIAL block
+// ── MOCAP BLOCK T — next session: push KP up, keep S attitude ───────────────
+// S attitude gains are the mocap baseline. Now improve position tracking.
+// Raise KP to 36, bring KV up slightly to 3 (ratio KP/KV²=4 → near-critical).
+// If stable and tighter tracking: this becomes the new mocap baseline.
+// const KP_X: f32 = 36.0;   const KP_Y: f32 = 36.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 6.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+// const KI_ATT: f32 = 0.0;
 
 // ── INDI-specific attitude gains (Mode 1 & 2 only) ──────────────────────────
 // KW_INDI > KR_INDI required for 3rd-order Routh stability of the integrating τ_prev law.
