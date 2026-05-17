@@ -344,28 +344,26 @@ const JZZ: f32 = 29.261652e-6;
 // const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 // const KI_ATT: f32 = 0.0;
 
-// ── MOCAP BLOCK R — cut KV further: KV=2 ────────────────────────────────────
+// ── MOCAP BLOCK R — cut KV further: KV=2 ── ACTIVE ──────────────────────────
 // O (KV=3) still wobbly → push KV even lower. KP stays high, attitude unchanged.
-// If this fixes wobble: R is the new mocap position baseline, tune KP from here.
-// If still wobbly: problem is attitude gains, not position — try Block S.
-// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-// const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
-// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
-// const KI_ATT: f32 = 0.0;
+const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
+const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+const KI_ATT: f32 = 0.0;
 
-// ── MOCAP BLOCK S — ★ BEST MOCAP RESULT SO FAR (2026-05-16) ★ ── ACTIVE ─────
+// ── MOCAP BLOCK S — ★ BEST MOCAP RESULT SO FAR (2026-05-16) ★ ───────────────
 // KV=2 + mellinger attitude gains → slightly better than R and O.
 // Key finding: attitude gains KR=0.010 were contributing to wobble with mocap.
 // KR=0.007, KW=0.00115 (mellinger defaults) proven stable on this exact setup.
 // Position tracking likely still sluggish (KP=28, KV=2) — improve with Block T.
-const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
-const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
-const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
-const KI_ATT: f32 = 0.0;
+// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.008;
+// const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
+// const KI_ATT: f32 = 0.0;
 
 // ── MOCAP BLOCK T — next session: push KP up, keep S attitude ───────────────
 // S attitude gains are the mocap baseline. Now improve position tracking.
