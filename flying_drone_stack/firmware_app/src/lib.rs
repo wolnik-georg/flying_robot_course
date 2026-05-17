@@ -296,7 +296,7 @@ const JZZ: f32 = 29.261652e-6;
 // const KW_X: f32 = 0.00115;const KW_Y: f32 = 0.00115;const KW_Z: f32 = 0.002;
 // const KI_ATT: f32 = 0.03;
 
-// ★ BEST OPTICAL FLOW BASELINE (Block N equivalent) — DO NOT MODIFY ★
+// ★ BEST OPTICAL FLOW BASELINE (Block N equivalent) — DO NOT MODIFY ★ INACTIVE ★
 // Best result with optical flow + traj.mode=1 (Rust upload): smooth figure-8,
 // XY RMSE ~12–12.5 cm, gyro cleaner than K, roll max ~16–18°.
 // KP=28/KV=6 gave zeta≈1.35, tau_dom=92ms. Reactivate for optical flow sessions.
@@ -317,13 +317,13 @@ const JZZ: f32 = 29.261652e-6;
 // ── MOCAP BLOCK O — starting point: high KP, low KV ─────────────────────────
 // Hypothesis: KP=28 is fine (accurate mocap positions), KV=3 avoids noise amplification.
 // KP_Z/KV_Z also reduced. Attitude from Block N (proven stable with optical flow).
-// ACTIVE — first mocap tuning attempt.
-// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-// const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 7.0;
-// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
-// const KI_ATT: f32 = 0.0;
+// ★ ACTIVE ★
+const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 7.0;
+const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+const KI_ATT: f32 = 0.0;
 
 // ── MOCAP BLOCK P — if O wobbles: reduce KP to match lower KV ───────────────
 // Reduce KP to keep zeta reasonable. Target: zeta ≈ 1.0 for KP=16, KV=2.83.
@@ -344,14 +344,14 @@ const JZZ: f32 = 29.261652e-6;
 // const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 // const KI_ATT: f32 = 0.0;
 
-// ── MOCAP BLOCK R — cut KV further: KV=2 ── ACTIVE ──────────────────────────
+// ── MOCAP BLOCK R — cut KV further: KV=2 ────────────────────────────────────
 // O (KV=3) still wobbly → push KV even lower. KP stays high, attitude unchanged.
-const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
-const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
-const KI_ATT: f32 = 0.0;
+// const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
+// const KV_X: f32 = 2.0;    const KV_Y: f32 = 2.0;    const KV_Z: f32 = 5.0;
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
 
 // ── MOCAP BLOCK S — ★ BEST MOCAP RESULT SO FAR (2026-05-16) ★ ───────────────
 // KV=2 + mellinger attitude gains → slightly better than R and O.
