@@ -41,8 +41,6 @@ pub mod prelude {
         GeometricController,
         TrajectoryReference,
         ControlOutput,
-        IndiController,
-        Butterworth2,
     };
     pub use crate::trajectory::{
         Trajectory,
