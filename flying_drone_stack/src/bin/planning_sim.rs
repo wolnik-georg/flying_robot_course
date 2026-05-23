@@ -30,8 +30,6 @@
 //!
 //! ## Controllers simulated
 //!   Geo  — GeometricController::default()          (Lee SE(3) — model-based torque)
-//!   INDI — indi_for_sim()   (incremental inner loop, same outer)
-//!   Current closed-loop batch run is Geo-only by default; INDI code paths remain available.
 //!
 //! ## Outputs
 //!   **Closed-loop** (controller + simulator), one folder per mode and trajectory shape:
@@ -68,7 +66,6 @@ const DT:   f32 = 0.001;  // 1 kHz physics
 const MASS: f32 = 0.027;  // Crazyflie 2.1 [kg]
 const Z:    f32 = 1.0;    // default hover height [m]
 const FIG8_PERIODIC: bool = false;
-const RUN_INDI_CLOSED_LOOP: bool = false;
 const MODE1_LOOP_GEO_TIME_SCALE_MIN: f32 = 2.5;
 
 const KT_CFG_PATH: &str = "config/planning_kt.yaml";
@@ -146,202 +143,6 @@ fn load_planning_kt_config() -> PlanningKtConfig {
         }
         Err(_) => defaults,
     }
-}
-
-// ---------------------------------------------------------------------------
-// INDI-with-feedforward for simulation
-//
-// IndiController::crazyflie_default() diverges on trajectory tracking because
-// it has no angular-acceleration feedforward (alpha_d = 0).  Without feedforward,
-// du = (alpha_ref - alpha_meas) / g1 is non-zero at every steady-state point
-// where the reference attitude is changing, so tau_prev integrates without bound.
-//
-// Fix: include alpha_d from compute_flatness (FlatnessResult.omega_dot) in alpha_ref:
-//   alpha_ref = alpha_d  -  KR·eR  -  KW·eω
-// This gives du≈0 at perfect tracking and matches the geometric controller in gains.
-//
-// Gains:  KR = kr_geo / J  [rad/s²/rad],  KW = 2·KR  (Routh: KW > KR)
-// Outer loop: identical to geometric (position error → thrust + Rd).
-// ---------------------------------------------------------------------------
-
-struct IndiSimState {
-    tau_prev:    Vec3,
-    omega_prev:  Vec3, // previous omega for finite-difference alpha_meas (no filter — sim has no noise)
-    alpha_filt:  Vec3, // low-pass filtered angular acceleration estimate
-    initialized: bool,
-}
-
-impl IndiSimState {
-    fn new() -> Self {
-        Self {
-            tau_prev:   Vec3::zero(),
-            omega_prev: Vec3::zero(),
-            alpha_filt: Vec3::zero(),
-            initialized: false,
-        }
-    }
-
-    /// Compute INDI torque with angular-acceleration feedforward.
-    ///
-    /// # Arguments
-    /// - `state`    : current multirotor state
-    /// - `rd`       : desired rotation matrix from outer loop (used for attitude error eR)
-    /// - `rot_ff`   : desired rotation matrix from flatness/Se3 (frame in which omega_d/alpha_d live)
-    ///                Pass the same value as `rd` when they are the same (e.g. Se3 mode).
-    /// - `omega_d`  : reference body angular velocity in `rot_ff` body frame
-    /// - `alpha_d`  : reference body angular acceleration in `rot_ff` body frame
-    /// - `params`   : model parameters
-    fn compute(
-        &mut self,
-        state:   &MultirotorState,
-        rd:      &[[f32; 3]; 3],
-        rot_ff:  &[[f32; 3]; 3],   // frame in which omega_d / alpha_d are expressed
-        omega_d: Vec3,
-        alpha_d: Vec3,
-        thrust:  f32,
-        params:  &MultirotorParams,
-    ) -> Vec3 {
-        let jxx = params.inertia[0][0];
-        let jyy = params.inertia[1][1];
-        let jzz = params.inertia[2][2];
-
-        // Gains equivalent to GeometricController::default() in [rad/s²] space:
-        //   kr_indi = kr_geo / J  →  J * kr_indi = kr_geo  (same torque per angle)
-        //   kw_indi = kw_geo / J  →  J * kw_indi = kw_geo  (same damping per rate)
-        // ζ = kw_indi / (2√kr_indi) = kw_geo / (2*√(kr_geo*J)) ≈ 1.69 (overdamped, stable)
-        let kr = Vec3::new(0.007  / jxx, 0.007  / jyy, 0.008  / jzz); // ≈ 422 rad/s²/rad
-        let kw = Vec3::new(0.00115/ jxx, 0.00115/ jyy, 0.002  / jzz); // ≈ 69.4 rad/s²/(rad/s)
-
-        let omega  = state.angular_velocity;
-        let r = state.orientation.to_rotation_matrix();
-
-        // eR = ½ vee(Rd^T R − R^T Rd)
-        let mut rd_t_r = [[0.0_f32; 3]; 3];
-        let mut r_t_rd = [[0.0_f32; 3]; 3];
-        for i in 0..3 { for j in 0..3 { for k in 0..3 {
-            rd_t_r[i][j] += rd[k][i] * r[k][j];
-            r_t_rd[i][j] += r[k][i] * rd[k][j];
-        }}}
-        let er = Vec3::new(
-            0.5 * (rd_t_r[2][1] - r_t_rd[2][1]),
-            0.5 * (rd_t_r[0][2] - r_t_rd[0][2]),
-            0.5 * (rd_t_r[1][0] - r_t_rd[1][0]),
-        );
-
-        // omega_d and alpha_d are expressed in the rot_ff body frame (flatness/Se3 desired frame).
-        // Transform to actual body frame R:  v_R = R^T * rot_ff * v_ff
-        // Note: rot_ff ≠ rd when outer-loop position errors cause rd to diverge from flatness rot.
-        let mut omega_d_r = Vec3::zero();
-        let mut alpha_d_r = Vec3::zero();
-        for i in 0..3 {
-            let mut wd_world_i = 0.0_f32;
-            let mut ad_world_i = 0.0_f32;
-            for j in 0..3 {
-                wd_world_i += rot_ff[i][j] * [omega_d.x, omega_d.y, omega_d.z][j];
-                ad_world_i += rot_ff[i][j] * [alpha_d.x, alpha_d.y, alpha_d.z][j];
-            }
-            // project into actual body frame R: v_R = R^T v_W, i.e. v_R[j] = Σ_i R[i][j] v_W[i]
-            omega_d_r.x += r[i][0] * wd_world_i;
-            omega_d_r.y += r[i][1] * wd_world_i;
-            omega_d_r.z += r[i][2] * wd_world_i;
-            alpha_d_r.x += r[i][0] * ad_world_i;
-            alpha_d_r.y += r[i][1] * ad_world_i;
-            alpha_d_r.z += r[i][2] * ad_world_i;
-        }
-        // eomega in actual body frame R (matches geometric controller)
-        let eomega = omega - omega_d_r;
-
-        // Seed on first call — initialize tau_prev to geometric baseline
-        if !self.initialized {
-            self.omega_prev = omega;
-            self.alpha_filt = Vec3::zero();
-            self.initialized = true;
-            let tau0 = Vec3::new(
-                -0.007 * er.x - 0.00115 * eomega.x,
-                -0.007 * er.y - 0.00115 * eomega.y,
-                -0.008 * er.z - 0.002   * eomega.z,
-            );
-            self.tau_prev = tau0;
-            return tau0;
-        }
-
-        // Finite-difference for alpha_meas + light LPF to reduce numerical chatter
-        // from integration/discretization (helps incremental loop robustness).
-        let alpha_raw = (omega - self.omega_prev) * (1.0 / DT);
-        const ALPHA_LPF_BETA: f32 = 0.2;
-        self.alpha_filt = self.alpha_filt + (alpha_raw - self.alpha_filt) * ALPHA_LPF_BETA;
-        let alpha_meas = self.alpha_filt;
-        self.omega_prev = omega;
-
-        // alpha_ref = feedforward (in R frame) + feedback
-        let alpha_ref = Vec3::new(
-            alpha_d_r.x - kr.x * er.x - kw.x * eomega.x,
-            alpha_d_r.y - kr.y * er.y - kw.y * eomega.y,
-            alpha_d_r.z - kr.z * er.z - kw.z * eomega.z,
-        );
-
-        // INDI increment: δτ = (alpha_ref - alpha_meas) · J
-        let du = Vec3::new(
-            (alpha_ref.x - alpha_meas.x) * jxx,
-            (alpha_ref.y - alpha_meas.y) * jyy,
-            (alpha_ref.z - alpha_meas.z) * jzz,
-        );
-
-        // Incremental torque (clamped per-axis to motor capability)
-        const TAU_CLAMP_NOMINAL: f32 = 0.0040;
-        const TAU_CLAMP_LOW_T:  f32 = 0.0010;
-        let tau_clamp = if thrust < 0.05 { TAU_CLAMP_LOW_T } else { TAU_CLAMP_NOMINAL };
-        let tau = Vec3::new(
-            (self.tau_prev.x + du.x).clamp(-tau_clamp, tau_clamp),
-            (self.tau_prev.y + du.y).clamp(-tau_clamp, tau_clamp),
-            (self.tau_prev.z + du.z).clamp(-tau_clamp, tau_clamp),
-        );
-        self.omega_prev = omega;
-
-        // Match INDI anti-windup behavior: freeze/reset incremental state below
-        // a small thrust threshold (e.g. during motor cut in inversion).
-        if thrust < 0.01 {
-            self.tau_prev = Vec3::zero();
-            return Vec3::zero();
-        }
-
-        self.tau_prev = tau;
-        // Gyroscopic compensation ω × Jω
-        let j_omega   = Vec3::new(jxx*omega.x, jyy*omega.y, jzz*omega.z);
-        let gyro_comp = omega.cross(&j_omega);
-        tau + gyro_comp
-    }
-}
-
-fn outer_loop_with_gains(
-    state: &MultirotorState,
-    reference: &TrajectoryReference,
-    params: &MultirotorParams,
-    kp: Vec3,
-    kv: Vec3,
-) -> (f32, [[f32; 3]; 3]) {
-    let ep = reference.position - state.position;
-    let ev = reference.velocity - state.velocity;
-    let f_d = reference.acceleration
-        + Vec3::new(kp.x*ep.x, kp.y*ep.y, kp.z*ep.z)
-        + Vec3::new(kv.x*ev.x, kv.y*ev.y, kv.z*ev.z)
-        + Vec3::new(0.0, 0.0, params.gravity);
-    let thrust_force = f_d * params.mass;
-    let r = state.orientation.to_rotation_matrix();
-    let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
-    let thrust = thrust_force.dot(&body_z).max(0.0);
-
-    // Desired rotation from thrust direction + yaw
-    let mut zdes = Vec3::new(0.0, 0.0, 1.0);
-    if thrust_force.norm() > 0.0 { zdes = thrust_force.normalize(); }
-    let xcdes = Vec3::new(reference.yaw.cos(), reference.yaw.sin(), 0.0);
-    let zcrossx = zdes.cross(&xcdes);
-    let ydes = if zcrossx.norm() > 0.0 { zcrossx.normalize() } else { Vec3::new(0.0, 1.0, 0.0) };
-    let xdes = ydes.cross(&zdes);
-    let rd = [[xdes.x, ydes.x, zdes.x],
-              [xdes.y, ydes.y, zdes.y],
-              [xdes.z, ydes.z, zdes.z]];
-    (thrust, rd)
 }
 
 // ---------------------------------------------------------------------------
@@ -1755,17 +1556,6 @@ fn quat_to_euler(q: &Quat) -> (f32, f32, f32) {
     (roll, pitch, yaw)
 }
 
-/// Relative rotation angle between two rotation matrices [rad].
-fn rot_angle_between(a: &[[f32; 3]; 3], b: &[[f32; 3]; 3]) -> f32 {
-    let mut at_b = [[0.0_f32; 3]; 3];
-    for i in 0..3 { for j in 0..3 { for k in 0..3 {
-        at_b[i][j] += a[k][i] * b[k][j];
-    }}}
-    let tr = at_b[0][0] + at_b[1][1] + at_b[2][2];
-    let c = ((tr - 1.0) * 0.5).clamp(-1.0, 1.0);
-    c.acos()
-}
-
 // ---------------------------------------------------------------------------
 // Closed-loop runner — Mode 0 / Mode 1  (FlatOutput → flatness → geometric)
 // ---------------------------------------------------------------------------
@@ -2058,339 +1848,6 @@ fn run_se3_scaled(
 
         let t_clamped = ctrl_out.thrust.max(0.0);
         let action = MotorAction::from_thrust_torque(t_clamped, ctrl_out.torque, params);
-        sim.step(&action);
-    }
-
-    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
-    recs
-}
-
-// ---------------------------------------------------------------------------
-// INDI runners (with angular-acceleration feedforward from flatness)
-// ---------------------------------------------------------------------------
-
-fn run_flat_indi(
-    planner: &TrajectoryPlanner,
-    params:  &MultirotorParams,
-    yaw_ff_scale: f32,
-    label:   &str,
-) -> Vec<Rec> {
-    let total = planner.total_time();
-    let n     = (total / DT) as usize;
-
-    let flat0 = planner.eval(0.0);
-    let fr0   = compute_flatness(&flat0, params.mass);
-    let q0    = rot_to_quat(&fr0.rot);
-
-    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
-    sim.state_mut().position         = flat0.pos;
-    sim.state_mut().velocity         = flat0.vel;
-    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
-    sim.state_mut().angular_velocity = fr0.omega; // start with reference angular velocity
-
-    let mut indi = IndiSimState::new();
-    let mut recs = Vec::with_capacity(n);
-
-    for k in 0..n {
-        let t    = k as f32 * DT;
-        let flat = planner.eval(t);
-        let fr   = compute_flatness(&flat, params.mass);
-        let state = sim.state().clone();
-
-        let reference = TrajectoryReference {
-            position:         flat.pos,
-            velocity:         flat.vel,
-            acceleration:     flat.acc,
-            jerk:             flat.jerk,
-            yaw:              flat.yaw,
-            yaw_rate:         flat.yaw_dot * yaw_ff_scale,
-            yaw_acceleration: flat.yaw_ddot * yaw_ff_scale,
-        };
-
-    // Slightly stronger vertical outer-loop for INDI to compensate incremental inner-loop lag
-    // that otherwise appears as persistent z bias on curvy trajectories (fig8/helix).
-    let (thrust, rd) = outer_loop_with_gains(
-        &state, &reference, params,
-        Vec3::new(12.0, 12.0, 8.5),
-        Vec3::new(8.0, 8.0, 5.0),
-    );
-        // Adaptive feedforward: only trust flatness angular feedforward when rd and fr.rot
-        // are close; otherwise fade to zero to avoid frame/consistency mismatch transients.
-        let ff_mismatch = rot_angle_between(&rd, &fr.rot);
-        let ff_gain = 0.8 * ((0.45 - ff_mismatch) / (0.45 - 0.15)).clamp(0.0, 1.0);
-        let omega_ff = fr.omega * ff_gain;
-        let alpha_ff = fr.omega_dot * ff_gain;
-        let rot_ff = if ff_gain > 0.0 { &fr.rot } else { &rd };
-        let torque = indi.compute(&state, &rd, rot_ff, omega_ff, alpha_ff, thrust, params);
-
-        let dx = flat.pos.x - state.position.x;
-        let dy = flat.pos.y - state.position.y;
-        let dz = flat.pos.z - state.position.z;
-        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
-        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&fr.rot);
-
-        recs.push(Rec {
-            t,
-            ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
-            ref_roll, ref_pitch, ref_yaw,
-            ref_thrust: fr.thrust,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
-            sim_roll, sim_pitch, sim_yaw,
-            cmd_thrust: thrust,
-            cmd_tx: torque.x, cmd_ty: torque.y, cmd_tz: torque.z,
-            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
-        });
-
-        let action = MotorAction::from_thrust_torque(thrust, torque, params);
-        sim.step(&action);
-    }
-
-    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
-    recs
-}
-
-fn run_flat_indi_scaled(
-    planner: &TrajectoryPlanner,
-    params:  &MultirotorParams,
-    yaw_ff_scale: f32,
-    time_scale: f32,
-    label:   &str,
-) -> Vec<Rec> {
-    let ts = time_scale.max(1.0);
-    let total = planner.total_time() * ts;
-    let n     = (total / DT) as usize;
-
-    let flat0 = planner.eval(0.0);
-    let fr0   = compute_flatness(&flat0, params.mass);
-    let q0    = rot_to_quat(&fr0.rot);
-
-    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
-    sim.state_mut().position         = flat0.pos;
-    sim.state_mut().velocity         = flat0.vel;
-    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
-    sim.state_mut().angular_velocity = fr0.omega;
-
-    let mut indi = IndiSimState::new();
-    let mut recs = Vec::with_capacity(n);
-
-    for k in 0..n {
-        let t = k as f32 * DT;
-        let tref = (t / ts).min(planner.total_time());
-        let flat = planner.eval(tref);
-        let fr   = compute_flatness(&flat, params.mass);
-        let state = sim.state().clone();
-
-        let reference = TrajectoryReference {
-            position:         flat.pos,
-            velocity:         flat.vel * (1.0 / ts),
-            acceleration:     flat.acc * (1.0 / (ts * ts)),
-            jerk:             flat.jerk * (1.0 / (ts * ts * ts)),
-            yaw:              flat.yaw,
-            yaw_rate:         flat.yaw_dot * (yaw_ff_scale / ts),
-            yaw_acceleration: flat.yaw_ddot * (yaw_ff_scale / (ts * ts)),
-        };
-
-        let (thrust, rd) = outer_loop_with_gains(
-            &state, &reference, params,
-            Vec3::new(12.0, 12.0, 8.5),
-            Vec3::new(8.0, 8.0, 5.0),
-        );
-        let ff_mismatch = rot_angle_between(&rd, &fr.rot);
-        let ff_gain = 0.8 * ((0.45 - ff_mismatch) / (0.45 - 0.15)).clamp(0.0, 1.0);
-        let omega_ff = fr.omega * ff_gain;
-        let alpha_ff = fr.omega_dot * ff_gain;
-        let rot_ff = if ff_gain > 0.0 { &fr.rot } else { &rd };
-        let torque = indi.compute(&state, &rd, rot_ff, omega_ff, alpha_ff, thrust, params);
-
-        let dx = flat.pos.x - state.position.x;
-        let dy = flat.pos.y - state.position.y;
-        let dz = flat.pos.z - state.position.z;
-        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
-        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&fr.rot);
-
-        recs.push(Rec {
-            t,
-            ref_x: flat.pos.x, ref_y: flat.pos.y, ref_z: flat.pos.z,
-            ref_roll, ref_pitch, ref_yaw,
-            ref_thrust: fr.thrust,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
-            sim_roll, sim_pitch, sim_yaw,
-            cmd_thrust: thrust,
-            cmd_tx: torque.x, cmd_ty: torque.y, cmd_tz: torque.z,
-            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
-        });
-
-        let action = MotorAction::from_thrust_torque(thrust, torque, params);
-        sim.step(&action);
-    }
-
-    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
-    recs
-}
-
-fn run_se3_indi(
-    traj:   &Se3Trajectory,
-    params: &MultirotorParams,
-    label:  &str,
-) -> Vec<Rec> {
-    let total = traj.total_time;
-    let n     = (total / DT) as usize;
-
-    let out0 = traj.eval(0.0);
-    let q0   = rot_to_quat(&out0.rot);
-
-    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
-    sim.state_mut().position         = out0.pos;
-    sim.state_mut().velocity         = out0.vel;
-    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
-    sim.state_mut().angular_velocity = out0.omega; // seed from flatness, same as run_flat_indi
-
-    let mut indi = IndiSimState::new();
-    let mut recs = Vec::with_capacity(n);
-    let mut yaw_ref_unwrapped = rot_to_euler(&out0.rot).2;
-
-    for k in 0..n {
-        let t   = k as f32 * DT;
-        let out = traj.eval(t);
-        let state = sim.state().clone();
-
-        // Keep yaw reference continuous (avoid [-pi, pi] wrap jumps).
-        let yaw_raw = rot_to_euler(&out.rot).2;
-        let mut dyaw = yaw_raw - yaw_ref_unwrapped;
-        while dyaw > PI { dyaw -= 2.0 * PI; }
-        while dyaw < -PI { dyaw += 2.0 * PI; }
-        yaw_ref_unwrapped += dyaw;
-
-        let flat = out.to_flat();
-        let reference = TrajectoryReference {
-            position:         flat.pos,
-            velocity:         flat.vel,
-            acceleration:     flat.acc,
-            jerk:             Vec3::zero(),
-            yaw:              yaw_ref_unwrapped,
-            yaw_rate:         0.0,
-            yaw_acceleration: 0.0,
-        };
-        let (thrust, rd) = outer_loop_with_gains(
-            &state, &reference, params,
-            Vec3::new(12.0, 12.0, 8.5),
-            Vec3::new(8.0, 8.0, 5.0),
-        );
-        // Adaptive feedforward: fade omega/alpha when rd and out.rot diverge.
-        let ff_mismatch = rot_angle_between(&rd, &out.rot);
-        let ff_gain = 0.8 * ((0.45 - ff_mismatch) / (0.45 - 0.15)).clamp(0.0, 1.0);
-        let omega_ff = out.omega * ff_gain;
-        let alpha_ff = out.alpha * ff_gain;
-        let rot_ff = if ff_gain > 0.0 { &out.rot } else { &rd };
-        let torque = indi.compute(&state, &rd, rot_ff, omega_ff, alpha_ff, thrust, params);
-
-        let dx = out.pos.x - state.position.x;
-        let dy = out.pos.y - state.position.y;
-        let dz = out.pos.z - state.position.z;
-        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
-        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&out.rot);
-
-        recs.push(Rec {
-            t,
-            ref_x: out.pos.x, ref_y: out.pos.y, ref_z: out.pos.z,
-            ref_roll, ref_pitch, ref_yaw,
-            ref_thrust: out.thrust,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
-            sim_roll, sim_pitch, sim_yaw,
-            cmd_thrust: thrust,
-            cmd_tx: torque.x, cmd_ty: torque.y, cmd_tz: torque.z,
-            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
-        });
-
-        let t_clamped = thrust.max(0.0);
-        let action = MotorAction::from_thrust_torque(t_clamped, torque, params);
-        sim.step(&action);
-    }
-
-    println!("    {label:<28} RMS 3D = {:6.1} mm", rms_3d(&recs) * 1000.0);
-    recs
-}
-
-/// [`run_se3_scaled`] counterpart for INDI (matches Mode 1 helix time-stretch).
-fn run_se3_indi_scaled(
-    traj:   &Se3Trajectory,
-    params: &MultirotorParams,
-    time_scale: f32,
-    label:  &str,
-) -> Vec<Rec> {
-    let ts = time_scale.max(1.0);
-    let total = traj.total_time * ts;
-    let n     = (total / DT) as usize;
-
-    let out0 = traj.eval(0.0);
-    let q0   = rot_to_quat(&out0.rot);
-
-    let mut sim = MultirotorSimulator::new(params.clone(), Box::new(RK4Integrator));
-    sim.state_mut().position         = out0.pos;
-    sim.state_mut().velocity         = out0.vel;
-    sim.state_mut().orientation      = Quat::new(q0[0], q0[1], q0[2], q0[3]);
-    sim.state_mut().angular_velocity = out0.omega; // seed from flatness
-
-    let mut indi = IndiSimState::new();
-    let mut recs = Vec::with_capacity(n);
-    let mut yaw_ref_unwrapped = rot_to_euler(&out0.rot).2;
-
-    for k in 0..n {
-        let t    = k as f32 * DT;
-        let tref = (t / ts).min(traj.total_time);
-        let out  = traj.eval(tref);
-        let state = sim.state().clone();
-
-        let yaw_raw = rot_to_euler(&out.rot).2;
-        let mut dyaw = yaw_raw - yaw_ref_unwrapped;
-        while dyaw > PI { dyaw -= 2.0 * PI; }
-        while dyaw < -PI { dyaw += 2.0 * PI; }
-        yaw_ref_unwrapped += dyaw;
-
-        let flat = out.to_flat();
-        let inv = 1.0 / ts;
-        let inv2 = inv * inv;
-        let reference = TrajectoryReference {
-            position:         flat.pos,
-            velocity:         flat.vel * inv,
-            acceleration:     flat.acc * inv2,
-            jerk:             Vec3::zero(),
-            yaw:                yaw_ref_unwrapped,
-            yaw_rate:           0.0,
-            yaw_acceleration:   0.0,
-        };
-        let (thrust, rd) = outer_loop_with_gains(
-            &state, &reference, params,
-            Vec3::new(12.0, 12.0, 8.5),
-            Vec3::new(8.0, 8.0, 5.0),
-        );
-        let ff_mismatch = rot_angle_between(&rd, &out.rot);
-        let ff_gain = 0.8 * ((0.45 - ff_mismatch) / (0.45 - 0.15)).clamp(0.0, 1.0);
-        let omega_ff = out.omega * (ff_gain * inv);
-        let alpha_ff = out.alpha * (ff_gain * inv2);
-        let rot_ff = if ff_gain > 0.0 { &out.rot } else { &rd };
-        let torque = indi.compute(&state, &rd, rot_ff, omega_ff, alpha_ff, thrust, params);
-
-        let dx = out.pos.x - state.position.x;
-        let dy = out.pos.y - state.position.y;
-        let dz = out.pos.z - state.position.z;
-        let (sim_roll, sim_pitch, sim_yaw) = quat_to_euler(&state.orientation);
-        let (ref_roll, ref_pitch, ref_yaw) = rot_to_euler(&out.rot);
-
-        recs.push(Rec {
-            t,
-            ref_x: out.pos.x, ref_y: out.pos.y, ref_z: out.pos.z,
-            ref_roll, ref_pitch, ref_yaw,
-            ref_thrust: out.thrust,
-            sim_x: state.position.x, sim_y: state.position.y, sim_z: state.position.z,
-            sim_roll, sim_pitch, sim_yaw,
-            cmd_thrust: thrust,
-            cmd_tx: torque.x, cmd_ty: torque.y, cmd_tz: torque.z,
-            error_3d: (dx*dx + dy*dy + dz*dz).sqrt(),
-        });
-
-        let t_clamped = thrust.max(0.0);
-        let action = MotorAction::from_thrust_torque(t_clamped, torque, params);
         sim.step(&action);
     }
 
@@ -2836,61 +2293,31 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p0_circle, &params, &mut GeometricController::default(), 1.0, "mode0 circle geo");
         write_closed_loop_csv(0, "circle", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_circle, &params, 1.0, "mode0 circle indi");
-            write_closed_loop_csv(0, "circle", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_fig8, &params, &mut GeometricController::default(), 0.5, "mode0 figure8 geo");
         write_closed_loop_csv(0, "figure8", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_fig8, &params, 0.5, "mode0 figure8 indi");
-            write_closed_loop_csv(0, "figure8", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_helix, &params, &mut GeometricController::default(), 1.0, "mode0 helix geo");
         write_closed_loop_csv(0, "helix", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_helix, &params, 1.0, "mode0 helix indi");
-            write_closed_loop_csv(0, "helix", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_corner, &params, &mut GeometricController::default(), 1.0, "mode0 corner geo");
         write_closed_loop_csv(0, "corner", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_corner, &params, 1.0, "mode0 corner indi");
-            write_closed_loop_csv(0, "corner", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_loop, &params, &mut GeometricController::default(), 1.0, "mode0 loop geo");
         write_closed_loop_csv(0, "loop", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_loop, &params, 1.0, "mode0 loop indi");
-            write_closed_loop_csv(0, "loop", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p0_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode0 corkscrew geo");
         write_closed_loop_csv(0, "corkscrew", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p0_corkscrew, &params, 1.0, "mode0 corkscrew indi");
-            write_closed_loop_csv(0, "corkscrew", "indi", &ri);
-        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2904,11 +2331,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_circle, &params, &mut GeometricController::default(), 1.0, "mode1 circle geo");
         write_closed_loop_csv(1, "circle", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p1_circle, &params, 1.0, "mode1 circle indi");
-            write_closed_loop_csv(1, "circle", "indi", &ri);
-        }
     }
     {
         println!("    figure8 total_time = {:.2} s", p1_fig8.total_time());
@@ -2919,11 +2341,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_fig8, &params, &mut GeometricController::default(), 0.5, "mode1 figure8 geo");
         write_closed_loop_csv(1, "figure8", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p1_fig8, &params, 0.5, "mode1 figure8 indi");
-            write_closed_loop_csv(1, "figure8", "indi", &ri);
-        }
     }
     {
         println!("    helix   total_time = {:.2} s", p1_helix.total_time());
@@ -2937,11 +2354,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat_scaled(&p1_helix, &params, &mut GeometricController::default(), 1.0, helix_time_scale, "mode1 helix geo");
         write_closed_loop_csv(1, "helix", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi_scaled(&p1_helix, &params, 1.0, helix_time_scale, "mode1 helix indi");
-            write_closed_loop_csv(1, "helix", "indi", &ri);
-        }
     }
     {
         println!("    corner  total_time = {:.2} s", p1_corner.total_time());
@@ -2952,11 +2364,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_corner, &params, &mut GeometricController::default(), 1.0, "mode1 corner geo");
         write_closed_loop_csv(1, "corner", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p1_corner, &params, 1.0, "mode1 corner indi");
-            write_closed_loop_csv(1, "corner", "indi", &ri);
-        }
     }
     {
         println!("    loop    total_time = {:.2} s", p1_loop.total_time());
@@ -2978,11 +2385,6 @@ fn main() {
             "mode1 loop geo",
         );
         write_closed_loop_csv(1, "loop", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi_scaled(&p1_loop, &params, 1.0, loop_time_scale, "mode1 loop indi");
-            write_closed_loop_csv(1, "loop", "indi", &ri);
-        }
     }
     {
         println!("    corkscrew total_time = {:.2} s", p1_corkscrew.total_time());
@@ -2993,11 +2395,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p1_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode1 corkscrew geo");
         write_closed_loop_csv(1, "corkscrew", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p1_corkscrew, &params, 1.0, "mode1 corkscrew indi");
-            write_closed_loop_csv(1, "corkscrew", "indi", &ri);
-        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -3011,11 +2408,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 circle geo");
         write_closed_loop_csv(2, "circle", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 circle indi");
-            write_closed_loop_csv(2, "circle", "indi", &ri);
-        }
     }
     {
         let traj = Se3Trajectory::plan(&fig8_se3_wps, &fig8_m2_durs, MASS, FIG8_PERIODIC).expect("m2 fig8");
@@ -3025,11 +2417,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 figure8 geo");
         write_closed_loop_csv(2, "figure8", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 figure8 indi");
-            write_closed_loop_csv(2, "figure8", "indi", &ri);
-        }
     }
     {
         let traj =
@@ -3046,11 +2433,6 @@ fn main() {
             "mode2 helix geo",
         );
         write_closed_loop_csv(2, "helix", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi_scaled(&traj, &params, helix_sim_time_scale, "mode2 helix indi");
-            write_closed_loop_csv(2, "helix", "indi", &ri);
-        }
     }
     {
         let traj = Se3Trajectory::plan(&corner_se3_wps, &corner_m2_durs, MASS, false)
@@ -3061,11 +2443,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corner geo");
         write_closed_loop_csv(2, "corner", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 corner indi");
-            write_closed_loop_csv(2, "corner", "indi", &ri);
-        }
     }
     {
         // Flip — position held, attitude does a full 360° pitch (Option A hover flip)
@@ -3083,11 +2460,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 flip geo");
         write_closed_loop_csv(2, "flip", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 flip indi");
-            write_closed_loop_csv(2, "flip", "indi", &ri);
-        }
     }
     {
         // Loop — vertical circle with explicit attitude through inversion.
@@ -3109,11 +2481,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 loop geo");
         write_closed_loop_csv(2, "loop", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 loop indi");
-            write_closed_loop_csv(2, "loop", "indi", &ri);
-        }
     }
     {
         // Corkscrew: helix + explicit 360° roll per lap (x-axis rotation; zero thrust at 180°)
@@ -3131,11 +2498,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 corkscrew geo");
         write_closed_loop_csv(2, "corkscrew", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 corkscrew indi");
-            write_closed_loop_csv(2, "corkscrew", "indi", &ri);
-        }
     }
     {
         // Roll: stationary y-axis inversion (pitch maneuver / backflip, distinct from flip's x-axis)
@@ -3153,11 +2515,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 roll geo");
         write_closed_loop_csv(2, "roll", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 roll indi");
-            write_closed_loop_csv(2, "roll", "indi", &ri);
-        }
     }
 
     {
@@ -3176,11 +2533,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 immelmann geo");
         write_closed_loop_csv(2, "immelmann", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 immelmann indi");
-            write_closed_loop_csv(2, "immelmann", "indi", &ri);
-        }
     }
     {
         // Split-S — half-roll to inverted + descending half-loop (Mode 2 only)
@@ -3199,11 +2551,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 splits geo");
         write_closed_loop_csv(2, "splits", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 splits indi");
-            write_closed_loop_csv(2, "splits", "indi", &ri);
-        }
     }
     {
         // Screw — stationary XY, ascending Z, body x-axis roll (Mode 2 only)
@@ -3221,11 +2568,6 @@ fn main() {
         println!("  [Geo]");
         let rg = run_se3(&traj, &params, &mut geo_m2, "mode2 screw geo");
         write_closed_loop_csv(2, "screw", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_se3_indi(&traj, &params, "mode2 screw indi");
-            write_closed_loop_csv(2, "screw", "indi", &ri);
-        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -3234,41 +2576,21 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat(&p3_circle, &params, &mut GeometricController::default(), 1.0, "mode3 circle geo");
         write_closed_loop_csv(3, "circle", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_circle, &params, 1.0, "mode3 circle indi");
-            write_closed_loop_csv(3, "circle", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_fig8, &params, &mut GeometricController::default(), 0.5, "mode3 figure8 geo");
         write_closed_loop_csv(3, "figure8", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_fig8, &params, 0.5, "mode3 figure8 indi");
-            write_closed_loop_csv(3, "figure8", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat_scaled(&p3_helix, &params, &mut GeometricController::default(), 1.0, helix_sim_time_scale, "mode3 helix geo");
         write_closed_loop_csv(3, "helix", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi_scaled(&p3_helix, &params, 1.0, helix_sim_time_scale, "mode3 helix indi");
-            write_closed_loop_csv(3, "helix", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_corner, &params, &mut GeometricController::default(), 1.0, "mode3 corner geo");
         write_closed_loop_csv(3, "corner", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_corner, &params, 1.0, "mode3 corner indi");
-            write_closed_loop_csv(3, "corner", "indi", &ri);
-        }
     }
     {
         println!("    loop    total_time = {:.2} s", p3_loop.total_time());
@@ -3281,60 +2603,30 @@ fn main() {
         println!("  [Geo]");
         let rg = run_flat_scaled(&p3_loop, &params, &mut GeometricController::default(), 1.0, loop_time_scale_m3, "mode3 loop geo");
         write_closed_loop_csv(3, "loop", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi_scaled(&p3_loop, &params, 1.0, loop_time_scale_m3, "mode3 loop indi");
-            write_closed_loop_csv(3, "loop", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_corkscrew, &params, &mut GeometricController::default(), 1.0, "mode3 corkscrew geo");
         write_closed_loop_csv(3, "corkscrew", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_corkscrew, &params, 1.0, "mode3 corkscrew indi");
-            write_closed_loop_csv(3, "corkscrew", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_immelmann, &params, &mut GeometricController::default(), 1.0, "mode3 immelmann geo");
         write_closed_loop_csv(3, "immelmann", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_immelmann, &params, 1.0, "mode3 immelmann indi");
-            write_closed_loop_csv(3, "immelmann", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_splits, &params, &mut GeometricController::default(), 1.0, "mode3 splits geo");
         write_closed_loop_csv(3, "splits", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_splits, &params, 1.0, "mode3 splits indi");
-            write_closed_loop_csv(3, "splits", "indi", &ri);
-        }
     }
     {
         println!("  [Geo]");
         let rg = run_flat(&p3_screw, &params, &mut GeometricController::default(), 1.0, "mode3 screw geo");
         write_closed_loop_csv(3, "screw", "geo", &rg);
-        if RUN_INDI_CLOSED_LOOP {
-            println!("  [INDI]");
-            let ri = run_flat_indi(&p3_screw, &params, 1.0, "mode3 screw indi");
-            write_closed_loop_csv(3, "screw", "indi", &ri);
-        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
     println!("\n── Output files ────────────────────────────────────────────────");
-    if RUN_INDI_CLOSED_LOOP {
-        println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/{{geo,indi}}.csv");
-    } else {
-        println!("  results/planning_sim/closed_loop/mode<N>/<trajectory>/geo.csv");
-    }
     println!("  Trajectories: circle, figure8, helix, corner, loop, corkscrew, immelmann, splits, screw  (+ flip, roll for mode 2 only)");
     println!("\nNext: scripts/plot_planning_all.sh");
     println!("Planner-only reference export: cargo run --release --bin planning_sim -- --export-reference-only");
