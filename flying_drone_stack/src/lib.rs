@@ -39,6 +39,9 @@ pub mod prelude {
     pub use crate::controller::{
         Controller,
         GeometricController,
+        IndiController,
+        Butterworth2,
+        IirFilter,
         TrajectoryReference,
         ControlOutput,
     };

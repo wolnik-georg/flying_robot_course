@@ -41,6 +41,60 @@ impl Vec3 {
     }
 }
 
+// ── Stage-1 filter: 2nd-order Butterworth ──────────────────────────────────
+// Bilinear-transform coefficients (τ = 1/(2π·fc)):
+//   denom = τ² + √2·τ·dt + dt²
+//   b = dt²/denom,  a1 = 2(dt²−τ²)/denom,  a2 = (τ²−√2·τ·dt+dt²)/denom
+// y[n] = b·(x[n] + 2·x[n−1] + x[n−2]) − a1·y[n−1] − a2·y[n−2]
+#[derive(Copy, Clone)]
+struct Butterworth2 {
+    b: f32, a1: f32, a2: f32,
+    x1: f32, x2: f32, y1: f32, y2: f32,
+}
+impl Butterworth2 {
+    const fn zero() -> Self {
+        Self { b: 0.0, a1: 0.0, a2: 0.0, x1: 0.0, x2: 0.0, y1: 0.0, y2: 0.0 }
+    }
+    fn init(&mut self, fc: f32, dt: f32) {
+        const SQRT2: f32 = 1.414_213_6_f32;
+        let tau   = 1.0 / (2.0 * core::f32::consts::PI * fc);
+        let denom = tau*tau + SQRT2*tau*dt + dt*dt;
+        self.b  = dt*dt / denom;
+        self.a1 = 2.0 * (dt*dt - tau*tau) / denom;
+        self.a2 = (tau*tau - SQRT2*tau*dt + dt*dt) / denom;
+    }
+    fn update(&mut self, x: f32) -> f32 {
+        let y = self.b*x + 2.0*self.b*self.x1 + self.b*self.x2
+              - self.a1*self.y1 - self.a2*self.y2;
+        self.x2 = self.x1; self.x1 = x;
+        self.y2 = self.y1; self.y1 = y;
+        y
+    }
+    fn seed(&mut self, v: f32) { self.x1 = v; self.x2 = v; self.y1 = v; self.y2 = v; }
+    fn reset_state(&mut self) { self.seed(0.0); }
+}
+
+// ── Stage-3 filter: 1st-order IIR ──────────────────────────────────────────
+// k = dt/(dt+RC), RC = 1/(2π·fc) — precomputed at init for fixed-rate 500 Hz
+// y[n] = k·x[n] + (1−k)·y[n−1]
+#[derive(Copy, Clone)]
+struct IirFilter {
+    k: f32,
+    state: f32,
+}
+impl IirFilter {
+    const fn zero() -> Self { Self { k: 0.0, state: 0.0 } }
+    fn init(&mut self, fc: f32, dt: f32) {
+        let rc  = 1.0 / (2.0 * core::f32::consts::PI * fc);
+        self.k  = dt / (dt + rc);
+    }
+    fn update(&mut self, x: f32) -> f32 {
+        self.state = self.k * x + (1.0 - self.k) * self.state;
+        self.state
+    }
+    fn reset_state(&mut self) { self.state = 0.0; }
+}
+
 // ── Matrix helpers ─────────────────────────────────────────────────────────
 type Mat3 = [[f32; 3]; 3];
 
@@ -88,6 +142,28 @@ const HOVER_THRUST: f32 = MASS * GRAVITY; // ≈ 0.304 N
 const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 const JZZ: f32 = 29.261652e-6;
+
+// ── Controller mode ────────────────────────────────────────────────────────
+// 0 = Geometric SE(3) (default — no special hardware required)
+// 1 = Full INDI       (requires RPM deck; bench-identify KT_MOTOR before first flight)
+const CONTROLLER_MODE: u8 = 0;
+
+// ── INDI attitude gain constants (Mode 1) ──────────────────────────────────
+// KR [1/s²]: ωₙ = √KR.  KW [1/s]: ζ = KW/(2·ωₙ).
+// Conservative start: ωₙ = 10 rad/s, ζ = 1.5.
+// After stable hover: raise KR toward 200–600 (KR_geo/J), keep ζ ≈ 1.4.
+const KR_INDI_X: f32 = 100.0;  const KR_INDI_Y: f32 = 100.0;  const KR_INDI_Z: f32 = 100.0;
+const KW_INDI_X: f32 = 30.0;   const KW_INDI_Y: f32 = 30.0;   const KW_INDI_Z: f32 = 30.0;
+
+// ── INDI filter cutoffs (Mode 1) ────────────────────────────────────────────
+const FC_BW_HZ:  f32 = 60.0;   // Butterworth pre-filter on gyro [Hz]
+const FC_IIR_HZ: f32 = 60.0;   // IIR post-filter on α_raw [Hz]
+
+// ── Motor model constants (Mode 1, RPM deck) ────────────────────────────────
+// KT_MOTOR: placeholder — identify thrust/RPM² on thrust stand before first INDI flight.
+const KT_MOTOR: f32   = 3.16e-10_f32;    // [N/RPM²]  ← bench-identify before use
+const ARM_M: f32      = 0.032_526_9_f32; // √2/2 × 0.046 m (diagonal arm projection)
+const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
 
 // ── GAINS BLOCK A — our tuned gains ────────────────────────────────────────
 // Increased KP_Z/KV_Z for stiff altitude hold; light integral for XY drift.
@@ -380,23 +456,53 @@ const KI_ATT: f32 = 0.0;
 
 // ── Controller State ───────────────────────────────────────────────────────
 struct State {
-    i_ep: Vec3,             // position integral
-    i_error_att: Vec3,      // attitude integral (active when KI_ATT > 0, e.g. OFFICIAL block)
+    // Mode 0 (geometric)
+    i_ep: Vec3,
+    i_error_att: Vec3,
     last_tick: u32,
+    // Mode 1 (INDI) — filter state and incremental torque memory
+    bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
+    iir_x: IirFilter,   iir_y: IirFilter,   iir_z: IirFilter,
+    omega_filt_prev: Vec3,
+    tau_prev: Vec3,
+    indi_init: bool,
 }
 
 impl State {
     const fn zero() -> Self {
-        Self { i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0 }
+        Self {
+            i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
+            bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
+            iir_x: IirFilter::zero(), iir_y: IirFilter::zero(), iir_z: IirFilter::zero(),
+            omega_filt_prev: Vec3::zero(),
+            tau_prev: Vec3::zero(),
+            indi_init: false,
+        }
     }
     fn reset(&mut self) {
         self.i_ep = Vec3::zero();
         self.i_error_att = Vec3::zero();
         self.last_tick = 0;
+        self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
+        self.iir_x.reset_state(); self.iir_y.reset_state(); self.iir_z.reset_state();
+        self.omega_filt_prev = Vec3::zero();
+        self.tau_prev = Vec3::zero();
+        self.indi_init = false;
     }
 }
 
 static mut CTRL: State = State::zero();
+
+// ── INDI log variables (Mode 1) ────────────────────────────────────────────
+// Exposed as C-visible globals so traj_iface.c can register them with the
+// Crazyflie LOG system via LOG_GROUP_START(indi).  Updated every 500 Hz cycle
+// inside indi_step().  Read by Crazyswarm2 as the "indi" custom log topic.
+#[no_mangle] pub static mut INDI_TAU_X: f32 = 0.0;
+#[no_mangle] pub static mut INDI_TAU_Y: f32 = 0.0;
+#[no_mangle] pub static mut INDI_TAU_Z: f32 = 0.0;
+#[no_mangle] pub static mut INDI_ALP_X: f32 = 0.0;  // alpha_meas x [rad/s²]
+#[no_mangle] pub static mut INDI_ALP_Y: f32 = 0.0;
+#[no_mangle] pub static mut INDI_ALP_Z: f32 = 0.0;
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
 // Set to current tick when traj.start=1 is received; cleared when mode→0.
@@ -436,6 +542,8 @@ extern "C" {
     static mut g_traj_coef_ci:   u8;  // position upload index
     static mut g_traj_coef_cv:   f32; // position upload value
     static mut g_traj_coef_cw:   u8;  // position commit flag
+    // RPM bridge (traj_iface.c) — reads per-motor RPM via the log system for INDI Mode 1
+    fn rpm_get_all(m1: *mut u16, m2: *mut u16, m3: *mut u16, m4: *mut u16);
 }
 
 // ── Spline evaluation helpers ───────────────────────────────────────────────
@@ -689,6 +797,134 @@ fn desired_rot(f_d: Vec3, yaw_d: f32) -> Mat3 {
      [xdes.z, ydes.z, zdes.z]]
 }
 
+// ── INDI helpers ───────────────────────────────────────────────────────────
+
+// Inverse of powerDistributionForceTorque (power_distribution_quadrotor.c):
+//   τ_x = arm × (F[2]+F[3]−F[0]−F[1]),  arm = √2/2 × ARM_LENGTH
+//   τ_y = arm × (F[1]+F[2]−F[0]−F[3])
+//   τ_z = (k_Q/k_T) × (F[1]+F[3]−F[0]−F[2])
+#[allow(dead_code)]
+fn rpms_to_torque(rpms: [u16; 4]) -> Vec3 {
+    let f = [
+        KT_MOTOR * (rpms[0] as f32) * (rpms[0] as f32),
+        KT_MOTOR * (rpms[1] as f32) * (rpms[1] as f32),
+        KT_MOTOR * (rpms[2] as f32) * (rpms[2] as f32),
+        KT_MOTOR * (rpms[3] as f32) * (rpms[3] as f32),
+    ];
+    Vec3::new(
+        ARM_M        * (f[2] + f[3] - f[0] - f[1]),
+        ARM_M        * (f[1] + f[2] - f[0] - f[3]),
+        TORQUE_RATIO * (f[1] + f[3] - f[0] - f[2]),
+    )
+}
+
+/// Full INDI step (Tal & Karaman 2020, Mode 1).
+///
+/// Position loop is identical to geometric_step.
+/// Attitude loop follows the four INDI equations:
+///   (1) α_des = 0  (snap feedforward; zero when planner does not provide snap)
+///   (2) α_ref = −K_R·e_R − K_ω·e_ω
+///   (3) α_meas: Stage1 Butterworth → Stage2 finite-diff → Stage3 IIR
+///   (4) δτ = J·(α_ref − α_meas),  τ = τ_current + δτ
+///       τ_current from RPM² via rpm_get_all(); falls back to τ_prev when RPM deck absent.
+#[allow(dead_code)]
+fn indi_step(
+    pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
+    pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
+    omega_d: Vec3,
+    rd_override: Option<&Mat3>,
+    dt: f32, s: &mut State,
+) -> (f32, Vec3) {
+    // ── Position loop (identical to geometric) ─────────────────────────────
+    let ep = pd.sub(pos);
+    let ev = vd.sub(vel);
+    s.i_ep = s.i_ep.add(ep.scale(dt));
+    s.i_ep = Vec3::new(
+        s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
+        s.i_ep.y.clamp(-KI_LIMIT, KI_LIMIT),
+        s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
+    );
+    let f_d = ad
+        .add(Vec3::new(KP_X*ep.x, KP_Y*ep.y, KP_Z*ep.z))
+        .add(Vec3::new(KV_X*ev.x, KV_Y*ev.y, KV_Z*ev.z))
+        .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
+        .add(Vec3::new(0.0, 0.0, GRAVITY));
+    let thrust_vec = f_d.scale(MASS);
+    let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
+    let thrust = thrust_vec.dot(body_z).max(0.0);
+    if thrust < 0.05 {
+        s.i_ep = Vec3::zero();
+        s.i_error_att = Vec3::zero();
+    }
+
+    // ── Desired rotation (same as geometric, supports rd_override) ─────────
+    let rd_flatness;
+    let rd: &Mat3 = match rd_override {
+        Some(ro) => ro,
+        None => { rd_flatness = desired_rot(thrust_vec, yaw_d); &rd_flatness }
+    };
+
+    // ── Attitude error eR = ½(Rd^T R − R^T Rd)^∨ ─────────────────────────
+    let er = vee_half(&matsub(&mat_at_b(rd, r), &mat_at_b(r, rd)));
+    s.i_error_att = s.i_error_att.add(er.scale(dt));
+
+    // ── Stage 1: Butterworth pre-filter on raw gyro ────────────────────────
+    let omega_f = Vec3::new(
+        s.bw_x.update(omega.x),
+        s.bw_y.update(omega.y),
+        s.bw_z.update(omega.z),
+    );
+
+    // Seed omega_filt_prev on first call → α_raw = 0, no startup kick
+    if !s.indi_init {
+        s.omega_filt_prev = omega_f;
+        s.indi_init = true;
+    }
+
+    // ── Stage 2: finite difference → α_raw ────────────────────────────────
+    let inv_dt    = if dt > 1e-9 { 1.0 / dt } else { 500.0 };
+    let alpha_raw = omega_f.sub(s.omega_filt_prev).scale(inv_dt);
+
+    // ── Stage 3: IIR post-filter → α_meas ─────────────────────────────────
+    let alpha_meas = Vec3::new(
+        s.iir_x.update(alpha_raw.x),
+        s.iir_y.update(alpha_raw.y),
+        s.iir_z.update(alpha_raw.z),
+    );
+    s.omega_filt_prev = omega_f;
+
+    // ── Eq. 2: α_ref = −K_R·e_R − K_ω·e_ω  (α_des = 0) ──────────────────
+    let e_omega = omega_f.sub(omega_d); // filtered ω for consistency with chain
+    let alpha_ref = Vec3::new(
+        -KR_INDI_X*er.x - KW_INDI_X*e_omega.x,
+        -KR_INDI_Y*er.y - KW_INDI_Y*e_omega.y,
+        -KR_INDI_Z*er.z - KW_INDI_Z*e_omega.z,
+    );
+
+    // ── τ_current from RPM² (Full INDI) ────────────────────────────────────
+    let mut m1 = 0u16; let mut m2 = 0u16; let mut m3 = 0u16; let mut m4 = 0u16;
+    unsafe { rpm_get_all(&mut m1, &mut m2, &mut m3, &mut m4); }
+    let tau_current = if m1 | m2 | m3 | m4 > 0 {
+        rpms_to_torque([m1, m2, m3, m4])
+    } else {
+        s.tau_prev // fallback to τ_prev_command when RPM deck absent
+    };
+
+    // ── Eq. 4: δτ = J·(α_ref − α_meas),  τ_new = τ_current + δτ ──────────
+    let alpha_err = alpha_ref.sub(alpha_meas);
+    let delta_tau = Vec3::new(JXX*alpha_err.x, JYY*alpha_err.y, JZZ*alpha_err.z);
+    let torque    = tau_current.add(delta_tau);
+    s.tau_prev    = torque;
+
+    // Update log variables (read by Crazyswarm2 "indi" log topic at 20 Hz)
+    unsafe {
+        INDI_TAU_X = torque.x;     INDI_TAU_Y = torque.y;     INDI_TAU_Z = torque.z;
+        INDI_ALP_X = alpha_meas.x; INDI_ALP_Y = alpha_meas.y; INDI_ALP_Z = alpha_meas.z;
+    }
+
+    (thrust, torque)
+}
+
 // ── Core geometric controller ──────────────────────────────────────────────
 fn geometric_step(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
@@ -761,7 +997,15 @@ fn geometric_step(
 // ── Firmware entry points ──────────────────────────────────────────────────
 #[no_mangle]
 pub extern "C" fn controllerOutOfTreeInit() {
-    unsafe { (*core::ptr::addr_of_mut!(CTRL)).reset(); }
+    unsafe {
+        let s = &mut *core::ptr::addr_of_mut!(CTRL);
+        s.reset();
+        // Pre-compute INDI filter coefficients for 500 Hz nominal rate.
+        // These are needed for Mode 1; cost is negligible in Mode 0.
+        const DT: f32 = 0.002_f32;
+        s.bw_x.init(FC_BW_HZ, DT); s.bw_y.init(FC_BW_HZ, DT); s.bw_z.init(FC_BW_HZ, DT);
+        s.iir_x.init(FC_IIR_HZ, DT); s.iir_y.init(FC_IIR_HZ, DT); s.iir_z.init(FC_IIR_HZ, DT);
+    }
 }
 
 #[no_mangle]
@@ -911,7 +1155,11 @@ pub unsafe extern "C" fn controllerOutOfTree(
         (omega_d, None)
     };
 
-    let (thrust_si, torque) = geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s);
+    let (thrust_si, torque) = if CONTROLLER_MODE == 1 {
+        indi_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s)
+    } else {
+        geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s)
+    };
 
     // Output
     let out = &mut *control;
