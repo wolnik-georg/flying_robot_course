@@ -222,6 +222,47 @@ if has_motors or has_ctrlxy or has_thrust:
         imbalance = max(means) - min(means)
         print(f"    Max imbalance: {imbalance:.0f} raw ({100*imbalance/max(means):.1f}%)")
 
+# ── Figure 6: INDI diagnostics (only when CONTROLLER_MODE=1 data is present) ──
+indi_tau_cols = ["indi_tau_x", "indi_tau_y", "indi_tau_z"]
+indi_alp_cols = ["indi_alp_x", "indi_alp_y", "indi_alp_z"]
+has_indi = all(c in df.columns for c in indi_tau_cols + indi_alp_cols)
+
+if has_indi:
+    # Check if any values are non-zero (INDI actually active in this flight)
+    indi_active = any(df[c].abs().max() > 1e-6 for c in indi_tau_cols + indi_alp_cols)
+    status_note = "(INDI active)" if indi_active else "(all zero — geometric mode or RPM deck absent)"
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+    fig.suptitle(f"INDI Diagnostics {status_note} — {stem}", fontsize=11)
+
+    ax = axes[0]
+    colors = ["tab:blue", "tab:orange", "tab:green"]
+    for col, lbl, color in zip(indi_tau_cols, ["τ_x", "τ_y", "τ_z"], colors):
+        ax.plot(t, df[col] * 1000, label=f"{lbl} [mNm]", linewidth=0.9, color=color)
+    ax.set_ylabel("τ_prev  [mNm]")
+    ax.set_title("INDI torque base τ_prev — steady non-zero = attitude demand; oscillation = gain too high")
+    ax.legend(fontsize=8); ax.grid(True)
+
+    ax = axes[1]
+    for col, lbl, color in zip(indi_alp_cols, ["α_x", "α_y", "α_z"], colors):
+        ax.plot(t, df[col], label=f"{lbl} [rad/s²]", linewidth=0.9, color=color)
+    ax.set_ylabel("α_meas  [rad/s²]")
+    ax.set_title("INDI angular acceleration measurement α_meas — should track angular rate changes")
+    ax.set_xlabel("time [s]")
+    ax.legend(fontsize=8); ax.grid(True)
+
+    save(fig, "indi")
+
+    if indi_active:
+        inflight = df[df["range_z"] > 0.08] if (df["range_z"] > 0.08).any() else df
+        print(f"\n  INDI (in-flight):")
+        for col in indi_tau_cols:
+            print(f"    {col}: mean={inflight[col].mean()*1000:.3f} mNm  std={inflight[col].std()*1000:.3f} mNm")
+        for col in indi_alp_cols:
+            print(f"    {col}: mean={inflight[col].mean():.2f} rad/s²  std={inflight[col].std():.2f} rad/s²")
+    else:
+        print("  INDI columns present but all zero — geometric mode or RPM deck not fitted.")
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 print()
 print(f"=== Diagnostic summary: {stem} ===")
