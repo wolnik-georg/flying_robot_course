@@ -6,7 +6,7 @@
 //! on Decision and Control (CDC), 2010.
 
 pub mod indi;
-pub use indi::{IndiController, IirFilter};
+pub use indi::{IndiController, Butterworth2, IirFilter};
 
 use crate::math::Vec3;
 use crate::dynamics::{MultirotorState, MultirotorParams};

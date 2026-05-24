@@ -64,6 +64,11 @@ impl MultirotorSimulator {
         &self.params
     }
 
+    /// Actual motor ω² after first-order motor lag — use to compute τ_current for INDI.
+    pub fn current_motor_action(&self) -> &MotorAction {
+        &self.current_action
+    }
+
     /// Perform one simulation step
     /// Advances state by dt using the configured integrator
     /// Rust note: Delegates to integrator via trait method (polymorphism)

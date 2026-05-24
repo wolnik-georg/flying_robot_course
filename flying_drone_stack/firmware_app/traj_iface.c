@@ -124,3 +124,45 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_FLOAT, acv,           &g_traj_att_cv)
   PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
 PARAM_GROUP_STOP(traj)
+
+/* ── INDI log group (Mode 1) ─────────────────────────────────────────────── */
+/* Variables are owned by Rust (no_mangle statics in lib.rs).                 */
+/* tau_{x,y,z}: incremental torque base [Nm] — what the motors are commanded. */
+/* alp_{x,y,z}: α_meas [rad/s²]            — filtered angular acceleration.   */
+/* Crazyswarm2 reads these via the "indi" custom_topic at 20 Hz.               */
+
+extern float INDI_TAU_X; extern float INDI_TAU_Y; extern float INDI_TAU_Z;
+extern float INDI_ALP_X; extern float INDI_ALP_Y; extern float INDI_ALP_Z;
+
+LOG_GROUP_START(indi)
+  LOG_ADD(LOG_FLOAT, tau_x, &INDI_TAU_X)
+  LOG_ADD(LOG_FLOAT, tau_y, &INDI_TAU_Y)
+  LOG_ADD(LOG_FLOAT, tau_z, &INDI_TAU_Z)
+  LOG_ADD(LOG_FLOAT, alp_x, &INDI_ALP_X)
+  LOG_ADD(LOG_FLOAT, alp_y, &INDI_ALP_Y)
+  LOG_ADD(LOG_FLOAT, alp_z, &INDI_ALP_Z)
+LOG_GROUP_STOP(indi)
+
+/* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
+/* Exposes per-motor RPM via the Crazyflie log system.                       */
+/* m1rpm–m4rpm are file-static in rpm.c; this bridge uses logGetVarId() to  */
+/* locate them at runtime (lazy init) and logGetUint() to read them.         */
+/* Returns 0 for each motor when the RPM deck is absent or not yet registered.*/
+
+#include "log.h"
+
+void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
+{
+    static logVarId_t ids[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+    static const char *names[4] = {"m1", "m2", "m3", "m4"};
+
+    for (int i = 0; i < 4; i++) {
+        if (!logVarIdIsValid(ids[i]))
+            ids[i] = logGetVarId("rpm", names[i]);
+    }
+
+    *m1 = logVarIdIsValid(ids[0]) ? (uint16_t)logGetUint(ids[0]) : 0u;
+    *m2 = logVarIdIsValid(ids[1]) ? (uint16_t)logGetUint(ids[1]) : 0u;
+    *m3 = logVarIdIsValid(ids[2]) ? (uint16_t)logGetUint(ids[2]) : 0u;
+    *m4 = logVarIdIsValid(ids[3]) ? (uint16_t)logGetUint(ids[3]) : 0u;
+}
