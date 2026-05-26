@@ -162,10 +162,11 @@ impl SplineTrajectory {
         let n_seg = n_wp - 1;
         assert_eq!(durations.len(), n_seg, "need n_seg durations");
 
-        let cx = solve_axis(n_seg, |i| waypoints[i].pos.x, durations, periodic)?;
-        let cy = solve_axis(n_seg, |i| waypoints[i].pos.y, durations, periodic)?;
-        let cz = solve_axis(n_seg, |i| waypoints[i].pos.z, durations, periodic)?;
-        let cyaw = solve_axis(n_seg, |i| waypoints[i].yaw, durations, periodic)?;
+        let no_pins = vec![None::<f32>; n_wp];
+        let cx = solve_axis(n_seg, |i| waypoints[i].pos.x, &no_pins, durations, periodic)?;
+        let cy = solve_axis(n_seg, |i| waypoints[i].pos.y, &no_pins, durations, periodic)?;
+        let cz = solve_axis(n_seg, |i| waypoints[i].pos.z, &no_pins, durations, periodic)?;
+        let cyaw = solve_axis(n_seg, |i| waypoints[i].yaw, &no_pins, durations, periodic)?;
 
         let segments = (0..n_seg)
             .map(|i| SplineSegment {
@@ -181,6 +182,54 @@ impl SplineTrajectory {
             segments,
             total_time: durations.iter().sum(),
         })
+    }
+
+    /// Plan a minimum-snap spline with optional per-waypoint acceleration constraints.
+    ///
+    /// `accel_pins`: list of `(waypoint_index, acceleration_m_s2)` pairs.  At each pinned
+    /// waypoint the physical second derivative d²pos/dt² is forced to equal the given Vec3.
+    /// This is the correct way to enforce a desired thrust direction at a waypoint (the
+    /// attitude follows from differential flatness: body_z = normalize(a + g·ẑ)).
+    ///
+    /// Example — force inversion at the apex of a vertical loop (index 2, top waypoint):
+    /// ```ignore
+    /// SplineTrajectory::plan_with_accel_pins(&wps, &durs, &[(2, Vec3::new(0.0, 0.0, -1.5*9.81))], true)
+    /// ```
+    /// With a_z = −1.5 g: body_z = normalize(0, 0, −1.5g + g) = (0, 0, −1) → fully inverted.
+    pub fn plan_with_accel_pins(
+        waypoints: &[Waypoint],
+        durations: &[f32],
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+    ) -> Result<Self, String> {
+        let n_wp = waypoints.len();
+        let n_seg = n_wp - 1;
+        assert_eq!(durations.len(), n_seg, "need n_seg durations");
+
+        let mut pins_x = vec![None::<f32>; n_wp];
+        let mut pins_y = vec![None::<f32>; n_wp];
+        let mut pins_z = vec![None::<f32>; n_wp];
+        for &(idx, a) in accel_pins {
+            assert!(idx < n_wp, "accel_pin index {idx} out of range (n_wp={n_wp})");
+            pins_x[idx] = Some(a.x);
+            pins_y[idx] = Some(a.y);
+            pins_z[idx] = Some(a.z);
+        }
+        let no_pins = vec![None::<f32>; n_wp];
+
+        let cx = solve_axis(n_seg, |i| waypoints[i].pos.x, &pins_x, durations, periodic)?;
+        let cy = solve_axis(n_seg, |i| waypoints[i].pos.y, &pins_y, durations, periodic)?;
+        let cz = solve_axis(n_seg, |i| waypoints[i].pos.z, &pins_z, durations, periodic)?;
+        let cyaw = solve_axis(n_seg, |i| waypoints[i].yaw, &no_pins, durations, periodic)?;
+
+        let segments = (0..n_seg)
+            .map(|i| SplineSegment {
+                cx: cx[i], cy: cy[i], cz: cz[i], cyaw: cyaw[i],
+                duration: durations[i],
+            })
+            .collect();
+
+        Ok(SplineTrajectory { segments, total_time: durations.iter().sum() })
     }
 
     /// Evaluate flat outputs at time `t` (clamped to [0, total_time]).
@@ -236,10 +285,16 @@ impl SplineTrajectory {
 
 /// Solve a single-axis minimum-snap QP.
 ///
+/// `accel_at[k]`: if `Some(a)`, pin the physical acceleration d²p/dt² at waypoint k to `a`.
+/// Length must equal `n_seg + 1`.  Interior pins add an extra equality constraint on
+/// `poly_d2(seg_k, 0.0) = a * T_k²`.  Boundary pins override the rest-to-rest d²=0 condition.
+///
 /// Returns a Vec of [f32; 9] coefficient arrays, one per segment, normalised
 /// to the unit interval [0, 1].  Physical-time derivatives are recovered by
 /// dividing by the appropriate power of `duration`.
-fn solve_axis<F>(n_seg: usize, wp: F, durations: &[f32], periodic: bool) -> Result<Vec<[f32; 9]>, String>
+fn solve_axis<F>(
+    n_seg: usize, wp: F, accel_at: &[Option<f32>], durations: &[f32], periodic: bool,
+) -> Result<Vec<[f32; 9]>, String>
 where
     F: Fn(usize) -> f32,
 {
@@ -288,15 +343,27 @@ where
             }
         }
     } else {
-        // Rest-to-rest: derivatives 1–4 zero at start and end
+        // Rest-to-rest: derivatives 1–4 zero at start and end.
+        // d2 constraints are skipped when overridden by an accel_at pin.
         constraints.push(constraint!(poly_d1(&vars[0], 0.0) == 0.0_f32));
-        constraints.push(constraint!(poly_d2(&vars[0], 0.0) == 0.0_f32));
+        if accel_at[0].is_none() {
+            constraints.push(constraint!(poly_d2(&vars[0], 0.0) == 0.0_f32));
+        }
         constraints.push(constraint!(poly_d3(&vars[0], 0.0) == 0.0_f32));
         constraints.push(constraint!(poly_d4(&vars[0], 0.0) == 0.0_f32));
         constraints.push(constraint!(poly_d1(&vars[last], 1.0) == 0.0_f32));
-        constraints.push(constraint!(poly_d2(&vars[last], 1.0) == 0.0_f32));
+        if accel_at[n_seg].is_none() {
+            constraints.push(constraint!(poly_d2(&vars[last], 1.0) == 0.0_f32));
+        }
         constraints.push(constraint!(poly_d3(&vars[last], 1.0) == 0.0_f32));
         constraints.push(constraint!(poly_d4(&vars[last], 1.0) == 0.0_f32));
+        // Boundary acceleration pins (replace the zero constraints above)
+        if let Some(a) = accel_at[0] {
+            constraints.push(constraint!(poly_d2(&vars[0], 0.0) == a * durations[0].powi(2)));
+        }
+        if let Some(a) = accel_at[n_seg] {
+            constraints.push(constraint!(poly_d2(&vars[last], 1.0) == a * durations[last].powi(2)));
+        }
     }
 
     // Interior waypoints: position match + continuity up to snap
@@ -331,6 +398,12 @@ where
                 )),
                 _ => unreachable!(),
             }
+        }
+
+        // Acceleration pin at interior waypoint k+1: d²p/dt² = accel_at[k+1]
+        // In normalised time: poly_d2(seg_{k+1}, 0) = a * T_{k+1}²
+        if let Some(a) = accel_at[k + 1] {
+            constraints.push(constraint!(poly_d2(&vars[k + 1], 0.0) == a * t_k1.powi(2)));
         }
     }
 

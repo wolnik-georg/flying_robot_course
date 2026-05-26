@@ -1459,6 +1459,21 @@ fn export_planning_reference_only() {
         );
     }
 
+    {
+        // Mode 2 teardrop: NEW acceleration-pinned approach replacing explicit Se3 attitude.
+        // pin=-1.5g at apex → flatness gives body_z=(0,0,-1) (fully inverted) automatically.
+        // pin=-1.5g ↔ v=2.27 m/s → seg_t=0.20s (self-consistent). max omega≈34 rad/s, thrust≈0.77 N.
+        // Requires CF Brushless / Bolt — NOT CF2.1 (limit 12 rad/s, 0.55 N).
+        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.35, 0.6, 0.20);
+        let traj = SplineTrajectory::plan_with_accel_pins(&td_wps, &td_durs, &td_pins, true)
+            .expect("m2 teardrop");
+        let p = TrajectoryPlanner::Spline(traj);
+        export_flat_reference_bundle(
+            &reference_dir(2, "teardrop"), &p, &td_wps, "teardrop", 2,
+            "SplineTrajectory_accel_pinned", false,
+        );
+    }
+
     // Mode 1 — export using already-built planners (no extra QP calls)
     export_flat_reference_bundle(
         &reference_dir(1, "circle"),  &p1_circle, &circle_wps, "circle",  1, "RichterTrajectory", true,
@@ -1544,7 +1559,6 @@ fn export_planning_reference_only() {
             &reference_dir(0, "corkscrew"), &p, &corkscrew_wps, "corkscrew", 0, "SplineTrajectory", false,
         );
     }
-
     println!("\nNext: scripts/plot_planning_all.sh");
 }
 
@@ -2004,6 +2018,28 @@ fn se3_to_flat_waypoints(wps: &[Se3Waypoint]) -> Vec<Waypoint> {
             yaw: yaw_from_quat(w.att),
         })
         .collect()
+}
+
+/// Teardrop vertical loop in the XZ plane with acceleration-pinned inversion at the apex.
+///
+/// Uses 5 waypoints (4 segments + periodic closure).  The top waypoint (index 2) has its
+/// acceleration pinned to (0, 0, -1.5·g): body_z = normalize(0,0,−1.5g+g) = (0,0,−1) → inverted.
+/// No explicit attitude quaternions are needed — differential flatness gives the full attitude.
+///
+/// Shape: wider at mid-height (r = 0.35 m) than at top; height from Z to Z+h (default 0.6 m).
+fn teardrop_waypoints(r: f32, h: f32, seg_t: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
+    const G: f32 = 9.81;
+    let wps = vec![
+        Waypoint { pos: Vec3::new( 0.0, 0.0, Z),             yaw: 0.0 },  // WP0: bottom
+        Waypoint { pos: Vec3::new( r,   0.0, Z + h * 0.5),   yaw: 0.0 },  // WP1: right
+        Waypoint { pos: Vec3::new( 0.0, 0.0, Z + h),         yaw: 0.0 },  // WP2: top (inverted)
+        Waypoint { pos: Vec3::new(-r,   0.0, Z + h * 0.5),   yaw: 0.0 },  // WP3: left
+        Waypoint { pos: Vec3::new( 0.0, 0.0, Z),             yaw: 0.0 },  // WP4: bottom (closure)
+    ];
+    let durs = vec![seg_t; 4];
+    // Pin a_z = -1.5g at the top so flatness gives body_z = (0,0,-1) → fully inverted.
+    let pins = vec![(2usize, Vec3::new(0.0, 0.0, -1.5 * G))];
+    (wps, durs, pins)
 }
 
 /// Vertical loop for Mode 2: explicit attitude through full inversion.
