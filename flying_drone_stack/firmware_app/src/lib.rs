@@ -556,16 +556,16 @@ extern "C" {
 //   acc  = p''(t) / T²
 //   jerk = p'''(t) / T³
 
-/// Evaluate position, velocity, acceleration and jerk of a single axis
+/// Evaluate position, velocity, acceleration, jerk, and snap of a single axis
 /// via Horner's method.
 ///
 /// `c`     — 9 polynomial coefficients [c0 .. c8] in normalised time
 /// `t`     — normalised time ∈ [0, 1]
 /// `t_dur` — segment duration T [s]
 ///
-/// Returns `(pos, vel/T, acc/T², jerk/T³)` in physical units.
+/// Returns `(pos, vel/T, acc/T², jerk/T³, snap/T⁴)` in physical units.
 #[inline]
-fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32) {
+fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32, f32) {
     // Position  p(t) — Horner from highest degree
     let p = ((((((((c[8]) * t + c[7]) * t + c[6]) * t + c[5]) * t
              + c[4]) * t + c[3]) * t + c[2]) * t + c[1]) * t + c[0];
@@ -582,10 +582,15 @@ fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32) {
     let j = (((((336.0*c[8]) * t + 210.0*c[7]) * t + 120.0*c[6]) * t
              + 60.0*c[5]) * t + 24.0*c[4]) * t + 6.0*c[3];
 
+    // Snap  p''''(t) = 24c4 + 120c5·t + 360c6·t² + 840c7·t³ + 1680c8·t⁴
+    let sn = ((((1680.0*c[8]) * t + 840.0*c[7]) * t + 360.0*c[6]) * t
+              + 120.0*c[5]) * t + 24.0*c[4];
+
     let inv_t  = 1.0 / t_dur;
     let inv_t2 = inv_t * inv_t;
     let inv_t3 = inv_t2 * inv_t;
-    (p, v * inv_t, a * inv_t2, j * inv_t3)
+    let inv_t4 = inv_t3 * inv_t;
+    (p, v * inv_t, a * inv_t2, j * inv_t3, sn * inv_t4)
 }
 
 /// Evaluate the onboard spline at global trajectory time `t_global` [s].
@@ -594,9 +599,9 @@ fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32) {
 /// Caller must hold the `unsafe` context and ensure `n_segs ≤ TRAJ_MAX_SEGS`
 /// and that the coefficients have been fully uploaded before T0 is latched.
 ///
-/// Returns `(pos_rel, vel, acc, jerk)` — pos_rel is relative to trajectory
+/// Returns `(pos_rel, vel, acc, jerk, snap)` — pos_rel is relative to trajectory
 /// origin (caller adds `g_traj_origin_{x,y}` and `g_traj_hover_z`).
-unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, Vec3) {
+unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, Vec3, Vec3) {
     // Compute total trajectory duration so we can wrap t for periodic reps.
     let mut total_dur = 0.0_f32;
     for i in 0..n_segs {
@@ -635,8 +640,8 @@ unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, 
         cy[k] = g_traj_coefs[base + 10 + k];
     }
 
-    let (px, vx, ax, jx) = poly_eval_axis(&cx, t_n, dur);
-    let (py, vy, ay, jy) = poly_eval_axis(&cy, t_n, dur);
+    let (px, vx, ax, jx, sx) = poly_eval_axis(&cx, t_n, dur);
+    let (py, vy, ay, jy, sy) = poly_eval_axis(&cy, t_n, dur);
 
     // Z: linear ramp using t_global (not wrapped t) so multi-rep helices stack
     // continuously upward instead of resetting each lap.
@@ -650,6 +655,7 @@ unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, 
         Vec3::new(vx, vy, vz),
         Vec3::new(ax, ay, 0.0),
         Vec3::new(jx, jy, 0.0),
+        Vec3::new(sx, sy, 0.0),
     )
 }
 
@@ -705,8 +711,8 @@ unsafe fn eval_att_poly(t_global: f32, yaw_d: f32, n_segs: usize) -> (f32, f32, 
         cp[k] = g_traj_att_coefs[base + 9 + k];
     }
 
-    let (roll_d,  roll_dot,  _, _) = poly_eval_axis(&cr, tau, dur);
-    let (pitch_d, pitch_dot, _, _) = poly_eval_axis(&cp, tau, dur);
+    let (roll_d,  roll_dot,  _, _, _) = poly_eval_axis(&cr, tau, dur);
+    let (pitch_d, pitch_dot, _, _, _) = poly_eval_axis(&cp, tau, dur);
 
     // Body-frame ω from ZYX Euler rates (yaw_dot = 0 for all flat trajectories)
     let cr_ = libm::cosf(roll_d);
@@ -723,12 +729,12 @@ unsafe fn eval_att_poly(t_global: f32, yaw_d: f32, n_segs: usize) -> (f32, f32, 
 /// Uses the same segment-finding logic as `eval_traj_onboard` (reads durations from
 /// the position coefficient buffer) but evaluates `g_traj_z_coefs` for the Z axis.
 ///
-/// Returns `(pz [m], vz [m/s], az [m/s²], jz [m/s³])` — all relative to `hover_z`.
+/// Returns `(pz [m], vz [m/s], az [m/s²], jz [m/s³], sz [m/s⁴])` — all relative to `hover_z`.
 ///
 /// # Safety
 /// Caller must hold the `unsafe` context.
 #[inline]
-unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32) {
+unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32, f32) {
     let mut total_dur = 0.0_f32;
     for i in 0..n_segs {
         total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
@@ -753,8 +759,8 @@ unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32) {
     for k in 0..9 {
         cz[k] = g_traj_z_coefs[base + k];
     }
-    let (pz, vz, az, jz) = poly_eval_axis(&cz, tau, dur);
-    (pz, vz, az, jz)
+    let (pz, vz, az, jz, sz) = poly_eval_axis(&cz, tau, dur);
+    (pz, vz, az, jz, sz)
 }
 
 /// Compute desired body angular velocity ω_d from flatness (yaw=const → ψ̇=0).
@@ -782,6 +788,40 @@ fn omega_desired(acc: Vec3, jerk: Vec3, yaw: f32) -> Vec3 {
     let omega_y =  xb.dot(jerk) / c;
     // omega_z = 0 because yaw_dot = 0 for this trajectory
     Vec3::new(omega_x, omega_y, 0.0)
+}
+
+/// Compute desired body angular acceleration α_des from snap via differential flatness.
+///
+/// Time derivative of omega_desired with ψ̇ = 0 (constant yaw). Derivation:
+///   ẏb = ωx·b3, so ẏb·j = ωx·ċ;  ẋb = -ωy·b3, so ẋb·j = -ωy·ċ
+///   ċ = b3·j (rate of change of thrust magnitude)
+/// Substituting ωx = -(yb·j)/c and ωy = (xb·j)/c yields Eq. (15) of Tal & Karaman 2020:
+///   αx = 2(yb·j)(b3·j)/c² − (yb·s)/c
+///   αy = (xb·s)/c − 2(xb·j)(b3·j)/c²
+///   αz = 0
+#[inline]
+fn alpha_desired(acc: Vec3, jerk: Vec3, snap: Vec3, yaw: f32) -> Vec3 {
+    let cos_psi = libm::cosf(yaw);
+    let sin_psi = libm::sinf(yaw);
+    let yc = Vec3::new(-sin_psi, cos_psi, 0.0);
+
+    let acc_g = Vec3::new(acc.x, acc.y, acc.z + GRAVITY);
+    let c = acc_g.norm();
+    if c < 0.1 { return Vec3::zero(); }
+
+    let xb    = yc.cross(acc_g).normalize();
+    let yb    = acc_g.cross(xb).normalize();
+    let b3    = acc_g.scale(1.0 / c);
+    let c_dot = b3.dot(jerk);   // ċ = b3·j
+
+    let inv_c  = 1.0 / c;
+    let inv_c2 = inv_c * inv_c;
+
+    Vec3::new(
+        2.0 * yb.dot(jerk) * c_dot * inv_c2 - yb.dot(snap) * inv_c,
+        xb.dot(snap) * inv_c - 2.0 * xb.dot(jerk) * c_dot * inv_c2,
+        0.0,
+    )
 }
 
 // ── Desired rotation matrix ────────────────────────────────────────────────
@@ -822,16 +862,16 @@ fn rpms_to_torque(rpms: [u16; 4]) -> Vec3 {
 ///
 /// Position loop is identical to geometric_step.
 /// Attitude loop follows the four INDI equations:
-///   (1) α_des = 0  (snap feedforward; zero when planner does not provide snap)
-///   (2) α_ref = −K_R·e_R − K_ω·e_ω
+///   (1) α_des from snap via flatness (Eq. 15); Vec3::zero() in Mode B (no snap available)
+///   (2) α_ref = α_des − K_R·e_R − K_ω·e_ω  (Eq. 28)
 ///   (3) α_meas: Stage1 Butterworth → Stage2 finite-diff → Stage3 IIR
-///   (4) δτ = J·(α_ref − α_meas),  τ = τ_current + δτ
+///   (4) δτ = J·(α_ref − α_meas),  τ = τ_current + δτ  (Eq. 31)
 ///       τ_current from RPM² via rpm_get_all(); falls back to τ_prev when RPM deck absent.
 #[allow(dead_code)]
 fn indi_step(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
-    omega_d: Vec3,
+    omega_d: Vec3, alpha_des: Vec3,
     rd_override: Option<&Mat3>,
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
@@ -893,12 +933,12 @@ fn indi_step(
     );
     s.omega_filt_prev = omega_f;
 
-    // ── Eq. 2: α_ref = −K_R·e_R − K_ω·e_ω  (α_des = 0) ──────────────────
+    // ── Eq. 2: α_ref = α_des − K_R·e_R − K_ω·e_ω  (Tal & Karaman Eq. 28) ──
     let e_omega = omega_f.sub(omega_d); // filtered ω for consistency with chain
     let alpha_ref = Vec3::new(
-        -KR_INDI_X*er.x - KW_INDI_X*e_omega.x,
-        -KR_INDI_Y*er.y - KW_INDI_Y*e_omega.y,
-        -KR_INDI_Z*er.z - KW_INDI_Z*e_omega.z,
+        alpha_des.x - KR_INDI_X*er.x - KW_INDI_X*e_omega.x,
+        alpha_des.y - KR_INDI_Y*er.y - KW_INDI_Y*e_omega.y,
+        alpha_des.z - KR_INDI_Z*er.z - KW_INDI_Z*e_omega.z,
     );
 
     // ── τ_current from RPM² (Full INDI) ────────────────────────────────────
@@ -1080,39 +1120,43 @@ pub unsafe extern "C" fn controllerOutOfTree(
         TRAJ_T0 = tick; // latch start time
     }
 
-    let (pd, vd, ad, omega_d) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
+    let (pd, vd, ad, omega_d, alpha_des) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
         // ── Mode D: onboard trajectory eval ───────────────────────────────
         // All trajectory types (flat, helix, loop) — Z source selected by z_mode:
         //   z_mode=0: linear ramp via traj.dz (circle, figure-8, helix)
         //   z_mode=1: degree-8 polynomial from g_traj_z_coefs (loop, any 3D path)
         let t = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
         let n_segs = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
-        let (pos_rel, vel, acc, jerk) = eval_traj_onboard(t, n_segs);
+        let (pos_rel, vel, acc, jerk, snap) = eval_traj_onboard(t, n_segs);
 
         let ox = g_traj_origin_x;
         let oy = g_traj_origin_y;
         let hz = g_traj_hover_z;
 
         // Z: polynomial override (3D) or linear ramp (flat/helix)
-        let (pz, vz, az, jz) = if g_traj_z_mode == 1 {
+        let (pz, vz, az, jz, sz) = if g_traj_z_mode == 1 {
             eval_z_poly(t, n_segs)
         } else {
-            (pos_rel.z, vel.z, acc.z, jerk.z)
+            (pos_rel.z, vel.z, acc.z, jerk.z, snap.z)
         };
 
         let pd = Vec3::new(ox + pos_rel.x, oy + pos_rel.y, hz + pz);
         let vd = Vec3::new(vel.x, vel.y, vz);
         let ad = Vec3::new(acc.x, acc.y, az);
+        let jerk_3d = Vec3::new(jerk.x, jerk.y, jz);
+        let snap_3d = Vec3::new(snap.x, snap.y, sz);
         // ω_d feedforward: include Z jerk when z_mode=1 (non-zero for 3D paths).
-        let omega_d = omega_desired(ad, Vec3::new(jerk.x, jerk.y, jz), 0.0_f32);
-        (pd, vd, ad, omega_d)
+        let omega_d  = omega_desired(ad, jerk_3d, 0.0_f32);
+        // α_des feedforward: snap → Ω̇_ref via flatness (Tal & Karaman Eq. 15).
+        let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32);
+        (pd, vd, ad, omega_d, alpha_des)
     } else {
         // Mode B passthrough: use incoming CRTP setpoint unchanged.
-        // omega_d = zero → e_omega = omega (identical to previous behaviour).
+        // omega_d / alpha_des = zero → pure feedback (no snap available).
         let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
         let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
         let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
-        (pd, vd, ad, Vec3::zero())
+        (pd, vd, ad, Vec3::zero(), Vec3::zero())
     };
 
     // SAFE ARMING: only enable controller when test harness sends real position
@@ -1156,7 +1200,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     };
 
     let (thrust_si, torque) = if CONTROLLER_MODE == 1 {
-        indi_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s)
+        indi_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, alpha_des, rd_override, dt, s)
     } else {
         geometric_step(pos, vel, &r, omega, pd, vd, ad, yaw_d, omega_d_final, rd_override, dt, s)
     };
