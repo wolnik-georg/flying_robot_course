@@ -42,6 +42,7 @@
  */
 
 #include "param.h"
+#include "log.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -148,8 +149,6 @@ LOG_GROUP_STOP(indi)
 /* m1rpm–m4rpm are file-static in rpm.c; this bridge uses logGetVarId() to  */
 /* locate them at runtime (lazy init) and logGetUint() to read them.         */
 /* Returns 0 for each motor when the RPM deck is absent or not yet registered.*/
-
-#include "log.h"
 
 void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
