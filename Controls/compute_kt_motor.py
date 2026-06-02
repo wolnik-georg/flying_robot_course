@@ -6,9 +6,10 @@ Reads rpm_m1..m4 columns logged by CS2 flight.py during hover.
 Drops rows where any RPM is zero (deck not yet active / landed).
 Computes k_T = hover_thrust / (m1² + m2² + m3² + m4²) per row, then averages.
 
-Usage:
-    python3 scripts/compute_kt_motor.py path/to/hover_log.csv [--mass 0.027]
-    python3 scripts/compute_kt_motor.py          # auto-picks latest CSV in Controls/logs/
+Usage (from Controls/):
+    python3 compute_kt_motor.py                          # auto-picks latest CSV in logs/
+    python3 compute_kt_motor.py logs/hover_....csv
+    python3 compute_kt_motor.py logs/hover_....csv --mass 0.031
 """
 
 import argparse
@@ -17,7 +18,7 @@ from pathlib import Path
 import csv
 
 GRAVITY   = 9.81   # m/s²
-LOGS_DIR  = Path(__file__).resolve().parents[1] / "Controls" / "logs"
+LOGS_DIR  = Path(__file__).resolve().parent / "logs"
 
 
 def load_csv(path: Path) -> list[dict]:
