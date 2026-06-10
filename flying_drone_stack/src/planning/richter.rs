@@ -44,6 +44,7 @@
 //!   *Polynomial Trajectory Planning for Aggressive Quadrotor Flight in Dense
 //!   Indoor Environments.* In: Robotics Research, Springer, pp. 649–666.
 
+use crate::math::Vec3;
 use super::flatness::{FlatOutput, compute_flatness};
 use super::spline::{SplineTrajectory, SplineSegment, Waypoint};
 
@@ -198,6 +199,84 @@ impl RichterTrajectory {
         let times = times.iter().map(|&t| t.max(T_MIN)).collect::<Vec<_>>();
         let times = optimize_times(waypoints, times, k_t, n_iter, periodic)?;
         let inner = SplineTrajectory::plan(waypoints, &times, periodic)?;
+        let total_time = times.iter().sum();
+        Ok(RichterTrajectory { inner, segment_times: times, total_time, k_t })
+    }
+
+    /// Same as `plan` (Mode 1, 0 redistribution iters) but pins acceleration at
+    /// selected waypoints.  Richter's time allocation runs unchanged; only the
+    /// final QP solve uses `plan_with_accel_pins`.
+    ///
+    /// `accel_pins`: `(waypoint_index, acceleration_m_s2)` pairs — same semantics
+    /// as `SplineTrajectory::plan_with_accel_pins`.
+    pub fn plan_with_accel_pins(
+        waypoints: &[RichterWaypoint],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+    ) -> Result<Self, String> {
+        Self::plan_accel_pins_with_iters(waypoints, k_t, accel_pins, periodic, 0)
+    }
+
+    /// Same as `plan_paper` (Mode 3, 8 redistribution iters) but pins acceleration
+    /// at selected waypoints.
+    pub fn plan_paper_with_accel_pins(
+        waypoints: &[RichterWaypoint],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+    ) -> Result<Self, String> {
+        Self::plan_accel_pins_with_iters(waypoints, k_t, accel_pins, periodic, 8)
+    }
+
+    fn plan_accel_pins_with_iters(
+        waypoints: &[RichterWaypoint],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+        n_iter: usize,
+    ) -> Result<Self, String> {
+        if waypoints.len() < 2 {
+            return Err("need at least 2 waypoints".to_string());
+        }
+        let k_t = k_t.max(1e-6_f32);
+        let times = init_times(waypoints, k_t, periodic);
+        // Round to nearest 10 ms: init_times produces irrational f32 values (dist/v_avg)
+        // whose 1/T^7 scale factors cause Clarabel KKT-matrix instability in the
+        // more-constrained accel-pin QP.  Clean 10 ms increments stay well-conditioned
+        // while preserving k_t aggressiveness discrimination across the full range.
+        let times: Vec<f32> = times.iter().map(|&t| (t * 100.0).round() / 100.0).collect();
+        let times = optimize_times(waypoints, times, k_t, n_iter, periodic)?;
+        let inner = SplineTrajectory::plan_with_accel_pins(waypoints, &times, accel_pins, periodic)?;
+        let total_time = times.iter().sum();
+        Ok(RichterTrajectory { inner, segment_times: times, total_time, k_t })
+    }
+
+    /// Same as `plan_from_times` but pins acceleration at selected waypoints.
+    ///
+    /// Use this for Mode 3 (paper) or dense-waypoint cases where timing is
+    /// specified manually, combined with accel-pinned inversion at key waypoints.
+    pub fn plan_from_times_with_accel_pins(
+        waypoints: &[RichterWaypoint],
+        times: &[f32],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+        n_iter: usize,
+    ) -> Result<Self, String> {
+        if waypoints.len() < 2 {
+            return Err("need at least 2 waypoints".to_string());
+        }
+        if times.len() != waypoints.len() - 1 {
+            return Err(format!(
+                "plan_from_times_with_accel_pins: need {} times for {} waypoints, got {}",
+                waypoints.len() - 1, waypoints.len(), times.len()
+            ));
+        }
+        let k_t = k_t.max(1e-6_f32);
+        let times = times.iter().map(|&t| t.max(T_MIN)).collect::<Vec<_>>();
+        let times = optimize_times(waypoints, times, k_t, n_iter, periodic)?;
+        let inner = SplineTrajectory::plan_with_accel_pins(waypoints, &times, accel_pins, periodic)?;
         let total_time = times.iter().sum();
         Ok(RichterTrajectory { inner, segment_times: times, total_time, k_t })
     }
@@ -519,6 +598,56 @@ mod tests {
             (ratio - 128.0).abs() < 1.0,
             "snap cost ratio should be ~128 (2^7), got {:.2}",
             ratio
+        );
+    }
+
+    // ── T7: accel-pinned teardrop achieves inversion at apex ─────────────────
+    #[test]
+    fn richter_accel_pin_teardrop_inverts_at_apex() {
+        use crate::planning::compute_flatness;
+
+        const G: f32 = 9.81;
+        const Z: f32 = 0.5;
+        let r = 0.20_f32;
+        let h = 1.30_f32;
+
+        let wps = vec![
+            RichterWaypoint { pos: Vec3::new( 0.0, 0.0, Z),            yaw: 0.0 },
+            RichterWaypoint { pos: Vec3::new( r,   0.0, Z + h * 0.20), yaw: 0.0 },
+            RichterWaypoint { pos: Vec3::new( 0.0, 0.0, Z + h * 0.60), yaw: 0.0 },
+            RichterWaypoint { pos: Vec3::new( 0.0, 0.0, Z + h),        yaw: 0.0 }, // apex
+            RichterWaypoint { pos: Vec3::new( 0.0, 0.0, Z + h * 0.60), yaw: 0.0 },
+            RichterWaypoint { pos: Vec3::new(-r,   0.0, Z + h * 0.20), yaw: 0.0 },
+            RichterWaypoint { pos: Vec3::new( 0.0, 0.0, Z),            yaw: 0.0 },
+        ];
+        // pin a_z = -1.5g at WP3 (apex) → flatness yields body_z = (0,0,-1) (fully inverted)
+        let pins = vec![(3usize, Vec3::new(0.0, 0.0, -1.5 * G))];
+
+        // Proportional durations (same formula as teardrop_waypoints): avoids Richter
+        // auto-allocation clamping t01 to T_MIN=0.15s which makes the QP infeasible.
+        let d01 = (r * r + (h * 0.20) * (h * 0.20)).sqrt();
+        let d12 = (r * r + (h * 0.40) * (h * 0.40)).sqrt();
+        let d23 = h * 0.40;
+        let seg_t = 0.20_f32;
+        let t01 = seg_t.max(0.15);
+        let t12 = ((d12 / d01) * seg_t).max(0.15);
+        let t23 = ((d23 / d01) * seg_t).max(0.15);
+        let durs = vec![t01, t12, t23, t23, t12, t01];
+
+        let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.4, &pins, true, 0)
+            .expect("teardrop plan failed");
+
+        // Apex is at WP3 = end of segment 2
+        let t_apex = traj.segment_times[0] + traj.segment_times[1] + traj.segment_times[2];
+        let flat = traj.eval(t_apex);
+        let fr = compute_flatness(&flat, 0.027);
+
+        // body_z world-frame z-component: rot is row-major, column [:][2] is body_z
+        let body_z_z = fr.rot[2][2];
+        assert!(
+            body_z_z < -0.9,
+            "apex should be fully inverted (body_z.z < -0.9), got {:.4}",
+            body_z_z
         );
     }
 }

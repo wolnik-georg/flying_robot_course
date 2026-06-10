@@ -454,4 +454,5 @@ mod tests {
         assert!(start.vel.x.abs() < 1e-3, "start vx");
         assert!(end.vel.y.abs() < 1e-3, "end vy");
     }
+
 }

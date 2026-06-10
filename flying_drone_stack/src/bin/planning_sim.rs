@@ -1213,6 +1213,14 @@ fn export_planning_reference_only() {
     let screw_wps = se3_to_flat_waypoints(&screw_se3_wps);
 
     let kt_cfg = load_planning_kt_config();
+    // Teardrop: r=0.20 h=1.20 gives 3:1 aspect ratio (proper elongated teardrop shape).
+    // Mode 3 skipped — the 2.5:1 segment-length ratio causes Clarabel OtherError after
+    // many sequential QP calls in this process; Mode 0 and Mode 1 are the useful ones.
+    let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.20, 1.30, 0.50, 0.20);
+    let p1_teardrop = TrajectoryPlanner::Richter(
+        RichterTrajectory::plan_from_times_with_accel_pins(&td_wps, &td_durs, 1.4, &td_pins, true, 0)
+            .expect("m1 teardrop")
+    );
     // Build Mode 1 / 3 planners from YAML k_t config.
     let p1_circle = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(1, "circle", 0.01), true).expect("m1 circle");
     let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   kt_cfg.get(1, "figure8", 0.008), FIG8_PERIODIC).expect("m1 fig8");
@@ -1460,19 +1468,25 @@ fn export_planning_reference_only() {
     }
 
     {
-        // Mode 2 teardrop: NEW acceleration-pinned approach replacing explicit Se3 attitude.
+        // Mode 0 teardrop: accel-pinned SplineTrajectory (manual timing).
         // pin=-1.5g at apex → flatness gives body_z=(0,0,-1) (fully inverted) automatically.
         // pin=-1.5g ↔ v=2.27 m/s → seg_t=0.20s (self-consistent). max omega≈34 rad/s, thrust≈0.77 N.
         // Requires CF Brushless / Bolt — NOT CF2.1 (limit 12 rad/s, 0.55 N).
-        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.35, 0.6, 0.20);
+        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.20, 1.30, 0.50, 0.20);
         let traj = SplineTrajectory::plan_with_accel_pins(&td_wps, &td_durs, &td_pins, true)
-            .expect("m2 teardrop");
+            .expect("m0 teardrop");
         let p = TrajectoryPlanner::Spline(traj);
         export_flat_reference_bundle(
-            &reference_dir(2, "teardrop"), &p, &td_wps, "teardrop", 2,
+            &reference_dir(0, "teardrop"), &p, &td_wps, "teardrop", 0,
             "SplineTrajectory_accel_pinned", false,
         );
     }
+
+    // Mode 1 teardrop: use pre-built planner (QP already solved above).
+    export_flat_reference_bundle(
+        &reference_dir(1, "teardrop"), &p1_teardrop, &td_wps, "teardrop", 1,
+        "RichterTrajectory_accel_pinned", false,
+    );
 
     // Mode 1 — export using already-built planners (no extra QP calls)
     export_flat_reference_bundle(
@@ -2026,19 +2040,33 @@ fn se3_to_flat_waypoints(wps: &[Se3Waypoint]) -> Vec<Waypoint> {
 /// acceleration pinned to (0, 0, -1.5·g): body_z = normalize(0,0,−1.5g+g) = (0,0,−1) → inverted.
 /// No explicit attitude quaternions are needed — differential flatness gives the full attitude.
 ///
-/// Shape: wider at mid-height (r = 0.35 m) than at top; height from Z to Z+h (default 0.6 m).
-fn teardrop_waypoints(r: f32, h: f32, seg_t: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
+/// Shape: r=0.20, h=1.20 gives 3:1 aspect ratio (width 0.40 m, height 1.20 m).
+/// 7 waypoints (incl. closure): wide at 20% height, intermediate at 60%, apex at 100%.
+/// The intermediate waypoints break the long side-to-apex segments so all 6 segment
+/// lengths stay within a ~1.6:1 ratio — keeps Clarabel 1/T^7 conditioning stable.
+fn teardrop_waypoints(r: f32, h: f32, z_base: f32, seg_t: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
     const G: f32 = 9.81;
     let wps = vec![
-        Waypoint { pos: Vec3::new( 0.0, 0.0, Z),             yaw: 0.0 },  // WP0: bottom
-        Waypoint { pos: Vec3::new( r,   0.0, Z + h * 0.5),   yaw: 0.0 },  // WP1: right
-        Waypoint { pos: Vec3::new( 0.0, 0.0, Z + h),         yaw: 0.0 },  // WP2: top (inverted)
-        Waypoint { pos: Vec3::new(-r,   0.0, Z + h * 0.5),   yaw: 0.0 },  // WP3: left
-        Waypoint { pos: Vec3::new( 0.0, 0.0, Z),             yaw: 0.0 },  // WP4: bottom (closure)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),            yaw: 0.0 }, // WP0: bottom
+        Waypoint { pos: Vec3::new( r,   0.0, z_base + h * 0.20), yaw: 0.0 }, // WP1: right wide (max width, low)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h * 0.60), yaw: 0.0 }, // WP2: centerline (acc_x naturally 0 here)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h),         yaw: 0.0 }, // WP3: apex (inverted)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h * 0.60), yaw: 0.0 }, // WP4: centerline
+        Waypoint { pos: Vec3::new(-r,   0.0, z_base + h * 0.20), yaw: 0.0 }, // WP5: left wide
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),            yaw: 0.0 }, // WP6: bottom (closure)
     ];
-    let durs = vec![seg_t; 4];
-    // Pin a_z = -1.5g at the top so flatness gives body_z = (0,0,-1) → fully inverted.
-    let pins = vec![(2usize, Vec3::new(0.0, 0.0, -1.5 * G))];
+    // Distance-proportional durations. Intermediate waypoints on centerline keep all
+    // segment lengths within ~1.7:1 ratio — Clarabel 1/T^7 stays well-conditioned.
+    let d01 = (r * r + (h * 0.20) * (h * 0.20)).sqrt();
+    let d12 = (r * r + (h * 0.40) * (h * 0.40)).sqrt(); // WP1(r,h*0.20)→WP2(0,h*0.60)
+    let d23 = h * 0.40;                                   // WP2(0,h*0.60)→WP3(0,h): pure vertical
+    let t01 = seg_t.max(0.15);
+    let t12 = ((d12 / d01) * seg_t).max(0.15);
+    let t23 = ((d23 / d01) * seg_t).max(0.15);
+    let durs = vec![t01, t12, t23, t23, t12, t01];
+    // Pin a_z = -1.5g at WP3 so flatness gives body_z = (0,0,-1) → fully inverted.
+    // acc_x=0 is consistent because WP2/WP3/WP4 are all on the centerline (x=0).
+    let pins = vec![(3usize, Vec3::new(0.0, 0.0, -1.5 * G))];
     (wps, durs, pins)
 }
 

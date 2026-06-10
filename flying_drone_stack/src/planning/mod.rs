@@ -52,6 +52,8 @@ pub mod richter;
 pub mod se3_traj;
 pub mod exploration;
 
+use crate::math::Vec3;
+
 pub use flatness::{
     FlatOutput, FlatOutput as FlatState, FlatnessResult, body_torque_diagonal, compute_flatness,
     flatness_to_reference, rot_to_quat,
@@ -129,6 +131,38 @@ impl TrajectoryPlanner {
     ) -> Result<Self, String> {
         RichterTrajectory::plan_from_times(waypoints, times, k_t, periodic, n_iter)
             .map(TrajectoryPlanner::Richter)
+    }
+
+    /// Build a **Mode 1** planner with acceleration pins at selected waypoints.
+    ///
+    /// Richter's automatic time allocation runs normally; the final QP solve
+    /// constrains `d²p/dt²` at pinned waypoints so that differential flatness
+    /// yields the desired orientation there automatically.
+    ///
+    /// From slide 20: given desired R_d and thrust r, pin `p̈ = r·R_d·e_z − g·e_z`.
+    /// Example — fully inverted at apex: `(apex_idx, Vec3::new(0.0, 0.0, -1.5*9.81))`.
+    pub fn richter_with_accel_pins(
+        waypoints: &[Waypoint],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+    ) -> Result<Self, String> {
+        RichterTrajectory::plan_with_accel_pins(waypoints, k_t, accel_pins, periodic)
+            .map(TrajectoryPlanner::Richter)
+    }
+
+    /// Build a **Mode 3** (paper-Richter) planner with acceleration pins.
+    ///
+    /// Automatic time allocation + 8 redistribution iterations, same as `paper()`,
+    /// with acceleration equality constraints at selected waypoints.
+    pub fn paper_with_accel_pins(
+        waypoints: &[Waypoint],
+        k_t: f32,
+        accel_pins: &[(usize, Vec3)],
+        periodic: bool,
+    ) -> Result<Self, String> {
+        RichterTrajectory::plan_paper_with_accel_pins(waypoints, k_t, accel_pins, periodic)
+            .map(TrajectoryPlanner::Paper)
     }
 
     /// Build a **Mode 2** planner (Se3Trajectory — explicit SO(3) attitude waypoints).
