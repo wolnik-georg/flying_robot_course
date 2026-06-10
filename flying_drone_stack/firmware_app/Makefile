@@ -9,7 +9,7 @@
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
-CRAZYFLIE_BASE := /home/georg/Desktop/imrc-crazyflie-firmware
+CRAZYFLIE_BASE := /home/georg/Desktop/crazyflie-firmware
 
 # Export so that `cargo build` (invoked from Kbuild) can find the firmware
 # headers via the CRAZYFLIE_BASE env var read in build.rs.

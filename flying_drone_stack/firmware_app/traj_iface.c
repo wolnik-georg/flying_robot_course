@@ -126,14 +126,17 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
 PARAM_GROUP_STOP(traj)
 
-/* ── INDI log group (Mode 1) ─────────────────────────────────────────────── */
-/* Variables are owned by Rust (no_mangle statics in lib.rs).                 */
-/* tau_{x,y,z}: incremental torque base [Nm] — what the motors are commanded. */
-/* alp_{x,y,z}: α_meas [rad/s²]            — filtered angular acceleration.   */
-/* Crazyswarm2 reads these via the "indi" custom_topic at 20 Hz.               */
-
+/* ── INDI log group ───────────────────────────────────────────────────────── */
+/* With OOT: variables are owned by Rust (no_mangle statics in lib.rs).       */
+/* Without OOT: local statics hold zero so the log group always exists and    */
+/* CS2 log config never fails — indi.* values are simply 0 when inactive.     */
+#ifdef CONFIG_CONTROLLER_OOT
 extern float INDI_TAU_X; extern float INDI_TAU_Y; extern float INDI_TAU_Z;
 extern float INDI_ALP_X; extern float INDI_ALP_Y; extern float INDI_ALP_Z;
+#else
+static float INDI_TAU_X = 0.0f; static float INDI_TAU_Y = 0.0f; static float INDI_TAU_Z = 0.0f;
+static float INDI_ALP_X = 0.0f; static float INDI_ALP_Y = 0.0f; static float INDI_ALP_Z = 0.0f;
+#endif
 
 LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, tau_x, &INDI_TAU_X)
@@ -143,6 +146,30 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_y, &INDI_ALP_Y)
   LOG_ADD(LOG_FLOAT, alp_z, &INDI_ALP_Z)
 LOG_GROUP_STOP(indi)
+
+/* ── INDI tuning params (runtime-configurable, no reflash needed) ─────────── */
+/* Change via CS2 yaml firmware_params.indi_gains.*, cfclient Parameters tab,   */
+/* or a Python one-liner: cf.param.set_value('indi_gains.kr', '200.0').         */
+/* Defaults match the compile-time constants in lib.rs.                          */
+float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s²]  — ωn = √KR  */
+float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]   — ζ = KW/(2ωn), keep KW > KR for stability */
+float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s²]  */
+float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]   */
+float g_indi_kt     = 1.1421e-10f; /* KT_MOTOR    [N/RPM²] — identified from hover log 2026-06-10 */
+float g_indi_fc_bw  = 60.0f;     /* Butterworth gyro pre-filter cutoff  [Hz] */
+float g_indi_fc_iir = 60.0f;     /* IIR alpha post-filter cutoff        [Hz] */
+float g_indi_mass   = 0.027f;    /* all-up mass [kg] — update if deck weight changes */
+
+PARAM_GROUP_START(indi_gains)
+  PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
+  PARAM_ADD(PARAM_FLOAT, kw,     &g_indi_kw)
+  PARAM_ADD(PARAM_FLOAT, kr_z,   &g_indi_kr_z)
+  PARAM_ADD(PARAM_FLOAT, kw_z,   &g_indi_kw_z)
+  PARAM_ADD(PARAM_FLOAT, kt,     &g_indi_kt)
+  PARAM_ADD(PARAM_FLOAT, fc_bw,  &g_indi_fc_bw)
+  PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
+  PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
+PARAM_GROUP_STOP(indi_gains)
 
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
 /* Exposes per-motor RPM via the Crazyflie log system.                       */

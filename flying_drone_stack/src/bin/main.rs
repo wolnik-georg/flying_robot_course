@@ -1007,6 +1007,11 @@ struct FwLogEntry {
     // All zero when RPM deck is absent or geometric mode is active.
     indi_tau_x: f32, indi_tau_y: f32, indi_tau_z: f32, // τ_prev [Nm]
     indi_alp_x: f32, indi_alp_y: f32, indi_alp_z: f32, // α_meas [rad/s²]
+
+    // Block 8: RPM deck — 4 × uint16 = 8 bytes @ 20 Hz.
+    // rpm.m1..m4: actual motor RPM from the RPM deck hall-effect sensors.
+    // All zero when RPM deck is not attached.
+    rpm_m1: u16, rpm_m2: u16, rpm_m3: u16, rpm_m4: u16,
 }
 
 /// Describes the trajectory our shadow controller is tracking.
@@ -1127,6 +1132,7 @@ async fn fw_logging_step(
     stream5: &LogStream,
     stream6: &LogStream,
     stream7: &LogStream,
+    stream8: &LogStream,
     ai_feat: u32,
     start: &Instant,
     mekf: &mut Mekf,
@@ -1232,6 +1238,14 @@ async fn fw_logging_step(
         entry.indi_alp_z = get_f32(d, "indi.alp_z");
     }
 
+    if let Ok(p) = stream8.next().await {
+        let d = &p.data;
+        entry.rpm_m1 = get_f32(d, "rpm.m1") as u16;
+        entry.rpm_m2 = get_f32(d, "rpm.m2") as u16;
+        entry.rpm_m3 = get_f32(d, "rpm.m3") as u16;
+        entry.rpm_m4 = get_f32(d, "rpm.m4") as u16;
+    }
+
     // AI Deck feature count (from background CPX task via atomic).
     entry.ai_feat_count = ai_feat;
 
@@ -1312,7 +1326,7 @@ async fn fw_logging_step(
 
     // Write row immediately to disk so data survives a crash/panic.
     let _ = writeln!(log_file,
-        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{},{:.4},{:.4},{:.4},{:.4},{:.4},{},{},{},{:.4},{},{:.4},{:.4},{},{},{},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6}",
+        "{},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.4},{:.0},{:.0},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4},{:.2},{:.2},{:.2},{:.4},{:.4},{:.4},{:.4},{:.4},{},{:.4},{:.4},{:.4},{:.4},{:.4},{},{},{},{:.4},{},{:.4},{:.4},{},{},{},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{},{},{},{}",
         entry.time_ms,
         entry.pos_x, entry.pos_y, entry.pos_z,
         entry.vel_x, entry.vel_y, entry.vel_z,
@@ -1339,6 +1353,7 @@ async fn fw_logging_step(
         entry.motor_m2req, entry.motor_m3req, entry.motor_m4req,
         entry.indi_tau_x, entry.indi_tau_y, entry.indi_tau_z,
         entry.indi_alp_x, entry.indi_alp_y, entry.indi_alp_z,
+        entry.rpm_m1, entry.rpm_m2, entry.rpm_m3, entry.rpm_m4,
     );
     log_data.push(entry);
 }
@@ -1563,6 +1578,14 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     }
     let stream7 = block7.start(LogPeriod::from_millis(50)?).await?;
 
+    // Block 8: RPM deck — 4 × uint16 = 8 bytes @ 20 Hz.
+    // add_var silently logs 0.0 for unknown vars — safe when RPM deck is not attached.
+    let mut block8 = cf.log.create_block().await?;
+    for v in ["rpm.m1", "rpm.m2", "rpm.m3", "rpm.m4"] {
+        add_var(&mut block8, v).await;
+    }
+    let stream8 = block8.start(LogPeriod::from_millis(50)?).await?;
+
     // Optional AI Deck CPX camera — only if --ai-deck flag is present.
     //
     // Two shared values updated by the background task:
@@ -1687,7 +1710,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     let timestamp = Utc::now().format("%Y-%m-%d_%H-%M-%S");
     let filename = format!("runs/{}_{}.csv", maneuver, timestamp);
     let mut log_file = File::create(&filename)?;
-    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count,vo_x,vo_y,vo_sigma,pg_x,pg_y,lc_count,canfly,is_tumbled,ctrltarget_z,motor_m1req,ctrltarget_x,ctrltarget_y,motor_m2req,motor_m3req,motor_m4req,indi_tau_x,indi_tau_y,indi_tau_z,indi_alp_x,indi_alp_y,indi_alp_z")?;
+    writeln!(log_file, "time_ms,pos_x,pos_y,pos_z,vel_x,vel_y,vel_z,roll,pitch,yaw,thrust,vbat,gyro_x,gyro_y,gyro_z,acc_x,acc_y,acc_z,rate_roll,rate_pitch,rate_yaw,range_z,flow_dx,flow_dy,mekf_roll,mekf_pitch,mekf_yaw,mekf_x,mekf_y,mekf_z,our_ref_x,our_ref_y,our_ref_z,our_thrust,our_roll_cmd,our_pitch_cmd,our_yaw_rate_cmd,multi_front,multi_back,multi_left,multi_right,multi_up,ai_feat_count,vo_x,vo_y,vo_sigma,pg_x,pg_y,lc_count,canfly,is_tumbled,ctrltarget_z,motor_m1req,ctrltarget_x,ctrltarget_y,motor_m2req,motor_m3req,motor_m4req,indi_tau_x,indi_tau_y,indi_tau_z,indi_alp_x,indi_alp_y,indi_alp_z,rpm_m1,rpm_m2,rpm_m3,rpm_m4")?;
     println!("Log file opened: {}", filename);
 
     println!("Starting maneuver '{}' in 3 seconds...", maneuver);
@@ -1755,7 +1778,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     println!("Ramping up (fast-escape + XY-tracking ramp)...");
     let ramp_heights: [f32; 6] = [0.20, 0.22, 0.24, 0.26, 0.28, 0.30];
     for &height in &ramp_heights {
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
         // Track current EKF XY so the OOT controller sees ep_xy ≈ 0 during ramp.
         let (ramp_x, ramp_y) = log_data.last().map(|e| (e.pos_x, e.pos_y)).unwrap_or((0.0, 0.0));
         cf.commander.setpoint_position(ramp_x, ramp_y, height, 0.0).await?;
@@ -1772,7 +1795,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     {
         let deadline = Instant::now() + Duration::from_secs(8);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
             sync_ai_pose(&log_data);
             step_perception!(log_data, omap, mekf, mekf_seeded,
                              ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1792,7 +1815,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
         let mut count = 0u32;
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline {
-            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+            fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
             cf.commander.setpoint_position(hover_anchor.0, hover_anchor.1, 0.3, 0.0).await?;
             if let Some(last) = log_data.last() {
                 sum_x += last.pos_x;
@@ -1818,7 +1841,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Holding position ({:.3}, {:.3}) at 0.3 m for 12 seconds...", cx, cy);
             let deadline = Instant::now() + Duration::from_secs(12);
             while Instant::now() < deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 step_perception!(log_data, omap, mekf, mekf_seeded,
                                  ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1841,7 +1864,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Moving to circle start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 step_perception!(log_data, omap, mekf, mekf_seeded,
                                  ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1859,7 +1882,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + radius * (omega * t).cos();
                 let y = cy + radius * (omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 step_perception!(log_data, omap, mekf, mekf_seeded,
                                  ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1886,7 +1909,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
             println!("Moving to figure-8 start point ({:.3}, {:.3})...", x_start, y_start);
             let move_deadline = Instant::now() + Duration::from_secs(3);
             while Instant::now() < move_deadline {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 step_perception!(log_data, omap, mekf, mekf_seeded,
                                  ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1904,7 +1927,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
                 let t = traj_start.elapsed().as_secs_f32();
                 let x = cx + a * (omega * t).cos();
                 let y = cy - b * (2.0 * omega * t).sin();
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 step_perception!(log_data, omap, mekf, mekf_seeded,
                                  ai_kf_result, vo_traj, vo_seeded, pending_vo,
@@ -1924,7 +1947,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
 
             println!("Starting exploration (max {} s)...", 120);
             loop {
-                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+                fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
                 sync_ai_pose(&log_data);
                 // Map update + VO integration (same as all other maneuver arms).
                 step_perception!(log_data, omap, mekf, mekf_seeded,
@@ -1972,7 +1995,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     println!("Ramping down gently...");
     for step in (0..40).rev() {
         let zdistance = step as f32 / 100.0;
-        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
+        fw_logging_step(&mut log_data, &mut last_print, &stream1, &stream2, &stream3, &stream4, &stream5, &stream6, &stream7, &stream8, ai_feat_count.load(Ordering::Relaxed), &flight_start, &mut mekf, &mut mekf_seeded, &mut log_file, &mut shadow, pending_vo, pending_pg).await;
         cf.commander.setpoint_position(cx, cy, zdistance, 0.0).await?;
         sleep(Duration::from_millis(120)).await;
     }
@@ -1990,6 +2013,7 @@ async fn run_firmware_mode(cf: &Crazyflie, maneuver: &str) -> Result<(), Box<dyn
     drop(stream5);
     drop(stream6);
     drop(stream7);
+    drop(stream8);
     cf.disconnect().await;
     println!("Disconnected cleanly.");
     Ok(())
