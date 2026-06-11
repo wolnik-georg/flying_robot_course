@@ -1186,12 +1186,24 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32);
         (pd, vd, ad, omega_d, alpha_des)
     } else {
-        // Mode B passthrough: use incoming CRTP setpoint unchanged.
-        // omega_d / alpha_des = zero → pure feedback (no snap available).
+        // Mode B passthrough: read full feedforward from CRTP setpoint.
+        // Crazyflie HLC populates pos/vel/acc/jerk/snap/attitudeRate from poly4d_eval —
+        // we use them all here to get the complete Tal & Karaman feedforward through CS2.
         let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
         let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
         let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
-        (pd, vd, ad, Vec3::zero(), Vec3::zero())
+        let jerk = Vec3::new(sp.jerk.x, sp.jerk.y, sp.jerk.z);
+        let snap = Vec3::new(sp.snap.x, sp.snap.y, sp.snap.z);
+        // ω_d from HLC's flatness-derived body rates (deg/s → rad/s)
+        let omega_d = Vec3::new(
+            sp.attitudeRate.roll  * deg2rad,
+            sp.attitudeRate.pitch * deg2rad,
+            sp.attitudeRate.yaw   * deg2rad,
+        );
+        // α_des via differential flatness (Tal & Karaman Eq. 15) using HLC's jerk + snap
+        let yaw_d_local = sp.attitude.yaw * deg2rad;
+        let alpha_des = alpha_desired(ad, jerk, snap, yaw_d_local);
+        (pd, vd, ad, omega_d, alpha_des)
     };
 
     // SAFE ARMING: only enable controller when test harness sends real position
