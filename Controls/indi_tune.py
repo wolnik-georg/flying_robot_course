@@ -88,9 +88,33 @@ def col(rows, key, default=np.nan):
 
 
 def steady_slice(rows, skip_s=1.5):
-    t = col(rows, "time_s")
-    idx = np.where(t >= t[0] + skip_s)[0]
-    return idx if len(idx) >= 5 else np.arange(len(rows))
+    """Skip initial transient AND trailing crash data.
+
+    Crash detection: find the last row where any |gyro| > 200 deg/s (crash impact),
+    then cut everything from 0.5 s before that point to the end.
+    """
+    CRASH_GYRO_THRESH = 200.0   # deg/s — impact spike threshold
+    CRASH_PRE_CUT_S   = 0.5     # s — cut this much before the detected crash
+
+    t   = col(rows, "time_s")
+    gx  = col(rows, "gyro_x")
+    gy  = col(rows, "gyro_y")
+    gz  = col(rows, "gyro_z")
+    g_mag = np.sqrt(gx**2 + gy**2 + gz**2)
+
+    crash_mask = g_mag > CRASH_GYRO_THRESH
+    end_idx = len(rows)
+    if np.any(crash_mask):
+        first_crash = int(np.argmax(crash_mask))
+        crash_t = t[first_crash]
+        cut_t   = crash_t - CRASH_PRE_CUT_S
+        end_idx = int(np.searchsorted(t, cut_t))
+        end_idx = max(end_idx, 5)   # keep at least 5 rows
+
+    start_idx_arr = np.where(t >= t[0] + skip_s)[0]
+    start_idx = int(start_idx_arr[0]) if len(start_idx_arr) else 0
+    idx = np.arange(start_idx, end_idx)
+    return idx if len(idx) >= 5 else np.arange(min(end_idx, len(rows)))
 
 
 # ── YAML helpers ──────────────────────────────────────────────────────────────
@@ -318,10 +342,16 @@ def main():
     if not rows:
         print("[error] No data rows found.")
         sys.exit(1)
-    print(f"  Rows: {len(rows)}  |  Duration: {rows[-1]['time_s']:.1f} s")
+    t_total = rows[-1]['time_s']
+    print(f"  Rows: {len(rows)}  |  Duration: {t_total:.1f} s")
 
     idx = steady_slice(rows)
     t_all = col(rows, "time_s")
+
+    t_analysis_end = float(t_all[idx[-1]]) if len(idx) else t_total
+    if t_analysis_end < t_total - 0.4:
+        print(f"  [!] Crash detected — analysis cut at {t_analysis_end:.1f} s "
+              f"(excluded last {t_total - t_analysis_end:.1f} s of crash data)")
 
     x = col(rows, "x")[idx];  y = col(rows, "y")[idx];  z = col(rows, "z")[idx]
     pos_rmse_xy = float(np.sqrt(np.nanmean((x - np.nanmean(x))**2 + (y - np.nanmean(y))**2)))
