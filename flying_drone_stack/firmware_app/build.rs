@@ -18,6 +18,8 @@ fn main() {
     // Re-run if any input changes.
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-env-changed=CRAZYFLIE_BASE");
+    println!("cargo:rerun-if-changed={}/src/modules/interface/stabilizer_types.h", fw_base);
+    println!("cargo:rerun-if-changed={}/src/modules/interface/pptraj.h", fw_base);
 
     // libclang location (Ubuntu 22.04 ships clang-14 without a generic symlink).
     // bindgen needs this to find libclang.so.

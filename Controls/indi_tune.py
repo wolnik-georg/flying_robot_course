@@ -29,7 +29,9 @@ import matplotlib.pyplot as plt
 
 SCRIPT_DIR   = Path(__file__).resolve().parent
 LOGS_DIR     = SCRIPT_DIR / "logs"
-YAML_PATH    = SCRIPT_DIR.parents[1] / "crazyswarm2/crazyflie/config/crazyflies.yaml"
+YAML_PATH    = (SCRIPT_DIR.parents[1] / "crazyswarm2/crazyflie/config/crazyflies.yaml"
+                if (SCRIPT_DIR.parents[1] / "crazyswarm2").exists()
+                else Path("/home/flyingrobots/georg/ros2_ws/crazyswarm2/crazyflie/config/crazyflies.yaml"))
 HISTORY_PATH = LOGS_DIR / "indi_tune_history.csv"
 
 # Decision thresholds
@@ -257,7 +259,13 @@ def main():
     parser.add_argument("--mass",    type=float, default=0.027)
     parser.add_argument("--dry-run", action="store_true",
                         help="Print recommendations without writing yaml")
+    parser.add_argument("--yaml",    default=None,
+                        help="Path to crazyflies.yaml (overrides default)")
     args = parser.parse_args()
+
+    global YAML_PATH
+    if args.yaml:
+        YAML_PATH = Path(args.yaml).expanduser().resolve()
 
     csv_path = args.csv or find_latest_csv()
     print(f"\nAnalysing: {Path(csv_path).name}")
