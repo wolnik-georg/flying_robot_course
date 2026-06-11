@@ -201,20 +201,33 @@ def compute_new_params(current, gyro_std, att_rmse):
 
     changes, parts = {}, []
 
+    ZETA_TARGET = 1.4   # target damping ratio — keep constant while scaling gains
+
     if gyro_std > GYRO_STD_DANGER:
-        changes["kw"]   = round(kw   * 0.70, 2)
-        changes["kw_z"] = round(kw_z * 0.70, 2)
+        # Halve KR, then set KW to maintain ζ=ZETA_TARGET.
+        # Reducing KW alone (old approach) destroys damping ratio and makes it worse.
+        kr_new   = round(kr   * 0.50, 2)
+        kw_new   = round(2.0 * ZETA_TARGET * kr_new**0.5, 2)
+        kr_z_new = round(kr_z * 0.50, 2)
+        kw_z_new = round(2.0 * ZETA_TARGET * kr_z_new**0.5, 2)
+        changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
         if fc_bw < 80.0:
             changes["fc_bw"]  = 80.0
             changes["fc_iir"] = 80.0
             parts.append(f"fc_bw {fc_bw:.0f}→80")
-        parts.append(f"kw {kw:.2f}→{changes['kw']:.2f} (−30%, oscillating)")
+        zeta_old = kw / (2.0 * kr**0.5) if kr > 0 else 0.0
+        parts.append(f"kr {kr:.1f}→{kr_new:.1f}, kw {kw:.2f}→{kw_new:.2f} "
+                     f"(÷2 KR, ζ {zeta_old:.2f}→{ZETA_TARGET:.1f}, oscillating)")
         decision = "OSCILLATING"
 
     elif gyro_std > GYRO_STD_MARGINAL:
-        changes["kw"]   = round(kw   * 0.85, 2)
-        changes["kw_z"] = round(kw_z * 0.85, 2)
-        parts.append(f"kw {kw:.2f}→{changes['kw']:.2f} (−15%, marginal)")
+        # Reduce KR by 15%, recompute KW to hold ζ
+        kr_new   = round(kr   * 0.85, 2)
+        kw_new   = round(2.0 * ZETA_TARGET * kr_new**0.5, 2)
+        kr_z_new = round(kr_z * 0.85, 2)
+        kw_z_new = round(2.0 * ZETA_TARGET * kr_z_new**0.5, 2)
+        changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
+        parts.append(f"kr {kr:.1f}→{kr_new:.1f}, kw {kw:.2f}→{kw_new:.2f} (−15% KR, ζ held)")
         decision = "MARGINAL"
 
     elif gyro_std < GYRO_STD_STABLE and att_rmse < ATT_RMSE_GOOD:
