@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-compute_kt_motor.py — Identify KT_MOTOR from a hover flight log CSV.
+compute_kt_motor.py — Identify KT_MOTOR and diagnose motor RPM balance.
 
 Reads rpm_m1..m4 columns logged by CS2 flight.py during hover.
-Drops rows where any RPM is zero (deck not yet active / landed).
-Computes k_T = hover_thrust / (m1² + m2² + m3² + m4²) per row, then averages.
+Also computes per-motor torque bias — a consistent RPM imbalance causes
+INDI to estimate a non-zero τ_current at hover, making the drone drift.
 
-Usage (from Controls/):
-    python3 compute_kt_motor.py                          # auto-picks latest CSV in logs/
+Usage:
+    python3 compute_kt_motor.py                          # auto-picks latest CSV
     python3 compute_kt_motor.py logs/hover_....csv
     python3 compute_kt_motor.py logs/hover_....csv --mass 0.031
 """
@@ -17,53 +17,53 @@ import sys
 from pathlib import Path
 import csv
 
-GRAVITY   = 9.81   # m/s²
-LOGS_DIR  = Path(__file__).resolve().parent / "logs"
+import numpy as np
+
+GRAVITY      = 9.81    # m/s²
+LOGS_DIR     = Path(__file__).resolve().parent / "logs"
+
+# Crazyflie geometry (must match lib.rs)
+ARM_M        = 0.032_526_9   # m  (√2/2 × 0.046)
+TORQUE_RATIO = 0.005_964_552  # k_Q/k_T [m]
+
+# Motor layout matching rpms_to_torque in lib.rs:
+#   tau_x = ARM * (f2+f3 - f0-f1)   [roll]
+#   tau_y = ARM * (f1+f2 - f0-f3)   [pitch]
+#   tau_z = TR  * (f1+f3 - f0-f2)   [yaw]
+# indices: 0=M1, 1=M2, 2=M3, 3=M4
 
 
 def load_csv(path: Path) -> list[dict]:
+    with open(path) as f:
+        lines = f.readlines()
+    header_idx = next(i for i, l in enumerate(lines) if not l.startswith("#"))
+    header = lines[header_idx].strip().split(",")
     rows = []
-    with open(path) as f:
-        for line in f:
-            if line.startswith("#"):
-                continue
-            break
-        # re-open to use DictReader from start of data
-    with open(path) as f:
-        reader = csv.DictReader(line for line in f if not line.startswith("#"))
-        for row in reader:
-            rows.append(row)
+    for line in lines[header_idx + 1:]:
+        if not line.strip():
+            continue
+        vals = line.strip().split(",")
+        if len(vals) != len(header):
+            continue
+        try:
+            rows.append({k: float(v) for k, v in zip(header, vals)})
+        except ValueError:
+            continue
     return rows
 
 
-def compute_kt(rows: list[dict], mass: float) -> float:
-    hover_thrust = mass * GRAVITY
-    kt_vals = []
-    missing = 0
-    for row in rows:
-        try:
-            m1 = float(row["rpm_m1"])
-            m2 = float(row["rpm_m2"])
-            m3 = float(row["rpm_m3"])
-            m4 = float(row["rpm_m4"])
-        except (KeyError, ValueError):
-            missing += 1
-            continue
-        if any(r <= 0 or r != r for r in (m1, m2, m3, m4)):  # zero or NaN
-            continue
-        rpm_sq = m1**2 + m2**2 + m3**2 + m4**2
-        kt_vals.append(hover_thrust / rpm_sq)
-
-    if missing:
-        print(f"[warn] {missing} rows had missing/invalid RPM columns")
-    return sum(kt_vals) / len(kt_vals) if kt_vals else float("nan"), len(kt_vals)
+def steady_rows(rows, skip_s=1.5):
+    """Return rows after initial transient with all RPMs active."""
+    t0 = rows[0].get("time_s", 0.0)
+    return [r for r in rows
+            if r.get("time_s", 0) >= t0 + skip_s
+            and all(r.get(f"rpm_m{i}", 0) > 5000 for i in range(1, 5))]
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csv", nargs="?", help="Path to hover log CSV")
-    parser.add_argument("--mass", type=float, default=0.027,
-                        help="Total drone mass in kg (default: 0.027)")
+    parser.add_argument("--mass", type=float, default=0.027)
     args = parser.parse_args()
 
     if args.csv:
@@ -77,27 +77,103 @@ def main():
         print(f"[auto] Using latest log: {path.name}")
 
     rows = load_csv(path)
-    kt, n = compute_kt(rows, args.mass)
-
-    if kt != kt:
-        print("ERROR: no valid RPM rows found. Does the CSV have rpm_m1..m4 columns?")
+    good = steady_rows(rows)
+    if len(good) < 5:
+        print("ERROR: fewer than 5 valid steady-hover rows. Check RPM columns / flight duration.")
         sys.exit(1)
 
-    # Per-motor mean RPM for sanity check
-    def col_mean(key):
-        vals = [float(r[key]) for r in rows if r.get(key) and float(r[key]) > 0]
-        return sum(vals) / len(vals) if vals else 0.0
+    hover_thrust = args.mass * GRAVITY
 
-    print(f"\n{'='*52}")
-    print(f"  Log file   : {path.name}")
-    print(f"  Valid rows : {n}  (of {len(rows)} total)")
-    print(f"  Mean RPM   : m1={col_mean('rpm_m1'):.0f}  m2={col_mean('rpm_m2'):.0f}"
-          f"  m3={col_mean('rpm_m3'):.0f}  m4={col_mean('rpm_m4'):.0f}")
-    print(f"  Mass       : {args.mass} kg  →  hover thrust = {args.mass*9.81:.4f} N")
-    print(f"\n  KT_MOTOR = {kt:.4e}  [N/RPM²]")
-    print(f"\n  Paste into firmware_app/src/lib.rs line ~164:")
-    print(f"    const KT_MOTOR: f32 = {kt:.4e}_f32;")
-    print(f"{'='*52}\n")
+    # ── Per-motor RPM stats ──────────────────────────────────────────────────
+    rpms = np.array([[r[f"rpm_m{i}"] for i in range(1, 5)] for r in good])  # (N, 4)
+    mean_rpm = rpms.mean(axis=0)   # shape (4,)
+    std_rpm  = rpms.std(axis=0)
+    overall_mean = mean_rpm.mean()
+
+    # ── KT identification ────────────────────────────────────────────────────
+    rpm_sq_sum = (rpms**2).sum(axis=1)   # Σ RPM_i² per row
+    kt_vals    = hover_thrust / rpm_sq_sum
+    kt         = float(kt_vals.mean())
+    kt_std     = float(kt_vals.std())
+
+    # ── Torque bias at hover ──────────────────────────────────────────────────
+    # τ_current = rpms_to_torque(RPMs, kt)
+    f = kt * rpms**2   # (N, 4) motor forces
+    tau_x = ARM_M        * (f[:, 2] + f[:, 3] - f[:, 0] - f[:, 1])
+    tau_y = ARM_M        * (f[:, 1] + f[:, 2] - f[:, 0] - f[:, 3])
+    tau_z = TORQUE_RATIO * (f[:, 1] + f[:, 3] - f[:, 0] - f[:, 2])
+
+    tau_x_mean = float(tau_x.mean());  tau_x_std = float(tau_x.std())
+    tau_y_mean = float(tau_y.mean());  tau_y_std = float(tau_y.std())
+    tau_z_mean = float(tau_z.mean());  tau_z_std = float(tau_z.std())
+
+    # ── RPM imbalance: deviation of each motor from mean ─────────────────────
+    rpm_dev = mean_rpm - overall_mean   # positive = faster than average
+
+    # ── Print report ─────────────────────────────────────────────────────────
+    W = 58
+    print(f"\n{'='*W}")
+    print(f"  KT_MOTOR IDENTIFICATION + MOTOR BALANCE REPORT")
+    print(f"{'='*W}")
+    print(f"  Log    : {path.name}")
+    print(f"  Rows   : {len(good)} steady-hover  (of {len(rows)} total)")
+    print(f"  Mass   : {args.mass} kg  →  hover thrust = {hover_thrust:.4f} N")
+    print()
+
+    print(f"  KT_MOTOR = {kt:.4e} N/RPM²  (std {kt_std:.2e})")
+    print()
+
+    print(f"  Per-motor RPM (mean ± std):")
+    for i, (m, s, d) in enumerate(zip(mean_rpm, std_rpm, rpm_dev)):
+        flag = ""
+        if abs(d) > 800:
+            flag = "  ← LARGE IMBALANCE"
+        elif abs(d) > 400:
+            flag = "  ← moderate imbalance"
+        print(f"    M{i+1}: {m:6.0f} ± {s:4.0f}  (dev {d:+.0f} RPM){flag}")
+    print(f"    Overall mean: {overall_mean:.0f} RPM")
+    print()
+
+    print(f"  Torque bias at hover (should be ~0 for all axes):")
+    for name, mean, std in [("tau_x (roll) ", tau_x_mean, tau_x_std),
+                             ("tau_y (pitch)", tau_y_mean, tau_y_std),
+                             ("tau_z (yaw)  ", tau_z_mean, tau_z_std)]:
+        hover_torque_scale = ARM_M * kt * overall_mean**2
+        rel = abs(mean) / hover_torque_scale * 100 if hover_torque_scale > 0 else 0
+        flag = ""
+        if rel > 5:
+            flag = f"  ← BIAS {rel:.0f}% of hover torque — DRIFT RISK"
+        elif rel > 2:
+            flag = f"  ← mild bias {rel:.1f}%"
+        print(f"    {name}: {mean:+.2e} Nm  (std {std:.2e}){flag}")
+    print()
+
+    print(f"  Paste into traj_iface.c:")
+    print(f"    float g_indi_kt = {kt:.4e}f;")
+    print(f"{'='*W}\n")
+
+    # ── Drift diagnosis ───────────────────────────────────────────────────────
+    drift_axes = []
+    for name, mean, std in [("pitch (forward/back)", tau_y_mean, tau_y_std),
+                             ("roll  (left/right)",   tau_x_mean, tau_x_std)]:
+        hover_torque_scale = ARM_M * kt * overall_mean**2
+        rel = abs(mean) / hover_torque_scale * 100 if hover_torque_scale > 0 else 0
+        if rel > 3:
+            direction = "forward" if (name.startswith("pitch") and mean > 0) else \
+                        "backward" if name.startswith("pitch") else \
+                        "right" if mean > 0 else "left"
+            drift_axes.append(f"    {name}: bias {mean:+.2e} Nm ({rel:.0f}%) → expect drift {direction}")
+
+    if drift_axes:
+        print("  DRIFT PREDICTION (from RPM imbalance):")
+        for d in drift_axes:
+            print(d)
+        print()
+        print("  Fix options:")
+        print("    1. Re-check KT_MOTOR on thrust stand (most reliable)")
+        print("    2. Check for damaged/dirty motor on the outlier motor")
+        print("    3. Add integral term on attitude (not in current INDI)")
+        print()
 
 
 if __name__ == "__main__":
