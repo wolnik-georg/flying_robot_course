@@ -190,8 +190,19 @@ def append_history(csv_name, old, new, metrics):
 def compute_new_params(current, gyro_std, att_rmse):
     """
     Returns (changes dict, decision str, reason str).
-    'changes' only contains keys whose values differ from current.
+
+    Tuning sequence (enforced strictly — one stage at a time):
+      Stage 1 — filter tuning:  adjust fc_bw/fc_iir, keep KR/KW fixed at safe values.
+      Stage 2 — gain raising:   only entered once fc_bw has reached FC_TARGET and is stable.
+
+    This ensures the angular acceleration measurement is clean before raising loop gain.
     """
+    ZETA_TARGET = 1.4    # damping ratio — maintained whenever KR/KW change
+    FC_FLOOR    = 20.0   # Hz — minimum filter BW (below this gyro lag destabilises INDI)
+    FC_TARGET   = 80.0   # Hz — filter target; gain raising begins only after reaching this
+    FC_STEP_UP  = 20.0   # Hz — how much to raise fc each stable step
+    KR_SAFE     = 100.0  # minimum KR that keeps enough attitude BW to lift off
+
     kr   = current.get("kr",   PARAM_DEFAULTS["kr"])
     kw   = current.get("kw",   PARAM_DEFAULTS["kw"])
     kr_z = current.get("kr_z", kr)
@@ -201,53 +212,73 @@ def compute_new_params(current, gyro_std, att_rmse):
 
     changes, parts = {}, []
 
-    ZETA_TARGET = 1.4   # target damping ratio — keep constant while scaling gains
+    # Helper: set KR/KW pair with ζ=ZETA_TARGET
+    def kr_kw_pair(kr_val):
+        return round(kr_val, 2), round(2.0 * ZETA_TARGET * kr_val**0.5, 2)
+
+    zeta = kw / (2.0 * kr**0.5) if kr > 0 else 0.0
 
     if gyro_std > GYRO_STD_DANGER:
-        # Halve KR, then set KW to maintain ζ=ZETA_TARGET.
-        # Reducing KW alone (old approach) destroys damping ratio and makes it worse.
-        kr_new   = round(kr   * 0.50, 2)
-        kw_new   = round(2.0 * ZETA_TARGET * kr_new**0.5, 2)
-        kr_z_new = round(kr_z * 0.50, 2)
-        kw_z_new = round(2.0 * ZETA_TARGET * kr_z_new**0.5, 2)
-        changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
-        if fc_bw < 80.0:
-            changes["fc_bw"]  = 80.0
-            changes["fc_iir"] = 80.0
-            parts.append(f"fc_bw {fc_bw:.0f}→80")
-        zeta_old = kw / (2.0 * kr**0.5) if kr > 0 else 0.0
-        parts.append(f"kr {kr:.1f}→{kr_new:.1f}, kw {kw:.2f}→{kw_new:.2f} "
-                     f"(÷2 KR, ζ {zeta_old:.2f}→{ZETA_TARGET:.1f}, oscillating)")
+        # Oscillating — reduce fc_bw first (noise is the primary cause).
+        # Only touch KR if already at the filter floor.
+        if fc_bw > FC_FLOOR:
+            fc_new = max(round(fc_bw * 0.60, 1), FC_FLOOR)
+            changes["fc_bw"]  = fc_new
+            changes["fc_iir"] = fc_new
+            parts.append(f"fc_bw {fc_bw:.0f}→{fc_new:.0f} (−40%, oscillating — fix noise first)")
+        else:
+            # Filters already at floor; reduce KR instead
+            kr_new, kw_new     = kr_kw_pair(max(kr   * 0.50, KR_SAFE * 0.25))
+            kr_z_new, kw_z_new = kr_kw_pair(max(kr_z * 0.50, KR_SAFE * 0.25))
+            changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
+            parts.append(f"kr {kr:.1f}→{kr_new:.1f}, kw {kw:.2f}→{kw_new:.2f} "
+                         f"(÷2 KR, ζ→{ZETA_TARGET}, filters at floor)")
         decision = "OSCILLATING"
 
     elif gyro_std > GYRO_STD_MARGINAL:
-        # Reduce KR by 15%, recompute KW to hold ζ
-        kr_new   = round(kr   * 0.85, 2)
-        kw_new   = round(2.0 * ZETA_TARGET * kr_new**0.5, 2)
-        kr_z_new = round(kr_z * 0.85, 2)
-        kw_z_new = round(2.0 * ZETA_TARGET * kr_z_new**0.5, 2)
-        changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
-        parts.append(f"kr {kr:.1f}→{kr_new:.1f}, kw {kw:.2f}→{kw_new:.2f} (−15% KR, ζ held)")
+        # Marginal — reduce fc_bw by 15% first; touch KR only if already at floor
+        if fc_bw > FC_FLOOR:
+            fc_new = max(round(fc_bw * 0.85, 1), FC_FLOOR)
+            changes["fc_bw"]  = fc_new
+            changes["fc_iir"] = fc_new
+            parts.append(f"fc_bw {fc_bw:.0f}→{fc_new:.0f} (−15%, marginal)")
+        else:
+            kr_new, kw_new     = kr_kw_pair(max(kr   * 0.85, KR_SAFE * 0.25))
+            kr_z_new, kw_z_new = kr_kw_pair(max(kr_z * 0.85, KR_SAFE * 0.25))
+            changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
+            parts.append(f"kr {kr:.1f}→{kr_new:.1f} (−15% KR, ζ held, filters at floor)")
         decision = "MARGINAL"
 
     elif gyro_std < GYRO_STD_STABLE and att_rmse < ATT_RMSE_GOOD:
-        kr_new  = min(kr   * 2.0, KR_MAX)
-        kw_new  = min(kw   * 1.414, KW_MAX)   # keep ζ = KW/(2√KR) constant
-        kr_z_new = min(kr_z * 2.0, KR_MAX)
-        kw_z_new = min(kw_z * 1.414, KW_MAX)
-        if kr_new > kr:
-            changes.update(kr=round(kr_new, 1), kw=round(kw_new, 2),
-                           kr_z=round(kr_z_new, 1), kw_z=round(kw_z_new, 2))
-            parts.append(f"kr {kr:.0f}→{changes['kr']:.0f}, "
-                         f"kw {kw:.2f}→{changes['kw']:.2f} (×2 KR, ζ held, stable)")
-            decision = "RAISE"
+        if fc_bw < FC_TARGET:
+            # Stage 1: raise filter BW toward target before touching KR
+            fc_new = min(fc_bw + FC_STEP_UP, FC_TARGET)
+            changes["fc_bw"]  = fc_new
+            changes["fc_iir"] = fc_new
+            parts.append(f"fc_bw {fc_bw:.0f}→{fc_new:.0f} (+{FC_STEP_UP:.0f} Hz, stable — "
+                         f"raising filter toward {FC_TARGET:.0f} Hz)")
+            decision = "RAISE_FILTER"
         else:
-            parts.append("at target gains (KR_MAX reached)")
-            decision = "AT_TARGET"
+            # Stage 2: filters at target — raise KR/KW
+            kr_new, kw_new     = kr_kw_pair(min(kr   * 2.0, KR_MAX))
+            kr_z_new, kw_z_new = kr_kw_pair(min(kr_z * 2.0, KR_MAX))
+            if kr_new > kr:
+                changes.update(kr=kr_new, kw=kw_new, kr_z=kr_z_new, kw_z=kw_z_new)
+                parts.append(f"kr {kr:.0f}→{kr_new:.0f}, kw {kw:.2f}→{kw_new:.2f} "
+                             f"(×2 KR, ζ→{ZETA_TARGET}, filters tuned)")
+                decision = "RAISE_GAINS"
+            else:
+                parts.append("at target gains (KR_MAX reached)")
+                decision = "AT_TARGET"
 
     else:
-        parts.append("hold — att RMSE high, check position setpoint or mass")
+        parts.append("hold — gyro OK but att RMSE high; check position setpoint or mass")
         decision = "HOLD"
+
+    # Always ensure KR >= KR_SAFE if we're setting it (to keep liftoff authority)
+    if "kr" in changes and changes["kr"] < KR_SAFE:
+        parts.append(f"[warn] kr={changes['kr']:.1f} below liftoff floor {KR_SAFE:.0f} — "
+                     f"drone may not lift; monitor carefully")
 
     reason_str = "; ".join(parts) if parts else "no change"
     return changes, decision, reason_str
@@ -331,8 +362,14 @@ def main():
     print("=" * 60)
     print("  INDI TUNING REPORT")
     print("=" * 60)
-    print(f"  Current:  kr={current['kr']:.1f}  kw={current['kw']:.2f}  "
-          f"fc_bw={current['fc_bw']:.0f} Hz  fc_iir={current['fc_iir']:.0f} Hz")
+    kr_c  = current['kr']
+    kw_c  = current['kw']
+    zeta_c = kw_c / (2.0 * kr_c**0.5) if kr_c > 0 else 0.0
+    fc_c  = current['fc_bw']
+    stage = "Stage 1 — filter tuning" if fc_c < 80.0 else "Stage 2 — gain raising"
+    print(f"  Current:  kr={kr_c:.1f}  kw={kw_c:.2f}  ζ={zeta_c:.2f}  "
+          f"fc_bw={fc_c:.0f} Hz  fc_iir={current['fc_iir']:.0f} Hz")
+    print(f"  Phase:    {stage}")
     print()
 
     sym, lbl = status(gyro_std, GYRO_STD_STABLE, GYRO_STD_MARGINAL, invert=True)
