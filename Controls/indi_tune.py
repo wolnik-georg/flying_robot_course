@@ -345,6 +345,17 @@ def main():
     t_total = rows[-1]['time_s']
     print(f"  Rows: {len(rows)}  |  Duration: {t_total:.1f} s")
 
+    # Guard: refuse to tune on a geometric-mode log (controller_mode=0).
+    # indi_state tau values are zero in mode=0 — gain decisions would be meaningless.
+    yaml_gains_check = read_yaml_indi_gains()
+    ctrl_mode = int(yaml_gains_check.get('controller_mode', 0))
+    if ctrl_mode == 0:
+        print("\n[error] controller_mode=0 (geometric) is set in yaml.")
+        print("  indi_tune only makes sense for INDI flights (mode 2 or 3).")
+        print("  Set indi_gains.controller_mode: 2 or 3 in crazyflies.yaml first.")
+        sys.exit(1)
+    print(f"  controller_mode={ctrl_mode}  ({'att INDI' if ctrl_mode == 2 else 'full INDI' if ctrl_mode == 3 else 'pos INDI'})")
+
     idx = steady_slice(rows)
     t_all = col(rows, "time_s")
 

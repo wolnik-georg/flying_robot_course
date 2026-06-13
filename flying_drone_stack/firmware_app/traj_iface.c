@@ -133,39 +133,51 @@ PARAM_GROUP_STOP(traj)
 #ifdef CONFIG_CONTROLLER_OOT
 extern float INDI_TAU_X; extern float INDI_TAU_Y; extern float INDI_TAU_Z;
 extern float INDI_ALP_X; extern float INDI_ALP_Y; extern float INDI_ALP_Z;
+extern float INDI_ALP_RAW_X; extern float INDI_ALP_RAW_Y; extern float INDI_ALP_RAW_Z;
 #else
 static float INDI_TAU_X = 0.0f; static float INDI_TAU_Y = 0.0f; static float INDI_TAU_Z = 0.0f;
 static float INDI_ALP_X = 0.0f; static float INDI_ALP_Y = 0.0f; static float INDI_ALP_Z = 0.0f;
+static float INDI_ALP_RAW_X = 0.0f; static float INDI_ALP_RAW_Y = 0.0f; static float INDI_ALP_RAW_Z = 0.0f;
 #endif
 
 LOG_GROUP_START(indi)
-  LOG_ADD(LOG_FLOAT, tau_x, &INDI_TAU_X)
-  LOG_ADD(LOG_FLOAT, tau_y, &INDI_TAU_Y)
-  LOG_ADD(LOG_FLOAT, tau_z, &INDI_TAU_Z)
-  LOG_ADD(LOG_FLOAT, alp_x, &INDI_ALP_X)
-  LOG_ADD(LOG_FLOAT, alp_y, &INDI_ALP_Y)
-  LOG_ADD(LOG_FLOAT, alp_z, &INDI_ALP_Z)
+  LOG_ADD(LOG_FLOAT, tau_x,     &INDI_TAU_X)
+  LOG_ADD(LOG_FLOAT, tau_y,     &INDI_TAU_Y)
+  LOG_ADD(LOG_FLOAT, tau_z,     &INDI_TAU_Z)
+  LOG_ADD(LOG_FLOAT, alp_x,     &INDI_ALP_X)
+  LOG_ADD(LOG_FLOAT, alp_y,     &INDI_ALP_Y)
+  LOG_ADD(LOG_FLOAT, alp_z,     &INDI_ALP_Z)
+  LOG_ADD(LOG_FLOAT, alp_raw_x, &INDI_ALP_RAW_X)
+  LOG_ADD(LOG_FLOAT, alp_raw_y, &INDI_ALP_RAW_Y)
+  LOG_ADD(LOG_FLOAT, alp_raw_z, &INDI_ALP_RAW_Z)
 LOG_GROUP_STOP(indi)
 
 /* ── INDI tuning params (runtime-configurable, no reflash needed) ─────────── */
 /* Change via CS2 yaml firmware_params.indi_gains.*, cfclient Parameters tab,   */
 /* or a Python one-liner: cf.param.set_value('indi_gains.kr', '200.0').         */
-/* Defaults match the compile-time constants in lib.rs.                          */
-float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s²]  — ωn = √KR  */
-float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]   — ζ = KW/(2ωn), keep KW > KR for stability */
-float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s²]  */
-float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]   */
-float g_indi_kt     = 1.1421e-10f; /* KT_MOTOR    [N/RPM²] — identified from hover log 2026-06-10 */
-float g_indi_fc_bw  = 60.0f;     /* Butterworth gyro pre-filter cutoff  [Hz] */
-float g_indi_fc_iir = 60.0f;     /* IIR alpha post-filter cutoff        [Hz] */
+uint8_t g_controller_mode = 0;   /* 0=geometric, 1=pos INDI, 2=att INDI, 3=full INDI */
+float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s^2]  — wn = sqrt(KR)  */
+float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]    — zeta = KW/(2*wn) */
+float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s^2]  */
+float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]    */
+float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
+float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
+float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
+float g_indi_kt4    = 1.1421e-10f; /* KT_MOTOR M4 [N/RPM^2] */
+float g_indi_fc_bw  = 60.0f;     /* Butterworth cutoff [Hz] — applied to alpha_raw and alpha_ref */
+float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat with old yaml files) */
 float g_indi_mass   = 0.027f;    /* all-up mass [kg] — update if deck weight changes */
 
 PARAM_GROUP_START(indi_gains)
+  PARAM_ADD(PARAM_UINT8, controller_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
   PARAM_ADD(PARAM_FLOAT, kw,     &g_indi_kw)
   PARAM_ADD(PARAM_FLOAT, kr_z,   &g_indi_kr_z)
   PARAM_ADD(PARAM_FLOAT, kw_z,   &g_indi_kw_z)
-  PARAM_ADD(PARAM_FLOAT, kt,     &g_indi_kt)
+  PARAM_ADD(PARAM_FLOAT, kt1,    &g_indi_kt1)
+  PARAM_ADD(PARAM_FLOAT, kt2,    &g_indi_kt2)
+  PARAM_ADD(PARAM_FLOAT, kt3,    &g_indi_kt3)
+  PARAM_ADD(PARAM_FLOAT, kt4,    &g_indi_kt4)
   PARAM_ADD(PARAM_FLOAT, fc_bw,  &g_indi_fc_bw)
   PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
