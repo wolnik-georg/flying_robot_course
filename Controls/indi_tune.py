@@ -31,7 +31,7 @@ SCRIPT_DIR   = Path(__file__).resolve().parent
 LOGS_DIR     = SCRIPT_DIR / "logs"
 YAML_PATH    = (SCRIPT_DIR.parents[1] / "crazyswarm2/crazyflie/config/crazyflies.yaml"
                 if (SCRIPT_DIR.parents[1] / "crazyswarm2").exists()
-                else Path("/home/flyingrobots/georg/ros2_ws/crazyswarm2/crazyflie/config/crazyflies.yaml"))
+                else Path("/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml"))
 HISTORY_PATH = LOGS_DIR / "indi_tune_history.csv"
 
 # Decision thresholds
