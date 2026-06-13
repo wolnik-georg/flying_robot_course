@@ -169,7 +169,7 @@ float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat
 float g_indi_mass   = 0.027f;    /* all-up mass [kg] — update if deck weight changes */
 
 PARAM_GROUP_START(indi_gains)
-  PARAM_ADD(PARAM_UINT8, controller_mode, &g_controller_mode)
+  PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
   PARAM_ADD(PARAM_FLOAT, kw,     &g_indi_kw)
   PARAM_ADD(PARAM_FLOAT, kr_z,   &g_indi_kr_z)
