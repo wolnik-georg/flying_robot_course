@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-compute_kt_motor.py — Identify KT_MOTOR and diagnose motor RPM balance.
+compute_kt_motor.py — Identify KT_MOTOR (per-motor) and diagnose RPM balance.
 
 Reads rpm_m1..m4 columns logged by CS2 flight.py during hover.
 Also computes per-motor torque bias — a consistent RPM imbalance causes
-INDI to estimate a non-zero τ_current at hover, making the drone drift.
+INDI to estimate a non-zero tau_current at hover, making the drone drift.
+
+Two KT identification modes:
+  --mode quick  (default): KT_i = (mass*g/4) / mean(RPM_i^2)
+                Fast, assumes equal thrust per motor at hover.
+  --mode nnls :            Solve min ||A @ kt - b||^2 s.t. kt >= 0
+                where A[row,i] = RPM_i(row)^2, b[row] = mass*g.
+                More robust when RPMs vary across rows (e.g. from figure-8).
 
 Usage:
-    python3 compute_kt_motor.py                          # auto-picks latest CSV
+    python3 compute_kt_motor.py                               # auto-picks latest CSV
     python3 compute_kt_motor.py logs/hover_....csv
-    python3 compute_kt_motor.py logs/hover_....csv --mass 0.031
+    python3 compute_kt_motor.py logs/hover_....csv --mass 0.031 --mode nnls
 """
 
 import argparse
@@ -18,6 +25,7 @@ from pathlib import Path
 import csv
 
 import numpy as np
+from scipy.optimize import nnls
 
 GRAVITY      = 9.81    # m/s²
 LOGS_DIR     = Path(__file__).resolve().parent / "logs"
@@ -64,6 +72,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csv", nargs="?", help="Path to hover log CSV")
     parser.add_argument("--mass", type=float, default=0.027)
+    parser.add_argument("--mode", choices=["quick", "nnls"], default="quick",
+                        help="quick: KT_i=(mass*g/4)/mean(RPM_i^2); nnls: optimization fit")
     args = parser.parse_args()
 
     if args.csv:
@@ -91,14 +101,29 @@ def main():
     overall_mean = mean_rpm.mean()
 
     # ── KT identification ────────────────────────────────────────────────────
-    rpm_sq_sum = (rpms**2).sum(axis=1)   # Σ RPM_i² per row
+    # Average KT (single value for backwards compat)
+    rpm_sq_sum = (rpms**2).sum(axis=1)   # sum RPM_i^2 per row
     kt_vals    = hover_thrust / rpm_sq_sum
     kt         = float(kt_vals.mean())
     kt_std     = float(kt_vals.std())
 
+    # Per-motor KT
+    mean_rpm_sq = (rpms**2).mean(axis=0)   # shape (4,) — mean(RPM_i^2) per motor
+    if args.mode == "nnls":
+        # NNLS: min ||A @ kt_vec - b||^2, kt_vec >= 0
+        # A[row, i] = RPM_i(row)^2,  b[row] = mass*g
+        A = rpms.astype(float)**2          # (N, 4)
+        b = np.full(len(good), hover_thrust)
+        kt_per_motor, residual = nnls(A, b)
+        kt_mode_label = "NNLS optimization"
+    else:
+        # Quick mode: equal-thrust assumption at hover
+        kt_per_motor = hover_thrust / (4.0 * mean_rpm_sq)
+        kt_mode_label = "quick (equal thrust)"
+
     # ── Torque bias at hover ──────────────────────────────────────────────────
-    # τ_current = rpms_to_torque(RPMs, kt)
-    f = kt * rpms**2   # (N, 4) motor forces
+    # tau_current = rpms_to_torque(RPMs, kt_per_motor)
+    f = kt_per_motor * rpms**2   # (N, 4) per-motor forces using per-motor KT
     tau_x = ARM_M        * (f[:, 2] + f[:, 3] - f[:, 0] - f[:, 1])
     tau_y = ARM_M        * (f[:, 1] + f[:, 2] - f[:, 0] - f[:, 3])
     tau_z = TORQUE_RATIO * (f[:, 1] + f[:, 3] - f[:, 0] - f[:, 2])
@@ -120,7 +145,10 @@ def main():
     print(f"  Mass   : {args.mass} kg  →  hover thrust = {hover_thrust:.4f} N")
     print()
 
-    print(f"  KT_MOTOR = {kt:.4e} N/RPM²  (std {kt_std:.2e})")
+    print(f"  KT avg   = {kt:.4e} N/RPM^2  (std {kt_std:.2e})  [single-value, all motors]")
+    print(f"  KT mode  : {kt_mode_label}")
+    for i, k in enumerate(kt_per_motor):
+        print(f"    KT_M{i+1} = {k:.4e} N/RPM^2")
     print()
 
     print(f"  Per-motor RPM (mean ± std):")
@@ -149,7 +177,8 @@ def main():
     print()
 
     print(f"  Paste into traj_iface.c:")
-    print(f"    float g_indi_kt = {kt:.4e}f;")
+    for i, k in enumerate(kt_per_motor):
+        print(f"    float g_indi_kt{i+1} = {k:.4e}f;")
     print(f"{'='*W}\n")
 
     # ── Drift diagnosis ───────────────────────────────────────────────────────
