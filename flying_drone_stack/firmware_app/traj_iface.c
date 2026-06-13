@@ -160,10 +160,14 @@ float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s^2]  — wn = sqrt(KR)  */
 float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]    — zeta = KW/(2*wn) */
 float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s^2]  */
 float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]    */
-float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
-float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
-float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
-float g_indi_kt4    = 1.1421e-10f; /* KT_MOTOR M4 [N/RPM^2] */
+// float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
+// float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
+// float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
+// float g_indi_kt4    = 1.1421e-10f; /* KT_MOTOR M4 [N/RPM^2] */
+float g_indi_kt1    = 1.0251e-10f;
+float g_indi_kt2    = 1.1981e-10f;
+float g_indi_kt3    = 1.0763e-10f;
+float g_indi_kt4    = 1.2633e-10f;
 float g_indi_fc_bw  = 60.0f;     /* Butterworth cutoff [Hz] — applied to alpha_raw and alpha_ref */
 float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat with old yaml files) */
 float g_indi_mass   = 0.027f;    /* all-up mass [kg] — update if deck weight changes */
