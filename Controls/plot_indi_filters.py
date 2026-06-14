@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import butter, sosfilt, welch
 
 LOGS_DIR = Path(__file__).resolve().parent / "logs"
-DEFAULT_FREQS = [10, 20, 30, 50, 70, 100]
+DEFAULT_FREQS = list(range(10, 125, 5))
 
 
 def load_csv(path: Path) -> dict:
@@ -114,6 +114,8 @@ def main():
                         help="Firmware fc_bw [Hz] for --compare mode or PSD marker")
     parser.add_argument("--freqs", type=float, nargs="+", default=DEFAULT_FREQS,
                         help="Cutoff frequencies [Hz] to sweep (default: 10 20 30 50 70 100)")
+    parser.add_argument("--from-gyro", action="store_true",
+                        help="Force gyro-based alpha_raw (ignore indi.alp_raw_* columns if present)")
     args = parser.parse_args()
 
     if args.csv:
@@ -134,16 +136,28 @@ def main():
               f"in crazyflies.yaml for full noise visibility.")
 
     axes_names = ["x", "y", "z"]
+
+    # Try firmware-logged alpha_raw first; fall back to gyro finite-difference.
     raw_cols = [find_col(cols, [f"indi.alp_raw_{a}", f"alp_raw_{a}"]) for a in axes_names]
+    if raw_cols[0] is not None and not args.from_gyro:
+        print("[info] Using firmware alpha_raw columns (indi.alp_raw_*)")
+        start = trim_leading_zeros(raw_cols)
+        raw_cols = [c[start:] for c in raw_cols]
+    else:
+        print("[info] indi.alp_raw_* not found — computing alpha_raw from gyro (finite diff at fs)")
+        gyro_cols = [find_col(cols, [f"gyro_{a}", f"gyro.{a}"]) for a in axes_names]
+        if gyro_cols[0] is None:
+            print("ERROR: neither indi.alp_raw_* nor gyro_x/y/z found in CSV.")
+            print("Available columns:", list(cols.keys())[:20])
+            sys.exit(1)
+        # deg/s → rad/s, then finite difference → rad/s²
+        omega_cols = [g * (np.pi / 180.0) for g in gyro_cols]
+        raw_cols   = [np.diff(w) * fs for w in omega_cols]
+        start = trim_leading_zeros(raw_cols)
+        raw_cols = [c[start:] for c in raw_cols]
+        print(f"[info] Note: alpha_raw computed at {fs:.0f} Hz (firmware runs at 500 Hz — "
+              f"noise appears {500/fs:.0f}× smaller than firmware sees)")
 
-    if raw_cols[0] is None:
-        print("ERROR: indi.alp_raw_* columns not found in CSV.")
-        print("Available columns:", list(cols.keys())[:20])
-        print("Make sure firmware is reflashed (passive logging in all modes).")
-        sys.exit(1)
-
-    start = trim_leading_zeros(raw_cols)
-    raw_cols = [c[start:] for c in raw_cols]
     t = np.arange(len(raw_cols[0])) / fs
 
     if args.compare:
@@ -198,8 +212,16 @@ def main():
         cmap   = plt.cm.viridis(np.linspace(0.0, 0.85, len(freqs)))
         labels = [f"{int(f)} Hz" for f in freqs]
 
+        # ── Compute stats and build CSV data while plotting ────────────────────
+        import csv as csv_mod
+        axes_long = ["roll_x", "pitch_y", "yaw_z"]
+        stats_rows = []  # one row per fc_bw
+
         fig, axs = plt.subplots(3, 2, figsize=(15, 10))
         fig.suptitle(f"Offline BW filter sweep (causal, fs={fs:.0f} Hz) — {path.name}", fontsize=11)
+
+        # Pre-compute filtered signals: filtered[fc_idx][axis_idx]
+        filtered_all = [[bw2_causal(raw_cols[ai], fc, fs) for ai in range(3)] for fc in freqs]
 
         for i, ax_name in enumerate(["Roll (X)", "Pitch (Y)", "Yaw (Z)"]):
             raw = raw_cols[i]
@@ -210,8 +232,8 @@ def main():
             fr_raw, pr_raw = psd(raw, fs)
             ax_f.semilogy(fr_raw, pr_raw, lw=0.7, alpha=0.5, color="gray", label="raw")
 
-            for fc, color, label in zip(freqs, cmap, labels):
-                filtered = bw2_causal(raw, fc, fs)
+            for fi, (fc, color, label) in enumerate(zip(freqs, cmap, labels)):
+                filtered = filtered_all[fi][i]
                 ax_t.plot(t, filtered, lw=0.9, color=color, label=label)
                 ff, pf = psd(filtered, fs)
                 ax_f.semilogy(ff, pf, lw=1.0, color=color, label=label)
@@ -233,6 +255,34 @@ def main():
             if i == 2:
                 ax_t.set_xlabel("t [s]")
                 ax_f.set_xlabel("Frequency [Hz]")
+
+        # Build stats rows (one per fc_bw)
+        rms_raw = [float(np.sqrt(np.mean(raw_cols[ai]**2))) for ai in range(3)]
+        for fi, fc in enumerate(freqs):
+            row = {"fc_hz": fc}
+            for ai, aname in enumerate(axes_long):
+                filt = filtered_all[fi][ai]
+                rms_f = float(np.sqrt(np.mean(filt**2)))
+                ratio = rms_f / rms_raw[ai] if rms_raw[ai] > 0 else float("nan")
+                db    = 20 * np.log10(ratio) if ratio > 0 else float("-inf")
+                row[f"rms_raw_{aname}"]      = round(rms_raw[ai], 4)
+                row[f"rms_filt_{aname}"]     = round(rms_f, 4)
+                row[f"noise_reduction_db_{aname}"] = round(db, 2)
+                row[f"rms_ratio_{aname}"]    = round(ratio, 4)
+            stats_rows.append(row)
+
+        # Save stats CSV
+        stats_out = path.with_name(path.stem + "_filter_stats.csv")
+        fieldnames = ["fc_hz"] + [
+            f"{metric}_{ax}"
+            for metric in ("rms_raw", "rms_filt", "noise_reduction_db", "rms_ratio")
+            for ax in axes_long
+        ]
+        with open(stats_out, "w", newline="") as f:
+            writer = csv_mod.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(stats_rows)
+        print(f"Saved stats: {stats_out}")
 
         # Summary guidance
         fig.text(0.01, 0.01,

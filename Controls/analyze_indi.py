@@ -1,0 +1,438 @@
+#!/usr/bin/env python3
+"""
+analyze_indi.py — INDI commissioning dashboard for Crazyflie flight logs.
+
+Loads a CS2 log CSV and produces:
+  • Terminal: health check, attitude metrics, filter quality, gain analysis + suggestions
+  • PNG:       3×3 dashboard — attitude / torques / filter comparison
+
+Gracefully handles missing columns (NaN sections show placeholder text).
+
+Usage:
+    python3 analyze_indi.py                              # auto-picks latest log
+    python3 analyze_indi.py logs/hover_....csv
+    python3 analyze_indi.py logs/hover_....csv --kr 100 --kw 200 --fc-bw 25
+    python3 analyze_indi.py logs/hover_....csv --tau-limit 0.015
+"""
+
+import argparse
+import math
+import sys
+from pathlib import Path
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import correlate, welch
+
+LOGS_DIR = Path(__file__).resolve().parent / "logs"
+
+# CF2.1 approximate max torque per axis [N·m] — used for saturation %.
+# Override with --tau-limit if your estimate differs.
+TAU_LIMIT_NM = 0.010
+
+
+# ── Data loading ──────────────────────────────────────────────────────────────
+
+def load_csv(path: Path) -> dict:
+    """Load all columns from a CS2 log CSV. Returns dict of np.ndarray."""
+    with open(path) as f:
+        lines = [l for l in f if not l.startswith("#")]
+    if not lines:
+        print(f"ERROR: {path} has no data rows")
+        sys.exit(1)
+    header = lines[0].strip().split(",")
+    cols: dict[str, list] = {k: [] for k in header}
+    for line in lines[1:]:
+        vals = line.strip().split(",")
+        if len(vals) != len(header):
+            continue
+        for k, v in zip(header, vals):
+            try:
+                cols[k].append(float(v))
+            except ValueError:
+                cols[k].append(float("nan"))
+    return {k: np.array(v) for k, v in cols.items()}
+
+
+def col(data: dict, name: str, n: int) -> np.ndarray:
+    return data[name] if name in data else np.full(n, float("nan"))
+
+
+def has_data(arr: np.ndarray) -> bool:
+    return bool(np.any(np.isfinite(arr) & (arr != 0.0)))
+
+
+# ── Signal utilities ──────────────────────────────────────────────────────────
+
+def detect_fs(t: np.ndarray) -> float:
+    diffs = np.diff(t[:min(200, len(t))])
+    diffs = diffs[diffs > 0]
+    return round(1.0 / float(np.median(diffs))) if len(diffs) else 20.0
+
+
+def find_hover_window(t, z, roll, pitch):
+    """
+    Returns (i_start, i_end, crashed, i_crash).
+    i_start: first sample of steady hover (after takeoff transient).
+    i_end:   last usable sample (crash or landing or end of log).
+    """
+    Z_IN, SKIP_S, ATT_CRASH = 0.15, 1.5, 60.0
+
+    in_flight = np.where(z > Z_IN)[0]
+    if len(in_flight) == 0:
+        return 0, len(t) - 1, False, None
+
+    i_flight = int(in_flight[0])
+    i_start  = min(int(np.searchsorted(t, t[i_flight] + SKIP_S)), len(t) - 1)
+
+    i_end, crashed, i_crash = len(t) - 1, False, None
+    for i in range(i_flight, len(t)):
+        if abs(roll[i]) > ATT_CRASH or abs(pitch[i]) > ATT_CRASH:
+            crashed, i_crash, i_end = True, i, i
+            break
+
+    if not crashed:
+        for i in range(i_flight + 10, len(t)):
+            if z[i] < 0.10:
+                i_end = i
+                break
+
+    return i_start, i_end, crashed, i_crash
+
+
+def filter_quality(alp_raw: np.ndarray, alp: np.ndarray, fs: float):
+    """
+    Returns (noise_reduction_db, phase_lag_ms).
+    noise_reduction_db < 0 means the filter attenuated noise.
+    phase_lag_ms > 0 means the filtered signal lags the raw.
+    """
+    mask = np.isfinite(alp_raw) & np.isfinite(alp)
+    if mask.sum() < 20:
+        return float("nan"), float("nan")
+    r, f = alp_raw[mask], alp[mask]
+    rms_r = float(np.sqrt(np.mean(r ** 2)))
+    rms_f = float(np.sqrt(np.mean(f ** 2)))
+    if rms_r < 1e-9:
+        return float("nan"), float("nan")
+    db = 20.0 * math.log10(rms_f / rms_r) if rms_f > 0 else -99.0
+
+    # Cross-correlation — positive lag = alp lags alp_raw (expected for a filter)
+    max_lag = max(1, int(fs * 0.1))   # search within ±100 ms
+    xc  = correlate(f - f.mean(), r - r.mean(), mode="full")
+    ctr = len(r) - 1
+    sl  = xc[max(0, ctr - max_lag): ctr + max_lag + 1]
+    lag_samples = int(np.argmax(sl)) - min(max_lag, ctr)
+    lag_ms = lag_samples * 1000.0 / fs
+    return db, lag_ms
+
+
+# ── Gain analysis ─────────────────────────────────────────────────────────────
+
+def att_poles(kr: float, kw: float):
+    """
+    Attitude closed-loop poles assuming perfect INDI inner loop: s²+KW·s+KR=0.
+    Returns (wn_rad_s, zeta, tau_dom_ms).
+    """
+    if kr <= 0:
+        return float("nan"), float("nan"), float("nan")
+    wn   = math.sqrt(kr)
+    zeta = kw / (2.0 * wn)
+    tau  = (kw / kr) if zeta >= 1.0 else (1.0 / wn)   # overdamped: -KR/KW pole dominates
+    return wn, zeta, tau * 1000.0
+
+
+def routh_stable(kr: float, kw: float) -> bool:
+    """Routh criterion for tau-integrating (3rd-order) mode: s³+s²+KW·s+KR.
+    Stable iff KW > KR and KR > 0."""
+    return kw > kr > 0
+
+
+def suggest_gains(kr: float, kw: float) -> list[dict]:
+    """
+    Two progressive gain step suggestions.
+    If currently UNSTABLE (KW <= KR), step 1 forces stability first (KW = 2*KR),
+    then step 2 raises both proportionally.
+    """
+    if not routh_stable(kr, kw):
+        # Fix stability first: raise KW to 2×KR (Routh margin=2), keep KR
+        steps = [
+            {"kr": round(kr),       "kw": round(kr * 2.0)},
+            {"kr": round(kr * 1.5), "kw": round(kr * 2.5)},
+        ]
+    else:
+        steps = [
+            {"kr": round(kr * 1.5), "kw": round(kw * 1.25)},
+            {"kr": round(kr * 2.0), "kw": round(kw * 1.50)},
+        ]
+    for s in steps:
+        wn, zeta, tdms = att_poles(s["kr"], s["kw"])
+        s.update(wn=wn, zeta=zeta, tau_dom_ms=tdms,
+                 routh_margin=s["kw"] / s["kr"] if s["kr"] > 0 else float("inf"),
+                 stable=routh_stable(s["kr"], s["kw"]))
+    return steps
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    ap = argparse.ArgumentParser(description="INDI commissioning dashboard")
+    ap.add_argument("csv", nargs="?", help="Path to flight log CSV (default: latest in logs/)")
+    ap.add_argument("--kr",        type=float, default=100.0, help="INDI KR gain roll/pitch (default 100)")
+    ap.add_argument("--kw",        type=float, default=200.0, help="INDI KW gain roll/pitch (yaml kw)")
+    ap.add_argument("--kr-z",      type=float, default=None,  help="INDI KR_Z yaw gain (default: same as --kr)")
+    ap.add_argument("--kw-z",      type=float, default=None,  help="INDI KW_Z yaw gain (default: same as --kw)")
+    ap.add_argument("--fc-bw",     type=float, default=25.0,  help="Butterworth cutoff [Hz] (yaml fc_bw)")
+    ap.add_argument("--tau-limit", type=float, default=TAU_LIMIT_NM,
+                    help=f"Estimated max torque per axis [N·m] for saturation %% (default {TAU_LIMIT_NM})")
+    args = ap.parse_args()
+
+    if args.csv:
+        path = Path(args.csv)
+    else:
+        skip = {"_filter_stats", "_filter_sweep", "_indi_dashboard", "_analysis",
+                "_3d_orientation", "_helix", "_yaw_spin", "_flip"}
+        cands = [c for c in sorted(LOGS_DIR.glob("*.csv"))
+                 if not any(s in c.name for s in skip)]
+        if not cands:
+            print(f"No CSV found in {LOGS_DIR}")
+            sys.exit(1)
+        path = cands[-1]
+        print(f"[auto] {path.name}")
+
+    data = load_csv(path)
+    N = len(next(iter(data.values())))
+    if N < 5:
+        print(f"ERROR: too few rows ({N})")
+        sys.exit(1)
+
+    t       = col(data, "time_s", N)
+    z       = col(data, "z", N)
+    roll    = col(data, "roll_deg", N)
+    pitch   = col(data, "pitch_deg", N)
+    yaw     = col(data, "yaw_deg", N)
+    vbat    = col(data, "vbat", N)
+    rpm     = np.column_stack([col(data, f"rpm_m{i}", N) for i in range(1, 5)])
+    tau     = np.column_stack([col(data, f"tau_{a}", N)     for a in "xyz"])
+    alp     = np.column_stack([col(data, f"alp_{a}", N)     for a in "xyz"])
+    alp_raw = np.column_stack([col(data, f"alp_raw_{a}", N) for a in "xyz"])
+
+    fs = detect_fs(t)
+    print(f"[info] N={N}  fs={fs:.0f} Hz  t=[{t[0]:.2f}, {t[-1]:.2f}]s")
+
+    i0, i1, crashed, i_crash = find_hover_window(t, z, roll, pitch)
+    sl = slice(i0, i1 + 1)
+    t0, t1 = t[i0], t[i1]
+
+    # ── Column availability ────────────────────────────────────────────────────
+    rpm_ok    = has_data(rpm[sl])
+    tau_ok    = has_data(tau[sl])
+    alp_ok    = has_data(alp[sl])
+    alp_r_ok  = has_data(alp_raw[sl])
+
+    # ── Attitude metrics ───────────────────────────────────────────────────────
+    def _rms(a): return float(np.sqrt(np.nanmean(a[sl] ** 2)))
+    def _peak(a): return float(np.nanmax(np.abs(a[sl])))
+
+    roll_rms,  roll_peak  = _rms(roll),  _peak(roll)
+    pitch_rms, pitch_peak = _rms(pitch), _peak(pitch)
+    yaw_rms               = _rms(yaw)
+    vbat_min = float(np.nanmin(vbat)) if has_data(vbat) else float("nan")
+
+    # ── RPM / INDI mode ────────────────────────────────────────────────────────
+    if rpm_ok:
+        rpm_mean = float(np.nanmean(rpm[sl][np.isfinite(rpm[sl])]))
+        rpm_min  = float(np.nanmin( rpm[sl][np.isfinite(rpm[sl])]))
+        integrating_mode = rpm_min < 100
+    else:
+        rpm_mean = rpm_min = float("nan")
+        integrating_mode = True  # assume worst case without RPM data
+
+    # ── Tau metrics ────────────────────────────────────────────────────────────
+    tau_rms  = [float(np.sqrt(np.nanmean(tau[sl, i] ** 2))) if tau_ok else float("nan") for i in range(3)]
+    tau_peak = [float(np.nanmax(np.abs(tau[sl, i])))        if tau_ok else float("nan") for i in range(3)]
+    tau_sat  = [float(np.nanmean(np.abs(tau[sl, i]) > args.tau_limit * 0.9)) * 100.0
+                if tau_ok else float("nan") for i in range(3)]
+
+    # ── Filter quality ─────────────────────────────────────────────────────────
+    fq = [filter_quality(alp_raw[sl, i], alp[sl, i], fs) for i in range(3)]
+
+    # ── Gain analysis ──────────────────────────────────────────────────────────
+    kr_z = args.kr_z if args.kr_z is not None else args.kr
+    kw_z = args.kw_z if args.kw_z is not None else args.kw
+
+    wn, zeta, tau_dom_ms = att_poles(args.kr, args.kw)
+    routh_ok     = routh_stable(args.kr, args.kw)
+    routh_ok_z   = routh_stable(kr_z, kw_z)
+    routh_margin = args.kw / args.kr if args.kr > 0 else float("inf")
+    suggestions  = suggest_gains(args.kr, args.kw)
+
+    # ── Terminal output ────────────────────────────────────────────────────────
+    AX = ["X (roll)", "Y (pitch)", "Z (yaw)"]
+
+    def fmt(v, fmt_str, fallback="N/A"):
+        return format(v, fmt_str) if math.isfinite(v) else fallback
+
+    print()
+    print("=" * 64)
+    print("  HEALTH CHECK")
+    print("=" * 64)
+    print(f"  File         : {path.name}")
+    print(f"  Hover window : {t0:.2f}s – {t1:.2f}s  ({t1 - t0:.1f}s)")
+    print(f"  Crashed      : {'YES at t=' + fmt(t[i_crash], '.2f') + 's' if crashed else 'NO'}")
+    print(f"  RPM deck     : {f'OK  (mean={rpm_mean:.0f} RPM, min={rpm_min:.0f})' if rpm_ok else 'NOT IN LOG (NaN) — add rpm topic'}")
+    print(f"  INDI tau     : {'ACTIVE — non-zero torque commands seen' if tau_ok else 'NOT IN LOG — add indi_state topic'}")
+    print(f"  alp (filt)   : {'present' if alp_ok else 'NOT IN LOG'}")
+    print(f"  alp_raw      : {'present' if alp_r_ok else 'NOT IN LOG — add indi_alp_raw topic'}")
+    print(f"  Vbat min     : {fmt(vbat_min, '.3f')} V")
+    print(f"  INDI mode    : {'INCREMENTAL (RPM healthy → 2nd-order att loop)' if not integrating_mode else 'TAU-INTEGRATING (RPM=0 or not read → 3rd-order, Routh applies)'}")
+
+    print()
+    print("  ATTITUDE (hover window)")
+    print(f"    Roll  : RMS={roll_rms:.2f}°   peak={roll_peak:.1f}°")
+    print(f"    Pitch : RMS={pitch_rms:.2f}°   peak={pitch_peak:.1f}°")
+    print(f"    Yaw   : RMS={yaw_rms:.2f}°")
+
+    print()
+    if tau_ok:
+        print("  INDI TORQUE (hover window)")
+        for i, ax in enumerate(AX):
+            print(f"    {ax}: RMS={tau_rms[i]*1000:.3f} mN·m   "
+                  f"peak={tau_peak[i]*1000:.3f} mN·m   sat={tau_sat[i]:.1f}%")
+    else:
+        print("  INDI TORQUE : not available — add indi_state topic and reflash if needed")
+
+    print()
+    if alp_r_ok and alp_ok:
+        print(f"  FILTER QUALITY  (fc_bw={args.fc_bw:.0f} Hz, log fs={fs:.0f} Hz)")
+        if fs < 50:
+            print(f"  NOTE: fs={fs:.0f} Hz limits phase-lag resolution to {1000/fs:.0f} ms steps — "
+                  f"raise state topic to 100 Hz for better accuracy")
+        for i, ax in enumerate(AX):
+            db, lag = fq[i]
+            print(f"    {ax}: noise reduction={fmt(db,'.1f')} dB   phase lag≈{fmt(lag,'.0f')} ms")
+    elif alp_ok:
+        print("  FILTER QUALITY : alp_raw not in log — add indi_alp_raw topic")
+    else:
+        print("  FILTER QUALITY : alp columns not in log")
+
+    print()
+    print("  GAIN ANALYSIS")
+    print(f"    Roll/Pitch : KR={args.kr:.0f}   KW={args.kw:.0f}   "
+          f"Routh={routh_margin:.2f}  →  {'STABLE ✓' if routh_ok else 'UNSTABLE ✗ — raise KW above KR'}")
+    wn_z, zeta_z, td_z = att_poles(kr_z, kw_z)
+    rm_z = kw_z / kr_z if kr_z > 0 else float("inf")
+    print(f"    Yaw        : KR={kr_z:.0f}   KW={kw_z:.0f}   "
+          f"Routh={rm_z:.2f}  →  {'STABLE ✓' if routh_ok_z else 'UNSTABLE ✗ — raise KW_Z above KR_Z'}")
+    print(f"    Att poles  : ωn={fmt(wn,'.1f')} rad/s   ζ={fmt(zeta,'.1f')}   "
+          f"τ_dom≈{fmt(tau_dom_ms,'.0f')} ms  (roll/pitch, assumes perfect INDI inner loop)")
+    print(f"    fc_bw={args.fc_bw:.0f} Hz")
+    if tau_ok:
+        max_sat = max((v for v in tau_sat if math.isfinite(v)), default=float("nan"))
+        if math.isfinite(max_sat):
+            if max_sat < 5:
+                verdict = "tau_sat<5% → HEADROOM AVAILABLE — can raise gains"
+            elif max_sat < 20:
+                verdict = f"tau_sat={max_sat:.0f}% → MODERATE — small gain increase ok"
+            else:
+                verdict = f"tau_sat={max_sat:.0f}% → SATURATING — do NOT raise gains"
+            print(f"    Saturation   : {verdict}")
+    print()
+    print("    SUGGESTED NEXT STEPS:")
+    for i, s in enumerate(suggestions):
+        ok = "✓ stable" if s["stable"] else "✗ UNSTABLE"
+        print(f"      Step {i+1}: KR={s['kr']}  KW={s['kw']}  → "
+              f"ωn={s['wn']:.1f}  ζ={s['zeta']:.1f}  τ_dom={s['tau_dom_ms']:.0f}ms  "
+              f"Routh={s['routh_margin']:.2f}  {ok}")
+    print()
+
+    # ── Dashboard plot ─────────────────────────────────────────────────────────
+    fig, axs = plt.subplots(3, 3, figsize=(15, 11))
+    fig.suptitle(f"INDI Dashboard — {path.name}", fontsize=11, fontweight="bold")
+
+    t_w = t[sl]
+
+    def shade(ax):
+        ax.axvspan(t0, t1, alpha=0.08, color="limegreen", label="hover window")
+        if crashed and i_crash is not None:
+            ax.axvline(t[i_crash], color="red", lw=1.5, ls="--",
+                       label=f"crash t={t[i_crash]:.1f}s")
+
+    # Row 0 — Attitude time series
+    att_data  = [roll, pitch, yaw]
+    att_names = ["Roll [°]", "Pitch [°]", "Yaw [°]"]
+    for i, (a, name) in enumerate(zip(att_data, att_names)):
+        ax = axs[0, i]
+        ax.axhline(0, color="k", lw=0.4)
+        ax.axhspan(-5,   5,  alpha=0.08, color="limegreen")
+        ax.axhspan(-10, 10,  alpha=0.05, color="orange")
+        ax.plot(t, a, lw=0.7, color="C0")
+        shade(ax)
+        ax.set_ylabel(name, fontsize=9)
+        ax.set_xlabel("t [s]", fontsize=8)
+        rms_w  = float(np.sqrt(np.nanmean(a[sl] ** 2)))
+        peak_w = float(np.nanmax(np.abs(a[sl])))
+        ax.set_title(f"RMS={rms_w:.2f}°  peak={peak_w:.1f}°", fontsize=9)
+        if i == 0:
+            ax.legend(fontsize=7, loc="upper right")
+
+    # Row 1 — INDI torque time series
+    tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
+    for i in range(3):
+        ax = axs[1, i]
+        if tau_ok:
+            ax.plot(t, tau[:, i], lw=0.7, color="C1")
+            ax.axhline( args.tau_limit, color="red", lw=0.8, ls="--",
+                        label=f"±{args.tau_limit*1000:.0f} mN·m est. limit")
+            ax.axhline(-args.tau_limit, color="red", lw=0.8, ls="--")
+            shade(ax)
+            ax.set_title(f"RMS={tau_rms[i]*1000:.3f} mN·m  sat={tau_sat[i]:.1f}%", fontsize=9)
+            ax.legend(fontsize=7)
+        else:
+            ax.text(0.5, 0.5, "tau not in log\n(add indi_state topic to yaml)",
+                    ha="center", va="center", transform=ax.transAxes,
+                    fontsize=9, color="gray", style="italic")
+        ax.set_ylabel(tau_names[i], fontsize=9)
+        ax.set_xlabel("t [s]", fontsize=8)
+
+    # Row 2 — Filter: alp_raw vs alp (hover window only)
+    alp_names = ["alp_x [rad/s²]", "alp_y [rad/s²]", "alp_z [rad/s²]"]
+    for i in range(3):
+        ax = axs[2, i]
+        if alp_r_ok and alp_ok:
+            ax.plot(t_w, alp_raw[sl, i], lw=0.5, alpha=0.55, color="gray",  label="alp_raw (pre-filter)")
+            ax.plot(t_w, alp[sl, i],     lw=0.9, color="C2",                label="alp (filtered)")
+            db, lag = fq[i]
+            db_s  = f"{db:.1f} dB"  if math.isfinite(db)  else "N/A"
+            lag_s = f"{lag:.0f} ms" if math.isfinite(lag) else "N/A"
+            ax.set_title(f"noise red.={db_s}   lag≈{lag_s}", fontsize=9)
+            ax.legend(fontsize=7, loc="upper right")
+        elif alp_ok:
+            ax.plot(t_w, alp[sl, i], lw=0.9, color="C2", label="alp (filtered)")
+            ax.set_title("alp_raw not available", fontsize=9)
+            ax.legend(fontsize=7)
+        else:
+            ax.text(0.5, 0.5, "alp not in log\n(add indi_state topic to yaml)",
+                    ha="center", va="center", transform=ax.transAxes,
+                    fontsize=9, color="gray", style="italic")
+        ax.set_ylabel(alp_names[i], fontsize=9)
+        ax.set_xlabel("t [s]", fontsize=8)
+
+    # Bottom annotation strip
+    mode_str  = "incremental" if not integrating_mode else "tau-integrating (3rd-order!)"
+    routh_str = f"Routh={routh_margin:.2f} {'✓' if routh_ok else '✗ UNSTABLE'}"
+    poles_str = f"ωn={fmt(wn,'.1f')} rad/s  ζ={fmt(zeta,'.1f')}  τ_dom≈{fmt(tau_dom_ms,'.0f')}ms"
+    info = (f"KR={args.kr:.0f}  KW={args.kw:.0f}  fc_bw={args.fc_bw:.0f} Hz  │  "
+            f"{routh_str}  │  {poles_str}  │  "
+            f"INDI mode: {mode_str}  │  RPM: {'ok' if rpm_ok else 'not in log'}")
+    fig.text(0.01, 0.005, info, fontsize=7.5, color="dimgray",
+             bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.85))
+
+    plt.tight_layout(rect=[0, 0.04, 1, 1])
+    out = path.with_name(path.stem + "_indi_dashboard.png")
+    plt.savefig(out, dpi=150)
+    print(f"Saved: {out}")
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
