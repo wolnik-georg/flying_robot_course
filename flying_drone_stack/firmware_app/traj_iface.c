@@ -126,32 +126,6 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
 PARAM_GROUP_STOP(traj)
 
-/* ── INDI log group ───────────────────────────────────────────────────────── */
-/* With OOT: variables are owned by Rust (no_mangle statics in lib.rs).       */
-/* Without OOT: local statics hold zero so the log group always exists and    */
-/* CS2 log config never fails — indi.* values are simply 0 when inactive.     */
-#ifdef CONFIG_CONTROLLER_OOT
-extern float INDI_TAU_X; extern float INDI_TAU_Y; extern float INDI_TAU_Z;
-extern float INDI_ALP_X; extern float INDI_ALP_Y; extern float INDI_ALP_Z;
-extern float INDI_ALP_RAW_X; extern float INDI_ALP_RAW_Y; extern float INDI_ALP_RAW_Z;
-#else
-static float INDI_TAU_X = 0.0f; static float INDI_TAU_Y = 0.0f; static float INDI_TAU_Z = 0.0f;
-static float INDI_ALP_X = 0.0f; static float INDI_ALP_Y = 0.0f; static float INDI_ALP_Z = 0.0f;
-static float INDI_ALP_RAW_X = 0.0f; static float INDI_ALP_RAW_Y = 0.0f; static float INDI_ALP_RAW_Z = 0.0f;
-#endif
-
-LOG_GROUP_START(indi)
-  LOG_ADD(LOG_FLOAT, tau_x,     &INDI_TAU_X)
-  LOG_ADD(LOG_FLOAT, tau_y,     &INDI_TAU_Y)
-  LOG_ADD(LOG_FLOAT, tau_z,     &INDI_TAU_Z)
-  LOG_ADD(LOG_FLOAT, alp_x,     &INDI_ALP_X)
-  LOG_ADD(LOG_FLOAT, alp_y,     &INDI_ALP_Y)
-  LOG_ADD(LOG_FLOAT, alp_z,     &INDI_ALP_Z)
-  LOG_ADD(LOG_FLOAT, alp_raw_x, &INDI_ALP_RAW_X)
-  LOG_ADD(LOG_FLOAT, alp_raw_y, &INDI_ALP_RAW_Y)
-  LOG_ADD(LOG_FLOAT, alp_raw_z, &INDI_ALP_RAW_Z)
-LOG_GROUP_STOP(indi)
-
 /* ── INDI tuning params (runtime-configurable, no reflash needed) ─────────── */
 /* Change via CS2 yaml firmware_params.indi_gains.*, cfclient Parameters tab,   */
 /* or a Python one-liner: cf.param.set_value('indi_gains.kr', '200.0').         */
