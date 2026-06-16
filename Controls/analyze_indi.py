@@ -33,6 +33,21 @@ TAU_LIMIT_NM = 0.010
 
 # ── Data loading ──────────────────────────────────────────────────────────────
 
+def load_meta(path: Path) -> dict:
+    """Parse # meta:key=value lines from a CS2 log CSV header."""
+    meta = {}
+    with open(path) as f:
+        for line in f:
+            if not line.startswith("#"):
+                break
+            if line.startswith("# meta:"):
+                kv = line[7:].strip()
+                if "=" in kv:
+                    k, v = kv.split("=", 1)
+                    meta[k.strip()] = v.strip()
+    return meta
+
+
 def load_csv(path: Path) -> dict:
     """Load all columns from a CS2 log CSV. Returns dict of np.ndarray."""
     with open(path) as f:
@@ -166,12 +181,11 @@ def stale_end(tau_col: np.ndarray) -> int:
 
 def suggest_gains(kr: float, kw: float, incremental: bool = True) -> list[dict]:
     """
-    Two progressive gain step suggestions toward τ_dom ≈ 91 ms (geometric-equivalent target).
-    In incremental mode (RPM deck active, 2nd-order): KW > KR is NOT required.
+    Two progressive gain step suggestions, each raising KR by ~20% while scaling KW
+    with sqrt(KR_new/KR_old) to maintain the same damping ratio ζ = KW/(2·sqrt(KR)).
     In integrating mode (RPM=0 fallback, 3rd-order): KW > KR required for Routh stability.
     """
-    # Target: KR=603, KW=66 (KR_geo/J, KW_geo/J) — τ_dom≈91ms, ζ≈1.34
-    KR_TARGET, KW_TARGET = 603.0, 66.0
+    import math
 
     if not incremental and not routh_stable(kr, kw):
         # Integrating mode + currently unstable: fix Routh first
@@ -179,19 +193,15 @@ def suggest_gains(kr: float, kw: float, incremental: bool = True) -> list[dict]:
             {"kr": round(kr),       "kw": round(kr * 2.0)},
             {"kr": round(kr * 1.5), "kw": round(kr * 2.5)},
         ]
-    elif kr < KR_TARGET * 0.9:
-        # Below target: step toward KR=603, KW=66
-        kr1 = round(kr + (KR_TARGET - kr) * 0.5)
-        kw1 = round(kw + (KW_TARGET - kw) * 0.5)
-        steps = [
-            {"kr": kr1,                "kw": kw1},
-            {"kr": round(KR_TARGET),   "kw": round(KW_TARGET)},
-        ]
     else:
-        # At or beyond target: suggest next step beyond geometric-equivalent
+        # Raise KR in ~20% steps; scale KW to keep ζ constant
+        kr1 = round(kr * 1.20)
+        kw1 = round(kw * math.sqrt(kr1 / kr))
+        kr2 = round(kr * 1.45)
+        kw2 = round(kw * math.sqrt(kr2 / kr))
         steps = [
-            {"kr": round(kr * 1.3), "kw": round(kw * 1.2)},
-            {"kr": round(kr * 1.6), "kw": round(kw * 1.4)},
+            {"kr": kr1, "kw": kw1},
+            {"kr": kr2, "kw": kw2},
         ]
     for s in steps:
         wn, zeta, tdms = att_poles(s["kr"], s["kw"])
@@ -206,11 +216,11 @@ def suggest_gains(kr: float, kw: float, incremental: bool = True) -> list[dict]:
 def main():
     ap = argparse.ArgumentParser(description="INDI commissioning dashboard")
     ap.add_argument("csv", nargs="?", help="Path to flight log CSV (default: latest in logs/)")
-    ap.add_argument("--kr",        type=float, default=1325.0, help="INDI KR gain roll/pitch (default 1325 — active yaml value)")
-    ap.add_argument("--kw",        type=float, default=114.0,  help="INDI KW gain roll/pitch (default 114 — active yaml value)")
-    ap.add_argument("--kr-z",      type=float, default=None,  help="INDI KR_Z yaw gain (default: same as --kr)")
-    ap.add_argument("--kw-z",      type=float, default=None,  help="INDI KW_Z yaw gain (default: same as --kw)")
-    ap.add_argument("--fc-bw",     type=float, default=25.0,  help="Butterworth cutoff [Hz] (yaml fc_bw)")
+    ap.add_argument("--kr",        type=float, default=None, help="INDI KR gain roll/pitch (default: from CSV meta, else 1325)")
+    ap.add_argument("--kw",        type=float, default=None, help="INDI KW gain roll/pitch (default: from CSV meta, else 114)")
+    ap.add_argument("--kr-z",      type=float, default=None, help="INDI KR_Z yaw gain (default: same as --kr)")
+    ap.add_argument("--kw-z",      type=float, default=None, help="INDI KW_Z yaw gain (default: same as --kw)")
+    ap.add_argument("--fc-bw",     type=float, default=None, help="Butterworth cutoff [Hz] (default: from CSV meta, else 25)")
     ap.add_argument("--tau-limit", type=float, default=TAU_LIMIT_NM,
                     help=f"Estimated max torque per axis [N·m] for saturation %% (default {TAU_LIMIT_NM})")
     args = ap.parse_args()
@@ -227,6 +237,15 @@ def main():
             sys.exit(1)
         path = cands[-1]
         print(f"[auto] {path.name}")
+
+    # Resolve gains from CSV meta if not given on CLI
+    meta = load_meta(path)
+    if args.kr is None:
+        args.kr = float(meta.get("indi_kr", 1325.0))
+    if args.kw is None:
+        args.kw = float(meta.get("indi_kw", 114.0))
+    if args.fc_bw is None:
+        args.fc_bw = float(meta.get("indi_fc_bw", 25.0))
 
     data = load_csv(path)
     N = len(next(iter(data.values())))
