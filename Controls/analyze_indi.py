@@ -86,6 +86,21 @@ def has_data(arr: np.ndarray) -> bool:
     return bool(np.any(np.isfinite(arr) & (arr != 0.0)))
 
 
+def ctrl_mode_from_meta(meta: dict) -> int | None:
+    """Return trajectory controller mode from CSV header meta, if present."""
+    for key in ("trajectory_ctrl_mode", "yaml_ctrl_mode"):
+        if key in meta:
+            try:
+                return int(meta[key])
+            except ValueError:
+                pass
+    return None
+
+
+def ctrl_mode_label(mode: int) -> str:
+    return {0: "geometric", 1: "pos INDI", 2: "att INDI", 3: "full INDI"}.get(mode, f"mode {mode}")
+
+
 # ── Signal utilities ──────────────────────────────────────────────────────────
 
 def detect_fs(t: np.ndarray) -> float:
@@ -247,6 +262,9 @@ def main():
     if args.fc_bw is None:
         args.fc_bw = float(meta.get("indi_fc_bw", 25.0))
 
+    ctrl_mode = ctrl_mode_from_meta(meta)
+    geometric_mode = ctrl_mode == 0
+
     data = load_csv(path)
     N = len(next(iter(data.values())))
     if N < 5:
@@ -272,10 +290,10 @@ def main():
     t0, t1 = t[i0], t[i1]
 
     # ── Column availability ────────────────────────────────────────────────────
-    rpm_ok    = has_data(rpm[sl])
-    tau_ok    = has_data(tau[sl])
-    alp_ok    = has_data(alp[sl])
-    alp_r_ok  = has_data(alp_raw[sl])
+    rpm_ok      = has_data(rpm[sl])
+    tau_present = has_data(tau[sl])
+    alp_ok      = has_data(alp[sl])
+    alp_r_ok    = has_data(alp_raw[sl])
 
     # ── Attitude metrics ───────────────────────────────────────────────────────
     def _rms(a): return float(np.sqrt(np.nanmean(a[sl] ** 2)))
@@ -298,18 +316,26 @@ def main():
     # ── Tau metrics — exclude stale tau_prev period at start ──────────────────
     # tau_prev carries over from previous crash; stays frozen until RPMs kick in.
     # Detect by finding where tau first deviates from its initial constant value.
-    if tau_ok:
+    if tau_present:
         stale_i = max(stale_end(tau[:, 0]), stale_end(tau[:, 1]), stale_end(tau[:, 2]))
         tau_i0 = max(i0, stale_i)  # start of valid tau data within hover window
-        tau_sl = slice(tau_i0, i1 + 1)
-        tau_stale_secs = max(0.0, t[min(stale_i, len(t)-1)] - t[i0])
+        if tau_i0 > i1:
+            # Entire hover window is frozen tau_prev — no live INDI commands.
+            tau_active = False
+            tau_sl = sl
+            tau_stale_secs = t1 - t0
+        else:
+            tau_active = True
+            tau_sl = slice(tau_i0, i1 + 1)
+            tau_stale_secs = max(0.0, t[tau_i0] - t[i0])
     else:
+        tau_active = False
         tau_sl = sl
         tau_stale_secs = 0.0
-    tau_rms  = [float(np.sqrt(np.nanmean(tau[tau_sl, i] ** 2))) if tau_ok else float("nan") for i in range(3)]
-    tau_peak = [float(np.nanmax(np.abs(tau[tau_sl, i])))        if tau_ok else float("nan") for i in range(3)]
+    tau_rms  = [float(np.sqrt(np.nanmean(tau[tau_sl, i] ** 2))) if tau_active else float("nan") for i in range(3)]
+    tau_peak = [float(np.nanmax(np.abs(tau[tau_sl, i])))        if tau_active else float("nan") for i in range(3)]
     tau_sat  = [float(np.nanmean(np.abs(tau[tau_sl, i]) > args.tau_limit * 0.9)) * 100.0
-                if tau_ok else float("nan") for i in range(3)]
+                if tau_active else float("nan") for i in range(3)]
 
     # ── Filter quality ─────────────────────────────────────────────────────────
     fq = [filter_quality(alp_raw[sl, i], alp[sl, i], fs) for i in range(3)]
@@ -335,10 +361,21 @@ def main():
     print("  HEALTH CHECK")
     print("=" * 64)
     print(f"  File         : {path.name}")
+    if ctrl_mode is not None:
+        print(f"  Ctrl mode    : {ctrl_mode} ({ctrl_mode_label(ctrl_mode)})")
     print(f"  Hover window : {t0:.2f}s – {t1:.2f}s  ({t1 - t0:.1f}s)")
     print(f"  Crashed      : {'YES at t=' + fmt(t[i_crash], '.2f') + 's' if crashed else 'NO'}")
     print(f"  RPM deck     : {f'OK  (mean={rpm_mean:.0f} RPM, min={rpm_min:.0f})' if rpm_ok else 'NOT IN LOG (NaN) — add rpm topic'}")
-    print(f"  INDI tau     : {'ACTIVE — non-zero torque commands seen' if tau_ok else 'NOT IN LOG — add indi_state topic'}")
+    if tau_active:
+        tau_status = "ACTIVE — non-zero torque commands seen"
+    elif geometric_mode:
+        tau_status = (f"N/A — geometric controller (ctrl_mode=0); "
+                      f"tau_* not logged — use mode 2/3 for INDI commissioning")
+    elif tau_present:
+        tau_status = "STALE — tau_prev frozen (no INDI commands in hover window)"
+    else:
+        tau_status = "NOT IN LOG — add indi_state topic"
+    print(f"  INDI tau     : {tau_status}")
     print(f"  alp (filt)   : {'present' if alp_ok else 'NOT IN LOG'}")
     print(f"  alp_raw      : {'present' if alp_r_ok else 'NOT IN LOG — add indi_alp_raw topic'}")
     print(f"  Vbat min     : {fmt(vbat_min, '.3f')} V")
@@ -351,12 +388,17 @@ def main():
     print(f"    Yaw   : RMS={yaw_rms:.2f}°")
 
     print()
-    if tau_ok:
+    if tau_active:
         stale_note = f"  (stale tau_prev excluded: {tau_stale_secs:.1f}s at start)" if tau_stale_secs > 0.1 else ""
         print(f"  INDI TORQUE (hover window{stale_note})")
         for i, ax in enumerate(AX):
             print(f"    {ax}: RMS={tau_rms[i]*1000:.3f} mN·m   "
                   f"peak={tau_peak[i]*1000:.3f} mN·m   sat={tau_sat[i]:.1f}%")
+    elif geometric_mode:
+        print("  INDI TORQUE : not available in geometric mode (ctrl_mode=0)")
+        print("                alp/RPM still logged; re-fly with ctrl_mode 2 or 3 for tau metrics")
+    elif tau_present:
+        print(f"  INDI TORQUE : stale tau_prev only ({tau_stale_secs:.1f}s frozen in hover window)")
     else:
         print("  INDI TORQUE : not available — add indi_state topic and reflash if needed")
 
@@ -388,7 +430,7 @@ def main():
     print(f"    Att poles  : ωn={fmt(wn,'.1f')} rad/s   ζ={fmt(zeta,'.1f')}   "
           f"τ_dom≈{fmt(tau_dom_ms,'.0f')} ms  (roll/pitch, assumes perfect INDI inner loop)")
     print(f"    fc_bw={args.fc_bw:.0f} Hz")
-    if tau_ok:
+    if tau_active:
         max_sat = max((v for v in tau_sat if math.isfinite(v)), default=float("nan"))
         if math.isfinite(max_sat):
             if max_sat < 5:
@@ -399,14 +441,22 @@ def main():
                 verdict = f"tau_sat={max_sat:.0f}% → SATURATING — do NOT raise gains"
             print(f"    Saturation   : {verdict}")
     print()
+    KR_PRACTICAL_LIMIT = 1400.0
     print("    SUGGESTED NEXT STEPS:")
-    for i, s in enumerate(suggestions):
-        if integrating_mode:
-            ok = "✓ Routh stable" if s["stable"] else "✗ Routh UNSTABLE (KW<KR, fallback unsafe)"
-        else:
-            ok = "✓ 2nd-order stable (RPM active)"
-        print(f"      Step {i+1}: KR={s['kr']}  KW={s['kw']}  → "
-              f"ωn={s['wn']:.1f}  ζ={s['zeta']:.1f}  τ_dom={s['tau_dom_ms']:.0f}ms  {ok}")
+    if args.kr >= KR_PRACTICAL_LIMIT:
+        print(f"      KR={args.kr:.0f} is at/above practical limit (KR>{KR_PRACTICAL_LIMIT:.0f} oscillates on this drone).")
+        print(f"      → Do NOT raise KR further. Next priorities:")
+        print(f"      → 1. KT_MOTOR bench calibration (fixes INDI feedforward accuracy)")
+        print(f"      → 2. Raise KV (position damping, ζ_pos=KV/(2·sqrt(KP)))")
+        print(f"      → 3. Try fc_bw=60 Hz (cleaner alp, slight lag tradeoff)")
+    else:
+        for i, s in enumerate(suggestions):
+            if integrating_mode:
+                ok = "✓ Routh stable" if s["stable"] else "✗ Routh UNSTABLE (KW<KR, fallback unsafe)"
+            else:
+                ok = "✓ 2nd-order stable (RPM active)"
+            print(f"      Step {i+1}: KR={s['kr']}  KW={s['kw']}  → "
+                  f"ωn={s['wn']:.1f}  ζ={s['zeta']:.1f}  τ_dom={s['tau_dom_ms']:.0f}ms  {ok}")
     print()
 
     # ── Dashboard plot ─────────────────────────────────────────────────────────
@@ -441,19 +491,23 @@ def main():
 
     # Row 1 — INDI torque time series (full flight, but stats from valid window only)
     tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
-    t_tau_start = t[tau_sl.start] if tau_ok else t[i0]
+    t_tau_start = t[tau_sl.start] if tau_active else t[i0]
     for i in range(3):
         ax = axs[1, i]
-        if tau_ok:
+        if tau_present:
             ax.plot(t, tau[:, i], lw=0.7, color="C1")
             ax.axhline( args.tau_limit, color="red", lw=0.8, ls="--",
                         label=f"±{args.tau_limit*1000:.0f} mN·m est. limit")
             ax.axhline(-args.tau_limit, color="red", lw=0.8, ls="--")
             if tau_stale_secs > 0.1:
-                ax.axvspan(t[i0], t_tau_start, alpha=0.15, color="orange",
+                stale_end_t = t1 if not tau_active else t_tau_start
+                ax.axvspan(t[i0], stale_end_t, alpha=0.15, color="orange",
                            label=f"stale τ_prev ({tau_stale_secs:.1f}s)" if i == 0 else None)
             shade(ax)
-            ax.set_title(f"RMS={tau_rms[i]*1000:.3f} mN·m  sat={tau_sat[i]:.1f}%", fontsize=9)
+            if tau_active:
+                ax.set_title(f"RMS={tau_rms[i]*1000:.3f} mN·m  sat={tau_sat[i]:.1f}%", fontsize=9)
+            else:
+                ax.set_title("stale τ_prev (frozen)", fontsize=9)
             ax.legend(fontsize=7)
         else:
             ax.text(0.5, 0.5, "tau not in log\n(add indi_state topic to yaml)",
