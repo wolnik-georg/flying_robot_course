@@ -51,7 +51,16 @@ def load_csv(path: Path) -> dict:
                 cols[k].append(float(v))
             except ValueError:
                 cols[k].append(float("nan"))
-    return {k: np.array(v) for k, v in cols.items()}
+    data = {k: np.array(v) for k, v in cols.items()}
+    # CS2 logs two phases (takeoff + trajectory/hover) with separate resetting timers.
+    # Make timestamps monotone so matplotlib draws a single forward-going line.
+    ts = data.get("time_s")
+    if ts is not None:
+        for i in range(1, len(ts)):
+            if ts[i] < ts[i - 1]:
+                ts[i:] += ts[i - 1]
+                break
+    return data
 
 
 def col(data: dict, name: str, n: int) -> np.ndarray:
@@ -142,27 +151,47 @@ def att_poles(kr: float, kw: float):
 
 
 def routh_stable(kr: float, kw: float) -> bool:
-    """Routh criterion for tau-integrating (3rd-order) mode: s³+s²+KW·s+KR.
-    Stable iff KW > KR and KR > 0."""
+    """Routh criterion for tau-integrating (3rd-order fallback) mode: s³+s²+KW·s+KR.
+    Only applies when RPM deck absent (rpms_active=False). Stable iff KW > KR > 0."""
     return kw > kr > 0
 
 
-def suggest_gains(kr: float, kw: float) -> list[dict]:
+def stale_end(tau_col: np.ndarray) -> int:
+    """Return index where tau first deviates from the initial stale value.
+    tau_prev carries over from previous crash until RPMs kick in (~first few seconds)."""
+    init = tau_col[0]
+    changed = np.where(np.abs(tau_col - init) > 1e-4)[0]
+    return int(changed[0]) if len(changed) else len(tau_col)
+
+
+def suggest_gains(kr: float, kw: float, incremental: bool = True) -> list[dict]:
     """
-    Two progressive gain step suggestions.
-    If currently UNSTABLE (KW <= KR), step 1 forces stability first (KW = 2*KR),
-    then step 2 raises both proportionally.
+    Two progressive gain step suggestions toward τ_dom ≈ 91 ms (geometric-equivalent target).
+    In incremental mode (RPM deck active, 2nd-order): KW > KR is NOT required.
+    In integrating mode (RPM=0 fallback, 3rd-order): KW > KR required for Routh stability.
     """
-    if not routh_stable(kr, kw):
-        # Fix stability first: raise KW to 2×KR (Routh margin=2), keep KR
+    # Target: KR=603, KW=66 (KR_geo/J, KW_geo/J) — τ_dom≈91ms, ζ≈1.34
+    KR_TARGET, KW_TARGET = 603.0, 66.0
+
+    if not incremental and not routh_stable(kr, kw):
+        # Integrating mode + currently unstable: fix Routh first
         steps = [
             {"kr": round(kr),       "kw": round(kr * 2.0)},
             {"kr": round(kr * 1.5), "kw": round(kr * 2.5)},
         ]
-    else:
+    elif kr < KR_TARGET * 0.9:
+        # Below target: step toward KR=603, KW=66
+        kr1 = round(kr + (KR_TARGET - kr) * 0.5)
+        kw1 = round(kw + (KW_TARGET - kw) * 0.5)
         steps = [
-            {"kr": round(kr * 1.5), "kw": round(kw * 1.25)},
-            {"kr": round(kr * 2.0), "kw": round(kw * 1.50)},
+            {"kr": kr1,                "kw": kw1},
+            {"kr": round(KR_TARGET),   "kw": round(KW_TARGET)},
+        ]
+    else:
+        # At or beyond target: suggest next step beyond geometric-equivalent
+        steps = [
+            {"kr": round(kr * 1.3), "kw": round(kw * 1.2)},
+            {"kr": round(kr * 1.6), "kw": round(kw * 1.4)},
         ]
     for s in steps:
         wn, zeta, tdms = att_poles(s["kr"], s["kw"])
@@ -177,8 +206,8 @@ def suggest_gains(kr: float, kw: float) -> list[dict]:
 def main():
     ap = argparse.ArgumentParser(description="INDI commissioning dashboard")
     ap.add_argument("csv", nargs="?", help="Path to flight log CSV (default: latest in logs/)")
-    ap.add_argument("--kr",        type=float, default=100.0, help="INDI KR gain roll/pitch (default 100)")
-    ap.add_argument("--kw",        type=float, default=200.0, help="INDI KW gain roll/pitch (yaml kw)")
+    ap.add_argument("--kr",        type=float, default=1325.0, help="INDI KR gain roll/pitch (default 1325 — active yaml value)")
+    ap.add_argument("--kw",        type=float, default=114.0,  help="INDI KW gain roll/pitch (default 114 — active yaml value)")
     ap.add_argument("--kr-z",      type=float, default=None,  help="INDI KR_Z yaw gain (default: same as --kr)")
     ap.add_argument("--kw-z",      type=float, default=None,  help="INDI KW_Z yaw gain (default: same as --kw)")
     ap.add_argument("--fc-bw",     type=float, default=25.0,  help="Butterworth cutoff [Hz] (yaml fc_bw)")
@@ -247,10 +276,20 @@ def main():
         rpm_mean = rpm_min = float("nan")
         integrating_mode = True  # assume worst case without RPM data
 
-    # ── Tau metrics ────────────────────────────────────────────────────────────
-    tau_rms  = [float(np.sqrt(np.nanmean(tau[sl, i] ** 2))) if tau_ok else float("nan") for i in range(3)]
-    tau_peak = [float(np.nanmax(np.abs(tau[sl, i])))        if tau_ok else float("nan") for i in range(3)]
-    tau_sat  = [float(np.nanmean(np.abs(tau[sl, i]) > args.tau_limit * 0.9)) * 100.0
+    # ── Tau metrics — exclude stale tau_prev period at start ──────────────────
+    # tau_prev carries over from previous crash; stays frozen until RPMs kick in.
+    # Detect by finding where tau first deviates from its initial constant value.
+    if tau_ok:
+        stale_i = max(stale_end(tau[:, 0]), stale_end(tau[:, 1]), stale_end(tau[:, 2]))
+        tau_i0 = max(i0, stale_i)  # start of valid tau data within hover window
+        tau_sl = slice(tau_i0, i1 + 1)
+        tau_stale_secs = max(0.0, t[min(stale_i, len(t)-1)] - t[i0])
+    else:
+        tau_sl = sl
+        tau_stale_secs = 0.0
+    tau_rms  = [float(np.sqrt(np.nanmean(tau[tau_sl, i] ** 2))) if tau_ok else float("nan") for i in range(3)]
+    tau_peak = [float(np.nanmax(np.abs(tau[tau_sl, i])))        if tau_ok else float("nan") for i in range(3)]
+    tau_sat  = [float(np.nanmean(np.abs(tau[tau_sl, i]) > args.tau_limit * 0.9)) * 100.0
                 if tau_ok else float("nan") for i in range(3)]
 
     # ── Filter quality ─────────────────────────────────────────────────────────
@@ -264,7 +303,7 @@ def main():
     routh_ok     = routh_stable(args.kr, args.kw)
     routh_ok_z   = routh_stable(kr_z, kw_z)
     routh_margin = args.kw / args.kr if args.kr > 0 else float("inf")
-    suggestions  = suggest_gains(args.kr, args.kw)
+    suggestions  = suggest_gains(args.kr, args.kw, incremental=not integrating_mode)
 
     # ── Terminal output ────────────────────────────────────────────────────────
     AX = ["X (roll)", "Y (pitch)", "Z (yaw)"]
@@ -294,7 +333,8 @@ def main():
 
     print()
     if tau_ok:
-        print("  INDI TORQUE (hover window)")
+        stale_note = f"  (stale tau_prev excluded: {tau_stale_secs:.1f}s at start)" if tau_stale_secs > 0.1 else ""
+        print(f"  INDI TORQUE (hover window{stale_note})")
         for i, ax in enumerate(AX):
             print(f"    {ax}: RMS={tau_rms[i]*1000:.3f} mN·m   "
                   f"peak={tau_peak[i]*1000:.3f} mN·m   sat={tau_sat[i]:.1f}%")
@@ -316,13 +356,16 @@ def main():
         print("  FILTER QUALITY : alp columns not in log")
 
     print()
+    def routh_str(ok, margin, in_integrating):
+        if not in_integrating:
+            return "2nd-order ✓ (RPM active, KW>KR not needed)"
+        return f"Routh={margin:.2f}  {'STABLE ✓' if ok else '✗ UNSTABLE (fallback mode) — raise KW above KR'}"
+
     print("  GAIN ANALYSIS")
-    print(f"    Roll/Pitch : KR={args.kr:.0f}   KW={args.kw:.0f}   "
-          f"Routh={routh_margin:.2f}  →  {'STABLE ✓' if routh_ok else 'UNSTABLE ✗ — raise KW above KR'}")
+    print(f"    Roll/Pitch : KR={args.kr:.0f}   KW={args.kw:.0f}   {routh_str(routh_ok, routh_margin, integrating_mode)}")
     wn_z, zeta_z, td_z = att_poles(kr_z, kw_z)
     rm_z = kw_z / kr_z if kr_z > 0 else float("inf")
-    print(f"    Yaw        : KR={kr_z:.0f}   KW={kw_z:.0f}   "
-          f"Routh={rm_z:.2f}  →  {'STABLE ✓' if routh_ok_z else 'UNSTABLE ✗ — raise KW_Z above KR_Z'}")
+    print(f"    Yaw        : KR={kr_z:.0f}   KW={kw_z:.0f}   {routh_str(routh_ok_z, rm_z, integrating_mode)}")
     print(f"    Att poles  : ωn={fmt(wn,'.1f')} rad/s   ζ={fmt(zeta,'.1f')}   "
           f"τ_dom≈{fmt(tau_dom_ms,'.0f')} ms  (roll/pitch, assumes perfect INDI inner loop)")
     print(f"    fc_bw={args.fc_bw:.0f} Hz")
@@ -339,10 +382,12 @@ def main():
     print()
     print("    SUGGESTED NEXT STEPS:")
     for i, s in enumerate(suggestions):
-        ok = "✓ stable" if s["stable"] else "✗ UNSTABLE"
+        if integrating_mode:
+            ok = "✓ Routh stable" if s["stable"] else "✗ Routh UNSTABLE (KW<KR, fallback unsafe)"
+        else:
+            ok = "✓ 2nd-order stable (RPM active)"
         print(f"      Step {i+1}: KR={s['kr']}  KW={s['kw']}  → "
-              f"ωn={s['wn']:.1f}  ζ={s['zeta']:.1f}  τ_dom={s['tau_dom_ms']:.0f}ms  "
-              f"Routh={s['routh_margin']:.2f}  {ok}")
+              f"ωn={s['wn']:.1f}  ζ={s['zeta']:.1f}  τ_dom={s['tau_dom_ms']:.0f}ms  {ok}")
     print()
 
     # ── Dashboard plot ─────────────────────────────────────────────────────────
@@ -375,8 +420,9 @@ def main():
         if i == 0:
             ax.legend(fontsize=7, loc="upper right")
 
-    # Row 1 — INDI torque time series
+    # Row 1 — INDI torque time series (full flight, but stats from valid window only)
     tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
+    t_tau_start = t[tau_sl.start] if tau_ok else t[i0]
     for i in range(3):
         ax = axs[1, i]
         if tau_ok:
@@ -384,6 +430,9 @@ def main():
             ax.axhline( args.tau_limit, color="red", lw=0.8, ls="--",
                         label=f"±{args.tau_limit*1000:.0f} mN·m est. limit")
             ax.axhline(-args.tau_limit, color="red", lw=0.8, ls="--")
+            if tau_stale_secs > 0.1:
+                ax.axvspan(t[i0], t_tau_start, alpha=0.15, color="orange",
+                           label=f"stale τ_prev ({tau_stale_secs:.1f}s)" if i == 0 else None)
             shade(ax)
             ax.set_title(f"RMS={tau_rms[i]*1000:.3f} mN·m  sat={tau_sat[i]:.1f}%", fontsize=9)
             ax.legend(fontsize=7)

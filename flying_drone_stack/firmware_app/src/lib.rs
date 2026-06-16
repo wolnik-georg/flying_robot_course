@@ -501,18 +501,12 @@ impl State {
 static mut CTRL: State = State::zero();
 
 // ── INDI log variables (Mode 1) ────────────────────────────────────────────
-// Exposed as C-visible globals so traj_iface.c can register them with the
-// Crazyflie LOG system via LOG_GROUP_START(indi).  Updated every 500 Hz cycle
-// inside controller_step().  Read by Crazyswarm2 as the "indi" custom log topic.
-#[no_mangle] pub static mut INDI_TAU_X: f32 = 0.0;
-#[no_mangle] pub static mut INDI_TAU_Y: f32 = 0.0;
-#[no_mangle] pub static mut INDI_TAU_Z: f32 = 0.0;
-#[no_mangle] pub static mut INDI_ALP_X: f32 = 0.0;     // alpha_meas (post-BW filter) [rad/s²]
-#[no_mangle] pub static mut INDI_ALP_Y: f32 = 0.0;
-#[no_mangle] pub static mut INDI_ALP_Z: f32 = 0.0;
-#[no_mangle] pub static mut INDI_ALP_RAW_X: f32 = 0.0; // alpha_raw (pre-filter) [rad/s²]
-#[no_mangle] pub static mut INDI_ALP_RAW_Y: f32 = 0.0;
-#[no_mangle] pub static mut INDI_ALP_RAW_Z: f32 = 0.0;
+// Variables owned by C (traj_iface.c); Rust writes via C function calls which
+// are opaque to Rust LTO — values are always computed and stored correctly.
+extern "C" {
+    fn indi_log_write(arx: f32, ary: f32, arz: f32, ax: f32, ay: f32, az: f32);
+    fn indi_tau_write(tx: f32, ty: f32, tz: f32);
+}
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
 // Set to current tick when traj.start=1 is received; cleared when mode→0.
@@ -1029,10 +1023,8 @@ fn controller_step(
         s.bw_z.update(alpha_raw.z),
     );
     s.omega_prev = omega;
-    unsafe {
-        INDI_ALP_RAW_X = alpha_raw.x;  INDI_ALP_RAW_Y = alpha_raw.y;  INDI_ALP_RAW_Z = alpha_raw.z;
-        INDI_ALP_X     = alpha_meas.x; INDI_ALP_Y     = alpha_meas.y; INDI_ALP_Z     = alpha_meas.z;
-    }
+    unsafe { indi_log_write(alpha_raw.x, alpha_raw.y, alpha_raw.z,
+                             alpha_meas.x, alpha_meas.y, alpha_meas.z); }
 
     // -- Attitude law ---------------------------------------------------------
     let torque = if mode & 2 != 0 {
@@ -1066,9 +1058,7 @@ fn controller_step(
         let tau       = tau_current.add(delta_tau);
         s.tau_prev    = tau;
 
-        unsafe {
-            INDI_TAU_X = tau.x; INDI_TAU_Y = tau.y; INDI_TAU_Z = tau.z;
-        }
+        unsafe { indi_tau_write(tau.x, tau.y, tau.z); }
 
         tau
     } else {

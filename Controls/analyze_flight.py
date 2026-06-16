@@ -1670,13 +1670,30 @@ def infer_figure8_eval_window(base, run_meta, segs, speed_scale):
     return eval_window, n_reps, lap_s
 
 
-def find_figure8_traj_start(data, speed_threshold=0.12):
-    """First time horizontal speed exceeds threshold (skip pre-lap hover in log)."""
-    speed = np.sqrt(data["vx"] ** 2 + data["vy"] ** 2 + data["vz"] ** 2)
+def find_figure8_traj_start(data, speed_threshold=0.12, z_min=0.5, t_min=None):
+    """First time HORIZONTAL speed exceeds threshold at flight altitude.
+
+    Uses only vx/vy (not vz) so the vertical takeoff climb — where vz easily
+    exceeds the threshold while the drone is still centimetres off the ground —
+    does not produce a false early detection.  The z_min gate provides a second
+    guard: we only look for horizontal motion once the drone is airborne.
+
+    t_min: if provided (the phase-2 start time from load_csv_with_meta), restrict
+    the search to rows after the takeoff/trajectory phase boundary so that
+    horizontal motion during the takeoff phase does not produce a false detection.
+    """
+    speed_h = np.sqrt(data["vx"] ** 2 + data["vy"] ** 2)
+    z = data["z"]
     times = data["time_s"]
-    moving = speed > speed_threshold
+    # Only search within the trajectory phase (after the takeoff phase boundary).
+    phase2 = (times >= t_min) if t_min is not None else np.ones(len(times), dtype=bool)
+    moving = phase2 & (speed_h > speed_threshold) & (z > z_min)
     if not np.any(moving):
-        return float(times[0])
+        moving = phase2 & (speed_h > speed_threshold)
+        if not np.any(moving):
+            # No motion detected in phase 2 at all — return start of phase 2.
+            idx = int(np.argmax(phase2)) if np.any(phase2) else 0
+            return float(times[idx])
     return float(times[int(np.argmax(moving))])
 
 
@@ -1762,7 +1779,7 @@ def analyze_figure8_with_comparison(
         base, run_meta, segs, speed_scale
     )
     duration_s = lap_s * max(n_reps, 1)
-    t_start = find_figure8_traj_start(data)
+    t_start = find_figure8_traj_start(data, t_min=run_meta.get("_phase2_t_start"))
 
     m_uncal = poly4d_metrics_over_window(
         data, segs, speed_scale, xy_scale, loop, t_start, duration_s, time_shift=0.0
@@ -1880,7 +1897,21 @@ def load_csv_with_meta(path):
                     rows[k].append(float(row[k]))
                 except (KeyError, ValueError):
                     rows[k].append(float("nan"))
-    return {k: np.array(v) for k, v in rows.items()}, meta
+    data = {k: np.array(v) for k, v in rows.items()}
+    # CS2 flight.py logs two phases (takeoff then trajectory) in one CSV, each with its
+    # own timer that resets to ~0 at the phase boundary.  Detect the first backward jump
+    # and add the end-of-previous-phase time to all subsequent timestamps so the full
+    # recording has a single monotone time axis.  Without this, any time-based window
+    # (times >= phase_t_start) selects data from BOTH phases, causing duplicate lines.
+    ts = data["time_s"]
+    for i in range(1, len(ts)):
+        if ts[i] < ts[i - 1]:
+            # Store the phase-2 start time so callers can restrict searches to the
+            # trajectory phase and avoid false detections in the takeoff phase.
+            meta["_phase2_t_start"] = float(ts[i - 1])
+            ts[i:] += ts[i - 1]
+            break  # CS2 produces at most one phase reset per log
+    return data, meta
 
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
@@ -2621,7 +2652,7 @@ def plot_onboard_helix_analysis(data, csv_path, n_reps=1):
     ax.set_xlabel('time [s]'); ax.set_ylabel('position [m]')
     ax.set_title('Position vs Time'); ax.legend(fontsize=7, ncol=2); ax.grid(True)
 
-    ax = axes[1, 0]
+    ax = axes[0, 2]
     ax.plot(ts, err_3d*100, 'k-',  lw=1.5, label='3D error')
     ax.plot(ts, err_xy*100, 'b--', lw=1.2, label='XY error')
     ax.plot(ts, err_z*100,  'g:',  lw=1.0, label='Z error')
@@ -2639,7 +2670,7 @@ def plot_onboard_helix_analysis(data, csv_path, n_reps=1):
             transform=ax.transAxes, fontsize=8, va='top', ha='right',
             bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.85))
 
-    ax = axes[1, 1]
+    ax = axes[0, 3]
     for lbl, act, plan, col in [('roll', roll_a, p_roll, 'tab:blue'),
                                   ('pitch', pitch_a, p_pitch, 'tab:orange'),
                                   ('yaw', yaw_a, p_yaw, 'tab:red')]:
@@ -3133,9 +3164,20 @@ def plot_analysis(
     planned_att = np.array(
         [compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
     )
+
+    # NaN-out clamped regions so time-series plots show gaps instead of flat phantom lines.
+    # Two clamped regions:
+    #   (a) pre-start: t_plan==0 for all times before phase_t_start (many points → flat line)
+    #   (b) post-end (loop=False): t_plan past trajectory duration → _find_seg returns endpoint
+    total_planned_poly = sum(s[0] for s in segs)
+    if phase_t_start is not None:
+        _valid = (t_plan > 1e-9) & (loop | (t_plan * speed_scale < total_planned_poly + 1e-6))
+        plan[~_valid] = np.nan
+        plan_vel[~_valid] = np.nan
+        planned_att[~_valid] = np.nan
+
     p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
     px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
-    _save_3d_traj_orientation_plot(csv_path, times, data, plan, planned_att, segs, speed_scale, loop)
 
     # Planned angular rates: numerical diff of Euler angles (Euler rates ≈ body omega for small roll/pitch)
     dt = np.gradient(times)
@@ -3144,8 +3186,20 @@ def plot_analysis(
     p_omega_y = -np.gradient(planned_att[:, 1], times)  # dpitch/dt [deg/s]
     p_omega_z = np.gradient(planned_att[:, 2], times)   # dyaw/dt   [deg/s]
 
-    # Errors — Z uses relative coords (poly4d is relative_position=True)
-    m_full = compute_metrics(data, plan, plan_vel, planned_att)
+    # z0_act: z at trajectory start (not log start = ground) so relative z aligns with
+    # planned pz=0. Used both for the error computation and the Z subplot.
+    if phase_t_start is not None:
+        _tstart_idx = int(np.searchsorted(times, phase_t_start))
+        _tstart_idx = min(_tstart_idx, len(times) - 1)
+    else:
+        _tstart_idx = 0
+    z0_act = data["z"][_tstart_idx]
+
+    # Errors — Z uses relative coords (poly4d is relative_position=True).
+    # Shift data["z"] so z=0 at trajectory start to avoid inflated Z error trace
+    # on full-log window that includes takeoff/landing.
+    data_z_shifted = {**data, "z": data["z"] - z0_act}
+    m_full = compute_metrics(data_z_shifted, plan, plan_vel, planned_att)
     # Build the metrics dict used for display:
     #   - Scalar stats (RMSE, max, …) come from metrics_override (lap-window) when provided,
     #     so the plot box matches the printed comparison table exactly.
@@ -3162,11 +3216,42 @@ def plot_analysis(
     err_z  = m["err_z"]
     err_3d = m["err_3d"]
 
-    # Planned full path for reference overlay
-    t_plan_full = np.linspace(0, times[-1], 500)
+    # Planned full path for reference overlay — exactly one pass of the trajectory
+    _traj_t_end = total_planned_poly / speed_scale
+    t_plan_full = np.linspace(0, _traj_t_end, 500)
     plan_full = np.array(
         [eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan_full]
     )
+
+    # Crop every plot array to the trajectory execution window so takeoff and landing
+    # segments don't appear as phantom "extra lines" of the same colour.
+    # _valid already covers the plan validity range (t_plan>0 and within duration).
+    # _window also requires times>=phase_t_start so actual data never shows pre-takeoff hover.
+    if phase_t_start is not None:
+        _window = _valid & (times >= phase_t_start)
+        _n_orig = len(times)
+        times = times[_window]
+        data = {k: (v[_window] if isinstance(v, np.ndarray) and v.ndim == 1 and len(v) == _n_orig else v)
+                for k, v in data.items()}
+        plan      = plan[_window]
+        plan_vel  = plan_vel[_window]
+        px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
+        planned_att_w = planned_att[_window]
+        p_roll, p_pitch, p_yaw = planned_att_w[:, 0], planned_att_w[:, 1], planned_att_w[:, 2]
+        p_omega_x = p_omega_x[_window]
+        p_omega_y = p_omega_y[_window]
+        p_omega_z = p_omega_z[_window]
+        err_xy = err_xy[_window]
+        err_z  = err_z[_window]
+        err_3d = err_3d[_window]
+        m = {k: (v[_window] if isinstance(v, np.ndarray) and v.ndim == 1 and len(v) == _n_orig else v)
+             for k, v in m.items()}
+
+    # 3D orientation plot — uses windowed data so takeoff/landing are excluded.
+    # planned_att_w is only defined inside the crop block above; for phase_t_start=None
+    # (circle, old logs) we fall back to the full planned_att.
+    _pa_3d = planned_att_w if phase_t_start is not None else planned_att
+    _save_3d_traj_orientation_plot(csv_path, times, data, plan, _pa_3d, segs, speed_scale, loop)
 
     fig, axes = plt.subplots(3, 3, figsize=(18, 14))
     fig.suptitle(
@@ -3190,11 +3275,11 @@ def plot_analysis(
 
     # ── Panel 2: Position vs time ────────────────────────────────────────────
     ax = axes[0, 1]
-    z0_act = data["z"][0]   # takeoff z — planned pz is relative (deviation from start)
+    # z0_act already computed above (z at trajectory start)
     for axis, actual, planned, col in [
         ("x", data["x"], px, "tab:blue"),
         ("y", data["y"], py, "tab:orange"),
-        ("z − z₀", data["z"] - z0_act, pz, "tab:green"),
+        ("z − z_traj", data["z"] - z0_act, pz, "tab:green"),
     ]:
         ax.plot(times, actual, color=col, lw=1.5, label=f"{axis} actual")
         ax.plot(
@@ -3399,7 +3484,7 @@ def plot_analysis(
         [
             ("x [m]", data["x"], px, "tab:blue"),
             ("y [m]", data["y"], py, "tab:orange"),
-            ("z − z₀ [m]", data["z"] - data["z"][0], pz, "tab:green"),
+            ("z − z_traj [m]", data["z"] - z0_act, pz, "tab:green"),
         ],
         [
             ("roll [deg]", data["roll_deg"], p_roll, "tab:blue"),
