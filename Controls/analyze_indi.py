@@ -186,6 +186,35 @@ def routh_stable(kr: float, kw: float) -> bool:
     return kw > kr > 0
 
 
+# CF2.1 moments of inertia [kg·m²] — Forster 2015 / Mahony 2012 values
+JXX = 16.6e-6
+JYY = 16.6e-6
+JZZ = 29.0e-6
+J_AXES = [JXX, JYY, JZZ]
+
+
+def tau_alignment(tau_cmd: np.ndarray, j_alpha: np.ndarray, fs: float):
+    """
+    Cross-correlate tau_cmd vs J*alpha_meas to find lag and correlation.
+    Returns (lag_ms, pearson_r, rms_diff_mNm).
+    Positive lag_ms means tau_cmd leads j_alpha (expected: tau causes alpha with delay).
+    """
+    mask = np.isfinite(tau_cmd) & np.isfinite(j_alpha)
+    if mask.sum() < 20:
+        return float("nan"), float("nan"), float("nan")
+    a, b = tau_cmd[mask], j_alpha[mask]
+    rms_diff = float(np.sqrt(np.mean((a - b) ** 2))) * 1000.0  # mN·m
+    max_lag = max(1, int(fs * 0.1))
+    xc  = correlate(a - a.mean(), b - b.mean(), mode="full")
+    ctr = len(a) - 1
+    sl  = xc[max(0, ctr - max_lag): ctr + max_lag + 1]
+    lag_samples = int(np.argmax(sl)) - min(max_lag, ctr)
+    lag_ms = lag_samples * 1000.0 / fs
+    denom = math.sqrt(float(np.sum((a - a.mean()) ** 2)) * float(np.sum((b - b.mean()) ** 2)))
+    r = float(xc[ctr + lag_samples]) / denom if denom > 0 else float("nan")
+    return lag_ms, r, rms_diff
+
+
 def stale_end(tau_col: np.ndarray) -> int:
     """Return index where tau first deviates from the initial stale value.
     tau_prev carries over from previous crash until RPMs kick in (~first few seconds)."""
@@ -281,6 +310,8 @@ def main():
     tau     = np.column_stack([col(data, f"tau_{a}", N)     for a in "xyz"])
     alp     = np.column_stack([col(data, f"alp_{a}", N)     for a in "xyz"])
     alp_raw = np.column_stack([col(data, f"alp_raw_{a}", N) for a in "xyz"])
+    acc     = np.column_stack([col(data, f"acc_{a}", N)  for a in "xyz"])   # body frame [g]
+    vel     = np.column_stack([col(data, f"v{a}", N)     for a in "xyz"])   # world frame [m/s]
 
     fs = detect_fs(t)
     print(f"[info] N={N}  fs={fs:.0f} Hz  t=[{t[0]:.2f}, {t[-1]:.2f}]s")
@@ -339,6 +370,63 @@ def main():
 
     # ── Filter quality ─────────────────────────────────────────────────────────
     fq = [filter_quality(alp_raw[sl, i], alp[sl, i], fs) for i in range(3)]
+
+    # ── KT sanity check — total thrust vs weight ───────────────────────────────
+    # During hover: Σ kt_i * RPM_i² should equal mass * g (drone weight).
+    # Also check tilt-corrected: F_total * cos(tilt) ≈ weight (valid during all flight).
+    MASS_KG  = 0.027   # CF2.1 + Flow Deck; adjust if different config
+    GRAVITY  = 9.81
+    WEIGHT_N = MASS_KG * GRAVITY
+    KT = [1.0251e-10, 1.1981e-10, 1.0763e-10, 1.2633e-10]  # from hover log 2026-06-16
+    if rpm_ok:
+        f_total = sum(KT[i] * rpm[:, i] ** 2 for i in range(4))  # N, per timestep
+        tilt_rad = np.radians(np.sqrt(roll ** 2 + pitch ** 2))
+        f_vert   = f_total * np.cos(tilt_rad)                     # vertical component
+        f_hover_mean  = float(np.nanmean(f_total[sl]))
+        f_vert_mean   = float(np.nanmean(f_vert[sl]))
+        kt_weight_err = (f_hover_mean - WEIGHT_N) / WEIGHT_N * 100.0   # %
+        kt_vert_err   = (f_vert_mean  - WEIGHT_N) / WEIGHT_N * 100.0
+    else:
+        f_total = f_vert = np.full(N, float("nan"))
+        f_hover_mean = f_vert_mean = kt_weight_err = kt_vert_err = float("nan")
+
+    # ── Option A — accelerometer-based thrust (independent of KT / RPM) ────────
+    # In body frame: acc_z [g] ≈ 1.0 in hover → F_acc = mass * acc_z * g
+    # Gives a 3rd independent thrust estimate alongside F_rpm and weight.
+    acc_ok = has_data(acc[sl])
+    if acc_ok:
+        f_acc         = MASS_KG * acc[:, 2] * GRAVITY          # N, body z-axis thrust
+        f_acc_mean    = float(np.nanmean(f_acc[sl]))
+        acc_weight_err = (f_acc_mean - WEIGHT_N) / WEIGHT_N * 100.0
+    else:
+        f_acc = np.full(N, float("nan"))
+        f_acc_mean = acc_weight_err = float("nan")
+
+    # ── Option B — world-frame linear acceleration: IMU vs EKF velocity ────────
+    # a_imu: rotate body acc to world frame, remove gravity → actual linear accel
+    # a_ekf: numerical derivative of EKF velocity → what the state estimator says
+    # Agreement validates that IMU and EKF are consistent.
+    vel_ok = has_data(vel[sl])
+    if acc_ok:
+        r_r = np.radians(roll);  cr, sr = np.cos(r_r), np.sin(r_r)
+        r_p = np.radians(pitch); cp, sp = np.cos(r_p), np.sin(r_p)
+        r_y = np.radians(yaw);   cy, sy = np.cos(r_y), np.sin(r_y)
+        # ZYX rotation: world = R * body
+        ax_b, ay_b, az_b = acc[:, 0], acc[:, 1], acc[:, 2]
+        a_imu_x = (cy*cp)*ax_b + (cy*sp*sr - sy*cr)*ay_b + (cy*sp*cr + sy*sr)*az_b
+        a_imu_y = (sy*cp)*ax_b + (sy*sp*sr + cy*cr)*ay_b + (sy*sp*cr - cy*sr)*az_b
+        a_imu_z = (  -sp)*ax_b + (      cp*sr)*ay_b       + (      cp*cr)*az_b
+        # Convert g → m/s² and remove gravity from z
+        a_imu = np.column_stack([a_imu_x * GRAVITY,
+                                  a_imu_y * GRAVITY,
+                                  (a_imu_z - 1.0) * GRAVITY])
+    else:
+        a_imu = np.full((N, 3), float("nan"))
+    if vel_ok:
+        dt_arr = np.gradient(t)
+        a_ekf  = np.gradient(vel, axis=0) / dt_arr[:, None]   # m/s²
+    else:
+        a_ekf = np.full((N, 3), float("nan"))
 
     # ── Gain analysis ──────────────────────────────────────────────────────────
     kr_z = args.kr_z if args.kr_z is not None else args.kr
@@ -401,6 +489,23 @@ def main():
         print(f"  INDI TORQUE : stale tau_prev only ({tau_stale_secs:.1f}s frozen in hover window)")
     else:
         print("  INDI TORQUE : not available — add indi_state topic and reflash if needed")
+
+    print()
+    if rpm_ok:
+        kt_flag  = "OK" if abs(kt_weight_err) < 15 else ("HIGH" if kt_weight_err > 0 else "LOW")
+        ktv_flag = "OK" if abs(kt_vert_err)   < 15 else ("HIGH" if kt_vert_err  > 0 else "LOW")
+        print(f"  KT SANITY CHECK  (expected weight = {WEIGHT_N*1000:.1f} mN, mass={MASS_KG*1000:.0f}g)")
+        print(f"    Σkt·RPM²        : {f_hover_mean*1000:.1f} mN  →  {kt_weight_err:+.1f}%  [{kt_flag}]")
+        print(f"    Σkt·RPM²·cos(θ) : {f_vert_mean*1000:.1f} mN  →  {kt_vert_err:+.1f}%  [{ktv_flag}]")
+        if acc_ok:
+            acc_flag = "OK" if abs(acc_weight_err) < 15 else "CHECK"
+            print(f"    m·acc_z·g (IMU) : {f_acc_mean*1000:.1f} mN  →  {acc_weight_err:+.1f}%  [{acc_flag}]  (independent check)")
+        if abs(kt_weight_err) > 30:
+            print("    WARNING: >30% error — KT values may need re-identification")
+        elif abs(kt_weight_err) > 15:
+            print("    CAUTION: 15-30% error — consider re-running KT hover identification")
+    else:
+        print("  KT SANITY CHECK  : RPM not in log — add rpm topic")
 
     print()
     if alp_r_ok and alp_ok:
@@ -554,6 +659,112 @@ def main():
     plt.savefig(out, dpi=150)
     print(f"Saved: {out}")
     plt.show()
+
+    # ── tau vs J·alpha alignment panel ────────────────────────────────────────
+    # Overlays tau_cmd (what INDI commanded) with J*alpha_meas (what the drone felt).
+    # INDI assumption: tau_current ≈ J*alpha_meas → delta_tau should be small.
+    # Lag > 0: tau leads alpha (motor spin-up delay). DC offset: KT calibration error.
+    if tau_present and alp_ok:
+        j_alpha = alp * np.array([JXX, JYY, JZZ])  # [N, N, N] → shape (N, 3) [N·m]
+
+        n_rows = 4 if rpm_ok else 3
+        fig2, axs2 = plt.subplots(n_rows, 1, figsize=(12, 4 * n_rows), sharex=False)
+        fig2.suptitle(f"INDI Alignment — tau_cmd vs J·alpha_meas — {path.name}",
+                      fontsize=11, fontweight="bold")
+
+        ax_names = ["X (roll)", "Y (pitch)", "Z (yaw)"]
+        for i in range(3):
+            ax = axs2[i]
+            t_w2 = t[tau_sl]
+            tc   = tau[tau_sl, i]
+            ja   = j_alpha[tau_sl, i]
+
+            lag_ms, r_corr, rms_diff = tau_alignment(tc, ja, fs)
+
+            ax.plot(t_w2, tc   * 1000, lw=0.9, color="C1", label="tau_cmd [mN·m]")
+            ax.plot(t_w2, ja   * 1000, lw=0.9, color="C2", alpha=0.85,
+                    label="J·alpha_meas [mN·m]")
+            ax.fill_between(t_w2, tc * 1000, ja * 1000, alpha=0.18, color="C3",
+                            label="delta (tau_cmd − J·alp)")
+            ax.axhline(0, color="k", lw=0.4)
+
+            lag_s = f"{lag_ms:.1f} ms" if math.isfinite(lag_ms) else "N/A"
+            r_s   = f"{r_corr:.3f}"   if math.isfinite(r_corr) else "N/A"
+            rms_s = f"{rms_diff:.3f} mN·m" if math.isfinite(rms_diff) else "N/A"
+            ax.set_title(
+                f"{ax_names[i]}  │  lag≈{lag_s}  │  r={r_s}  │  RMS(delta)={rms_s}",
+                fontsize=9)
+            ax.set_ylabel("Torque [mN·m]", fontsize=9)
+            ax.set_xlabel("t [s]", fontsize=8)
+            ax.legend(fontsize=8, loc="upper right")
+
+            # Print to terminal too
+            print(f"  tau-vs-J·alp [{ax_names[i]}]: lag={lag_s}  r={r_s}  "
+                  f"RMS(delta)={rms_s}")
+
+        # Row 3 — KT sanity: Σkt·RPM² vs weight
+        if rpm_ok:
+            ax = axs2[3]
+            ax.plot(t, f_total * 1000, lw=0.9, color="C0", label="Σkt·RPM²  (total thrust)")
+            ax.plot(t, f_vert  * 1000, lw=0.9, color="C4", alpha=0.8,
+                    label="Σkt·RPM²·cos(θ)  (vertical)")
+            if acc_ok:
+                ax.plot(t, f_acc * 1000, lw=0.9, color="C2", alpha=0.85, ls="--",
+                        label=f"m·acc_z·g  (IMU, independent)  {acc_weight_err:+.1f}%")
+            ax.axhline(WEIGHT_N * 1000, color="red", lw=1.2, ls="--",
+                       label=f"weight = {WEIGHT_N*1000:.1f} mN  ({MASS_KG*1000:.0f}g)")
+            ax.axvspan(t0, t1, alpha=0.08, color="limegreen", label="hover window")
+            ax.set_ylabel("Force [mN]", fontsize=9)
+            ax.set_xlabel("t [s]", fontsize=8)
+            flag = "OK" if abs(kt_weight_err) < 15 else "CHECK KT"
+            ax.set_title(
+                f"KT sanity: Σkt·RPM²={f_hover_mean*1000:.1f} mN ({kt_weight_err:+.1f}%)  "
+                f"│  IMU={f_acc_mean*1000:.1f} mN ({acc_weight_err:+.1f}%)  "
+                f"│  weight={WEIGHT_N*1000:.1f} mN  [{flag}]",
+                fontsize=9)
+            ax.legend(fontsize=8, loc="upper right")
+
+        plt.tight_layout()
+        out2 = path.with_name(path.stem + "_indi_panel.png")
+        plt.savefig(out2, dpi=150)
+        print(f"Saved: {out2}")
+        plt.show()
+    else:
+        print("[info] tau or alp not in log — skipping alignment panel")
+
+    # ── Option B — world-frame linear acceleration figure ─────────────────────
+    # a_imu (rotated accelerometer) vs a_ekf (EKF velocity derivative).
+    # Agreement = IMU and state estimator are consistent.
+    # Gap = either IMU noise/bias or EKF smoothing artefact.
+    if acc_ok or vel_ok:
+        fig3, axs3 = plt.subplots(3, 1, figsize=(12, 9), sharex=False)
+        fig3.suptitle(f"Linear Acceleration — IMU vs EKF — {path.name}",
+                      fontsize=11, fontweight="bold")
+        ax_names_w = ["X (forward) [m/s²]", "Y (left) [m/s²]", "Z (up) [m/s²]"]
+        for i in range(3):
+            ax = axs3[i]
+            t_w3 = t[sl]
+            if acc_ok:
+                ax.plot(t_w3, a_imu[sl, i], lw=0.8, color="C1", alpha=0.9,
+                        label="a_imu  (acc rotated to world, gravity removed)")
+            if vel_ok:
+                ax.plot(t_w3, a_ekf[sl, i], lw=0.9, color="C0", alpha=0.85,
+                        label="a_ekf  (d/dt EKF velocity)")
+            ax.axhline(0, color="k", lw=0.4)
+            ax.set_ylabel(ax_names_w[i], fontsize=9)
+            ax.set_xlabel("t [s]", fontsize=8)
+            if acc_ok and vel_ok:
+                rms_gap = float(np.sqrt(np.nanmean((a_imu[sl, i] - a_ekf[sl, i]) ** 2)))
+                ax.set_title(f"RMS gap = {rms_gap:.2f} m/s²  "
+                             f"(small = IMU and EKF agree)", fontsize=9)
+                # Print summary to terminal
+                print(f"  a_imu vs a_ekf [{ax_names_w[i]}]: RMS gap = {rms_gap:.2f} m/s²")
+            ax.legend(fontsize=8, loc="upper right")
+        plt.tight_layout()
+        out3 = path.with_name(path.stem + "_indi_accel.png")
+        plt.savefig(out3, dpi=150)
+        print(f"Saved: {out3}")
+        plt.show()
 
 
 if __name__ == "__main__":
