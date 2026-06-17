@@ -14,9 +14,11 @@ figures per trajectory saved to trajectory_plots/<slug>/:
 
 Usage:
     ~/.pyenv/versions/flying_robots/bin/python plot_trajectories.py
+    ~/.pyenv/versions/flying_robots/bin/python plot_trajectories.py --drone brushless
 """
 
 import os
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 (registers 3D projection)
@@ -25,10 +27,48 @@ GRAVITY    = 9.81   # m/s²
 HOVER_Z    = 1.0    # m — nominal hover height for 3D z-offset
 OUT_DIR    = "trajectory_plots"
 
-# Crazyflie 2.1 physical limits
-CF_MASS_KG      = 0.027   # kg
-CF_MAX_THRUST_N = 0.60    # N  (~4 × 0.15 N)
-CF_HOVER_N      = CF_MASS_KG * GRAVITY   # ≈ 0.265 N
+# ── Per-drone hardware limits ───────────────────────────────────────────────
+# CF2.1 brushed: stock motors, ~0.15 N each.  Mass includes RPM deck (+4g).
+# Brushless: Crazyflie Bolt / brushless upgrade, ~0.60 N per motor.
+_DRONE_SPECS = {
+    "cf21": {
+        "mass_kg":        0.031,   # body + RPM deck
+        "max_thrust_N":   0.60,    # 4 × 0.15 N brushed motors
+        "max_speed_ms":   2.0,     # practical ceiling before brushed motors lose margin
+        "max_tilt_deg":   45.0,    # physical motor saturation threshold (not our watchdog)
+        "max_acc_ms2":    10.0,    # horizontal accel before attitude loop can't keep up
+        "max_omega_dps":  400.0,   # attitude loop practical tracking limit (brushed dynamics)
+        "max_tau_Nm":     0.009,   # max body torque: arm(33mm) × ΔF_max(0.27N) ≈ 9 mNm
+        "J_kgm2":         16.6e-6, # JXX ≈ JYY for CF2.1
+        "label": "CF2.1 brushed",
+    },
+    "brushless": {
+        "mass_kg":        0.035,
+        "max_thrust_N":   2.40,    # 4 × 0.60 N brushless motors
+        "max_speed_ms":   5.0,
+        "max_tilt_deg":   60.0,
+        "max_acc_ms2":    50.0,
+        "max_omega_dps":  2000.0,
+        "max_tau_Nm":     0.060,   # arm(33mm) × ΔF_max(1.8N)
+        "J_kgm2":         16.6e-6,
+        "label": "Brushless (4×0.60N)",
+    },
+}
+
+_drone_arg = "cf21"
+for _i, _a in enumerate(sys.argv[1:]):
+    if _a == "--drone" and _i + 2 < len(sys.argv):
+        _drone_arg = sys.argv[_i + 2]
+if _drone_arg not in _DRONE_SPECS:
+    print(f"[error] Unknown --drone '{_drone_arg}'. Choose: {list(_DRONE_SPECS)}")
+    sys.exit(1)
+
+_spec = _DRONE_SPECS[_drone_arg]
+CF_MASS_KG      = _spec["mass_kg"]
+CF_MAX_THRUST_N = _spec["max_thrust_N"]
+CF_HOVER_N      = CF_MASS_KG * GRAVITY
+print(f"[limits] Drone: {_spec['label']}  mass={CF_MASS_KG*1000:.0f}g  "
+      f"max_thrust={CF_MAX_THRUST_N:.2f}N  hover={CF_HOVER_N:.3f}N")
 
 # ---------------------------------------------------------------------------
 # Trajectory data
