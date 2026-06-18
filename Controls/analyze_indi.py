@@ -374,10 +374,10 @@ def main():
     # ── KT sanity check — total thrust vs weight ───────────────────────────────
     # During hover: Σ kt_i * RPM_i² should equal mass * g (drone weight).
     # Also check tilt-corrected: F_total * cos(tilt) ≈ weight (valid during all flight).
-    MASS_KG  = 0.027   # CF2.1 + Flow Deck; adjust if different config
+    MASS_KG  = 0.0364   # AUW 36.4 g — CF2.1 + USD + RPM decks (measured 2026-06-18)
     GRAVITY  = 9.81
     WEIGHT_N = MASS_KG * GRAVITY
-    KT = [1.0251e-10, 1.1981e-10, 1.0763e-10, 1.2633e-10]  # from hover log 2026-06-16
+    KT = [1.4641e-10, 1.4872e-10, 1.4724e-10, 1.6485e-10]  # hover 2026-06-18, m=36.4g quick mode
     if rpm_ok:
         f_total = sum(KT[i] * rpm[:, i] ** 2 for i in range(4))  # N, per timestep
         tilt_rad = np.radians(np.sqrt(roll ** 2 + pitch ** 2))
