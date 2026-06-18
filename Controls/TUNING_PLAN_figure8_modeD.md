@@ -201,22 +201,20 @@ $PY analyze_indi.py logs/<file>.csv
 
 ---
 
-## Phase 4 — Feedforward accuracy (KT motor coeffs)
+## Phase 4 — Feedforward accuracy (mass + KT) — DONE (2026-06-18)
 
-| | |
-|--|--|
-| **What it tunes** | Position INDI `a_model`, RPM→torque mapping |
-| **How** | yaml `indi_gains.kt1`–`kt4` — **no reflash** |
-| **When** | Only if after Phase 3 you still see: |
+| Param | Value |
+|-------|-------|
+| **mass** | **0.0364** kg (36.4 g measured AUW) |
+| **kt1** | 1.4641e-10 |
+| **kt2** | 1.4872e-10 |
+| **kt3** | 1.4724e-10 |
+| **kt4** | 1.6485e-10 |
 
-- poor τ-vs-J·α correlation in `analyze_indi`
-- τ_sat rising oddly despite moderate KR
-- position INDI not helping (mode 3 bit 0)
+Identified from `hover_mode0_2026-06-18_19-07-19.csv` via `compute_kt_motor.py --mass 0.0364 --mode quick`.
 
-**Method:** per-motor hover/bench calibration → update kt1–kt4 in yaml
-
-- [ ] Phase 4 skipped (not needed)
-- [ ] Phase 4 complete — KT updated
+- [x] Phase 4 complete — mass + KT in `crazyflies.yaml`
+- [ ] Confirm: log meta `indi_mass=0.0364`, `analyze_indi` KT sanity ±15%
 
 ---
 
