@@ -1583,6 +1583,80 @@ def load_poly4d_from_csv(path):
     return segs
 
 
+# ── Onboard degree-8 normalized-time polynomial evaluator ────────────────────
+# Reads _onboard.csv (cols: duration, cx0..cx8, cy0..cy8 — 19 floats/row).
+# The firmware evaluates these at 500 Hz; this reproduces the exact reference.
+
+def load_onboard8_csv(path):
+    """Load *_onboard.csv → list of (duration, [cx0..cx8], [cy0..cy8])."""
+    segs = []
+    with open(path, newline="") as f:
+        reader = csv.reader(f)
+        next(reader)
+        for row in reader:
+            vals = [float(v.strip()) for v in row if v.strip()]
+            if len(vals) >= 19:
+                segs.append((vals[0], vals[1:10], vals[10:19]))
+    return segs
+
+
+def _horner8(c, tau):
+    """Evaluate degree-8 polynomial c[0]+c[1]*tau+…+c[8]*tau^8 via Horner."""
+    v = c[8]
+    for k in range(7, -1, -1):
+        v = v * tau + c[k]
+    return v
+
+
+def _horner8_deriv(c, tau):
+    """Evaluate first derivative of degree-8 polynomial (normalized time τ)."""
+    v = 8.0 * c[8]
+    for k in range(7, 0, -1):
+        v = v * tau + k * c[k]
+    return v
+
+
+def eval_onboard8_xy(segs, t_global):
+    """Evaluate degree-8 onboard poly at t_global [s] → (x, y).
+    Rest-to-rest: clamps at both endpoints (no looping).
+    """
+    total = sum(s[0] for s in segs)
+    t = max(0.0, min(float(t_global), total))
+    t_acc = 0.0
+    seg = segs[-1]
+    for s in segs:
+        if t <= t_acc + s[0] + 1e-9:
+            seg = s
+            break
+        t_acc += s[0]
+    dur, cx, cy = seg
+    tau = max(0.0, min((t - t_acc) / dur, 1.0)) if dur > 0 else 0.0
+    return _horner8(cx, tau), _horner8(cy, tau)
+
+
+def eval_onboard8_vel(segs, t_global):
+    """First derivative of onboard poly → (vx, vy) in physical units."""
+    total = sum(s[0] for s in segs)
+    t = max(0.0, min(float(t_global), total))
+    t_acc = 0.0
+    seg = segs[-1]
+    for s in segs:
+        if t <= t_acc + s[0] + 1e-9:
+            seg = s
+            break
+        t_acc += s[0]
+    dur, cx, cy = seg
+    tau = max(0.0, min((t - t_acc) / dur, 1.0)) if dur > 0 else 0.0
+    inv_dur = 1.0 / dur if dur > 0 else 0.0
+    return _horner8_deriv(cx, tau) * inv_dur, _horner8_deriv(cy, tau) * inv_dur
+
+
+def find_onboard8_csv(label):
+    """Return path to *_onboard.csv for *label*, or None if not found."""
+    path = os.path.join(POLY4D_CSV_DIR, f"{label}_onboard.csv")
+    return path if os.path.isfile(path) else None
+
+
 def _kt_str(kt):
     """Format kt matching Rust mode_label: strip trailing zeros (0.008000 → '0.008')."""
     return f"{float(kt):.6f}".rstrip("0").rstrip(".")
@@ -1643,7 +1717,14 @@ def resolve_poly4d_from_meta(run_meta):
     is_loop = (traj == "circle")
     lap_s   = sum(s[0] for s in segs)
     print(f"  Poly4D  : {label}  ({len(segs)} segs, lap={lap_s:.3f}s)")
-    return segs, 1.0, 1.0, is_loop, label
+
+    # Also load the onboard degree-8 CSV when available (more accurate reference).
+    ob8_path = find_onboard8_csv(label)
+    segs8 = load_onboard8_csv(ob8_path) if ob8_path else None
+    if segs8:
+        print(f"  Onboard8: {label}_onboard.csv  ({len(segs8)} segs) — used as primary reference")
+
+    return segs, 1.0, 1.0, is_loop, label, segs8
 
 
 def infer_figure8_eval_window(base, run_meta, segs, speed_scale):
@@ -1701,8 +1782,13 @@ def _figure8_lap_mask(times, t_start, duration_s):
     return (times >= t_start) & (times <= t_start + duration_s + 1e-6)
 
 
-def compute_figure8_geom_metrics(data, t_start=None, duration_s=None):
-    """Nearest-point distance to waypoint polyline (time-invariant shape error)."""
+def compute_figure8_geom_metrics(data, t_start=None, duration_s=None, segs8=None):
+    """Nearest-point distance to planned path (time-invariant shape error).
+
+    If segs8 (onboard degree-8 segments) is provided, the reference is the actual
+    planned polynomial curve sampled at 500 Hz.  Otherwise falls back to the
+    coarse 10-waypoint linear polyline (mode-0 only).
+    """
     ts = data["time_s"]
     mask = np.isfinite(ts)
     if t_start is not None and duration_s is not None:
@@ -1712,17 +1798,32 @@ def compute_figure8_geom_metrics(data, t_start=None, duration_s=None):
     za = data["z"][mask]
     x0, y0, z0 = float(xa[0]), float(ya[0]), float(za[0])
 
-    ref_wps = FIGURE8_WAYPOINTS_XY.copy()
-    ref_wps[:, 0] += x0
-    ref_wps[:, 1] += y0
-    dense = []
-    for i in range(len(ref_wps) - 1):
-        a = np.append(ref_wps[i], z0)
-        b = np.append(ref_wps[i + 1], z0)
-        for s in np.linspace(0.0, 1.0, 60, endpoint=False):
-            dense.append((1.0 - s) * a + s * b)
-    dense.append(np.array([ref_wps[-1, 0], ref_wps[-1, 1], z0]))
-    ref_dense = np.asarray(dense)
+    if segs8 is not None:
+        # Dense polynomial reference — offset by measured start position.
+        total_dur = sum(s[0] for s in segs8)
+        n_pts = max(500, int(total_dur * 500))
+        t_pts = np.linspace(0.0, total_dur, n_pts)
+        xy_pts = np.array([eval_onboard8_xy(segs8, t) for t in t_pts])
+        # Offset: align polynomial origin (t=0) to first flight point.
+        ref_x0, ref_y0 = eval_onboard8_xy(segs8, 0.0)
+        ref_dense = np.column_stack([
+            xy_pts[:, 0] - ref_x0 + x0,
+            xy_pts[:, 1] - ref_y0 + y0,
+            np.full(n_pts, z0),
+        ])
+    else:
+        # Fallback: coarse waypoint polyline (mode-0 only).
+        ref_wps = FIGURE8_WAYPOINTS_XY.copy()
+        ref_wps[:, 0] += x0
+        ref_wps[:, 1] += y0
+        dense = []
+        for i in range(len(ref_wps) - 1):
+            a = np.append(ref_wps[i], z0)
+            b = np.append(ref_wps[i + 1], z0)
+            for s in np.linspace(0.0, 1.0, 60, endpoint=False):
+                dense.append((1.0 - s) * a + s * b)
+        dense.append(np.array([ref_wps[-1, 0], ref_wps[-1, 1], z0]))
+        ref_dense = np.asarray(dense)
 
     err_xy = np.zeros(xa.shape)
     err_3d = np.zeros(xa.shape)
@@ -1769,11 +1870,83 @@ def poly4d_metrics_over_window(
     return compute_metrics(sub, plan, plan_vel, planned_att)
 
 
+def onboard8_metrics_over_window(data, segs8, t_start, duration_s, time_shift=0.0):
+    """Tracking metrics against degree-8 onboard polynomial reference.
+
+    Evaluates segs8 at each flight timestamp, applying time_shift (phase alignment).
+    Rest-to-rest: clamps at endpoints — no looping.
+    Returns dict with xy_rms, 3d_rms, xy_max, lag_corr.
+    """
+    times = data["time_s"]
+    mask = _figure8_lap_mask(times, t_start, duration_s)
+    if not np.any(mask):
+        mask = np.ones(len(times), dtype=bool)
+        t_start = float(times[0])
+    t_rel = times[mask] - t_start
+
+    # Evaluate reference at each flight timestamp; offset origin to flight start.
+    x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
+    x0_flight, y0_flight = float(data["x"][mask][0]), float(data["y"][mask][0])
+    dx_off = x0_flight - x0_ref
+    dy_off = y0_flight - y0_ref
+
+    ref_xy = np.array([eval_onboard8_xy(segs8, max(0.0, tr + time_shift)) for tr in t_rel])
+    ref_x = ref_xy[:, 0] + dx_off
+    ref_y = ref_xy[:, 1] + dy_off
+
+    xa, ya, za = data["x"][mask], data["y"][mask], data["z"][mask]
+    z_ref = float(np.nanmean(za))  # z is constant for flat figure-8
+    ex = xa - ref_x
+    ey = ya - ref_y
+    ez = za - z_ref
+
+    err_xy = np.sqrt(ex ** 2 + ey ** 2)
+    err_3d = np.sqrt(ex ** 2 + ey ** 2 + ez ** 2)
+
+    # Lag correlation (positive = drone lags reference)
+    ref_speed = np.array([np.sqrt(sum(v**2 for v in eval_onboard8_vel(segs8, max(0.0, tr)))) for tr in t_rel])
+    flight_speed = np.sqrt(data["vx"][mask]**2 + data["vy"][mask]**2)
+    if ref_speed.std() > 1e-6 and flight_speed.std() > 1e-6:
+        corr = np.correlate(flight_speed - flight_speed.mean(), ref_speed - ref_speed.mean(), mode="full")
+        lag_corr = float(corr[len(corr) // 2] / (np.sqrt(np.sum((flight_speed - flight_speed.mean())**2) * np.sum((ref_speed - ref_speed.mean())**2)) + 1e-12))
+    else:
+        lag_corr = 0.0
+
+    return {
+        "xy_rms":   float(np.sqrt(np.nanmean(err_xy ** 2))),
+        "3d_rms":   float(np.sqrt(np.nanmean(err_3d ** 2))),
+        "xy_max":   float(np.nanmax(err_xy)),
+        "lag_corr": lag_corr,
+    }
+
+
+def calibrate_onboard8_phase(data, segs8, t_start, duration_s):
+    """Find best time_shift for onboard-8 reference (no speed_scale — timing is fixed)."""
+    times = data["time_s"]
+    mask = _figure8_lap_mask(times, t_start, duration_s)
+    if int(np.sum(mask)) < 10:
+        return 0.0
+    t_rel = times[mask] - t_start
+    xa, ya = data["x"][mask], data["y"][mask]
+    x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
+    dx_off = float(xa[0]) - x0_ref
+    dy_off = float(ya[0]) - y0_ref
+    best_rms, best_dt = float("inf"), 0.0
+    for dt in np.linspace(-0.5, 0.5, 101):
+        ref_xy = np.array([eval_onboard8_xy(segs8, max(0.0, tr + dt)) for tr in t_rel])
+        ex = xa - (ref_xy[:, 0] + dx_off)
+        ey = ya - (ref_xy[:, 1] + dy_off)
+        rms = float(np.sqrt(np.nanmean(ex**2 + ey**2)))
+        if rms < best_rms:
+            best_rms, best_dt = rms, float(dt)
+    return best_dt
+
+
 def analyze_figure8_with_comparison(
     data, csv_path, run_meta, segs, speed_scale, xy_scale, loop,
-    traj_type_label="figure8", also_geom_plot=False,
+    traj_type_label="figure8", also_geom_plot=False, segs8=None,
 ):
-    """Same Poly4D dashboard for all figure-8 logs; print comparable metric triple."""
+    """Same dashboard for all figure-8 logs; compares against onboard-8 when available."""
     base = os.path.basename(csv_path).lower()
     eval_window, n_reps, lap_s = infer_figure8_eval_window(
         base, run_meta, segs, speed_scale
@@ -1781,6 +1954,38 @@ def analyze_figure8_with_comparison(
     duration_s = lap_s * max(n_reps, 1)
     t_start = find_figure8_traj_start(data, t_min=run_meta.get("_phase2_t_start"))
 
+    if segs8 is not None:
+        # Primary path: compare against the exact onboard degree-8 polynomial.
+        m_uncal = onboard8_metrics_over_window(data, segs8, t_start, duration_s, time_shift=0.0)
+        dt_cal  = calibrate_onboard8_phase(data, segs8, t_start, duration_s)
+        m_cal   = onboard8_metrics_over_window(data, segs8, t_start, duration_s, time_shift=dt_cal)
+        geom    = compute_figure8_geom_metrics(data, t_start, duration_s, segs8=segs8)
+
+        print("\n── Figure-8 comparison metrics (onboard degree-8 reference) ──")
+        print(f"  Lap         : {lap_s:.2f} s × {n_reps} rep  |  motion from t={t_start:.2f} s")
+        print(f"  Onboard8 RMSE XY  uncalibrated : {m_uncal['xy_rms']*100:.1f} cm  "
+              f"(lag corr {m_uncal['lag_corr']:.2f})")
+        print(f"  Onboard8 RMSE XY  phase-aligned: {m_cal['xy_rms']*100:.1f} cm  "
+              f"(t_shift {dt_cal*1000:+.0f} ms)")
+        print(f"  Onboard8 Geom RMSE XY (shape)  : {geom['xy_rms']*100:.1f} cm")
+        print(f"  Onboard8 RMSE 3D  uncal / cal  : {m_uncal['3d_rms']*100:.1f} / "
+              f"{m_cal['3d_rms']*100:.1f} cm")
+
+        plot_analysis(
+            data, segs, traj_type_label, speed_scale, xy_scale, loop, csv_path,
+            quiet_stats=True,
+            phase_t_start=t_start,
+            phase_time_shift=dt_cal,
+            metrics_override=m_cal,
+            segs8_ref=segs8,
+        )
+        if also_geom_plot:
+            import re as _re
+            n_reps_geom = n_reps or 1
+            plot_onboard_figure8_analysis(data, csv_path, n_reps=n_reps_geom)
+        return
+
+    # Fallback: Poly4D degree-7 reference (mode-0 or missing _onboard.csv).
     m_uncal = poly4d_metrics_over_window(
         data, segs, speed_scale, xy_scale, loop, t_start, duration_s, time_shift=0.0
     )
@@ -3139,42 +3344,72 @@ def plot_yaw_spin_analysis(data, csv_path,
 def plot_analysis(
     data, segs, traj_type, speed_scale, xy_scale, loop, csv_path,
     quiet_stats=False, phase_t_start=None, phase_time_shift=0.0,
-    metrics_override=None,
+    metrics_override=None, segs8_ref=None,
 ):
     """metrics_override: if provided, use these precomputed stats for the display box and
     printed output instead of recomputing from the full log.  Error *traces* (err_xy, err_z,
     err_3d arrays) are always computed from the full log so the timeline plot is complete.
     Pass the lap-window metrics dict from analyze_figure8_with_comparison to keep the plot
-    box consistent with the printed comparison table."""
+    box consistent with the printed comparison table.
+    segs8_ref: if provided, use onboard degree-8 polynomial as the reference path (overrides
+    Poly4D for both the XY plot and error computation)."""
     times = data["time_s"]
     if phase_t_start is not None:
         t_plan = np.maximum(0.0, times - phase_t_start + phase_time_shift)
     else:
         t_plan = times
 
-    # Evaluate planned trajectory at each logged timestamp
-    plan = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
+    if segs8_ref is not None:
+        # Use onboard degree-8 polynomial as reference (exact firmware trajectory).
+        x0_ref, y0_ref = eval_onboard8_xy(segs8_ref, 0.0)
+        # Align origin to the first flight point at trajectory start.
+        if phase_t_start is not None:
+            t_mask = data["time_s"] >= phase_t_start
+            idx0 = int(np.argmax(t_mask)) if np.any(t_mask) else 0
+        else:
+            idx0 = 0
+        dx_off = float(data["x"][idx0]) - x0_ref
+        dy_off = float(data["y"][idx0]) - y0_ref
+        ref_xy = np.array([eval_onboard8_xy(segs8_ref, float(t)) for t in t_plan])
+        plan = np.column_stack([
+            ref_xy[:, 0] + dx_off,
+            ref_xy[:, 1] + dy_off,
+            np.full(len(t_plan), float(np.nanmean(data["z"]))),
+            np.zeros(len(t_plan)),  # yaw placeholder
+        ])
+    else:
+        # Evaluate planned trajectory at each logged timestamp
+        plan = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
 
-    # Planned velocity from 1st derivative
-    plan_vel = np.array(
-        [eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
-    )
+    if segs8_ref is not None:
+        # Velocity from onboard-8 derivative; attitude not available (set to NaN).
+        ref_vel = np.array([eval_onboard8_vel(segs8_ref, float(t)) for t in t_plan])
+        plan_vel = np.column_stack([ref_vel[:, 0], ref_vel[:, 1], np.zeros(len(t_plan))])
+        planned_att = np.full((len(t_plan), 3), np.nan)
+        # NaN-out pre-start and post-end
+        total_planned_poly = sum(s[0] for s in segs8_ref)
+        if phase_t_start is not None:
+            _valid = (t_plan > 1e-9) & (t_plan < total_planned_poly + 1e-6)
+            plan[~_valid] = np.nan
+            plan_vel[~_valid] = np.nan
+    else:
+        # Planned velocity from 1st derivative
+        plan_vel = np.array(
+            [eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
+        )
 
-    # Planned attitude from differential flatness
-    planned_att = np.array(
-        [compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
-    )
+        # Planned attitude from differential flatness
+        planned_att = np.array(
+            [compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
+        )
 
-    # NaN-out clamped regions so time-series plots show gaps instead of flat phantom lines.
-    # Two clamped regions:
-    #   (a) pre-start: t_plan==0 for all times before phase_t_start (many points → flat line)
-    #   (b) post-end (loop=False): t_plan past trajectory duration → _find_seg returns endpoint
-    total_planned_poly = sum(s[0] for s in segs)
-    if phase_t_start is not None:
-        _valid = (t_plan > 1e-9) & (loop | (t_plan * speed_scale < total_planned_poly + 1e-6))
-        plan[~_valid] = np.nan
-        plan_vel[~_valid] = np.nan
-        planned_att[~_valid] = np.nan
+        # NaN-out clamped regions so time-series plots show gaps instead of flat phantom lines.
+        total_planned_poly = sum(s[0] for s in segs)
+        if phase_t_start is not None:
+            _valid = (t_plan > 1e-9) & (loop | (t_plan * speed_scale < total_planned_poly + 1e-6))
+            plan[~_valid] = np.nan
+            plan_vel[~_valid] = np.nan
+            planned_att[~_valid] = np.nan
 
     p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
     px, py, pz = plan[:, 0], plan[:, 1], plan[:, 2]
@@ -3208,7 +3443,7 @@ def plot_analysis(
     _ARRAY_KEYS = {"err_xy", "err_z", "err_3d", "roll_err", "pitch_err",
                    "speed_actual", "speed_planned"}
     if metrics_override is not None:
-        m = {k: (m_full[k] if k in _ARRAY_KEYS else metrics_override[k])
+        m = {k: (m_full[k] if k in _ARRAY_KEYS else metrics_override.get(k, m_full[k]))
              for k in m_full}
     else:
         m = m_full
@@ -3217,11 +3452,22 @@ def plot_analysis(
     err_3d = m["err_3d"]
 
     # Planned full path for reference overlay — exactly one pass of the trajectory
-    _traj_t_end = total_planned_poly / speed_scale
-    t_plan_full = np.linspace(0, _traj_t_end, 500)
-    plan_full = np.array(
-        [eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan_full]
-    )
+    if segs8_ref is not None:
+        _traj_t_end = sum(s[0] for s in segs8_ref)
+        t_plan_full = np.linspace(0, _traj_t_end, 500)
+        _ref_full = np.array([eval_onboard8_xy(segs8_ref, t) for t in t_plan_full])
+        plan_full = np.column_stack([
+            _ref_full[:, 0] + dx_off,
+            _ref_full[:, 1] + dy_off,
+            np.full(500, float(np.nanmean(data["z"]))),
+            np.zeros(500),
+        ])
+    else:
+        _traj_t_end = total_planned_poly / speed_scale
+        t_plan_full = np.linspace(0, _traj_t_end, 500)
+        plan_full = np.array(
+            [eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan_full]
+        )
 
     # Crop every plot array to the trajectory execution window so takeoff and landing
     # segments don't appear as phantom "extra lines" of the same colour.
@@ -3968,13 +4214,13 @@ def main():
             plot_onboard_helix_analysis(data, csv_path, n_reps=n_reps)
         else:
             if resolved_poly4d is not None:
-                segs, speed_scale, xy_scale, loop, _ = resolved_poly4d
+                segs, speed_scale, xy_scale, loop, _, segs8 = resolved_poly4d
             else:
-                # Old log with no metadata — use hardcoded mode-0 reference.
                 segs, speed_scale, xy_scale, loop = TRAJECTORIES["figure8"]
+                segs8 = None
             analyze_figure8_with_comparison(
                 data, csv_path, run_meta, segs, speed_scale, xy_scale, loop,
-                also_geom_plot=True,
+                also_geom_plot=True, segs8=segs8,
             )
         return
 
@@ -4019,10 +4265,10 @@ def main():
         return
 
     if resolved_poly4d is not None:
-        segs, speed_scale, xy_scale, loop, _ = resolved_poly4d
+        segs, speed_scale, xy_scale, loop, _, segs8 = resolved_poly4d
     else:
-        # No metadata (old log without run_trajectory) — use hardcoded reference.
         segs, speed_scale, xy_scale, loop = TRAJECTORIES[traj_type]
+        segs8 = None
 
     if traj_type in ("figure8", "fast_figure8"):
         if args.compare:
@@ -4030,7 +4276,7 @@ def main():
             sys.exit(1)
         analyze_figure8_with_comparison(
             data, csv_path, run_meta, segs, speed_scale, xy_scale, loop,
-            traj_type_label=traj_type,
+            traj_type_label=traj_type, segs8=segs8,
         )
         plot_indi_trajectory_panel(data, csv_path)
         return

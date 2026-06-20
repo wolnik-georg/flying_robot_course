@@ -2,18 +2,26 @@
 # Pre-generate Poly4D CSVs for all likely flight combinations.
 # Run once before a lab session (or after pulling new Rust changes).
 #
-# Output: crazyswarm2/crazyflie_examples/crazyflie_examples/data/{label}.csv
-# Each CSV is picked up automatically by analyze_flight.py from the flight metadata.
+# Output: crazyswarm2/crazyflie_examples/crazyflie_examples/data/
+#   {label}.csv          — HLC Poly4D (Mode E, default flight.py)
+#   {label}_onboard.csv  — OOT traj params (Mode D, flight.py --onboard)
 #
 # Usage:  bash Controls/pregenerate_poly4d.sh
 #         (run from any directory inside the repo)
 #
-# kt → approximate lap time reference (figure-8):
+# kt → approximate lap time reference (figure-8, ~5 m path):
 #   kt=0.008 → 9.1 s   (gentle start)
 #   kt=0.02  → 8.1 s
 #   kt=0.05  → 6.9 s
 #   kt=0.1   → 5.9 s
-#   kt=0.2   → 4.9 s   (aggressive)
+#   kt=0.2   → 4.9 s
+#   kt=0.5   → 3.7 s   (fast — likely exceeds CF2.1 thrust/ω limits in sim)
+#   kt=0.75  → 3.2 s
+#   kt=1.0   → 2.9 s   (v_avg ~2.0 m/s)
+#   kt=1.2   → 2.7 s
+#   kt=1.4   → 2.5 s
+#   kt=1.49  → 2.5 s   (Richter QP ceiling for this figure-8; kt≥1.5 diverges)
+#   kt=2.0   → N/A     (QP infeasible — use Mode 0 --speed 2.0 for ~3.6 s/lap instead)
 #
 # kt → approximate lap time reference (circle, r=0.25m):
 #   kt=0.01  → 2.4 s   (0.66 m/s)
@@ -41,6 +49,17 @@ run() {
     fi
 }
 
+run_onboard() {
+    echo -n "  --trajectory $1 --mode $2$([ $# -ge 3 ] && echo " $3 $4" || true) --onboard ... "
+    if output=$(cargo run --release --bin export_poly4d -- \
+                    --trajectory "$1" --mode "$2" "${@:3}" --onboard 2>&1); then
+        echo "$output" | grep -oE "total=[0-9.]+s" || echo "ok"
+    else
+        echo "FAILED"
+        echo "$output" | tail -3 >&2
+    fi
+}
+
 cd "$STACK_DIR"
 
 # ── figure8 ────────────────────────────────────────────────────────────────
@@ -58,6 +77,27 @@ run figure8 1 --kt 0.02               # 8.1 s
 run figure8 1 --kt 0.05               # 6.9 s
 run figure8 1 --kt 0.1                # 5.9 s
 run figure8 1 --kt 0.2                # 4.9 s
+run figure8 1 --kt 0.3                # 4.4 s
+run figure8 1 --kt 0.5                # 3.7 s
+run figure8 1 --kt 0.75               # 3.2 s
+run figure8 1 --kt 1.0                # 2.9 s  (v_avg ~2.0 m/s)
+run figure8 1 --kt 1.2                # 2.7 s
+run figure8 1 --kt 1.4                # 2.5 s
+run figure8 1 --kt 1.49               # 2.5 s  (Richter QP ceiling)
+echo ""
+
+echo "── figure8  Mode 1 onboard (OOT traj params, flight.py --onboard) ──"
+run_onboard figure8 1 --kt 0.008
+run_onboard figure8 1 --kt 0.05
+run_onboard figure8 1 --kt 0.1
+run_onboard figure8 1 --kt 0.2
+run_onboard figure8 1 --kt 0.3
+run_onboard figure8 1 --kt 0.5
+run_onboard figure8 1 --kt 0.75
+run_onboard figure8 1 --kt 1.0
+run_onboard figure8 1 --kt 1.2
+run_onboard figure8 1 --kt 1.4
+run_onboard figure8 1 --kt 1.49
 echo ""
 
 echo "── figure8  Mode 2 (SE3) ──"

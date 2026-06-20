@@ -28,7 +28,9 @@
 //!   --kt 0.008  →  v_avg ~0.63 m/s  ~7.9s/lap   ← closest to Mode 0 baseline
 //!   --kt 0.05   →  v_avg ~0.84 m/s  ~5.9s/lap   (moderate)
 //!   --kt 0.2    →  v_avg ~1.17 m/s  ~4.3s/lap   (fast)
-//!   --kt 1.0    →  v_avg ~2.0  m/s  ~2.5s/lap   (aggressive)
+//!   --kt 0.5    →  v_avg ~1.56 m/s  ~3.7s/lap
+//!   --kt 1.0    →  v_avg ~2.0  m/s  ~2.9s/lap   (aggressive)
+//!   --kt 1.49   →  v_avg ~2.3  m/s  ~2.5s/lap   (Richter QP ceiling; kt≥1.5 diverges)
 
 use crazyflie_link::LinkContext;
 use std::collections::HashMap;
