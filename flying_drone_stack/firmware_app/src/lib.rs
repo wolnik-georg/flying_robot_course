@@ -143,9 +143,7 @@ fn mat_mul_vec(m: &Mat3, v: Vec3) -> Vec3 {
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
-const MASS: f32 = 0.027;           // kg — Crazyflie 2.1 + Flow Deck v2 (~3.2 g)
 const GRAVITY: f32 = 9.81;
-const HOVER_THRUST: f32 = MASS * GRAVITY; // ≈ 0.304 N
 
 // Inertia (from official firmware / System ID)
 const JXX: f32 = 16.571710e-6;
@@ -396,10 +394,8 @@ const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
 
 // ── MOCAP BLOCK O — starting point: high KP, low KV ─────────────────────────
 // Hypothesis: KP=28 is fine (accurate mocap positions), KV=3 avoids noise amplification.
-// KP_Z/KV_Z also reduced. Attitude from Block N (proven stable with optical flow).
-// ★ ACTIVE ★
-const KP_X: f32 = 28.0;   const KP_Y: f32 = 28.0;   const KP_Z: f32 = 30.0;
-const KV_X: f32 = 3.0;    const KV_Y: f32 = 3.0;    const KV_Z: f32 = 7.0;
+// KP/KV are now runtime params (pos_gains.kp_xy/kp_z/kv_xy/kv_z in crazyflies.yaml).
+// Defaults match the values below: kp_xy=28, kp_z=30, kv_xy=3, kv_z=7.
 const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
 const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
@@ -537,6 +533,11 @@ extern "C" {
     static mut g_indi_kt4:    f32;
     static mut g_indi_fc_bw:  f32;
     static mut g_indi_mass:   f32;
+    // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
+    static mut g_kp_xy: f32;
+    static mut g_kp_z:  f32;
+    static mut g_kv_xy: f32;
+    static mut g_kv_z:  f32;
 }
 
 extern "C" {
@@ -895,9 +896,10 @@ fn geometric_step_ref(
         s.i_ep.y.clamp(-KI_LIMIT, KI_LIMIT),
         s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
     );
+    let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
     let f_d = ad
-        .add(Vec3::new(KP_X*ep.x, KP_Y*ep.y, KP_Z*ep.z))
-        .add(Vec3::new(KV_X*ev.x, KV_Y*ev.y, KV_Z*ev.z))
+        .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
+        .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
         .add(Vec3::new(0.0, 0.0, GRAVITY));
     let thrust_vec = f_d.scale(unsafe { g_indi_mass });
@@ -983,9 +985,10 @@ fn controller_step(
         Vec3::zero()
     };
 
+    let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
     let f_d = ad
-        .add(Vec3::new(KP_X*ep.x, KP_Y*ep.y, KP_Z*ep.z))
-        .add(Vec3::new(KV_X*ev.x, KV_Y*ev.y, KV_Z*ev.z))
+        .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
+        .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
         .add(Vec3::new(0.0, 0.0, GRAVITY))
         .add(a_indi);

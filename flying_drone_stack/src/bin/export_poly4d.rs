@@ -122,15 +122,15 @@ fn build_figure8(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     }
 
     let planner = match mode {
-        1 => TrajectoryPlanner::richter(&wps, kt, true)
+        1 => TrajectoryPlanner::richter(&wps, kt, false)
                 .expect("Figure-8 Mode 1 Richter QP failed"),
         2 => {
-            let m1 = TrajectoryPlanner::richter(&wps, kt, true)
+            let m1 = TrajectoryPlanner::richter(&wps, kt, false)
                 .expect("Figure-8 Mode 2 timing QP failed");
             let kt_durs = m1.segment_durations();
             let se3_wps: Vec<Se3Waypoint> = wps.iter()
                 .map(|w| Se3Waypoint::levelled(w.pos)).collect();
-            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
+            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, false)
                 .expect("Figure-8 Mode 2 SE3 QP failed")
         }
         3 => TrajectoryPlanner::paper(&wps, kt, false)
