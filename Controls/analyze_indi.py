@@ -377,7 +377,7 @@ def main():
     MASS_KG  = 0.0364   # AUW 36.4 g — CF2.1 + USD + RPM decks (measured 2026-06-18)
     GRAVITY  = 9.81
     WEIGHT_N = MASS_KG * GRAVITY
-    KT = [1.4641e-10, 1.4872e-10, 1.4724e-10, 1.6485e-10]  # hover 2026-06-18, m=36.4g quick mode
+    KT = [1.4811e-10, 1.4815e-10, 1.5319e-10, 1.6119e-10]  # Lee hover 2026-06-18_20-22-55, m=36.4g quick
     if rpm_ok:
         f_total = sum(KT[i] * rpm[:, i] ** 2 for i in range(4))  # N, per timestep
         tilt_rad = np.radians(np.sqrt(roll ** 2 + pitch ** 2))
