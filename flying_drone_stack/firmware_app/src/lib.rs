@@ -464,6 +464,8 @@ struct State {
     bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
+    // Position INDI: accelerometer pre-filter (body frame, g units) — matches C outer-loop
+    bw_acc_x: Butterworth2, bw_acc_y: Butterworth2, bw_acc_z: Butterworth2,
     omega_prev: Vec3,   // raw gyro from previous cycle (for finite-difference)
     tau_prev: Vec3,
     indi_init: bool,
@@ -476,6 +478,7 @@ impl State {
             i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
+            bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             omega_prev: Vec3::zero(),
             tau_prev: Vec3::zero(),
             indi_init: false,
@@ -488,6 +491,7 @@ impl State {
         self.last_tick = 0;
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
+        self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.omega_prev = Vec3::zero();
         self.tau_prev = Vec3::zero();
         self.indi_init = false;
@@ -986,11 +990,17 @@ fn controller_step(
     };
 
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
+    // Tilt-compensated gravity: at tilt angle θ, vertical thrust = T·cos(θ).
+    // Requesting g/cos(θ) instead of g pre-compensates for this before altitude
+    // error builds up, eliminating the tilt-coupled Vz oscillation.
+    // r[2][2] = cos(θ); clamped to cos(60°)=0.5 to prevent blow-up at large tilts.
+    let cos_theta = r[2][2].max(0.5_f32);
+    let gz_comp = GRAVITY / cos_theta;
     let f_d = ad
         .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
-        .add(Vec3::new(0.0, 0.0, GRAVITY))
+        .add(Vec3::new(0.0, 0.0, gz_comp))
         .add(a_indi);
     let thrust_vec = f_d.scale(mass);
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
@@ -1091,6 +1101,7 @@ pub extern "C" fn controllerOutOfTreeInit() {
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
+        s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
     }
 }
@@ -1116,6 +1127,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     if (fc_bw - s.fc_bw_last).abs() > 0.1 {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
+        s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
     }
 
@@ -1138,9 +1150,14 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let g = &(*sensors).gyro;
     let omega = Vec3::new(g.axis[0]*deg2rad, g.axis[1]*deg2rad, g.axis[2]*deg2rad);
 
-    // Accelerometer in g units, body frame — used by position INDI outer loop
+    // Accelerometer in g units, body frame — pre-filtered (same BW as alpha chain)
+    // so that a_meas in the position INDI outer loop is not dominated by IMU noise.
     let acc = &(*sensors).acc;
-    let acc_body = Vec3::new(acc.axis[0], acc.axis[1], acc.axis[2]);
+    let acc_body = Vec3::new(
+        s.bw_acc_x.update(acc.axis[0]),
+        s.bw_acc_y.update(acc.axis[1]),
+        s.bw_acc_z.update(acc.axis[2]),
+    );
 
     let sp = &*setpoint;
 

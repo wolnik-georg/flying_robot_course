@@ -409,7 +409,9 @@ def main():
     vel_ok = has_data(vel[sl])
     if acc_ok:
         r_r = np.radians(roll);  cr, sr = np.cos(r_r), np.sin(r_r)
-        r_p = np.radians(pitch); cp, sp = np.cos(r_p), np.sin(r_p)
+        # stabilizer.pitch is positive nose-up; negate so sp matches the standard
+        # ZYX convention (positive pitch = forward tilt = positive world-x acceleration).
+        r_p = np.radians(pitch); cp, sp = np.cos(r_p), -np.sin(r_p)
         r_y = np.radians(yaw);   cy, sy = np.cos(r_y), np.sin(r_y)
         # ZYX rotation: world = R * body
         ax_b, ay_b, az_b = acc[:, 0], acc[:, 1], acc[:, 2]
@@ -597,10 +599,14 @@ def main():
     # Row 1 — INDI torque time series (full flight, but stats from valid window only)
     tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
     t_tau_start = t[tau_sl.start] if tau_active else t[i0]
+    # Mask stale period with NaN so y-axis scales to the valid signal range
+    tau_plot = tau.copy().astype(float)
+    if tau_active and tau_stale_secs > 0.1:
+        tau_plot[:tau_sl.start, :] = np.nan
     for i in range(3):
         ax = axs[1, i]
         if tau_present:
-            ax.plot(t, tau[:, i], lw=0.7, color="C1")
+            ax.plot(t, tau_plot[:, i], lw=0.7, color="C1")
             ax.axhline( args.tau_limit, color="red", lw=0.8, ls="--",
                         label=f"±{args.tau_limit*1000:.0f} mN·m est. limit")
             ax.axhline(-args.tau_limit, color="red", lw=0.8, ls="--")

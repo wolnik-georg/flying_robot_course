@@ -1,0 +1,48 @@
+# uSD deck config.txt — copy to root of SD card as "config.txt"
+# Format parsed by usddeck.c: comments (#), blank lines, and whitespace are stripped.
+#
+# Line order (non-comment):
+#   1: version (must be 1)
+#   2: buffer size (number of samples buffered before SD write)
+#   3: filename prefix (max 10 chars; firmware appends 2-digit counter: log00, log01, ...)
+#   4: enable on startup (1 = start logging immediately on boot)
+#   then: on:fixedFrequency block (one block only, max 20 variables)
+#         <frequency Hz>
+#         <mode: 0=standard>
+#         <group>.<variable>   (one per line)
+#
+# Variables are logged at 500 Hz — the controller runs at 500 Hz so this
+# captures every single control cycle. The radio/CS2 log (unchanged) still
+# runs in parallel at 20-100 Hz and provides position + attitude columns
+# that are not included here (those don't need 500 Hz).
+#
+# Max 20 variables per block. Selection: INDI signals + gyro + acc + RPM + vbat.
+# Position/attitude/velocity are omitted — available at 100 Hz via radio CSV.
+
+1
+100
+log
+0
+on:fixedFrequency
+500
+0
+gyro.x
+gyro.y
+gyro.z
+acc.x
+acc.y
+acc.z
+indi.alp_raw_x
+indi.alp_raw_y
+indi.alp_raw_z
+indi.alp_x
+indi.alp_y
+indi.alp_z
+indi.tau_x
+indi.tau_y
+indi.tau_z
+rpm.m1
+rpm.m2
+rpm.m3
+rpm.m4
+pm.vbat

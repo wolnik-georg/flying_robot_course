@@ -1703,7 +1703,17 @@ def resolve_poly4d_from_meta(run_meta):
     label = poly4d_csv_label(traj, mode, kt, speed)
     path  = find_poly4d_csv(label)
 
+    # Load onboard degree-8 CSV first — it's the primary reference for all onboard flights.
+    ob8_path = find_onboard8_csv(label)
+    segs8 = load_onboard8_csv(ob8_path) if ob8_path else None
+
     if path is None:
+        if segs8 is not None:
+            # Onboard CSV present → use it as sole reference; no Poly4D needed.
+            is_loop = (traj == "circle")
+            lap_s   = sum(s[0] for s in segs8)
+            print(f"  Onboard8: {label}_onboard.csv  ({len(segs8)} segs, lap={lap_s:.3f}s) — sole reference")
+            return None, 1.0, 1.0, is_loop, label, segs8
         kt_arg    = f" --kt {kt}"       if int(mode) != 0               else ""
         speed_arg = f" --speed {speed}" if abs(float(speed) - 1.0) > 1e-3 else ""
         print(f"  Error: Poly4D CSV '{label}.csv' not found in {POLY4D_CSV_DIR}")
@@ -1718,16 +1728,13 @@ def resolve_poly4d_from_meta(run_meta):
     lap_s   = sum(s[0] for s in segs)
     print(f"  Poly4D  : {label}  ({len(segs)} segs, lap={lap_s:.3f}s)")
 
-    # Also load the onboard degree-8 CSV when available (more accurate reference).
-    ob8_path = find_onboard8_csv(label)
-    segs8 = load_onboard8_csv(ob8_path) if ob8_path else None
     if segs8:
         print(f"  Onboard8: {label}_onboard.csv  ({len(segs8)} segs) — used as primary reference")
 
     return segs, 1.0, 1.0, is_loop, label, segs8
 
 
-def infer_figure8_eval_window(base, run_meta, segs, speed_scale):
+def infer_figure8_eval_window(base, run_meta, segs, speed_scale, segs8=None):
     """Lap window [s] for metrics: metadata, else filename (onboard_m0_s1-0x_r1, …)."""
     import re
 
@@ -1744,7 +1751,13 @@ def infer_figure8_eval_window(base, run_meta, segs, speed_scale):
         if speed_mult <= 0:
             m = re.search(r"_s(\d+)-0x", base) or re.search(r"_s([\d.]+)x", base)
             speed_mult = float(m.group(1)) if m else 1.0
-        nominal_lap = sum(float(s[0]) for s in segs) / max(speed_scale, 1e-6)
+        if segs is not None:
+            nominal_lap = sum(float(s[0]) for s in segs) / max(speed_scale, 1e-6)
+        elif segs8 is not None:
+            # onboard-only: degree-8 segment durations are already in physical time
+            nominal_lap = sum(float(s[0]) for s in segs8)
+        else:
+            nominal_lap = 7.0  # fallback
         lap_s = nominal_lap / max(speed_mult, 1e-6)
 
     eval_window = lap_s * max(n_reps, 1)
@@ -1949,7 +1962,7 @@ def analyze_figure8_with_comparison(
     """Same dashboard for all figure-8 logs; compares against onboard-8 when available."""
     base = os.path.basename(csv_path).lower()
     eval_window, n_reps, lap_s = infer_figure8_eval_window(
-        base, run_meta, segs, speed_scale
+        base, run_meta, segs, speed_scale, segs8=segs8
     )
     duration_s = lap_s * max(n_reps, 1)
     t_start = find_figure8_traj_start(data, t_min=run_meta.get("_phase2_t_start"))
@@ -1971,14 +1984,15 @@ def analyze_figure8_with_comparison(
         print(f"  Onboard8 RMSE 3D  uncal / cal  : {m_uncal['3d_rms']*100:.1f} / "
               f"{m_cal['3d_rms']*100:.1f} cm")
 
-        plot_analysis(
-            data, segs, traj_type_label, speed_scale, xy_scale, loop, csv_path,
-            quiet_stats=True,
-            phase_t_start=t_start,
-            phase_time_shift=dt_cal,
-            metrics_override=m_cal,
-            segs8_ref=segs8,
-        )
+        if segs is not None:
+            plot_analysis(
+                data, segs, traj_type_label, speed_scale, xy_scale, loop, csv_path,
+                quiet_stats=True,
+                phase_t_start=t_start,
+                phase_time_shift=dt_cal,
+                metrics_override=m_cal,
+                segs8_ref=segs8,
+            )
         if also_geom_plot:
             import re as _re
             n_reps_geom = n_reps or 1
@@ -3374,7 +3388,7 @@ def plot_analysis(
         plan = np.column_stack([
             ref_xy[:, 0] + dx_off,
             ref_xy[:, 1] + dy_off,
-            np.full(len(t_plan), float(np.nanmean(data["z"]))),
+            np.zeros(len(t_plan)),  # relative z = 0 (constant-altitude trajectory)
             np.zeros(len(t_plan)),  # yaw placeholder
         ])
     else:
@@ -3382,16 +3396,23 @@ def plot_analysis(
         plan = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
 
     if segs8_ref is not None:
-        # Velocity from onboard-8 derivative; attitude not available (set to NaN).
+        # Velocity from onboard-8 derivative.
         ref_vel = np.array([eval_onboard8_vel(segs8_ref, float(t)) for t in t_plan])
         plan_vel = np.column_stack([ref_vel[:, 0], ref_vel[:, 1], np.zeros(len(t_plan))])
-        planned_att = np.full((len(t_plan), 3), np.nan)
+        # Attitude from flatness using the Poly4D segs when available; else NaN.
+        if segs is not None:
+            planned_att = np.array(
+                [compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in t_plan]
+            )
+        else:
+            planned_att = np.full((len(t_plan), 3), np.nan)
         # NaN-out pre-start and post-end
         total_planned_poly = sum(s[0] for s in segs8_ref)
         if phase_t_start is not None:
             _valid = (t_plan > 1e-9) & (t_plan < total_planned_poly + 1e-6)
             plan[~_valid] = np.nan
             plan_vel[~_valid] = np.nan
+            planned_att[~_valid] = np.nan
     else:
         # Planned velocity from 1st derivative
         plan_vel = np.array(
@@ -3459,7 +3480,7 @@ def plot_analysis(
         plan_full = np.column_stack([
             _ref_full[:, 0] + dx_off,
             _ref_full[:, 1] + dy_off,
-            np.full(500, float(np.nanmean(data["z"]))),
+            np.zeros(500),
             np.zeros(500),
         ])
     else:
