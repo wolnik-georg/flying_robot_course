@@ -2135,14 +2135,18 @@ def load_csv_with_meta(path):
 
 # ── Metrics ─────────────────────────────────────────────────────────────────
 
-def compute_metrics(data, plan, plan_vel, planned_att_arr):
+def compute_metrics(data, plan, plan_vel, planned_att_arr, z0=None):
     """Return a dict of tracking quality metrics.
 
     Z error uses relative coordinates (poly4d is relative_position=True):
     err_z = |(z_actual − z_start) − pz_planned|
+
+    z0: trajectory-start height. If None, falls back to data["z"][0] (correct when
+    data is already cropped to the trajectory window; wrong for full-log data).
     """
     px, py, pz_rel = plan[:, 0], plan[:, 1], plan[:, 2]
-    z0 = data["z"][0]
+    if z0 is None:
+        z0 = data["z"][0]
     err_xy = np.sqrt((data["x"] - px) ** 2 + (data["y"] - py) ** 2)
     err_z  = np.abs((data["z"] - z0) - pz_rel)
     err_3d = np.sqrt(err_xy ** 2 + err_z ** 2)
@@ -3451,11 +3455,9 @@ def plot_analysis(
         _tstart_idx = 0
     z0_act = data["z"][_tstart_idx]
 
-    # Errors — Z uses relative coords (poly4d is relative_position=True).
-    # Shift data["z"] so z=0 at trajectory start to avoid inflated Z error trace
-    # on full-log window that includes takeoff/landing.
-    data_z_shifted = {**data, "z": data["z"] - z0_act}
-    m_full = compute_metrics(data_z_shifted, plan, plan_vel, planned_att)
+    # Pass z0_act explicitly so err_z is relative to trajectory-start height across
+    # the full log (including the pre-trajectory takeoff ramp).
+    m_full = compute_metrics(data, plan, plan_vel, planned_att, z0=z0_act)
     # Build the metrics dict used for display:
     #   - Scalar stats (RMSE, max, …) come from metrics_override (lap-window) when provided,
     #     so the plot box matches the printed comparison table exactly.
