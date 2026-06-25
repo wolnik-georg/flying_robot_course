@@ -990,17 +990,11 @@ fn controller_step(
     };
 
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
-    // Tilt-compensated gravity: at tilt angle θ, vertical thrust = T·cos(θ).
-    // Requesting g/cos(θ) instead of g pre-compensates for this before altitude
-    // error builds up, eliminating the tilt-coupled Vz oscillation.
-    // r[2][2] = cos(θ); clamped to cos(60°)=0.5 to prevent blow-up at large tilts.
-    let cos_theta = r[2][2].max(0.5_f32);
-    let gz_comp = GRAVITY / cos_theta;
     let f_d = ad
         .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
-        .add(Vec3::new(0.0, 0.0, gz_comp))
+        .add(Vec3::new(0.0, 0.0, GRAVITY))
         .add(a_indi);
     let thrust_vec = f_d.scale(mass);
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
@@ -1150,14 +1144,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let g = &(*sensors).gyro;
     let omega = Vec3::new(g.axis[0]*deg2rad, g.axis[1]*deg2rad, g.axis[2]*deg2rad);
 
-    // Accelerometer in g units, body frame — pre-filtered (same BW as alpha chain)
-    // so that a_meas in the position INDI outer loop is not dominated by IMU noise.
+    // Accelerometer in g units, body frame — used by position INDI outer loop
     let acc = &(*sensors).acc;
-    let acc_body = Vec3::new(
-        s.bw_acc_x.update(acc.axis[0]),
-        s.bw_acc_y.update(acc.axis[1]),
-        s.bw_acc_z.update(acc.axis[2]),
-    );
+    let acc_body = Vec3::new(acc.axis[0], acc.axis[1], acc.axis[2]);
 
     let sp = &*setpoint;
 
