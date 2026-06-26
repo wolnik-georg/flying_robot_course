@@ -4112,6 +4112,14 @@ def main():
         metavar="'A,B'",
         help="Comma-separated labels for the two runs when using --compare (default: filenames).",
     )
+    parser.add_argument(
+        "--kt", default=None, type=float,
+        help="Override run_kt (e.g. 0.03); needed for USD standalone CSVs which have no meta header.",
+    )
+    parser.add_argument(
+        "--mode", default=None, type=int,
+        help="Override run_mode (0=geometric, 1=INDI); needed for USD standalone CSVs.",
+    )
     args = parser.parse_args()
 
     # Auto-detect CSV
@@ -4186,6 +4194,14 @@ def main():
         print(f"Inferred trajectory type: {traj_type}")
 
     data, run_meta = load_csv_with_meta(csv_path)
+
+    # Allow CLI overrides for USD standalone CSVs that have no # meta: header
+    if args.kt is not None:
+        run_meta["run_kt"] = str(args.kt)
+        run_meta.setdefault("run_trajectory", traj_type or "figure8")
+        run_meta.setdefault("run_mode", "1")
+    if args.mode is not None:
+        run_meta["run_mode"] = str(args.mode)
 
     if len(data["time_s"]) == 0:
         print("CSV is empty.")

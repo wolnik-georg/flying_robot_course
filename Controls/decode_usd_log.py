@@ -33,11 +33,20 @@ import cfusdlog
 LOGS_DIR = Path(__file__).parent / "logs"
 
 _USD_TO_COL = {
+    # INDI inner loop
+    "indi.tau_x": "tau_x", "indi.tau_y": "tau_y", "indi.tau_z": "tau_z",
+    "indi.alp_x": "alp_x", "indi.alp_y": "alp_y", "indi.alp_z": "alp_z",
+    "indi.alp_raw_x": "alp_raw_x", "indi.alp_raw_y": "alp_raw_y", "indi.alp_raw_z": "alp_raw_z",
+    # sensors
     "gyro.x": "gyro_x", "gyro.y": "gyro_y", "gyro.z": "gyro_z",
     "acc.x":  "acc_x",  "acc.y":  "acc_y",  "acc.z":  "acc_z",
-    "indi.alp_raw_x": "alp_raw_x", "indi.alp_raw_y": "alp_raw_y", "indi.alp_raw_z": "alp_raw_z",
-    "indi.alp_x": "alp_x", "indi.alp_y": "alp_y", "indi.alp_z": "alp_z",
-    "indi.tau_x": "tau_x", "indi.tau_y": "tau_y", "indi.tau_z": "tau_z",
+    # EKF state (available when OptiTrack or flow deck is active)
+    "stateEstimate.x": "x", "stateEstimate.y": "y", "stateEstimate.z": "z",
+    "stateEstimate.vx": "vx", "stateEstimate.vy": "vy", "stateEstimate.vz": "vz",
+    # attitude
+    "stabilizer.roll": "roll_deg", "stabilizer.pitch": "pitch_deg", "stabilizer.yaw": "yaw_deg",
+    "stabilizer.thrust": "thrust",
+    # RPM and power
     "rpm.m1": "rpm_m1", "rpm.m2": "rpm_m2", "rpm.m3": "rpm_m3", "rpm.m4": "rpm_m4",
     "pm.vbat": "vbat",
 }
@@ -56,6 +65,9 @@ _FIELDNAMES = [
     "alp_x",  "alp_y",  "alp_z",
     "alp_raw_x", "alp_raw_y", "alp_raw_z",
 ]
+
+# Standalone fieldnames: only what the USD deck actually logged (no radio merge)
+_STANDALONE_FIELDNAMES = ["time_s"] + [c for c in _FIELDNAMES[1:] if c != "thrust" or True]
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -187,6 +199,65 @@ def _write_csv(seg: dict, t_offset: float, radio: dict,
     print(f"  → {out_path.name}  ({n} rows, {rate:.0f} Hz, offset={t_offset:+.2f}s)")
 
 
+def _write_csv_standalone(seg: dict, bin_name: str, out_path: Path,
+                          kt: float | None = None, trajectory: str | None = None,
+                          mode: int | None = None):
+    """Write a CSV with only USD variables — no radio CSV required."""
+    ts = seg["timestamp"]
+    usd_t = (ts - ts[0]) / 1000.0
+    n = len(usd_t)
+    rate = n / ((usd_t[-1] - usd_t[0]) + 1e-9)
+
+    # Determine which columns are actually present in this segment
+    present = [col for usd_name, col in _USD_TO_COL.items() if usd_name in seg]
+    fieldnames = ["time_s"] + [c for c in _FIELDNAMES[1:] if c in present]
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", newline="") as f:
+        # Write meta headers so analyze_flight.py works without --kt / --mode flags
+        if trajectory is not None:
+            f.write(f"# meta:run_trajectory={trajectory}\n")
+        if mode is not None:
+            f.write(f"# meta:run_mode={mode}\n")
+        if kt is not None:
+            f.write(f"# meta:run_kt={kt}\n")
+        f.write(f"# meta:usd_source={bin_name}\n")
+        f.write(f"# meta:usd_n_samples={n}\n")
+        f.write(f"# meta:usd_rate_hz={rate:.1f}\n")
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for i in range(n):
+            row = {"time_s": round(float(usd_t[i]), 6)}
+            for usd_name, col in _USD_TO_COL.items():
+                if col not in fieldnames:
+                    continue
+                arr = seg.get(usd_name)
+                row[col] = float(arr[i]) if arr is not None else float("nan")
+            writer.writerow(row)
+
+    print(f"  → {out_path.name}  ({n} rows, {rate:.0f} Hz, cols={len(fieldnames)-1})")
+
+
+def run_standalone(bin_path: Path, kt: float | None = None,
+                   trajectory: str | None = None, mode: int | None = None):
+    """Decode all segments in a binary; write one CSV per segment, no radio needed."""
+    data = cfusdlog.decode(str(bin_path))
+    block = data and data.get("fixedFrequency")
+    if not block:
+        print(f"[error] no fixedFrequency block in {bin_path.name}")
+        sys.exit(1)
+
+    segments = _split_segments(block)
+    print(f"[standalone] {len(segments)} segment(s) in {bin_path.name}")
+    for i, seg in enumerate(segments):
+        n = len(seg["timestamp"])
+        dur = (seg["timestamp"][-1] - seg["timestamp"][0]) / 1000.0
+        print(f"[seg {i+1}] {n} samples / {dur:.1f}s")
+        out_path = LOGS_DIR / f"{bin_path.stem}_seg{i+1:02d}_usd500hz.csv"
+        _write_csv_standalone(seg, bin_path.name, out_path, kt=kt,
+                              trajectory=trajectory, mode=mode)
+
+
 # ── Main modes ─────────────────────────────────────────────────────────────────
 
 def run_single(bin_path: Path, radio_path: Path, out_path: Path | None):
@@ -218,7 +289,7 @@ def run_single(bin_path: Path, radio_path: Path, out_path: Path | None):
     _write_csv(seg, t_offset, radio, meta_lines, bin_path.name, out_path)
 
 
-def run_batch(bin_path: Path):
+def run_batch(bin_path: Path, date_filter: str = ""):
     data = cfusdlog.decode(str(bin_path))
     block = data and data.get("fixedFrequency")
     if not block:
@@ -227,7 +298,8 @@ def run_batch(bin_path: Path):
 
     segments = _split_segments(block)
     radio_csvs = sorted(
-        [p for p in LOGS_DIR.glob("*.csv") if "_usd500hz" not in p.name],
+        [p for p in LOGS_DIR.glob("*.csv")
+         if "_usd500hz" not in p.name and (not date_filter or date_filter in p.name)],
         key=lambda p: p.stat().st_mtime,
     )
 
@@ -258,6 +330,16 @@ def main():
                         help="Latest .bin in cwd + latest radio CSV")
     parser.add_argument("--batch", action="store_true",
                         help="Split binary by flight segments, pair with all radio CSVs in order")
+    parser.add_argument("--date", default="",
+                        help="Filter radio CSVs by date string in filename, e.g. 2026-06-25")
+    parser.add_argument("--standalone", action="store_true",
+                        help="Decode each segment to its own CSV; no radio CSV needed")
+    parser.add_argument("--kt", type=float, default=None,
+                        help="Aggressiveness k_t (e.g. 0.03); embedded as meta:run_kt in standalone CSVs")
+    parser.add_argument("--trajectory", default=None,
+                        help="Trajectory name (e.g. figure8); embedded as meta:run_trajectory")
+    parser.add_argument("--mode", type=int, default=None,
+                        help="Controller mode (0/1/2/3); embedded as meta:run_mode")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
@@ -270,8 +352,12 @@ def main():
         print(f"[error] not found: {bin_path}")
         sys.exit(1)
 
+    if args.standalone:
+        run_standalone(bin_path, kt=args.kt, trajectory=args.trajectory, mode=args.mode)
+        return
+
     if args.batch:
-        run_batch(bin_path)
+        run_batch(bin_path, date_filter=args.date)
         return
 
     # Single mode

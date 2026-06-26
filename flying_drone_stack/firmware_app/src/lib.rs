@@ -464,8 +464,6 @@ struct State {
     bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
-    // Position INDI: accelerometer pre-filter (body frame, g units) — matches C outer-loop
-    bw_acc_x: Butterworth2, bw_acc_y: Butterworth2, bw_acc_z: Butterworth2,
     omega_prev: Vec3,   // raw gyro from previous cycle (for finite-difference)
     tau_prev: Vec3,
     indi_init: bool,
@@ -478,7 +476,6 @@ impl State {
             i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
-            bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             omega_prev: Vec3::zero(),
             tau_prev: Vec3::zero(),
             indi_init: false,
@@ -491,7 +488,6 @@ impl State {
         self.last_tick = 0;
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
-        self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.omega_prev = Vec3::zero();
         self.tau_prev = Vec3::zero();
         self.indi_init = false;
@@ -1095,7 +1091,6 @@ pub extern "C" fn controllerOutOfTreeInit() {
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
-        s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
     }
 }
@@ -1121,7 +1116,6 @@ pub unsafe extern "C" fn controllerOutOfTree(
     if (fc_bw - s.fc_bw_last).abs() > 0.1 {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
-        s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
     }
 
