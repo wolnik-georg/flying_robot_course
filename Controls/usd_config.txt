@@ -4,7 +4,7 @@
 1               # version (must be 1)
 2048            # ring buffer size in bytes (30 vars x 4 bytes = 120 bytes/sample, 100Hz = 12KB/s)
 gl_             # filename prefix  →  gl_00, gl_01, …
-1               # enable_on_startup: 1 = log from power-on
+0               # enable_on_startup: 0 = start/stop logging via usd.logging param
 on:fixedFrequency
 100             # sample rate [Hz]
 1               # mode: 1 = SynchronousStabilizer

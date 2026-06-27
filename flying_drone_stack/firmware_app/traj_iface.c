@@ -174,36 +174,6 @@ PARAM_GROUP_START(pos_gains)
   PARAM_ADD(PARAM_FLOAT, kv_z,  &g_kv_z)
 PARAM_GROUP_STOP(pos_gains)
 
-/* ── INDI log variables ──────────────────────────────────────────────────── */
-/* Backing floats written by Rust via indi_log_write / indi_tau_write.       */
-/* Registered here so the USD deck and radio log can find them by name.      */
-static float log_alp_raw_x, log_alp_raw_y, log_alp_raw_z;
-static float log_alp_x,     log_alp_y,     log_alp_z;
-static float log_tau_x,     log_tau_y,     log_tau_z;
-
-void indi_log_write(float arx, float ary, float arz,
-                    float ax,  float ay,  float az)
-{
-    log_alp_raw_x = arx; log_alp_raw_y = ary; log_alp_raw_z = arz;
-    log_alp_x = ax;      log_alp_y = ay;      log_alp_z = az;
-}
-
-void indi_tau_write(float tx, float ty, float tz)
-{
-    log_tau_x = tx; log_tau_y = ty; log_tau_z = tz;
-}
-
-LOG_GROUP_START(indi)
-  LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
-  LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
-  LOG_ADD(LOG_FLOAT, alp_raw_z, &log_alp_raw_z)
-  LOG_ADD(LOG_FLOAT, alp_x,     &log_alp_x)
-  LOG_ADD(LOG_FLOAT, alp_y,     &log_alp_y)
-  LOG_ADD(LOG_FLOAT, alp_z,     &log_alp_z)
-  LOG_ADD(LOG_FLOAT, tau_x,     &log_tau_x)
-  LOG_ADD(LOG_FLOAT, tau_y,     &log_tau_y)
-  LOG_ADD(LOG_FLOAT, tau_z,     &log_tau_z)
-LOG_GROUP_STOP(indi)
 
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
 /* Exposes per-motor RPM via the Crazyflie log system.                       */
