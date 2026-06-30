@@ -15,8 +15,6 @@
 //! --kt         : aggressiveness for modes 1/3 (default: 0.008 for figure8, 0.1 for circle)
 //! --speed      : time scale for mode 0 only, <1 = slower, >1 = faster (default: 1.0)
 //! --out        : output CSV path (default: auto-generate in CS2 data folder)
-//! --onboard    : write OOT traj param format (19 floats/seg, normalised-time coefficients)
-//!                instead of HLC Poly4D (8-coef physical-time). Output: {label}_onboard.csv
 //!
 //! (*) Mode 2 (SE3) exports the position-only path; attitude polynomials are not
 //!     supported by Poly4D. The geometric controller derives attitude from flatness.
@@ -45,7 +43,6 @@ fn main() {
         .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(1.0);
     let out_override = args.iter().position(|a| a == "--out")
         .and_then(|i| args.get(i + 1)).cloned();
-    let onboard = args.iter().any(|a| a == "--onboard");
 
     // Default kt differs per trajectory
     let default_kt = match trajectory.as_str() {
@@ -64,24 +61,14 @@ fn main() {
         }
     };
 
-    if onboard {
-        // OOT traj param format: normalised-time coefficients, 19 floats/segment.
-        // Used by flight.py --onboard (Mode D) — uploaded via traj.ci/cv/cw params.
-        let out_path = out_override.unwrap_or_else(|| {
-            format!("{}/{}_onboard.csv", CS2_DATA_DIR, label)
-        });
-        eprintln!("Writing onboard {} → {}", label, out_path);
-        write_onboard_csv(&traj, &out_path).expect("Failed to write onboard CSV");
-        eprintln!("Done. {} segments, total={:.3}s", traj.segments.len(), traj.total_time);
-    } else {
-        // HLC Poly4D format: degree-7 physical-time coefficients (existing behaviour).
-        let out_path = out_override.unwrap_or_else(|| {
-            format!("{}/{}.csv", CS2_DATA_DIR, label)
-        });
-        eprintln!("Writing {} → {}", label, out_path);
-        write_cs2_csv(&traj, &out_path).expect("Failed to write CSV");
-        eprintln!("Done. {} segments, total={:.3}s", traj.segments.len(), traj.total_time);
-    }
+    // Auto-generate output path if not specified
+    let out_path = out_override.unwrap_or_else(|| {
+        format!("{}/{}.csv", CS2_DATA_DIR, label)
+    });
+
+    eprintln!("Writing {} → {}", label, out_path);
+    write_cs2_csv(&traj, &out_path).expect("Failed to write CSV");
+    eprintln!("Done. {} segments, total={:.3}s", traj.segments.len(), traj.total_time);
 }
 
 // ── Trajectory builders ────────────────────────────────────────────────────
@@ -122,15 +109,15 @@ fn build_figure8(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     }
 
     let planner = match mode {
-        1 => TrajectoryPlanner::richter(&wps, kt, false)
+        1 => TrajectoryPlanner::richter(&wps, kt, true)
                 .expect("Figure-8 Mode 1 Richter QP failed"),
         2 => {
-            let m1 = TrajectoryPlanner::richter(&wps, kt, false)
+            let m1 = TrajectoryPlanner::richter(&wps, kt, true)
                 .expect("Figure-8 Mode 2 timing QP failed");
             let kt_durs = m1.segment_durations();
             let se3_wps: Vec<Se3Waypoint> = wps.iter()
                 .map(|w| Se3Waypoint::levelled(w.pos)).collect();
-            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, false)
+            TrajectoryPlanner::se3(&se3_wps, &kt_durs, 0.031, true)
                 .expect("Figure-8 Mode 2 SE3 QP failed")
         }
         3 => TrajectoryPlanner::paper(&wps, kt, false)
@@ -235,36 +222,6 @@ fn write_cs2_csv(traj: &SplineTrajectory, path: &str) -> std::io::Result<()> {
             write!(w, ",{:.6}", c)?;
         }
         writeln!(w, ",")?;
-    }
-
-    Ok(())
-}
-
-// ── OOT onboard CSV output ─────────────────────────────────────────────────
-
-/// Write a SplineTrajectory in OOT traj param format.
-///
-/// Format: 19 floats per segment, normalised-time (τ∈[0,1]) coefficients.
-/// Matches the firmware's g_traj_coefs layout: [duration, cx0..cx8, cy0..cy8].
-/// Read by flight.py --onboard and uploaded via traj.ci/cv/cw CRTP params.
-fn write_onboard_csv(traj: &SplineTrajectory, path: &str) -> std::io::Result<()> {
-    if let Some(parent) = std::path::Path::new(path).parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let file = fs::File::create(path)?;
-    let mut w = BufWriter::new(file);
-
-    write!(w, "duration")?;
-    for i in 0..9usize { write!(w, ",cx{}", i)?; }
-    for i in 0..9usize { write!(w, ",cy{}", i)?; }
-    writeln!(w)?;
-
-    for seg in &traj.segments {
-        write!(w, "{:.9}", seg.duration)?;
-        for &c in seg.cx.iter().chain(&seg.cy) {
-            write!(w, ",{:.9}", c)?;
-        }
-        writeln!(w)?;
     }
 
     Ok(())
