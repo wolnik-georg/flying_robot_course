@@ -195,3 +195,32 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     *m3 = logVarIdIsValid(ids[2]) ? (uint16_t)logGetUint(ids[2]) : 0u;
     *m4 = logVarIdIsValid(ids[3]) ? (uint16_t)logGetUint(ids[3]) : 0u;
 }
+
+/* ── INDI log bridge ────────────────────────────────────────────────────── */
+static float log_alp_raw_x, log_alp_raw_y, log_alp_raw_z;
+static float log_alp_x,     log_alp_y,     log_alp_z;
+static float log_tau_x,     log_tau_y,     log_tau_z;
+
+void indi_log_write(float arx, float ary, float arz,
+                    float ax,  float ay,  float az)
+{
+    log_alp_raw_x = arx; log_alp_raw_y = ary; log_alp_raw_z = arz;
+    log_alp_x = ax;      log_alp_y = ay;      log_alp_z = az;
+}
+
+void indi_tau_write(float tx, float ty, float tz)
+{
+    log_tau_x = tx; log_tau_y = ty; log_tau_z = tz;
+}
+
+LOG_GROUP_START(indi)
+  LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
+  LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
+  LOG_ADD(LOG_FLOAT, alp_raw_z, &log_alp_raw_z)
+  LOG_ADD(LOG_FLOAT, alp_x,     &log_alp_x)
+  LOG_ADD(LOG_FLOAT, alp_y,     &log_alp_y)
+  LOG_ADD(LOG_FLOAT, alp_z,     &log_alp_z)
+  LOG_ADD(LOG_FLOAT, tau_x,     &log_tau_x)
+  LOG_ADD(LOG_FLOAT, tau_y,     &log_tau_y)
+  LOG_ADD(LOG_FLOAT, tau_z,     &log_tau_z)
+LOG_GROUP_STOP(indi)
