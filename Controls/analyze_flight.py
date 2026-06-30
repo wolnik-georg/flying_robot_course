@@ -4063,6 +4063,96 @@ def plot_indi_trajectory_panel(data: dict, csv_path: str) -> None:
     plt.show()
 
 
+def plot_rpm_balance(data, csv_path):
+    """Plot per-motor RPM over time to quickly spot reflective-paper / deck issues."""
+    times = np.array(data["time_s"])
+    rpm_keys = ["rpm_m1", "rpm_m2", "rpm_m3", "rpm_m4"]
+    colors   = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+    labels   = ["M1 (front-right)", "M2 (back-right)", "M3 (back-left)", "M4 (front-left)"]
+
+    # Check that at least one RPM column has non-NaN data
+    if not any(k in data and not np.all(np.isnan(data[k])) for k in rpm_keys):
+        print("  No RPM data in this log (deck not fitted or not logging).")
+        return
+
+    roll  = np.array(data.get("roll_deg",  [np.nan]*len(times)))
+    pitch = np.array(data.get("pitch_deg", [np.nan]*len(times)))
+    z     = np.array(data.get("z",         [np.nan]*len(times)))
+
+    fig, axes = plt.subplots(3, 1, figsize=(14, 9), sharex=True)
+    fig.suptitle(os.path.basename(csv_path) + "  —  RPM balance", fontsize=11)
+
+    # ── RPM panel ────────────────────────────────────────────────────────────
+    ax = axes[0]
+    all_vals = []
+    for k, col, lbl in zip(rpm_keys, colors, labels):
+        vals = np.array(data.get(k, [np.nan]*len(times)), dtype=float)
+        vals[vals == 0] = np.nan          # zeros = sensor not reading
+        ax.plot(times, vals, color=col, lw=0.9, label=lbl)
+        all_vals.append(vals)
+    ax.set_ylabel("RPM")
+    ax.legend(loc="upper right", fontsize=8, ncol=2)
+    ax.set_title("Per-motor RPM  (gap/drop = reflective paper or deck issue)", fontsize=9)
+    ax.grid(True, alpha=0.3)
+
+    # Shade airborne region
+    airborne = z > 0.1
+    if np.any(airborne):
+        t_on  = times[np.argmax(airborne)]
+        t_off = times[len(times) - 1 - np.argmax(airborne[::-1])]
+        for a in axes:
+            a.axvspan(t_on, t_off, alpha=0.06, color="gray", label="_")
+
+    # ── RPM spread (max−min across motors) ───────────────────────────────────
+    ax2 = axes[1]
+    stack = np.vstack(all_vals)           # (4, N)
+    spread = np.nanmax(stack, axis=0) - np.nanmin(stack, axis=0)
+    spread_pct = spread / np.nanmean(stack, axis=0) * 100
+    ax2.fill_between(times, spread_pct, alpha=0.4, color="purple")
+    ax2.plot(times, spread_pct, color="purple", lw=0.8)
+    ax2.axhline(15, color="red", lw=0.8, ls="--", label="15% threshold")
+    ax2.set_ylabel("RPM spread (%)\nmax−min / mean")
+    ax2.legend(fontsize=8)
+    ax2.set_title("Motor imbalance  (>15% sustained = physical issue)", fontsize=9)
+    ax2.grid(True, alpha=0.3)
+
+    # ── Attitude ──────────────────────────────────────────────────────────────
+    ax3 = axes[2]
+    ax3.plot(times, roll,  color="steelblue", lw=0.9, label="roll")
+    ax3.plot(times, pitch, color="tomato",    lw=0.9, label="pitch")
+    ax3.axhline( 15, color="gray", lw=0.6, ls=":")
+    ax3.axhline(-15, color="gray", lw=0.6, ls=":")
+    ax3.set_ylabel("Angle (°)")
+    ax3.set_xlabel("Time (s)")
+    ax3.legend(fontsize=8)
+    ax3.set_title("Roll / Pitch  (divergence = controller lost)", fontsize=9)
+    ax3.grid(True, alpha=0.3)
+
+    # ── Per-motor stats box ───────────────────────────────────────────────────
+    ab_mask = airborne if np.any(airborne) else np.ones(len(times), dtype=bool)
+    lines = []
+    for k, col, lbl in zip(rpm_keys, colors, labels):
+        vals = np.array(data.get(k, [np.nan]*len(times)), dtype=float)
+        vals[vals == 0] = np.nan
+        ab_vals = vals[ab_mask]
+        mean = np.nanmean(ab_vals)
+        std  = np.nanstd(ab_vals)
+        pct_low = np.mean(ab_vals < 18000) * 100 if not np.all(np.isnan(ab_vals)) else 0
+        flag = " ← LOW/NOISY" if (mean < 20000 or std > 2000) else ""
+        lines.append(f"{lbl.split()[0]:3s}: {mean:6.0f} ± {std:4.0f}  ({pct_low:.0f}% <18k){flag}")
+    textstr = "Airborne stats:\n" + "\n".join(lines)
+    axes[0].text(0.01, 0.02, textstr, transform=axes[0].transAxes,
+                 fontsize=7.5, verticalalignment="bottom",
+                 bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8),
+                 fontfamily="monospace")
+
+    plt.tight_layout()
+    out = os.path.splitext(csv_path)[0] + "_rpm_balance.png"
+    plt.savefig(out, dpi=150)
+    print(f"  RPM balance : {out}")
+    plt.show()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Post-flight trajectory analysis")
     parser.add_argument(
@@ -4150,8 +4240,9 @@ def main():
         elif "yaw_spin" in base:
             traj_type = "yaw_spin"
         elif "hover" in base:
-            print("Hover flights have no planned trajectory — skipping trajectory comparison.")
-            print("CSV columns (position, attitude, gyro) are still valid for manual inspection.")
+            print("Hover flight — generating RPM balance plot.")
+            data, _ = load_csv_with_meta(csv_path)
+            plot_rpm_balance(data, csv_path)
             sys.exit(0)
         else:
             print(
@@ -4232,6 +4323,7 @@ def main():
         lap_time = 5.25 if traj_type == "fast_helix" else 10.5
         plot_helix_analysis(data, csv_path, lap_time=lap_time)
         plot_indi_trajectory_panel(data, csv_path)
+        plot_rpm_balance(data, csv_path)
         return
 
     # Yaw spin uses analytic reference, not Poly4D
@@ -4241,6 +4333,7 @@ def main():
             sys.exit(1)
         plot_yaw_spin_analysis(data, csv_path)
         plot_indi_trajectory_panel(data, csv_path)
+        plot_rpm_balance(data, csv_path)
         return
 
     # Flip / fast_flip / fast_roll use angle-tracking analysis, not Poly4D position analysis
@@ -4262,6 +4355,7 @@ def main():
         else:
             plot_flip_analysis(data, csv_path)
         plot_indi_trajectory_panel(data, csv_path)
+        plot_rpm_balance(data, csv_path)
         return
 
     if resolved_poly4d is not None:
@@ -4279,6 +4373,7 @@ def main():
             traj_type_label=traj_type, segs8=segs8,
         )
         plot_indi_trajectory_panel(data, csv_path)
+        plot_rpm_balance(data, csv_path)
         return
 
     if args.compare:
@@ -4302,6 +4397,7 @@ def main():
     else:
         plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path)
         plot_indi_trajectory_panel(data, csv_path)
+        plot_rpm_balance(data, csv_path)
 
 
 if __name__ == "__main__":
