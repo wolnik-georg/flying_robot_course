@@ -161,19 +161,6 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
 PARAM_GROUP_STOP(indi_gains)
 
-/* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
-float g_kp_xy = 28.0f;  /* position P gain X/Y [m/s² per m]  */
-float g_kp_z  = 30.0f;  /* position P gain Z                  */
-float g_kv_xy = 3.0f;   /* velocity D gain X/Y [m/s² per m/s] */
-float g_kv_z  = 7.0f;   /* velocity D gain Z                  */
-
-PARAM_GROUP_START(pos_gains)
-  PARAM_ADD(PARAM_FLOAT, kp_xy, &g_kp_xy)
-  PARAM_ADD(PARAM_FLOAT, kp_z,  &g_kp_z)
-  PARAM_ADD(PARAM_FLOAT, kv_xy, &g_kv_xy)
-  PARAM_ADD(PARAM_FLOAT, kv_z,  &g_kv_z)
-PARAM_GROUP_STOP(pos_gains)
-
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
 /* Exposes per-motor RPM via the Crazyflie log system.                       */
 /* m1rpm–m4rpm are file-static in rpm.c; this bridge uses logGetVarId() to  */
