@@ -422,7 +422,7 @@ const ENABLE_ACC_PREFILTER: bool = false;
 // 4. Tilt-compensated gravity: gz_comp = g / cos(θ) instead of g.
 //    When the drone tilts, vertical thrust = T·cos(θ) — commanding g/cos(θ) pre-compensates
 //    so altitude hold is not disturbed by tilt.  Clamped at cos(60°)=0.5 to prevent blow-up.
-const ENABLE_TILT_GRAVITY_COMP: bool = false;
+const ENABLE_TILT_GRAVITY_COMP: bool = true;
 
 // ── MOCAP BLOCK P — if O wobbles: reduce KP to match lower KV ───────────────
 // Reduce KP to keep zeta reasonable. Target: zeta ≈ 1.0 for KP=16, KV=2.83.
