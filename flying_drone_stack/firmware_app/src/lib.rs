@@ -401,6 +401,29 @@ const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 const KI_ATT: f32 = 0.0;
 
+// ── v2 improvement flags ───────────────────────────────────────────────────
+// All false = identical behaviour to active-development. Enable one at a time.
+//
+// 1. Position integral: accumulates XY/Z position error to correct steady-state offset.
+//    KI_P and KI_LIMIT are already defined above (same values used when enabled or disabled;
+//    when disabled the integral term is zeroed out below).
+const ENABLE_POSITION_INTEGRAL: bool = false;
+//
+// 2. Attitude integral: accumulates SO(3) attitude error to correct steady-state tilt
+//    from motor asymmetry or COM offset.  KI_ATT=0.03 (official Lee firmware default).
+//    When disabled KI_ATT=0.0 above makes this a no-op anyway; flag kept for clarity.
+const ENABLE_ATTITUDE_INTEGRAL: bool = false;
+//
+// 3. Butterworth pre-filter on the IMU accelerometer (same fc_bw as alpha chain).
+//    Smooths a_meas in the position INDI outer loop, reducing noise in a_indi.
+//    Only active when position INDI outer loop is enabled (ctrl_mode bit 0 = 1).
+const ENABLE_ACC_PREFILTER: bool = false;
+//
+// 4. Tilt-compensated gravity: gz_comp = g / cos(θ) instead of g.
+//    When the drone tilts, vertical thrust = T·cos(θ) — commanding g/cos(θ) pre-compensates
+//    so altitude hold is not disturbed by tilt.  Clamped at cos(60°)=0.5 to prevent blow-up.
+const ENABLE_TILT_GRAVITY_COMP: bool = false;
+
 // ── MOCAP BLOCK P — if O wobbles: reduce KP to match lower KV ───────────────
 // Reduce KP to keep zeta reasonable. Target: zeta ≈ 1.0 for KP=16, KV=2.83.
 // Uncomment and comment out O if Block O still oscillates.
@@ -464,6 +487,8 @@ struct State {
     bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
+    // v2 improvement #3: accelerometer pre-filter for position INDI outer loop
+    bw_acc_x: Butterworth2, bw_acc_y: Butterworth2, bw_acc_z: Butterworth2,
     omega_prev: Vec3,   // raw gyro from previous cycle (for finite-difference)
     tau_prev: Vec3,
     indi_init: bool,
@@ -476,6 +501,7 @@ impl State {
             i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
+            bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             omega_prev: Vec3::zero(),
             tau_prev: Vec3::zero(),
             indi_init: false,
@@ -488,6 +514,7 @@ impl State {
         self.last_tick = 0;
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
+        self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.omega_prev = Vec3::zero();
         self.tau_prev = Vec3::zero();
         self.indi_init = false;
@@ -916,10 +943,12 @@ fn geometric_step_ref(
     let e_omega   = omega.sub(omega_d);
     let j_omega   = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
+    // v2 improvement #2: attitude integral (0.03 = official Lee default; 0.0 = disabled)
+    let ki_att = if ENABLE_ATTITUDE_INTEGRAL { 0.03_f32 } else { 0.0_f32 };
     let torque = Vec3::new(
-        -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - KI_ATT*s.i_error_att.x,
-        -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - KI_ATT*s.i_error_att.y,
-        -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - KI_ATT*s.i_error_att.z,
+        -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
+        -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
+        -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - ki_att*s.i_error_att.z,
     );
     (thrust, torque)
 }
@@ -986,11 +1015,23 @@ fn controller_step(
     };
 
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
+    // v2 improvement #1: position integral (zero term when disabled)
+    let ki_term = if ENABLE_POSITION_INTEGRAL {
+        Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z)
+    } else {
+        Vec3::zero()
+    };
+    // v2 improvement #4: tilt-compensated gravity (g/cos θ instead of g)
+    let gz_comp = if ENABLE_TILT_GRAVITY_COMP {
+        GRAVITY / r[2][2].max(0.5_f32)  // r[2][2] = cos(θ); clamped at cos(60°)=0.5
+    } else {
+        GRAVITY
+    };
     let f_d = ad
         .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
-        .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
-        .add(Vec3::new(0.0, 0.0, GRAVITY))
+        .add(ki_term)
+        .add(Vec3::new(0.0, 0.0, gz_comp))
         .add(a_indi);
     let thrust_vec = f_d.scale(mass);
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
@@ -1069,10 +1110,12 @@ fn controller_step(
         let e_omega   = omega.sub(omega_d);
         let j_omega   = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
         let gyro_comp = omega.cross(j_omega);
+        // v2 improvement #2: attitude integral (same gate as geometric_step path)
+        let ki_att = if ENABLE_ATTITUDE_INTEGRAL { 0.03_f32 } else { 0.0_f32 };
         Vec3::new(
-            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - KI_ATT*s.i_error_att.x,
-            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - KI_ATT*s.i_error_att.y,
-            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - KI_ATT*s.i_error_att.z,
+            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
+            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
+            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - ki_att*s.i_error_att.z,
         )
     };
 
@@ -1091,6 +1134,7 @@ pub extern "C" fn controllerOutOfTreeInit() {
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
+        s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
     }
 }
@@ -1116,6 +1160,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     if (fc_bw - s.fc_bw_last).abs() > 0.1 {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
+        s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
     }
 
@@ -1138,9 +1183,18 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let g = &(*sensors).gyro;
     let omega = Vec3::new(g.axis[0]*deg2rad, g.axis[1]*deg2rad, g.axis[2]*deg2rad);
 
-    // Accelerometer in g units, body frame — used by position INDI outer loop
+    // Accelerometer in g units, body frame — used by position INDI outer loop.
+    // v2 improvement #3: optionally pre-filter with same Butterworth as alpha chain.
     let acc = &(*sensors).acc;
-    let acc_body = Vec3::new(acc.axis[0], acc.axis[1], acc.axis[2]);
+    let acc_body = if ENABLE_ACC_PREFILTER {
+        Vec3::new(
+            s.bw_acc_x.update(acc.axis[0]),
+            s.bw_acc_y.update(acc.axis[1]),
+            s.bw_acc_z.update(acc.axis[2]),
+        )
+    } else {
+        Vec3::new(acc.axis[0], acc.axis[1], acc.axis[2])
+    };
 
     let sp = &*setpoint;
 
