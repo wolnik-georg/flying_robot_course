@@ -423,6 +423,48 @@ const ENABLE_ACC_PREFILTER: bool = false;
 //    When the drone tilts, vertical thrust = T·cos(θ) — commanding g/cos(θ) pre-compensates
 //    so altitude hold is not disturbed by tilt.  Clamped at cos(60°)=0.5 to prevent blow-up.
 const ENABLE_TILT_GRAVITY_COMP: bool = false;
+//
+// ── Round 2: robustness / margin-widening fixes (see docs/results_2026-06-20.md) ──
+// Both share the same outer position loop (force = ff + KP·ep + KV·ev + KI·i_ep).
+// The July 1 crashes were a conditional divergence: an intermittent mocap latency/quality
+// dip eats the phase margin of the underdamped KP=40 loop (ζ≈0.26). These two fixes let the
+// loop *shrug off* that dip so KP can stay at 40 (better INDI tracking) without diverging.
+// Applied to the XY velocity-error feedback in BOTH geometric and INDI paths; Z untouched.
+//
+// 5. Velocity-feedback low-pass: 2nd-order Butterworth (VEL_FB_FC_HZ) on the XY velocity
+//    error ev before the KV·ev term. Removes the differentiated-mocap HF noise that KV
+//    amplifies, so KV can be raised (kv_xy in crazyflies.yaml, target ζ≈0.7 at KP=40)
+//    for damping *without* injecting noise. Cutoff >> loop crossover (~1 Hz) so it adds
+//    negligible phase lag at the crossover while cutting the noise.
+const ENABLE_VEL_FB_FILTER: bool = false;
+//
+// 6. Pose-glitch guard: saturation clamp (±EV_XY_MAX) on the XY velocity error. A single
+//    glitched mocap frame produces a huge ev spike → violent motor command; the clamp caps
+//    the response so one bad frame can't flip the drone. Applied to the raw ev *before* the
+//    filter so an outlier never enters the filter memory.
+const ENABLE_POSE_GLITCH_GUARD: bool = false;
+//
+// Round-2 tuning constants
+const VEL_FB_FC_HZ: f32 = 10.0;   // velocity-feedback low-pass cutoff [Hz]
+const EV_XY_MAX:    f32 = 0.6;    // max |XY velocity error| fed to KV term [m/s]
+//
+// A. INDI RPM sanity/hold guard: a motor reading implausibly low (< RPM_GUARD_LO) while a
+//    sibling is clearly airborne (> RPM_GUARD_HI) is a deck glitch — substitute the last valid
+//    reading for that motor so the INDI torque estimate (a_indi + tau_current) is not corrupted.
+//    Thresholds match the data-driven "genuine mid-flight dropout" definition (only 19:16 & 19:34
+//    on July 1). INDI-only; no effect on geometric (which never reads RPM).
+const ENABLE_RPM_GUARD: bool = false;
+const RPM_GUARD_LO: u16 = 8000;   // below this while a sibling is high ⇒ treat as glitch
+const RPM_GUARD_HI: u16 = 18000;  // a motor above this ⇒ clearly airborne (arms the guard)
+//
+// C. Gyro-feedback low-pass: 2nd-order Butterworth (GYRO_FB_FC_HZ) on the gyro used in the
+//    attitude-rate error e_omega = ω − ω_d (the KW damping term), in both geometric and INDI
+//    attitude laws. Removes high-frequency MEMS noise that KW would otherwise inject into torque.
+//    HIGH cutoff matched to the fast attitude loop (≫ velocity's 10 Hz) so it adds negligible phase
+//    lag at the attitude crossover. Only the damping feedback is filtered; the gyroscopic
+//    feedforward (ω×Jω) and the INDI α-chain keep raw ω.
+const ENABLE_GYRO_FB_FILTER: bool = false;
+const GYRO_FB_FC_HZ: f32 = 50.0;  // gyro attitude-rate-feedback low-pass cutoff [Hz]
 
 // ── MOCAP BLOCK P — if O wobbles: reduce KP to match lower KV ───────────────
 // Reduce KP to keep zeta reasonable. Target: zeta ≈ 1.0 for KP=16, KV=2.83.
@@ -489,6 +531,14 @@ struct State {
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
     // v2 improvement #3: accelerometer pre-filter for position INDI outer loop
     bw_acc_x: Butterworth2, bw_acc_y: Butterworth2, bw_acc_z: Butterworth2,
+    // v2 fix #5: XY velocity-error feedback low-pass (robustness to mocap noise)
+    bw_vel_x: Butterworth2, bw_vel_y: Butterworth2,
+    bw_vel_init: bool,
+    // v2 fix C: gyro low-pass for attitude-rate feedback (e_omega)
+    bw_gyro_x: Butterworth2, bw_gyro_y: Butterworth2, bw_gyro_z: Butterworth2,
+    bw_gyro_init: bool,
+    // v2 fix A: last valid per-motor RPM (INDI dropout hold)
+    rpm_prev: [u16; 4],
     omega_prev: Vec3,   // raw gyro from previous cycle (for finite-difference)
     tau_prev: Vec3,
     indi_init: bool,
@@ -502,6 +552,11 @@ impl State {
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
             bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
+            bw_vel_x: Butterworth2::zero(), bw_vel_y: Butterworth2::zero(),
+            bw_vel_init: false,
+            bw_gyro_x: Butterworth2::zero(), bw_gyro_y: Butterworth2::zero(), bw_gyro_z: Butterworth2::zero(),
+            bw_gyro_init: false,
+            rpm_prev: [0u16; 4],
             omega_prev: Vec3::zero(),
             tau_prev: Vec3::zero(),
             indi_init: false,
@@ -515,6 +570,11 @@ impl State {
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
         self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
+        self.bw_vel_x.reset_state(); self.bw_vel_y.reset_state();
+        self.bw_vel_init = false;
+        self.bw_gyro_x.reset_state(); self.bw_gyro_y.reset_state(); self.bw_gyro_z.reset_state();
+        self.bw_gyro_init = false;
+        self.rpm_prev = [0u16; 4];
         self.omega_prev = Vec3::zero();
         self.tau_prev = Vec3::zero();
         self.indi_init = false;
@@ -908,6 +968,53 @@ fn rpms_to_torque(rpms: [u16; 4], kts: [f32; 4]) -> Vec3 {
 // ── Reference geometric controller (preserved — identical to the geometric path
 //    inside controller_step when mode=0; kept as dead code for fallback reference) ──
 #[allow(dead_code)]
+/// v2 fixes 5 & 6: condition the XY velocity-error feedback for robustness to intermittent
+/// mocap latency/quality. Fix 6 clamps ev first (a single glitched pose frame can't command a
+/// violent motor spike, and the outlier never enters the filter memory); fix 5 then low-passes
+/// ev (removes differentiated-mocap HF noise so KV damping can be raised). Z is left untouched.
+/// No-op when both flags are false ⇒ identical behaviour to stable.
+#[inline]
+fn condition_vel_error(ev: Vec3, dt: f32, s: &mut State) -> Vec3 {
+    let mut ex = ev.x;
+    let mut ey = ev.y;
+    if ENABLE_POSE_GLITCH_GUARD {
+        ex = ex.clamp(-EV_XY_MAX, EV_XY_MAX);
+        ey = ey.clamp(-EV_XY_MAX, EV_XY_MAX);
+    }
+    if ENABLE_VEL_FB_FILTER {
+        if !s.bw_vel_init {
+            s.bw_vel_x.init(VEL_FB_FC_HZ, dt); s.bw_vel_x.seed(ex);
+            s.bw_vel_y.init(VEL_FB_FC_HZ, dt); s.bw_vel_y.seed(ey);
+            s.bw_vel_init = true;
+        }
+        ex = s.bw_vel_x.update(ex);
+        ey = s.bw_vel_y.update(ey);
+    }
+    Vec3::new(ex, ey, ev.z)
+}
+
+/// v2 fix C: low-pass the gyro used in the attitude-rate feedback term (e_omega = ω − ω_d).
+/// Removes high-frequency MEMS noise that the KW damping gain would otherwise inject into torque.
+/// High cutoff (GYRO_FB_FC_HZ) matched to the fast attitude loop ⇒ negligible phase lag at the
+/// attitude crossover. Only the damping feedback is filtered; the gyroscopic feedforward (ω×Jω)
+/// and the INDI angular-accel chain keep raw ω. Must be called every cycle for filter continuity.
+/// No-op (returns raw ω) when the flag is false ⇒ identical behaviour to stable.
+#[inline]
+fn gyro_feedback(omega: Vec3, dt: f32, s: &mut State) -> Vec3 {
+    if !ENABLE_GYRO_FB_FILTER { return omega; }
+    if !s.bw_gyro_init {
+        s.bw_gyro_x.init(GYRO_FB_FC_HZ, dt); s.bw_gyro_x.seed(omega.x);
+        s.bw_gyro_y.init(GYRO_FB_FC_HZ, dt); s.bw_gyro_y.seed(omega.y);
+        s.bw_gyro_z.init(GYRO_FB_FC_HZ, dt); s.bw_gyro_z.seed(omega.z);
+        s.bw_gyro_init = true;
+    }
+    Vec3::new(
+        s.bw_gyro_x.update(omega.x),
+        s.bw_gyro_y.update(omega.y),
+        s.bw_gyro_z.update(omega.z),
+    )
+}
+
 fn geometric_step_ref(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
@@ -916,7 +1023,7 @@ fn geometric_step_ref(
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     let ep = pd.sub(pos);
-    let ev = vd.sub(vel);
+    let ev = condition_vel_error(vd.sub(vel), dt, s);
     s.i_ep = s.i_ep.add(ep.scale(dt));
     s.i_ep = Vec3::new(
         s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
@@ -940,7 +1047,7 @@ fn geometric_step_ref(
     };
     let er = vee_half(&matsub(&mat_at_b(rd, r), &mat_at_b(r, rd)));
     s.i_error_att = s.i_error_att.add(er.scale(dt));
-    let e_omega   = omega.sub(omega_d);
+    let e_omega   = gyro_feedback(omega, dt, s).sub(omega_d);   // v2 fix C (no-op when off)
     let j_omega   = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
     let gyro_comp = omega.cross(j_omega);
     // v2 improvement #2: attitude integral (0.03 = official Lee default; 0.0 = disabled)
@@ -988,9 +1095,24 @@ fn controller_step(
     }
     let rpms_active = (m1 | m2 | m3 | m4) > 0;
 
+    // v2 fix A: INDI RPM sanity/hold guard (protects both a_indi and tau_current below).
+    // A motor reading implausibly low while a sibling is clearly airborne is a deck glitch;
+    // substitute the last valid reading for that motor. Armed only when clearly airborne
+    // (max > RPM_GUARD_HI) so it never fires pre-takeoff or during the spin-up ramp.
+    if ENABLE_RPM_GUARD && rpms_active {
+        let mx = m1.max(m2).max(m3).max(m4);
+        if mx > RPM_GUARD_HI {
+            if m1 < RPM_GUARD_LO { m1 = s.rpm_prev[0]; }
+            if m2 < RPM_GUARD_LO { m2 = s.rpm_prev[1]; }
+            if m3 < RPM_GUARD_LO { m3 = s.rpm_prev[2]; }
+            if m4 < RPM_GUARD_LO { m4 = s.rpm_prev[3]; }
+        }
+        s.rpm_prev = [m1, m2, m3, m4];
+    }
+
     // -- Position loop --------------------------------------------------------
     let ep = pd.sub(pos);
-    let ev = vd.sub(vel);
+    let ev = condition_vel_error(vd.sub(vel), dt, s);   // v2 fixes 5 & 6 (no-op when off)
     s.i_ep = s.i_ep.add(ep.scale(dt));
     s.i_ep = Vec3::new(
         s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
@@ -1070,12 +1192,16 @@ fn controller_step(
     unsafe { indi_log_write(alpha_raw.x, alpha_raw.y, alpha_raw.z,
                              alpha_meas.x, alpha_meas.y, alpha_meas.z); }
 
+    // v2 fix C: gyro used in the attitude-rate error (KW damping). Runs every cycle for filter
+    // continuity; returns raw ω when disabled. Feedforward (ω×Jω) and α-chain keep raw ω.
+    let omega_fb = gyro_feedback(omega, dt, s);
+
     // -- Attitude law ---------------------------------------------------------
     let torque = if mode & 2 != 0 {
         // INDI attitude path — reuses alpha_raw/alpha_meas computed above
 
         // alpha_ref = alpha_des - KR*eR - KW*e_omega  (Tal & Karaman Eq. 28)
-        let e_omega = omega.sub(omega_d);
+        let e_omega = omega_fb.sub(omega_d);
         let alpha_ref = Vec3::new(
             alpha_des.x - kr_xy*er.x - kw_xy*e_omega.x,
             alpha_des.y - kr_xy*er.y - kw_xy*e_omega.y,
@@ -1107,7 +1233,7 @@ fn controller_step(
         tau
     } else {
         // Geometric attitude path
-        let e_omega   = omega.sub(omega_d);
+        let e_omega   = omega_fb.sub(omega_d);
         let j_omega   = Vec3::new(JXX*omega.x, JYY*omega.y, JZZ*omega.z);
         let gyro_comp = omega.cross(j_omega);
         // v2 improvement #2: attitude integral (same gate as geometric_step path)
