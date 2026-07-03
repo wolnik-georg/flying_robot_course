@@ -1651,6 +1651,52 @@ def eval_onboard8_vel(segs, t_global):
     return _horner8_deriv(cx, tau) * inv_dur, _horner8_deriv(cy, tau) * inv_dur
 
 
+def _horner8_deriv2(c, tau):
+    """Evaluate second derivative of degree-8 polynomial wrt normalized time tau."""
+    v = 8.0 * 7.0 * c[8]
+    for k in range(7, 1, -1):
+        v = v * tau + k * (k - 1) * c[k]
+    return v
+
+
+def compute_planned_attitude_8(segs8, t_global):
+    """Compute planned roll/pitch/yaw from differential flatness of onboard degree-8 poly.
+
+    segs8: list of (duration, [cx0..cx8], [cy0..cy8]) in normalized time tau.
+    Returns (roll_deg, pitch_deg, yaw_deg).  Z is assumed flat (az=0).
+    """
+    total = sum(s[0] for s in segs8)
+    t = max(0.0, min(float(t_global), total))
+    t_acc = 0.0
+    seg = segs8[-1]
+    for s in segs8:
+        if t <= t_acc + s[0] + 1e-9:
+            seg = s
+            break
+        t_acc += s[0]
+    dur, cx, cy = seg
+    tau = max(0.0, min((t - t_acc) / dur, 1.0)) if dur > 0 else 0.0
+    inv_dur2 = (1.0 / dur) ** 2 if dur > 0 else 0.0
+    ax = _horner8_deriv2(cx, tau) * inv_dur2
+    ay = _horner8_deriv2(cy, tau) * inv_dur2
+    az = 0.0  # flat trajectory
+    f = np.array([ax, ay, az + GRAVITY])
+    f_norm = np.linalg.norm(f)
+    if f_norm < 1e-9:
+        return 0.0, 0.0, 0.0
+    zb = f / f_norm
+    xc = np.array([1.0, 0.0, 0.0])  # yaw_d = 0 for figure-8
+    zcxc = np.cross(zb, xc)
+    zcxc_n = np.linalg.norm(zcxc)
+    yb = zcxc / zcxc_n if zcxc_n > 1e-9 else np.array([0.0, 1.0, 0.0])
+    xb = np.cross(yb, zb)
+    R = np.column_stack([xb, yb, zb])
+    roll_rad = np.arctan2(R[2, 1], R[2, 2])
+    pitch_rad = -np.arcsin(-float(np.clip(R[2, 0], -1.0, 1.0)))
+    yaw_rad = np.arctan2(R[1, 0], R[0, 0])
+    return np.degrees(roll_rad), np.degrees(pitch_rad), np.degrees(yaw_rad)
+
+
 def find_onboard8_csv(label):
     """Return path to *_onboard.csv for *label*, or None if not found."""
     path = os.path.join(POLY4D_CSV_DIR, f"{label}_onboard.csv")
@@ -3382,16 +3428,19 @@ def plot_analysis(
         plan = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
 
     if segs8_ref is not None:
-        # Velocity from onboard-8 derivative; attitude not available (set to NaN).
+        # Velocity and attitude from onboard-8 reference via differential flatness.
         ref_vel = np.array([eval_onboard8_vel(segs8_ref, float(t)) for t in t_plan])
         plan_vel = np.column_stack([ref_vel[:, 0], ref_vel[:, 1], np.zeros(len(t_plan))])
-        planned_att = np.full((len(t_plan), 3), np.nan)
+        planned_att = np.array(
+            [compute_planned_attitude_8(segs8_ref, float(t)) for t in t_plan]
+        )
         # NaN-out pre-start and post-end
         total_planned_poly = sum(s[0] for s in segs8_ref)
         if phase_t_start is not None:
             _valid = (t_plan > 1e-9) & (t_plan < total_planned_poly + 1e-6)
             plan[~_valid] = np.nan
             plan_vel[~_valid] = np.nan
+            planned_att[~_valid] = np.nan
     else:
         # Planned velocity from 1st derivative
         plan_vel = np.array(
