@@ -392,10 +392,22 @@ const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
 // Strategy: keep KP high (positions are accurate), drop KV, attitude gains from Block N.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ── MOCAP BLOCK O — starting point: high KP, low KV ─────────────────────────
-// Hypothesis: KP=28 is fine (accurate mocap positions), KV=3 avoids noise amplification.
-// KP/KV are now runtime params (pos_gains.kp_xy/kp_z/kv_xy/kv_z in crazyflies.yaml).
-// Defaults match the values below: kp_xy=28, kp_z=30, kv_xy=3, kv_z=7.
+// ── MOCAP BLOCK O — CF2.1 STANDARD MOTORS — locked Jul 2 2026 ────────────────
+// Final result: Geom RMSE 2.0 cm (kt=0.05), speed limit kt=0.15 (5.32 s/lap).
+// KP/KV live in crazyflies.yaml: kp_xy=40, kv_xy=8, kp_z=30, kv_z=7.
+// Att: ωₙ=24.6 rad/s, ζ=1.35, τ_dom=92 ms.
+// const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
+// const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+// const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+// const KI_ATT: f32 = 0.0;
+
+// ── MOCAP BLOCK P — CF2.1 UPGRADED MOTORS — fresh start ──────────────────────
+// Same frame → same JXX/JYY/JZZ → start attitude gains identical to Block O.
+// Steps before flying: (1) measure AUW, update mass in crazyflies.yaml;
+//                      (2) bench-identify kt1-kt4 on thrust stand, update yaml;
+//                      (3) hover geo (ctrl_mode=0) to confirm stability;
+//                      (4) tune KR/KW up if attitude loop is sluggish.
+// KP/KV in crazyflies.yaml — start from same KP=40/KV=8 as standard drone.
 const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
 const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
 const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
@@ -412,12 +424,12 @@ const ENABLE_POSITION_INTEGRAL: bool = false;
 // 2. Attitude integral: accumulates SO(3) attitude error to correct steady-state tilt
 //    from motor asymmetry or COM offset.  KI_ATT=0.03 (official Lee firmware default).
 //    When disabled KI_ATT=0.0 above makes this a no-op anyway; flag kept for clarity.
-const ENABLE_ATTITUDE_INTEGRAL: bool = false;
+const ENABLE_ATTITUDE_INTEGRAL: bool = false;  // crashed on ground — windup before takeoff
 //
 // 3. Butterworth pre-filter on the IMU accelerometer (same fc_bw as alpha chain).
 //    Smooths a_meas in the position INDI outer loop, reducing noise in a_indi.
 //    Only active when position INDI outer loop is enabled (ctrl_mode bit 0 = 1).
-const ENABLE_ACC_PREFILTER: bool = false;
+const ENABLE_ACC_PREFILTER: bool = true;
 //
 // 4. Tilt-compensated gravity: gz_comp = g / cos(θ) instead of g.
 //    When the drone tilts, vertical thrust = T·cos(θ) — commanding g/cos(θ) pre-compensates
@@ -436,13 +448,13 @@ const ENABLE_TILT_GRAVITY_COMP: bool = false;
 //    amplifies, so KV can be raised (kv_xy in crazyflies.yaml, target ζ≈0.7 at KP=40)
 //    for damping *without* injecting noise. Cutoff >> loop crossover (~1 Hz) so it adds
 //    negligible phase lag at the crossover while cutting the noise.
-const ENABLE_VEL_FB_FILTER: bool = false;
+const ENABLE_VEL_FB_FILTER: bool = true;
 //
 // 6. Pose-glitch guard: saturation clamp (±EV_XY_MAX) on the XY velocity error. A single
 //    glitched mocap frame produces a huge ev spike → violent motor command; the clamp caps
 //    the response so one bad frame can't flip the drone. Applied to the raw ev *before* the
 //    filter so an outlier never enters the filter memory.
-const ENABLE_POSE_GLITCH_GUARD: bool = false;
+const ENABLE_POSE_GLITCH_GUARD: bool = true;
 //
 // Round-2 tuning constants
 const VEL_FB_FC_HZ: f32 = 10.0;   // velocity-feedback low-pass cutoff [Hz]
