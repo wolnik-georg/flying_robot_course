@@ -401,16 +401,17 @@ const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
 // const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 // const KI_ATT: f32 = 0.0;
 
-// ── MOCAP BLOCK P — CF2.1 UPGRADED MOTORS — fresh start ──────────────────────
-// Same frame → same JXX/JYY/JZZ → start attitude gains identical to Block O.
-// Steps before flying: (1) measure AUW, update mass in crazyflies.yaml;
-//                      (2) bench-identify kt1-kt4 on thrust stand, update yaml;
-//                      (3) hover geo (ctrl_mode=0) to confirm stability;
-//                      (4) tune KR/KW up if attitude loop is sluggish.
-// KP/KV in crazyflies.yaml — start from same KP=40/KV=8 as standard drone.
+// ── MOCAP BLOCK P — CF2.1 UPGRADED MOTORS ────────────────────────────────────
+// Upgraded motors: kt ≈ 2.16e-10 vs factory 1.46e-10 (ratio 1.48×).
+// Firmware force-torque mixer uses factory kt → actual torque = 1.48× commanded.
+// Without correction: ωₙ_eff = √1.48 × 24.6 = 29.9 rad/s → 5 Hz oscillation observed.
+// Fix: scale KR/KW down by 1/1.48 → ωₙ_eff ≈ 25.0 rad/s, ζ_eff ≈ 1.34 (same as Block O).
+// J unchanged: same frame geometry; gyro comp error from ~18% J uncertainty is negligible at hover.
+// KP/KV in crazyflies.yaml — keep at KP=40/KV=8.
+// Next step after stable hover: switch to ctrl_mode=3 (INDI) in yaml → eliminates kt mismatch.
 const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
-const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
+const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.007;
+const KW_X: f32 = 0.00075;const KW_Y: f32 = 0.00075;const KW_Z: f32 = 0.00095;
 const KI_ATT: f32 = 0.0;
 
 // ── v2 improvement flags ───────────────────────────────────────────────────
@@ -1464,6 +1465,13 @@ pub unsafe extern "C" fn controllerOutOfTree(
     };
 
     let mode = g_controller_mode;
+
+    // INDI windup guard: tau_prev integrates while unarmed (rpms=0 → falls back to tau_prev).
+    // Reset it every tick while unarmed so INDI starts from zero on first armed tick.
+    if !armed && mode & 2 != 0 {
+        s.tau_prev = Vec3::zero();
+    }
+
     let (thrust_si, torque) = controller_step(
         mode, pos, vel, &r, omega, acc_body,
         pd, vd, ad, yaw_d, omega_d_final, alpha_des, rd_override, dt, s,
