@@ -7,3 +7,9 @@
 CONFIG_APP_ENABLE=n
 CONFIG_CONTROLLER_OOT=y
 CONFIG_DECK_FORCE="bcRpm"
+# Drone has the Bitcraze thrust upgrade kit (upgraded motors + props).
+# Selects the matching mixer thrust model: THRUST_MAX 0.18 N (was 0.12),
+# THRUST2TORQUE 0.00516 (was 0.00699), and the kit's VMOTOR2THRUST curve.
+# Without this the mixer under-estimates thrust by ~1.5x (0.18/0.12) -> 31 cm
+# hover offset, 1.5x effective attitude gain, and INDI increment mismatch.
+CONFIG_CRAZYFLIE_THRUST_UPGRADE_KIT=y
