@@ -401,17 +401,16 @@ const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
 // const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 // const KI_ATT: f32 = 0.0;
 
-// ── MOCAP BLOCK P — CF2.1 UPGRADED MOTORS ────────────────────────────────────
-// Upgraded motors: kt ≈ 2.16e-10 vs factory 1.46e-10 (ratio 1.48×).
-// Firmware force-torque mixer uses factory kt → actual torque = 1.48× commanded.
-// Without correction: ωₙ_eff = √1.48 × 24.6 = 29.9 rad/s → 5 Hz oscillation observed.
-// Fix: scale KR/KW down by 1/1.48 → ωₙ_eff ≈ 25.0 rad/s, ζ_eff ≈ 1.34 (same as Block O).
-// J unchanged: same frame geometry; gyro comp error from ~18% J uncertainty is negligible at hover.
-// KP/KV in crazyflies.yaml — keep at KP=40/KV=8.
-// Next step after stable hover: switch to ctrl_mode=3 (INDI) in yaml → eliminates kt mismatch.
+// ── MOCAP BLOCK P — CF2.1 UPGRADED MOTORS (thrust upgrade kit) ────────────────
+// The 5 Hz oscillation / 31 cm hover offset were NOT a gain problem: the firmware
+// was compiled with the 2.1+ thrust model (THRUST_MAX 0.12 N) while the drone has
+// the thrust upgrade kit (0.18 N). The mixer under-estimated thrust by ~1.5× → 1.5×
+// effective attitude gain and over-thrust. Real fix: CONFIG_CRAZYFLIE_THRUST_UPGRADE_KIT=y
+// in app-config (mixer now matches hardware). With that, gains are nominal → use the
+// same values as Block O (standard). No ÷1.48 hack needed.
 const KI_P: f32 = 0.05;   const KI_LIMIT: f32 = 2.0;
-const KR_X: f32 = 0.007;  const KR_Y: f32 = 0.007;  const KR_Z: f32 = 0.007;
-const KW_X: f32 = 0.00075;const KW_Y: f32 = 0.00075;const KW_Z: f32 = 0.00095;
+const KR_X: f32 = 0.010;  const KR_Y: f32 = 0.010;  const KR_Z: f32 = 0.010;
+const KW_X: f32 = 0.00110;const KW_Y: f32 = 0.00110;const KW_Z: f32 = 0.00138;
 const KI_ATT: f32 = 0.0;
 
 // ── v2 improvement flags ───────────────────────────────────────────────────
