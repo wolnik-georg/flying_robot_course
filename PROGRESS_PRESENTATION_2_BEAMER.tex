@@ -1,0 +1,284 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+
+\definecolor{frcblue}{RGB}{28,45,68}
+\definecolor{frcaccent}{RGB}{18,118,150}
+\setbeamercolor{structure}{fg=frcblue}
+\setbeamercolor{frametitle}{fg=white,bg=frcblue}
+\setbeamertemplate{headline}{}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamertemplate{frametitle}{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth,ht=0.62cm,dp=0.22cm,leftskip=0.45cm,rightskip=0.45cm]{frametitle}
+    \usebeamerfont{frametitle}\insertframetitle
+  \end{beamercolorbox}%
+}
+
+\title[Advanced Flying Robots -- INDI Controller]{Advanced Flying Robots -- INDI Controller}
+\subtitle{Current Progress: Motion Planning + INDI on Crazyflie 2.1}
+\author{Georg Wolnik}
+\date{Motion Planning \quad--\quad INDI Controller}
+
+\newcommand{\img}[2]{%
+  \begin{center}
+    \includegraphics[width=#1\linewidth,height=0.72\textheight,keepaspectratio]{#2}
+  \end{center}
+}
+
+% full-slide image: fills available height as much as aspect ratio allows
+\newcommand{\imgh}[1]{%
+  \begin{center}
+    \includegraphics[width=\linewidth,height=0.88\textheight,keepaspectratio]{#1}
+  \end{center}
+}
+
+\newcommand{\twopics}[4]{%
+  \begin{columns}[c,totalwidth=\textwidth]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{#2}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{#4}
+    \end{column}
+  \end{columns}
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Overview}
+\begin{block}{Motion planning pipeline}
+\begin{itemize}
+  \item Minimum-snap polynomial trajectories; two timing modes: Mode 1 (\(k_t\) timing), Mode 3 (time redistribution).
+  \item Differential flatness maps the planned trajectory to the controller feedforward (thrust, attitude, \(\dot\omega_d\)).
+\end{itemize}
+\end{block}
+
+\begin{block}{INDI controller}
+\begin{itemize}
+  \item Incremental, sensor-based control law (Tal \& Karaman 2020).
+  \item Benchmarked on the CF2.1: 37\% better tracking than geometric. Port to the thrust-upgraded / brushless drone is ongoing (Next Steps).
+\end{itemize}
+\end{block}
+\end{frame}
+
+% ============================================================
+\section{Motion Planning}
+
+\begin{frame}{Planning Modes 1 And 3}
+\small
+Both modes share the same minimum-snap polynomial backbone and flatness-based attitude; they differ only in how the segment times \(T_i\) are chosen.
+
+\vspace{0.3cm}
+\begin{tabular}{p{0.07\textwidth}p{0.26\textwidth}p{0.54\textwidth}}
+\toprule
+Mode & Timing idea & Segment-time rule \\
+\midrule
+1 & \(k_t\)-based allocation & \(T_i=\max\!\big(d_i / v_{avg},\; T_{\min}\big),\qquad v_{avg}=0.5+1.5\sqrt{k_t}\) \\[6pt]
+3 & Time redistribution & \(T_i^{\mathrm{tgt}}=T_{\mathrm{tot}}\,\dfrac{J_i}{\sum_j J_j}\) (clamped to \(T_{\min}\)); then \(T_i \leftarrow T_i + \tfrac{1}{2}\big(T_i^{\mathrm{tgt}}-T_i\big)\), starting from Mode 1 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.4cm}
+{\footnotesize \(T_i\): time of segment \(i\); \(d_i=\|p_{i+1}-p_i\|\): segment length; \(v_{avg}\): average speed; \(k_t\): speed / aggressiveness scalar; \(T_{\min}=0.15\,\)s: minimum segment time; \(J_i\): snap cost of segment \(i\); \(T_{\mathrm{tot}}\): total trajectory time.}
+\end{frame}
+
+\begin{frame}{Core Objective: Minimum Snap As A QP}
+\begin{block}{Segment polynomial and snap cost (what we minimize)}
+\[
+\sigma_i(\hat t)=\sum_{k=0}^{8}c_{i,k}\hat t^k,\quad \hat t=\tfrac{\tau}{T_i}\in[0,1],
+\qquad
+J=\sum_i \frac{1}{T_i^{7}}\int_0^1\!\left(\frac{d^4\sigma_i}{d\hat t^{4}}\right)^{2} d\hat t
+\]
+\end{block}
+
+\begin{block}{Quadratic program}
+\[
+\min_{\mathbf c}\ \tfrac{1}{2}\mathbf c^\top Q\mathbf c+\mathbf q^\top\mathbf c
+\quad\text{s.t.}\quad
+A_{eq}\mathbf c=b_{eq}
+\]
+\small Equality constraints only: waypoint interpolation \(\sigma_i(0)=w_i,\ \sigma_i(1)=w_{i+1}\), and derivative continuity \(\tfrac{1}{T_i^r}\sigma_i^{(r)}(1)=\tfrac{1}{T_{i+1}^r}\sigma_{i+1}^{(r)}(0)\) for \(r=1,\dots,4\). Solved per axis; coupling re-enters through flatness. Thrust / rate / torque limits are checked \emph{after} solving.
+\end{block}
+\end{frame}
+
+% ============================================================
+\section{Planned Trajectories (Results)}
+
+\begin{frame}{Mode 1 --- Planned Figure-8 (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode1/figure8/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Planned Figure-8 (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/figure8/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Circle (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/circle/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Corner (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/corner/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Corkscrew (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/corkscrew/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Teardrop Loop (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/teardrop/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Screw (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/screw/trajectory_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{Mode 3 --- Split-S (3D Trajectory)}
+\imgh{flying_drone_stack/results/planning_sim/reference/mode3/splits/trajectory_3d_orientation.png}
+\end{frame}
+
+% ============================================================
+\section{INDI Controller}
+
+\begin{frame}{Why INDI? Incremental, Sensor-Based Control}
+\begin{block}{Geometric (model-based) attitude law}
+\[
+\tau = -K_R e_R - K_\omega e_\omega + \omega \times J\omega
+\]
+{\scriptsize where \(e_R\): attitude error, \(e_\omega\): body-rate error, \(K_R,K_\omega\): torque gains, \(J\): inertia.}\\[2pt]
+Needs an accurate model (inertia, aerodynamics, actuator mapping). Model error \(\rightarrow\) tracking error.
+\end{block}
+
+\begin{block}{INDI idea --- Incremental Nonlinear Dynamic Inversion}
+\begin{itemize}\small
+  \item Instead of the full model torque, measure the current angular acceleration + actuator torque and command only the \emph{increment} needed to reach the desired angular acceleration.
+  \item The measured \(\dot\omega\) already contains the true dynamics + disturbances $\Rightarrow$ model error largely cancels.
+  \item Applied to \emph{both} loops: torque increment (attitude) and acceleration increment (position).
+\end{itemize}
+\end{block}
+{\footnotesize Reference: Tal \& Karaman, ``Accurate Tracking of Aggressive Quadrotor Trajectories'', 2020.}
+\end{frame}
+
+\begin{frame}{INDI Control Law --- Algorithm}
+\framesubtitle{Full INDI applies the increment to \emph{both} loops (every 500 Hz cycle)}
+\small
+\renewcommand{\arraystretch}{1.4}
+\textbf{Outer loop --- position (acceleration increment)}
+\begin{center}
+\begin{tabular}{@{}l@{\hspace{1.2em}}l@{}}
+\(e_p = p_d - p,\qquad e_v = v_d - v\) & \footnotesize position / velocity error \\
+\(a_{\mathrm{meas}} = R\,a_{\mathrm{imu}} - g e_3,\quad a_{\mathrm{model}} = \tfrac{1}{m}\big(\textstyle\sum_i k_{t,i}\,\mathrm{rpm}_i^2\big)z_B - g e_3\) & \footnotesize measured vs.\ modeled accel \\
+\(f_d = a_d + K_P e_p + K_V e_v + g e_3 + (a_{\mathrm{meas}} - a_{\mathrm{model}})\) & \footnotesize \(\leftarrow\) INDI term \\
+\(T = m\,f_d \cdot z_B\) & \footnotesize collective thrust \\
+\end{tabular}
+\end{center}
+\textbf{Inner loop --- attitude (torque increment)}
+\begin{center}
+\begin{tabular}{@{}l@{\hspace{1.2em}}l@{}}
+\(e_R = \tfrac{1}{2}(R_d^\top R - R^\top R_d)^\vee,\qquad e_\omega = \omega - \omega_d\) & \footnotesize attitude / rate error \\
+\(\dot\omega_{\mathrm{ref}} = \dot\omega_d - k_r\, e_R - k_w\, e_\omega\) & \footnotesize desired angular accel \\
+\(\tau = \tau_{\mathrm{cur}} + J\big(\dot\omega_{\mathrm{ref}} - \dot\omega_{\mathrm{meas}}\big)\) & \footnotesize \(\leftarrow\) INDI term \\
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+{\scriptsize Subscript \(d\): trajectory reference; \(z_B\): body z-axis; \(a_{\mathrm{imu}}\): accelerometer; \(K_P,K_V\): position gains; \(k_r\,[\mathrm{s^{-2}}],k_w\,[\mathrm{s^{-1}}]\): INDI inner gains (\(\ne\) geometric torque gains). \(\dot\omega_{\mathrm{ref}}\) and \(\dot\omega_{\mathrm{meas}}\) share one Butterworth. Geometric mode = both INDI terms off.}
+\end{frame}
+
+\begin{frame}{INDI: Angular Acceleration And Control Effectiveness}
+\begin{block}{Measured angular acceleration \(\dot\omega_{\mathrm{meas}}\) (the critical signal)}
+\[
+\dot\omega_{\mathrm{meas}}
+=\mathrm{LP}\!\left(\frac{\omega_k-\omega_{k-1}}{\Delta t}\right),
+\qquad
+\text{2nd-order Butterworth, cutoff } f_{bw}
+\]
+{\scriptsize \(\omega_k\): current gyro sample, \(\Delta t\): control period, \(f_{bw}\): filter cutoff.} Trade-off: lower \(f_{bw}\) $\rightarrow$ less noise but more phase lag; higher $\rightarrow$ faster but noisier.
+\end{block}
+
+\begin{block}{Current torque \(\tau_{\mathrm{cur}}\) from motor speeds}
+\[
+f_i = k_{t,i}\,\mathrm{rpm}_i^2,
+\qquad
+\tau_{\mathrm{cur}} =
+\begin{bmatrix}
+\ell\,(f_3+f_4-f_1-f_2)\\
+\ell\,(f_2+f_3-f_1-f_4)\\
+c_{Q/T}\,(f_2+f_4-f_1-f_3)
+\end{bmatrix}
+\]
+\end{block}
+{\scriptsize \(f_i\): thrust of motor \(i\), \(k_{t,i}\): per-motor thrust constant, \(\mathrm{rpm}_i\): motor speed (RPM deck), \(\ell\): projected arm length, \(c_{Q/T}\): torque-to-thrust ratio. \(\tau_{\mathrm{cur}}\) and \(\dot\omega_{\mathrm{meas}}\) feed the inner-loop increment.}
+\end{frame}
+
+% ============================================================
+\section{INDI Flight Results}
+
+\begin{frame}{INDI Flight: Best Figure-8 --- Full Analysis}
+\framesubtitle{\texttt{figure8\_mode1\_kt0.05\_2026-06-20\_14-49-59.csv} --- RMSE 3.6 cm, peak speed 1.9 m/s}
+\imgh{flying_drone_stack/docs/figure8_mode1_kt0.05_2026-06-20_14-49-59_analysis.png}
+\end{frame}
+
+\begin{frame}{INDI Flight: Best Figure-8 --- 3D Orientation}
+\framesubtitle{\texttt{figure8\_mode1\_kt0.05\_2026-06-20\_14-49-59.csv} --- RMSE 3.6 cm, peak speed 1.9 m/s}
+\imgh{flying_drone_stack/docs/figure8_mode1_kt0.05_2026-06-20_14-49-59_3d_orientation.png}
+\end{frame}
+
+\begin{frame}{INDI Flight: Best Figure-8 --- Per-Axis Tracking}
+\imgh{flying_drone_stack/docs/figure8_mode1_kt0.05_2026-06-20_14-49-59_analysis_axes.png}
+\end{frame}
+
+
+\begin{frame}{Geometric vs.\ INDI --- 10 Flights Each}
+\framesubtitle{CF2.1 --- identical figure-8 (\(k_t=0.05\)) and position gains, only the attitude law differs. INDI 37\% lower RMSE, consistent with the Tal \& Karaman INDI paper.}
+\img{0.95}{flying_drone_stack/results/indi_commissioning/geo_vs_indi.png}
+\end{frame}
+
+\begin{frame}{INDI Speed Sweep --- Figure-8 Aggressiveness Limit}
+\framesubtitle{CF2.1 --- increasing \(k_t\) shortens the lap until INDI loses stability}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{cccl}
+\toprule
+\(k_t\) & Lap time [s] & XY RMSE & Status \\
+\midrule
+0.01 & 8.84 & 2.8 cm  & \textcolor{green!55!black}{stable} \\
+0.02 & 8.07 & 3.4 cm  & \textcolor{green!55!black}{stable} \\
+0.03 & 7.57 & 4.7 cm  & \textcolor{green!55!black}{stable} \\
+0.04 & 7.19 & 4.0 cm  & \textcolor{green!55!black}{stable} \\
+0.05 & 6.88 & 5.4 cm  & \textcolor{green!55!black}{stable --- best tracking} \\
+0.10 & 5.90 & 11.3 cm & \textcolor{green!55!black}{stable --- degrading} \\
+0.15 & 5.32 & 16.0 cm & \textcolor{orange!85!black}{stable --- speed limit} \\
+0.20 & 4.91 & ---     & \textcolor{red!75!black}{crash --- genuine instability} \\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+% ============================================================
+\section{Next Steps}
+
+\begin{frame}{Next Steps}
+\begin{enumerate}
+  \setlength{\itemsep}{0.5cm}
+  \item \textbf{INDI on the thrust-upgraded drone}
+  \item \textbf{INDI on the brushless platform}
+  \item \textbf{Maximize figure-8 speed while stable}
+  \item \textbf{Fly more different trajectories}
+\end{enumerate}
+\end{frame}
+
+\end{document}
