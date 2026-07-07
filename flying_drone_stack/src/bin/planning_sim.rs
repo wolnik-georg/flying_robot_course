@@ -1216,11 +1216,24 @@ fn export_planning_reference_only() {
     // Teardrop: r=0.20 h=1.20 gives 3:1 aspect ratio (proper elongated teardrop shape).
     // Mode 3 skipped — the 2.5:1 segment-length ratio causes Clarabel OtherError after
     // many sequential QP calls in this process; Mode 0 and Mode 1 are the useful ones.
-    let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.20, 1.30, 0.50, 0.20);
+    let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.20);
     let p1_teardrop = TrajectoryPlanner::Richter(
         RichterTrajectory::plan_from_times_with_accel_pins(&td_wps, &td_durs, 1.4, &td_pins, true, 0)
             .expect("m1 teardrop")
     );
+    // Teardrop variant with wide points high (pointed bottom, rounded top — aerobatic teardrop).
+    let (td_hi_wps, td_hi_durs, td_hi_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.75);
+    let p1_teardrop_hi = TrajectoryPlanner::Richter(
+        RichterTrajectory::plan_from_times_with_accel_pins(&td_hi_wps, &td_hi_durs, 1.4, &td_hi_pins, true, 0)
+            .expect("m1 teardrop_high")
+    );
+    // Racing trajectories (Mode 1 only — keeps total Clarabel QP count within the sequential limit).
+    let (oval_wps, _)        = oval_waypoints(0.8, 2.2, 12);
+    let (slalom_wps, _)      = slalom_waypoints(0.7, 2.2, 3);
+    let (tilted_oval_wps, _) = tilted_oval_waypoints(0.8, 2.2, 0.6, 1.6, 12);
+    let p1_oval   = TrajectoryPlanner::richter(&oval_wps,        kt_cfg.get(1, "oval", 0.02), true).expect("m1 oval");
+    let p1_slalom = TrajectoryPlanner::richter(&slalom_wps,      kt_cfg.get(1, "slalom", 0.03), false).expect("m1 slalom");
+    let p1_tilted = TrajectoryPlanner::richter(&tilted_oval_wps, kt_cfg.get(1, "tilted_oval", 0.02), true).expect("m1 tilted_oval");
     // Build Mode 1 / 3 planners from YAML k_t config.
     let p1_circle = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(1, "circle", 0.01), true).expect("m1 circle");
     let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   kt_cfg.get(1, "figure8", 0.008), FIG8_PERIODIC).expect("m1 fig8");
@@ -1472,7 +1485,7 @@ fn export_planning_reference_only() {
         // pin=-1.5g at apex → flatness gives body_z=(0,0,-1) (fully inverted) automatically.
         // pin=-1.5g ↔ v=2.27 m/s → seg_t=0.20s (self-consistent). max omega≈34 rad/s, thrust≈0.77 N.
         // Requires CF Brushless / Bolt — NOT CF2.1 (limit 12 rad/s, 0.55 N).
-        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.20, 1.30, 0.50, 0.20);
+        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.20);
         let traj = SplineTrajectory::plan_with_accel_pins(&td_wps, &td_durs, &td_pins, true)
             .expect("m0 teardrop");
         let p = TrajectoryPlanner::Spline(traj);
@@ -1486,6 +1499,21 @@ fn export_planning_reference_only() {
     export_flat_reference_bundle(
         &reference_dir(1, "teardrop"), &p1_teardrop, &td_wps, "teardrop", 1,
         "RichterTrajectory_accel_pinned", false,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(1, "teardrop_high"), &p1_teardrop_hi, &td_hi_wps, "teardrop_high", 1,
+        "RichterTrajectory_accel_pinned", false,
+    );
+
+    // Racing trajectories (Mode 1).
+    export_flat_reference_bundle(
+        &reference_dir(1, "oval"), &p1_oval, &oval_wps, "oval", 1, "RichterTrajectory", true,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(1, "slalom"), &p1_slalom, &slalom_wps, "slalom", 1, "RichterTrajectory", false,
+    );
+    export_flat_reference_bundle(
+        &reference_dir(1, "tilted_oval"), &p1_tilted, &tilted_oval_wps, "tilted_oval", 1, "RichterTrajectory", true,
     );
 
     // Mode 1 — export using already-built planners (no extra QP calls)
@@ -1928,6 +1956,47 @@ fn figure8_waypoints() -> (Vec<Waypoint>, Vec<f32>) {
     (wps, durs)
 }
 
+/// Racing oval: elongated ellipse that exploits the long y-corridor.
+/// `a` = x half-width, `b` = y half-length. Periodic, flat at hover height `Z`.
+/// Fits the flight space when a<=1, b<=2.5.
+fn oval_waypoints(a: f32, b: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let seg_t = 1.0_f32;
+    let wps: Vec<Waypoint> = (0..=n).map(|i| {
+        let theta = 2.0 * PI * i as f32 / n as f32;
+        Waypoint { pos: Vec3::new(a * theta.cos(), b * theta.sin(), Z), yaw: 0.0 }
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
+/// Racing slalom: single pass down the y-corridor weaving in x.
+/// `amp` = x amplitude, `y_max` = half-length, `n_gates` = number of x-lobes.
+/// Non-periodic (rest-to-rest); starts/ends centered on x=0 at both ends. Flat at `Z`.
+fn slalom_waypoints(amp: f32, y_max: f32, n_gates: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let seg_t = 0.6_f32;
+    let n = 4 * n_gates;   // 4 samples per lobe → smooth weave
+    let wps: Vec<Waypoint> = (0..=n).map(|i| {
+        let frac = i as f32 / n as f32;
+        let y = -y_max + 2.0 * y_max * frac;
+        let x = amp * (2.0 * PI * n_gates as f32 * frac).sin();
+        Waypoint { pos: Vec3::new(x, y, Z), yaw: 0.0 }
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
+/// Tilted racing oval: same elongated ellipse, but altitude tied to position so one
+/// end is low and the other high — uses the full z-band with no inversion.
+/// `z_lo`/`z_hi` are the altitude extremes. Periodic.
+fn tilted_oval_waypoints(a: f32, b: f32, z_lo: f32, z_hi: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let seg_t = 1.0_f32;
+    let z_mid = 0.5 * (z_lo + z_hi);
+    let z_amp = 0.5 * (z_hi - z_lo);
+    let wps: Vec<Waypoint> = (0..=n).map(|i| {
+        let theta = 2.0 * PI * i as f32 / n as f32;
+        Waypoint { pos: Vec3::new(a * theta.cos(), b * theta.sin(), z_mid + z_amp * theta.sin()), yaw: 0.0 }
+    }).collect();
+    (wps, vec![seg_t; n])
+}
+
 /// Helix: ascending then descending spiral.
 ///
 /// Uses `n` segments per lap (30° each for n=12) for a smooth circular cross-section.
@@ -2044,29 +2113,28 @@ fn se3_to_flat_waypoints(wps: &[Se3Waypoint]) -> Vec<Waypoint> {
 /// 7 waypoints (incl. closure): wide at 20% height, intermediate at 60%, apex at 100%.
 /// The intermediate waypoints break the long side-to-apex segments so all 6 segment
 /// lengths stay within a ~1.6:1 ratio — keeps Clarabel 1/T^7 conditioning stable.
-fn teardrop_waypoints(r: f32, h: f32, z_base: f32, seg_t: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
+fn teardrop_waypoints(r: f32, h: f32, z_base: f32, seg_t: f32, wide_frac: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
     const G: f32 = 9.81;
+    // `wide_frac` = height fraction (0..1) of the two wide (outer) waypoints.
+    //   low  (~0.20): round bottom, pointed top   → water-drop shape
+    //   high (~0.75): pointed bottom, rounded top → aerobatic teardrop loop
+    let zw = z_base + h * wide_frac;
     let wps = vec![
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),            yaw: 0.0 }, // WP0: bottom
-        Waypoint { pos: Vec3::new( r,   0.0, z_base + h * 0.20), yaw: 0.0 }, // WP1: right wide (max width, low)
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h * 0.60), yaw: 0.0 }, // WP2: centerline (acc_x naturally 0 here)
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h),         yaw: 0.0 }, // WP3: apex (inverted)
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h * 0.60), yaw: 0.0 }, // WP4: centerline
-        Waypoint { pos: Vec3::new(-r,   0.0, z_base + h * 0.20), yaw: 0.0 }, // WP5: left wide
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),            yaw: 0.0 }, // WP6: bottom (closure)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 }, // WP0: bottom
+        Waypoint { pos: Vec3::new( r,   0.0, zw),         yaw: 0.0 }, // WP1: right wide
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h), yaw: 0.0 }, // WP2: apex (inverted)
+        Waypoint { pos: Vec3::new(-r,   0.0, zw),         yaw: 0.0 }, // WP3: left wide
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 }, // WP4: bottom (closure)
     ];
-    // Distance-proportional durations. Intermediate waypoints on centerline keep all
-    // segment lengths within ~1.7:1 ratio — Clarabel 1/T^7 stays well-conditioned.
-    let d01 = (r * r + (h * 0.20) * (h * 0.20)).sqrt();
-    let d12 = (r * r + (h * 0.40) * (h * 0.40)).sqrt(); // WP1(r,h*0.20)→WP2(0,h*0.60)
-    let d23 = h * 0.40;                                   // WP2(0,h*0.60)→WP3(0,h): pure vertical
-    let t01 = seg_t.max(0.15);
-    let t12 = ((d12 / d01) * seg_t).max(0.15);
-    let t23 = ((d23 / d01) * seg_t).max(0.15);
-    let durs = vec![t01, t12, t23, t23, t12, t01];
-    // Pin a_z = -1.5g at WP3 so flatness gives body_z = (0,0,-1) → fully inverted.
-    // acc_x=0 is consistent because WP2/WP3/WP4 are all on the centerline (x=0).
-    let pins = vec![(3usize, Vec3::new(0.0, 0.0, -1.5 * G))];
+    // Distance-proportional durations (4 segments, symmetric), scaled off the shorter segment.
+    let d01 = (r * r + (h * wide_frac) * (h * wide_frac)).sqrt();                 // bottom → right wide
+    let d12 = (r * r + (h * (1.0 - wide_frac)) * (h * (1.0 - wide_frac))).sqrt(); // right wide → apex
+    let dmin = d01.min(d12);
+    let t01 = ((d01 / dmin) * seg_t).max(0.15);
+    let t12 = ((d12 / dmin) * seg_t).max(0.15);
+    let durs = vec![t01, t12, t12, t01];
+    // Pin a_z = -1.5g at WP2 (apex) → flatness gives body_z = (0,0,-1) → fully inverted.
+    let pins = vec![(2usize, Vec3::new(0.0, 0.0, -1.5 * G))];
     (wps, durs, pins)
 }
 
