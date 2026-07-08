@@ -98,23 +98,48 @@ Mode & Timing idea & Segment-time rule \\
 {\footnotesize \(T_i\): time of segment \(i\); \(d_i=\|p_{i+1}-p_i\|\): segment length; \(v_{avg}\): average speed; \(k_t\): speed / aggressiveness scalar; \(T_{\min}=0.15\,\)s: minimum segment time; \(J_i\): snap cost of segment \(i\); \(T_{\mathrm{tot}}\): total trajectory time.}
 \end{frame}
 
-\begin{frame}{Core Objective: Minimum Snap As A QP}
-\begin{block}{Segment polynomial and snap cost (what we minimize)}
+\begin{frame}{Minimum Snap --- Segment Polynomial \& Cost}
+\begin{block}{What we minimize}
 \[
 \sigma_i(\hat t)=\sum_{k=0}^{8}c_{i,k}\hat t^k,\quad \hat t=\tfrac{\tau}{T_i}\in[0,1],
 \qquad
 J=\sum_i \frac{1}{T_i^{7}}\int_0^1\!\left(\frac{d^4\sigma_i}{d\hat t^{4}}\right)^{2} d\hat t
 \]
 \end{block}
+\vspace{0.2cm}
+{\footnotesize
+\begin{tabular}{@{}ll@{}}
+\(\sigma_i\) & position polynomial, segment \(i\) (per axis) \\
+\(i\) & segment index \qquad\qquad \(k\): polynomial power (0--8) \\
+\(c_{i,k}\) & coefficients (the unknowns solved for) \\
+\(\hat t\) & normalized time, \(0\to1\) per segment \qquad \(\tau\): real time; \(\hat t=\tau/T_i\) \\
+\(T_i\) & duration of segment \(i\) [s] \\
+\(d^4\sigma_i/d\hat t^4\) & snap (4th derivative of position) \\
+\(1/T_i^{7}\) & normalized\(\to\)real time scaling \\
+\(J\) & total snap cost --- the objective (sum of snap\(^2\) over all segments) \\
+\end{tabular}}
+\end{frame}
 
-\begin{block}{Quadratic program}
+\begin{frame}{Minimum Snap --- Quadratic Program}
+\begin{block}{QP form}
 \[
 \min_{\mathbf c}\ \tfrac{1}{2}\mathbf c^\top Q\mathbf c+\mathbf q^\top\mathbf c
 \quad\text{s.t.}\quad
 A_{eq}\mathbf c=b_{eq}
 \]
-\small Equality constraints only: waypoint interpolation \(\sigma_i(0)=w_i,\ \sigma_i(1)=w_{i+1}\), and derivative continuity \(\tfrac{1}{T_i^r}\sigma_i^{(r)}(1)=\tfrac{1}{T_{i+1}^r}\sigma_{i+1}^{(r)}(0)\) for \(r=1,\dots,4\). Solved per axis; coupling re-enters through flatness. Thrust / rate / torque limits are checked \emph{after} solving.
+\small Equality constraints: waypoint interpolation \(\sigma_i(0)=w_i,\ \sigma_i(1)=w_{i+1}\); derivative continuity \(\tfrac{1}{T_i^r}\sigma_i^{(r)}(1)=\tfrac{1}{T_{i+1}^r}\sigma_{i+1}^{(r)}(0)\), \(r=1,\dots,4\). Solved per axis; coupling re-enters through flatness; thrust / rate / torque limits checked \emph{after} solving.
 \end{block}
+\vspace{0.1cm}
+{\footnotesize
+\begin{tabular}{@{}ll@{}}
+\(\mathbf c\) & stacked vector of all coefficients \(c_{i,k}\) \\
+\(Q\) & cost (Hessian) matrix encoding snap \qquad \(\mathbf c^\top Q\mathbf c\): quadratic cost (\(=J\)) \\
+\(\mathbf q,\ \mathbf q^\top\mathbf c\) & linear cost (zero for pure min-snap) \qquad \(\tfrac12\): conventional QP factor \\
+\(A_{eq},b_{eq}\) & equality-constraint matrix / right-hand side \\
+\(w_i\) & waypoint position (segment start / end) \\
+\(\sigma_i^{(r)},\ r\) & \(r\)-th derivative of segment poly; order 1 vel, 2 acc, 3 jerk, 4 snap \\
+\(1/T_i^{r}\) & \(r\)-th-derivative time scaling \\
+\end{tabular}}
 \end{frame}
 
 % ============================================================
@@ -187,20 +212,51 @@ Needs an accurate model (inertia, aerodynamics, actuator mapping). Model error \
 {\footnotesize Reference: Tal \& Karaman, ``Accurate Tracking of Aggressive Quadrotor Trajectories'', 2020.}
 \end{frame}
 
-\begin{frame}{INDI Control Law --- Algorithm}
-\framesubtitle{Full INDI applies the increment to \emph{both} loops (every 500 Hz cycle)}
+\begin{frame}{INDI Control Law --- Outer Loop (Position)}
+\framesubtitle{Acceleration increment; runs every 500 Hz cycle, produces the thrust command}
 \small
 \renewcommand{\arraystretch}{1.4}
-\textbf{Outer loop --- position (acceleration increment)}
 \begin{center}
 \begin{tabular}{@{}l@{\hspace{1.2em}}l@{}}
 \(e_p = p_d - p,\qquad e_v = v_d - v\) & \footnotesize position / velocity error \\
-\(a_{\mathrm{meas}} = R\,a_{\mathrm{imu}} - g e_3,\quad a_{\mathrm{model}} = \tfrac{1}{m}\big(\textstyle\sum_i k_{t,i}\,\mathrm{rpm}_i^2\big)z_B - g e_3\) & \footnotesize measured vs.\ modeled accel \\
+\(a_{\mathrm{meas}} = R\,a_{\mathrm{imu}} - g e_3\) & \footnotesize measured accel (world) \\
+\(a_{\mathrm{model}} = \tfrac{1}{m}\big(\textstyle\sum_i k_{t,i}\,\mathrm{rpm}_i^2\big)z_B - g e_3\) & \footnotesize modeled thrust accel \\
 \(f_d = a_d + K_P e_p + K_V e_v + g e_3 + (a_{\mathrm{meas}} - a_{\mathrm{model}})\) & \footnotesize \(\leftarrow\) INDI term \\
 \(T = m\,f_d \cdot z_B\) & \footnotesize collective thrust \\
 \end{tabular}
 \end{center}
-\textbf{Inner loop --- attitude (torque increment)}
+\vspace{0.15cm}\hrule\vspace{0.15cm}
+{\scriptsize
+\begin{columns}[t,totalwidth=\textwidth]
+\begin{column}{0.5\textwidth}
+\begin{tabular}{@{}ll@{}}
+\(p,v\) & measured position, velocity \\
+subscript \(d\) & trajectory reference (\(p_d,v_d,a_d\)) \\
+\(e_p,e_v\) & position, velocity error \\
+\(a_d\) & feedforward acceleration \\
+\(K_P,K_V\) & position / velocity gains (xy, z) \\
+\(m\) & mass \qquad \(g\): gravity \\
+\(e_3\) & world up-axis \((0,0,1)\) \\
+\end{tabular}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{tabular}{@{}ll@{}}
+\(R\) & attitude (body\(\to\)world rotation) \\
+\(z_B\) & body-up axis (3rd column of \(R\)) \\
+\(a_{\mathrm{imu}}\) & accelerometer (specific force) \\
+\(k_{t,i}\) & motor-\(i\) thrust constant \\
+\(\mathrm{rpm}_i\) & motor-\(i\) speed \\
+\(a_{\mathrm{meas}},a_{\mathrm{model}}\) & measured vs.\ modeled accel \\
+\(f_d,\ T\) & force command; collective thrust \\
+\end{tabular}
+\end{column}
+\end{columns}}
+\end{frame}
+
+\begin{frame}{INDI Control Law --- Inner Loop (Attitude)}
+\framesubtitle{Torque increment; runs every 500 Hz cycle, produces the torque command}
+\small
+\renewcommand{\arraystretch}{1.4}
 \begin{center}
 \begin{tabular}{@{}l@{\hspace{1.2em}}l@{}}
 \(e_R = \tfrac{1}{2}(R_d^\top R - R^\top R_d)^\vee,\qquad e_\omega = \omega - \omega_d\) & \footnotesize attitude / rate error \\
@@ -208,8 +264,31 @@ Needs an accurate model (inertia, aerodynamics, actuator mapping). Model error \
 \(\tau = \tau_{\mathrm{cur}} + J\big(\dot\omega_{\mathrm{ref}} - \dot\omega_{\mathrm{meas}}\big)\) & \footnotesize \(\leftarrow\) INDI term \\
 \end{tabular}
 \end{center}
-\vspace{0.2cm}
-{\scriptsize Subscript \(d\): trajectory reference; \(z_B\): body z-axis; \(a_{\mathrm{imu}}\): accelerometer; \(K_P,K_V\): position gains; \(k_r\,[\mathrm{s^{-2}}],k_w\,[\mathrm{s^{-1}}]\): INDI inner gains (\(\ne\) geometric torque gains). \(\dot\omega_{\mathrm{ref}}\) and \(\dot\omega_{\mathrm{meas}}\) share one Butterworth. Geometric mode = both INDI terms off.}
+\vspace{0.15cm}\hrule\vspace{0.15cm}
+{\scriptsize
+\begin{columns}[t,totalwidth=\textwidth]
+\begin{column}{0.5\textwidth}
+\begin{tabular}{@{}ll@{}}
+\(R,R_d\) & current, desired attitude \\
+\((\cdot)^\vee\) & 'vee': skew matrix \(\to\) 3-vector \\
+\(e_R\) & attitude (orientation) error \\
+\(\omega,\omega_d\) & measured (gyro), desired body rate \\
+\(e_\omega\) & body-rate error \\
+\(\dot\omega_d\) & feedforward angular accel \\
+\end{tabular}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{tabular}{@{}ll@{}}
+\(k_r,k_w\) & INDI inner gains [\(\mathrm{s^{-2}},\mathrm{s^{-1}}\)] \\
+\(\dot\omega_{\mathrm{ref}}\) & desired angular acceleration \\
+\(\dot\omega_{\mathrm{meas}}\) & measured ang.\ accel (next slide) \\
+\(\tau_{\mathrm{cur}}\) & current torque from RPM (next slide) \\
+\(J\) & inertia \qquad \(\tau\): torque command \\
+\end{tabular}
+\end{column}
+\end{columns}}
+\vspace{0.1cm}
+{\scriptsize \(\dot\omega_{\mathrm{ref}},\dot\omega_{\mathrm{meas}}\) share one Butterworth (matched phase); \(k_r,k_w \ne\) geometric torque gains. Geometric mode = INDI terms off \(\Rightarrow \tau \to -K_R e_R - K_\omega e_\omega + \omega\times J\omega\).}
 \end{frame}
 
 \begin{frame}{INDI: Angular Acceleration And Control Effectiveness}
