@@ -1213,20 +1213,20 @@ fn export_planning_reference_only() {
     let screw_wps = se3_to_flat_waypoints(&screw_se3_wps);
 
     let kt_cfg = load_planning_kt_config();
-    // Teardrop: r=0.20 h=1.20 gives 3:1 aspect ratio (proper elongated teardrop shape).
-    // Mode 3 skipped — the 2.5:1 segment-length ratio causes Clarabel OtherError after
-    // many sequential QP calls in this process; Mode 0 and Mode 1 are the useful ones.
-    let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.20);
-    let p1_teardrop = TrajectoryPlanner::Richter(
-        RichterTrajectory::plan_from_times_with_accel_pins(&td_wps, &td_durs, 1.4, &td_pins, true, 0)
-            .expect("m1 teardrop")
-    );
-    // Teardrop variant with wide points high (pointed bottom, rounded top — aerobatic teardrop).
-    let (td_hi_wps, td_hi_durs, td_hi_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.75);
-    let p1_teardrop_hi = TrajectoryPlanner::Richter(
-        RichterTrajectory::plan_from_times_with_accel_pins(&td_hi_wps, &td_hi_durs, 1.4, &td_hi_pins, true, 0)
-            .expect("m1 teardrop_high")
-    );
+    // Aerobatic inversions — rebuilt on the variable-speed power-loop principle (centripetal field
+    // inverts the drone via flatness; feasible on the brushless). No single-point accel pins.
+    // Teardrop: tall variable-speed loop (rx<rz) → classic elongated teardrop, inverted at the top.
+    let (td_wps, td_durs) = teardrop_loop_waypoints(0.32, 0.50, 0.72, 1.4, 2.6, 6);
+    let p1_teardrop = RichterTrajectory::plan_from_times(&td_wps, &td_durs, 0.05, true, 0).ok().map(TrajectoryPlanner::Richter);
+    // Wider teardrop variant (rounder top).
+    let (td_hi_wps, td_hi_durs) = teardrop_loop_waypoints(0.42, 0.48, 0.72, 1.5, 2.8, 6);
+    let p1_teardrop_hi = RichterTrajectory::plan_from_times(&td_hi_wps, &td_hi_durs, 0.05, true, 0).ok().map(TrajectoryPlanner::Richter);
+    // Loop-train: chained power loops down the y-corridor (a train of inversions).
+    let (looptrain_wps, looptrain_durs) = loop_train_v2_waypoints(2, 0.5, 1.4, 0.75, 1.5, 3.0, 6);
+    let p1_looptrain = RichterTrajectory::plan_from_times(&looptrain_wps, &looptrain_durs, 0.05, false, 0).ok().map(TrajectoryPlanner::Richter);
+    // Roller-coaster: sinusoidal hills + one power loop (undulating track with an inversion).
+    let (rcoaster_wps, rcoaster_durs) = roller_coaster_v2_waypoints(3.2, 0.55, 1.05, 0.5, 1.8, 1.5, 3.0, 6);
+    let p1_rcoaster  = RichterTrajectory::plan_from_times(&rcoaster_wps, &rcoaster_durs, 0.05, false, 0).ok().map(TrajectoryPlanner::Richter);
     // Racing trajectories (Mode 1 only — keeps total Clarabel QP count within the sequential limit).
     let (oval_wps, _)        = oval_waypoints(0.8, 2.2, 12);
     let (slalom_wps, _)      = slalom_waypoints(0.7, 2.2, 3);
@@ -1234,6 +1234,9 @@ fn export_planning_reference_only() {
     let p1_oval   = TrajectoryPlanner::richter(&oval_wps,        kt_cfg.get(1, "oval", 0.02), true).expect("m1 oval");
     let p1_slalom = TrajectoryPlanner::richter(&slalom_wps,      kt_cfg.get(1, "slalom", 0.03), false).expect("m1 slalom");
     let p1_tilted = TrajectoryPlanner::richter(&tilted_oval_wps, kt_cfg.get(1, "tilted_oval", 0.02), true).expect("m1 tilted_oval");
+    // Vertical power loop — genuine inversion via orbital-speed centripetal field (no accel pin).
+    let (ploop_wps, ploop_durs) = power_loop_waypoints(0.5, 0.75, 1.5, 3.0, 6);
+    let p1_ploop = RichterTrajectory::plan_from_times(&ploop_wps, &ploop_durs, 0.05, true, 0).ok().map(TrajectoryPlanner::Richter);
     // Build Mode 1 / 3 planners from YAML k_t config.
     let p1_circle = TrajectoryPlanner::richter(&circle_wps, kt_cfg.get(1, "circle", 0.01), true).expect("m1 circle");
     let p1_fig8   = TrajectoryPlanner::richter(&fig8_wps,   kt_cfg.get(1, "figure8", 0.008), FIG8_PERIODIC).expect("m1 fig8");
@@ -1481,31 +1484,23 @@ fn export_planning_reference_only() {
     }
 
     {
-        // Mode 0 teardrop: accel-pinned SplineTrajectory (manual timing).
-        // pin=-1.5g at apex → flatness gives body_z=(0,0,-1) (fully inverted) automatically.
-        // pin=-1.5g ↔ v=2.27 m/s → seg_t=0.20s (self-consistent). max omega≈34 rad/s, thrust≈0.77 N.
-        // Requires CF Brushless / Bolt — NOT CF2.1 (limit 12 rad/s, 0.55 N).
-        let (td_wps, td_durs, td_pins) = teardrop_waypoints(0.15, 1.40, 0.30, 0.20, 0.20);
-        let traj = SplineTrajectory::plan_with_accel_pins(&td_wps, &td_durs, &td_pins, true)
-            .expect("m0 teardrop");
+        // Mode 0 teardrop: same feasible tall variable-speed loop, manual timing (min-snap spline).
+        let traj = SplineTrajectory::plan(&td_wps, &td_durs, true).expect("m0 teardrop");
         let p = TrajectoryPlanner::Spline(traj);
         export_flat_reference_bundle(
             &reference_dir(0, "teardrop"), &p, &td_wps, "teardrop", 0,
-            "SplineTrajectory_accel_pinned", false,
+            "SplineTrajectory_power_loop", false,
         );
     }
 
-    // Mode 1 teardrop: use pre-built planner (QP already solved above).
-    export_flat_reference_bundle(
-        &reference_dir(1, "teardrop"), &p1_teardrop, &td_wps, "teardrop", 1,
-        "RichterTrajectory_accel_pinned", false,
-    );
-    export_flat_reference_bundle(
-        &reference_dir(1, "teardrop_high"), &p1_teardrop_hi, &td_hi_wps, "teardrop_high", 1,
-        "RichterTrajectory_accel_pinned", false,
-    );
+    // Mode 1 aerobatic inversions (variable-speed power loops; export whichever QP solved).
+    if let Some(p) = &p1_teardrop    { export_flat_reference_bundle(&reference_dir(1, "teardrop"), p, &td_wps, "teardrop", 1, "RichterTrajectory_power_loop", true); } else { eprintln!("  [skip] mode1 teardrop QP failed"); }
+    if let Some(p) = &p1_teardrop_hi { export_flat_reference_bundle(&reference_dir(1, "teardrop_high"), p, &td_hi_wps, "teardrop_high", 1, "RichterTrajectory_power_loop", true); } else { eprintln!("  [skip] mode1 teardrop_high QP failed"); }
+    if let Some(p) = &p1_looptrain { export_flat_reference_bundle(&reference_dir(1, "loop_train"), p, &looptrain_wps, "loop_train", 1, "RichterTrajectory_power_loop", false); } else { eprintln!("  [skip] mode1 loop_train QP failed"); }
+    if let Some(p) = &p1_rcoaster  { export_flat_reference_bundle(&reference_dir(1, "roller_coaster"), p, &rcoaster_wps, "roller_coaster", 1, "RichterTrajectory_power_loop", false); } else { eprintln!("  [skip] mode1 roller_coaster QP failed"); }
 
     // Racing trajectories (Mode 1).
+    if let Some(p) = &p1_ploop { export_flat_reference_bundle(&reference_dir(1, "power_loop"), p, &ploop_wps, "power_loop", 1, "RichterTrajectory", true); } else { eprintln!("  [skip] mode1 power_loop QP failed"); }
     export_flat_reference_bundle(
         &reference_dir(1, "oval"), &p1_oval, &oval_wps, "oval", 1, "RichterTrajectory", true,
     );
@@ -1959,6 +1954,120 @@ fn figure8_waypoints() -> (Vec<Waypoint>, Vec<f32>) {
 /// Racing oval: elongated ellipse that exploits the long y-corridor.
 /// `a` = x half-width, `b` = y half-length. Periodic, flat at hover height `Z`.
 /// Fits the flight space when a<=1, b<=2.5.
+/// Vertical power loop — a full circle in the XZ plane flown as a VARIABLE-speed loop
+/// (slow at the bottom, fast over the top). This is the key to feasibility on a T/W≈2
+/// brushless: a constant-speed loop is impossible (fly fast → bottom thrust m(v²/R+g)>Tmax;
+/// fly slow → top goes near-freefall, |w|=|a+g·e₃|→0 and the flatness rate ω=|ẇ|/|w| blows up).
+/// Adding energy on the way up keeps v_top high (top |w| large → bounded ω, genuine inversion)
+/// while low v_bottom keeps bottom thrust under budget. The whole loop carries a real centripetal
+/// field, so attitude emerges from flatness (Mode 1/3) — no single-point accel pin, no attitude
+/// authoring. `v_lo`/`v_hi` = speed at bottom/top [m/s]; need v_hi>√(gR) for true inversion.
+/// Returns (waypoints, durations) for `plan_from_times` (short segments bypass Richter T_MIN).
+fn power_loop_waypoints(r: f32, z_c: f32, v_lo: f32, v_hi: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    // θ=0 at the bottom, increasing over the top; periodic full circle.
+    let wps: Vec<Waypoint> = (0..=n).map(|i| {
+        let th = 2.0 * PI * i as f32 / n as f32;
+        Waypoint { pos: Vec3::new(r * th.sin(), 0.0, z_c - r * th.cos()), yaw: 0.0 }
+    }).collect();
+    // Speed profile v(θ) = v_lo + (v_hi-v_lo)·(1-cosθ)/2  → v_lo at bottom, v_hi at top.
+    let arc = 2.0 * PI * r / n as f32;
+    let durs: Vec<f32> = (0..n).map(|i| {
+        let th_mid = 2.0 * PI * (i as f32 + 0.5) / n as f32;
+        let v = v_lo + (v_hi - v_lo) * (1.0 - th_mid.cos()) * 0.5;
+        arc / v
+    }).collect();
+    (wps, durs)
+}
+
+/// Append one variable-speed vertical loop (in the XZ plane, at horizontal offset (cx,cy)) to
+/// `wps`/`durs`. Half-width `rx`, half-height `rz`, centre height `z_c`. Slow at the bottom
+/// (`v_lo`), fast over the top (`v_hi`) — same centripetal principle as `power_loop_waypoints`,
+/// so the drone inverts at the apex with a bounded body rate. Set `include_start=false` when a
+/// connector already placed the bottom waypoint (chained loops). Pushes `n` segments either way.
+fn push_vloop(wps: &mut Vec<Waypoint>, durs: &mut Vec<f32>,
+              cx: f32, cy: f32, z_c: f32, rx: f32, rz: f32,
+              v_lo: f32, v_hi: f32, n: usize, include_start: bool) {
+    for i in 0..=n {
+        if i == 0 && !include_start { continue; }
+        let th = 2.0 * PI * i as f32 / n as f32;
+        wps.push(Waypoint { pos: Vec3::new(cx + rx * th.sin(), cy, z_c - rz * th.cos()), yaw: 0.0 });
+    }
+    for i in 0..n {
+        let th0 = 2.0 * PI * i as f32 / n as f32;
+        let th1 = 2.0 * PI * (i + 1) as f32 / n as f32;
+        let d = ((rx * (th1.sin() - th0.sin())).powi(2)
+               + (rz * (th1.cos() - th0.cos())).powi(2)).sqrt();
+        let thm = 0.5 * (th0 + th1);
+        let v = v_lo + (v_hi - v_lo) * (1.0 - thm.cos()) * 0.5;
+        durs.push(d / v);
+    }
+}
+
+/// Aerobatic teardrop — a TALL variable-speed loop (rx<rz). Same feasible inversion as the
+/// power loop, but elongated so the figure reads as the classic teardrop (narrow, pointed-looking
+/// bottom; rounded inverted top). Periodic. `rx`/`rz` half-width/height, `z_c` centre height.
+fn teardrop_loop_waypoints(rx: f32, rz: f32, z_c: f32, v_lo: f32, v_hi: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let mut wps = Vec::new();
+    let mut durs = Vec::new();
+    push_vloop(&mut wps, &mut durs, 0.0, 0.0, z_c, rx, rz, v_lo, v_hi, n, true);
+    (wps, durs)
+}
+
+/// Loop-train — `n_loops` consecutive variable-speed power loops advancing down the y-corridor,
+/// linked by a straight low-speed translation at the bottom of each loop. Preserves the core idea
+/// (a train of inversions) while keeping every loop feasible. Non-periodic (rest-to-rest).
+fn loop_train_v2_waypoints(n_loops: usize, r: f32, y_span: f32, z_c: f32, v_lo: f32, v_hi: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let mut wps = Vec::new();
+    let mut durs = Vec::new();
+    let z_bot = z_c - r;
+    for k in 0..n_loops {
+        let cy = -0.5 * y_span + y_span * k as f32 / (n_loops - 1).max(1) as f32;
+        if k > 0 {
+            // straight translation at the bottom from previous loop to this one
+            wps.push(Waypoint { pos: Vec3::new(0.0, cy, z_bot), yaw: 0.0 });
+            let prev_cy = -0.5 * y_span + y_span * (k - 1) as f32 / (n_loops - 1).max(1) as f32;
+            durs.push(((cy - prev_cy).abs() / v_lo).max(0.18));
+        }
+        push_vloop(&mut wps, &mut durs, 0.0, cy, z_c, r, r, v_lo, v_hi, n, k == 0);
+    }
+    (wps, durs)
+}
+
+/// Roller-coaster — a forward run of sinusoidal hills (upright, feasible) with ONE variable-speed
+/// power loop in the middle. Preserves the core idea (an undulating track with an inversion) while
+/// staying inside the actuator envelope. Non-periodic. `y_span` total forward length, hills between
+/// `z_lo`/`z_hi`, `r` loop radius, `n` loop segments.
+fn roller_coaster_v2_waypoints(y_span: f32, z_lo: f32, z_hi: f32, r: f32, v_run: f32, v_lo: f32, v_hi: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let mut wps = Vec::new();
+    let mut durs = Vec::new();
+    let y0 = -0.5 * y_span;
+    let y_loop = y0 + 0.55 * y_span;            // where the loop sits
+    // Approach: sinusoidal hills; the last point lands on the loop bottom (y_loop, z_lo).
+    let n_hill = 8usize;
+    for i in 0..n_hill {
+        let frac = i as f32 / n_hill as f32;
+        let y = y0 + frac * (y_loop - y0);
+        let z = 0.5 * (z_lo + z_hi) + 0.5 * (z_hi - z_lo) * (2.0 * PI * 1.5 * frac).sin();
+        wps.push(Waypoint { pos: Vec3::new(0.0, y, z), yaw: 0.0 });
+        if i > 0 { durs.push(((y_loop - y0) / n_hill as f32 / v_run).max(0.18)); }
+    }
+    // Connector from last hill point to the loop bottom, then the loop itself (include_start).
+    durs.push(((y_loop - y0) / n_hill as f32 / v_run).max(0.18));
+    let z_c = z_lo + r;
+    push_vloop(&mut wps, &mut durs, 0.0, y_loop, z_c, r, r, v_lo, v_hi, n, true);
+    // Run-out: descend and level off over the last stretch.
+    let y_end = -y0;
+    let n_out = 5usize;
+    for i in 1..=n_out {
+        let frac = i as f32 / n_out as f32;
+        let y = y_loop + frac * (y_end - y_loop);
+        let z = z_lo + (z_hi - z_lo) * (1.0 - frac) * 0.4;
+        wps.push(Waypoint { pos: Vec3::new(0.0, y, z), yaw: 0.0 });
+        durs.push(((y_end - y_loop) / n_out as f32 / v_run).max(0.18));
+    }
+    (wps, durs)
+}
+
 fn oval_waypoints(a: f32, b: f32, n: usize) -> (Vec<Waypoint>, Vec<f32>) {
     let seg_t = 1.0_f32;
     let wps: Vec<Waypoint> = (0..=n).map(|i| {
@@ -1995,6 +2104,46 @@ fn tilted_oval_waypoints(a: f32, b: f32, z_lo: f32, z_hi: f32, n: usize) -> (Vec
         Waypoint { pos: Vec3::new(a * theta.cos(), b * theta.sin(), z_mid + z_amp * theta.sin()), yaw: 0.0 }
     }).collect();
     (wps, vec![seg_t; n])
+}
+
+/// Loop Train: `n_loops` vertical humps in the y-z plane, coiling forward along y, tops accel-pinned
+/// inverted. VISUALIZATION ONLY — NOT flight-feasible on the brushless: min-snap flatness spikes
+/// body-rate past the 34 rad/s envelope (clean inverting loops need Mode 2). See brushless_feasibility.py.
+fn loop_train_waypoints(n_loops: usize, r: f32, y_span: f32, z_mid: f32) -> (Vec<Waypoint>, Vec<(usize, Vec3)>) {
+    const G: f32 = 9.81;
+    let ppl = 8usize;
+    let total = n_loops * ppl;
+    let wps: Vec<Waypoint> = (0..=total).map(|i| {
+        let theta = 2.0 * PI * i as f32 / ppl as f32;
+        let frac  = i as f32 / total as f32;
+        let y = -y_span / 2.0 + y_span * frac;
+        let z = z_mid - r * theta.cos();
+        Waypoint { pos: Vec3::new(0.0, y, z), yaw: 0.0 }
+    }).collect();
+    let pins: Vec<(usize, Vec3)> = (0..n_loops)
+        .map(|k| (ppl / 2 + k * ppl, Vec3::new(0.0, 0.0, -1.5 * G)))
+        .collect();
+    (wps, pins)
+}
+
+/// Roller-Coaster: vertical wave down the corridor, crests accel-pinned inverted. VISUALIZATION
+/// ONLY — same brushless-infeasibility as loop_train (min-snap ω spikes; clean loops need Mode 2).
+fn roller_coaster_waypoints(n_humps: usize, y_span: f32, z_lo: f32, z_hi: f32) -> (Vec<Waypoint>, Vec<(usize, Vec3)>) {
+    const G: f32 = 9.81;
+    let pph = 6usize;
+    let total = n_humps * pph;
+    let z_mid = 0.5 * (z_lo + z_hi);
+    let z_amp = 0.5 * (z_hi - z_lo);
+    let wps: Vec<Waypoint> = (0..=total).map(|i| {
+        let frac = i as f32 / total as f32;
+        let y = -y_span / 2.0 + y_span * frac;
+        let z = z_mid - z_amp * (2.0 * PI * n_humps as f32 * frac).cos();
+        Waypoint { pos: Vec3::new(0.0, y, z), yaw: 0.0 }
+    }).collect();
+    let pins: Vec<(usize, Vec3)> = (0..n_humps)
+        .map(|k| (pph / 2 + k * pph, Vec3::new(0.0, 0.0, -1.5 * G)))
+        .collect();
+    (wps, pins)
 }
 
 /// Helix: ascending then descending spiral.
@@ -2115,25 +2264,23 @@ fn se3_to_flat_waypoints(wps: &[Se3Waypoint]) -> Vec<Waypoint> {
 /// lengths stay within a ~1.6:1 ratio — keeps Clarabel 1/T^7 conditioning stable.
 fn teardrop_waypoints(r: f32, h: f32, z_base: f32, seg_t: f32, wide_frac: f32) -> (Vec<Waypoint>, Vec<f32>, Vec<(usize, Vec3)>) {
     const G: f32 = 9.81;
-    // `wide_frac` = height fraction (0..1) of the two wide (outer) waypoints.
-    //   low  (~0.20): round bottom, pointed top   → water-drop shape
-    //   high (~0.75): pointed bottom, rounded top → aerobatic teardrop loop
+    // `wide_frac` = height fraction of the two wide (outer) waypoints (0.20 round-bottom, 0.75 round-top).
+    // VISUALIZATION ONLY: accel-pinned inversion — NOT flight-feasible on the brushless (min-snap ω spikes
+    // to 100s of rad/s at any tested geometry/speed; clean inverted flight needs Mode 2). See feasibility.
     let zw = z_base + h * wide_frac;
     let wps = vec![
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 }, // WP0: bottom
-        Waypoint { pos: Vec3::new( r,   0.0, zw),         yaw: 0.0 }, // WP1: right wide
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h), yaw: 0.0 }, // WP2: apex (inverted)
-        Waypoint { pos: Vec3::new(-r,   0.0, zw),         yaw: 0.0 }, // WP3: left wide
-        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 }, // WP4: bottom (closure)
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 },
+        Waypoint { pos: Vec3::new( r,   0.0, zw),         yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base + h), yaw: 0.0 }, // apex (inverted)
+        Waypoint { pos: Vec3::new(-r,   0.0, zw),         yaw: 0.0 },
+        Waypoint { pos: Vec3::new( 0.0, 0.0, z_base),     yaw: 0.0 },
     ];
-    // Distance-proportional durations (4 segments, symmetric), scaled off the shorter segment.
-    let d01 = (r * r + (h * wide_frac) * (h * wide_frac)).sqrt();                 // bottom → right wide
-    let d12 = (r * r + (h * (1.0 - wide_frac)) * (h * (1.0 - wide_frac))).sqrt(); // right wide → apex
+    let d01 = (r * r + (h * wide_frac) * (h * wide_frac)).sqrt();
+    let d12 = (r * r + (h * (1.0 - wide_frac)) * (h * (1.0 - wide_frac))).sqrt();
     let dmin = d01.min(d12);
     let t01 = ((d01 / dmin) * seg_t).max(0.15);
     let t12 = ((d12 / dmin) * seg_t).max(0.15);
     let durs = vec![t01, t12, t12, t01];
-    // Pin a_z = -1.5g at WP2 (apex) → flatness gives body_z = (0,0,-1) → fully inverted.
     let pins = vec![(2usize, Vec3::new(0.0, 0.0, -1.5 * G))];
     (wps, durs, pins)
 }
