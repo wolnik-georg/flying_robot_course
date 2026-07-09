@@ -145,10 +145,22 @@ fn mat_mul_vec(m: &Mat3, v: Vec3) -> Vec3 {
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRAVITY: f32 = 9.81;
 
-// Inertia (from official firmware / System ID)
+// Inertia (from official firmware / System ID).
+// CF2.1 standard / upgraded (default — unchanged).
+#[cfg(not(drone_bl))]
 const JXX: f32 = 16.571710e-6;
+#[cfg(not(drone_bl))]
 const JYY: f32 = 16.655602e-6;
+#[cfg(not(drone_bl))]
 const JZZ: f32 = 29.261652e-6;
+// CF2.1 Brushless (CF21BL) — PLACEHOLDER, must be measured (bifilar pendulum).
+// Rough starting guess ~1.5× CF2.1 (heavier motors/props, 0.050 m arm).
+#[cfg(drone_bl)]
+const JXX: f32 = 25.0e-6;
+#[cfg(drone_bl)]
+const JYY: f32 = 25.0e-6;
+#[cfg(drone_bl)]
+const JZZ: f32 = 44.0e-6;
 
 // ── Controller mode ────────────────────────────────────────────────────────
 // Runtime-configurable via CRTP param indi_gains.controller_mode (no reflash needed):
@@ -164,8 +176,17 @@ const JZZ: f32 = 29.261652e-6;
 // KR [1/s²]: ωₙ = √KR.  KW [1/s]: ζ = KW/(2·ωₙ).  Keep KW > KR for Routh stability.
 // Conservative start: ωₙ=10 rad/s (KR=100), ζ=1.5 (KW=30).  Target: KR=603, KW=66.
 // Filter reinit happens automatically in the controller loop when fc_bw/fc_iir change.
-const ARM_M: f32      = 0.032_526_9_f32; // √2/2 × 0.046 m (diagonal arm projection)
-const TORQUE_RATIO: f32 = 0.005_964_552_f32; // k_Q/k_T = THRUST2TORQUE [m]
+// Diagonal arm projection √2/2 × arm_length, and k_Q/k_T = THRUST2TORQUE [m].
+// CF2.1 standard / upgraded (default — unchanged): arm 0.046 m.
+#[cfg(not(drone_bl))]
+const ARM_M: f32      = 0.032_526_9_f32;
+#[cfg(not(drone_bl))]
+const TORQUE_RATIO: f32 = 0.005_964_552_f32;
+// CF2.1 Brushless (CF21BL): arm 0.050 m, THRUST2TORQUE 0.00569278844371417.
+#[cfg(drone_bl)]
+const ARM_M: f32      = 0.035_355_3_f32; // √2/2 × 0.050 m
+#[cfg(drone_bl)]
+const TORQUE_RATIO: f32 = 0.005_692_788_f32;
 
 // ── GAINS BLOCK A — our tuned gains ────────────────────────────────────────
 // Increased KP_Z/KV_Z for stiff altitude hold; light integral for XY drift.

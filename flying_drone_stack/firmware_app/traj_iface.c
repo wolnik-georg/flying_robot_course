@@ -183,17 +183,31 @@ PARAM_GROUP_STOP(pos_gains)
 void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
     static logVarId_t ids[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+#ifdef CONFIG_PLATFORM_CF21BL
+    /* Brushless: motor RPM comes from bidirectional-DShot ESC telemetry
+       (log group "motor", vars m1_rpm..m4_rpm — already mechanical RPM). */
+    static const char *group    = "motor";
+    static const char *names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"};
+#else
+    /* CF2.1 brushed: optical RPM deck (log group "rpm", vars m1..m4). */
+    static const char *group    = "rpm";
     static const char *names[4] = {"m1", "m2", "m3", "m4"};
+#endif
 
     for (int i = 0; i < 4; i++) {
         if (!logVarIdIsValid(ids[i]))
-            ids[i] = logGetVarId("rpm", names[i]);
+            ids[i] = logGetVarId(group, names[i]);
     }
 
-    *m1 = logVarIdIsValid(ids[0]) ? (uint16_t)logGetUint(ids[0]) : 0u;
-    *m2 = logVarIdIsValid(ids[1]) ? (uint16_t)logGetUint(ids[1]) : 0u;
-    *m3 = logVarIdIsValid(ids[2]) ? (uint16_t)logGetUint(ids[2]) : 0u;
-    *m4 = logVarIdIsValid(ids[3]) ? (uint16_t)logGetUint(ids[3]) : 0u;
+    uint16_t v[4];
+    for (int i = 0; i < 4; i++) {
+        v[i] = logVarIdIsValid(ids[i]) ? (uint16_t)logGetUint(ids[i]) : 0u;
+        /* DShot telemetry uses UINT16_MAX as the "invalid / no value" sentinel;
+           treat it as absent so INDI falls back instead of using garbage RPM.
+           (CF2.1 optical RPM never reaches this value, so this is a no-op there.) */
+        if (v[i] == 0xffffu) v[i] = 0u;
+    }
+    *m1 = v[0]; *m2 = v[1]; *m3 = v[2]; *m4 = v[3];
 }
 
 /* ── INDI log bridge ────────────────────────────────────────────────────── */

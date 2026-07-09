@@ -1,0 +1,12 @@
+# Crazyflie app-layer configuration — CF2.1 STANDARD motors (2.1+ propellers).
+# Selected by: make DRONE=std
+#
+# CONFIG_APP_ENABLE=n     — we do NOT use the app-layer (no appMain needed)
+# CONFIG_CONTROLLER_OOT=y — routes controllerOutOfTree* calls to our Rust lib
+# CONFIG_DECK_FORCE       — RPM deck (bcRpm) has no 1-Wire ID, must be force-enabled
+CONFIG_APP_ENABLE=n
+CONFIG_CONTROLLER_OOT=y
+CONFIG_DECK_FORCE="bcRpm"
+# Standard 2.1+ thrust model (THRUST_MAX 0.12 N). This is the firmware default, set
+# explicitly for clarity.
+CONFIG_CRAZYFLIE_21_PLUS=y
