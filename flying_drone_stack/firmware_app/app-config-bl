@@ -1,0 +1,11 @@
+# Crazyflie app-layer configuration — CF2.1 BRUSHLESS (CF21BL).
+# Selected by: make DRONE=bl  (which also loads cf21bl_defconfig as the base config,
+# setting CONFIG_PLATFORM_CF21BL, DShot ESC protocol, and motor arming).
+#
+# CONFIG_APP_ENABLE=n     — we do NOT use the app-layer (no appMain needed)
+# CONFIG_CONTROLLER_OOT=y — routes controllerOutOfTree* calls to our Rust lib
+# No RPM deck: the brushless reads motor RPM from bidirectional-DShot ESC telemetry
+# (log group "motor", vars m1_rpm..m4_rpm). Requires DSHOT_BIDIRECTIONAL.
+CONFIG_APP_ENABLE=n
+CONFIG_CONTROLLER_OOT=y
+CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y

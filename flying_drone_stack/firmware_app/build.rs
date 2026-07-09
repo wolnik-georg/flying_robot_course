@@ -15,6 +15,17 @@ fn main() {
     let fw_base = env::var("CRAZYFLIE_BASE")
         .unwrap_or_else(|_| "/home/georg/Desktop/crazyflie-firmware".to_string());
 
+    // ── Drone platform selection ───────────────────────────────────────────
+    // Selects the compile-time physical constants (arm, torque ratio, inertia) in lib.rs.
+    // Default (env unset) = CF2.1 standard/upgraded → identical to previous behavior.
+    // `DRONE_PLATFORM=bl` (set by `make DRONE=bl`) → Crazyflie 2.1 Brushless (CF21BL).
+    println!("cargo:rerun-if-env-changed=DRONE_PLATFORM");
+    println!("cargo:rustc-check-cfg=cfg(drone_bl)");
+    match env::var("DRONE_PLATFORM").as_deref() {
+        Ok("bl") | Ok("brushless") => println!("cargo:rustc-cfg=drone_bl"),
+        _ => {} // cf2 (standard / upgraded) — the default, unchanged
+    }
+
     // Re-run if any input changes.
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-env-changed=CRAZYFLIE_BASE");
