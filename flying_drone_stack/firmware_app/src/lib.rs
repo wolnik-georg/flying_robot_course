@@ -153,14 +153,14 @@ const JXX: f32 = 16.571710e-6;
 const JYY: f32 = 16.655602e-6;
 #[cfg(not(drone_bl))]
 const JZZ: f32 = 29.261652e-6;
-// CF2.1 Brushless (CF21BL) — PLACEHOLDER, must be measured (bifilar pendulum).
-// Rough starting guess ~1.5× CF2.1 (heavier motors/props, 0.050 m arm).
+// CF2.1 Brushless (CF21BL) — from Busetto et al. 2025 (arXiv:2512.14450), Table in Sec 4.1.
+// J = diag(Jx,Jy,Jz), measured on same CF21BL platform (Flow-deck v2 + AI-deck, 45 g total).
 #[cfg(drone_bl)]
-const JXX: f32 = 25.0e-6;
+const JXX: f32 = 23.951e-6;  // 2.3951e-5 kg·m²
 #[cfg(drone_bl)]
-const JYY: f32 = 25.0e-6;
+const JYY: f32 = 23.951e-6;  // 2.3951e-5 kg·m²
 #[cfg(drone_bl)]
-const JZZ: f32 = 44.0e-6;
+const JZZ: f32 = 32.347e-6;  // 3.2347e-5 kg·m²
 
 // ── Controller mode ────────────────────────────────────────────────────────
 // Runtime-configurable via CRTP param indi_gains.controller_mode (no reflash needed):
@@ -182,11 +182,12 @@ const JZZ: f32 = 44.0e-6;
 const ARM_M: f32      = 0.032_526_9_f32;
 #[cfg(not(drone_bl))]
 const TORQUE_RATIO: f32 = 0.005_964_552_f32;
-// CF2.1 Brushless (CF21BL): arm 0.050 m, THRUST2TORQUE 0.00569278844371417.
+// CF2.1 Brushless (CF21BL): arm from Figure 2 (paper). TORQUE_RATIO = kM/kF from paper Sec 6.3.
+// kF = 3.72e-8 Ns²/rad², kM = 7.73e-11 Nms²/rad² → kM/kF = 0.002078 m.
 #[cfg(drone_bl)]
-const ARM_M: f32      = 0.035_355_3_f32; // √2/2 × 0.050 m
+const ARM_M: f32      = 0.035_355_3_f32; // √2/2 × 0.050 m — confirmed from paper Fig 2
 #[cfg(drone_bl)]
-const TORQUE_RATIO: f32 = 0.005_692_788_f32;
+const TORQUE_RATIO: f32 = 0.002_077_9_f32; // kM/kF = 7.73e-11/3.72e-8 (Busetto et al. 2025)
 
 // ── GAINS BLOCK A — our tuned gains ────────────────────────────────────────
 // Increased KP_Z/KV_Z for stiff altitude hold; light integral for XY drift.
@@ -676,6 +677,7 @@ extern "C" {
     static mut g_traj_n_segs:    u8;
     static mut g_traj_mode:      u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
     static mut g_traj_start:     u8;  // laptop writes 1; firmware latches T0
+    static mut g_traj_reps:      u8;  // 0=loop forever; N=self-stop after N laps
     static mut g_traj_origin_x:  f32;
     static mut g_traj_origin_y:  f32;
     static mut g_traj_hover_z:   f32;
@@ -1391,6 +1393,23 @@ pub unsafe extern "C" fn controllerOutOfTree(
         TRAJ_T0 = 0;
     } else if g_traj_mode == 1 && g_traj_start == 1 && TRAJ_T0 == 0 {
         TRAJ_T0 = tick; // latch start time
+    }
+
+    // One-shot self-stop: when traj.reps > 0 and all laps are done, switch back to
+    // Mode B passthrough so the laptop keepalive cmdFullState takes over immediately
+    // at the rest-to-rest endpoint — no early-stop margin needed on the laptop side.
+    if g_traj_mode == 1 && TRAJ_T0 > 0 && g_traj_reps > 0 {
+        let t_elapsed = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
+        let n_segs_chk = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
+        let mut total_dur_chk = 0.0_f32;
+        for i in 0..n_segs_chk {
+            total_dur_chk += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+        }
+        if total_dur_chk > 0.0 && t_elapsed >= total_dur_chk * g_traj_reps as f32 {
+            g_traj_mode = 0;
+            g_traj_start = 0;
+            TRAJ_T0 = 0;
+        }
     }
 
     let (pd, vd, ad, omega_d, alpha_des) = if g_traj_mode == 1 && TRAJ_T0 > 0 {

@@ -1958,11 +1958,21 @@ def onboard8_metrics_over_window(data, segs8, t_start, duration_s, time_shift=0.
     else:
         lag_corr = 0.0
 
+    planned_att = np.array([
+        compute_planned_attitude_8(segs8, max(0.0, tr + time_shift)) for tr in t_rel
+    ])
+    roll_a  = data["roll_deg"][mask]  if "roll_deg"  in data else np.zeros(int(np.sum(mask)))
+    pitch_a = data["pitch_deg"][mask] if "pitch_deg" in data else np.zeros(int(np.sum(mask)))
+    roll_err_rms  = float(np.sqrt(np.nanmean((roll_a  - planned_att[:, 0]) ** 2)))
+    pitch_err_rms = float(np.sqrt(np.nanmean((pitch_a - planned_att[:, 1]) ** 2)))
+
     return {
-        "xy_rms":   float(np.sqrt(np.nanmean(err_xy ** 2))),
-        "3d_rms":   float(np.sqrt(np.nanmean(err_3d ** 2))),
-        "xy_max":   float(np.nanmax(err_xy)),
-        "lag_corr": lag_corr,
+        "xy_rms":        float(np.sqrt(np.nanmean(err_xy ** 2))),
+        "3d_rms":        float(np.sqrt(np.nanmean(err_3d ** 2))),
+        "xy_max":        float(np.nanmax(err_xy)),
+        "lag_corr":      lag_corr,
+        "roll_err_rms":  roll_err_rms,
+        "pitch_err_rms": pitch_err_rms,
     }
 
 
@@ -2016,6 +2026,8 @@ def analyze_figure8_with_comparison(
         print(f"  Onboard8 Geom RMSE XY (shape)  : {geom['xy_rms']*100:.1f} cm")
         print(f"  Onboard8 RMSE 3D  uncal / cal  : {m_uncal['3d_rms']*100:.1f} / "
               f"{m_cal['3d_rms']*100:.1f} cm")
+        print(f"  Roll err  (flatness)            : {m_cal['roll_err_rms']:.1f}°")
+        print(f"  Pitch err (flatness)             : {m_cal['pitch_err_rms']:.1f}°")
 
         plot_analysis(
             data, segs, traj_type_label, speed_scale, xy_scale, loop, csv_path,
@@ -2053,6 +2065,8 @@ def analyze_figure8_with_comparison(
     print(f"  Geom RMSE XY  (shape only)   : {geom['xy_rms']*100:.1f} cm")
     print(f"  Poly4D RMSE 3D  uncal / cal  : {m_uncal['3d_rms']*100:.1f} / "
           f"{m_cal['3d_rms']*100:.1f} cm")
+    print(f"  Roll err  (flatness)          : {m_cal['roll_err_rms']:.1f}°")
+    print(f"  Pitch err (flatness)           : {m_cal['pitch_err_rms']:.1f}°")
 
     plot_analysis(
         data, segs, traj_type_label, ss_cal, xy_scale, loop, csv_path,

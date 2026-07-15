@@ -93,6 +93,7 @@ uint8_t g_traj_att_cw    = 0;     /* commit flag: laptop sets 1; Rust clears to 
 uint8_t g_traj_n_segs    = 0;     /* number of valid segments in g_traj_coefs  */
 uint8_t g_traj_mode      = 0;     /* 0 = passthrough (Mode B), 1 = onboard eval (Mode D) */
 uint8_t g_traj_start     = 0;     /* laptop writes 1 to start; firmware latches T0        */
+uint8_t g_traj_reps      = 0;     /* 0 = loop forever; N = self-stop after N laps         */
 float   g_traj_origin_x  = 0.0f;  /* EKF x offset sampled before takeoff [m]             */
 float   g_traj_origin_y  = 0.0f;  /* EKF y offset sampled before takeoff [m]             */
 float   g_traj_hover_z   = 1.0f;  /* constant flight altitude [m]                        */
@@ -107,6 +108,7 @@ uint8_t g_traj_coef_cw   = 0;     /* commit flag: laptop sets 1; Rust clears to 
 PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, mode,     &g_traj_mode)
   PARAM_ADD(PARAM_UINT8, start,    &g_traj_start)
+  PARAM_ADD(PARAM_UINT8, reps,     &g_traj_reps)
   PARAM_ADD(PARAM_UINT8, nseg,     &g_traj_n_segs)
   PARAM_ADD(PARAM_FLOAT, ox,       &g_traj_origin_x)
   PARAM_ADD(PARAM_FLOAT, oy,       &g_traj_origin_y)
