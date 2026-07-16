@@ -156,6 +156,10 @@ kv_z:  10.0
 **Best Pitch err:** 4.9°  
 **Standard drone reference:** 3.87 cm (kr=1050, kw=87, τ_slow=69ms)
 
+> **Updated 2026-07-15:** After fixing the trajectory endpoint jerk (`traj.reps=1` firmware self-stop),
+> 11 consecutive flights achieved mean **3.7 cm ± 0.2 cm** — matching the standard drone reference.
+> See Section 8 for the full statistics.
+
 ---
 
 ## 6. Why the Gap to 3.87 cm Remains
@@ -181,30 +185,53 @@ is caused by the motor bandwidth gap (kr 1050 vs 603), which is caused by the he
 
 ---
 
-## 7. Best Flight Plots — `12-47-54` (kt=0.05, kr=603/kw=90, fc_bw=70)
+## 8. Full-Session Statistics — 2026-07-15 (n=11, kr=603/kw=90, fc_bw=70, kt=0.05)
 
-**Metrics:** Phase XY RMSE = 5.1 cm · Geom RMSE = 2.3 cm · Roll err = 5.4° · Pitch err = 4.9°
+**Configuration:** identical to Section 5 final config. All flights stable, full trajectory executed.  
+**Change vs July 11:** `traj.reps=1` self-stop firmware feature active — clean endpoint, no end-of-lap jerk.
 
-### Main dashboard
+| Log (2026-07-15) | Phase XY RMSE | Geom RMSE | Roll err | Pitch err |
+|-----------------|--------------|-----------|---------|-----------|
+| 16-25-47        | 3.9 cm       | 2.7 cm    | 5.1°    | 3.4°      |
+| 16-26-16        | 3.8 cm       | 2.4 cm    | 4.9°    | 3.5°      |
+| 16-26-56        | 3.9 cm       | 2.7 cm    | 4.8°    | 3.3°      |
+| 16-30-50        | 3.9 cm       | 2.5 cm    | 4.4°    | 3.7°      |
+| 16-33-19        | **3.2 cm**   | **2.2 cm**| 5.3°    | 3.4°      |
+| 16-33-49        | 3.6 cm       | 2.4 cm    | 5.5°    | 3.4°      |
+| 16-34-22        | 4.0 cm       | 2.6 cm    | 6.3°†   | 4.9°†     |
+| 16-34-53        | 3.7 cm       | 2.4 cm    | 5.3°    | 3.4°      |
+| 16-35-24        | 3.7 cm       | 2.3 cm    | 4.6°    | 3.8°      |
+| 16-35-54        | 3.6 cm       | 2.4 cm    | 5.4°    | 3.5°      |
+| 16-36-25        | 3.6 cm       | 2.3 cm    | 5.2°    | 3.7°      |
+| **Mean**        | **3.7 cm**   | **2.4 cm**| **5.2°**| **3.6°**  |
+| **Median**      | **3.7 cm**   | **2.4 cm**| **5.2°**| **3.5°**  |
+| **Std**         | **0.2 cm**   | **0.2 cm**| **0.5°**| **0.4°**  |
 
-![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_analysis.png)
+† 16-34-22 is the session outlier — attitude errors notably higher than all other flights (probable brief disturbance or mocap hiccup mid-flight). All other flights: roll 4.4–5.5°, pitch 3.3–3.8°.
 
-### Per-axis positions
+**Key result:** Mean Phase XY RMSE = **3.7 cm** — matches the standard drone INDI reference (3.87 cm from June 20 2026).  
+Std = 0.2 cm confirms this is **consistent**, not a lucky single flight.  
+The upgraded drone with correct thrust model (0.18 N) + kt=2.25–2.53e-10 + kr=603/kw=90 + fc_bw=70 achieves parity with the standard drone despite slower motor dynamics (τ_att=137ms vs 69ms), thanks to the position gains (kp=40/kv=8) being correctly matched to the attitude bandwidth ceiling.
 
-![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_analysis_axes.png)
+### Best Flight Plots — `16-33-19` (Phase XY RMSE = 3.2 cm · Geom RMSE = 2.2 cm · Roll err = 5.3° · Pitch err = 3.4°)
 
-### Kinematics
+#### Main dashboard
+![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis.png)
 
-![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_analysis_kinematics.png)
+#### Per-axis positions
+![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_axes.png)
 
-### 3D orientation
+#### Kinematics
+![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_kinematics.png)
 
-![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_3d_orientation.png)
+#### 3D orientation
+![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_3d_orientation.png)
 
-### INDI internals
+#### INDI internals
+![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_indi_panel.png)
 
-![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_indi_panel.png)
+#### RPM balance
+![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_rpm_balance.png)
 
-### RPM balance
+---
 
-![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-11_12-47-54_rpm_balance.png)
