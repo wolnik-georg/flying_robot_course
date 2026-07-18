@@ -152,6 +152,15 @@ float g_indi_mass   = 0.0364f;   /* all-up mass [kg] — CF2.1 + USD + RPM, meas
    or from motor-mechanical lag (persists either way). 0 = normal (RPM feedback when available). */
 uint8_t g_indi_ff_free = 0;
 
+/* Filter order for the INDI angular-acceleration measurement chain (2026-07-18).
+   0 = legacy: diff(raw omega) -> Butterworth -> alpha_meas. Today's exact behaviour,
+       byte-identical -- standard/upgraded validated gains and results are unaffected.
+   1 = paper order: Butterworth(raw omega) -> diff -> alpha_meas. Matches Tal & Karaman 2021
+       Sec. III-D and stock crazyflie-firmware controller_indi.c (filter_pqr then
+       finite_difference_from_filter) -- verified against both papers and the stock C
+       implementation before adding this, not a guess. Default OFF; enable per-drone in yaml. */
+uint8_t g_indi_filt_order = 0;
+
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
@@ -166,6 +175,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
   PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
+  PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
