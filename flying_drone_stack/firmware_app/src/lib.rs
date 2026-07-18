@@ -654,6 +654,8 @@ extern "C" {
     static mut g_indi_kt4:    f32;
     static mut g_indi_fc_bw:  f32;
     static mut g_indi_mass:   f32;
+    // H1a diagnostic: force tau_current = tau_prev even when RPM deck is active (0=off, 1=on)
+    static mut g_indi_ff_free: u8;
     // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
@@ -1250,8 +1252,10 @@ fn controller_step(
             s.bw_ref_z.update(alpha_ref.z),
         );
 
-        // tau_current from per-motor RPM^2 (falls back to tau_prev when deck absent)
-        let tau_current = if rpms_active {
+        // tau_current from per-motor RPM^2 (falls back to tau_prev when deck absent, or when
+        // H1a diagnostic ff_free forces feed-forward-free mode even with the deck active)
+        let ff_free = unsafe { g_indi_ff_free } != 0;
+        let tau_current = if rpms_active && !ff_free {
             rpms_to_torque([m1, m2, m3, m4], [kt1, kt2, kt3, kt4])
         } else {
             s.tau_prev
