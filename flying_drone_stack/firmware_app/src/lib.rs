@@ -559,8 +559,14 @@ struct State {
     i_ep: Vec3,
     i_error_att: Vec3,
     last_tick: u32,
-    // INDI filter chain: raw omega → diff → BW → α_meas
+    // INDI filter chain (legacy order, default): raw omega → diff → BW → α_meas
     bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
+    // INDI filter chain (paper order, filt_order=1): raw omega → BW → diff → α_meas
+    // Tal & Karaman 2021 / stock crazyflie-firmware controller_indi.c both filter the gyro
+    // BEFORE differentiating, not after. Separate filter instances from bw_x/y/z (legacy) and
+    // from bw_gyro_x/y/z (v2 fix C, e_omega feedback, different cutoff) to keep both paths intact.
+    bw_pre_x: Butterworth2, bw_pre_y: Butterworth2, bw_pre_z: Butterworth2,
+    omega_filt_prev: Vec3,   // previous FILTERED gyro (for paper-order finite-difference)
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
     // v2 improvement #3: accelerometer pre-filter for position INDI outer loop
@@ -584,6 +590,8 @@ impl State {
         Self {
             i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
+            bw_pre_x: Butterworth2::zero(), bw_pre_y: Butterworth2::zero(), bw_pre_z: Butterworth2::zero(),
+            omega_filt_prev: Vec3::zero(),
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
             bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             bw_vel_x: Butterworth2::zero(), bw_vel_y: Butterworth2::zero(),
@@ -602,6 +610,8 @@ impl State {
         self.i_error_att = Vec3::zero();
         self.last_tick = 0;
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
+        self.bw_pre_x.reset_state(); self.bw_pre_y.reset_state(); self.bw_pre_z.reset_state();
+        self.omega_filt_prev = Vec3::zero();
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
         self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.bw_vel_x.reset_state(); self.bw_vel_y.reset_state();
@@ -656,6 +666,8 @@ extern "C" {
     static mut g_indi_mass:   f32;
     // H1a diagnostic: force tau_current = tau_prev even when RPM deck is active (0=off, 1=on)
     static mut g_indi_ff_free: u8;
+    // 0 = legacy diff-then-filter order (default), 1 = paper order (filter-then-diff)
+    static mut g_indi_filt_order: u8;
     // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
@@ -1216,16 +1228,38 @@ fn controller_step(
     // (mode & 2 == 0) they are not used for torque but are visible in indi_state log.
     if !s.indi_init {
         s.omega_prev = omega;
+        s.omega_filt_prev = omega;
         s.indi_init = true;
     }
     let inv_dt = if dt > 1e-9 { 1.0 / dt } else { 500.0 };
-    let alpha_raw  = omega.sub(s.omega_prev).scale(inv_dt);
-    let alpha_meas = Vec3::new(
-        s.bw_x.update(alpha_raw.x),
-        s.bw_y.update(alpha_raw.y),
-        s.bw_z.update(alpha_raw.z),
-    );
+    // alpha_raw: always the unfiltered diff of raw omega, kept for logging/comparison
+    // regardless of filt_order — semantics of the logged "raw" signal stay stable.
+    let alpha_raw = omega.sub(s.omega_prev).scale(inv_dt);
     s.omega_prev = omega;
+
+    // filt_order (indi_gains.filt_order, default 0): which α_meas the CONTROL LAW actually
+    // uses. 0 = legacy (diff raw omega, then BW-filter the result) — today's exact behaviour,
+    // byte-identical, standard/upgraded gains stay valid. 1 = paper order (Tal & Karaman 2021
+    // Sec. III-D + stock crazyflie-firmware controller_indi.c: BW-filter omega FIRST, then
+    // differentiate) — verified against both papers and the stock C implementation before
+    // implementing; not just a local guess.
+    let filt_order = unsafe { g_indi_filt_order } != 0;
+    let alpha_meas = if filt_order {
+        let omega_filt = Vec3::new(
+            s.bw_pre_x.update(omega.x),
+            s.bw_pre_y.update(omega.y),
+            s.bw_pre_z.update(omega.z),
+        );
+        let a = omega_filt.sub(s.omega_filt_prev).scale(inv_dt);
+        s.omega_filt_prev = omega_filt;
+        a
+    } else {
+        Vec3::new(
+            s.bw_x.update(alpha_raw.x),
+            s.bw_y.update(alpha_raw.y),
+            s.bw_z.update(alpha_raw.z),
+        )
+    };
     unsafe { indi_log_write(alpha_raw.x, alpha_raw.y, alpha_raw.z,
                              alpha_meas.x, alpha_meas.y, alpha_meas.z); }
 
@@ -1298,6 +1332,7 @@ pub extern "C" fn controllerOutOfTreeInit() {
         const DT: f32 = 0.002_f32;
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
+        s.bw_pre_x.init(fc_bw, DT); s.bw_pre_y.init(fc_bw, DT); s.bw_pre_z.init(fc_bw, DT);
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
         s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
@@ -1324,6 +1359,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let fc_bw = g_indi_fc_bw;
     if (fc_bw - s.fc_bw_last).abs() > 0.1 {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
+        s.bw_pre_x.init(fc_bw, DT_NOM); s.bw_pre_y.init(fc_bw, DT_NOM); s.bw_pre_z.init(fc_bw, DT_NOM);
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
         s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;

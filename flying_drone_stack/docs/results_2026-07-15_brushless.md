@@ -375,6 +375,164 @@ try 30/20 to see if attenuating that band in the α-filter reduces `tau_x` ampli
 the 2026-07-16 fc_bw sweep found the *frequency* pinned regardless of cutoff (that test predates
 the current kr/kw and the deck).
 
+### 4b-locked. Configuration pushed to `crazyflies.yaml` 2026-07-18, superseded same day
+
+**⚠️ Superseded by §4b-h1a-retraction below** — `kr`/`kw` here were dropped to 900/84 later the
+same day once the "hardware ceiling" conclusion this snapshot was based on turned out to be
+wrong. Kept as the historical record of what was flown for the H1a test.
+
+Firmware flashed with the `ff_free` toggle (§4b-diagnosis-toggle) same day.
+
+```yaml
+# indi_gains
+ctrl_mode: 3
+kr: 1300.0
+kw: 120.0             # kr=1300/kw=120: best hover roll/pitch sigma without excessive lag (tau_dom=83ms)
+kr_z: 1300.0
+kw_z: 120.0
+fc_bw: 60.0
+mass: 0.041
+kt1: 4.1623e-10
+kt2: 4.0592e-10
+kt3: 4.1116e-10
+kt4: 4.0631e-10
+ff_free: 0             # set to 1 ONLY for the H1a A/B test below, then back to 0
+# pos_gains
+kp_xy: 40.0
+kp_z:  30.0
+kv_xy: 8.0
+kv_z:  10.0
+```
+
+**⚠️ Unresolved**: this is a locked *starting point* for the H1a test, not a confirmed-clean
+config — the 7–8 Hz `tau_x`/`alp_x` residual from §4b-diagnosis is still present at kw=120 (only
+less visible in the angle than at kw=90). Do not treat this as "tuning done" until H1a determines
+whether that residual is fixable.
+
+**Next flight session — run in this order:**
+1. ~~**H1a A/B (priority)**: hover at the locked config above, `ff_free=0` then `ff_free=1`~~ **✅ DONE 2026-07-18.**
+2. Depending on the H1a result, follow the branch already laid out in §4b-diagnosis-toggle
+   (software fix vs. accept/compensate/reconsider-INDI).
+3. Only after H1a is resolved: resume the fc_bw re-sweep (§4b, lower priority) and then proceed
+   to §4c (kt speed sweep) and §4d (accel-pinned maneuvers) as originally planned.
+
+### 4b-h1a-result. H1a A/B result — flown 2026-07-18 (17-04-57 = ff_free=0, 17-05-49 = ff_free=1)
+
+Both flights: locked config (kr=1300, kw=120, kp_xy=40, kv_xy=8, fc_bw=60), same physical setup,
+back-to-back.
+
+| Signal | ff_free=0 | ff_free=1 | Change |
+|---|---|---|---|
+| Pos RMSE | 0.67 cm | 0.30 cm | noise-level, no real difference |
+| Roll σ | 0.90° | 0.82° | essentially unchanged |
+| Pitch σ | 0.86° | 0.79° | essentially unchanged |
+| **gyro_x σ** | **17.0 °/s** | **17.7 °/s** | **unchanged** |
+| **gyro/roll/pitch peak freq** | **~5.8 Hz** | **~2.7–6.1 Hz (still ~5–6 Hz band)** | **same band, not removed** |
+| tau_x σ | 0.0057 | 0.0010 | 5.7× smaller |
+| tau_x peak freq | 5.82 Hz | 5.16 Hz | same band |
+
+**Verdict: motor-mechanical lag, confirmed — the RPM-feedback path is not the driver.** The
+physical body oscillation (gyro, roll, pitch) is essentially identical with or without RPM
+feedback driving `tau_current` — same amplitude, same ~5–6 Hz band, in both flights. `tau_x`
+itself got 5.7× quieter with `ff_free=1`, but that's an artifact of the diagnostic: forcing
+`tau_current = tau_prev` turns the INDI law into a smooth accumulator that no longer reacts to
+noisy RPM measurements — it doesn't mean the airframe stopped oscillating, and the gyro data
+confirms it didn't. This rules out telemetry/model desync as the cause.
+
+~~**This closes the H1 branch from §1 (2026-07-16).** The ~5–8 Hz limit cycle... is a real,
+physical, motor/prop mechanical-response oscillation on this airframe — not fixable by any
+combination of KR/KW/KV/KP/fc_bw gain tuning...~~
+
+### 4b-h1a-retraction. ⚠️ "Hardware ceiling" conclusion retracted 2026-07-18 — was wrong
+
+The H1a A/B result above (RPM-feedback path is not the driver) is still correct on its own terms,
+but the conclusion drawn from it — "motor-mechanical lag, hardware ceiling, gains can't fix it" —
+does not survive a check that should have been done before writing it: **the same internal-signal
+FFT was never run on a standard-drone log for comparison.** Doing that check now:
+
+| Signal | Standard (`hover_mode0_2026-06-18_19-07-19.csv`, kr=1050/kw=87) | Brushless (kr=1300/kw=120) | Ratio |
+|---|---|---|---|
+| Roll/pitch σ | 0.89° / 0.86° | 0.82° / 0.79° | same |
+| **gyro_x/y σ** | **5.8 / 7.0 °/s** | **17.7 / 16.9 °/s** | **~3× larger on brushless** |
+| gyro/alp peak freq | ~4.3 Hz | ~5–6 Hz | somewhat higher |
+
+**The oscillation exists on the standard drone too**, at real non-trivial amplitude (17×
+prominence in gyro, not noise floor) — it is not brushless-specific. It is an inherent property
+of the INDI incremental torque law (`tau_current + J·(alpha_ref_filt − alpha_meas)` differentiates
+noisy gyro data by construction), present on every platform this project has flown INDI on. The
+brushless amplitude is 3× bigger, not qualitatively different, and 3× is consistent with a gain
+amplification effect, not a distinct hardware mechanism.
+
+**Also inconsistent with "brushless motors are laggier"**: brushless tolerated `kr` up to 1800
+without ever fully diverging (BL-att4, bounded oscillation only), while the **standard drone
+crashed outright at kr=1100–1300** (`results_2026-06-20.md` §2). If brushless motors had genuinely
+slower/higher-inertia actuation, its kr ceiling should be *lower* than standard's, not higher.
+This directly contradicts the motor-mechanical-lag framing and was missed before writing §4b-h1a-result.
+
+**Corrected diagnosis: gain amplification, not hardware.** The locked config was running
+`kr=1300`, well above where brushless's own figure-8 RMSE plateaus — **BL-att1 at kr=900 already
+gives the same 3.9 cm as kr=1800** (§3 table); pushing kr past 900 bought nothing on tracking.
+Higher kr directly amplifies gyro-differentiation noise through `kr·er`/`kw·e_omega` into
+`alpha_ref`, and through `J·(alpha_ref − alpha_meas)` into torque — a mundane, tunable effect,
+not a mechanical actuator limit.
+
+**Next test (replaces the retracted "accept the residual" recommendation)**: dropped
+`kr: 1300→900, kw: 120→84` in `crazyflies.yaml` (kw scaled to keep ζ≈1.4, matching BL-att1) —
+this costs nothing on RMSE (already at the plateau) and should be checked for whether gyro σ
+drops toward the standard drone's ~6–7°/s. If it does, this is a fully tunable effect and further
+kr reduction (or improved kt/mass calibration — `mass=0.041` has been flagged unverified since
+2026-07-15, paper says 45 g, worth actually weighing the drone) is the correct lever, not
+actuator-lag compensation or abandoning INDI.
+
+### 4b-kr-kw-2. kr/kw re-sweep 2026-07-18 (hover) — kr=900 was worse, kw has a hard ceiling
+
+| kr | kw | ζ_att | Roll σ | Pitch σ | gyro_x σ | gyro_y σ |
+|---|---|---|---|---|---|---|
+| 800 | 120 | 2.12 | 0.91° | 2.09° | 15.2 °/s | 22.9 °/s |
+| 900 | 84 | 1.40 | 1.26° / 1.04° | 1.25° / 1.29° | 20.3 / 18.9 °/s | 20.7 / 20.8 °/s |
+| 1000 | 120 | 1.90 | 0.99° | 1.04° | 16.8 °/s | 16.3 °/s |
+| 1500 | 120 | 1.55 | 0.68° | 0.82° | 16.2 °/s | 18.9 °/s |
+| **1500** | **180** | **2.33** | **0.54°** | **0.65°** | **13.3–14.1 °/s** | **13.5–13.9 °/s** |
+| 1500 | 220 | 2.85 | — | — | — | — |
+| 1500 | 260 | — | — | — | — | — |
+
+Insight: dropping kr to 900 made gyro σ worse, not better — the lever is absolute **kw**, not kr. kw=220 and 260 both aborted/degraded outright (hard ceiling, not gradual). Locked: **kr=1500, kw=180**.
+
+### 4b-fc-bw-2. fc_bw re-sweep 2026-07-18 (hover, kr=1500/kw=180 locked)
+
+| fc_bw | Pos RMSE | Roll σ | Pitch σ | gyro_x σ | gyro_y σ | tau_x σ |
+|---|---|---|---|---|---|---|
+| 100 | 0.67 cm | 0.96° | 0.98° | 16.6 °/s | 17.8 °/s | 0.0068 |
+| 90 | 0.28 cm | 0.82° | 0.84° | 18.5 °/s | 16.5 °/s | 0.0013 |
+| 80 | 0.31 cm | 0.79° | 0.82° | 15.6 °/s | 15.2 °/s | 0.0011 |
+| 70 | 0.30 cm | 1.03° | 0.87° | 17.0 °/s | 15.7 °/s | 0.0012 |
+| 60 | 0.49 cm | 1.19° | 1.20° | 18.0 °/s | 17.1 °/s | 0.0013 |
+| 50 | 0.33 cm | 0.96° | 0.88° | 16.4 °/s | 14.9 °/s | 0.0012 |
+| 40 | 0.31 cm | 0.84° | 0.87° | 16.1 °/s | 16.0 °/s | 0.0012 |
+| 30 | 0.38 cm | 1.03° | 1.00° | 17.9 °/s | 17.1 °/s | 0.0013 |
+| 20 | 0.32 cm | 0.69° | 0.67° | 17.8 °/s | 17.3 °/s | 0.0014 |
+
+Insight: gyro σ is flat (15.6–18.5 °/s, noise-level scatter) across the entire 20–100 Hz range — fc_bw is not a lever here. Only fc_bw=100 stands out with 5× more raw `tau_x` noise. Keep fc_bw=60.
+
+### 4b-geo-vs-indi. Geometric vs full-INDI, same drone/session/pos-gains, 2026-07-18
+
+| Mode | gyro_x σ | gyro_y σ | Roll σ | Pitch σ | gyro peak freq | alp prominence |
+|---|---|---|---|---|---|---|
+| Geometric (17-53-49) | 9.1 °/s | 6.6 °/s | 0.77° | 0.55° | 1.9 Hz | 4.7× (noise floor) |
+| Geometric (17-54-27) | 9.6 °/s | 7.3 °/s | 0.71° | 0.61° | 2.0 Hz | 4.1× (noise floor) |
+| Full INDI (kr=1500/kw=180/fc_bw=60) | 18.0 °/s | 17.1 °/s | 1.19° | 1.20° | 1.3–6.9 Hz (mixed) | 8–10× (real peak) |
+
+Insight: geometric shows no persistent 5–8 Hz peak (noise floor only) — the oscillation only exists when INDI's incremental law is active. INDI differentiates gyro to get `alpha_meas`; every `fc_bw` tested (20–100 Hz) is at/above the 5–8 Hz band, so none of them actually attenuate it.
+
+### 4b-fc-bw-10. fc_bw=10 test, 2026-07-18 — refuted, made it much worse
+
+| Config | gyro_x σ | gyro_y σ | Roll σ | Pitch σ |
+|---|---|---|---|---|
+| Geometric (fresh, same session) | 4.6 °/s | 5.4 °/s | 0.57° | 0.43° |
+| **INDI fc_bw=10** | **52.2 °/s** | **65.3 °/s** | **3.46°** | **4.74°** |
+
+Insight: fc_bw=10 is ~3-4× *worse* than the 20-100 Hz flat range, not better — the filter's own added phase lag destabilizes the loop instead of removing the oscillation. This closes off fc_bw entirely: useful range is 20-100 Hz (fc_bw=60 stays locked), and every lever tried (kr, kw, kv, kp, ff_free, fc_bw) fails to close the gap to geometric's ~5-10°/s gyro σ. INDI's floor on this platform is ~13-18°/s gyro σ — an exhausted-search result, not a knob not yet found.
+
 ### 4c. After gains are locked — kt speed sweep
 
 Once 4b settles, repeat the standard-drone kt sweep (`results_2026-06-20.md` §5) at the locked
