@@ -4,8 +4,12 @@
 #
 # CONFIG_APP_ENABLE=n     — we do NOT use the app-layer (no appMain needed)
 # CONFIG_CONTROLLER_OOT=y — routes controllerOutOfTree* calls to our Rust lib
-# No RPM deck: the brushless reads motor RPM from bidirectional-DShot ESC telemetry
-# (log group "motor", vars m1_rpm..m4_rpm). Requires DSHOT_BIDIRECTIONAL.
+# EXPERIMENT (2026-07-16): force-enable the optical RPM deck on the brushless too, exactly
+# like the brushed app-config/app-config-std. The bcRpm driver has vid/pid=0x00 (no 1-Wire
+# ID) so it NEVER auto-detects — it must be force-enabled at build time here. Without this
+# the rpm.* log group stays 0 no matter what the yaml deck.bcRpm param says.
+# To return to DShot telemetry: delete CONFIG_DECK_FORCE below (keep DSHOT_BIDIRECTIONAL).
 CONFIG_APP_ENABLE=n
 CONFIG_CONTROLLER_OOT=y
 CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y
+CONFIG_DECK_FORCE="bcRpm"

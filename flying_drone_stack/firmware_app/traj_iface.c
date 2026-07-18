@@ -147,6 +147,10 @@ float g_indi_kt4    = 1.6119e-10f;
 float g_indi_fc_bw  = 60.0f;     /* Butterworth cutoff [Hz] — applied to alpha_raw and alpha_ref */
 float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat with old yaml files) */
 float g_indi_mass   = 0.0364f;   /* all-up mass [kg] — CF2.1 + USD + RPM, measured 36.4g */
+/* H1a diagnostic (2026-07-18): force tau_current = tau_prev even when the RPM deck IS active,
+   to isolate whether the ~7-8 Hz tau_x/alp_x limit cycle comes from the RPM-feedback path itself
+   or from motor-mechanical lag (persists either way). 0 = normal (RPM feedback when available). */
+uint8_t g_indi_ff_free = 0;
 
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
@@ -161,6 +165,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, fc_bw,  &g_indi_fc_bw)
   PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
+  PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
@@ -186,10 +191,16 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
     static logVarId_t ids[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
 #ifdef CONFIG_PLATFORM_CF21BL
-    /* Brushless: motor RPM comes from bidirectional-DShot ESC telemetry
-       (log group "motor", vars m1_rpm..m4_rpm — already mechanical RPM). */
+    /* EXPERIMENT (2026-07-16): read the optical RPM deck (group "rpm", m1..m4) on the
+       brushless too — exactly like the brushed drones — to test whether the DShot
+       telemetry delay is what makes attitude INDI limit-cycle at ~7 Hz. Both the deck
+       and DShot report *mechanical* RPM, so kt stays the same scale (re-ID as a check).
+       To revert to bidirectional-DShot ESC telemetry, swap the two lines below back. */
+    static const char *group    = "rpm";
+    static const char *names[4] = {"m1", "m2", "m3", "m4"};
+    /* DShot (default brushless source — restore to switch back):
     static const char *group    = "motor";
-    static const char *names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"};
+    static const char *names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"}; */
 #else
     /* CF2.1 brushed: optical RPM deck (log group "rpm", vars m1..m4). */
     static const char *group    = "rpm";
