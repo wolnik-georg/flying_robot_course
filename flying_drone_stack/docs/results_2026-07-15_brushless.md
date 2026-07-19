@@ -533,7 +533,79 @@ Insight: geometric shows no persistent 5–8 Hz peak (noise floor only) — the 
 
 Insight: fc_bw=10 is ~3-4× *worse* than the 20-100 Hz flat range, not better — the filter's own added phase lag destabilizes the loop instead of removing the oscillation. This closes off fc_bw entirely: useful range is 20-100 Hz (fc_bw=60 stays locked), and every lever tried (kr, kw, kv, kp, ff_free, fc_bw) fails to close the gap to geometric's ~5-10°/s gyro σ. INDI's floor on this platform is ~13-18°/s gyro σ — an exhausted-search result, not a knob not yet found.
 
-### 4c. After gains are locked — kt speed sweep
+### 4b-spectrum. Frequency analysis 2026-07-18 — root cause is broadband mechanical vibration
+
+Note: the limit cycle affects **full INDI in general** (hover AND figure-8 — it shows up as the
+figure-8 roll/pitch flatness error and the same 3-10 Hz band), not just hover. FFT of gyro + accel,
+airborne steady window (100 Hz logs, Nyquist 50 Hz):
+
+| Band | BL geometric | STD geometric | BL/STD | BL INDI |
+|---|---|---|---|---|
+| gyro 0.3-3 Hz | 6449 | 854 | 7.5× | 5296 |
+| gyro 3-10 Hz | 4621 | 973 | 4.7× | **8939** (limit cycle) |
+| gyro 10-20 Hz | 1442 | 486 | 3.0× | 4625 |
+| gyro 20-40 Hz | 1318 | 342 | 3.9× | 3274 |
+| **accel 0.3-3 Hz** | **5.07** | **1.54** | **3.3×** | 8.93 |
+
+Insight: brushless is ~3-7× noisier than standard across the WHOLE spectrum (no single peak → not
+notchable), in **both gyro and accel** — and accel never touches INDI's differentiation, so this is
+real airframe vibration, not an INDI artifact. INDI differentiates the gyro → amplifies the
+broadband HF → 5.8 Hz limit cycle. Can't be filtered out without lag that destabilizes (see
+fc_bw=10) → the fix must reduce the vibration at the source.
+
+### 4b-bandwidth. Root cause (first-principles + data): our attitude loop resonates in the vibration band
+
+The decisive finding. Stock crazyflie-firmware INDI (proven on this drone, other groups) vs ours,
+gains mapped to the same units (att_err[rad], rate[rad/s] → accel[rad/s²]):
+
+| | Stock (proven) | Ours | ratio |
+|---|---|---|---|
+| KR (att→accel) | 120 | 1500 | 12.5× |
+| KW (rate→accel) | 24 | 180 | 7.5× |
+| fc_bw | 8 Hz | 60 Hz | — |
+| **ωₙ = √KR** | **1.7 Hz** | **6.2 Hz** | — |
+
+Insight: our attitude-loop natural frequency ωₙ=√1500=**6.2 Hz lands exactly on the measured
+limit cycle (5.8-6.9 Hz)** — we tuned the loop to resonate inside the vibration band. Stock's
+ωₙ=1.7 Hz sits safely below it. Even our lowest tested kr=603 (ωₙ=3.9 Hz) never cleared the band;
+**the low-bandwidth regime was never tested.** This is why other groups succeed: they run a
+low-bandwidth loop (7-12× lower gains) that doesn't ring with the vibration.
+
+Correction to §4b-fc-bw-10 / prior "lower fc_bw" note: low cutoff ALONE is NOT the fix. An 8 Hz
+filter barely touches a 6 Hz oscillation; the stock config is stable at 8 Hz only because its LOW
+gains leave phase margin to afford the filter lag. Our fc_bw=10 blew up because high gains left no
+margin. **Low cutoff and low gains are a package.**
+
+### 4b-next. Candidate fixes to test next session (ranked)
+
+| # | Fix | Type | Status | Expectation |
+|---|-----|------|--------|-------------|
+| 1 | **Low-bandwidth regime: KR≈200-350, KW≈35-50 (ζ≈1.2-1.4), fc_bw≈10-15, filt_tau=1, filt_order=1** | firmware, flashed | ⬜ KEY TEST | ωₙ≈2.3-3 Hz, below vibration band — matches stock's proven regime, never tried |
+| 2 | `filt_tau=1` A/B at current gains first (isolate its effect) | firmware, flashed | ⬜ | phase-match sanity check |
+| 3 | Prop balance / bearings / mounts | physical | ⬜ | reduces vibration at source; complementary |
+| — | `j_scale` | firmware | ✅ ruled out | J data-confirmed correct (TLS=24e-6) |
+
+**Fundamental tradeoff (important — low gains are NOT the final answer):** high gains → tight
+tracking but vibration-sensitive; low gains → clean but loose tracking. This is why official/low
+gains gave loose tracking on the standard drone (21→12→3.9 cm as gains rose) and we raised them —
+which worked there ONLY because standard vibration is low. Brushless (3-5× vibration) can't afford
+high gains without flicker. So:
+- Low-bandwidth test tomorrow = DIAGNOSTIC + clean baseline (confirms flicker is gain×vibration),
+  expect figure-8 RMSE to worsen vs 4.2 cm.
+- Endgame for clean AND tight = reduce vibration physically (props/bearings/mounts) → then climb
+  gains back up to the highest ωₙ that stays clean at the lower vibration.
+- Hopeful: our INDI has trajectory feedforward (α_des snap) the stock firmware lacks, so low
+  feedback gains should track better for us than the stock-firmware comparison implies — measure it.
+
+Confirmed dead ends (high-bandwidth regime only): kr 603-1800, ff_free/RPM path, torque_ratio
+(yaw-only), inertia J. **Fallback that works:** geometric = clean hover + figure-8; INDI fig-8 4.2 cm.
+
+### 4c. After the oscillation is resolved — trajectories + kt speed sweep
+
+Once full-INDI attitude is clean, THEN proceed to performance/aggression:
+1. kt speed sweep at locked gains (below) — find the tracking wall.
+2. Other trajectories (circle, helix, loop) at increasing kt.
+3. Accel-pinned aggressive maneuvers (§4d).
 
 Once 4b settles, repeat the standard-drone kt sweep (`results_2026-06-20.md` §5) at the locked
 gains: kt = 0.01 → 0.03 → 0.05 → 0.10 → ... , tracking Phase XY RMSE + peak roll/pitch + lap time.

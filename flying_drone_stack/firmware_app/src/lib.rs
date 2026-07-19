@@ -182,12 +182,19 @@ const JZZ: f32 = 32.347e-6;  // 3.2347e-5 kg·m²
 const ARM_M: f32      = 0.032_526_9_f32;
 #[cfg(not(drone_bl))]
 const TORQUE_RATIO: f32 = 0.005_964_552_f32;
-// CF2.1 Brushless (CF21BL): arm from Figure 2 (paper). TORQUE_RATIO = kM/kF from paper Sec 6.3.
-// kF = 3.72e-8 Ns²/rad², kM = 7.73e-11 Nms²/rad² → kM/kF = 0.002078 m.
+// CF2.1 Brushless (CF21BL): arm from Figure 2 (paper).
 #[cfg(drone_bl)]
 const ARM_M: f32      = 0.035_355_3_f32; // √2/2 × 0.050 m — confirmed from paper Fig 2
+// TORQUE_RATIO (2026-07-18, fixed): matches the ACTUAL compiled stock-mixer THRUST2TORQUE for
+// CF21BL (platform_defaults_cf21bl.h, CONFIG_ENABLE_THRUST_BAT_COMPENSATED=y — confirmed against
+// the generated .config), not the Busetto et al. 2025 paper's independently-measured kM/kF
+// (0.0020779). rpms_to_torque() estimates the CURRENT yaw torque from measured RPM² to be used
+// as tau_current in the INDI increment; that estimate must be self-consistent with whatever
+// conversion the stock power_distribution_quadrotor.c mixer actually used to command it, not
+// with an independently-derived aerodynamic ratio that ignores ESC/prop-efficiency losses baked
+// into Bitcraze's own calibration for this exact hardware.
 #[cfg(drone_bl)]
-const TORQUE_RATIO: f32 = 0.002_077_9_f32; // kM/kF = 7.73e-11/3.72e-8 (Busetto et al. 2025)
+const TORQUE_RATIO: f32 = 0.005_692_788_4_f32; // THRUST2TORQUE, platform_defaults_cf21bl.h
 
 // ── GAINS BLOCK A — our tuned gains ────────────────────────────────────────
 // Increased KP_Z/KV_Z for stiff altitude hold; light integral for XY drift.
@@ -567,6 +574,12 @@ struct State {
     // from bw_gyro_x/y/z (v2 fix C, e_omega feedback, different cutoff) to keep both paths intact.
     bw_pre_x: Butterworth2, bw_pre_y: Butterworth2, bw_pre_z: Butterworth2,
     omega_filt_prev: Vec3,   // previous FILTERED gyro (for paper-order finite-difference)
+    // INDI increment base filter (filt_tau=1): low-pass tau_current (μ_f) with the SAME
+    // Butterworth as α_meas so the two terms of τ = μ_f + J·(α_ref − α_meas) are phase-matched.
+    // Tal & Karaman Eq. 29/31 (μ_f is FILTERED) and stock controller_indi.c (indi.u[0].o[0] =
+    // filter_pqr'd command). Missing filter here = phase mismatch that drives the limit cycle.
+    bw_tau_x: Butterworth2, bw_tau_y: Butterworth2, bw_tau_z: Butterworth2,
+    bw_tau_init: bool,
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
     // v2 improvement #3: accelerometer pre-filter for position INDI outer loop
@@ -592,6 +605,8 @@ impl State {
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_pre_x: Butterworth2::zero(), bw_pre_y: Butterworth2::zero(), bw_pre_z: Butterworth2::zero(),
             omega_filt_prev: Vec3::zero(),
+            bw_tau_x: Butterworth2::zero(), bw_tau_y: Butterworth2::zero(), bw_tau_z: Butterworth2::zero(),
+            bw_tau_init: false,
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
             bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             bw_vel_x: Butterworth2::zero(), bw_vel_y: Butterworth2::zero(),
@@ -612,6 +627,8 @@ impl State {
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
         self.bw_pre_x.reset_state(); self.bw_pre_y.reset_state(); self.bw_pre_z.reset_state();
         self.omega_filt_prev = Vec3::zero();
+        self.bw_tau_x.reset_state(); self.bw_tau_y.reset_state(); self.bw_tau_z.reset_state();
+        self.bw_tau_init = false;
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
         self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.bw_vel_x.reset_state(); self.bw_vel_y.reset_state();
@@ -668,6 +685,10 @@ extern "C" {
     static mut g_indi_ff_free: u8;
     // 0 = legacy diff-then-filter order (default), 1 = paper order (filter-then-diff)
     static mut g_indi_filt_order: u8;
+    // 0 = legacy unfiltered tau_current (default), 1 = filter μ_f to phase-match α_meas (paper Eq.29)
+    static mut g_indi_filt_tau: u8;
+    // INDI effectiveness scale on the J·Δα increment (default 1.0). <1.0 reduces over-correction.
+    static mut g_indi_j_scale: f32;
     // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
@@ -1289,15 +1310,49 @@ fn controller_step(
         // tau_current from per-motor RPM^2 (falls back to tau_prev when deck absent, or when
         // H1a diagnostic ff_free forces feed-forward-free mode even with the deck active)
         let ff_free = unsafe { g_indi_ff_free } != 0;
-        let tau_current = if rpms_active && !ff_free {
+        let tau_current_raw = if rpms_active && !ff_free {
             rpms_to_torque([m1, m2, m3, m4], [kt1, kt2, kt3, kt4])
         } else {
             s.tau_prev
         };
 
-        // delta_tau = J*(alpha_ref_filt - alpha_meas),  tau = tau_current + delta_tau
+        // filt_tau (indi_gains.filt_tau, default 0): low-pass the increment base term (μ_f) with
+        // the SAME Butterworth as α_meas, so τ = μ_f + J·(α_ref − α_meas) is phase-matched — Tal &
+        // Karaman Eq. 29/31 (μ_f filtered) + stock controller_indi.c (filtered command base). 0 =
+        // legacy (unfiltered tau_current), byte-identical to prior behaviour. Seed on first use to
+        // avoid a startup transient; passes DC so hover steady-state torque is unchanged.
+        let tau_current = if unsafe { g_indi_filt_tau } != 0 {
+            if !s.bw_tau_init {
+                s.bw_tau_x.seed(tau_current_raw.x);
+                s.bw_tau_y.seed(tau_current_raw.y);
+                s.bw_tau_z.seed(tau_current_raw.z);
+                s.bw_tau_init = true;
+            }
+            Vec3::new(
+                s.bw_tau_x.update(tau_current_raw.x),
+                s.bw_tau_y.update(tau_current_raw.y),
+                s.bw_tau_z.update(tau_current_raw.z),
+            )
+        } else {
+            tau_current_raw
+        };
+
+        // delta_tau = j_scale*J*(alpha_ref_filt - alpha_meas),  tau = tau_current + delta_tau
+        // j_scale (indi_gains.j_scale, default 1.0) scales the INDI effectiveness estimate. The
+        // increment applies torque j_scale*J per unit alpha error; the motor produces a real
+        // accel of (that)/J_real, so the per-cycle correction ratio is j_scale*J/J_real. J here
+        // is the Busetto 2025 value, which is a Crazyflow SIMULATOR DEFAULT (not system-ID'd) for
+        // a 45 g drone flown under a GEOMETRIC controller — none of which validates it for this
+        // 41 g drone's INDI loop. If J is too high (ratio>1) INDI over-corrects → limit cycle;
+        // sweep j_scale down (1.0→0.8→0.65→0.5) to find the ratio that stops the oscillation.
+        // Default 1.0 = byte-identical to prior behaviour; standard/upgraded unaffected.
+        let j_scale = unsafe { g_indi_j_scale };
         let alpha_err = alpha_ref_filt.sub(alpha_meas);
-        let delta_tau = Vec3::new(JXX*alpha_err.x, JYY*alpha_err.y, JZZ*alpha_err.z);
+        let delta_tau = Vec3::new(
+            j_scale*JXX*alpha_err.x,
+            j_scale*JYY*alpha_err.y,
+            j_scale*JZZ*alpha_err.z,
+        );
         let tau       = tau_current.add(delta_tau);
         s.tau_prev    = tau;
 
@@ -1333,6 +1388,7 @@ pub extern "C" fn controllerOutOfTreeInit() {
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
         s.bw_pre_x.init(fc_bw, DT); s.bw_pre_y.init(fc_bw, DT); s.bw_pre_z.init(fc_bw, DT);
+        s.bw_tau_x.init(fc_bw, DT); s.bw_tau_y.init(fc_bw, DT); s.bw_tau_z.init(fc_bw, DT);
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
         s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
@@ -1360,6 +1416,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     if (fc_bw - s.fc_bw_last).abs() > 0.1 {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
         s.bw_pre_x.init(fc_bw, DT_NOM); s.bw_pre_y.init(fc_bw, DT_NOM); s.bw_pre_z.init(fc_bw, DT_NOM);
+        s.bw_tau_x.init(fc_bw, DT_NOM); s.bw_tau_y.init(fc_bw, DT_NOM); s.bw_tau_z.init(fc_bw, DT_NOM);
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
         s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
