@@ -161,6 +161,22 @@ uint8_t g_indi_ff_free = 0;
        implementation before adding this, not a guess. Default OFF; enable per-drone in yaml. */
 uint8_t g_indi_filt_order = 0;
 
+/* Increment base filter (2026-07-18). 0 = legacy: tau_current (mu_f) used unfiltered in the INDI
+   increment tau = tau_current + J*(alpha_ref - alpha_meas). Today's exact behaviour.
+   1 = filter tau_current with the SAME Butterworth as alpha_meas so the two increment terms are
+   phase-matched -- Tal & Karaman 2021 Eq. 29/31 (mu_f is FILTERED) and stock crazyflie-firmware
+   controller_indi.c (increment base indi.u[0].o[0] is the filter_pqr'd command). This is the
+   candidate root-cause fix for the ~5-8 Hz attitude limit cycle. Default OFF; enable per-drone. */
+uint8_t g_indi_filt_tau = 0;
+
+/* INDI effectiveness scale (2026-07-18). Multiplies the J in the increment delta_tau = j_scale*J*
+   (alpha_ref - alpha_meas). 1.0 = use J as-is (default, byte-identical). <1.0 = reduce the
+   effectiveness estimate. The brushless J (Busetto 2025) is a Crazyflow SIMULATOR DEFAULT for a
+   45 g drone under a GEOMETRIC controller -- not system-ID'd, not for this 41 g drone, not
+   validated for INDI. If J is too high the INDI attitude loop over-corrects -> ~5-8 Hz limit
+   cycle. Sweep down (1.0 -> 0.8 -> 0.65 -> 0.5) at runtime (no reflash) to find where it stops. */
+float g_indi_j_scale = 1.0f;
+
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
@@ -176,6 +192,8 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
   PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
   PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
+  PARAM_ADD(PARAM_UINT8, filt_tau, &g_indi_filt_tau)
+  PARAM_ADD(PARAM_FLOAT, j_scale, &g_indi_j_scale)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
