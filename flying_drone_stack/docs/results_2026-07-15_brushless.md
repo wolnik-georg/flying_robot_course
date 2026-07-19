@@ -5,7 +5,11 @@
 **Drone:** Crazyflie 2.1 **Brushless** (CF21BL), `CONFIG_PLATFORM_CF21BL=y`, DShot bidirectional ESC telemetry
 **Goal:** get full-INDI **hover** stable, then **figure-8**, on the brushless platform
 **Source of truth for physics:** Busetto et al. 2025, *Nonlinear System Identification Nano-drone Benchmark* (`docs/brushless_system_identification.pdf`)
-**Status:** ⛔ Full INDI not yet stable — hover detonates at the geometric→INDI switch. Root-cause hunt in progress.
+**Status:** ✅ **DONE (2026-07-19).** Full INDI stable, gain ceiling found and validated:
+**2.48 cm mean XY RMSE (n=12, std 0.13)** — beats standard (3.87cm) and upgraded (3.72cm) drones.
+Locked config, full ladder, and 4-way comparison plots: **§5-§6**. Root-cause history (§1-§4)
+preserved below for reference — several early findings were superseded/retracted as evidence
+accumulated (each flagged inline where it happens); trust §5-§6 as current.
 
 ---
 
@@ -17,8 +21,8 @@
 | Arm L | 35.35 mm | ARM_M = 0.035355 m | ✅ |
 | kF (thrust) | 3.72e‑8 Ns²/rad² | kt refit to eRPM (self-consistent) | ✅ |
 | kM (drag) | 7.73e‑11 Nms²/rad² | — | ✅ |
-| kM/kF (→ τ_z) | 0.002078 | TORQUE_RATIO = 0.002078 (= paper; firmware uses 0.00569) | ⚠️ paper ok / fw differs |
-| Mass m | 45 g (with Flow + AI deck) | 41 g | ⚠️ 9% low — verify AUW |
+| kM/kF (→ τ_z) | 0.002078 | TORQUE_RATIO **fixed 2026-07-18** to `0.00569278844371417` — Bitcraze's own compiled stock-mixer value for CF21BL (`platform_defaults_cf21bl.h`), not the paper's independently-measured kF/kM (which ignores ESC/prop-efficiency losses). Paper value was wrong for our use case. | ✅ fixed |
+| Mass m | 45 g (with Flow + AI deck) | 41 g | ✅ confirmed by physical weighing 2026-07-19 |
 | Controller | geometric SE(3) + integral, 500 Hz | identical | ✅ |
 | ω bandwidth (Table 4) | ~18 Hz | INDI fc_bw = 30–70 Hz | ⚠️ over |
 | Motor speed bandwidth | ~20 Hz | — | — |
@@ -27,6 +31,10 @@
 ---
 
 ## Active configuration (as of last flight 2026-07-15 19:xx)
+
+**⚠️ HISTORICAL — day-1 snapshot, not current.** This was the conservative starting point before
+the crash/detonation was even diagnosed. **Final locked config is §5d** (`kr=2400, kw=170,
+kp_xy=64, kv_xy=5`, validated 2.48cm RMSE n=12). Kept here only as the historical starting point.
 
 ```yaml
 # indi_gains
@@ -126,6 +134,12 @@ _(fill in as flights are run tomorrow)_
 - **Sensor noise is comparable** (measured, geometric-phase alp_raw std): brushless ≈ 3–10 rad/s²,
   brushed ≈ 5–6 rad/s²; HF fraction >20 Hz ≈ 0.4–0.6 both. ⇒ the brushless is **not** meaningfully noisier
   at the gyro. Rules out "raw/noisier sensor" as the cause.
+  **⚠️ CONTRADICTED 2026-07-19 (§4b-spectrum) — this early measurement was wrong/insufficient.**
+  A proper same-session geometric-vs-geometric comparison (brushless vs standard, both clean
+  controllers, no INDI in the loop) found brushless raw gyro+accel vibration is **3-7× higher**
+  across the whole spectrum, confirmed independently by the accelerometer (which never touches
+  INDI code at all). Raw sensor/vibration noise **was** the correct root cause after all — trust
+  §4b-spectrum, not this entry.
 - **Correct interpretation:** the brushless INDI incremental loop runs with **far less stability margin**.
   fc_bw sets the loop's HF gain/phase; on the brushed drone the loop had comfortable margin (fc_bw
   irrelevant), on the brushless it sits near the stability limit so fc_bw is make-or-break. Higher fc_bw =
@@ -206,6 +220,10 @@ Brushless motors faster → should reach or exceed that.
 | BL-7 (KP) | 1200 | 97 | **50** | *best* | 60 | — | — | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | tighter tracking once KV locked |
 | BL-8 (filt) | 1200 | 97 | *best* | *best* | **50** | — | — | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | re-sweep fc_bw under dynamic load |
 | BL-9 (filt) | 1200 | 97 | *best* | *best* | **70** | — | — | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | hover optimum was flat 50–80 |
+
+**⬆️ BL-5..BL-9 superseded, not open TODOs.** This plan predates the 2026-07-19 findings that (a)
+raising KV alone makes things worse (§4b-results) and (b) gains must scale KR/KW/KP/KV together to
+preserve cascade separation (§5). The actual final ladder is §5a-5c; final config §5d.
 
 **Stage guidance**
 0. ~~**KV first (yaml-only, no reflash):** KV 8→11 to damp the ~1 Hz position wobble (ζ_pos 0.63→0.87). Fly
@@ -576,6 +594,66 @@ filter barely touches a 6 Hz oscillation; the stock config is stable at 8 Hz onl
 gains leave phase margin to afford the filter lag. Our fc_bw=10 blew up because high gains left no
 margin. **Low cutoff and low gains are a package.**
 
+### 4b-lowbw-refuted. Low-bandwidth regime flown 2026-07-19 — REFUTED, much worse
+
+| Config | pos | roll σ | pitch σ | gx σ | gy σ | osc |
+|---|---|---|---|---|---|---|
+| kr250/kw45/fc12/fo1/ft1 (NEW) | 16.1 cm | 12.8° | 19.1° | 62 | 116 | 1.2 Hz |
+| kr1500/kw180/fc60 (prev best) | 0.5-0.8 cm | 0.9-1.2° | 0.9-1.2° | 14-18 | 16-17 | 5.9 Hz |
+| geometric (target) | 0.8 cm | 0.6-0.8° | 0.4-0.6° | 5-9 | 5-7 | 1.8 Hz |
+
+Insight: the §4b-bandwidth hypothesis is WRONG. Lowering kr did not clean the hover — it caused a
+1.2 Hz **cascade breakdown** (attitude loop ωₙ=2.5 Hz + fc_bw=12 lag dropped the effective inner
+bandwidth near the kp=40 position loop's ~1 Hz; inner/outer loops fight). Within all data, HIGHER
+kr was always better (kr250 disaster < kr603 flicker < kr1500 best). √KR-resonance idea dropped.
+(Also 4 vars changed at once — poor isolation — but the 1.2 Hz cascade signature is unambiguous.)
+Best INDI remains kr1500/kw180: roll/pitch ~0.9° (vs geometric ~0.6°); the real gap is gyro-rate
+twitch (gx σ 14 vs 7) = the vibration signature, not attitude angle.
+
+### 4b-filttau-sweep. filt_tau=1 + fc_bw sweep flown 2026-07-19 — no meaningful effect
+
+| Config (kr1500/kw180, filt_tau=1) | pos | roll σ | pitch σ | gx σ | gy σ |
+|---|---|---|---|---|---|
+| fc=20 | 0.75 | 1.21° | 1.02° | 19.3 | 19.9 |
+| fc=30 | 0.25 | 0.96° | 0.85° | 17.5 | 16.5 |
+| fc=40 | 0.33 | 0.83° | 0.73° | 16.5 | 15.2 |
+| fc=60 | 0.29 | 0.89° | 0.69° | 16.5 | 13.8 |
+| fc=60 filt_tau=0 (prior) | 0.49 | 1.19° | 1.20° | 18.0 | 17.1 |
+| geometric target | 0.76 | 0.77° | 0.55° | 9.1 | 6.6 |
+
+Insight: gx σ flat at 16-19 regardless of filt_tau or fc_bw — no trend, matches operator "no
+difference." filt_tau is technically correct (fc=20 no longer blows up like fc=10 did without it)
+but doesn't touch the flicker. **Confirms the software levers (gains, fc_bw, filt_order, filt_tau,
+ff_free, j_scale) cannot close the gyro-twitch gap** — residual = airframe vibration, robustly.
+
+### 4b-official. Official-regime sanity check — set up 2026-07-19 (runtime, no reflash)
+
+Full coherent stock-firmware INDI set to validate whether official low-bandwidth tuning flies clean:
+kr=120, kw=24, fc_bw=8, kp_xy=5, kv_xy=5 (cascade ratio 4.9× — healthy, unlike §4b-lowbw's 2.5×).
+Expect CLEAN hover but LOOSE tracking. Not replicated (architecture): G1/G2/act_dyn.
+
+### 4b-SOLVED. Flicker root cause CONFIRMED 2026-07-19 — gain × vibration
+
+Official regime (kr120/kw24/kp5) flown → **flicker gone**, tracking loose. The tradeoff, measured:
+
+| Config | hover pos | gx σ | gy σ | figure-8 XY RMSE |
+|---|---|---|---|---|
+| Official kr120/kw24/kp5 | 6.0 cm | **9.7** | **4.5** | 22.7-33.5 cm |
+| Our kr1500/kw180/kp40 | 0.5 cm | 18.0 | 17.1 | 4.2 cm |
+| geometric | 0.8 cm | 9.1 | 6.6 | — |
+
+**Root cause (proven):** the flicker is the attitude damping term `KW·ω` amplifying the brushless's
+3-5× elevated gyro vibration into the torque command. KW 180→24 cut gx σ 18→9.7 (to geometric
+level). It's **gain × vibration** — same gains were clean on the low-vibration standard/upgraded
+drones, flickered on the noisy brushless. Not a bug/inertia/filter issue — pure gains, as long
+suspected. **Coupled tradeoff:** tracking needs high KP → cascade needs high KR/KW → high KW
+flickers. Can't decouple by gains alone.
+
+**Best-of-both path:** (1) knee sweep — coherent intermediate gains (set: kr600/kw70/kp20/kv7,
+cascade 5.5×; ladder kr400↔900) to find highest clean gain; (2) reduce vibration physically →
+raises the clean-gain ceiling (true decoupler); (3) `ENABLE_GYRO_FB_FILTER` (reflash) → filter
+vibration out of the KW·ω path without lowering KW.
+
 ### 4b-next. Candidate fixes to test next session (ranked)
 
 | # | Fix | Type | Status | Expectation |
@@ -599,6 +677,173 @@ high gains without flicker. So:
 
 Confirmed dead ends (high-bandwidth regime only): kr 603-1800, ff_free/RPM path, torque_ratio
 (yaw-only), inertia J. **Fallback that works:** geometric = clean hover + figure-8; INDI fig-8 4.2 cm.
+
+---
+
+## 5. Final Gain Ceiling — full 2026-07-19 sweep (LOCKED)
+
+Supersedes §4b-next item 1. `filt_order=1`, `filt_tau=1`, `j_scale=1.0`, `torque_ratio` fix, `fc_bw=60`
+active throughout unless noted. All steps preserve the cascade relation `att ωₙ / pos ωₙ ≈ 6×`
+(i.e. `kp ≈ kr/37.5`) — this is the guard that prevents the 2026-07-18 §4b-lowbw-refuted cascade
+wobble (which occurred at ratio 2.5×) from recurring; never move `kr` without scaling `kp` with it.
+
+### 5a. Coupled-ratio ladder — kr/kw/kp/kv scaled together (ζ_att=2.32, ζ_pos=0.63 fixed)
+
+| kr | kw | kp | kv | fig-8 RMSE (avg) | roll err (avg) | pitch err (avg) | hover gx/gy σ |
+|---|---|---|---|---|---|---|---|
+| 1500 | 180 | 40 | 8 | 4.27 cm | 4.83° | 3.87° | 17.1/15.3 |
+| 1650 | 189 | 44 | 8 | 4.10 cm | 4.60° | 5.05° | 18.1/17.1 |
+| 1800 | 197 | 48 | 9 | 3.85 cm | 5.05° | 4.65° | 20.7/20.2 |
+| 2000 | 208 | 53 | 9 | 3.60 cm | 5.95° | 6.45° | 19.3/19.8 |
+| 2200 | 218 | 59 | 10 | 3.13 cm | 6.10° | 4.63° | 32.8/39.9 (jump) |
+| 2400 | 228 | 64 | 10 | 3.00 cm | 5.30° | 4.90° | 58.3/59.8 (rough) |
+| 2600 | 237 | 69 | 11 | not measured | — | — | confirmed worse (operator) |
+| 2800 | — | — | — | not flown | — | — | identified as **hover ceiling** — climb halted |
+
+**Insight:** position RMSE improved smoothly and monotonically the entire climb (bandwidth/lag
+effect). Attitude flatness error did **not** improve alongside it — stayed flat/noisy in a
+3.9-6.5° band throughout, no clean trend. Hover noise (gx/gy σ) grew roughly monotonically,
+with a step-change (not gradual) jump at kr=2200→2400 — feedforward-assisted trajectory tolerated
+it, pure-feedback hover did not. This decoupling of "RMSE improves" from "attitude error
+improves" is what motivated 5b/5c below.
+
+### 5b. Decoupled KW test — kr=2400 frozen, kp/kv frozen at their kr=2400 values, KW swept alone
+
+| kw | ζ_att | fig-8 RMSE | roll err | pitch err | Result |
+|---|---|---|---|---|---|
+| 228 (ratio-locked) | 2.33 | 2.9, 3.1 cm | 4.9°, 5.7° | 5.7°, 4.1° | baseline |
+| **170** | **1.74** | **2.8, 2.9, 3.0 cm** | **4.0-4.1°** | **3.3-4.5°** | **clean win — both metrics improve** |
+| 130 | 1.33 | 2.8 cm, **6.1 cm** | 4.4°, **21.6°** | 3.4°, **13.8°** | **CRASH-signature, 1 of 2 flights — hard floor** |
+
+**Mechanism (verified in code, `firmware_app/src/lib.rs`):** `delta_tau = J·(alpha_ref_filt −
+alpha_meas)`; `alpha_ref = alpha_des − KR·eR − KW·e_omega`. `alpha_meas`'s noise is scaled by the
+fixed constant `J` — gain-invariant, explains why attitude error never tracked KR in 5a. `KW·e_omega`
+directly and linearly injects raw gyro noise — this path scales with KW specifically, independent
+of KR's bandwidth benefit. Pulling KW down (without touching KR) cuts this noise injection and
+**improves both position RMSE and attitude error simultaneously** — not a tradeoff, a real
+decoupling win. Floor is sharp (marginal stability, one good flight then one bad) not gradual.
+**Locked: kw=170.**
+
+### 5c. Decoupled KV test — kr=2400/kw=170 locked, kp=64 frozen, KV swept alone
+
+| kv | ζ_pos | fig-8 RMSE | roll err | pitch err | Result |
+|---|---|---|---|---|---|
+| 10 (ratio-locked) | 0.625 | 2.8, 2.9, 3.0 cm | 4.0-4.1° | 3.3-4.5° | baseline (= 5b's kw=170 row) |
+| 7 | 0.438 | 2.6, 2.8, 2.6 cm | 4.5-4.7° | 3.3-4.0° | improved, geom RMSE 1.5-1.7cm (best) |
+| **5** | **0.312** | **2.3, 2.4 cm** | **4.9°, 5.4°** | **3.8°, 4.3°** | **NEW BEST — tight agreement, no failure signal** |
+| 4 | 0.250 | — | — | — | **CRASHED 2 of 2 flights — hard floor** |
+
+**Same mechanism, one level up the cascade:** KP (bandwidth) vs KV (damping) split exactly like
+KR/KW did. Pulling KV down independently gave a further, real RMSE improvement with attitude error
+staying in-range. Floor is sharp again — hard stop, not gradual. **Locked: kv=5.**
+
+### 5d. FINAL LOCKED CONFIGURATION (2026-07-19)
+
+```yaml
+indi_gains: {ctrl_mode: 3, kr: 2400, kw: 170, kr_z: 2400, kw_z: 170, fc_bw: 60,
+             filt_order: 1, filt_tau: 1, j_scale: 1.0}
+pos_gains:  {kp_xy: 64, kp_z: 48, kv_xy: 5, kv_z: 7}
+```
+
+| Metric | Final | Session start (kr=1500/kw=180/kp=40/kv=8) | Standard/upgraded baseline |
+|---|---|---|---|
+| Figure-8 RMSE | **2.3-2.4 cm** | 4.2 cm | 3.7-3.9 cm |
+| Roll flatness err | 4.9-5.4° | ~5° | ~3.5-5.2° |
+| Pitch flatness err | 3.8-4.3° | ~4° | ~2.7-4.9° |
+
+**Grade: position A (best of any drone this project), attitude B / acceptable-not-improved** —
+flatness error sits in the same range as session-start and the other drones; the win is RMSE cut
+nearly in half *without* an attitude penalty, not an attitude improvement per se. Two independent
+hard stability walls (kw=130, kv=4) bracket this point — do not push closer to either without
+addressing the vibration root cause first.
+
+### 5d-validation. 12-flight validation at locked config — 2026-07-19
+
+Note: 2 flights in this batch (14-16-59, 14-18-03) were at `kv_xy=4.0` (the crashed floor config,
+not the locked one) — excluded. The following 12 are all confirmed `kr=2400/kw=170/kp_xy=64/kv_xy=5`.
+
+| Time | RMSE (cm) | Roll err (°) | Pitch err (°) |
+|---|---|---|---|
+| 14-25-18 | 2.6 | 5.4 | 4.0 |
+| 14-26-01 | 2.7 | 5.0 | 5.9 |
+| 14-26-53 | 2.3 | 4.8 | 4.4 |
+| 14-28-14 | 2.6 | 5.5 | 3.9 |
+| 14-28-56 | 2.4 | 5.5 | 3.4 |
+| 14-30-09 | 2.3 | 5.4 | 5.2 |
+| 14-30-53 | 2.5 | 5.6 | 5.6 |
+| 14-31-43 | 2.5 | 5.5 | 4.4 |
+| 14-33-16 | 2.4 | 4.7 | 4.8 |
+| 14-34-31 | 2.3 | 4.7 | 5.4 |
+| 14-35-20 | 2.6 | 6.5 | 6.0 |
+| 14-36-23 | 2.5 | 4.6 | 5.5 |
+| **Mean** | **2.48** | **5.27** | **4.88** |
+| **Std** | **0.14** | **0.54** | **0.85** |
+
+No outliers — RMSE spans only 2.3-2.7 cm (std 0.14, tightest of any config this session).
+**Confirms the locked config as stable and repeatable, not a lucky single flight.**
+
+#### Best flight — `14-26-53` (RMSE 2.3 cm, Roll err 4.8°, Pitch err 4.4°, best combined result)
+
+![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis.png)
+
+![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_axes.png)
+
+![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_kinematics.png)
+
+![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_3d_orientation.png)
+
+![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_indi_panel.png)
+
+![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_rpm_balance.png)
+
+### 5e. Levers exhausted — full checklist before locking in
+
+| Lever | Status | Notes |
+|---|---|---|
+| kr/kw coupled ratio | ✅ exhausted | ceiling at kr≈2400-2600 (hover), no attitude gain |
+| kw decoupled from kr | ✅ exhausted | floor at kw=130 (crash) |
+| kv decoupled from kp | ✅ exhausted | floor at kv=4 (crash) |
+| fc_bw | ✅ exhausted (§4b, prior session) | flat 20-100Hz, cliff <20 |
+| filt_order (paper-order diff) | ✅ tested | no effect in useful range, kept on (correct-regardless) |
+| filt_tau (phase-matched increment) | ✅ tested | no effect alone, kept on (correct-regardless) |
+| j_scale (inertia) | ✅ ruled out | J confirmed correct via TLS regression (24e-6 ≈ firmware) |
+| torque_ratio | ✅ fixed | yaw-only, not roll/pitch relevant |
+| ff_free (RPM feedback path) | ✅ ruled out | H1a test, no effect |
+| kr_z/kw_z, kp_z/kv_z (yaw/altitude) | ⬜ never decoupled | always scaled with xy; low priority, XY is the tracked metric |
+| **`ENABLE_GYRO_FB_FILTER`** | ⬜ **never tried** | filters `omega_fb` used in `KW·e_omega` — the exact noise path §5b just proved matters. Could allow HIGHER kw (more damping margin, avoiding the kw=130 cliff) while still cutting noise. Needs reflash. **Most promising remaining lever if more headroom is wanted.** |
+| Physical vibration reduction (props/bearings/mounts) | ⬜ **never done** | the actual root cause (§4b-spectrum, 3-5× vibration vs standard drone). Would lower the whole tradeoff curve and raise both crash floors — the only lever that removes the ceiling rather than finding it. |
+| kt (trajectory speed) | ⬜ not yet explored | separate axis — §4c below, next phase, not a gain lever |
+
+**Conclusion: all gain/filter levers on the current airframe are exhausted — this is the real
+ceiling for INDI gains alone.** Two untried items remain if more performance is wanted before
+moving on: `ENABLE_GYRO_FB_FILTER` (firmware, quick) and physical vibration reduction (mechanical,
+slower but addresses the actual root cause). Neither is required to proceed — the locked config
+already beats the original 4.2 cm target substantially.
+
+**Recommendation: proceed to the 10-flight validation at the locked config (5d).** If those 10
+flights are all clean (no repeat of the kw=130/kv=4 failure signature), the config is done. Revisit
+`ENABLE_GYRO_FB_FILTER` or vibration reduction only if you want to push further afterward.
+
+### 5f. Session end 2026-07-19 — pick up here next time
+
+Gain tuning is DONE (§5d, validated §5d-validation, mean RMSE 2.48cm±0.14, n=12). Locked config is
+live in `crazyflies.yaml`, no reflash needed to continue. **Correction: this project flies Mode D**
+(`onboard_*` binaries, 500 Hz onboard poly eval, optical flow) — not Mode E/CS2. 11 trajectories
+already exist as `onboard_*.rs` binaries in `src/bin/`, all ready to fly now, no new code needed:
+`onboard_figure8` (validated, 2.48cm), `onboard_circle`, `onboard_helix`, `onboard_loop`,
+`onboard_corkscrew`, `onboard_corner`, `onboard_flip`, `onboard_immelmann`, `onboard_roll`,
+`onboard_screw`, `onboard_splits`.
+
+| # | Step | Command | Status |
+|---|------|---------|--------|
+| 1 | kt speed sweep on figure8, locked gains | `cargo run --release --bin onboard_figure8 -- --mode 1 --kt 0.01/0.03/0.05(done,2.48cm)/0.10/...` — repeat `results_2026-06-20.md` §5 methodology | ⬜ next |
+| 2 | Record the tracking wall (kt where RMSE/roll/pitch spike before crash) | same binary, watch RMSE + peak roll/pitch + lap time | ⬜ |
+| 3 | kt sweep on circle | `cargo run --release --bin onboard_circle -- --mode 1 --kt ...` (ref table: kt=0.1 in usage docstring) | ⬜ |
+| 4 | kt sweep on helix, loop | `onboard_helix -- --mode 1 --kt ...`, `onboard_loop -- --mode 1 --kt ...` | ⬜ |
+| 5 | kt sweep on corkscrew, corner | `onboard_corkscrew -- --mode 1 --kt ...`, `onboard_corner -- --mode 1 --kt ...` | ⬜ |
+| 6 | Aggressive fixed-shape maneuvers (own param, not `--kt`) | `onboard_flip -- --tflip ...`, `onboard_roll -- --troll ...`, `onboard_immelmann -- --radius/--tloop/--troll`, `onboard_screw -- --dz/--tscrew`, `onboard_splits -- --radius/--tloop/--troll` | ⬜ |
+| 7 | Accel-pinned aggressive maneuvers (§4d) | `SplineTrajectory::plan_with_accel_pins()`, e.g. teardrop loop — new code beyond the existing onboard_* set | ⬜ after speed ceilings known (steps 1-6) |
+| — | Optional, if more attitude headroom wanted later | `ENABLE_GYRO_FB_FILTER` (reflash) or physical vibration reduction (props/bearings/mounts) | ⬜ not required, §5e |
 
 ### 4c. After the oscillation is resolved — trajectories + kt speed sweep
 
@@ -625,7 +870,30 @@ ceiling should exist before adding pinned-attitude segments on top of it.
 
 ---
 
+## 6. Four-way comparison — Standard Geometric / Standard INDI / Upgraded INDI / Brushless INDI
+
+Extends the original `results/indi_commissioning/geo_vs_indi.png` (standard drone, geometric vs
+INDI, n=10 each) to include the upgraded and brushless full-INDI validation runs. All figure-8,
+`kt=0.05`, phase-aligned XY RMSE.
+
+| Config | n | Mean RMSE | Std | vs Standard Geometric |
+|---|---|---|---|---|
+| Standard Geometric | 10 | 6.14 cm | 0.52 | baseline |
+| Standard INDI | 10 | 3.87 cm | 0.24 | −37% |
+| Upgraded INDI | 11 | 3.72 cm | 0.21 | −39% |
+| **Brushless INDI** | **12** | **2.48 cm** | **0.13** | **−60%** |
+
+![per-flight](4way_per_flight.png)
+
+![mean comparison](4way_mean_comparison.png)
+
+Generated by `scripts/plot_4way_comparison.py`. Source data: `results_2026-06-20.md` §4 (standard),
+`results_2026-07-11_upgraded_drone.md` §8 (upgraded), §5d-validation above (brushless).
+
+---
+
 ## Reference baselines (other drones, for comparison)
 
 - **Standard CF2.1 INDI:** 3.87 cm XY RMSE (June 20 2026, kr=1050) — `results_2026-06-20.md`
 - **Upgraded CF2.1 INDI:** 3.7 cm mean XY RMSE, n=11 (July 15 2026, kr=603) — `results_2026-07-11_upgraded_drone.md`
+- **Brushless CF21BL INDI:** 2.48 cm mean XY RMSE, n=12 (July 19 2026, kr=2400/kw=170/kp=64/kv=5) — §5d-validation above
