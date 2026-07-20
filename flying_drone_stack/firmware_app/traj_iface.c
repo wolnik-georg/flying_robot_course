@@ -13,23 +13,24 @@
  *   [0]      = duration  (s)
  *   [1..9]   = cx[0..8] — degree-8 polynomial for x, normalised to t∈[0,1]
  *   [10..18] = cy[0..8] — degree-8 polynomial for y, normalised to t∈[0,1]
- * Max 12 segments → 228 floats (ci index 0..227).
+ * Max 24 segments → 456 floats (ci index 0..455).
  *
  * Z-axis buffer layout (per segment, 9 floats):
  *   [0..8]   = cz[0..8] — degree-8 polynomial for z offset [m], normalised
- * Max 12 segments → 108 floats (zci index 0..107).
+ * Max 24 segments → 216 floats (zci index 0..215).
  * z_mode = 0: z = traj.hz + traj.dz * lap_frac (constant + linear ramp, default).
  * z_mode = 1: z = traj.hz + poly_eval(cz) — full 3D trajectory (loop, etc.).
  *
  * Attitude buffer layout (per segment, 18 floats, planning Mode 2 only):
  *   [0..8]   = croll[0..8]  — degree-8 polynomial for roll  [rad], normalised
  *   [9..17]  = cpitch[0..8] — degree-8 polynomial for pitch [rad], normalised
- * Max 12 segments → 216 floats (aci index 0..215).
+ * Max 24 segments → 432 floats (aci index 0..431).
  * att_mode = 0: firmware derives attitude from flatness (default — Mode 0/1 behaviour).
  * att_mode = 1: firmware evaluates uploaded roll/pitch polynomials at 500 Hz.
  *
  * Upload protocol (same for pos, z, and att — different param names):
- *   set traj.ci/zci/aci = idx   (u8)
+ *   set traj.ci/aci = idx       (u16 — index range exceeds u8 at 24 segments)
+ *   set traj.zci = idx          (u8 — z-buffer index stays within u8 range)
  *   set traj.cv/zcv/acv = value (f32)
  *   set traj.cw/zcw/acw = 1     (commit trigger; firmware clears to 0 within 2 ms)
  *
@@ -47,7 +48,7 @@
 #include <stdbool.h>
 
 /* ── Position coefficient buffer ─────────────────────────────────────────── */
-#define TRAJ_MAX_SEGS        12u
+#define TRAJ_MAX_SEGS        24u
 #define TRAJ_FLOATS_PER_SEG  19u   /* duration + cx[9] + cy[9] */
 
 float   g_traj_coefs[TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG]; /* zero-initialised by C runtime */
@@ -85,7 +86,7 @@ uint8_t g_traj_att_mode  = 0;    /* 0 = derive from flatness (default), 1 = poly
 uint8_t g_traj_att_ctrl_mode = 1; /* 1 = hybrid (default — stable for all flat trajectories) */
 
 /* ── Attitude upload protocol ────────────────────────────────────────────── */
-uint8_t g_traj_att_ci    = 0;     /* attitude coefficient index (0..215)                 */
+uint16_t g_traj_att_ci   = 0;     /* attitude coefficient index (0..431)                 */
 float   g_traj_att_cv    = 0.0f;  /* attitude coefficient value to write at g_traj_att_ci */
 uint8_t g_traj_att_cw    = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
 
@@ -100,7 +101,7 @@ float   g_traj_hover_z   = 1.0f;  /* constant flight altitude [m]               
 float   g_traj_dz        = 0.0f;  /* Z gain per lap [m]; 0=flat, +0.40=ascending helix   */
 
 /* ── Position upload protocol ────────────────────────────────────────────── */
-uint8_t g_traj_coef_ci   = 0;     /* coefficient index (0..227)                          */
+uint16_t g_traj_coef_ci  = 0;     /* coefficient index (0..455)                          */
 float   g_traj_coef_cv   = 0.0f;  /* coefficient value to write at g_traj_coef_ci        */
 uint8_t g_traj_coef_cw   = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
 
@@ -114,7 +115,7 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_FLOAT, oy,       &g_traj_origin_y)
   PARAM_ADD(PARAM_FLOAT, hz,       &g_traj_hover_z)
   PARAM_ADD(PARAM_FLOAT, dz,       &g_traj_dz)
-  PARAM_ADD(PARAM_UINT8, ci,       &g_traj_coef_ci)
+  PARAM_ADD(PARAM_UINT16, ci,      &g_traj_coef_ci)
   PARAM_ADD(PARAM_FLOAT, cv,       &g_traj_coef_cv)
   PARAM_ADD(PARAM_UINT8, cw,       &g_traj_coef_cw)
   PARAM_ADD(PARAM_UINT8, z_mode,   &g_traj_z_mode)
@@ -123,7 +124,7 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, zcw,      &g_traj_z_cw)
   PARAM_ADD(PARAM_UINT8, att_mode,      &g_traj_att_mode)
   PARAM_ADD(PARAM_UINT8, att_ctrl_mode, &g_traj_att_ctrl_mode)
-  PARAM_ADD(PARAM_UINT8, aci,           &g_traj_att_ci)
+  PARAM_ADD(PARAM_UINT16, aci,          &g_traj_att_ci)
   PARAM_ADD(PARAM_FLOAT, acv,           &g_traj_att_cv)
   PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
 PARAM_GROUP_STOP(traj)
