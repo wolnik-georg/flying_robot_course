@@ -662,7 +662,7 @@ static mut TRAJ_T0: u32 = 0;
 // Position layout: [duration, cx0..cx8, cy0..cy8] × n_segs (19 f32 per seg).
 // Z layout:        [cz0..cz8]                      × n_segs ( 9 f32 per seg, no duration).
 // Attitude layout: [croll0..croll8, cpitch0..cpitch8] × n_segs (18 f32 per seg).
-const TRAJ_MAX_SEGS: usize = 24;
+const TRAJ_MAX_SEGS: usize = 12;
 const TRAJ_FLOATS_PER_SEG:     usize = 19;
 const TRAJ_Z_FLOATS_PER_SEG:   usize = 9;
 const TRAJ_ATT_FLOATS_PER_SEG: usize = 18;
@@ -697,16 +697,16 @@ extern "C" {
 }
 
 extern "C" {
-    static mut g_traj_coefs:     [f32; 456]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
-    static mut g_traj_z_coefs:   [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG
+    static mut g_traj_coefs:     [f32; 228]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
+    static mut g_traj_z_coefs:   [f32; 108]; // TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG
     static mut g_traj_z_mode:    u8;  // 0=ramp (default), 1=polynomial (3D trajectories)
     static mut g_traj_z_ci:      u8;  // z upload index
     static mut g_traj_z_cv:      f32; // z upload value
     static mut g_traj_z_cw:      u8;  // z commit flag
-    static mut g_traj_att_coefs:     [f32; 432]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
+    static mut g_traj_att_coefs:     [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
     static mut g_traj_att_mode:      u8;  // 0=flatness, 1=polynomial
     static mut g_traj_att_ctrl_mode: u8;  // 0=hard override, 1=hybrid (flatness rd + poly omega_d)
-    static mut g_traj_att_ci:        u16; // attitude upload index (>255 at 24 segs)
+    static mut g_traj_att_ci:        u8;  // attitude upload index
     static mut g_traj_att_cv:        f32; // attitude upload value
     static mut g_traj_att_cw:        u8;  // attitude commit flag
     static mut g_traj_n_segs:    u8;
@@ -717,7 +717,7 @@ extern "C" {
     static mut g_traj_origin_y:  f32;
     static mut g_traj_hover_z:   f32;
     static mut g_traj_dz:        f32; // Z gain per lap: 0=flat, +0.40=ascending helix
-    static mut g_traj_coef_ci:   u16; // position upload index (>255 at 24 segs)
+    static mut g_traj_coef_ci:   u8;  // position upload index
     static mut g_traj_coef_cv:   f32; // position upload value
     static mut g_traj_coef_cw:   u8;  // position commit flag
     // RPM bridge (traj_iface.c) — reads per-motor RPM via the log system for INDI Mode 1
