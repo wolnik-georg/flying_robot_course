@@ -18,12 +18,16 @@ bl_indi_fc70 = [2.5, 2.4, 2.2, 2.6, 2.5, 2.3, 2.5, 2.5, 2.5, 2.4, 2.5, 2.3, 2.6]
 def stats(x):
     return np.mean(x), np.std(x)
 
+# Colours match Controls/analyze_flight.py's _PLATFORM_COLORS (Okabe-Ito colorblind-safe
+# palette) so the same platform reads as the same colour across the 5-way bar charts here
+# and the N-way per-flight comparison plots. fc_bw=60 only exists in this 5-way chart (not
+# in the 4-way per-flight comparison), so it gets the 5th palette colour.
 groups = [
-    ("Standard\nGeometric", std_geo, "#9fb2c2"),
-    ("Standard\nINDI", std_indi, "#1f6f8b"),
-    ("Upgraded\nINDI", upg_indi, "#c96f2c"),
-    ("Brushless INDI\nfc_bw=60", bl_indi_fc60, "#3f8f5f"),
-    ("Brushless INDI\nfc_bw=70", bl_indi_fc70, "#6fb98a"),
+    ("Standard\nGeometric", std_geo, "#0072B2"),
+    ("Standard\nINDI", std_indi, "#E69F00"),
+    ("Upgraded\nINDI", upg_indi, "#009E73"),
+    ("Brushless INDI\nfc_bw=60", bl_indi_fc60, "#CC79A7"),
+    ("Brushless INDI\nfc_bw=70", bl_indi_fc70, "#D55E00"),
 ]
 
 means = [stats(g[1])[0] for g in groups]
