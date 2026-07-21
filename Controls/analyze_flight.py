@@ -2084,6 +2084,1054 @@ def analyze_figure8_with_comparison(
         plot_onboard_figure8_analysis(data, csv_path, n_reps=n_reps_geom)
 
 
+# ── Multi-platform comparison (added 2026-07-21) ────────────────────────────
+#
+# Standalone addition for the "same panels, N platforms side-by-side" request.
+# Does NOT modify onboard8_metrics_over_window, analyze_figure8_with_comparison,
+# compare_plot, or any other existing function — every function referenced below
+# is called read-only. onboard8_metrics_over_window only returns summary scalars
+# (xy_rms, roll_err_rms, ...), not the per-timestep arrays needed for the time-
+# series panels here, so this duplicates that ~30-line computation deliberately
+# rather than risk changing a function several existing call paths depend on.
+
+def _load_figure8_dashboard_entry(csv_path, label):
+    """Load one figure-8 flight and compute everything the main dashboard
+    (_analysis.png-equivalent, 9 panels) needs, mirroring plot_analysis()'s
+    segs8_ref computation path (windowing crop, planned attitude/velocity/
+    angular-rate, thrust/speed/vbat/accel) so the multi-platform figure is a
+    faithful generalisation of the real single-flight dashboard, not a
+    simplified re-invention.
+
+    Positions (x, y, ref_x, ref_y) are additionally zeroed to each flight's own
+    start point (x0/y0 subtracted) — visualisation-only re-centring so flights
+    from different sessions with different actual takeoff/hover positions
+    overlay at a shared origin instead of showing the between-session origin
+    offset as if it were part of the trajectory shape. RMSE/error values are
+    computed from the true (un-recentred) positions beforehand, so this has
+    zero effect on any reported metric — recentring is applied only to the
+    arrays used for plotting.
+    """
+    data, run_meta = load_csv_with_meta(csv_path)
+    resolved = resolve_poly4d_from_meta(run_meta)
+    if resolved is None or resolved[5] is None:
+        raise ValueError(
+            f"{csv_path}: no onboard degree-8 reference found (resolve_poly4d_from_meta "
+            f"returned no segs8) — this comparison mode requires onboard_d figure8 logs."
+        )
+    segs, speed_scale, _xy_scale, _loop, _poly_label, segs8 = resolved
+
+    base = os.path.basename(csv_path).lower()
+    _eval_window, n_reps, lap_s = infer_figure8_eval_window(base, run_meta, segs, speed_scale)
+    duration_s = lap_s * max(n_reps, 1)
+    t_start = find_figure8_traj_start(data, t_min=run_meta.get("_phase2_t_start"))
+    dt_cal = calibrate_onboard8_phase(data, segs8, t_start, duration_s)
+
+    times_full = data["time_s"]
+    mask = _figure8_lap_mask(times_full, t_start, duration_s)
+    if not np.any(mask):
+        mask = np.ones(len(times_full), dtype=bool)
+        t_start = float(times_full[0])
+    t_rel = times_full[mask] - t_start
+
+    # Planned reference, aligned to this flight's own true start point (for RMSE).
+    x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
+    dx_off = float(data["x"][mask][0]) - x0_ref
+    dy_off = float(data["y"][mask][0]) - y0_ref
+    ref_xy = np.array([eval_onboard8_xy(segs8, max(0.0, tr + dt_cal)) for tr in t_rel])
+    ref_x = ref_xy[:, 0] + dx_off
+    ref_y = ref_xy[:, 1] + dy_off
+
+    xa, ya, za = data["x"][mask], data["y"][mask], data["z"][mask]
+    z0_act = float(za[0])
+    err_xy = np.sqrt((xa - ref_x) ** 2 + (ya - ref_y) ** 2)
+
+    # Z RMSE mirrors plot_analysis()'s m_full computation exactly: "planned Z" is a
+    # constant placeholder (mean of the FULL, unwindowed log's z — the onboard8
+    # reference has no Z component). The RMS is taken over the full log but NaN'd
+    # outside the trajectory-valid range (t_plan in (0, total_planned_poly)), which
+    # excludes takeoff/landing the same way plot_analysis()'s `_valid` mask does —
+    # replicated here verbatim so RMSE Z matches the real dashboard exactly.
+    # NB: plot_analysis() shifts data["z"] by z0_act (trajectory-start height)
+    # *before* calling compute_metrics(), which then re-subtracts its own
+    # data["z"][0] (now z0_act cancels out, leaving the log's very first row,
+    # not the trajectory start) as its "z0". Net effect: the real reference
+    # offset is data["z"][0] (first row of the log), not z0_act — replicated
+    # verbatim below so this stays bit-for-bit consistent with the dashboard.
+    t_plan_full = np.maximum(0.0, times_full - t_start + dt_cal)
+    total_planned_poly = sum(s[0] for s in segs8)
+    _valid_full = (t_plan_full > 1e-9) & (t_plan_full < total_planned_poly + 1e-6)
+    plan_z_full = float(np.nanmean(data["z"]))
+    err_z_full = np.abs((data["z"] - float(data["z"][0])) - plan_z_full)
+    err_z_full = np.where(_valid_full, err_z_full, np.nan)
+    z_rms = float(np.sqrt(np.nanmean(err_z_full ** 2)))
+    # Plotted/lap-window trace uses the same reference convention as z_rms above
+    # (offset from data["z"][0], not z0_act — see note above), cropped to the lap
+    # window, so the timeline panel is internally consistent with the RMSE figure.
+    err_z = np.abs((za - float(data["z"][0])) - plan_z_full)
+    err_3d = np.sqrt(err_xy ** 2 + err_z ** 2)
+
+    ref_vel = np.array([eval_onboard8_vel(segs8, max(0.0, tr + dt_cal)) for tr in t_rel])
+    plan_vel = np.column_stack([ref_vel[:, 0], ref_vel[:, 1], np.zeros(len(t_rel))])
+
+    planned_att = np.array([
+        compute_planned_attitude_8(segs8, max(0.0, tr + dt_cal)) for tr in t_rel
+    ])
+    p_roll, p_pitch, p_yaw = planned_att[:, 0], planned_att[:, 1], planned_att[:, 2]
+    p_omega_x = np.gradient(p_roll, t_rel)
+    p_omega_y = -np.gradient(p_pitch, t_rel)
+    p_omega_z = np.gradient(p_yaw, t_rel)
+
+    roll_a, pitch_a, yaw_a = data["roll_deg"][mask], data["pitch_deg"][mask], data["yaw_deg"][mask]
+    roll_err = roll_a - p_roll
+    pitch_err = pitch_a - p_pitch
+
+    vxa, vya, vza = data["vx"][mask], data["vy"][mask], data["vz"][mask]
+    speed_actual = np.sqrt(vxa ** 2 + vya ** 2 + vza ** 2)
+    speed_planned = np.sqrt(plan_vel[:, 0] ** 2 + plan_vel[:, 1] ** 2 + plan_vel[:, 2] ** 2)
+
+    thrust = data["thrust"][mask]
+    vbat = data["vbat"][mask]
+    gyro_x, gyro_y, gyro_z = data["gyro_x"][mask], data["gyro_y"][mask], data["gyro_z"][mask]
+    acc_x, acc_y, acc_z = data["acc_x"][mask], data["acc_y"][mask], data["acc_z"][mask]
+
+    # INDI torque + RPM columns (may be absent/all-NaN for non-INDI platforms —
+    # windowed to the same lap mask as everything else above).
+    n_full = len(data["time_s"])
+    tau_x = data.get("tau_x", np.full(n_full, np.nan))[mask]
+    tau_y = data.get("tau_y", np.full(n_full, np.nan))[mask]
+    tau_z = data.get("tau_z", np.full(n_full, np.nan))[mask]
+    alp_x = data.get("alp_x", np.full(n_full, np.nan))[mask]
+    alp_y = data.get("alp_y", np.full(n_full, np.nan))[mask]
+    alp_z = data.get("alp_z", np.full(n_full, np.nan))[mask]
+    rpm_m1 = data.get("rpm_m1", np.full(n_full, np.nan))[mask]
+    rpm_m2 = data.get("rpm_m2", np.full(n_full, np.nan))[mask]
+    rpm_m3 = data.get("rpm_m3", np.full(n_full, np.nan))[mask]
+    rpm_m4 = data.get("rpm_m4", np.full(n_full, np.nan))[mask]
+
+    xy_rms = float(np.sqrt(np.nanmean(err_xy ** 2)))
+    # z_rms was already computed above from the FULL unwindowed log (matches the
+    # real dashboard box, which never windows Z — see note above err_z_full).
+    d3_rms = float(np.sqrt(np.nanmean(err_3d ** 2)))
+    roll_err_rms = float(np.sqrt(np.nanmean(roll_err ** 2)))
+    pitch_err_rms = float(np.sqrt(np.nanmean(pitch_err ** 2)))
+
+    # thrust_mean/thrust_max/speed_max_actual also come from the FULL unwindowed
+    # log in the real dashboard box (not part of onboard8_metrics_over_window's
+    # returned keys, so they fall back to m_full there too).
+    thrust_mean_full = float(np.nanmean(data["thrust"]))
+    thrust_max_full = float(np.nanmax(data["thrust"]))
+    speed_actual_full = np.sqrt(data["vx"] ** 2 + data["vy"] ** 2 + data["vz"] ** 2)
+    speed_max_actual_full = float(np.nanmax(speed_actual_full))
+
+    # Dense planned-only curve for the shared reference overlay — trajectory is
+    # identical for every platform, so this only needs computing once by the
+    # caller; returned here (unshifted, dx_off=dy_off=0) per-entry for simplicity.
+    total_dur = sum(s[0] for s in segs8)
+    t_dense = np.linspace(0, total_dur, 500)
+    dense_xy = np.array([eval_onboard8_xy(segs8, t) for t in t_dense])
+
+    return {
+        "label": label,
+        "csv_path": csv_path,
+        "t_rel": t_rel,
+        # Visualisation-only: recentred to this flight's own start point.
+        "x0": xa - xa[0], "y0": ya - ya[0],
+        "ref_x0": ref_x - xa[0], "ref_y0": ref_y - ya[0],
+        "z_rel": za - z0_act, "pz_rel": np.zeros(len(t_rel)),
+        "vx": vxa, "vy": vya, "vz": vza, "plan_vel": plan_vel,
+        "roll": roll_a, "pitch": pitch_a, "yaw": yaw_a,
+        "p_roll": p_roll, "p_pitch": p_pitch, "p_yaw": p_yaw,
+        "gyro_x": gyro_x, "gyro_y": gyro_y, "gyro_z": gyro_z,
+        "p_omega_x": p_omega_x, "p_omega_y": p_omega_y, "p_omega_z": p_omega_z,
+        "acc_x": acc_x, "acc_y": acc_y, "acc_z": acc_z,
+        "thrust": thrust, "vbat": vbat,
+        "speed_actual": speed_actual, "speed_planned": speed_planned,
+        "tau_x": tau_x, "tau_y": tau_y, "tau_z": tau_z,
+        "alp_x": alp_x, "alp_y": alp_y, "alp_z": alp_z,
+        "rpm_m1": rpm_m1, "rpm_m2": rpm_m2, "rpm_m3": rpm_m3, "rpm_m4": rpm_m4,
+        "err_xy": err_xy, "err_z": err_z, "err_3d": err_3d,
+        "roll_err": roll_err, "pitch_err": pitch_err,
+        "dense_x0": dense_xy[:, 0] - dense_xy[0, 0], "dense_y0": dense_xy[:, 1] - dense_xy[0, 1],
+        "xy_rms": xy_rms, "z_rms": z_rms, "3d_rms": d3_rms,
+        "xy_max": float(np.nanmax(err_xy)),
+        "roll_err_rms": roll_err_rms, "pitch_err_rms": pitch_err_rms,
+        "thrust_mean": thrust_mean_full, "thrust_max": thrust_max_full,
+        "speed_max_actual": speed_max_actual_full,
+        "speed_rms": float(np.sqrt(np.nanmean((speed_actual - speed_planned) ** 2))),
+        "vbat_min": float(np.nanmin(vbat)) if not np.all(np.isnan(vbat)) else float("nan"),
+    }
+
+
+# Shared platform colour palette for every N-way comparison plot in this file
+# (and mirrored in scripts/plot_5way_comparison.py for the §6 bar charts) —
+# Okabe-Ito colorblind-safe set, ordered so adjacent/most-compared categories
+# (standard->standard->upgraded->brushless) are maximally separated in hue,
+# not just lightness, so overlapping lines stay distinguishable at a glance.
+_PLATFORM_COLORS = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7"]
+
+
+def plot_analysis_multi(entries, variant_label, out_path):
+    """N-platform generalisation of plot_analysis()'s main 3x3 dashboard
+    (_analysis.png). Same 9 panels, same content per panel, but one shared
+    dashed "Planned" reference (the trajectory is identical for every
+    platform) plus N actual traces per panel instead of 1. Colour = platform,
+    linestyle = axis (solid/dashed/dotted for x-y-z or roll-pitch-yaw etc.),
+    consistent across every panel. Does not modify plot_analysis() itself.
+    """
+    colors = _PLATFORM_COLORS[: len(entries)]
+    ls3 = ["-", "--", ":"]  # per-axis linestyle, shared convention across panels
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+
+    fig, axes = plt.subplots(3, 3, figsize=(19, 15))
+    fig.suptitle(
+        "Trajectory Analysis — Platform Comparison (figure8, kt=0.05)  "
+        f"[{variant_label} flight per platform]\n"
+        + "  |  ".join(f"{lbl}: {e['xy_rms']*100:.1f} cm" for lbl, e in zip(flat_labels, entries)),
+        fontsize=12,
+    )
+
+    # ── Panel 1: XY path (recentred to each flight's own start) ─────────────
+    ax = axes[0, 0]
+    ax.plot(entries[0]["dense_x0"], entries[0]["dense_y0"], "k--", lw=1.5, label="Planned", alpha=0.6)
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["x0"], e["y0"], color=c, lw=1.5, label=lbl, alpha=0.9)
+    ax.plot(0, 0, "go", ms=8, label="Start", zorder=5)
+    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]")
+    ax.set_title("XY Path (recentred to common start)")
+    ax.legend(fontsize=7); ax.grid(True); ax.set_aspect("equal")
+
+    # ── Panel 2: Position vs time ────────────────────────────────────────────
+    ax = axes[0, 1]
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["t_rel"], e["x0"], color=c, lw=1.1, ls=ls3[0], label=f"{lbl} x")
+        ax.plot(e["t_rel"], e["y0"], color=c, lw=1.1, ls=ls3[1], label=f"{lbl} y")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("position [m]")
+    ax.set_title("Position vs Time (recentred)"); ax.legend(fontsize=6, ncol=2); ax.grid(True)
+
+    # ── Panel 3: Position error ──────────────────────────────────────────────
+    ax = axes[0, 2]
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["t_rel"], e["err_xy"] * 100, color=c, lw=1.3,
+                 label=f"{lbl}  RMSE={e['xy_rms']*100:.1f} cm")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("XY error [cm]")
+    ax.set_title("Position Error vs Time"); ax.legend(fontsize=7); ax.grid(True)
+    box_txt = "\n".join(
+        f"{lbl}: XY={e['xy_rms']*100:.1f}  Z={e['z_rms']*100:.1f}  "
+        f"3D={e['3d_rms']*100:.1f} cm"
+        for lbl, e in zip(flat_labels, entries)
+    )
+    ax.text(0.98, 0.97, box_txt, transform=ax.transAxes, fontsize=6.5,
+            verticalalignment="top", horizontalalignment="right",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightyellow", alpha=0.85))
+
+    # ── Panel 4: Attitude — actual vs planned (flatness) ─────────────────────
+    ax = axes[1, 0]
+    ax.plot(entries[0]["t_rel"], entries[0]["p_roll"], "k--", lw=1.2, alpha=0.6, label="roll planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_pitch"], "k:", lw=1.2, alpha=0.6, label="pitch planned")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["t_rel"], e["roll"], color=c, lw=1.1, ls=ls3[0], label=f"{lbl} roll")
+        ax.plot(e["t_rel"], e["pitch"], color=c, lw=1.1, ls=ls3[1], label=f"{lbl} pitch")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("angle [deg]")
+    ax.set_title("Attitude — actual vs planned (flatness)"); ax.legend(fontsize=6, ncol=2); ax.grid(True)
+
+    # ── Panel 5: Velocity — actual vs planned ────────────────────────────────
+    ax = axes[1, 1]
+    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel"][:, 0], "k--", lw=1.2, alpha=0.6, label="vx planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel"][:, 1], "k:", lw=1.2, alpha=0.6, label="vy planned")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["t_rel"], e["vx"], color=c, lw=1.1, ls=ls3[0], label=f"{lbl} vx")
+        ax.plot(e["t_rel"], e["vy"], color=c, lw=1.1, ls=ls3[1], label=f"{lbl} vy")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("velocity [m/s]")
+    ax.set_title("Velocity — actual vs planned"); ax.legend(fontsize=6, ncol=2); ax.grid(True)
+
+    # ── Panel 6: Angular velocity — actual (gyro) vs planned (Euler rate) ────
+    ax = axes[1, 2]
+    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_x"], "k--", lw=1.0, alpha=0.5, label="wx planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_y"], "k:", lw=1.0, alpha=0.5, label="wy planned")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        if not np.all(np.isnan(e["gyro_x"])):
+            ax.plot(e["t_rel"], e["gyro_x"], color=c, lw=1.0, ls=ls3[0], label=f"{lbl} wx")
+            ax.plot(e["t_rel"], e["gyro_y"], color=c, lw=1.0, ls=ls3[1], label=f"{lbl} wy")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("angular rate [deg/s]")
+    ax.set_title("Angular velocity — actual (gyro) vs planned"); ax.legend(fontsize=6, ncol=2); ax.grid(True)
+
+    # ── Panel 7: Thrust + speed ───────────────────────────────────────────────
+    ax = axes[2, 0]
+    ax2 = ax.twinx()
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        ax.plot(e["t_rel"], e["thrust"], color=c, lw=1.0, alpha=0.7, label=f"{lbl} thrust")
+        ax2.plot(e["t_rel"], e["speed_actual"], color=c, lw=1.1, ls="--", alpha=0.8,
+                  label=f"{lbl} |v|")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("thrust [PWM]"); ax2.set_ylabel("speed [m/s]")
+    ax.set_title("Thrust & Speed"); ax.legend(fontsize=6, loc="upper left")
+    ax2.legend(fontsize=6, loc="upper right"); ax.grid(True)
+
+    # ── Panel 8: Body accelerometer magnitude ────────────────────────────────
+    ax = axes[2, 1]
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        if not np.all(np.isnan(e["acc_x"])):
+            acc_mag = np.sqrt(e["acc_x"] ** 2 + e["acc_y"] ** 2 + e["acc_z"] ** 2)
+            ax.plot(e["t_rel"], acc_mag, color=c, lw=1.2, label=f"{lbl}  peak={np.nanmax(acc_mag):.2f}g")
+    ax.axhline(1.0, color="k", lw=0.5, ls=":", alpha=0.4, label="1 g (hover)")
+    ax.set_xlabel("time [s]"); ax.set_ylabel("|acc| [g]")
+    ax.set_title("Body Accelerometer Magnitude"); ax.legend(fontsize=7); ax.grid(True)
+
+    # ── Panel 9: Metrics comparison table ────────────────────────────────────
+    ax = axes[2, 2]
+    ax.axis("off")
+    header = ["Metric"] + flat_labels
+    rows = [
+        header,
+        ["RMSE XY [cm]"] + [f"{e['xy_rms']*100:.1f}" for e in entries],
+        ["RMSE Z [cm]"] + [f"{e['z_rms']*100:.1f}" for e in entries],
+        ["RMSE 3D [cm]"] + [f"{e['3d_rms']*100:.1f}" for e in entries],
+        ["Max XY [cm]"] + [f"{e['xy_max']*100:.1f}" for e in entries],
+        ["Roll err [°]"] + [f"{e['roll_err_rms']:.1f}" for e in entries],
+        ["Pitch err [°]"] + [f"{e['pitch_err_rms']:.1f}" for e in entries],
+        ["Max speed [m/s]"] + [f"{e['speed_max_actual']:.2f}" for e in entries],
+        ["Mean thrust [PWM]"] + [f"{e['thrust_mean']:.0f}" for e in entries],
+    ]
+    cell_colors = [["#d0d0d0"] * len(header)] + [["white"] * len(header)] * (len(rows) - 1)
+    tbl = ax.table(cellText=rows, cellLoc="center", loc="center", cellColours=cell_colors)
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(8)
+    tbl.scale(1.0, 1.5)
+    ax.set_title(f"Metrics Comparison — {variant_label}", fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  Main dashboard (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+def plot_analysis_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly version of plot_analysis_multi()'s 9-panel dashboard.
+
+    Same panels, same data, same colour palette — but zoomable/pannable, with
+    hover tooltips and a legend where clicking one platform's entry toggles
+    every trace for that platform across all 8 plot panels at once (shared
+    `legendgroup` per platform). Purely additive: writes a standalone .html
+    next to the existing static PNG, does not replace or alter it.
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+
+    fig = make_subplots(
+        rows=3, cols=3,
+        subplot_titles=[
+            "XY Path (recentred to common start)", "Position vs Time (recentred)", "Position Error vs Time",
+            "Attitude — actual vs planned (flatness)", "Velocity — actual vs planned", "Angular velocity — actual (gyro) vs planned",
+            "Thrust & Speed", "Body Accelerometer Magnitude", "Metrics Comparison",
+        ],
+        specs=[
+            [{}, {}, {}],
+            [{}, {}, {}],
+            [{"secondary_y": True}, {}, {"type": "table"}],
+        ],
+        vertical_spacing=0.09, horizontal_spacing=0.07,
+    )
+
+    def add(r, c, x, y, color, name, group, dash=None, show_legend=False, secondary_y=False, **kw):
+        fig.add_trace(
+            go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash=dash, width=1.4),
+                       name=name, legendgroup=group, showlegend=show_legend, **kw),
+            row=r, col=c, secondary_y=secondary_y,
+        )
+
+    # Panel 1: XY path
+    add(1, 1, entries[0]["dense_x0"], entries[0]["dense_y0"], "black", "Planned", "Planned", dash="dash", show_legend=True)
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(1, 1, e["x0"], e["y0"], c, lbl, lbl, show_legend=True)
+
+    # Panel 2: Position vs time (x solid, y dashed)
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(1, 2, e["t_rel"], e["x0"], c, f"{lbl} x", lbl)
+        add(1, 2, e["t_rel"], e["y0"], c, f"{lbl} y", lbl, dash="dash")
+
+    # Panel 3: XY position error
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(1, 3, e["t_rel"], e["err_xy"] * 100, c, f"{lbl} RMSE={e['xy_rms']*100:.1f}cm", lbl)
+
+    # Panel 4: Attitude
+    add(2, 1, entries[0]["t_rel"], entries[0]["p_roll"], "black", "roll planned", "Planned", dash="dash")
+    add(2, 1, entries[0]["t_rel"], entries[0]["p_pitch"], "black", "pitch planned", "Planned", dash="dot")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(2, 1, e["t_rel"], e["roll"], c, f"{lbl} roll", lbl)
+        add(2, 1, e["t_rel"], e["pitch"], c, f"{lbl} pitch", lbl, dash="dash")
+
+    # Panel 5: Velocity
+    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel"][:, 0], "black", "vx planned", "Planned", dash="dash")
+    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel"][:, 1], "black", "vy planned", "Planned", dash="dot")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(2, 2, e["t_rel"], e["vx"], c, f"{lbl} vx", lbl)
+        add(2, 2, e["t_rel"], e["vy"], c, f"{lbl} vy", lbl, dash="dash")
+
+    # Panel 6: Angular velocity
+    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_x"], "black", "wx planned", "Planned", dash="dash")
+    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_y"], "black", "wy planned", "Planned", dash="dot")
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        if not np.all(np.isnan(e["gyro_x"])):
+            add(2, 3, e["t_rel"], e["gyro_x"], c, f"{lbl} wx", lbl)
+            add(2, 3, e["t_rel"], e["gyro_y"], c, f"{lbl} wy", lbl, dash="dash")
+
+    # Panel 7: Thrust (primary y) & speed (secondary y)
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        add(3, 1, e["t_rel"], e["thrust"], c, f"{lbl} thrust", lbl, secondary_y=False, opacity=0.7)
+        add(3, 1, e["t_rel"], e["speed_actual"], c, f"{lbl} |v|", lbl, dash="dash", secondary_y=True)
+
+    # Panel 8: Body accelerometer magnitude
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        if not np.all(np.isnan(e["acc_x"])):
+            acc_mag = np.sqrt(e["acc_x"] ** 2 + e["acc_y"] ** 2 + e["acc_z"] ** 2)
+            add(3, 2, e["t_rel"], acc_mag, c, f"{lbl} peak={np.nanmax(acc_mag):.2f}g", lbl)
+
+    # Panel 9: Metrics table
+    header = ["Metric"] + flat_labels
+    metric_rows = [
+        ("RMSE XY [cm]", lambda e: f"{e['xy_rms']*100:.1f}"),
+        ("RMSE Z [cm]", lambda e: f"{e['z_rms']*100:.1f}"),
+        ("RMSE 3D [cm]", lambda e: f"{e['3d_rms']*100:.1f}"),
+        ("Max XY [cm]", lambda e: f"{e['xy_max']*100:.1f}"),
+        ("Roll err [°]", lambda e: f"{e['roll_err_rms']:.1f}"),
+        ("Pitch err [°]", lambda e: f"{e['pitch_err_rms']:.1f}"),
+        ("Max speed [m/s]", lambda e: f"{e['speed_max_actual']:.2f}"),
+        ("Mean thrust [PWM]", lambda e: f"{e['thrust_mean']:.0f}"),
+    ]
+    table_cols = [[name for name, _ in metric_rows]] + [
+        [fmt(e) for _, fmt in metric_rows] for e in entries
+    ]
+    fig.add_trace(
+        go.Table(
+            header=dict(values=header, fill_color="#d0d0d0", align="center", font=dict(size=11)),
+            cells=dict(values=table_cols, align="center", font=dict(size=10)),
+        ),
+        row=3, col=3,
+    )
+
+    fig.update_xaxes(title_text="x [m]", row=1, col=1)
+    fig.update_yaxes(title_text="y [m]", row=1, col=1, scaleanchor="x1", scaleratio=1)
+    fig.update_xaxes(title_text="time [s]", row=1, col=2); fig.update_yaxes(title_text="position [m]", row=1, col=2)
+    fig.update_xaxes(title_text="time [s]", row=1, col=3); fig.update_yaxes(title_text="XY error [cm]", row=1, col=3)
+    fig.update_xaxes(title_text="time [s]", row=2, col=1); fig.update_yaxes(title_text="angle [deg]", row=2, col=1)
+    fig.update_xaxes(title_text="time [s]", row=2, col=2); fig.update_yaxes(title_text="velocity [m/s]", row=2, col=2)
+    fig.update_xaxes(title_text="time [s]", row=2, col=3); fig.update_yaxes(title_text="angular rate [deg/s]", row=2, col=3)
+    fig.update_xaxes(title_text="time [s]", row=3, col=1)
+    fig.update_yaxes(title_text="thrust [PWM]", row=3, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="speed [m/s]", row=3, col=1, secondary_y=True)
+    fig.update_xaxes(title_text="time [s]", row=3, col=2); fig.update_yaxes(title_text="|acc| [g]", row=3, col=2)
+
+    fig.update_layout(
+        title=(
+            "Trajectory Analysis — Platform Comparison (figure8, kt=0.05)  "
+            f"[{variant_label} flight per platform]  —  interactive: click a legend entry to "
+            "toggle that platform everywhere, drag to zoom, double-click to reset"
+        ),
+        height=1200, width=1700,
+        legend=dict(groupclick="togglegroup"),
+        hovermode="closest",
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  Main dashboard (interactive):    {out_path}")
+
+
+def plot_axes_multi(entries, variant_label, out_path):
+    """N-platform generalisation of plot_analysis()'s _analysis_axes.png
+    (4x3 grid: Position/Attitude/Velocity/AngularRate rows x x/y/z cols).
+    One shared dashed 'planned' curve (identical trajectory for every
+    platform) plus one actual trace per platform per cell.
+    """
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+
+    fig, ax_grid = plt.subplots(4, 3, figsize=(19, 16), sharex=True)
+    fig.suptitle(
+        f"Per-axis Tracking Subplots — Platform Comparison (figure8, kt=0.05) [{variant_label}]",
+        fontsize=12,
+    )
+
+    grouped_specs = [
+        [("x [m]", "x0", "ref_x0"), ("y [m]", "y0", "ref_y0"), ("z [m] (rel)", "z_rel", None)],
+        [("roll [deg]", "roll", "p_roll"), ("pitch [deg]", "pitch", "p_pitch"), ("yaw [deg]", "yaw", "p_yaw")],
+        [("vx [m/s]", "vx", None), ("vy [m/s]", "vy", None), ("vz [m/s]", "vz", None)],
+        [("wx [deg/s]", "gyro_x", "p_omega_x"), ("wy [deg/s]", "gyro_y", "p_omega_y"), ("wz [deg/s]", "gyro_z", "p_omega_z")],
+    ]
+    row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
+
+    for r_idx, row in enumerate(grouped_specs):
+        for c_idx, (ylabel, key, planned_key) in enumerate(row):
+            ax_i = ax_grid[r_idx, c_idx]
+            if planned_key is not None and planned_key in e0:
+                ax_i.plot(e0["t_rel"], e0[planned_key], "k--", lw=1.1, alpha=0.7, label="planned")
+            elif r_idx == 2:
+                # velocity row: planned vx/vy from plan_vel columns, vz=0
+                pv_idx = c_idx
+                ax_i.plot(e0["t_rel"], e0["plan_vel"][:, pv_idx], "k--", lw=1.1, alpha=0.7, label="planned")
+            for e, c, lbl in zip(entries, colors, flat_labels):
+                ax_i.plot(e["t_rel"], e[key], color=c, lw=1.1, label=lbl)
+            ax_i.set_ylabel(ylabel)
+            if r_idx == 0:
+                ax_i.set_title(ylabel.split()[0])
+            if c_idx == 0:
+                ax_i.text(-0.22, 0.5, row_titles[r_idx], transform=ax_i.transAxes,
+                           rotation=90, va="center", ha="center", fontsize=10, fontweight="bold")
+            ax_i.grid(True, alpha=0.3)
+            if r_idx == 0 and c_idx == 0:
+                ax_i.legend(fontsize=6, loc="upper right")
+
+    for c_idx in range(3):
+        ax_grid[-1, c_idx].set_xlabel("time [s]")
+
+    plt.tight_layout(rect=(0.03, 0, 1, 0.96))
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  Axes dashboard (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+def plot_kinematics_multi(entries, variant_label, out_path):
+    """N-platform generalisation of _analysis_kinematics.png (3x3: Accel/Jerk/Snap
+    x x/y/z). Actual derivatives from numerical gradient of logged velocity;
+    planned derivatives from the shared plan_vel of entries[0] (identical for
+    every platform)."""
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+    t0 = e0["t_rel"]
+
+    p_ax = np.gradient(e0["plan_vel"][:, 0], t0)
+    p_ay = np.gradient(e0["plan_vel"][:, 1], t0)
+    p_az = np.gradient(e0["plan_vel"][:, 2], t0)
+    p_jx, p_jy, p_jz = np.gradient(p_ax, t0), np.gradient(p_ay, t0), np.gradient(p_az, t0)
+    p_sx, p_sy, p_sz = np.gradient(p_jx, t0), np.gradient(p_jy, t0), np.gradient(p_jz, t0)
+    planned = {"Acceleration": (p_ax, p_ay, p_az), "Jerk": (p_jx, p_jy, p_jz), "Snap": (p_sx, p_sy, p_sz)}
+
+    per_entry_kin = []
+    for e in entries:
+        t = e["t_rel"]
+        ax_, ay_, az_ = np.gradient(e["vx"], t), np.gradient(e["vy"], t), np.gradient(e["vz"], t)
+        jx, jy, jz = np.gradient(ax_, t), np.gradient(ay_, t), np.gradient(az_, t)
+        sx, sy, sz = np.gradient(jx, t), np.gradient(jy, t), np.gradient(jz, t)
+        per_entry_kin.append({"Acceleration": (ax_, ay_, az_), "Jerk": (jx, jy, jz), "Snap": (sx, sy, sz)})
+
+    fig, kin_axes = plt.subplots(3, 3, figsize=(19, 12), sharex=True)
+    fig.suptitle(
+        f"Kinematic Derivatives Per Axis — Platform Comparison (figure8, kt=0.05) [{variant_label}]",
+        fontsize=12,
+    )
+    col_specs = [("x", 0), ("y", 1), ("z", 2)]
+    row_specs = [("Acceleration", "[m/s²]"), ("Jerk", "[m/s³]"), ("Snap", "[m/s⁴]")]
+
+    for r_idx, (row_name, yunit) in enumerate(row_specs):
+        for c_idx, (axis_name, ai) in enumerate(col_specs):
+            ax = kin_axes[r_idx, c_idx]
+            ax.plot(t0, planned[row_name][ai], "k--", lw=1.1, alpha=0.7, label="planned")
+            for e, kin, c, lbl in zip(entries, per_entry_kin, colors, flat_labels):
+                ax.plot(e["t_rel"], kin[row_name][ai], color=c, lw=1.0, label=lbl)
+            if r_idx == 0:
+                ax.set_title(f"{axis_name}-axis", fontsize=10)
+            if c_idx == 0:
+                ax.set_ylabel(f"{row_name}\n{yunit}", fontsize=9)
+            if r_idx == 2:
+                ax.set_xlabel("time [s]")
+            ax.grid(True, alpha=0.3)
+            if r_idx == 0 and c_idx == 0:
+                ax.legend(fontsize=6, loc="upper right")
+
+    plt.tight_layout(rect=(0, 0, 1, 0.96))
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  Kinematics dashboard (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+def plot_3d_orientation_multi(entries, variant_label, out_path):
+    """N-platform generalisation of _3d_orientation.png: one shared planned
+    path + N flown paths (recentred to common start), with orientation triads
+    at sampled times for each platform."""
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot(111, projection="3d")
+
+    z_p = np.zeros(len(e0["dense_x0"]))
+    ax.plot(e0["dense_x0"], e0["dense_y0"], z_p, "k--", lw=1.8, alpha=0.7, label="planned")
+
+    all_x = [e0["dense_x0"]]
+    all_y = [e0["dense_y0"]]
+    all_z = [z_p]
+
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        x_a, y_a, z_a = e["x0"], e["y0"], e["z_rel"]
+        ax.plot(x_a, y_a, z_a, color=c, lw=1.7, label=lbl)
+        all_x.append(x_a); all_y.append(y_a); all_z.append(z_a)
+
+        t = e["t_rel"]
+        marker_times = np.linspace(t[0], t[-1], 6)
+        span = max(float(np.nanmax(x_a) - np.nanmin(x_a)), float(np.nanmax(y_a) - np.nanmin(y_a)), 0.3)
+        axis_len = 0.06 * span
+        for t_m in marker_times:
+            i = int(np.argmin(np.abs(t - t_m)))
+            rca = _euler_deg_to_rot(e["roll"][i], e["pitch"][i], e["yaw"][i])
+            _draw_triad(ax, x_a[i], y_a[i], z_a[i], rca, axis_len, alpha=0.8)
+            ax.scatter([x_a[i]], [y_a[i]], [z_a[i]], c=c, s=18, alpha=0.9)
+
+    ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]"); ax.set_zlabel("z [m] (rel. to start)")
+    ax.set_title(
+        f"3D flown vs planned + orientation triads — Platform Comparison [{variant_label}]\n"
+        "(x=red, y=green, z=blue; recentred to common start)",
+        fontsize=11,
+    )
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=8, loc="upper right")
+    ax.set_proj_type("ortho")
+
+    ax_c = np.concatenate(all_x); ay_c = np.concatenate(all_y); az_c = np.concatenate(all_z)
+    xmin, xmax = float(np.nanmin(ax_c)), float(np.nanmax(ax_c))
+    ymin, ymax = float(np.nanmin(ay_c)), float(np.nanmax(ay_c))
+    zmin, zmax = float(np.nanmin(az_c)), float(np.nanmax(az_c))
+    sx, sy, sz = max(xmax - xmin, 1e-3), max(ymax - ymin, 1e-3), max(zmax - zmin, 1e-3)
+    xy_span = max(sx, sy)
+    z_floor = 0.22 * xy_span
+    if sz < z_floor:
+        zc = 0.5 * (zmin + zmax)
+        zmin, zmax, sz = zc - 0.5 * z_floor, zc + 0.5 * z_floor, z_floor
+    ax.set_xlim(xmin, xmax); ax.set_ylim(ymin, ymax); ax.set_zlim(zmin, zmax)
+    ax.set_box_aspect([sx, sy, sz])
+    ax.view_init(elev=24, azim=230)
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=160, bbox_inches="tight")
+    print(f"  3D orientation dashboard (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+def plot_indi_panel_multi(entries, variant_label, out_path):
+    """N-platform generalisation of _indi_panel.png (INDI torque time series +
+    PSD, tau_x/y/z). Platforms with no INDI telemetry (e.g. Standard Geometric,
+    controller=6 geometric SE(3) has no tau_* columns) are skipped with a note,
+    mirroring the single-flight function's silent-skip-if-all-NaN behaviour."""
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+
+    has_indi = [bool(np.any(np.isfinite(e["tau_x"]) & (e["tau_x"] != 0.0))) for e in entries]
+    indi_entries = [
+        (e, c, lbl) for e, c, lbl, ok in zip(entries, colors, flat_labels, has_indi) if ok
+    ]
+    skipped = [lbl for lbl, ok in zip(flat_labels, has_indi) if not ok]
+
+    fig, axs = plt.subplots(2, 3, figsize=(16, 8))
+    fig.suptitle(
+        f"INDI Torque Panel — Platform Comparison (figure8, kt=0.05) [{variant_label}]",
+        fontsize=12, fontweight="bold",
+    )
+    tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
+    tau_keys = ["tau_x", "tau_y", "tau_z"]
+
+    for i in range(3):
+        ax_t = axs[0, i]
+        stats = []
+        for e, c, lbl in indi_entries:
+            sig = e[tau_keys[i]]
+            valid = np.isfinite(sig)
+            ax_t.plot(e["t_rel"], sig, lw=0.7, color=c, label=lbl)
+            if valid.any():
+                rms = float(np.sqrt(np.nanmean(sig[valid] ** 2)))
+                stats.append(f"{lbl}: RMS={rms*1000:.2f}")
+        ax_t.set_ylabel(tau_names[i], fontsize=9)
+        ax_t.set_xlabel("t [s]", fontsize=8)
+        ax_t.axhline(0, color="k", lw=0.4)
+        ax_t.set_title("  ".join(stats), fontsize=7.5)
+        if i == 0:
+            ax_t.legend(fontsize=7)
+
+        ax_f = axs[1, i]
+        for e, c, lbl in indi_entries:
+            sig = e[tau_keys[i]]
+            valid_sig = sig[np.isfinite(sig)]
+            if len(valid_sig) >= 16:
+                fs = round(1.0 / float(np.median(np.diff(e["t_rel"][:min(200, len(e["t_rel"]))]))))
+                freq, psd = welch(valid_sig, fs=fs, nperseg=min(len(valid_sig), 256))
+                ax_f.semilogy(freq, psd, lw=0.9, color=c, label=lbl)
+        ax_f.set_ylabel("PSD [(N·m)²/Hz]", fontsize=9)
+        ax_f.set_xlabel("Frequency [Hz]", fontsize=8)
+
+    if skipped:
+        fig.text(0.5, 0.01, f"No INDI telemetry (skipped): {', '.join(skipped)}",
+                  ha="center", fontsize=8, style="italic", color="gray")
+
+    plt.tight_layout(rect=(0, 0.03, 1, 0.95))
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  INDI panel (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+def plot_rpm_balance_multi(entries, variant_label, out_path):
+    """N-platform generalisation of _rpm_balance.png. Raw per-motor RPM is
+    faceted one column per platform (4 platforms x 4 motors overlaid would be
+    illegible); RPM-spread% and roll/pitch are overlaid across platforms in
+    shared rows, same as the rest of this comparison suite."""
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    rpm_keys = ["rpm_m1", "rpm_m2", "rpm_m3", "rpm_m4"]
+    motor_colors = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
+    motor_labels = ["M1", "M2", "M3", "M4"]
+
+    have_rpm = [e for e in entries if any(np.any(~np.isnan(e[k])) for k in rpm_keys)]
+    if not have_rpm:
+        print("  No RPM data in any platform log — skipping RPM balance (multi-platform).")
+        return
+
+    n = len(entries)
+    fig, axes = plt.subplots(3, n, figsize=(5 * n, 10), sharex="col")
+    if n == 1:
+        axes = axes.reshape(3, 1)
+    fig.suptitle(
+        f"RPM Balance — Platform Comparison (figure8, kt=0.05) [{variant_label}]", fontsize=12,
+    )
+
+    for col, (e, lbl) in enumerate(zip(entries, flat_labels)):
+        t = e["t_rel"]
+        ax0 = axes[0, col]
+        stack = []
+        for k, mc, ml in zip(rpm_keys, motor_colors, motor_labels):
+            vals = np.array(e[k], dtype=float)
+            vals = np.where(vals == 0, np.nan, vals)
+            ax0.plot(t, vals, color=mc, lw=0.8, label=ml)
+            stack.append(vals)
+        ax0.set_title(lbl, fontsize=9)
+        if col == 0:
+            ax0.set_ylabel("RPM")
+        ax0.legend(fontsize=6, ncol=2)
+        ax0.grid(True, alpha=0.3)
+
+        ax1 = axes[1, col]
+        stack = np.vstack(stack)
+        spread_pct = (np.nanmax(stack, axis=0) - np.nanmin(stack, axis=0)) / np.nanmean(stack, axis=0) * 100
+        ax1.fill_between(t, spread_pct, alpha=0.4, color="purple")
+        ax1.plot(t, spread_pct, color="purple", lw=0.7)
+        ax1.axhline(15, color="red", lw=0.7, ls="--")
+        if col == 0:
+            ax1.set_ylabel("RPM spread (%)")
+        ax1.grid(True, alpha=0.3)
+
+        ax2 = axes[2, col]
+        ax2.plot(t, e["roll"], color="steelblue", lw=0.8, label="roll")
+        ax2.plot(t, e["pitch"], color="tomato", lw=0.8, label="pitch")
+        if col == 0:
+            ax2.set_ylabel("Angle (°)")
+            ax2.legend(fontsize=7)
+        ax2.set_xlabel("time [s]")
+        ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout(rect=(0, 0, 1, 0.95))
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    print(f"  RPM balance (multi-platform): {out_path}")
+    plt.close(fig)
+
+
+# ── Interactive (Plotly) counterparts of the 5 remaining multi-platform panels ──
+#
+# Same data, same colour palette, same legendgroup-per-platform pattern as
+# plot_analysis_multi_interactive: clicking one platform's legend entry toggles
+# every trace for that platform across the whole figure. Purely additive —
+# each writes a standalone .html next to its static PNG counterpart.
+
+def _legend_add(fig, r, c, x, y, color, name, group, dash=None, show_legend=False, **kw):
+    import plotly.graph_objects as go
+    fig.add_trace(
+        go.Scatter(x=x, y=y, mode="lines", line=dict(color=color, dash=dash, width=1.3),
+                   name=name, legendgroup=group, showlegend=show_legend, **kw),
+        row=r, col=c,
+    )
+
+
+def plot_axes_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly version of plot_axes_multi() (4x3 per-axis grid)."""
+    from plotly.subplots import make_subplots
+
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+
+    row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
+    grouped_specs = [
+        [("x [m]", "x0", "ref_x0"), ("y [m]", "y0", "ref_y0"), ("z [m] (rel)", "z_rel", None)],
+        [("roll [deg]", "roll", "p_roll"), ("pitch [deg]", "pitch", "p_pitch"), ("yaw [deg]", "yaw", "p_yaw")],
+        [("vx [m/s]", "vx", None), ("vy [m/s]", "vy", None), ("vz [m/s]", "vz", None)],
+        [("wx [deg/s]", "gyro_x", "p_omega_x"), ("wy [deg/s]", "gyro_y", "p_omega_y"), ("wz [deg/s]", "gyro_z", "p_omega_z")],
+    ]
+    titles = [f"{rt} — {spec[0].split()[0]}" for rt in row_titles for spec in grouped_specs[row_titles.index(rt)]]
+
+    fig = make_subplots(rows=4, cols=3, subplot_titles=titles, vertical_spacing=0.06, horizontal_spacing=0.06)
+
+    for r_idx, row in enumerate(grouped_specs):
+        for c_idx, (ylabel, key, planned_key) in enumerate(row):
+            r, c = r_idx + 1, c_idx + 1
+            if planned_key is not None and planned_key in e0:
+                _legend_add(fig, r, c, e0["t_rel"], e0[planned_key], "black", "planned", "Planned",
+                            dash="dash", show_legend=(r_idx == 0 and c_idx == 0))
+            elif r_idx == 2:
+                _legend_add(fig, r, c, e0["t_rel"], e0["plan_vel"][:, c_idx], "black", "planned", "Planned",
+                            dash="dash", show_legend=False)
+            for e, cl, lbl in zip(entries, colors, flat_labels):
+                _legend_add(fig, r, c, e["t_rel"], e[key], cl, lbl, lbl, show_legend=(r_idx == 0 and c_idx == 0))
+            fig.update_yaxes(title_text=ylabel, row=r, col=c)
+            if r_idx == 3:
+                fig.update_xaxes(title_text="time [s]", row=r, col=c)
+
+    fig.update_layout(
+        title=f"Per-axis Tracking Subplots — Platform Comparison (figure8, kt=0.05) [{variant_label}] — "
+              "click legend to toggle a platform everywhere, drag to zoom",
+        height=1500, width=1700, legend=dict(groupclick="togglegroup"), hovermode="closest",
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  Axes dashboard (interactive):     {out_path}")
+
+
+def plot_kinematics_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly version of plot_kinematics_multi() (3x3 Accel/Jerk/Snap x x/y/z)."""
+    from plotly.subplots import make_subplots
+
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+    t0 = e0["t_rel"]
+
+    p_ax = np.gradient(e0["plan_vel"][:, 0], t0)
+    p_ay = np.gradient(e0["plan_vel"][:, 1], t0)
+    p_az = np.gradient(e0["plan_vel"][:, 2], t0)
+    p_jx, p_jy, p_jz = np.gradient(p_ax, t0), np.gradient(p_ay, t0), np.gradient(p_az, t0)
+    p_sx, p_sy, p_sz = np.gradient(p_jx, t0), np.gradient(p_jy, t0), np.gradient(p_jz, t0)
+    planned = {"Acceleration": (p_ax, p_ay, p_az), "Jerk": (p_jx, p_jy, p_jz), "Snap": (p_sx, p_sy, p_sz)}
+
+    per_entry_kin = []
+    for e in entries:
+        t = e["t_rel"]
+        ax_, ay_, az_ = np.gradient(e["vx"], t), np.gradient(e["vy"], t), np.gradient(e["vz"], t)
+        jx, jy, jz = np.gradient(ax_, t), np.gradient(ay_, t), np.gradient(az_, t)
+        sx, sy, sz = np.gradient(jx, t), np.gradient(jy, t), np.gradient(jz, t)
+        per_entry_kin.append({"Acceleration": (ax_, ay_, az_), "Jerk": (jx, jy, jz), "Snap": (sx, sy, sz)})
+
+    row_specs = [("Acceleration", "[m/s²]"), ("Jerk", "[m/s³]"), ("Snap", "[m/s⁴]")]
+    col_specs = [("x", 0), ("y", 1), ("z", 2)]
+    titles = [f"{axis_name}-axis {row_name}" for row_name, _ in row_specs for axis_name, _ in col_specs]
+
+    fig = make_subplots(rows=3, cols=3, subplot_titles=titles, vertical_spacing=0.08, horizontal_spacing=0.06)
+
+    for r_idx, (row_name, yunit) in enumerate(row_specs):
+        for c_idx, (axis_name, ai) in enumerate(col_specs):
+            r, c = r_idx + 1, c_idx + 1
+            _legend_add(fig, r, c, t0, planned[row_name][ai], "black", "planned", "Planned",
+                        dash="dash", show_legend=(r_idx == 0 and c_idx == 0))
+            for e, kin, cl, lbl in zip(entries, per_entry_kin, colors, flat_labels):
+                _legend_add(fig, r, c, e["t_rel"], kin[row_name][ai], cl, lbl, lbl,
+                            show_legend=(r_idx == 0 and c_idx == 0))
+            if c_idx == 0:
+                fig.update_yaxes(title_text=f"{row_name} {yunit}", row=r, col=c)
+            if r_idx == 2:
+                fig.update_xaxes(title_text="time [s]", row=r, col=c)
+
+    fig.update_layout(
+        title=f"Kinematic Derivatives Per Axis — Platform Comparison (figure8, kt=0.05) [{variant_label}] — "
+              "click legend to toggle a platform everywhere, drag to zoom",
+        height=1100, width=1700, legend=dict(groupclick="togglegroup"), hovermode="closest",
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  Kinematics dashboard (interactive): {out_path}")
+
+
+def plot_3d_orientation_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly 3D version of plot_3d_orientation_multi().
+
+    Orientation triads (drawn as short 3D line segments per axis, matching the
+    static plot's red/green/blue x/y/z convention) are included at a handful of
+    sampled times per platform; Plotly's native 3D orbit/zoom/pan lets you
+    inspect them from any angle, which is the main win over the fixed-angle
+    static PNG.
+    """
+    import plotly.graph_objects as go
+
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    e0 = entries[0]
+
+    fig = go.Figure()
+    z_p = np.zeros(len(e0["dense_x0"]))
+    fig.add_trace(go.Scatter3d(
+        x=e0["dense_x0"], y=e0["dense_y0"], z=z_p, mode="lines",
+        line=dict(color="black", dash="dash", width=4), name="Planned",
+        legendgroup="Planned", showlegend=True,
+    ))
+
+    triad_colors = {"x": "red", "y": "green", "z": "blue"}
+    for e, c, lbl in zip(entries, colors, flat_labels):
+        x_a, y_a, z_a = e["x0"], e["y0"], e["z_rel"]
+        fig.add_trace(go.Scatter3d(
+            x=x_a, y=y_a, z=z_a, mode="lines", line=dict(color=c, width=4),
+            name=lbl, legendgroup=lbl, showlegend=True,
+        ))
+
+        t = e["t_rel"]
+        marker_times = np.linspace(t[0], t[-1], 6)
+        span = max(float(np.nanmax(x_a) - np.nanmin(x_a)), float(np.nanmax(y_a) - np.nanmin(y_a)), 0.3)
+        axis_len = 0.06 * span
+        for t_m in marker_times:
+            i = int(np.argmin(np.abs(t - t_m)))
+            r00, r01, r02, r10, r11, r12, r20, r21, r22 = _euler_deg_to_rot(
+                e["roll"][i], e["pitch"][i], e["yaw"][i]
+            )
+            origin = np.array([x_a[i], y_a[i], z_a[i]])
+            body_axes = {
+                "x": np.array([r00, r10, r20]),
+                "y": np.array([r01, r11, r21]),
+                "z": np.array([r02, r12, r22]),
+            }
+            for ax_name, axis_vec in body_axes.items():
+                tip = origin + axis_len * axis_vec
+                fig.add_trace(go.Scatter3d(
+                    x=[origin[0], tip[0]], y=[origin[1], tip[1]], z=[origin[2], tip[2]],
+                    mode="lines", line=dict(color=triad_colors[ax_name], width=3),
+                    legendgroup=lbl, showlegend=False, hoverinfo="skip",
+                ))
+
+    fig.update_layout(
+        title=f"3D flown vs planned + orientation triads — Platform Comparison [{variant_label}]<br>"
+              "<sub>x=red, y=green, z=blue; recentred to common start — drag to orbit, scroll to zoom, "
+              "click legend to toggle a platform</sub>",
+        scene=dict(
+            xaxis_title="x [m]", yaxis_title="y [m]", zaxis_title="z [m] (rel. to start)",
+            aspectmode="data",
+        ),
+        height=1000, width=1400, legend=dict(groupclick="togglegroup"),
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  3D orientation (interactive):     {out_path}")
+
+
+def plot_indi_panel_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly version of plot_indi_panel_multi() (tau_x/y/z time series + PSD)."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    colors = _PLATFORM_COLORS[: len(entries)]
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+
+    has_indi = [bool(np.any(np.isfinite(e["tau_x"]) & (e["tau_x"] != 0.0))) for e in entries]
+    indi_entries = [(e, c, lbl) for e, c, lbl, ok in zip(entries, colors, flat_labels, has_indi) if ok]
+    skipped = [lbl for lbl, ok in zip(flat_labels, has_indi) if not ok]
+
+    tau_names = ["tau_x [N·m]", "tau_y [N·m]", "tau_z [N·m]"]
+    tau_keys = ["tau_x", "tau_y", "tau_z"]
+    titles = [f"{n} — time" for n in tau_names] + [f"{n} — PSD" for n in tau_names]
+
+    fig = make_subplots(rows=2, cols=3, subplot_titles=titles, vertical_spacing=0.12, horizontal_spacing=0.06)
+
+    for i in range(3):
+        for e, c, lbl in indi_entries:
+            sig = e[tau_keys[i]]
+            fig.add_trace(
+                go.Scatter(x=e["t_rel"], y=sig, mode="lines", line=dict(color=c, width=1.0),
+                           name=lbl, legendgroup=lbl, showlegend=(i == 0)),
+                row=1, col=i + 1,
+            )
+        fig.update_yaxes(title_text=tau_names[i], row=1, col=i + 1)
+        fig.update_xaxes(title_text="t [s]", row=1, col=i + 1)
+
+        for e, c, lbl in indi_entries:
+            sig = e[tau_keys[i]]
+            valid_sig = sig[np.isfinite(sig)]
+            if len(valid_sig) >= 16:
+                fs = round(1.0 / float(np.median(np.diff(e["t_rel"][:min(200, len(e["t_rel"]))]))))
+                freq, psd = welch(valid_sig, fs=fs, nperseg=min(len(valid_sig), 256))
+                fig.add_trace(
+                    go.Scatter(x=freq, y=psd, mode="lines", line=dict(color=c, width=1.0),
+                               name=lbl, legendgroup=lbl, showlegend=False),
+                    row=2, col=i + 1,
+                )
+        fig.update_yaxes(title_text="PSD [(N·m)²/Hz]", type="log", row=2, col=i + 1)
+        fig.update_xaxes(title_text="Frequency [Hz]", row=2, col=i + 1)
+
+    note = f"  (No INDI telemetry, skipped: {', '.join(skipped)})" if skipped else ""
+    fig.update_layout(
+        title=f"INDI Torque Panel — Platform Comparison (figure8, kt=0.05) [{variant_label}]{note}",
+        height=800, width=1700, legend=dict(groupclick="togglegroup"), hovermode="closest",
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  INDI panel (interactive):         {out_path}")
+
+
+def plot_rpm_balance_multi_interactive(entries, variant_label, out_path):
+    """Interactive Plotly version of plot_rpm_balance_multi() (per-motor RPM
+    faceted one column per platform, RPM-spread% and roll/pitch below)."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    flat_labels = [e["label"].replace(chr(10), " ") for e in entries]
+    rpm_keys = ["rpm_m1", "rpm_m2", "rpm_m3", "rpm_m4"]
+    motor_colors = ["#0072B2", "#E69F00", "#009E73", "#D55E00"]
+    motor_labels = ["M1", "M2", "M3", "M4"]
+
+    have_rpm = [e for e in entries if any(np.any(~np.isnan(e[k])) for k in rpm_keys)]
+    if not have_rpm:
+        print("  No RPM data in any platform log — skipping RPM balance (interactive).")
+        return
+
+    n = len(entries)
+    fig = make_subplots(rows=3, cols=n, subplot_titles=flat_labels, vertical_spacing=0.08, horizontal_spacing=0.05)
+
+    for col, e in enumerate(entries):
+        c = col + 1
+        t = e["t_rel"]
+        stack = []
+        for k, mc, ml in zip(rpm_keys, motor_colors, motor_labels):
+            vals = np.where(np.array(e[k], dtype=float) == 0, np.nan, e[k])
+            fig.add_trace(
+                go.Scatter(x=t, y=vals, mode="lines", line=dict(color=mc, width=0.9),
+                           name=ml, legendgroup=ml, showlegend=(col == 0)),
+                row=1, col=c,
+            )
+            stack.append(vals)
+        if col == 0:
+            fig.update_yaxes(title_text="RPM", row=1, col=c)
+
+        stack = np.vstack(stack)
+        spread_pct = (np.nanmax(stack, axis=0) - np.nanmin(stack, axis=0)) / np.nanmean(stack, axis=0) * 100
+        fig.add_trace(
+            go.Scatter(x=t, y=spread_pct, mode="lines", fill="tozeroy", line=dict(color="purple", width=0.8),
+                       name="spread %", legendgroup="spread", showlegend=(col == 0)),
+            row=2, col=c,
+        )
+        fig.add_hline(y=15, line=dict(color="red", dash="dash", width=1), row=2, col=c)
+        if col == 0:
+            fig.update_yaxes(title_text="RPM spread (%)", row=2, col=c)
+
+        fig.add_trace(
+            go.Scatter(x=t, y=e["roll"], mode="lines", line=dict(color="steelblue", width=0.8),
+                       name="roll", legendgroup="roll", showlegend=(col == 0)),
+            row=3, col=c,
+        )
+        fig.add_trace(
+            go.Scatter(x=t, y=e["pitch"], mode="lines", line=dict(color="tomato", width=0.8),
+                       name="pitch", legendgroup="pitch", showlegend=(col == 0)),
+            row=3, col=c,
+        )
+        if col == 0:
+            fig.update_yaxes(title_text="Angle (°)", row=3, col=c)
+        fig.update_xaxes(title_text="time [s]", row=3, col=c)
+
+    fig.update_layout(
+        title=f"RPM Balance — Platform Comparison (figure8, kt=0.05) [{variant_label}] — "
+              "click legend to toggle a motor/signal everywhere, drag to zoom",
+        height=1000, width=420 * n, legend=dict(groupclick="togglegroup"), hovermode="closest",
+    )
+    fig.write_html(out_path, include_plotlyjs="cdn")
+    print(f"  RPM balance (interactive):        {out_path}")
+
+
 def calibrate_poly4d_phase(data, segs, speed_scale, xy_scale, loop, t_start, duration_s):
     """Fit speed_scale and time_shift on the lap window (same treatment for every log).
 
@@ -4216,6 +5264,60 @@ def plot_rpm_balance(data, csv_path):
     plt.show()
 
 
+# Log files identified 2026-07-21 by filtering each platform's validated batch
+# (ctrl_mode + gains match) and matching recomputed RMSE against the published
+# tables in docs/results_2026-06-20.md §4a/§4b, docs/results_2026-07-11_upgraded_drone.md
+# §8, docs/results_2026-07-15_brushless.md §5d-validation-fc70 — see those docs for
+# the full per-flight tables. All figure8, kt=0.05, mode1, onboard_d.
+_PLATFORM_COMPARE_FILES = {
+    "best": [
+        ("Standard\nGeometric", "logs/figure8_mode1_kt0.05_2026-06-20_15-18-49.csv"),
+        ("Standard\nINDI",      "logs/figure8_mode1_kt0.05_2026-06-20_14-49-59.csv"),
+        ("Upgraded\nINDI",      "logs/figure8_mode1_kt0.05_2026-07-15_16-33-19.csv"),
+        ("Brushless\nINDI",     "logs/figure8_mode1_kt0.05_2026-07-20_17-27-26.csv"),
+    ],
+    "mean": [
+        ("Standard\nGeometric", "logs/figure8_mode1_kt0.05_2026-06-20_15-17-27.csv"),
+        ("Standard\nINDI",      "logs/figure8_mode1_kt0.05_2026-06-20_15-01-32.csv"),
+        ("Upgraded\nINDI",      "logs/figure8_mode1_kt0.05_2026-07-15_16-34-53.csv"),
+        ("Brushless\nINDI",     "logs/figure8_mode1_kt0.05_2026-07-20_17-28-29.csv"),
+    ],
+}
+
+
+def _run_platform_compare(variant):
+    """Entry point for --platform-compare best|mean. See _PLATFORM_COMPARE_FILES."""
+    file_list = _PLATFORM_COMPARE_FILES[variant]
+    entries = []
+    for label, path in file_list:
+        if not os.path.isfile(path):
+            print(f"[error] Missing log: {path}")
+            sys.exit(1)
+        print(f"Loading {label.replace(chr(10), ' ')}: {path}")
+        entries.append(_load_figure8_dashboard_entry(path, label))
+
+    variant_label = "best" if variant == "best" else "mean-closest"
+    stem = f"logs/platform_compare_{variant}"
+    plot_analysis_multi(entries, variant_label, f"{stem}_analysis.png")
+    plot_analysis_multi_interactive(entries, variant_label, f"{stem}_analysis_interactive.html")
+    plot_axes_multi(entries, variant_label, f"{stem}_analysis_axes.png")
+    plot_axes_multi_interactive(entries, variant_label, f"{stem}_analysis_axes_interactive.html")
+    plot_kinematics_multi(entries, variant_label, f"{stem}_analysis_kinematics.png")
+    plot_kinematics_multi_interactive(entries, variant_label, f"{stem}_analysis_kinematics_interactive.html")
+    plot_3d_orientation_multi(entries, variant_label, f"{stem}_3d_orientation.png")
+    plot_3d_orientation_multi_interactive(entries, variant_label, f"{stem}_3d_orientation_interactive.html")
+    plot_indi_panel_multi(entries, variant_label, f"{stem}_indi_panel.png")
+    plot_indi_panel_multi_interactive(entries, variant_label, f"{stem}_indi_panel_interactive.html")
+    plot_rpm_balance_multi(entries, variant_label, f"{stem}_rpm_balance.png")
+    plot_rpm_balance_multi_interactive(entries, variant_label, f"{stem}_rpm_balance_interactive.html")
+
+    print("\n=== Summary ===")
+    for e in entries:
+        print(f"  {e['label'].replace(chr(10), ' '):<20} "
+              f"RMSE={e['xy_rms']*100:5.1f} cm   "
+              f"roll={e['roll_err_rms']:4.1f}°  pitch={e['pitch_err_rms']:4.1f}°")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Post-flight trajectory analysis")
     parser.add_argument(
@@ -4242,7 +5344,22 @@ def main():
         metavar="'A,B'",
         help="Comma-separated labels for the two runs when using --compare (default: filenames).",
     )
+    parser.add_argument(
+        "--platform-compare",
+        choices=["best", "mean"],
+        default=None,
+        help=(
+            "4-way figure-8 comparison across platforms (Standard Geometric / Standard INDI / "
+            "Upgraded INDI / Brushless INDI fc_bw=70), same panel types as a single-flight "
+            "analysis but side-by-side. 'best' = lowest-RMSE flight per platform, "
+            "'mean' = flight closest to that platform's mean RMSE. Ignores --csv/--type/--compare."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.platform_compare:
+        _run_platform_compare(args.platform_compare)
+        return
 
     # Auto-detect CSV
     csv_path = args.csv
