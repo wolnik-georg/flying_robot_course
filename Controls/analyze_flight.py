@@ -2141,6 +2141,25 @@ def _load_figure8_dashboard_entry(csv_path, label):
     ref_x = ref_xy[:, 0] + dx_off
     ref_y = ref_xy[:, 1] + dy_off
 
+    # Uncalibrated (dt_cal=0) counterpart of the above — used ONLY as the single
+    # shared "planned" reference line drawn across all N platforms in the multi-
+    # platform panels. dt_cal is a per-platform phase-alignment correction (each
+    # platform's actual lag differs, e.g. -130ms for Standard Geometric vs.
+    # +160..+180ms for the INDI platforms here — a ~300ms spread). Reusing one
+    # platform's dt_cal-calibrated reference as "the planned curve" for every
+    # platform therefore injects a spurious apparent offset for every OTHER
+    # platform (at typical figure-8 speeds ~1-1.5 m/s, a 300ms phase mismatch
+    # shows up as ~0.3-0.45m of apparent shift at points of high slope — this is
+    # what was seen in the per-axis plots, not a leftover position/recentring
+    # bug). The XY-path panel already avoids this (it uses the phase-independent
+    # `dense_x0`/`dense_y0` polynomial curve); these _uncal fields extend the
+    # same fix to the time-domain panels (position/attitude/velocity/angular-
+    # rate vs. time), which need a "planned" curve sampled at this entry's own
+    # t_rel timestamps rather than the standalone dense sweep.
+    ref_xy_uncal = np.array([eval_onboard8_xy(segs8, tr) for tr in t_rel])
+    ref_x_uncal = ref_xy_uncal[:, 0] + dx_off
+    ref_y_uncal = ref_xy_uncal[:, 1] + dy_off
+
     xa, ya, za = data["x"][mask], data["y"][mask], data["z"][mask]
     z0_act = float(za[0])
     err_xy = np.sqrt((xa - ref_x) ** 2 + (ya - ref_y) ** 2)
@@ -2180,6 +2199,20 @@ def _load_figure8_dashboard_entry(csv_path, label):
     p_omega_x = np.gradient(p_roll, t_rel)
     p_omega_y = -np.gradient(p_pitch, t_rel)
     p_omega_z = np.gradient(p_yaw, t_rel)
+
+    # Uncalibrated (dt_cal=0) counterparts — see the note above ref_x_uncal.
+    # Used as the single shared "planned" reference for velocity/attitude/
+    # angular-rate panels across all N platforms, so no one platform's phase
+    # calibration biases how "close to planned" every other platform looks.
+    ref_vel_uncal = np.array([eval_onboard8_vel(segs8, tr) for tr in t_rel])
+    plan_vel_uncal = np.column_stack([ref_vel_uncal[:, 0], ref_vel_uncal[:, 1], np.zeros(len(t_rel))])
+    planned_att_uncal = np.array([compute_planned_attitude_8(segs8, tr) for tr in t_rel])
+    p_roll_uncal, p_pitch_uncal, p_yaw_uncal = (
+        planned_att_uncal[:, 0], planned_att_uncal[:, 1], planned_att_uncal[:, 2]
+    )
+    p_omega_x_uncal = np.gradient(p_roll_uncal, t_rel)
+    p_omega_y_uncal = -np.gradient(p_pitch_uncal, t_rel)
+    p_omega_z_uncal = np.gradient(p_yaw_uncal, t_rel)
 
     roll_a, pitch_a, yaw_a = data["roll_deg"][mask], data["pitch_deg"][mask], data["yaw_deg"][mask]
     roll_err = roll_a - p_roll
@@ -2237,6 +2270,12 @@ def _load_figure8_dashboard_entry(csv_path, label):
         # Visualisation-only: recentred to this flight's own start point.
         "x0": xa - xa[0], "y0": ya - ya[0],
         "ref_x0": ref_x - xa[0], "ref_y0": ref_y - ya[0],
+        # Uncalibrated (dt_cal=0) planned references — use these, not the ones
+        # above, for any "shared planned line across N platforms" overlay.
+        "ref_x0_uncal": ref_x_uncal - xa[0], "ref_y0_uncal": ref_y_uncal - ya[0],
+        "plan_vel_uncal": plan_vel_uncal,
+        "p_roll_uncal": p_roll_uncal, "p_pitch_uncal": p_pitch_uncal, "p_yaw_uncal": p_yaw_uncal,
+        "p_omega_x_uncal": p_omega_x_uncal, "p_omega_y_uncal": p_omega_y_uncal, "p_omega_z_uncal": p_omega_z_uncal,
         "z_rel": za - z0_act, "pz_rel": np.zeros(len(t_rel)),
         "vx": vxa, "vy": vya, "vz": vza, "plan_vel": plan_vel,
         "roll": roll_a, "pitch": pitch_a, "yaw": yaw_a,
@@ -2326,8 +2365,8 @@ def plot_analysis_multi(entries, variant_label, out_path):
 
     # ── Panel 4: Attitude — actual vs planned (flatness) ─────────────────────
     ax = axes[1, 0]
-    ax.plot(entries[0]["t_rel"], entries[0]["p_roll"], "k--", lw=1.2, alpha=0.6, label="roll planned")
-    ax.plot(entries[0]["t_rel"], entries[0]["p_pitch"], "k:", lw=1.2, alpha=0.6, label="pitch planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_roll_uncal"], "k--", lw=1.2, alpha=0.6, label="roll planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_pitch_uncal"], "k:", lw=1.2, alpha=0.6, label="pitch planned")
     for e, c, lbl in zip(entries, colors, flat_labels):
         ax.plot(e["t_rel"], e["roll"], color=c, lw=1.1, ls=ls3[0], label=f"{lbl} roll")
         ax.plot(e["t_rel"], e["pitch"], color=c, lw=1.1, ls=ls3[1], label=f"{lbl} pitch")
@@ -2336,8 +2375,8 @@ def plot_analysis_multi(entries, variant_label, out_path):
 
     # ── Panel 5: Velocity — actual vs planned ────────────────────────────────
     ax = axes[1, 1]
-    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel"][:, 0], "k--", lw=1.2, alpha=0.6, label="vx planned")
-    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel"][:, 1], "k:", lw=1.2, alpha=0.6, label="vy planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel_uncal"][:, 0], "k--", lw=1.2, alpha=0.6, label="vx planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["plan_vel_uncal"][:, 1], "k:", lw=1.2, alpha=0.6, label="vy planned")
     for e, c, lbl in zip(entries, colors, flat_labels):
         ax.plot(e["t_rel"], e["vx"], color=c, lw=1.1, ls=ls3[0], label=f"{lbl} vx")
         ax.plot(e["t_rel"], e["vy"], color=c, lw=1.1, ls=ls3[1], label=f"{lbl} vy")
@@ -2346,8 +2385,8 @@ def plot_analysis_multi(entries, variant_label, out_path):
 
     # ── Panel 6: Angular velocity — actual (gyro) vs planned (Euler rate) ────
     ax = axes[1, 2]
-    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_x"], "k--", lw=1.0, alpha=0.5, label="wx planned")
-    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_y"], "k:", lw=1.0, alpha=0.5, label="wy planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_x_uncal"], "k--", lw=1.0, alpha=0.5, label="wx planned")
+    ax.plot(entries[0]["t_rel"], entries[0]["p_omega_y_uncal"], "k:", lw=1.0, alpha=0.5, label="wy planned")
     for e, c, lbl in zip(entries, colors, flat_labels):
         if not np.all(np.isnan(e["gyro_x"])):
             ax.plot(e["t_rel"], e["gyro_x"], color=c, lw=1.0, ls=ls3[0], label=f"{lbl} wx")
@@ -2456,22 +2495,22 @@ def plot_analysis_multi_interactive(entries, variant_label, out_path):
         add(1, 3, e["t_rel"], e["err_xy"] * 100, c, f"{lbl} RMSE={e['xy_rms']*100:.1f}cm", lbl)
 
     # Panel 4: Attitude
-    add(2, 1, entries[0]["t_rel"], entries[0]["p_roll"], "black", "roll planned", "Planned", dash="dash")
-    add(2, 1, entries[0]["t_rel"], entries[0]["p_pitch"], "black", "pitch planned", "Planned", dash="dot")
+    add(2, 1, entries[0]["t_rel"], entries[0]["p_roll_uncal"], "black", "roll planned", "Planned", dash="dash")
+    add(2, 1, entries[0]["t_rel"], entries[0]["p_pitch_uncal"], "black", "pitch planned", "Planned", dash="dot")
     for e, c, lbl in zip(entries, colors, flat_labels):
         add(2, 1, e["t_rel"], e["roll"], c, f"{lbl} roll", lbl)
         add(2, 1, e["t_rel"], e["pitch"], c, f"{lbl} pitch", lbl, dash="dash")
 
     # Panel 5: Velocity
-    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel"][:, 0], "black", "vx planned", "Planned", dash="dash")
-    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel"][:, 1], "black", "vy planned", "Planned", dash="dot")
+    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel_uncal"][:, 0], "black", "vx planned", "Planned", dash="dash")
+    add(2, 2, entries[0]["t_rel"], entries[0]["plan_vel_uncal"][:, 1], "black", "vy planned", "Planned", dash="dot")
     for e, c, lbl in zip(entries, colors, flat_labels):
         add(2, 2, e["t_rel"], e["vx"], c, f"{lbl} vx", lbl)
         add(2, 2, e["t_rel"], e["vy"], c, f"{lbl} vy", lbl, dash="dash")
 
     # Panel 6: Angular velocity
-    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_x"], "black", "wx planned", "Planned", dash="dash")
-    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_y"], "black", "wy planned", "Planned", dash="dot")
+    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_x_uncal"], "black", "wx planned", "Planned", dash="dash")
+    add(2, 3, entries[0]["t_rel"], entries[0]["p_omega_y_uncal"], "black", "wy planned", "Planned", dash="dot")
     for e, c, lbl in zip(entries, colors, flat_labels):
         if not np.all(np.isnan(e["gyro_x"])):
             add(2, 3, e["t_rel"], e["gyro_x"], c, f"{lbl} wx", lbl)
@@ -2554,10 +2593,10 @@ def plot_axes_multi(entries, variant_label, out_path):
     )
 
     grouped_specs = [
-        [("x [m]", "x0", "ref_x0"), ("y [m]", "y0", "ref_y0"), ("z [m] (rel)", "z_rel", None)],
-        [("roll [deg]", "roll", "p_roll"), ("pitch [deg]", "pitch", "p_pitch"), ("yaw [deg]", "yaw", "p_yaw")],
+        [("x [m]", "x0", "ref_x0_uncal"), ("y [m]", "y0", "ref_y0_uncal"), ("z [m] (rel)", "z_rel", None)],
+        [("roll [deg]", "roll", "p_roll_uncal"), ("pitch [deg]", "pitch", "p_pitch_uncal"), ("yaw [deg]", "yaw", "p_yaw_uncal")],
         [("vx [m/s]", "vx", None), ("vy [m/s]", "vy", None), ("vz [m/s]", "vz", None)],
-        [("wx [deg/s]", "gyro_x", "p_omega_x"), ("wy [deg/s]", "gyro_y", "p_omega_y"), ("wz [deg/s]", "gyro_z", "p_omega_z")],
+        [("wx [deg/s]", "gyro_x", "p_omega_x_uncal"), ("wy [deg/s]", "gyro_y", "p_omega_y_uncal"), ("wz [deg/s]", "gyro_z", "p_omega_z_uncal")],
     ]
     row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
 
@@ -2567,9 +2606,9 @@ def plot_axes_multi(entries, variant_label, out_path):
             if planned_key is not None and planned_key in e0:
                 ax_i.plot(e0["t_rel"], e0[planned_key], "k--", lw=1.1, alpha=0.7, label="planned")
             elif r_idx == 2:
-                # velocity row: planned vx/vy from plan_vel columns, vz=0
+                # velocity row: planned vx/vy from plan_vel_uncal columns, vz=0
                 pv_idx = c_idx
-                ax_i.plot(e0["t_rel"], e0["plan_vel"][:, pv_idx], "k--", lw=1.1, alpha=0.7, label="planned")
+                ax_i.plot(e0["t_rel"], e0["plan_vel_uncal"][:, pv_idx], "k--", lw=1.1, alpha=0.7, label="planned")
             for e, c, lbl in zip(entries, colors, flat_labels):
                 ax_i.plot(e["t_rel"], e[key], color=c, lw=1.1, label=lbl)
             ax_i.set_ylabel(ylabel)
@@ -2601,9 +2640,9 @@ def plot_kinematics_multi(entries, variant_label, out_path):
     e0 = entries[0]
     t0 = e0["t_rel"]
 
-    p_ax = np.gradient(e0["plan_vel"][:, 0], t0)
-    p_ay = np.gradient(e0["plan_vel"][:, 1], t0)
-    p_az = np.gradient(e0["plan_vel"][:, 2], t0)
+    p_ax = np.gradient(e0["plan_vel_uncal"][:, 0], t0)
+    p_ay = np.gradient(e0["plan_vel_uncal"][:, 1], t0)
+    p_az = np.gradient(e0["plan_vel_uncal"][:, 2], t0)
     p_jx, p_jy, p_jz = np.gradient(p_ax, t0), np.gradient(p_ay, t0), np.gradient(p_az, t0)
     p_sx, p_sy, p_sz = np.gradient(p_jx, t0), np.gradient(p_jy, t0), np.gradient(p_jz, t0)
     planned = {"Acceleration": (p_ax, p_ay, p_az), "Jerk": (p_jx, p_jy, p_jz), "Snap": (p_sx, p_sy, p_sz)}
@@ -2859,10 +2898,10 @@ def plot_axes_multi_interactive(entries, variant_label, out_path):
 
     row_titles = ["Position", "Attitude", "Velocity", "Angular Rate"]
     grouped_specs = [
-        [("x [m]", "x0", "ref_x0"), ("y [m]", "y0", "ref_y0"), ("z [m] (rel)", "z_rel", None)],
-        [("roll [deg]", "roll", "p_roll"), ("pitch [deg]", "pitch", "p_pitch"), ("yaw [deg]", "yaw", "p_yaw")],
+        [("x [m]", "x0", "ref_x0_uncal"), ("y [m]", "y0", "ref_y0_uncal"), ("z [m] (rel)", "z_rel", None)],
+        [("roll [deg]", "roll", "p_roll_uncal"), ("pitch [deg]", "pitch", "p_pitch_uncal"), ("yaw [deg]", "yaw", "p_yaw_uncal")],
         [("vx [m/s]", "vx", None), ("vy [m/s]", "vy", None), ("vz [m/s]", "vz", None)],
-        [("wx [deg/s]", "gyro_x", "p_omega_x"), ("wy [deg/s]", "gyro_y", "p_omega_y"), ("wz [deg/s]", "gyro_z", "p_omega_z")],
+        [("wx [deg/s]", "gyro_x", "p_omega_x_uncal"), ("wy [deg/s]", "gyro_y", "p_omega_y_uncal"), ("wz [deg/s]", "gyro_z", "p_omega_z_uncal")],
     ]
     titles = [f"{rt} — {spec[0].split()[0]}" for rt in row_titles for spec in grouped_specs[row_titles.index(rt)]]
 
@@ -2875,7 +2914,7 @@ def plot_axes_multi_interactive(entries, variant_label, out_path):
                 _legend_add(fig, r, c, e0["t_rel"], e0[planned_key], "black", "planned", "Planned",
                             dash="dash", show_legend=(r_idx == 0 and c_idx == 0))
             elif r_idx == 2:
-                _legend_add(fig, r, c, e0["t_rel"], e0["plan_vel"][:, c_idx], "black", "planned", "Planned",
+                _legend_add(fig, r, c, e0["t_rel"], e0["plan_vel_uncal"][:, c_idx], "black", "planned", "Planned",
                             dash="dash", show_legend=False)
             for e, cl, lbl in zip(entries, colors, flat_labels):
                 _legend_add(fig, r, c, e["t_rel"], e[key], cl, lbl, lbl, show_legend=(r_idx == 0 and c_idx == 0))
@@ -2901,9 +2940,9 @@ def plot_kinematics_multi_interactive(entries, variant_label, out_path):
     e0 = entries[0]
     t0 = e0["t_rel"]
 
-    p_ax = np.gradient(e0["plan_vel"][:, 0], t0)
-    p_ay = np.gradient(e0["plan_vel"][:, 1], t0)
-    p_az = np.gradient(e0["plan_vel"][:, 2], t0)
+    p_ax = np.gradient(e0["plan_vel_uncal"][:, 0], t0)
+    p_ay = np.gradient(e0["plan_vel_uncal"][:, 1], t0)
+    p_az = np.gradient(e0["plan_vel_uncal"][:, 2], t0)
     p_jx, p_jy, p_jz = np.gradient(p_ax, t0), np.gradient(p_ay, t0), np.gradient(p_az, t0)
     p_sx, p_sy, p_sz = np.gradient(p_jx, t0), np.gradient(p_jy, t0), np.gradient(p_jz, t0)
     planned = {"Acceleration": (p_ax, p_ay, p_az), "Jerk": (p_jx, p_jy, p_jz), "Snap": (p_sx, p_sy, p_sz)}
