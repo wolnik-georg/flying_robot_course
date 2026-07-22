@@ -594,6 +594,7 @@ struct State {
     rpm_prev: [u16; 4],
     omega_prev: Vec3,   // raw gyro from previous cycle (for finite-difference)
     tau_prev: Vec3,
+    tau_act: Vec3,      // act_dyn base state (first-order model of clamped commands)
     indi_init: bool,
     fc_bw_last: f32,
 }
@@ -616,6 +617,7 @@ impl State {
             rpm_prev: [0u16; 4],
             omega_prev: Vec3::zero(),
             tau_prev: Vec3::zero(),
+            tau_act: Vec3::zero(),
             indi_init: false,
             fc_bw_last: 0.0,
         }
@@ -638,6 +640,7 @@ impl State {
         self.rpm_prev = [0u16; 4];
         self.omega_prev = Vec3::zero();
         self.tau_prev = Vec3::zero();
+        self.tau_act = Vec3::zero();
         self.indi_init = false;
     }
 }
@@ -662,7 +665,9 @@ static mut TRAJ_T0: u32 = 0;
 // Position layout: [duration, cx0..cx8, cy0..cy8] × n_segs (19 f32 per seg).
 // Z layout:        [cz0..cz8]                      × n_segs ( 9 f32 per seg, no duration).
 // Attitude layout: [croll0..croll8, cpitch0..cpitch8] × n_segs (18 f32 per seg).
-const TRAJ_MAX_SEGS: usize = 12;
+// 14 = 12-segment periodic cores (oval/tilted_oval) + 1 entry + 1 exit segment
+// (Issue B rest-to-rest fix). Position upload index is u16 (14*19=266 > u8 range).
+const TRAJ_MAX_SEGS: usize = 14;
 const TRAJ_FLOATS_PER_SEG:     usize = 19;
 const TRAJ_Z_FLOATS_PER_SEG:   usize = 9;
 const TRAJ_ATT_FLOATS_PER_SEG: usize = 18;
@@ -689,6 +694,14 @@ extern "C" {
     static mut g_indi_filt_tau: u8;
     // INDI effectiveness scale on the J·Δα increment (default 1.0). <1.0 reduces over-correction.
     static mut g_indi_j_scale: f32;
+    // Increment-base source: 0.0 = RPM base (default), >0 = act_dyn model time constant [s]
+    static mut g_indi_act_tau:      f32;
+    // Output clamps (bitmask: bit0=tau_xy, bit1=tau_z, bit2=tilt, bit3=thrust; 0 = all off)
+    static mut g_indi_clamp_en:     u8;
+    static mut g_indi_tau_xy_max:   f32; // [Nm]
+    static mut g_indi_tau_z_max:    f32; // [Nm]
+    static mut g_indi_tilt_max_deg: f32; // [deg]
+    static mut g_indi_thrust_max:   f32; // [N]
     // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
@@ -697,13 +710,13 @@ extern "C" {
 }
 
 extern "C" {
-    static mut g_traj_coefs:     [f32; 228]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
-    static mut g_traj_z_coefs:   [f32; 108]; // TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG
+    static mut g_traj_coefs:     [f32; 266]; // TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG
+    static mut g_traj_z_coefs:   [f32; 126]; // TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG
     static mut g_traj_z_mode:    u8;  // 0=ramp (default), 1=polynomial (3D trajectories)
     static mut g_traj_z_ci:      u8;  // z upload index
     static mut g_traj_z_cv:      f32; // z upload value
     static mut g_traj_z_cw:      u8;  // z commit flag
-    static mut g_traj_att_coefs:     [f32; 216]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
+    static mut g_traj_att_coefs:     [f32; 252]; // TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG
     static mut g_traj_att_mode:      u8;  // 0=flatness, 1=polynomial
     static mut g_traj_att_ctrl_mode: u8;  // 0=hard override, 1=hybrid (flatness rd + poly omega_d)
     static mut g_traj_att_ci:        u8;  // attitude upload index
@@ -713,11 +726,13 @@ extern "C" {
     static mut g_traj_mode:      u8;  // 0=passthrough (Mode B), 1=onboard eval (Mode D)
     static mut g_traj_start:     u8;  // laptop writes 1; firmware latches T0
     static mut g_traj_reps:      u8;  // 0=loop forever; N=self-stop after N laps
+    static mut g_traj_n_entry:   u8;  // leading segments played ONCE before the core laps
+    static mut g_traj_n_exit:    u8;  // trailing segments played ONCE after the core laps
     static mut g_traj_origin_x:  f32;
     static mut g_traj_origin_y:  f32;
     static mut g_traj_hover_z:   f32;
     static mut g_traj_dz:        f32; // Z gain per lap: 0=flat, +0.40=ascending helix
-    static mut g_traj_coef_ci:   u8;  // position upload index
+    static mut g_traj_coef_ci:   u16; // position upload index (u16: 14 segs = 266 coefs)
     static mut g_traj_coef_cv:   f32; // position upload value
     static mut g_traj_coef_cw:   u8;  // position commit flag
     // RPM bridge (traj_iface.c) — reads per-motor RPM via the log system for INDI Mode 1
@@ -777,38 +792,65 @@ fn poly_eval_axis(c: &[f32; 9], t: f32, t_dur: f32) -> (f32, f32, f32, f32, f32)
 /// Caller must hold the `unsafe` context and ensure `n_segs ≤ TRAJ_MAX_SEGS`
 /// and that the coefficients have been fully uploaded before T0 is latched.
 ///
+/// Map global trajectory time onto the entry/core/exit timeline and locate the
+/// active segment (Issue B rest-to-rest fix). Segments [0..n_entry) play ONCE,
+/// the core [n_entry..n_segs-n_exit) loops (g_traj_reps laps; reps=0 = forever,
+/// exit never reached), and the last n_exit segments play ONCE after the laps.
+/// n_entry = n_exit = 0 reproduces the legacy wrap-everything behaviour exactly.
+///
+/// Returns `(seg, t_in_seg, dur, core_frac, t_core)` — core_frac is the
+/// un-wrapped core lap progress (0 during entry, held at reps after the laps),
+/// used only for the legacy dz z-ramp.
+unsafe fn traj_locate(t_global: f32, n_segs: usize) -> (usize, f32, f32, f32, f32) {
+    let n_entry = (g_traj_n_entry as usize).min(n_segs);
+    let n_exit  = (g_traj_n_exit  as usize).min(n_segs - n_entry);
+    let core_lo = n_entry;
+    let core_hi = n_segs - n_exit;
+
+    let mut t_entry = 0.0_f32;
+    for i in 0..core_lo { t_entry += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG]; }
+    let mut t_core = 0.0_f32;
+    for i in core_lo..core_hi { t_core += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG]; }
+
+    let reps = g_traj_reps as f32;
+    let (lo, hi, t_loc, core_frac);
+    if t_global < t_entry {
+        lo = 0; hi = core_lo; t_loc = t_global; core_frac = 0.0;
+    } else {
+        let tc = t_global - t_entry;
+        if g_traj_reps == 0 || tc < reps * t_core || core_hi == n_segs {
+            // Core laps: wrap tc into [0, t_core). C0-continuous for closed loops.
+            let wrapped = if t_core > 0.0 {
+                tc - libm::floorf(tc / t_core) * t_core
+            } else {
+                tc
+            };
+            lo = core_lo; hi = core_hi; t_loc = wrapped;
+            core_frac = if t_core > 0.0 { tc / t_core } else { 0.0 };
+        } else {
+            // Exit region (past t_end it clamps to the last point; self-stop fires there).
+            lo = core_hi; hi = n_segs; t_loc = tc - reps * t_core; core_frac = reps;
+        }
+    }
+
+    let mut t_start = 0.0_f32;
+    let mut seg = hi.saturating_sub(1).max(lo);
+    for i in lo..hi {
+        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+        if t_loc < t_start + dur { seg = i; break; }
+        t_start += dur;
+    }
+    let dur  = g_traj_coefs[seg * TRAJ_FLOATS_PER_SEG].max(1e-9);
+    let t_in = (t_loc - t_start).max(0.0).min(dur);
+    (seg, t_in, dur, core_frac, t_core)
+}
+
 /// Returns `(pos_rel, vel, acc, jerk, snap)` — pos_rel is relative to trajectory
 /// origin (caller adds `g_traj_origin_{x,y}` and `g_traj_hover_z`).
 unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, Vec3, Vec3) {
-    // Compute total trajectory duration so we can wrap t for periodic reps.
-    let mut total_dur = 0.0_f32;
-    for i in 0..n_segs {
-        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-    }
-    // Wrap t into [0, total_dur) — handles reps=2+ without polynomial extrapolation.
-    // The figure-8 is a closed loop (start == end), so wrapping is C0-continuous.
-    let t = if total_dur > 0.0 {
-        t_global - libm::floorf(t_global / total_dur) * total_dur
-    } else {
-        t_global
-    };
-
-    // Find active segment
-    let mut t_start = 0.0_f32;
-    let mut seg = n_segs.saturating_sub(1);
-    for i in 0..n_segs {
-        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-        if t < t_start + dur {
-            seg = i;
-            break;
-        }
-        t_start += dur;
-    }
-
-    let base  = seg * TRAJ_FLOATS_PER_SEG;
-    let dur   = g_traj_coefs[base];
-    let tau   = (t - t_start).max(0.0).min(dur);
-    let t_n   = tau / dur; // normalised ∈ [0, 1]
+    let (seg, tau, dur, core_frac, t_core) = traj_locate(t_global, n_segs);
+    let base = seg * TRAJ_FLOATS_PER_SEG;
+    let t_n  = tau / dur; // normalised ∈ [0, 1]
 
     // Extract coefficients into fixed-size arrays
     let mut cx = [0.0_f32; 9];
@@ -821,15 +863,14 @@ unsafe fn eval_traj_onboard(t_global: f32, n_segs: usize) -> (Vec3, Vec3, Vec3, 
     let (px, vx, ax, jx, sx) = poly_eval_axis(&cx, t_n, dur);
     let (py, vy, ay, jy, sy) = poly_eval_axis(&cy, t_n, dur);
 
-    // Z: linear ramp using t_global (not wrapped t) so multi-rep helices stack
+    // Z: linear ramp using the un-wrapped core progress so multi-rep helices stack
     // continuously upward instead of resetting each lap.
-    // For n_reps=1, t_global ∈ [0, total_dur) → lap_frac ∈ [0,1) — identical to before.
+    // With n_entry=n_exit=0 and one rep, core_frac == t_global/total — identical to before.
     // When g_traj_dz=0 (circle, figure-8, loop), all z components are 0 → backward compatible.
-    let lap_frac = if total_dur > 0.0 { t_global / total_dur } else { 0.0 };
-    let vz = g_traj_dz / total_dur.max(0.001);
+    let vz = g_traj_dz / t_core.max(0.001);
 
     (
-        Vec3::new(px, py, lap_frac * g_traj_dz),
+        Vec3::new(px, py, core_frac * g_traj_dz),
         Vec3::new(vx, vy, vz),
         Vec3::new(ax, ay, 0.0),
         Vec3::new(jx, jy, 0.0),
@@ -861,25 +902,9 @@ fn rot_from_euler(roll: f32, pitch: f32, yaw: f32) -> Mat3 {
 /// Caller must hold the `unsafe` context.
 #[inline]
 unsafe fn eval_att_poly(t_global: f32, yaw_d: f32, n_segs: usize) -> (f32, f32, Vec3) {
-    // Find the same active segment as eval_traj_onboard.
-    let mut total_dur = 0.0_f32;
-    for i in 0..n_segs {
-        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-    }
-    let t = if total_dur > 0.0 {
-        t_global - libm::floorf(t_global / total_dur) * total_dur
-    } else {
-        t_global
-    };
-    let mut t_start = 0.0_f32;
-    let mut seg = n_segs.saturating_sub(1);
-    for i in 0..n_segs {
-        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-        if t < t_start + dur { seg = i; break; }
-        t_start += dur;
-    }
-    let dur   = g_traj_coefs[seg * TRAJ_FLOATS_PER_SEG];
-    let tau   = ((t - t_start).max(0.0).min(dur)) / dur; // ∈ [0,1]
+    // Same entry/core/exit segment mapping as eval_traj_onboard.
+    let (seg, t_in, dur, _, _) = traj_locate(t_global, n_segs);
+    let tau = t_in / dur; // ∈ [0,1]
 
     let base = seg * TRAJ_ATT_FLOATS_PER_SEG;
     let mut cr = [0.0_f32; 9];
@@ -913,24 +938,9 @@ unsafe fn eval_att_poly(t_global: f32, yaw_d: f32, n_segs: usize) -> (f32, f32, 
 /// Caller must hold the `unsafe` context.
 #[inline]
 unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32, f32) {
-    let mut total_dur = 0.0_f32;
-    for i in 0..n_segs {
-        total_dur += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-    }
-    let t = if total_dur > 0.0 {
-        t_global - libm::floorf(t_global / total_dur) * total_dur
-    } else {
-        t_global
-    };
-    let mut t_start = 0.0_f32;
-    let mut seg = n_segs.saturating_sub(1);
-    for i in 0..n_segs {
-        let dur = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
-        if t < t_start + dur { seg = i; break; }
-        t_start += dur;
-    }
-    let dur = g_traj_coefs[seg * TRAJ_FLOATS_PER_SEG];
-    let tau = ((t - t_start).max(0.0).min(dur)) / dur.max(1e-9);
+    // Same entry/core/exit segment mapping as eval_traj_onboard.
+    let (seg, t_in, dur, _, _) = traj_locate(t_global, n_segs);
+    let tau = t_in / dur;
 
     let base = seg * TRAJ_Z_FLOATS_PER_SEG;
     let mut cz = [0.0_f32; 9];
@@ -1137,6 +1147,25 @@ fn geometric_step_ref(
 ///   bit 1 = attitude INDI inner loop: incremental torque from RPM^2 + alpha feedback
 ///
 /// Gyroscopic compensation applied only when bit 1 is clear (geometric attitude).
+// Torque clamp (clamp_en bit0 = roll/pitch, bit1 = yaw), mirroring stock controller_indi.c's
+// bound_control_input. Values sized from per-motor thrust headroom (see traj_iface.c). Applied to
+// BOTH controller branches; in INDI it must run BEFORE tau_prev is stored so the increment memory
+// only ever contains torques that were actually sent (stock propagates post-clamp too).
+fn clamp_torque(t: Vec3) -> Vec3 {
+    let en = unsafe { g_indi_clamp_en };
+    let mut out = t;
+    if en & 0b0001 != 0 {
+        let m = unsafe { g_indi_tau_xy_max };
+        out.x = out.x.clamp(-m, m);
+        out.y = out.y.clamp(-m, m);
+    }
+    if en & 0b0010 != 0 {
+        let m = unsafe { g_indi_tau_z_max };
+        out.z = out.z.clamp(-m, m);
+    }
+    out
+}
+
 /// RPMs are read once and shared between position INDI (a_model) and att INDI (tau_current).
 fn controller_step(
     mode: u8,
@@ -1225,9 +1254,29 @@ fn controller_step(
         .add(ki_term)
         .add(Vec3::new(0.0, 0.0, gz_comp))
         .add(a_indi);
-    let thrust_vec = f_d.scale(mass);
+    let mut thrust_vec = f_d.scale(mass);
+
+    // Tilt clamp (clamp_en bit2): limit the desired-thrust-vector angle from vertical, mirroring
+    // stock position_controller_indi.c pq_clamp. Skipped when an attitude override is active
+    // (rd_override: loops/flips command tilt >90° on purpose) or when the vector points down.
+    let clamp_en = unsafe { g_indi_clamp_en };
+    if clamp_en & 0b0100 != 0 && rd_override.is_none() && thrust_vec.z > 0.0 {
+        let tan_max = libm::tanf(unsafe { g_indi_tilt_max_deg } * core::f32::consts::PI / 180.0);
+        let h = libm::sqrtf(thrust_vec.x * thrust_vec.x + thrust_vec.y * thrust_vec.y);
+        let h_max = thrust_vec.z * tan_max;
+        if h > h_max {
+            let k = h_max / h;
+            thrust_vec.x *= k;
+            thrust_vec.y *= k;
+        }
+    }
+
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
-    let thrust = thrust_vec.dot(body_z).max(0.0);
+    let mut thrust = thrust_vec.dot(body_z).max(0.0);
+    // Thrust clamp (clamp_en bit3): total thrust ceiling, mirroring stock MAX_THRUST.
+    if clamp_en & 0b1000 != 0 {
+        thrust = thrust.min(unsafe { g_indi_thrust_max });
+    }
     if thrust < 0.05 {
         s.i_ep = Vec3::zero();
         s.i_error_att = Vec3::zero();
@@ -1307,10 +1356,20 @@ fn controller_step(
             s.bw_ref_z.update(alpha_ref.z),
         );
 
-        // tau_current from per-motor RPM^2 (falls back to tau_prev when deck absent, or when
-        // H1a diagnostic ff_free forces feed-forward-free mode even with the deck active)
+        // Increment base source (indi_gains.act_tau, 2026-07-22):
+        //   act_tau = 0 (default): tau_current from per-motor RPM^2 (falls back to tau_prev
+        //     when deck absent, or when H1a diagnostic ff_free forces it) — today's behaviour.
+        //   act_tau > 0: act_dyn base — first-order model of the previous (clamped) commands
+        //     with that time constant, replacing the RPM reading (stock controller_indi.c
+        //     structure). Sim (tests/test_indi_actuator_lag.rs) predicts a matched model is
+        //     EQUIVALENT to the RPM base; this is the hardware A/B knob to verify that.
         let ff_free = unsafe { g_indi_ff_free } != 0;
-        let tau_current_raw = if rpms_active && !ff_free {
+        let act_tau = unsafe { g_indi_act_tau };
+        let tau_current_raw = if act_tau > 0.0 {
+            let k = dt / (dt + act_tau);
+            s.tau_act = s.tau_act.add(s.tau_prev.sub(s.tau_act).scale(k));
+            s.tau_act
+        } else if rpms_active && !ff_free {
             rpms_to_torque([m1, m2, m3, m4], [kt1, kt2, kt3, kt4])
         } else {
             s.tau_prev
@@ -1353,7 +1412,10 @@ fn controller_step(
             j_scale*JYY*alpha_err.y,
             j_scale*JZZ*alpha_err.z,
         );
-        let tau       = tau_current.add(delta_tau);
+        // Clamp BEFORE storing tau_prev and logging: the increment memory and the log must
+        // reflect the torque actually sent, never an unrealizable command (oval 2026-07-21
+        // blow-up reached 52 mNm vs ~14 mNm physical headroom).
+        let tau       = clamp_torque(tau_current.add(delta_tau));
         s.tau_prev    = tau;
 
         unsafe { indi_tau_write(tau.x, tau.y, tau.z); }
@@ -1366,11 +1428,11 @@ fn controller_step(
         let gyro_comp = omega.cross(j_omega);
         // v2 improvement #2: attitude integral (same gate as geometric_step path)
         let ki_att = if ENABLE_ATTITUDE_INTEGRAL { 0.03_f32 } else { 0.0_f32 };
-        Vec3::new(
+        clamp_torque(Vec3::new(
             -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
             -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
             -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - ki_att*s.i_error_att.z,
-        )
+        ))
     };
 
     (thrust, torque)
@@ -1498,11 +1560,21 @@ pub unsafe extern "C" fn controllerOutOfTree(
     if g_traj_mode == 1 && TRAJ_T0 > 0 && g_traj_reps > 0 {
         let t_elapsed = tick.wrapping_sub(TRAJ_T0) as f32 * 0.001_f32;
         let n_segs_chk = (g_traj_n_segs as usize).min(TRAJ_MAX_SEGS);
-        let mut total_dur_chk = 0.0_f32;
+        // Timeline end = entry (once) + reps × core + exit (once). With
+        // n_entry=n_exit=0 this is total_dur × reps — identical to before.
+        let n_entry = (g_traj_n_entry as usize).min(n_segs_chk);
+        let n_exit  = (g_traj_n_exit  as usize).min(n_segs_chk - n_entry);
+        let mut t_entry = 0.0_f32;
+        let mut t_core  = 0.0_f32;
+        let mut t_exit  = 0.0_f32;
         for i in 0..n_segs_chk {
-            total_dur_chk += g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+            let d = g_traj_coefs[i * TRAJ_FLOATS_PER_SEG];
+            if i < n_entry { t_entry += d; }
+            else if i < n_segs_chk - n_exit { t_core += d; }
+            else { t_exit += d; }
         }
-        if total_dur_chk > 0.0 && t_elapsed >= total_dur_chk * g_traj_reps as f32 {
+        let t_total = t_entry + t_core * g_traj_reps as f32 + t_exit;
+        if t_core > 0.0 && t_elapsed >= t_total {
             g_traj_mode = 0;
             g_traj_start = 0;
             TRAJ_T0 = 0;

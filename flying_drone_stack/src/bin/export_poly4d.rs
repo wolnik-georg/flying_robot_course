@@ -27,7 +27,7 @@
 //! Degree-8 term (a_8) is converted to degree-7 via Hermite boundary matching
 //! (see to_hermite_phys7) — preserves C3 continuity at all segment junctions.
 
-use multirotor_simulator::planning::{SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint};
+use multirotor_simulator::planning::{SplineSegment, SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint};
 use multirotor_simulator::math::Vec3;
 use std::fs;
 use std::io::{BufWriter, Write};
@@ -90,15 +90,42 @@ fn main() {
         let out_path = out_override.unwrap_or_else(|| {
             format!("{}/{}_onboard.csv", CS2_DATA_DIR, label)
         });
+        let periodic = is_loop_safe(&trajectory, mode);
+
+        // Issue B fix (HB1): periodic cores start/end mid-lap (v≠0). Wrap them with a
+        // rest-to-rest entry/exit segment so the OVERALL trajectory starts and ends at
+        // v=a=j=0 while the laps in between stay continuous. Non-periodic trajectories
+        // are already rest-to-rest by construction — exported unchanged (n_entry=0).
+        let (traj_out, n_entry, n_exit) = if periodic {
+            let (wrapped, t_e) = wrap_rest_to_rest(&traj);
+            eprintln!(
+                "Rest-to-rest wrap: +entry/+exit {:.2}s each ({} → {} segs, total {:.3}s)",
+                t_e, traj.segments.len(), wrapped.segments.len(), wrapped.total_time
+            );
+            (wrapped, 1u8, 1u8)
+        } else {
+            (traj.clone(), 0u8, 0u8)
+        };
+        // Firmware cap (traj_iface.c TRAJ_MAX_SEGS)
+        if traj_out.segments.len() > 14 {
+            eprintln!(
+                "ERROR: {} segments exceed the firmware TRAJ_MAX_SEGS=14 upload cap",
+                traj_out.segments.len()
+            );
+            std::process::exit(1);
+        }
+
         eprintln!("Writing onboard {} → {}", label, out_path);
-        write_onboard_csv(&traj, &out_path).expect("Failed to write onboard CSV");
-        eprintln!("Done. {} segments, total={:.3}s", traj.segments.len(), traj.total_time);
+        write_onboard_csv(&traj_out, &out_path).expect("Failed to write onboard CSV");
+        eprintln!("Done. {} segments, total={:.3}s", traj_out.segments.len(), traj_out.total_time);
 
         let meta_path = out_path.replace(".csv", ".meta.json");
-        let periodic = is_loop_safe(&trajectory, mode);
-        std::fs::write(&meta_path, format!("{{\"periodic\": {}}}\n", periodic))
-            .expect("Failed to write metadata sidecar");
-        eprintln!("Wrote metadata {} (periodic={})", meta_path, periodic);
+        std::fs::write(&meta_path, format!(
+            "{{\"periodic\": {}, \"n_entry\": {}, \"n_exit\": {}}}\n",
+            periodic, n_entry, n_exit
+        )).expect("Failed to write metadata sidecar");
+        eprintln!("Wrote metadata {} (periodic={}, n_entry={}, n_exit={})",
+                  meta_path, periodic, n_entry, n_exit);
     } else {
         // HLC Poly4D format: degree-7 physical-time coefficients (existing behaviour).
         let out_path = out_override.unwrap_or_else(|| {
@@ -606,6 +633,113 @@ fn write_onboard_csv(traj: &SplineTrajectory, path: &str) -> std::io::Result<()>
     }
 
     Ok(())
+}
+
+// ── Rest-to-rest entry/exit wrapping (Issue B fix) ─────────────────────────
+
+/// Boundary state (p, v, a, j) of a normalised-time degree-8 segment at its
+/// start (τ=0) or end (τ=1), in PHYSICAL units (segment duration `t`).
+fn boundary_state(c: &[f32; 9], t: f32, at_end: bool) -> (f32, f32, f32, f32) {
+    if !at_end {
+        (c[0], c[1] / t, 2.0 * c[2] / (t * t), 6.0 * c[3] / (t * t * t))
+    } else {
+        let p: f32 = c.iter().sum();
+        let v: f32 = c.iter().enumerate().skip(1)
+            .map(|(k, &a)| k as f32 * a).sum::<f32>() / t;
+        let a_: f32 = c.iter().enumerate().skip(2)
+            .map(|(k, &a)| (k * (k - 1)) as f32 * a).sum::<f32>() / (t * t);
+        let j: f32 = c.iter().enumerate().skip(3)
+            .map(|(k, &a)| (k * (k - 1) * (k - 2)) as f32 * a).sum::<f32>() / (t * t * t);
+        (p, v, a_, j)
+    }
+}
+
+/// Unique degree-7 Hermite polynomial in normalised time τ∈[0,1] (returned as a
+/// 9-coef array with c8=0) matching physical (p,v,a,j) at both ends of a segment
+/// of duration `t`. Same basis solve as `to_hermite_phys7`, in the τ domain.
+fn hermite_norm9(p0: f32, v0: f32, a0: f32, j0: f32,
+                 p1: f32, v1: f32, a1: f32, j1: f32, t: f32) -> [f32; 9] {
+    // physical → normalised-domain boundary conditions (d/dτ = t·d/dt)
+    let c0 = p0;
+    let c1 = v0 * t;
+    let c2 = a0 * t * t / 2.0;
+    let c3 = j0 * t * t * t / 6.0;
+    let b0 = p1;
+    let b1 = v1 * t;
+    let b2 = a1 * t * t;
+    let b3 = j1 * t * t * t;
+    let dp = b0 - (c0 + c1 + c2 + c3);
+    let dv = b1 - (c1 + 2.0 * c2 + 3.0 * c3);
+    let da = b2 - (2.0 * c2 + 6.0 * c3);
+    let dj = b3 - 6.0 * c3;
+    let c4 =  35.0 * dp - 15.0 * dv + 2.5 * da - (1.0 / 6.0) * dj;
+    let c5 = -84.0 * dp + 39.0 * dv - 7.0 * da + 0.5         * dj;
+    let c6 =  70.0 * dp - 34.0 * dv + 6.5 * da - 0.5         * dj;
+    let c7 = -20.0 * dp + 10.0 * dv - 2.0 * da + (1.0 / 6.0) * dj;
+    [c0, c1, c2, c3, c4, c5, c6, c7, 0.0]
+}
+
+/// Wrap a periodic core with one rest-to-rest entry and one exit segment.
+///
+/// Entry: from rest AT the lap-start point to the lap's full (p,v,a,j) at phase 0
+/// (the polynomial swings back briefly to build speed — a wind-up arc). Exit: from
+/// the lap-end state (== phase-0 state for periodic cores) back to rest at the same
+/// point. Junctions are C3-exact by Hermite construction, so the overall trajectory
+/// is rest-to-rest with zero reference steps at arm, lap seams, and disarm.
+fn wrap_rest_to_rest(traj: &SplineTrajectory) -> (SplineTrajectory, f32) {
+    let first = &traj.segments[0];
+    let last  = traj.segments.last().expect("empty trajectory");
+
+    let (px0, vx0, ax0, jx0) = boundary_state(&first.cx, first.duration, false);
+    let (py0, vy0, ay0, jy0) = boundary_state(&first.cy, first.duration, false);
+    let (pz0, vz0, az0, jz0) = boundary_state(&first.cz, first.duration, false);
+    let (px1, vx1, ax1, jx1) = boundary_state(&last.cx, last.duration, true);
+    let (py1, vy1, ay1, jy1) = boundary_state(&last.cy, last.duration, true);
+    let (pz1, vz1, az1, jz1) = boundary_state(&last.cz, last.duration, true);
+
+    // Reach lap speed at a modest ~0.5 m/s² average acceleration, bounded [1.2, 3.0] s.
+    let speed = (vx0 * vx0 + vy0 * vy0 + vz0 * vz0).sqrt();
+    let t_e = (speed / 0.5).clamp(1.2, 3.0);
+
+    let zero9 = [0.0_f32; 9];
+    let entry = SplineSegment {
+        cx: hermite_norm9(px0, 0.0, 0.0, 0.0, px0, vx0, ax0, jx0, t_e),
+        cy: hermite_norm9(py0, 0.0, 0.0, 0.0, py0, vy0, ay0, jy0, t_e),
+        cz: hermite_norm9(pz0, 0.0, 0.0, 0.0, pz0, vz0, az0, jz0, t_e),
+        cyaw: zero9,
+        duration: t_e,
+    };
+    let exit = SplineSegment {
+        cx: hermite_norm9(px1, vx1, ax1, jx1, px1, 0.0, 0.0, 0.0, t_e),
+        cy: hermite_norm9(py1, vy1, ay1, jy1, py1, 0.0, 0.0, 0.0, t_e),
+        cz: hermite_norm9(pz1, vz1, az1, jz1, pz1, 0.0, 0.0, 0.0, t_e),
+        cyaw: zero9,
+        duration: t_e,
+    };
+
+    // Report the wind-up excursion so the flight-space validation can account for it.
+    let (mut ex_max, mut ey_max, mut ez_max) = (0.0_f32, 0.0_f32, 0.0_f32);
+    for i in 0..=100 {
+        let tau = i as f32 / 100.0;
+        let ev = |c: &[f32; 9]| -> f32 {
+            c.iter().enumerate().map(|(k, &a)| a * tau.powi(k as i32)).sum()
+        };
+        ex_max = ex_max.max((ev(&entry.cx) - px0).abs()).max((ev(&exit.cx) - px1).abs());
+        ey_max = ey_max.max((ev(&entry.cy) - py0).abs()).max((ev(&exit.cy) - py1).abs());
+        ez_max = ez_max.max((ev(&entry.cz) - pz0).abs()).max((ev(&exit.cz) - pz1).abs());
+    }
+    eprintln!(
+        "Rest-to-rest wind-up excursion from lap-start point: x±{:.2}m y±{:.2}m z±{:.2}m \
+         (lap speed {:.2} m/s)",
+        ex_max, ey_max, ez_max, speed
+    );
+
+    let mut segments = Vec::with_capacity(traj.segments.len() + 2);
+    segments.push(entry);
+    segments.extend(traj.segments.iter().cloned());
+    segments.push(exit);
+    let total_time = traj.total_time + 2.0 * t_e;
+    (SplineTrajectory { segments, total_time }, t_e)
 }
 
 // ── Coefficient conversion ─────────────────────────────────────────────────
