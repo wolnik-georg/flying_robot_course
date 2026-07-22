@@ -13,18 +13,18 @@
  *   [0]      = duration  (s)
  *   [1..9]   = cx[0..8] — degree-8 polynomial for x, normalised to t∈[0,1]
  *   [10..18] = cy[0..8] — degree-8 polynomial for y, normalised to t∈[0,1]
- * Max 12 segments → 228 floats (ci index 0..227).
+ * Max 14 segments → 266 floats (ci index 0..265, u16).
  *
  * Z-axis buffer layout (per segment, 9 floats):
  *   [0..8]   = cz[0..8] — degree-8 polynomial for z offset [m], normalised
- * Max 12 segments → 108 floats (zci index 0..107).
+ * Max 14 segments → 126 floats (zci index 0..125).
  * z_mode = 0: z = traj.hz + traj.dz * lap_frac (constant + linear ramp, default).
  * z_mode = 1: z = traj.hz + poly_eval(cz) — full 3D trajectory (loop, etc.).
  *
  * Attitude buffer layout (per segment, 18 floats, planning Mode 2 only):
  *   [0..8]   = croll[0..8]  — degree-8 polynomial for roll  [rad], normalised
  *   [9..17]  = cpitch[0..8] — degree-8 polynomial for pitch [rad], normalised
- * Max 12 segments → 216 floats (aci index 0..215).
+ * Max 14 segments → 252 floats (aci index 0..251).
  * att_mode = 0: firmware derives attitude from flatness (default — Mode 0/1 behaviour).
  * att_mode = 1: firmware evaluates uploaded roll/pitch polynomials at 500 Hz.
  *
@@ -47,7 +47,10 @@
 #include <stdbool.h>
 
 /* ── Position coefficient buffer ─────────────────────────────────────────── */
-#define TRAJ_MAX_SEGS        12u
+/* 14 = 12-segment periodic cores (oval/tilted_oval) + 1 entry + 1 exit segment
+ * (Issue B rest-to-rest fix). ci is u16 (14*19 = 266 coefficients > u8 range);
+ * zci/aci stay u8 (14*9 = 126, 14*18 = 252 — both fit).                       */
+#define TRAJ_MAX_SEGS        14u
 #define TRAJ_FLOATS_PER_SEG  19u   /* duration + cx[9] + cy[9] */
 
 float   g_traj_coefs[TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG]; /* zero-initialised by C runtime */
@@ -94,13 +97,18 @@ uint8_t g_traj_n_segs    = 0;     /* number of valid segments in g_traj_coefs  *
 uint8_t g_traj_mode      = 0;     /* 0 = passthrough (Mode B), 1 = onboard eval (Mode D) */
 uint8_t g_traj_start     = 0;     /* laptop writes 1 to start; firmware latches T0        */
 uint8_t g_traj_reps      = 0;     /* 0 = loop forever; N = self-stop after N laps         */
+/* Rest-to-rest entry/exit (Issue B fix): the first n_entry segments play ONCE before
+ * the core laps, the last n_exit segments play ONCE after them. The core is the middle
+ * region and is what traj.reps counts. 0/0 = legacy behaviour (wrap all segments). */
+uint8_t g_traj_n_entry   = 0;     /* leading segments played once (0 = none)             */
+uint8_t g_traj_n_exit    = 0;     /* trailing segments played once (0 = none)            */
 float   g_traj_origin_x  = 0.0f;  /* EKF x offset sampled before takeoff [m]             */
 float   g_traj_origin_y  = 0.0f;  /* EKF y offset sampled before takeoff [m]             */
 float   g_traj_hover_z   = 1.0f;  /* constant flight altitude [m]                        */
 float   g_traj_dz        = 0.0f;  /* Z gain per lap [m]; 0=flat, +0.40=ascending helix   */
 
 /* ── Position upload protocol ────────────────────────────────────────────── */
-uint8_t g_traj_coef_ci   = 0;     /* coefficient index (0..227)                          */
+uint16_t g_traj_coef_ci  = 0;     /* coefficient index (0..265) — u16, see TRAJ_MAX_SEGS */
 float   g_traj_coef_cv   = 0.0f;  /* coefficient value to write at g_traj_coef_ci        */
 uint8_t g_traj_coef_cw   = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
 
@@ -109,12 +117,14 @@ PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, mode,     &g_traj_mode)
   PARAM_ADD(PARAM_UINT8, start,    &g_traj_start)
   PARAM_ADD(PARAM_UINT8, reps,     &g_traj_reps)
+  PARAM_ADD(PARAM_UINT8, n_entry,  &g_traj_n_entry)
+  PARAM_ADD(PARAM_UINT8, n_exit,   &g_traj_n_exit)
   PARAM_ADD(PARAM_UINT8, nseg,     &g_traj_n_segs)
   PARAM_ADD(PARAM_FLOAT, ox,       &g_traj_origin_x)
   PARAM_ADD(PARAM_FLOAT, oy,       &g_traj_origin_y)
   PARAM_ADD(PARAM_FLOAT, hz,       &g_traj_hover_z)
   PARAM_ADD(PARAM_FLOAT, dz,       &g_traj_dz)
-  PARAM_ADD(PARAM_UINT8, ci,       &g_traj_coef_ci)
+  PARAM_ADD(PARAM_UINT16, ci,      &g_traj_coef_ci)
   PARAM_ADD(PARAM_FLOAT, cv,       &g_traj_coef_cv)
   PARAM_ADD(PARAM_UINT8, cw,       &g_traj_coef_cw)
   PARAM_ADD(PARAM_UINT8, z_mode,   &g_traj_z_mode)
@@ -177,6 +187,30 @@ uint8_t g_indi_filt_tau = 0;
    cycle. Sweep down (1.0 -> 0.8 -> 0.65 -> 0.5) at runtime (no reflash) to find where it stops. */
 float g_indi_j_scale = 1.0f;
 
+/* Output clamps (2026-07-22, mirroring stock C INDI which clamps u_in ±32000 motor units and
+   the outer-loop tilt ±pq_clamp / thrust [MIN,MAX]; we previously clamped NOTHING).
+   Robustness/blow-up containment — NOT a fix for the 6.3 Hz cycle (which lives ~96% inside the
+   clamp-free region, see docs/investigation §15.10). clamp_en is a bitmask so individual clamps
+   can be disabled for aggressive maneuvers: bit0=tau_xy, bit1=tau_z, bit2=tilt, bit3=thrust.
+   Phase-4 inverted/loop flight: clear bit2 (tilt >90 deg is intended) but KEEP bit0/bit1
+   (motor physics is orientation-independent). Default 0 = all off = byte-identical behaviour;
+   enable per-drone in yaml. Values sized from per-motor thrust headroom at hover:
+   tau_xy_max = ARM*4*dF, tau_z_max = TORQUE_RATIO*4*dF (CF21BL dF≈0.1 N -> 14 / 2.5 mNm;
+   standard ~7/1.2 mNm, upgraded ~10/1.7 mNm by the same formula). */
+/* INDI increment-base source (2026-07-22, bench §16 follow-up). 0.0 (default) = RPM base
+ * (today's behaviour, byte-identical). >0 = act_dyn base: first-order model of the previous
+ * (clamped) torque commands with this time constant [s], replacing the RPM reading — the
+ * stock controller_indi.c structure. NOTE the simulator predicts a matched model (0.044 =
+ * bench-measured tau) behaves IDENTICALLY to the RPM base (both equal the applied torque);
+ * this knob exists to verify that on hardware and to probe model-mismatch effects. */
+float   g_indi_act_tau      = 0.0f;
+
+uint8_t g_indi_clamp_en     = 0;       /* bitmask, 0 = all clamps off (default)          */
+float   g_indi_tau_xy_max   = 0.014f;  /* [Nm]  roll/pitch torque clamp (CF21BL default) */
+float   g_indi_tau_z_max    = 0.0025f; /* [Nm]  yaw torque clamp        (CF21BL default) */
+float   g_indi_tilt_max_deg = 30.0f;   /* [deg] max desired-thrust-vector tilt from vertical */
+float   g_indi_thrust_max   = 0.8f;    /* [N]   total thrust clamp (4x THRUST_MAX cf21bl)    */
+
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
@@ -194,6 +228,12 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
   PARAM_ADD(PARAM_UINT8, filt_tau, &g_indi_filt_tau)
   PARAM_ADD(PARAM_FLOAT, j_scale, &g_indi_j_scale)
+  PARAM_ADD(PARAM_FLOAT, act_tau,      &g_indi_act_tau)
+  PARAM_ADD(PARAM_UINT8, clamp_en,     &g_indi_clamp_en)
+  PARAM_ADD(PARAM_FLOAT, tau_xy_max,   &g_indi_tau_xy_max)
+  PARAM_ADD(PARAM_FLOAT, tau_z_max,    &g_indi_tau_z_max)
+  PARAM_ADD(PARAM_FLOAT, tilt_max_deg, &g_indi_tilt_max_deg)
+  PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
