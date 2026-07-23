@@ -5308,18 +5308,24 @@ def plot_rpm_balance(data, csv_path):
 # tables in docs/results_2026-06-20.md §4a/§4b, docs/results_2026-07-11_upgraded_drone.md
 # §8, docs/results_2026-07-15_brushless.md §5d-validation-fc70 — see those docs for
 # the full per-flight tables. All figure8, kt=0.05, mode1, onboard_d.
+
+# Collection dates included in every label (2026-07-22): the brushless entry predates the
+# entire INDI oscillation investigation (opened 2026-07-21) and tonight's clamp/rest-to-rest
+# fixes -- see flying_drone_stack/docs/investigation_indi_oscillation_2026-07-21.md. Standard
+# and upgraded are stable/locked baselines and are not expected to change. Replace the brushless
+# entry once a fresh post-fix figure8 kt=0.05 full-INDI flight is available.
 _PLATFORM_COMPARE_FILES = {
     "best": [
-        ("Standard\nGeometric", "logs/figure8_mode1_kt0.05_2026-06-20_15-18-49.csv"),
-        ("Standard\nINDI",      "logs/figure8_mode1_kt0.05_2026-06-20_14-49-59.csv"),
-        ("Upgraded\nINDI",      "logs/figure8_mode1_kt0.05_2026-07-15_16-33-19.csv"),
-        ("Brushless\nINDI",     "logs/figure8_mode1_kt0.05_2026-07-20_17-27-26.csv"),
+        ("Standard\nGeometric\n(Jun 20)", "logs/figure8_mode1_kt0.05_2026-06-20_15-18-49.csv"),
+        ("Standard\nINDI\n(Jun 20)",      "logs/figure8_mode1_kt0.05_2026-06-20_14-49-59.csv"),
+        ("Upgraded\nINDI\n(Jul 15)",      "logs/figure8_mode1_kt0.05_2026-07-15_16-33-19.csv"),
+        ("Brushless\nINDI\n(Jul 20, pre-fix)", "logs/figure8_mode1_kt0.05_2026-07-20_17-27-26.csv"),
     ],
     "mean": [
-        ("Standard\nGeometric", "logs/figure8_mode1_kt0.05_2026-06-20_15-17-27.csv"),
-        ("Standard\nINDI",      "logs/figure8_mode1_kt0.05_2026-06-20_15-01-32.csv"),
-        ("Upgraded\nINDI",      "logs/figure8_mode1_kt0.05_2026-07-15_16-34-53.csv"),
-        ("Brushless\nINDI",     "logs/figure8_mode1_kt0.05_2026-07-20_17-28-29.csv"),
+        ("Standard\nGeometric\n(Jun 20)", "logs/figure8_mode1_kt0.05_2026-06-20_15-17-27.csv"),
+        ("Standard\nINDI\n(Jun 20)",      "logs/figure8_mode1_kt0.05_2026-06-20_15-01-32.csv"),
+        ("Upgraded\nINDI\n(Jul 15)",      "logs/figure8_mode1_kt0.05_2026-07-15_16-34-53.csv"),
+        ("Brushless\nINDI\n(Jul 20, pre-fix)", "logs/figure8_mode1_kt0.05_2026-07-20_17-28-29.csv"),
     ],
 }
 
