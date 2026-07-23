@@ -1095,6 +1095,161 @@ pannable with click-to-toggle-platform legends; requires `pip install plotly` in
 
 ---
 
+## 8. USD (SD-card) 500Hz diagnostic session — 2026-07-23
+
+First usable capture from the SD-card diagnostic plan in
+`investigation_indi_oscillation_2026-07-21.md` §16.5. Two earlier attempts produced no usable
+data: attempt 1 only captured a hard crash (oval, kt=0.5 — well above the documented kt ceiling
+of ~0.3-0.5; z dove to -5.5m, gyro hit 1096 deg/s) and even that had `stabilizer.roll/pitch`
+silently dropped because a 24-variable config exceeded the firmware's hard cap of
+`MAX_USD_LOG_VARIABLES_PER_EVENT = 20` (`usddeck.c:93`) — the last 4 lines of the config file are
+silently discarded past slot 20, no error. Attempt 2 logged nothing at all across two more
+flights; root cause was never confirmed but resolved after reseating the USD deck connector
+(plausibly jarred loose by the attempt-1 crash) — `tools/check_usd_deck.py` (read-only param-TOC
+probe, no motors) confirmed `usd.logging` toggles cleanly before the successful flight.
+
+Config fixed to the original 20-variable set (`tools/usd_indi_diagnostic_config.txt`): gyro.x/y/z,
+indi.tau_x/y, indi.alp_x/y, indi.alp_raw_x/y, motor.m1-4, rpm.m1-4, motor.m1_rpm,
+stabilizer.roll/pitch — all present in the successful capture, confirmed true 500 Hz (506.1 Hz
+measured) rate, no radio decimation.
+
+**Capture**: hover, brushless CF21BL, kr=2400/kw=170/fc_bw=70 (current flown gains),
+`hover_mode0_2026-07-23_17-55-21.csv` on the radio side, 27.0s trajectory / 30.4s SD-active
+window, 500Hz throughout. Steady-state analysis window t=7-25s (excludes arm/land transients).
+
+![USD 500Hz diagnostic — hover shake analysis](usd_hover_2026-07-23_shake_diagnostic.png)
+
+**Dominant shake frequency this flight: 7.22 Hz** (vs the previously logged ~6.3 Hz — same
+phenomenon, some session-to-session variation in exact frequency).
+
+### Answers to the four §16.5 questions
+
+1. **Filter aliasing — REFUTED as an artifact, underlying finding confirmed.** `|alp_filt|/|alp_raw|
+   = 1.000`, phase shift only -2.1° at 7.22 Hz, measured at the true 500 Hz rate with zero alias-fold
+   risk. The "filt/raw≈1" result from the earlier 100 Hz log was **not** a decimation artifact — the
+   filter genuinely does nothing to the 6-7 Hz oscillation content.
+
+2. **EKF attitude phase lag — real, but modest.** `stabilizer.roll` (the exact signal feeding `eR`)
+   lags gyro dead-reckoning by **7.9 ms** at 7.22 Hz (~20° of phase). Confirms the kr≈600-gap
+   candidate mechanism is real and measurable, but 20° is an order of magnitude smaller than the
+   actuator lag below — likely a contributing factor rather than sufficient on its own to explain
+   the full desync. Does not by itself resolve the kr≈600 gap.
+
+3. **In-flight actuator lag — confirmed, trap-free.** `motor.mX` → `rpm.mX` lag is **31.6-33.6 ms
+   across all 4 motors** (cross-correlation peak, steady-state window), consistent and repeatable.
+   This measurement is free of the closed-loop `-1/C` bias (§15.2) since neither signal is derived
+   from inside the running control loop — confirms the bench-measured actuator lag (44 ms,
+   single-motor static rig) holds under real 4-motor differential load and aerodynamics, same order
+   of magnitude, somewhat faster in flight. Bonus check: `motor_m1_rpm` (DShot) vs `rpm_m1`
+   (optical) — 0.0 ms lag, the two RPM measurement paths agree exactly.
+
+4. **True RPM sensor update rate — corrected.** `rpm_m1` changes value essentially every sample
+   (median 2.0 ms) → **~506 Hz**, matching the full log rate. Directly refutes the ~20 Hz rate
+   inferred in §15.4, which was itself a decimation artifact of the 100 Hz log.
+
+### Additional finding: shake amplitude has a delayed onset, then dominates the hover
+
+Not one of the original four questions, found incidentally: `motor.m1` command std is small
+(300-2400, calm) for the first ~5s after arming, then jumps to **~24,000** (out of the 0-65535 PWM
+range, ~37% of full range) from t≈7s through t≈25s — i.e. the 7.2 Hz shake is not a constant
+low-level background oscillation but a large-amplitude regime that the loop settles into a few
+seconds after takeoff and then sustains for essentially the whole hover. Worth folding into the
+loop-margin analysis in §16.4/§16.6 (open) — the harmonic-balance argument there assumed a
+roughly-constant-amplitude limit cycle; a delayed-onset, high-amplitude regime is consistent with
+a genuine limit cycle (amplitude grows from noise to a stable cycle amplitude) rather than a
+forced/broadband-driven vibration, which would be expected to look amplitude-stationary from the
+moment thrust engages.
+
+### Synthesis — what this means for the shake at kr=2400/kw=170
+
+Putting the four measurements together, quantitatively, for the first time:
+
+- **Resonance match, now measured not just predicted**: §4b-bandwidth predicted ωₙ=√kr should land
+  near the vibration band. At kr=2400, ωₙ/2π = √2400/2π = **7.80 Hz** — matches the measured shake
+  frequency (**7.22 Hz**) to within 8%. This is the first USD-log confirmation of the resonance
+  root cause at the exact gain currently flown, not inferred from a lower-gain example.
+- **Actuator lag is the dominant phase-loss term, not EKF lag.** Converting each measured lag to
+  phase at 7.22 Hz (phase = delay × f × 360°): actuator lag (31.6 ms) → **82°**; EKF attitude lag
+  (7.9 ms) → **20°**. Actuator lag alone accounts for 4× more phase loss than EKF lag at the
+  resonant frequency — combined, ~103° of phase is gone before the filter (which does nothing at
+  this frequency, fc_bw=70 Hz) gets a chance to help. This re-weights §16.4's kr≈600 gap
+  discussion: EKF lag is real but a minor contributor; actuator lag is the dominant, now-quantified
+  term.
+- **The filter was never going to help.** fc_bw=70 Hz is ~10× the shake frequency — a low-pass
+  filter set there passes 7 Hz content essentially unattenuated by construction (ratio=1.00,
+  measured). This isn't a bug, it explains *why* lowering fc_bw was the only filter-side lever ever
+  worth trying — and why §4b-lowbw-refuted found it made things worse (removing phase margin
+  elsewhere without removing the actual limit-cycle energy at 7 Hz, since the cutoff has to get
+  close to 7 Hz to matter, which then also delays everything else).
+- **Net picture**: this is a genuine self-sustained limit cycle (delayed onset — small for ~5s,
+  then jumps to ~37% of full PWM range and stays there — is limit-cycle-like, not a
+  constant-amplitude forced vibration), driven primarily by actuator lag interacting with a loop
+  tuned to resonate near 7-8 Hz.
+- **Correction (operator-raised, 2026-07-23): detuning kr is NOT a viable fix**, on two grounds
+  that were already established before this session and are reconfirmed here, not contradicted by
+  it. (1) Empirically: kr≈600 (ωₙ=3.9 Hz, well clear of 7.2 Hz) is still shaky per §16.4/§18.4b —
+  moving ωₙ away from the resonant frequency does not clear the shake in practice. (2) Structurally:
+  §4b-spectrum found the vibration is broadband (3-7× noisier than standard across the WHOLE
+  0.3-40 Hz spectrum, no single peak) — there is no quiet frequency band to retune ωₙ into within a
+  range that keeps tracking usable. Lowering kr also directly degrades tracking error (operator
+  observation), so it is a lose-lose lever, not a real fix path.
+- **What to actually try instead** — attack the phase loss and vibration energy, not the loop
+  frequency, so tracking performance is untouched: (a) **reduce actuator lag directly** — now the
+  dominant phase-loss term (82° vs EKF's 20°) — via faster ESC/motor response (hardware) or a
+  delay-compensating term in the INDI law that accounts for the measured ~32 ms lag instead of
+  treating actuation as instantaneous (software); (b) **reduce vibration amplitude at the source**
+  — prop balancing, motor/frame damping — per §4b-spectrum's original root-cause finding; even with
+  the resonance geometrically present, less broadband energy in means a smaller or absent sustained
+  limit cycle.
+
+**Generated by**: `tools/analyze_usd_hover_shake.py <log> <out.png>` (uses
+`tools/decode_usd_log.py` + `scipy.signal` — Butterworth bandpass, cross-correlation). Not part of
+the `analyze_flight.py` pipeline since USD logs are a different rate/format than the radio CSVs.
+
+### 8b. Oval confirmation flight, same session (2026-07-23, log01)
+
+Same physical session, second SD file (`log01`, after a USD-deck dropout mid-session required
+another `check_usd_deck.py` reseat check — same firmware cap/toggle behavior as §8, not repeated
+here). Four oval attempts at kt=0.5 were flown; only the last (`oval_mode1_kt0.5_2026-07-23_18-17-
+55.csv`, 18.4s trajectory, gyro max 1033°/s, `eval_mode=onboard_d`) matches the one captured SD
+segment (27.4s active window, gyro max 1080°/s, no zero-thrust dip mid-flight so not the crash from
+the first attempt of the four, which showed z diving to -4.09m in its own CSV but only lasted
+11.0s — a different, shorter, non-matching segment). As before, only one of several flights per
+power session gets captured; not fully root-caused, but not a blocker either since the goal here is
+data, not 1:1 accounting of every flight.
+
+![USD 500Hz diagnostic — oval shake analysis](usd_oval_2026-07-23_shake_diagnostic.png)
+
+**New finding: two distinct spectral peaks under maneuvering**, where hover only showed one:
+- **~3.7-4.0 Hz** — new, not present in the hover capture. Likely maneuver-induced (cornering /
+  translational asymmetry during the oval), not the same phenomenon as the hover shake. Filter
+  ratio at this frequency is also 1.00 (fc_bw=70 Hz irrelevant here too), EKF lag 5.9 ms (8° — small,
+  as expected for a lower frequency and smaller delay-to-period ratio).
+- **~6.6-7.3 Hz — the hover-shake band, confirmed to persist unchanged under real maneuvering
+  load.** EKF lag at 7.22 Hz: **7.9 ms (20.6°)** — identical to the hover measurement to within
+  noise. This is the clean confirmation §16.5 Q3 originally asked for: the mechanism found in hover
+  is not a hover-only artifact.
+
+**Actuator lag, the key cross-check**: **31.7 / 33.7 / 31.7 / 31.7 ms** across the 4 motors —
+matches the hover numbers (31.6 / 33.6 / 31.6 / 31.6 ms) to within 0.1 ms. Directly confirms the
+actuator lag is a fixed physical property of the motor/ESC/prop chain, unaffected by real 4-motor
+differential thrust and aerodynamic load during a maneuver. RPM sensor rate also reconfirmed at
+~505 Hz, matching hover.
+
+**Amplitude-onset pattern reproduces**: `motor.m1` command std is near-zero for t=1-5s after
+takeoff, then jumps to ~19,000-22,000 and sustains through t≈6-21s before landing descent — the
+same delayed-onset limit-cycle signature seen in the hover capture (§8), not something specific to
+hover thrust trim. Strengthens the genuine-limit-cycle interpretation over a forced/broadband-driven
+reading.
+
+**Net**: the hover-derived root-cause story (kr=2400 resonance near 7-8 Hz, actuator lag as the
+dominant phase-loss term, filter irrelevant at fc_bw=70) holds unchanged under real maneuvering
+load. The oval adds one genuinely new data point — a separate ~3.7 Hz maneuver-induced component —
+worth keeping in mind for figure-8/oval-specific tracking-error analysis, but it does not change
+the fix priorities identified in §8's synthesis (reduce actuator lag or vibration source, not kr).
+
+---
+
 ## Reference baselines (other drones, for comparison)
 
 - **Standard CF2.1 INDI:** 3.87 cm XY RMSE (June 20 2026, kr=1050) — `results_2026-06-20.md`
