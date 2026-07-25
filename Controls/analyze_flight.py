@@ -1987,8 +1987,14 @@ def calibrate_onboard8_phase(data, segs8, t_start, duration_s):
     x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
     dx_off = float(xa[0]) - x0_ref
     dy_off = float(ya[0]) - y0_ref
+    # Search range widened 2026-07-23: +-0.5s was clipping (best_dt landing exactly on the
+    # boundary) for some flights (helix, both platforms — genuine, resolved by widening).
+    # +-0.75s at the same resolution (10ms). NOT widened further: one flight (tilted_oval
+    # upgraded, 2026-07-23) still clips at +-1.5s too — that is a real per-flight anomaly, not
+    # a search-window artifact (a "phase shift" beyond ~1s stops being a believable constant
+    # startup-latency correction). See results_2026-07-15_brushless.md §9.7.
     best_rms, best_dt = float("inf"), 0.0
-    for dt in np.linspace(-0.5, 0.5, 101):
+    for dt in np.linspace(-0.75, 0.75, 151):
         ref_xy = np.array([eval_onboard8_xy(segs8, max(0.0, tr + dt)) for tr in t_rel])
         ex = xa - (ref_xy[:, 0] + dx_off)
         ey = ya - (ref_xy[:, 1] + dy_off)
@@ -2017,7 +2023,11 @@ def analyze_figure8_with_comparison(
         m_cal   = onboard8_metrics_over_window(data, segs8, t_start, duration_s, time_shift=dt_cal)
         geom    = compute_figure8_geom_metrics(data, t_start, duration_s, segs8=segs8)
 
-        print("\n── Figure-8 comparison metrics (onboard degree-8 reference) ──")
+        print(f"\n── {traj_type_label} comparison metrics (onboard degree-8 reference) ──")
+        if traj_type_label in ("helix", "fast_helix", "tilted_oval"):
+            print("  NOTE: onboard-8 reference here is XY-only (segs8 carries no Z coefficients) —"
+                  " Z RMSE below uses a constant mean-z reference, NOT the true z(t) profile. Not"
+                  " meaningful for this non-flat trajectory; XY RMSE/roll/pitch err are unaffected.")
         print(f"  Lap         : {lap_s:.2f} s × {n_reps} rep  |  motion from t={t_start:.2f} s")
         print(f"  Onboard8 RMSE XY  uncalibrated : {m_uncal['xy_rms']*100:.1f} cm  "
               f"(lag corr {m_uncal['lag_corr']:.2f})")
@@ -3185,7 +3195,7 @@ def calibrate_poly4d_phase(data, segs, speed_scale, xy_scale, loop, t_start, dur
     xa, ya = data["x"][mask], data["y"][mask]
     best_rms, best_ss, best_dt = float("inf"), speed_scale, 0.0
     for ss in np.linspace(max(0.5, speed_scale * 0.88), min(1.5, speed_scale * 1.12), 41):
-        for dt in np.linspace(-0.4, 0.4, 81):
+        for dt in np.linspace(-0.75, 0.75, 151):
             plan = np.array([
                 eval_poly4d(segs, max(0.0, tr + dt), ss, xy_scale, loop) for tr in t_rel
             ])
@@ -5007,23 +5017,86 @@ def plot_analysis(
 
 
 def compare_plot(data_a, data_b, label_a, label_b,
-                 segs, traj_type, speed_scale, xy_scale, loop, out_path):
-    """Overlay two flights on the same 2×2 panels + metrics comparison table."""
+                 segs, traj_type, speed_scale, xy_scale, loop, out_path,
+                 segs8=None, duration_s=None, t_min_a=None, t_min_b=None):
+    """Overlay two flights on the same 2×2 panels + metrics comparison table.
+
+    Phase-calibrated per flight (2026-07-23 fix — see results_2026-07-15_brushless.md §9.4):
+    each flight gets its own motion-start detection + lap-window phase-shift fit before the
+    reference is evaluated, exactly like the single-file calibrated path. Without this, a
+    normal 200-500ms takeoff-timing offset produces 100+cm spurious "error" on a periodic path.
+    Uses the onboard degree-8 reference (segs8) when available, matching the single-file path's
+    accuracy; falls back to the degree-7 Poly4D (segs) otherwise.
+    """
     times_a = data_a["time_s"]
     times_b = data_b["time_s"]
 
-    plan_a = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in times_a])
-    plan_b = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in times_b])
-    patt_a = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_a])
-    patt_b = np.array([compute_planned_attitude(segs, t, speed_scale, xy_scale, loop) for t in times_b])
+    if duration_s is None:
+        duration_s = sum(s[0] for s in segs) / max(speed_scale, 1e-6)
 
-    plan_vel_a = np.array([eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in times_a])
-    plan_vel_b = np.array([eval_poly4d_vel(segs, t, speed_scale, xy_scale, loop) for t in times_b])
+    def _calibrated_plan(data, times, t_min):
+        t_start = find_figure8_traj_start(data, t_min=t_min)
+        if segs8 is not None:
+            dt_cal = calibrate_onboard8_phase(data, segs8, t_start, duration_s)
+            t_rel = np.maximum(0.0, times - t_start + dt_cal)
+            x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
+            mask0 = times >= t_start
+            idx0 = int(np.argmax(mask0)) if np.any(mask0) else 0
+            dx_off = float(data["x"][idx0]) - x0_ref
+            dy_off = float(data["y"][idx0]) - y0_ref
+            xy = np.array([eval_onboard8_xy(segs8, tr) for tr in t_rel])
+            plan = np.column_stack([xy[:, 0] + dx_off, xy[:, 1] + dy_off,
+                                     np.full(len(t_rel), float(np.nanmean(data["z"])))])
+            vel = np.array([eval_onboard8_vel(segs8, tr) for tr in t_rel])
+            plan_vel = np.column_stack([vel[:, 0], vel[:, 1], np.zeros(len(t_rel))])
+            patt = np.array([compute_planned_attitude_8(segs8, tr) for tr in t_rel])
+            return plan, plan_vel, patt, t_start, dt_cal
+        else:
+            ss_cal, dt_cal = calibrate_poly4d_phase(
+                data, segs, speed_scale, xy_scale, loop, t_start, duration_s
+            )
+            t_rel = np.maximum(0.0, times - t_start + dt_cal)
+            plan = np.array([eval_poly4d(segs, tr, ss_cal, xy_scale, loop) for tr in t_rel])
+            plan_vel = np.array([eval_poly4d_vel(segs, tr, ss_cal, xy_scale, loop) for tr in t_rel])
+            patt = np.array([compute_planned_attitude(segs, tr, ss_cal, xy_scale, loop) for tr in t_rel])
+            return plan, plan_vel, patt, t_start, dt_cal
+
+    plan_a, plan_vel_a, patt_a, t_start_a, dt_cal_a = _calibrated_plan(data_a, times_a, t_min_a)
+    plan_b, plan_vel_b, patt_b, t_start_b, dt_cal_b = _calibrated_plan(data_b, times_b, t_min_b)
+    print(f"  {label_a}: motion from t={t_start_a:.2f}s, t_shift={dt_cal_a*1000:+.0f}ms")
+    print(f"  {label_b}: motion from t={t_start_b:.2f}s, t_shift={dt_cal_b*1000:+.0f}ms")
+
     ma = compute_metrics(data_a, plan_a, plan_vel_a, patt_a)
     mb = compute_metrics(data_b, plan_b, plan_vel_b, patt_b)
 
-    t_plan = np.linspace(0, max(times_a[-1], times_b[-1]), 500)
-    plan_full = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
+    # Restrict the summary RMS numbers (table + legend) to the actual lap window, matching
+    # the single-file calibrated path (onboard8_metrics_over_window). Without this, the
+    # pre-motion/takeoff segment (plan clamped at reference t=0 while the drone is still at
+    # its pre-position point) dominates the RMSE with a large, expected, non-tracking-quality
+    # offset. err_xy/roll_err/etc (full-length arrays) are left untouched for the timeline plot.
+    def _window_rms(m, times, t_start):
+        mask = _figure8_lap_mask(times, t_start, duration_s)
+        if int(np.sum(mask)) < 5:
+            return
+        m["xy_rms"] = float(np.sqrt(np.nanmean(m["err_xy"][mask] ** 2)))
+        m["xy_max"] = float(np.nanmax(m["err_xy"][mask]))
+        m["z_rms"] = float(np.sqrt(np.nanmean(m["err_z"][mask] ** 2)))
+        m["3d_rms"] = float(np.sqrt(np.nanmean(m["err_3d"][mask] ** 2)))
+        m["roll_err_rms"] = float(np.sqrt(np.nanmean(m["roll_err"][mask] ** 2)))
+        m["pitch_err_rms"] = float(np.sqrt(np.nanmean(m["pitch_err"][mask] ** 2)))
+        m["speed_rms"] = float(np.sqrt(np.nanmean((m["speed_actual"][mask] - m["speed_planned"][mask]) ** 2)))
+
+    _window_rms(ma, times_a, t_start_a)
+    _window_rms(mb, times_b, t_start_b)
+
+    t_plan = np.linspace(0, duration_s, 500)
+    if segs8 is not None:
+        x0_ref, y0_ref = eval_onboard8_xy(segs8, 0.0)
+        xy_full = np.array([eval_onboard8_xy(segs8, t) for t in t_plan])
+        plan_full = np.column_stack([xy_full[:, 0] - x0_ref, xy_full[:, 1] - y0_ref,
+                                      np.zeros(len(t_plan))])
+    else:
+        plan_full = np.array([eval_poly4d(segs, t, speed_scale, xy_scale, loop) for t in t_plan])
 
     col_a, col_b = "#1f77b4", "#d62728"   # blue, red
 
@@ -5456,6 +5529,18 @@ def main():
             traj_type = "circle"
         elif "figure8" in base or "fig8" in base:
             traj_type = "figure8"
+        elif "tilted_oval" in base:                       # before generic "oval"
+            traj_type = "tilted_oval"
+        elif "oval" in base:
+            traj_type = "oval"
+        elif "corner" in base:
+            traj_type = "corner"
+        elif "slalom" in base:
+            traj_type = "slalom"
+        elif "teardrop_wide" in base:                     # before generic "teardrop"
+            traj_type = "teardrop_wide"
+        elif "teardrop" in base:
+            traj_type = "teardrop"
         elif "autonomous" in base:
             traj_type = "autonomous"
         elif "flip" in base:
@@ -5540,8 +5625,13 @@ def main():
             )
         return
 
-    # Helix uses analytic reference, not Poly4D
-    if traj_type in ("helix", "fast_helix"):
+    # Helix: analytic reference ONLY when no matching kt-based Poly4D export exists
+    # (legacy fixed-lap_time Mode B flights). When resolved_poly4d is present (our
+    # mode1 kt-swept flights), fall through to the same calibrated Poly4D/onboard-8
+    # path used for figure8/circle/oval/etc below — the analytic model's hardcoded
+    # lap_time (10.5s / 5.25s) does not match the actual kt-dependent flown duration
+    # and produces large spurious RMSE from accumulated phase drift.
+    if traj_type in ("helix", "fast_helix") and resolved_poly4d is None:
         if args.compare:
             print("--compare is not supported for helix flights.")
             sys.exit(1)
@@ -5589,10 +5679,19 @@ def main():
         segs, speed_scale, xy_scale, loop = TRAJECTORIES[traj_type]
         segs8 = None
 
-    if traj_type in ("figure8", "fast_figure8"):
-        if args.compare:
-            print("--compare is not yet supported with unified figure-8 metrics.")
-            sys.exit(1)
+    if traj_type in ("figure8", "fast_figure8") and args.compare:
+        print("--compare is not yet supported with unified figure-8 metrics.")
+        sys.exit(1)
+
+    # Calibrated Poly4D/onboard-8 path (phase-aligned lap-window RMSE) — used for
+    # figure8 always, and for any other type (circle/oval/corner/slalom/tilted_oval/
+    # teardrop_wide/helix/...) when a matching onboard degree-8 export (segs8) is
+    # available, i.e. every mode1 --onboard flight. Generalized 2026-07-23: this path
+    # was previously figure8-only; everything else fell through to plot_analysis()
+    # below with NO phase calibration at all (raw absolute CSV time vs reference),
+    # which produced spurious 50-100cm "RMSE" on <2m-scale paths from uncorrected
+    # takeoff-timing offset. See results_2026-07-15_brushless.md §9.4/§10.
+    if not args.compare and (traj_type in ("figure8", "fast_figure8") or segs8 is not None):
         analyze_figure8_with_comparison(
             data, csv_path, run_meta, segs, speed_scale, xy_scale, loop,
             traj_type_label=traj_type, segs8=segs8,
@@ -5602,7 +5701,7 @@ def main():
         return
 
     if args.compare:
-        data_b = load_csv(args.compare)
+        data_b, run_meta_b = load_csv_with_meta(args.compare)
         if len(data_b["time_s"]) == 0:
             print(f"Second CSV is empty: {args.compare}")
             sys.exit(1)
@@ -5617,8 +5716,13 @@ def main():
             label_a = os.path.basename(csv_path).removesuffix(".csv")
             label_b = os.path.basename(args.compare).removesuffix(".csv")
         out_path = os.path.splitext(csv_path)[0] + "_vs_" + os.path.splitext(os.path.basename(args.compare))[0] + ".png"
+        base_a = os.path.basename(csv_path).lower()
+        _, _, lap_s = infer_figure8_eval_window(base_a, run_meta, segs, speed_scale)
         compare_plot(data, data_b, label_a, label_b,
-                     segs, traj_type, speed_scale, xy_scale, loop, out_path)
+                     segs, traj_type, speed_scale, xy_scale, loop, out_path,
+                     segs8=segs8, duration_s=lap_s,
+                     t_min_a=run_meta.get("_phase2_t_start"),
+                     t_min_b=run_meta_b.get("_phase2_t_start"))
     else:
         plot_analysis(data, segs, traj_type, speed_scale, xy_scale, loop, csv_path)
         plot_indi_trajectory_panel(data, csv_path)
