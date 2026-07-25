@@ -1250,6 +1250,247 @@ the fix priorities identified in §8's synthesis (reduce actuator lag or vibrati
 
 ---
 
+## 9. Switch to thrust-upgraded drone, 2026-07-23 — trajectory + oval kt sweep
+
+Brushless shake investigation parked (§8/§8b give root cause + candidate fixes, neither
+implemented yet — both are hardware-level work, not more gain tuning). Switched to the
+thrust-upgraded CF2.1 (`make DRONE=upgrade cload`, yaml swapped to the locked upgraded block:
+`ctrl_mode=3, kr=603, kw=90, kr_z=603, kw_z=90, fc_bw=70, mass=0.0386`, pos_gains
+`kp_xy=40/kp_z=30/kv_xy=8/kv_z=10` — brushless block fully preserved, commented out, header marked
+PARKED with a pointer back here) to make forward progress on the trajectory library while that
+investigation waits on hardware changes.
+
+### 9.1 kt=0.05 pass across all 9 trajectories, compared to the brushless baseline (§18 in the
+investigation doc)
+
+Crash detection via gyro σ (same method as §18.2's oval table — z diving well below 0 is the
+unambiguous tell, corroborated by a jump in gyro σ):
+
+| Trajectory (kt=0.05) | Upgraded gyro σ | Upgraded outcome | Brushless outcome (§18, same kt) |
+|---|---|---|---|
+| circle | 33.2 | clean | clean |
+| **corner** | 113.8 | **CRASH** | clean |
+| helix (1st attempt) | 126.8 | **CRASH** | clean |
+| helix (retry) | 40.9 | clean | — |
+| oval | 36.6 | clean | clean |
+| **slalom** | 151.8 | **CRASH** | clean |
+| **teardrop_wide** | 228.2 | **CRASH** | **CRASH (already known, unexplained)** |
+| tilted_oval | 21.5 | clean | clean |
+| figure8 | (see §9.2) | clean | clean |
+| hover | 139 (σ, not shown above) | clean | clean |
+
+Battery voltage checked and ruled out as a confound — all crashes and clean flights span
+3.74-4.18V at takeoff, no correlation between low battery and crash.
+
+**The upgraded drone (kr=603) crashes on `corner` and `slalom` at the same kt=0.05 that brushless
+(kr=2400) flew cleanly.** `teardrop_wide` crashing again matches the known unexplained brushless
+issue — not new information, still unresolved, still worth avoiding or treating as high-risk on
+any platform until root-caused.
+
+### 9.2 Oval kt sweep — ceiling is LOWER than brushless, not higher
+
+| kt | Upgraded gyro σ | Outcome | Brushless (§18.2) |
+|---|---|---|---|
+| 0.05 | 36.6 | clean | clean (geometric) |
+| 0.1 | 19.8 | clean | — |
+| 0.2 (1st) | 37.0 | elevated, survived | completed |
+| 0.2 (retry) | 20.0 | clean | — |
+| 0.3 | 19.6 | clean | completed |
+| 0.4 (1st) | 85.9 | **CRASH** | — |
+| 0.4 (retry) | 43.8 | elevated, survived | — |
+| 0.5 (×3, every attempt) | 90.7-118.6 | **CRASH every time** | completed (shake rising) |
+| 0.6 | 126.2 | **CRASH** | — |
+| 0.7 | — | not yet flown | **CRASH** (confirmed) |
+
+**Working ceiling on this platform: ~kt 0.3, marginal at 0.4.** Below brushless's kt 0.3-0.5
+range, despite the upgraded drone being calmer at low speed (σ 20-40 for its clean flights, a
+comparable-to-slightly-better noise floor than brushless's own clean-flight numbers).
+
+### 9.3 Why: a bandwidth/authority ceiling, not a resonant limit cycle — different failure mode,
+not simply "worse tuning"
+
+kr=603 → ωₙ=√603/2π ≈ **3.9 Hz**, vs brushless's kr=2400 → ωₙ ≈ **7.8 Hz** (§8's resonance
+finding). The lower bandwidth is *why* the upgraded drone doesn't resonate into a sustained
+shake — but it also means less control authority to correct fast enough for sharp direction
+changes (`corner`'s lap time was only 2.48s at kt=0.05 on brushless — inherently aggressive
+regardless of the kt label) or for oval beyond ~kt 0.3. The crash signature supports this: hard,
+sudden failures (z diving, gyro spiking) rather than a growing oscillation — consistent with a
+tracking-authority ceiling being exceeded outright, not a limit cycle building up. kr=603/kw=90
+was only ever validated against gentle figure8/hover tracking (§ "CF2.1 UPGRADED MOTORS — locked
+Jul 15 2026" block) — never against sharp-cornering trajectories or oval past kt=0.2ish.
+**Net: brushless trades a resonant-shake problem for a wider aggressiveness envelope; the upgraded
+drone at its current gains trades that shake for a narrower envelope, not a strictly worse (or
+better) platform.** Raising kr/kw for the upgraded drone specifically is the natural next lever if
+a wider envelope is wanted here, mirroring the same tuning campaign already done for brushless.
+
+### 9.4 Position/attitude tracking comparison — root cause found and fixed, 2026-07-23
+
+§9.4's original suspicion (50-100cm RMSE implausible against a ~1.5m flown path) was correct — two
+real bugs in `Controls/analyze_flight.py`, both fixed:
+
+1. **Missing filename inference.** `oval`/`corner`/`slalom`/`tilted_oval`/`teardrop_wide` were never
+   added to the trajectory-type inference list — the script hard-exited with "Cannot infer
+   trajectory type" before ever reaching the CSV's own `run_trajectory` metadata. Fixed by adding
+   the five missing `elif` branches (ordered so `tilted_oval`/`teardrop_wide` are checked before
+   their substrings `oval`/`teardrop`).
+2. **No phase calibration on the generic Poly4D path.** `figure8` has always computed a lap-window
+   phase/time-shift calibration (`calibrate_onboard8_phase`, fit via grid search) before computing
+   RMSE — every other type (`circle`, and now `oval`/`corner`/`slalom`/`tilted_oval`) fell through
+   to `plot_analysis()` called with **zero** phase alignment: the reference was evaluated at raw
+   absolute CSV time, including the takeoff ramp before the trajectory even starts. On a periodic
+   path, a real but modest 200-500ms timing offset (probably the real per-flight startup latency —
+   `t_shift` after calibration matches this range) puts the "same-time" reference point far around
+   the loop, producing exactly the 50-150cm phantom errors this session had been reporting as
+   "not trustworthy." Fixed by generalizing the calibrated `figure8` dispatch path to run for **any**
+   type with a resolved onboard degree-8 reference (`segs8`), not just figure8 — the underlying
+   calibration/geometry helpers (`infer_figure8_eval_window`, `find_figure8_traj_start`,
+   `compute_figure8_geom_metrics`, `onboard8_metrics_over_window`) were already fully generic
+   despite their figure8-flavored names, just never wired up for other types.
+3. **`helix` separately had a third, independent bug**: it used a hardcoded analytic reference
+   model (`lap_time=10.5s`) regardless of the actual flown trajectory, which for our kt=0.05 mode1
+   export has a real lap of 7.43s. Fixed by only using the analytic path when no matching kt-based
+   Poly4D export exists (legacy fixed-parameter Mode B flights); our flights now route through the
+   same calibrated path as everything else.
+
+**Verification — circle, before/after the fix:**
+
+| | Before (bug) | After (fixed) |
+|---|---|---|
+| Upgraded circle RMSE 3D | 100.0 cm | **1.9 cm** (t_shift +230ms) |
+| Brushless circle RMSE 3D | 116.7 cm | **1.9 cm** (t_shift +190ms) |
+
+Exactly the "relatively low numbers" expected — confirms the diagnosis.
+
+**Follow-up fix, same session**: the phase-calibration search window (`calibrate_onboard8_phase`)
+was itself too narrow — `±0.5s`, and several flights' best-fit shift landed exactly on that
+boundary (a `+500ms` result at the edge of a `±500ms` search is a red flag that the true optimum
+is outside the searched range, not that 500ms is actually optimal). Widened to `±0.75s`. Effect
+differed by case, which is itself informative:
+- **`helix` improved on both platforms** (found genuine interior optima ~730-750ms, not boundary
+  values) — RMSE XY dropped from 78.1→71.1cm (upgraded) and 56.1→52.8cm (brushless). Still large,
+  but now a stable, non-clipped number.
+- **`tilted_oval` upgraded still clips at the boundary even at ±0.75s** (tested up to ±1.5s, same
+  result) — this is NOT a search-window artifact still masquerading as one; a "phase shift" this
+  large stops being a believable constant startup-latency correction. Combined with a clear visual
+  tell (see §9.7): the XY-error-vs-time trace shows large excursions recurring roughly once per
+  lap (~12s spacing, matching the trajectory's own lap time) with sharp dips back near zero at the
+  lap-restart point — a real, localized-in-phase tracking failure during part of each lap (plausibly
+  the banked/tilted turn segment, consistent with §9.3's bandwidth-ceiling story), not a fitting
+  artifact. The calibration-immune Geom RMSE (shape-only, 11.9cm) already corroborated this before
+  the search was even widened. Settled on `±0.75s` rather than continuing to widen — a middle
+  ground that fixed the genuine case (helix) without inviting spurious multi-second "alignments."
+
+**Known remaining gap, not fixed this session**: the onboard degree-8 reference (`segs8`) is
+XY-only — `resolve_poly4d_from_meta` parses `(duration, cx, cy)` per segment and discards the `cz`
+coefficients, even though the exported onboard CSV has them (confirmed: `oval_..._onboard.csv` has
+full `cz0-cz8` columns). Z RMSE and 3D RMSE for non-flat trajectories (`helix`, `tilted_oval`) use
+a constant mean-z reference, not the true z(t) profile — the script now prints an explicit warning
+for these types. XY RMSE, roll, and pitch error are unaffected (they don't depend on the Z
+reference).
+
+### 9.5 Full comparison table, both platforms, all common trajectories at kt=0.05
+
+Phase-aligned Onboard8 XY RMSE, using each side's cleanest full (non-truncated, non-crashed) log:
+
+| Trajectory | Upgraded XY RMSE | Upgraded roll/pitch err | Brushless XY RMSE | Brushless roll/pitch err |
+|---|---|---|---|---|
+| circle | 1.7 cm | 2.1° / 1.8° | 1.9 cm | 1.9° / 1.4° |
+| oval | 2.1 cm | 1.7° / 1.3° | 2.3 cm | 2.2° / 2.9° |
+| corner | — (crashed) | — | 5.5 cm | 10.7° / 10.0° |
+| slalom | — (crashed) | — | 3.6 cm | 6.3° / 6.4° |
+| teardrop_wide | — (crashed) | — | 2.4 cm | 3.0° / 6.7° |
+| tilted_oval | **116.1 cm** (11.9cm shape-only, boundary-clipped — see §9.4) | 8.2° / 3.0° | 2.1 cm | 2.0° / 1.2° |
+| helix | 71.1 cm (43.7cm shape-only) | 5.1° / 3.9° | 52.8 cm (32.0cm shape-only) | 5.5° / 3.4° |
+
+**Where the upgraded drone can complete a trajectory, XY position tracking is essentially tied
+with brushless (1.7-2.9cm range for circle/oval both platforms) — this directly contradicts a
+"brushless is better everywhere" expectation.** The real platform differentiator remains what §9.1-
+9.3 already found: crash ceiling (corner/slalom/teardrop_wide crash on upgraded, fly clean on
+brushless), not tracking precision on the maneuvers it *can* fly.
+
+**Two genuine open anomalies, confirmed real after the §9.4 follow-up fix** (both show large error
+in the calibration-immune "Geom RMSE (shape only)" metric, and for tilted_oval a direct visual
+tell too — see §9.7 — so neither is the phase-alignment bug recurring):
+- **`helix` is bad on BOTH platforms** (32-44cm shape RMSE), brushless somewhat better than
+  upgraded (52.8 vs 71.1cm phase-aligned, 5.5 vs 5.1° roll — mixed on attitude, clearer on
+  position). The XY-path plot (§9.7) shows both platforms flying a visibly smaller-radius loop
+  than planned — a real undershoot on this climbing/descending spiral, not a reference artifact.
+  This is the one trajectory in this whole session where brushless has a clear, uncontested
+  tracking-precision edge, not just an envelope edge.
+- **`tilted_oval` is fine on brushless (1.3cm shape RMSE) but bad on upgraded specifically**
+  (11.9cm shape RMSE, ~9× worse) — confirmed genuine, not a calibration artifact (§9.4): the error
+  recurs periodically at roughly the lap rate, consistent with a real, localized tracking failure
+  during part of each lap (plausibly the banked-turn segment), not a fitting artifact. Since the
+  same script/reference handles the same trajectory type cleanly on the other platform, this looks
+  like a genuine upgraded-drone-specific tracking gap on a maneuver that demands sustained bank
+  angle, plausibly connected to the same lower-bandwidth (kr=603) limitation identified in §9.3.
+
+### 9.6 Oval kt sweep, both platforms — position RMSE stays flat until the crash wall
+
+| kt | Upgraded XY RMSE | Upgraded roll/pitch err | Brushless XY RMSE | Brushless roll/pitch err |
+|---|---|---|---|---|
+| 0.05 | 2.1 cm | 1.7° / 1.3° | 2.3 cm | 2.2° / 2.9° |
+| 0.1 | 2.8 cm | 2.3° / 1.5° | — | — |
+| 0.2 | 2.9 cm | 3.3° / 1.5° | 2.5 cm | 2.6° / 1.3° |
+| 0.3 | 3.0 cm | 3.2° / 1.7° | 2.8 cm | 2.9° / 1.5° |
+| 0.4 | 3.2 cm | 4.4° / 2.1° | — | — |
+| 0.5 | — (crashed all 3 attempts) | — | 3.1 cm | 5.5° / 2.7° |
+| 0.6-0.8 | — (crashed / not flown) | — | — (0.7 crashed, §18.2) | — |
+
+**The headline result: XY position RMSE barely moves (2.1→3.2cm) across each platform's entire
+flyable kt range** — attitude error creeps up gradually with kt (more aggressive tracking demand),
+but position tracking itself stays excellent right up until the crash wall on both platforms. This
+confirms §9.3's picture at the tracking-quality level too: the platforms don't differ in *how well*
+they track when they're within their envelope — they differ in *how wide that envelope is*
+(brushless flies clean through kt=0.5, upgraded's wall is ~kt 0.3-0.4). "Brushless is better" is
+true for aggressiveness ceiling, not for tracking precision.
+
+### 9.7 Side-by-side visual comparison
+
+`--compare` had the same uncalibrated-reference bug as the single-file path (§9.4), plus a second
+one: RMSE was averaged over the *entire* flight including the pre-motion/takeoff segment (plan
+clamped at reference t=0 while the drone is still at its pre-position point), inflating the number
+even after phase calibration was added. Both fixed in `compare_plot()` — per-flight motion-start
+detection + phase-shift fit (independently for each side, since they're separate flights with
+their own real startup latency), onboard-8 reference when available, and the summary RMSE/roll/
+pitch numbers now restricted to the actual lap window (matching `onboard8_metrics_over_window`)
+while the full-length error-vs-time traces still show the pre-motion segment for context.
+
+![circle kt=0.05 — Upgraded vs Brushless](../../Controls/logs/circle_mode1_kt0.05_2026-07-23_19-12-43_vs_circle_mode1_kt0.05_2026-07-22_18-26-28.png)
+
+![oval kt=0.05 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.05_2026-07-23_19-21-06_vs_oval_mode1_kt0.05_2026-07-22_18-21-47.png)
+
+![oval kt=0.2 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.2_2026-07-23_19-27-51_vs_oval_mode1_kt0.2_2026-07-22_18-38-26.png)
+
+![oval kt=0.3 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.3_2026-07-23_19-28-35_vs_oval_mode1_kt0.3_2026-07-22_18-39-15.png)
+
+All four show the same picture as §9.5/§9.6's tables: the XY-path panels trace nearly identical
+loops for both platforms, and the XY-error-vs-time panels show the same shape — a large transient
+during the pre-motion/takeoff phase (correctly excluded from the reported RMSE) settling to a
+small, near-equal steady-state error for both colors once the trajectory actually starts.
+
+The two anomalous types from §9.5 look visually different from the four above, and different from
+each other — confirming both are real, not the same recurring bug:
+
+![helix kt=0.05 — Upgraded vs Brushless](../../Controls/logs/helix_mode1_kt0.05_2026-07-23_19-20-08_vs_helix_mode1_kt0.05_2026-07-22_18-22-32.png)
+
+`helix`: both platforms' flown loops (solid) are visibly smaller-radius than the planned spiral
+(dashed) — a real shape undershoot, not a phase artifact. Steady-state error settles around
+45-55cm (brushless) / 65-75cm (upgraded) rather than the few-cm floor seen on circle/oval.
+
+![tilted_oval kt=0.05 — Upgraded vs Brushless](../../Controls/logs/tilted_oval_mode1_kt0.05_2026-07-23_19-23-44_vs_tilted_oval_mode1_kt0.05_2026-07-22_18-24-20.png)
+
+`tilted_oval`: brushless (red) sits at its usual few-cm floor throughout. Upgraded (blue) shows a
+distinctive sawtooth — large excursions (up to ~180cm) recurring roughly once per lap, with sharp
+dips back near zero at the lap-restart point (visible at t≈12s and t≈25s, ~12-13s apart, matching
+the trajectory's own lap time). That periodicity is the direct visual confirmation behind §9.4's
+"real, localized-in-phase tracking failure" conclusion — a script bug would not produce a
+lap-synchronized pattern like this.
+
+**Generated by**: `Controls/analyze_flight.py --csv <A> --compare <B> --labels "Upgraded,Brushless"`.
+
+---
+
 ## Reference baselines (other drones, for comparison)
 
 - **Standard CF2.1 INDI:** 3.87 cm XY RMSE (June 20 2026, kr=1050) — `results_2026-06-20.md`
