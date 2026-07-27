@@ -1491,6 +1491,184 @@ lap-synchronized pattern like this.
 
 ---
 
+## 10. Final data collection session, 2026-07-25 — footage + completed oval/circle sweeps, both platforms
+
+Last lab session before the project presentation. Goal: capture presentation footage (hover/
+circle/figure8/oval on upgraded) and complete the oval/circle kt-sweep density on both platforms
+for a full cross-platform comparison. All flying for the project is now complete — this section
+is the final consolidation before moving to slides.
+
+### 10.1 Oval kt sweep — final state, both platforms
+
+| kt | Upgraded | Brushless |
+|---|---|---|
+| 0.05 | clean | clean |
+| 0.1 | clean | clean |
+| 0.2 | clean | clean |
+| 0.3 | clean | clean (1 retake — see dropout note below) |
+| 0.4 | clean | clean (1 retake — see dropout note below) |
+| 0.5 | **crashed** (3/3 attempts across the whole project) | clean |
+| 0.6 | **crashed** | not flown |
+| 0.7 | not flown | **crashed** (§18.2, confirmed earlier) |
+
+**Dropout note**: brushless oval kt=0.3 and kt=0.4 each had one attempt that cut off abruptly
+mid-flight (1.0s and 2.3s into a ~13s planned lap) with frozen RPM telemetry in the last few
+samples — a radio/telemetry link dropout, not a crash (z-position was flat/normal right up to the
+cutoff, not diving). Since Mode D (`--onboard`) trajectories execute onboard independent of the
+radio link, the physical flight may well have completed even though the log didn't capture it.
+Retaken cleanly on the next attempt (22.2s and 28.4s full flights, normal z range throughout).
+
+**Unchanged conclusion from §9.6**: upgraded's working ceiling is lower (~kt 0.3-0.4) than
+brushless's (~kt 0.5, crash confirmed at 0.7) — this session's data is consistent with, not a
+revision of, that finding.
+
+### 10.2 Circle kt sweep — new data, both platforms
+
+Circle had never been swept beyond kt=0.05 on either platform before this session (only the
+oval/figure8/etc. family had kt-sweep data). Full sweep now exists 0.1→1.0 on both:
+
+| kt | Upgraded | Brushless |
+|---|---|---|
+| 0.1-0.5 | **all clean** (7 attempts, 0.1-0.6) | **all clean** (5 attempts, 0.1-0.5) |
+| 0.6 | clean | 1 crashed (z=-3.1m), 1 clean retry |
+| 0.7 | marginal zone begins | clean |
+| 0.7-1.0 | **marginal**: 4 clean / 5 crashed across 9 attempts | — |
+| 0.8 | (in marginal zone above) | **crashed** (z=-2.0m) |
+| 0.9 | (in marginal zone above) | **crashed** (z=-5.6m) |
+| 1.0 | (in marginal zone above) | not flown (0.8/0.9 already crashed — stopped, correctly) |
+
+**Key finding: both platforms show the same qualitative pattern — a clean-flight ceiling followed
+by a marginal/inconsistent zone (crash and clean outcomes mixed at the same kt), not a sharp
+threshold.** This mirrors the kw-floor finding elsewhere in this project ("inconsistent pass/fail
+= marginal stability, not smooth degradation"). Rough ceiling comparison — upgraded clean to ~0.6,
+brushless clean to ~0.5 — is close enough on this sample size that a real platform difference in
+*where* the marginal zone starts is not established; what IS established is that both platforms
+have one, which is itself informative (circle's aggressive cornering demand creates a genuine
+control-authority ceiling independent of platform/tuning).
+
+**Cross-platform circle RMSE comparison** (same calibrated `--compare` methodology as oval, §9.7):
+
+| kt | Upgraded XY RMSE | Brushless XY RMSE |
+|---|---|---|
+| 0.05 | 1.7 cm | 1.9 cm (tied) |
+| 0.3 | 2.2 cm | **1.4 cm** (brushless ~36% lower — a real difference here, unlike kt=0.05) |
+
+![circle kt=0.3 — Upgraded vs Brushless](../../Controls/logs/circle_mode1_kt0.3_2026-07-25_12-50-20_vs_circle_mode1_kt0.3_2026-07-25_14-16-08.png)
+
+At kt=0.3, brushless tracks noticeably tighter than upgraded (1.4cm vs 2.2cm) — both platforms'
+XY paths hug the planned circle closely (visible in the plot), but brushless is measurably closer.
+Combined with kt=0.05's tie, the picture across circle is: **roughly tied at low aggressiveness,
+brushless pulling ahead at moderate kt** — the opposite direction from a "brushless is worse"
+expectation, and a useful nuance for the presentation (don't over-generalize "tracking is tied" from
+kt=0.05 alone; it's kt-dependent). Roll/pitch error is slightly worse for brushless at this point
+(3.1°/2.7° vs upgraded's 2.3°/2.1°) — position and attitude don't necessarily move together.
+
+### 10.3 Brushless prop-guard removal + kt/J finding (closing aside, not part of the core investigation)
+
+Operator removed the brushless drone's prop guards as a last-resort experiment. Measured mass
+dropped from 41.0g (guards on) to 36.7g (guards off). kt re-identified from a clean hover
+(`hover_mode0_2026-07-25_15-09-16.csv`, all 4 RPM channels valid): `kt1=4.0568e-10,
+kt2=4.0758e-10, kt3=3.9739e-10, kt4=4.2230e-10` — consistent in scale with the guards-on values
+(4.06-4.16e-10), as expected since kt is a motor/prop coefficient, not mass-dependent. Old
+mass/kt preserved as comments in `crazyflies.yaml` for reference (not deleted).
+
+Note: two earlier hover attempts the same session had `rpm_m4` reading a flat, unbroken zero
+throughout (broken/disconnected RPM channel that specific flight) — not usable for kt4, resolved
+itself on the next attempt (sensor fault was transient, not permanent).
+
+Follow-up hover with the new kt values was noticeably noisier (gyro max ~450-480°/s vs the
+~95-300°/s guards-on baseline) — not a crash, but a real degradation. **Root cause identified but
+not pursued**: prop guards sit at the arm tips (large moment arm), so removing them measurably
+lowers roll/pitch rotational inertia; the firmware's compiled `J` matrix was calibrated *with*
+guards on (via the 18-flight TLS regression documented earlier in this doc) and is now mismatched,
+degrading the INDI increment law (`delta_tau = J*(alpha_ref - alpha_meas)`). Re-deriving `J`
+properly needs its own regression campaign — correctly not attempted with the project's remaining
+time. Guards are back on; this does not affect any other result in this document.
+
+### 10.4 Session wrap-up
+
+All planned and bonus flying is complete: presentation footage captured, oval and circle kt
+sweeps completed and cross-checked on both platforms, one incidental (and appropriately
+not-pursued) hardware finding documented. `crazyflies.yaml` returned to the upgraded config
+(`kr: 603.0`) as the project's final resting state. No further flights are planned — remaining
+project work is presentation preparation only (see `FINALIZE_PROJECT.md`).
+
+### 10.5 Log file manifest — traceability for every table entry above
+
+All paths relative to `Controls/logs/`. Multiple files at the same kt = multiple attempts that
+session (radio dropouts and marginal-zone crashes both produced retries) — **bold** = the specific
+file whose number is quoted in a table or used in a `--compare` plot elsewhere in this doc;
+plain = additional attempts at the same point, included for completeness/traceability, not
+individually cited.
+
+**Oval, upgraded:**
+
+| kt | Files | Outcome |
+|---|---|---|
+| 0.05 | **`oval_mode1_kt0.05_2026-07-23_19-21-06.csv`**, `..._2026-07-25_12-31-48.csv` | clean |
+| 0.1 | **`oval_mode1_kt0.1_2026-07-23_18-50-55.csv`**, `..._19-26-17.csv` (short abort), `..._2026-07-25_12-32-40.csv` | clean |
+| 0.2 | `..._2026-07-23_18-56-40.csv` (elevated, survived), `..._19-02-51.csv` (short abort), **`..._19-27-51.csv`**, `..._2026-07-25_12-33-33.csv` | clean |
+| 0.3 | **`oval_mode1_kt0.3_2026-07-23_19-28-35.csv`**, `..._2026-07-25_12-34-19.csv` | clean |
+| 0.4 | `..._2026-07-23_19-32-34.csv` (**crash**, z=-9.03m), **`..._19-34-12.csv`** (clean retry), `..._2026-07-25_12-35-13.csv` | 1 crash, 2 clean |
+| 0.5 | `..._2026-07-23_18-51-38.csv`, `..._19-30-02.csv`, `..._19-34-52.csv`, `..._2026-07-25_12-36-00.csv`, `..._12-37-37.csv` | **crashed every attempt (5/5)** |
+| 0.6 | `..._2026-07-23_19-36-12.csv`, `..._2026-07-25_12-39-09.csv` | **crashed (2/2)** |
+
+**Oval, brushless:**
+
+| kt | Files | Outcome |
+|---|---|---|
+| 0.05 | **`oval_mode1_kt0.05_2026-07-22_18-21-47.csv`** | clean |
+| 0.1 | `oval_mode1_kt0.1_2026-07-25_13-48-19.csv` (clean), `..._13-49-00.csv` (short, inconclusive), `..._13-52-33.csv` (clean) | clean |
+| 0.2 | **`oval_mode1_kt0.2_2026-07-22_18-38-26.csv`**, `..._2026-07-25_13-53-34.csv`, `..._13-54-36.csv` | clean |
+| 0.3 | **`oval_mode1_kt0.3_2026-07-22_18-39-15.csv`**, `..._2026-07-25_13-55-19.csv` (dropout, inconclusive), `..._14-05-48.csv` (clean retake) | clean |
+| 0.4 | `oval_mode1_kt0.4_2026-07-25_13-57-56.csv` (dropout, inconclusive), `..._14-08-02.csv` (clean retake) | clean |
+| 0.5 | `..._2026-07-22_18-39-49.csv` (never left ground, aborted), **`..._18-41-05.csv`**, `..._18-43-41.csv` (mild dip, survived) | clean |
+| 0.7 | `oval_mode1_kt0.7_2026-07-22_18-41-50.csv` | **crashed** (§18.2) |
+
+**Circle, upgraded:**
+
+| kt | Files | Outcome |
+|---|---|---|
+| 0.05 | **`circle_mode1_kt0.05_2026-07-23_19-12-43.csv`** | clean |
+| 0.1 | `circle_mode1_kt0.1_2026-07-25_12-47-21.csv` | clean |
+| 0.2 | `circle_mode1_kt0.2_2026-07-25_12-48-57.csv`, `..._12-49-35.csv` | clean |
+| 0.3 | **`circle_mode1_kt0.3_2026-07-25_12-50-20.csv`** | clean |
+| 0.4 | `circle_mode1_kt0.4_2026-07-25_12-50-59.csv` | clean |
+| 0.5 | `circle_mode1_kt0.5_2026-07-25_12-23-20.csv`, `..._12-24-03.csv`, `..._12-51-40.csv` | clean |
+| 0.6 | `circle_mode1_kt0.6_2026-07-25_12-52-19.csv` | clean |
+| 0.7 | `..._12-24-54.csv` (**crash**, z=-24.1m), `..._12-52-58.csv` (**crash**, z=-4.1m), `..._12-54-19.csv` (clean), `..._12-59-39.csv` (short, inconclusive) | 2 crash, 1 clean |
+| 0.8 | `circle_mode1_kt0.8_2026-07-25_13-00-56.csv` | clean |
+| 0.9 | `..._13-01-39.csv` (too short to judge), `..._13-02-59.csv` (**crash**, z=-4.3m) | crashed |
+| 1.0 | `circle_mode1_kt1_2026-07-25_12-55-13.csv` (clean), `..._13-04-44.csv` (**crash**, z=-10.8m) | 1 crash, 1 clean |
+
+**Circle, brushless:**
+
+| kt | Files | Outcome |
+|---|---|---|
+| 0.05 | **`circle_mode1_kt0.05_2026-07-22_18-26-28.csv`** | clean |
+| 0.1 | `circle_mode1_kt0.1_2026-07-25_14-14-45.csv` | clean |
+| 0.2 | `circle_mode1_kt0.2_2026-07-25_14-15-29.csv` | clean |
+| 0.3 | **`circle_mode1_kt0.3_2026-07-25_14-16-08.csv`** | clean |
+| 0.4 | `circle_mode1_kt0.4_2026-07-25_14-16-46.csv` | clean |
+| 0.5 | `circle_mode1_kt0.5_2026-07-25_14-17-23.csv` | clean |
+| 0.6 | `..._14-18-05.csv` (**crash**, z=-3.1m), `..._14-19-21.csv` (clean retry) | 1 crash, 1 clean |
+| 0.7 | `circle_mode1_kt0.7_2026-07-25_14-19-59.csv` | clean |
+| 0.8 | `circle_mode1_kt0.8_2026-07-25_14-20-37.csv` | **crash** (z=-2.0m) |
+| 0.9 | `circle_mode1_kt0.9_2026-07-25_14-22-25.csv` | **crash** (z=-5.6m) |
+| 1.0 | not flown (0.8/0.9 already crashed) | — |
+
+**Other trajectories at kt=0.05 (§9.1, §9.5), one file per platform, both clean unless noted:**
+
+| Trajectory | Upgraded | Brushless |
+|---|---|---|
+| corner | `corner_mode1_kt0.05_2026-07-23_19-13-14.csv` (**crash**) | `corner_mode1_kt0.05_2026-07-22_18-25-42.csv` (clean) |
+| slalom | `slalom_mode1_kt0.05_2026-07-25_13-18-25.csv`, `..._13-19-21.csv`, `..._13-22-00.csv` (all **crash/near-crash**, §10 slalom retest); also `..._2026-07-23_19-21-46.csv` (**crash**) | `slalom_mode1_kt0.05_2026-07-22_18-25-08.csv` (clean) |
+| teardrop_wide | `teardrop_wide_mode1_kt0.05_2026-07-23_19-24-34.csv` (**crash**) | `teardrop_wide_mode1_kt0.05_2026-07-22_18-27-05.csv` (**crash** — known unexplained issue, §9.1) |
+| tilted_oval | `tilted_oval_mode1_kt0.05_2026-07-23_19-23-44.csv` (clean, anomalous tracking §9.5) | `tilted_oval_mode1_kt0.05_2026-07-22_18-24-20.csv` (clean, full log — the shorter `..._18-23-02.csv` is truncated, don't use) |
+| helix | `helix_mode1_kt0.05_2026-07-23_19-20-08.csv` (clean retry — `..._19-16-47.csv` was a **crash**, first attempt) | `helix_mode1_kt0.05_2026-07-22_18-22-32.csv` (clean) |
+
+---
+
 ## Reference baselines (other drones, for comparison)
 
 - **Standard CF2.1 INDI:** 3.87 cm XY RMSE (June 20 2026, kr=1050) — `results_2026-06-20.md`
