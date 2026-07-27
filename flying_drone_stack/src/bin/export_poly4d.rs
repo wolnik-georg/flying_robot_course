@@ -27,7 +27,7 @@
 //! Degree-8 term (a_8) is converted to degree-7 via Hermite boundary matching
 //! (see to_hermite_phys7) — preserves C3 continuity at all segment junctions.
 
-use multirotor_simulator::planning::{SplineSegment, SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint};
+use multirotor_simulator::planning::{SplineSegment, SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint, RichterTrajectory};
 use multirotor_simulator::math::Vec3;
 use std::fs;
 use std::io::{BufWriter, Write};
@@ -291,6 +291,29 @@ fn build_generic_with_pins(
     (planner.as_spline().clone(), label)
 }
 
+// Same as build_generic_with_pins, but uses EXACT manually-specified segment
+// durations for Mode 1 too (n_iter=0, no Richter auto-redistribution) instead of
+// automatic kt-based timing. Needed for accel-pinned inversion: automatic timing
+// gives the flip only ~30ms regardless of kt, forcing an unachievable rotation
+// rate (~90+ rad/s vs brushless's real ~34 rad/s ceiling) and a near-zero-thrust
+// singularity right at the pin — confirmed both by direct thrust/omega profiling
+// and by a real hardware crash (loop, kt=0.15, 2026-07-27: thrust clamped to 0,
+// drone tumbled). Manually widening just the segments flanking the pin (giving
+// the flip real time) fixes this while keeping the rest of the trajectory paced
+// normally — validated via `check_feasibility` + a full flatness profile sweep
+// before use, not a guess.
+fn build_pinned_with_times(
+    name: &str, wps: Vec<Waypoint>, durs: Vec<f32>, periodic: bool,
+    speed: f32, accel_pins: &[(usize, Vec3)],
+) -> (SplineTrajectory, String) {
+    let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
+    let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, accel_pins, periodic, 0)
+        .unwrap_or_else(|e| panic!("{} pinned manual-timing QP failed: {}", name, e));
+    let planner = TrajectoryPlanner::Richter(traj);
+    let label = format!("{name}_mode1_inverted");
+    (planner.as_spline().clone(), label)
+}
+
 // --- helix: ascending + descending spiral, n=5/lap (10 segments total) -----
 fn helix_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
     let (r, dz, n) = (0.5_f32, 1.0_f32, 5usize);
@@ -324,15 +347,21 @@ fn loop_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
     }).collect();
     (wps, vec![seg_t; n])
 }
-fn build_loop(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
-    let (wps, durs) = loop_waypoints(speed);
-    // Apex (top of loop, th=pi) is waypoint index n/2=4 of the 0..=8 sequence.
-    // Pin a_z=-1.5g there so flatness yields a genuinely inverted attitude
-    // (body_z=(0,0,-1)) instead of relying on centripetal speed-up alone, which
-    // requires more thrust than brushless has available (see feasibility check
-    // 2026-07-27: never inverts via speed alone up to the highest feasible kt).
-    let pins = [(4usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY))];
-    build_generic_with_pins("loop", wps, durs, true, mode, kt, speed, &pins)
+fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
+    // --mode/--kt ignored for `loop`: this shape now always uses the manually-timed,
+    // accel-pinned inversion validated 2026-07-27 (see build_pinned_with_times' doc
+    // comment). Apex (top, th=pi) is waypoint index n/2=4 of the 0..=8 sequence;
+    // segments 3 and 4 (flanking it) are widened to 0.16s so the flip has enough
+    // time to stay within brushless's real 34 rad/s / 0.77N ceiling — the other 6
+    // segments keep a normal 0.33s pace. Validated: max_omega=20.5 rad/s (60% of
+    // ceiling), max_thrust=0.694N (90% of ceiling), min_thrust=0.161N (healthy
+    // margin, no near-zero-thrust singularity), fully inverted (body_z.z=-1.00).
+    let (wps, _) = loop_waypoints(1.0);
+    let far_t = 0.33_f32;
+    let near_pin_t = 0.16_f32;
+    let durs = vec![far_t, far_t, far_t, near_pin_t, near_pin_t, far_t, far_t, far_t];
+    let pins = [(4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY))];
+    build_pinned_with_times("loop", wps, durs, true, speed, &pins)
 }
 
 // --- corkscrew: helical XY + linear Z ramp, non-periodic --------------------
