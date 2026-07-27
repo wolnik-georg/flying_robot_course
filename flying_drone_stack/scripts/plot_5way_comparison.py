@@ -49,7 +49,7 @@ for ax, (label, vals, color), n in zip(axes, groups, ns):
 axes[0].set_ylabel("XY RMSE [cm]")
 fig.suptitle("Figure-8 tracking — per-flight XY RMSE, all five configurations", fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, 0.94])
-fig.savefig("/tmp/claude-1000/-home-georg-Desktop-flying-robot-course/776e626c-a26d-45e0-9fad-41689550ff42/scratchpad/5way_per_flight.png", dpi=150, bbox_inches="tight")
+fig.savefig("flying_drone_stack/docs/5way_per_flight.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 # --- Plot 2: mean +/- std comparison bar ---
@@ -59,18 +59,24 @@ bars = ax.bar(labels, means, yerr=stds, capsize=6, color=colors,
 for i, (m, s, n) in enumerate(zip(means, stds, ns)):
     ax.text(i, m + s + 0.15, f"{m:.2f} cm\n(n={n})", ha='center', fontsize=10, fontweight='bold')
 
-# annotate % improvement vs standard geometric baseline
+# annotate % vs standard geometric baseline AND % vs the previous bar (step-over-step:
+# geometric->standard INDI, standard INDI->upgraded INDI, upgraded INDI->brushless fc60,
+# brushless fc60->brushless fc70)
 base = means[0]
 for i in range(1, len(means)):
-    pct = (means[i] - base) / base * 100
-    ax.annotate(f"{pct:.0f}%", xy=(i, means[i]/2), ha='center', color='darkred', fontsize=10, fontweight='bold')
+    pct_base = (means[i] - base) / base * 100
+    pct_prev = (means[i] - means[i - 1]) / means[i - 1] * 100
+    ax.text(i, means[i] * 0.62, f"{pct_base:.0f}% vs Geo", ha='center', va='center',
+            color='darkred', fontsize=9.5, fontweight='bold')
+    ax.text(i, means[i] * 0.32, f"{pct_prev:.0f}% vs prev", ha='center', va='center',
+            color='navy', fontsize=9.5, fontweight='bold')
 
 ax.set_ylabel("mean XY RMSE [cm]")
 ax.set_title("Figure-8 tracking error — mean ± std, all platforms/controllers")
 ax.set_ylim(0, max(means) + max(stds) + 1.2)
 ax.grid(axis='y', alpha=0.3)
 fig.tight_layout()
-fig.savefig("/tmp/claude-1000/-home-georg-Desktop-flying-robot-course/776e626c-a26d-45e0-9fad-41689550ff42/scratchpad/5way_mean_comparison.png", dpi=150, bbox_inches="tight")
+fig.savefig("flying_drone_stack/docs/5way_mean_comparison.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
 print("done")
