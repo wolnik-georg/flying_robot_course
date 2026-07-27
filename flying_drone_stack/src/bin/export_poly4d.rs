@@ -291,29 +291,6 @@ fn build_generic_with_pins(
     (planner.as_spline().clone(), label)
 }
 
-// Same as build_generic_with_pins, but uses EXACT manually-specified segment
-// durations for Mode 1 too (n_iter=0, no Richter auto-redistribution) instead of
-// automatic kt-based timing. Needed for accel-pinned inversion: automatic timing
-// gives the flip only ~30ms regardless of kt, forcing an unachievable rotation
-// rate (~90+ rad/s vs brushless's real ~34 rad/s ceiling) and a near-zero-thrust
-// singularity right at the pin — confirmed both by direct thrust/omega profiling
-// and by a real hardware crash (loop, kt=0.15, 2026-07-27: thrust clamped to 0,
-// drone tumbled). Manually widening just the segments flanking the pin (giving
-// the flip real time) fixes this while keeping the rest of the trajectory paced
-// normally — validated via `check_feasibility` + a full flatness profile sweep
-// before use, not a guess.
-fn build_pinned_with_times(
-    name: &str, wps: Vec<Waypoint>, durs: Vec<f32>, periodic: bool,
-    speed: f32, accel_pins: &[(usize, Vec3)],
-) -> (SplineTrajectory, String) {
-    let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
-    let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, accel_pins, periodic, 0)
-        .unwrap_or_else(|e| panic!("{} pinned manual-timing QP failed: {}", name, e));
-    let planner = TrajectoryPlanner::Richter(traj);
-    let label = format!("{name}_mode1_inverted");
-    (planner.as_spline().clone(), label)
-}
-
 // --- helix: ascending + descending spiral, n=5/lap (10 segments total) -----
 fn helix_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
     let (r, dz, n) = (0.5_f32, 1.0_f32, 5usize);
@@ -338,30 +315,35 @@ fn build_helix(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
 }
 
 // --- loop: vertical circle in X-Z plane, periodic ---------------------------
-fn loop_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
+fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
+    // --mode/--kt ignored for `loop`. Accel-pinned inversion (apex hard-constrained to
+    // body_z=(0,0,-1)), per explicit operator direction to keep this approach rather
+    // than the natural/unpinned power-loop briefly tried 2026-07-27 (structurally
+    // different behavior, not what was asked for). Reverted 2026-07-27 back to
+    // entry=exit=0.33s/pin=0.16s (the config from the 19:06/19:08 flights, which
+    // actually produced a clean flip: roll swung to 175.6-180 deg right at the
+    // apex). The 0.20s-entry retune tried in between produced worse results in real
+    // flight -- an uncommanded roll kick at the entry->pin handoff (sometimes
+    // derailing the climb entirely, sometimes surviving into a good flip but with
+    // no recovery margin left) -- so it's reverted. Root cause of ALL earlier
+    // crashes on the 0.33s config was confirmed separately to be hover height
+    // (flown at ~1.0m, apex hit the room's ~1.7m ceiling right at max roll) --
+    // fixed via `--height 0.5`, not a trajectory-shape problem. Pin=1.4g.
     let (r, n) = (0.5_f32, 8usize);
-    let seg_t = 0.55 / speed;
     let wps: Vec<Waypoint> = (0..=n).map(|i| {
         let th = 2.0 * PI * i as f32 / n as f32;
         Waypoint { pos: Vec3::new(r * th.sin(), 0.0, r * (1.0 - th.cos())), yaw: 0.0 }
     }).collect();
-    (wps, vec![seg_t; n])
-}
-fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
-    // --mode/--kt ignored for `loop`: this shape now always uses the manually-timed,
-    // accel-pinned inversion validated 2026-07-27 (see build_pinned_with_times' doc
-    // comment). Apex (top, th=pi) is waypoint index n/2=4 of the 0..=8 sequence;
-    // segments 3 and 4 (flanking it) are widened to 0.16s so the flip has enough
-    // time to stay within brushless's real 34 rad/s / 0.77N ceiling — the other 6
-    // segments keep a normal 0.33s pace. Validated: max_omega=20.5 rad/s (60% of
-    // ceiling), max_thrust=0.694N (90% of ceiling), min_thrust=0.161N (healthy
-    // margin, no near-zero-thrust singularity), fully inverted (body_z.z=-1.00).
-    let (wps, _) = loop_waypoints(1.0);
-    let far_t = 0.33_f32;
-    let near_pin_t = 0.16_f32;
-    let durs = vec![far_t, far_t, far_t, near_pin_t, near_pin_t, far_t, far_t, far_t];
+    let entry_t = 0.33_f32;
+    let pin_t = 0.16_f32;
+    let exit_t = 0.33_f32;
+    let durs = vec![entry_t, entry_t, entry_t, pin_t, pin_t, exit_t, exit_t, exit_t];
+    let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
     let pins = [(4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY))];
-    build_pinned_with_times("loop", wps, durs, true, speed, &pins)
+    let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, &pins, true, 0)
+        .unwrap_or_else(|e| panic!("loop pinned-inversion QP failed: {}", e));
+    let planner = TrajectoryPlanner::Richter(traj);
+    (planner.as_spline().clone(), mode_label("loop", 1, 0.15, 1.0))
 }
 
 // --- corkscrew: helical XY + linear Z ramp, non-periodic --------------------
@@ -774,7 +756,15 @@ fn wrap_rest_to_rest(traj: &SplineTrajectory) -> (SplineTrajectory, f32) {
 
     // Reach lap speed at a modest ~0.5 m/s² average acceleration, bounded [1.2, 3.0] s.
     let speed = (vx0 * vx0 + vy0 * vy0 + vz0 * vz0).sqrt();
-    let t_e = (speed / 0.5).clamp(1.2, 3.0);
+    let mut t_e = (speed / 0.5).clamp(1.2, 3.0);
+    // For high-curvature laps (e.g. the loop's tight lap-point centripetal accel), the
+    // above speed-only budget lets the Hermite ramp bow far out in the accel-dominated
+    // axis before returning to the lap-start point (empirically ~0.0254*a*t_e^2 m of
+    // excursion). Cap t_e so that excursion stays under a 0.10 m budget; harmless no-op
+    // for gentle trajectories (circle/teardrop/etc. never hit this floor).
+    let accel = (ax0 * ax0 + ay0 * ay0 + az0 * az0).sqrt().max(0.1);
+    let t_e_accel_cap = (0.10 / (0.0254 * accel)).sqrt();
+    t_e = t_e.min(t_e_accel_cap).max(0.3);
 
     let zero9 = [0.0_f32; 9];
     let entry = SplineSegment {
