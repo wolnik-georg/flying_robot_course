@@ -36,6 +36,8 @@ use std::io::{BufWriter, Write};
 const CS2_DATA_DIR: &str =
     "/home/georg/Desktop/crazyswarm2/crazyflie_examples/crazyflie_examples/data";
 
+const GRAVITY: f32 = 9.81;
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -267,6 +269,28 @@ fn build_generic(
     (planner.as_spline().clone(), label)
 }
 
+// Same as build_generic, but pins acceleration at selected waypoints (e.g. the
+// apex of a loop/teardrop) so flatness yields a genuinely inverted attitude there
+// instead of just a tall bank. See TrajectoryPlanner::richter_with_accel_pins.
+fn build_generic_with_pins(
+    name: &str, wps: Vec<Waypoint>, durs: Vec<f32>, periodic: bool,
+    mode: u8, kt: f32, speed: f32, accel_pins: &[(usize, Vec3)],
+) -> (SplineTrajectory, String) {
+    let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
+    let planner = match mode {
+        1 => TrajectoryPlanner::richter_with_accel_pins(&wps, kt, accel_pins, periodic)
+                .unwrap_or_else(|e| panic!("{} Mode 1 Richter (pinned) QP failed: {}", name, e)),
+        3 => TrajectoryPlanner::paper_with_accel_pins(&wps, kt, accel_pins, periodic)
+                .unwrap_or_else(|e| panic!("{} Mode 3 Paper (pinned) QP failed: {}", name, e)),
+        _ => TrajectoryPlanner::Spline(
+                SplineTrajectory::plan_with_accel_pins(&wps, &durs, accel_pins, periodic)
+                    .unwrap_or_else(|e| panic!("{} Mode 0 Spline (pinned) QP failed: {}", name, e))
+             ),
+    };
+    let label = mode_label(name, mode, kt, speed);
+    (planner.as_spline().clone(), label)
+}
+
 // --- helix: ascending + descending spiral, n=5/lap (10 segments total) -----
 fn helix_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
     let (r, dz, n) = (0.5_f32, 1.0_f32, 5usize);
@@ -302,7 +326,13 @@ fn loop_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
 }
 fn build_loop(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let (wps, durs) = loop_waypoints(speed);
-    build_generic("loop", wps, durs, true, mode, kt, speed)
+    // Apex (top of loop, th=pi) is waypoint index n/2=4 of the 0..=8 sequence.
+    // Pin a_z=-1.5g there so flatness yields a genuinely inverted attitude
+    // (body_z=(0,0,-1)) instead of relying on centripetal speed-up alone, which
+    // requires more thrust than brushless has available (see feasibility check
+    // 2026-07-27: never inverts via speed alone up to the highest feasible kt).
+    let pins = [(4usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY))];
+    build_generic_with_pins("loop", wps, durs, true, mode, kt, speed, &pins)
 }
 
 // --- corkscrew: helical XY + linear Z ramp, non-periodic --------------------
@@ -363,7 +393,10 @@ fn teardrop_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
 }
 fn build_teardrop(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let (wps, durs) = teardrop_waypoints(speed);
-    build_generic("teardrop", wps, durs, true, mode, kt, speed)
+    // Apex (top, th=pi) is waypoint index n/2=3 of push_vloop's 0..=6 sequence
+    // (include_start=true). Pinned for the same reason as build_loop above.
+    let pins = [(3usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY))];
+    build_generic_with_pins("teardrop", wps, durs, true, mode, kt, speed, &pins)
 }
 
 fn teardrop_wide_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
@@ -375,7 +408,9 @@ fn teardrop_wide_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
 }
 fn build_teardrop_wide(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let (wps, durs) = teardrop_wide_waypoints(speed);
-    build_generic("teardrop_wide", wps, durs, true, mode, kt, speed)
+    // Same apex index/pin as build_teardrop — same push_vloop(n=6) waypoint layout.
+    let pins = [(3usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY))];
+    build_generic_with_pins("teardrop_wide", wps, durs, true, mode, kt, speed, &pins)
 }
 
 // --- loop_train: 2 chained variable-speed loops, non-periodic ---------------
@@ -398,7 +433,14 @@ fn loop_train_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
 }
 fn build_loop_train(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let (wps, durs) = loop_train_waypoints(speed);
-    build_generic("loop_train", wps, durs, false, mode, kt, speed)
+    // n=5 per loop is odd, so there's no waypoint exactly at th=pi (apex) — index 2
+    // (th=144 deg) is the closest for each of the 2 chained loops (indices 0..5 and
+    // 6..11: loop 2's transition/bottom point is index 6, so its near-apex is index 8).
+    let pins = [
+        (2usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY)),
+        (8usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY)),
+    ];
+    build_generic_with_pins("loop_train", wps, durs, false, mode, kt, speed, &pins)
 }
 
 // --- roller_coaster: sinusoidal hills + one loop, non-periodic --------------
@@ -437,7 +479,11 @@ fn roller_coaster_waypoints(speed: f32) -> (Vec<Waypoint>, Vec<f32>) {
 }
 fn build_roller_coaster(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let (wps, durs) = roller_coaster_waypoints(speed);
-    build_generic("roller_coaster", wps, durs, false, mode, kt, speed)
+    // n_hill=4 hill waypoints (indices 0..3) precede the embedded loop (n=4, even ->
+    // exact apex exists), which starts at index 4 (th=0). Apex (th=pi) is i=2 within
+    // the loop -> global index 4+2=6.
+    let pins = [(6usize, Vec3::new(0.0, 0.0, -1.5 * GRAVITY))];
+    build_generic_with_pins("roller_coaster", wps, durs, false, mode, kt, speed, &pins)
 }
 
 // --- oval: elongated ellipse, flat, periodic ---------------------------------
