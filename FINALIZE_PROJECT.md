@@ -25,6 +25,12 @@ were not otherwise re-tuned this session (see doc §5 for why the loop technique
 transfer). This is good, honest limitations-slide material if there's room (§4.6-4.7 already use
 this tone) — not required for the deck as-is.
 
+**⚠️ 2026-07-28: DO NOT FLY `teardrop`/`teardrop_wide` again without reading doc §7b first.**
+A feasibility sweep (added while fixing an unrelated loop bug) found their core trajectory has a
+near-zero-thrust singularity — `max_omega` of 300-500 rad/s (9-15x the ceiling) at their actual
+flown kt values. Very likely the real explanation for the still-open, never-root-caused
+`teardrop_wide` crash mentioned in item 10a below. Not fixed this session.
+
 **Remaining work — see the table in §11 below for the full list with status.** In short: video
 (Task 7, LED ring on), rehearsal (Task 8), buffer day (Task 9), and three optional bonus flight
 experiments (§10) that are not required to finish.
