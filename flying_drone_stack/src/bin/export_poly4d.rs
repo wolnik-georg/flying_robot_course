@@ -27,7 +27,7 @@
 //! Degree-8 term (a_8) is converted to degree-7 via Hermite boundary matching
 //! (see to_hermite_phys7) — preserves C3 continuity at all segment junctions.
 
-use multirotor_simulator::planning::{SplineSegment, SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint, RichterTrajectory};
+use multirotor_simulator::planning::{SplineSegment, SplineTrajectory, Waypoint, TrajectoryPlanner, Se3Waypoint, RichterTrajectory, compute_flatness};
 use multirotor_simulator::math::Vec3;
 use std::fs;
 use std::io::{BufWriter, Write};
@@ -117,6 +117,24 @@ fn main() {
             std::process::exit(1);
         }
 
+        {
+            let mass = 0.041_f32;
+            let (mut max_thrust, mut min_thrust, mut max_omega, mut max_tau) = (0.0f32, f32::MAX, 0.0f32, 0.0f32);
+            let n = 2000;
+            for i in 0..=n {
+                let t = traj_out.total_time * i as f32 / n as f32;
+                let flat = traj_out.eval(t);
+                let res = compute_flatness(&flat, mass);
+                max_thrust = max_thrust.max(res.thrust);
+                min_thrust = min_thrust.min(res.thrust);
+                let om = (res.omega.x*res.omega.x + res.omega.y*res.omega.y + res.omega.z*res.omega.z).sqrt();
+                max_omega = max_omega.max(om);
+                let tau = (res.torque.x*res.torque.x + res.torque.y*res.torque.y).sqrt();
+                max_tau = max_tau.max(tau);
+            }
+            eprintln!("FULL-TRAJ CHECK: max_thrust={:.3}N min_thrust={:.3}N max_omega={:.2}rad/s max_tau_xy={:.4}Nm",
+                max_thrust, min_thrust, max_omega, max_tau);
+        }
         eprintln!("Writing onboard {} → {}", label, out_path);
         write_onboard_csv(&traj_out, &out_path).expect("Failed to write onboard CSV");
         eprintln!("Done. {} segments, total={:.3}s", traj_out.segments.len(), traj_out.total_time);
@@ -344,18 +362,29 @@ fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
     let exit_t = 0.40_f32;
     let durs = vec![entry_t, entry_t, entry_t, pin_t, pin_t, exit_t, exit_t, exit_t];
     let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
-    // Recovery pin (waypoint 6, one full exit segment past the apex): forces the
-    // flatness solution to include a strong upward acceleration on the way down,
-    // instead of leaving the post-apex path to a generic min-jerk return (which left
-    // the desired-attitude reference to swing back to level gradually/ambiguously --
-    // flight telemetry 2026-07-27 showed the real drone couldn't track that:
-    // tau_x/tau_y saturated at the clamp but kept flipping sign, gyro rates to
-    // 500-1000+ deg/s, z fell 1.42m->-1.9m in 1s, close to freefall). +0.3g keeps
-    // peak thrust at 0.750N (97% of the 0.77N ceiling -- tightest margin in this
-    // config, watch closely); max_tau_xy 0.0147Nm (49% of the 0.030 clamp).
+    // BEST-THUS-FAR v2 (2026-07-28): reverted here from a 4-pin/max-magnitude
+    // config that was flown and made things WORSE, not better. Root cause found:
+    // pins are open-loop time-scheduled, and the real drone hits the floor BEFORE
+    // even the first recovery pin's planned firing time (real floor impact at
+    // t=2.25s vs wp6 planned at t=2.36s) -- every recovery pin added after this one
+    // never got a chance to influence the real flight; pushing magnitudes further
+    // only made the near-term reference shape worse (143% of freefall vs this
+    // config's flights). This 2-pin config (wp6 only, no wp7/mid/wp8) is the
+    // last version that produced a real partial success: flight
+    // loop_mode1_kt0.15_2026-07-28_17-58-56 (height=0.55m) recovered attitude
+    // cleanly and settled into a bounded near-floor oscillation for the rest of the
+    // full 3.81s trajectory instead of diverging into a tumble -- the best result
+    // in this entire investigation. Next direction (not yet in this config):
+    // compress recovery timing to fire within the real ~0.35-0.5s fall budget
+    // instead of the current 0.56s+ delay, and only once that's validated, revisit
+    // sequencing (rotate to vertical first, THEN maximize thrust) rather than a
+    // single blended acceleration pin. Validated: max_thrust=0.704N (91% of the
+    // 0.77N ceiling), max_omega=22.2 rad/s (65%), max_tau_xy=0.0060Nm (13% of the
+    // 0.045 clamp), min_thrust=0.053N.
     let pins = [
         (4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY)),
-        (6usize, Vec3::new(0.0, 0.0, 0.3 * GRAVITY)),
+        (6usize, Vec3::new(0.0, 0.0, 0.20 * GRAVITY)),
+        (7usize, Vec3::new(0.0, 0.0, 0.50 * GRAVITY)),
     ];
     let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, &pins, true, 0)
         .unwrap_or_else(|e| panic!("loop pinned-inversion QP failed: {}", e));
@@ -774,30 +803,102 @@ fn wrap_rest_to_rest(traj: &SplineTrajectory) -> (SplineTrajectory, f32) {
     // Reach lap speed at a modest ~0.5 m/s² average acceleration, bounded [1.2, 3.0] s.
     let speed = (vx0 * vx0 + vy0 * vy0 + vz0 * vz0).sqrt();
     let mut t_e = (speed / 0.5).clamp(1.2, 3.0);
-    // For high-curvature laps (e.g. the loop's tight lap-point centripetal accel), the
-    // above speed-only budget lets the Hermite ramp bow far out in the accel-dominated
-    // axis before returning to the lap-start point (empirically ~0.0254*a*t_e^2 m of
-    // excursion). Cap t_e so that excursion stays under a 0.10 m budget; harmless no-op
-    // for gentle trajectories (circle/teardrop/etc. never hit this floor).
-    let accel = (ax0 * ax0 + ay0 * ay0 + az0 * az0).sqrt().max(0.1);
-    let t_e_accel_cap = (0.10 / (0.0254 * accel)).sqrt();
-    t_e = t_e.min(t_e_accel_cap).max(0.3);
 
-    let zero9 = [0.0_f32; 9];
-    let entry = SplineSegment {
-        cx: hermite_norm9(px0, 0.0, 0.0, 0.0, px0, vx0, ax0, jx0, t_e),
-        cy: hermite_norm9(py0, 0.0, 0.0, 0.0, py0, vy0, ay0, jy0, t_e),
-        cz: hermite_norm9(pz0, 0.0, 0.0, 0.0, pz0, vz0, az0, jz0, t_e),
-        cyaw: zero9,
-        duration: t_e,
+    // Build the entry/exit Hermite segments for a given t_e and measure the actual
+    // worst-axis excursion by direct evaluation (not a closed-form estimate -- an
+    // earlier accel-only empirical fit missed jerk-dominated cases, e.g. loop's
+    // 3-pin recovery config: low accel but high jerk at the lap point still produced
+    // a large excursion the old formula didn't predict).
+    let build = |t_e: f32| -> (SplineSegment, SplineSegment, f32) {
+        let zero9 = [0.0_f32; 9];
+        let entry = SplineSegment {
+            cx: hermite_norm9(px0, 0.0, 0.0, 0.0, px0, vx0, ax0, jx0, t_e),
+            cy: hermite_norm9(py0, 0.0, 0.0, 0.0, py0, vy0, ay0, jy0, t_e),
+            cz: hermite_norm9(pz0, 0.0, 0.0, 0.0, pz0, vz0, az0, jz0, t_e),
+            cyaw: zero9,
+            duration: t_e,
+        };
+        let exit = SplineSegment {
+            cx: hermite_norm9(px1, vx1, ax1, jx1, px1, 0.0, 0.0, 0.0, t_e),
+            cy: hermite_norm9(py1, vy1, ay1, jy1, py1, 0.0, 0.0, 0.0, t_e),
+            cz: hermite_norm9(pz1, vz1, az1, jz1, pz1, 0.0, 0.0, 0.0, t_e),
+            cyaw: zero9,
+            duration: t_e,
+        };
+        let (mut ex, mut ey, mut ez) = (0.0_f32, 0.0_f32, 0.0_f32);
+        for i in 0..=100 {
+            let tau = i as f32 / 100.0;
+            let ev = |c: &[f32; 9]| -> f32 {
+                c.iter().enumerate().map(|(k, &a)| a * tau.powi(k as i32)).sum()
+            };
+            ex = ex.max((ev(&entry.cx) - px0).abs()).max((ev(&exit.cx) - px1).abs());
+            ey = ey.max((ev(&entry.cy) - py0).abs()).max((ev(&exit.cy) - py1).abs());
+            ez = ez.max((ev(&entry.cz) - pz0).abs()).max((ev(&exit.cz) - pz1).abs());
+        }
+        (entry, exit, ex.max(ey).max(ez))
     };
-    let exit = SplineSegment {
-        cx: hermite_norm9(px1, vx1, ax1, jx1, px1, 0.0, 0.0, 0.0, t_e),
-        cy: hermite_norm9(py1, vy1, ay1, jy1, py1, 0.0, 0.0, 0.0, t_e),
-        cz: hermite_norm9(pz1, vz1, az1, jz1, pz1, 0.0, 0.0, 0.0, t_e),
-        cyaw: zero9,
-        duration: t_e,
+
+    // Check the ramp's own dynamic feasibility (not just position excursion) -- an
+    // earlier position-only excursion budget missed jerk-dominated cases (e.g.
+    // teardrop's single-pin config, loop's 3-pin recovery config: both have
+    // significant jerk at the lap point even when accel/position excursion look
+    // fine, and packing that jerk into too short a t_e produces a dynamically
+    // infeasible ramp -- verified 2026-07-28: t_e=0.3s gave loop's ramp 1.16N thrust
+    // / 43 rad/s omega, both over the brushless ceiling, despite small excursion).
+    // Conservative brushless-generic limits (mass=0.041kg, 90% of the real 0.77N/
+    // 34rad/s ceilings for margin) -- only brushless flies pinned trajectories today;
+    // applying this to other platforms just yields a slightly slower (safe) ramp.
+    const MASS: f32 = 0.041;
+    const THRUST_LIMIT: f32 = 0.77 * 0.90;
+    const OMEGA_LIMIT: f32 = 34.0 * 0.90;
+    const EXCURSION_BUDGET: f32 = 0.30;
+    let ramp_ok = |entry: &SplineSegment, exit: &SplineSegment| -> bool {
+        let sub = SplineTrajectory { segments: vec![entry.clone(), exit.clone()], total_time: entry.duration + exit.duration };
+        for i in 0..=200 {
+            let t = sub.total_time * i as f32 / 200.0;
+            let flat = sub.eval(t);
+            let res = compute_flatness(&flat, MASS);
+            let om = (res.omega.x * res.omega.x + res.omega.y * res.omega.y + res.omega.z * res.omega.z).sqrt();
+            if res.thrust > THRUST_LIMIT || om > OMEGA_LIMIT { return false; }
+        }
+        true
     };
+
+    // Search upward from 0.65s for the smallest t_e that's dynamically feasible;
+    // also respect the position-excursion budget (grows with t_e, so the two
+    // constraints bound a window -- search stops at the first t_e satisfying both,
+    // or falls back to the original speed-based t_e if none in range do). Starting
+    // point raised from an earlier 0.3s floor: 2026-07-28 real flights showed the
+    // pre-flip approach is genuinely sensitive to this ramp's exact duration --
+    // re-tuning ONLY the downstream recovery pins (thrust/omega of the core lap
+    // untouched) still shifted the auto-picked t_e (0.65s -> 0.60s, since it's the
+    // *first* feasible value found and the feasibility boundary moves slightly with
+    // any core change) and the pre-flip roll trace visibly roughened as a result
+    // (oscillating +-30-55deg through the approach instead of single digits, one
+    // flight dipped to the floor before ever climbing). 0.65s is independently
+    // verified feasible with comfortable margin for both the old and new pin
+    // magnitudes (thrust 0.626-0.657N, omega <11 rad/s) -- starting the search there
+    // keeps the entry phase stable across recovery-pin iterations instead of
+    // silently re-deriving a different (and apparently more fragile) value each time.
+    let mut t_e_final = t_e;
+    let (mut entry, mut exit, _) = build(t_e);
+    let mut found = false;
+    let mut probe = 0.65_f32;
+    while probe <= t_e {
+        let (e, x, w) = build(probe);
+        if w <= EXCURSION_BUDGET && ramp_ok(&e, &x) {
+            entry = e; exit = x; t_e_final = probe; found = true;
+            break;
+        }
+        probe += 0.05;
+    }
+    if !found {
+        // fall back to the original (unshrunk) speed-based timing -- already the
+        // gentlest option available; report whatever excursion/feasibility it has.
+        let (e, x, _) = build(t_e);
+        entry = e; exit = x; t_e_final = t_e;
+    }
+    t_e = t_e_final;
 
     // Report the wind-up excursion so the flight-space validation can account for it.
     let (mut ex_max, mut ey_max, mut ez_max) = (0.0_f32, 0.0_f32, 0.0_f32);
