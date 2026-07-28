@@ -134,6 +134,38 @@ fn main() {
             }
             eprintln!("FULL-TRAJ CHECK: max_thrust={:.3}N min_thrust={:.3}N max_omega={:.2}rad/s max_tau_xy={:.4}Nm",
                 max_thrust, min_thrust, max_omega, max_tau);
+
+            // Wind-up-ramp attitude check (2026-07-28, added after a real crash):
+            // the rest-to-rest entry/exit ramps are never supposed to command any
+            // real tilt, but a downstream pin change can shift the ramp's implied
+            // acceleration enough to corrupt its attitude even when the ramp's own
+            // POSITION excursion still looks small (this happened -- see build_loop
+            // v4/reverted comment). Position excursion alone doesn't catch it;
+            // check tilt directly on the first and last segments (the ramps).
+            if periodic && !traj_out.segments.is_empty() {
+                let ramp_ok = |seg_start: f32, seg_dur: f32| -> f32 {
+                    let mut min_bz = 1.0_f32;
+                    for i in 0..=100 {
+                        let t = seg_start + seg_dur * i as f32 / 100.0;
+                        let flat = traj_out.eval(t);
+                        let res = compute_flatness(&flat, mass);
+                        min_bz = min_bz.min(res.rot[2][2]);
+                    }
+                    min_bz
+                };
+                let entry_dur = traj_out.segments[0].duration;
+                let exit_dur = traj_out.segments.last().unwrap().duration;
+                let exit_start = traj_out.total_time - exit_dur;
+                let min_bz_entry = ramp_ok(0.0, entry_dur);
+                let min_bz_exit = ramp_ok(exit_start, exit_dur);
+                let min_bz = min_bz_entry.min(min_bz_exit);
+                eprintln!("Wind-up ramp attitude check: min body_z.z = {:.3} (entry) / {:.3} (exit) -- 1.0=upright, <0.5 means >60deg tilt",
+                    min_bz_entry, min_bz_exit);
+                if min_bz < 0.7 {
+                    eprintln!("WARNING: wind-up ramp implies >{:.0}deg tilt during what should be a benign \
+                        rest-to-rest ramp -- do NOT fly this without investigating first.", (min_bz.acos().to_degrees()));
+                }
+            }
         }
         eprintln!("Writing onboard {} → {}", label, out_path);
         write_onboard_csv(&traj_out, &out_path).expect("Failed to write onboard CSV");
@@ -354,37 +386,58 @@ fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
     }).collect();
     let entry_t = 0.33_f32;
     let pin_t = 0.16_f32;
-    // Exit widened 0.33 -> 0.40s (2026-07-27): required to fit the new recovery pin
-    // below -- the QP is infeasible/ill-conditioned with a second pin at 0.33s exit
-    // segments (verified: fails at 0.33s, first succeeds at 0.40s, for any pin
-    // magnitude/waypoint tried). Confirmed this widening alone doesn't reintroduce
-    // the ceiling-height problem (apex geometry unchanged, only post-apex timing).
-    let exit_t = 0.40_f32;
-    let durs = vec![entry_t, entry_t, entry_t, pin_t, pin_t, exit_t, exit_t, exit_t];
+    // COMPRESSED TIMING (2026-07-28, v3): real telemetry showed the drone hits the
+    // floor 0.33-0.50s after the apex, but the "best v2" recovery pin didn't fire
+    // until 0.56s post-apex -- it never got a chance to act in any real flight.
+    // Re-timed the post-apex segments so the recovery pin fires at 0.38s post-apex
+    // (within the real fall budget), redistributing the saved time onto the final
+    // segment (0.40->0.49s) to keep the QP feasible rather than just deleting it
+    // (deleting it outright was tried first and is infeasible at every timing
+    // tested). Also searched adding a second pin as a last-resort "catch" at
+    // z=0.3m absolute (0.2m below hover) per operator request -- NOT achievable:
+    // every feasible combination (timing 0.15-1.0s, catch depth 0 to -0.20m) puts
+    // that second pin at 0.7-1.0s post-apex, later than the real floor impact --
+    // three pins clustered this close in time is QP-infeasible regardless of
+    // magnitude/depth (same structural wall hit with teardrop and the earlier
+    // mid-segment 4th-pin attempt). One well-timed pin is the ceiling for this
+    // loop's geometry.
+    let post_apex_t = 0.16_f32; // wp4(apex)->wp5, unchanged
+    let recovery_t = 0.22_f32;  // wp5->wp6: pin now fires at 0.16+0.22=0.38s post-apex
+    let late_t = 0.49_f32;      // wp6->wp7 (was 0.40s; widened to keep QP feasible)
+    let exit_t = 0.40_f32;      // wp7->wp8(=wp0, close), unchanged
+    let durs = vec![entry_t, entry_t, entry_t, pin_t, post_apex_t, recovery_t, late_t, exit_t];
     let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
-    // BEST-THUS-FAR v2 (2026-07-28): reverted here from a 4-pin/max-magnitude
-    // config that was flown and made things WORSE, not better. Root cause found:
-    // pins are open-loop time-scheduled, and the real drone hits the floor BEFORE
-    // even the first recovery pin's planned firing time (real floor impact at
-    // t=2.25s vs wp6 planned at t=2.36s) -- every recovery pin added after this one
-    // never got a chance to influence the real flight; pushing magnitudes further
-    // only made the near-term reference shape worse (143% of freefall vs this
-    // config's flights). This 2-pin config (wp6 only, no wp7/mid/wp8) is the
-    // last version that produced a real partial success: flight
-    // loop_mode1_kt0.15_2026-07-28_17-58-56 (height=0.55m) recovered attitude
-    // cleanly and settled into a bounded near-floor oscillation for the rest of the
-    // full 3.81s trajectory instead of diverging into a tumble -- the best result
-    // in this entire investigation. Next direction (not yet in this config):
-    // compress recovery timing to fire within the real ~0.35-0.5s fall budget
-    // instead of the current 0.56s+ delay, and only once that's validated, revisit
-    // sequencing (rotate to vertical first, THEN maximize thrust) rather than a
-    // single blended acceleration pin. Validated: max_thrust=0.704N (91% of the
-    // 0.77N ceiling), max_omega=22.2 rad/s (65%), max_tau_xy=0.0060Nm (13% of the
-    // 0.045 clamp), min_thrust=0.053N.
+    // v3 (single pin, 0.38s post-apex): magnitude bumped 0.20g->0.40g alongside the
+    // re-timing -- the earlier-firing pin has MORE thrust margin than "best v2"
+    // (84% of ceiling vs 91%). Flown 2026-07-28 (19-09-02/19-11-20, height correct):
+    // real, measured improvement -- descent went from 115-143% of freefall (worse
+    // than freefall) to 50-91% (genuinely arrested, improving over time as the pin
+    // takes hold), both flights grazed the floor gently instead of crashing, one
+    // showed actual recovery (positive vz, climbing) by t+0.6-0.8s post-apex before
+    // a SECOND wobble set in later (roll to -96/-124deg around t+0.8-0.9s).
+    //
+    // v4 was tried and REVERTED same evening: added a second pin at wp7 (0.87s
+    // post-apex, exit_t widened 0.40->0.70s to fit it). The CORE trajectory only
+    // shifted ~2cm pre-apex, and the numeric feasibility checks (thrust/omega/tau)
+    // all looked fine -- but two real flights (19-20-00/19-21-43) showed a violent
+    // roll excursion to 150+ deg at t=0.51-0.54s, WELL BEFORE the apex was ever
+    // supposed to happen (planned apex at t=1.80s) -- i.e. during the rest-to-rest
+    // WIND-UP RAMP itself, before the core trajectory even starts. Root cause:
+    // wrap_rest_to_rest's ramp depends on the core's boundary derivatives at the lap
+    // point, and the small downstream change was enough to shift those derivatives
+    // just enough to give the ramp's acceleration profile a real ~50-55deg commanded
+    // tilt excursion around t=0.4-0.5s (verified by evaluating the actual exported
+    // ramp coefficients through compute_flatness directly) -- a swing that wasn't
+    // there in v3. The wind-up wind-up-excursion diagnostic (position-based) didn't
+    // catch this because the POSITION deviation was still small (z +-0.11m); the
+    // ATTITUDE implied by that position's acceleration was not checked. Real flight
+    // then overshot that reference tilt into a near-full flip. Lesson: a downstream
+    // pin change that looks free in the core-trajectory numbers can still corrupt
+    // the wind-up ramp's attitude profile -- must check the ramp's implied attitude,
+    // not just its position excursion, before flying any future pin change.
     let pins = [
         (4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY)),
-        (6usize, Vec3::new(0.0, 0.0, 0.20 * GRAVITY)),
-        (7usize, Vec3::new(0.0, 0.0, 0.50 * GRAVITY)),
+        (6usize, Vec3::new(0.0, 0.0, 0.40 * GRAVITY)),
     ];
     let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, &pins, true, 0)
         .unwrap_or_else(|e| panic!("loop pinned-inversion QP failed: {}", e));
