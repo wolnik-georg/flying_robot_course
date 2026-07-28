@@ -336,10 +336,27 @@ fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
     }).collect();
     let entry_t = 0.33_f32;
     let pin_t = 0.16_f32;
-    let exit_t = 0.33_f32;
+    // Exit widened 0.33 -> 0.40s (2026-07-27): required to fit the new recovery pin
+    // below -- the QP is infeasible/ill-conditioned with a second pin at 0.33s exit
+    // segments (verified: fails at 0.33s, first succeeds at 0.40s, for any pin
+    // magnitude/waypoint tried). Confirmed this widening alone doesn't reintroduce
+    // the ceiling-height problem (apex geometry unchanged, only post-apex timing).
+    let exit_t = 0.40_f32;
     let durs = vec![entry_t, entry_t, entry_t, pin_t, pin_t, exit_t, exit_t, exit_t];
     let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
-    let pins = [(4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY))];
+    // Recovery pin (waypoint 6, one full exit segment past the apex): forces the
+    // flatness solution to include a strong upward acceleration on the way down,
+    // instead of leaving the post-apex path to a generic min-jerk return (which left
+    // the desired-attitude reference to swing back to level gradually/ambiguously --
+    // flight telemetry 2026-07-27 showed the real drone couldn't track that:
+    // tau_x/tau_y saturated at the clamp but kept flipping sign, gyro rates to
+    // 500-1000+ deg/s, z fell 1.42m->-1.9m in 1s, close to freefall). +0.3g keeps
+    // peak thrust at 0.750N (97% of the 0.77N ceiling -- tightest margin in this
+    // config, watch closely); max_tau_xy 0.0147Nm (49% of the 0.030 clamp).
+    let pins = [
+        (4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY)),
+        (6usize, Vec3::new(0.0, 0.0, 0.3 * GRAVITY)),
+    ];
     let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, &pins, true, 0)
         .unwrap_or_else(|e| panic!("loop pinned-inversion QP failed: {}", e));
     let planner = TrajectoryPlanner::Richter(traj);

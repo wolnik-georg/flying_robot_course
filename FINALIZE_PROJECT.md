@@ -13,6 +13,18 @@ added two appendix slides, motion planning summary + full INDI pseudocode — se
 operator has signed off on content — slides are considered final unless new flight data below
 changes something.**
 
+**Update (2026-07-27): bonus item 10b turned into a full `loop` inversion commissioning
+session** — far beyond "a few more attempts." Full timeline, root causes, fixes, and flight log
+inventory now live in `flying_drone_stack/docs/investigation_inverted_loop_2026-07-27.md` — pull
+numbers from there directly for slides instead of re-deriving. Short version: `loop`'s inverted
+flip is now achieved and repeatable (3/3 clean inversions, roll 163-178° right at the apex);
+post-flip recovery is still open (genuine torque-saturation/chatter, not height or trajectory
+shape — height was a real, separately-found root cause for the earlier crashes and is fixed).
+`teardrop`/`teardrop_wide` got a height-convention fix and inherited the clamp loosening but
+were not otherwise re-tuned this session (see doc §5 for why the loop technique didn't
+transfer). This is good, honest limitations-slide material if there's room (§4.6-4.7 already use
+this tone) — not required for the deck as-is.
+
 **Remaining work — see the table in §11 below for the full list with status.** In short: video
 (Task 7, LED ring on), rehearsal (Task 8), buffer day (Task 9), and three optional bonus flight
 experiments (§10) that are not required to finish.
@@ -492,6 +504,11 @@ None of them block finishing the project; only pursue if Tasks 7-9 leave spare t
    root-caused) and to Phase 4 (accel-pinned aerobatic maneuvers) being otherwise fully descoped.
    Even one clean brushless attempt would upgrade the "Teardrop / Inverted Loop" limitations slide
    from a placeholder to a real (partial) result.
+   **UPDATE 2026-07-27: done, far exceeded scope — see
+   `flying_drone_stack/docs/investigation_inverted_loop_2026-07-27.md`.** `loop` now achieves a
+   clean, repeatable inversion (3/3 flights, roll 163-178° at the apex); post-flip recovery is
+   the one remaining open piece (torque saturation/chatter, actively being instrumented and
+   retried — not blocking, already a real partial result for the slide).
 3. **Prototype the notch-filter fix candidate** from the "Real Fix Candidates" slide — a band-reject
    filter around 5-10\,Hz instead of the current broad low-pass, targeting the confirmed 7.22\,Hz
    shake peak specifically. This is genuinely new investigation, not slide polish — treat it as a
@@ -509,7 +526,7 @@ None of them block finishing the project; only pursue if Tasks 7-9 leave spare t
 | 8 | Rehearse / time the full presentation | Required | ⏳ not started |
 | 9 | Buffer day (re-shoots, slide-typo fixes, video re-export, submit with margin) | Required | ⏳ reserved, not started |
 | 10a | Slalom kt sweep at a lower kt range, both platforms — test whether brushless out-tracks upgraded at sharp corners like it does on oval/circle | Bonus, optional | ⏳ not started |
-| 10b | A few more teardrop/inverted-loop attempts, brushless only — upgrade the placeholder limitations slide if one lands clean | Bonus, optional | ⏳ not started |
+| 10b | A few more teardrop/inverted-loop attempts, brushless only — upgrade the placeholder limitations slide if one lands clean | Bonus, optional | ✅ far exceeded — clean repeatable inversion achieved, recovery still open, see `docs/investigation_inverted_loop_2026-07-27.md` |
 | 10c | Prototype the 5-10\,Hz notch-filter fix candidate — implement, fly, check whether it actually reduces the shake | Bonus, optional | ⏳ not started |
 
 Everything else (narrative, slide deck, scope-cut framing, motion-planning + INDI appendix slides)
