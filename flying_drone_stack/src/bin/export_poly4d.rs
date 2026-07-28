@@ -403,8 +403,8 @@ fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
     // loop's geometry.
     let post_apex_t = 0.16_f32; // wp4(apex)->wp5, unchanged
     let recovery_t = 0.22_f32;  // wp5->wp6: pin now fires at 0.16+0.22=0.38s post-apex
-    let late_t = 0.49_f32;      // wp6->wp7 (was 0.40s; widened to keep QP feasible)
-    let exit_t = 0.40_f32;      // wp7->wp8(=wp0, close), unchanged
+    let late_t = 0.49_f32;      // wp6->wp7: wp7 fires at 0.38+0.49=0.87s post-apex
+    let exit_t = 0.50_f32;      // wp7->wp8(=wp0, close): 0.40->0.50s (v5, see below)
     let durs = vec![entry_t, entry_t, entry_t, pin_t, post_apex_t, recovery_t, late_t, exit_t];
     let durs: Vec<f32> = durs.iter().map(|&d| d / speed).collect();
     // v3 (single pin, 0.38s post-apex): magnitude bumped 0.20g->0.40g alongside the
@@ -435,9 +435,20 @@ fn build_loop(_mode: u8, _kt: f32, speed: f32) -> (SplineTrajectory, String) {
     // pin change that looks free in the core-trajectory numbers can still corrupt
     // the wind-up ramp's attitude profile -- must check the ramp's implied attitude,
     // not just its position excursion, before flying any future pin change.
+    // v5 (2026-07-28): added a second recovery pin at wp7 (0.87s post-apex, +0.20g),
+    // validated against all four criteria (core feasibility, ramp position
+    // excursion, ramp ATTITUDE, pre-apex shift) before flying, per the lesson from
+    // v4. Flown (loop_mode1_kt0.15_2026-07-28_19-33-11 and others): the best
+    // result of the whole investigation -- apex near-full inversion, first pin
+    // arrested the fall, drone grazed the floor without crashing, then genuinely
+    // recovered (positive vz, climbed, roll to single digits) before a third
+    // tumble inside the auto-generated (unpinned) exit ramp. Validated: core
+    // max_thrust=0.650N (84%), max_omega=24.47 rad/s (72%), max_tau_xy=0.0044Nm
+    // (10%); ramp min_bz=0.728 (vs v3's 0.730/0.711 baseline); pre-apex shift 1cm.
     let pins = [
         (4usize, Vec3::new(0.0, 0.0, -1.4 * GRAVITY)),
         (6usize, Vec3::new(0.0, 0.0, 0.40 * GRAVITY)),
+        (7usize, Vec3::new(0.0, 0.0, 0.20 * GRAVITY)),
     ];
     let traj = RichterTrajectory::plan_from_times_with_accel_pins(&wps, &durs, 1.0, &pins, true, 0)
         .unwrap_or_else(|e| panic!("loop pinned-inversion QP failed: {}", e));
