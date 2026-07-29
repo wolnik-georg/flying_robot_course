@@ -1669,6 +1669,88 @@ individually cited.
 
 ---
 
+## 11. Optional stage-2 notch filter — implementation (2026-07-28, not yet flight-tested)
+
+Direct response to §8's synthesis: fc_bw=70 Hz (stage-1 Butterworth) is confirmed to do nothing at
+the 7.22 Hz shake (`|filtered/raw|=1.000`, -2.1° phase), and lowering fc_bw into that band was
+already tried and found 3-4× worse (§4b-fc-bw-10) — a low-pass has to trade off the WHOLE spectrum
+below its cutoff, not just the resonant band. A band-reject (notch) filter targeting only the
+diagnosed band avoids that tradeoff by construction: it removes energy in a narrow window around
+`f0` and leaves everything else — including its own phase — essentially untouched.
+
+**Note on broadband vs. narrowband framing**: §4b-spectrum (100 Hz radio log, lower fidelity) found
+the *input* vibration broadband across 0.3-40 Hz; the 500 Hz USD synthesis above found a genuine
+*response* peak at 7.22 Hz. Both are consistent with the resonance interpretation already
+established (ωₙ=√kr=7.80 Hz at kr=2400, matching to 8%): a broadband disturbance (motor/prop
+vibration) driving a lightly-damped closed-loop resonance produces a narrowband *response* even
+though the *forcing* is broadband. The notch targets where the resonance concentrates that energy
+(the response, ~7.22 Hz), not the forcing — this is why targeting only that band is expected to
+help regardless of which framing of the input is more accurate.
+
+**Design**: RBJ Audio-EQ-Cookbook band-reject biquad (`NotchFilter` in `firmware_app/src/lib.rs`),
+Direct Form I, `Q = f0/bw` → -3dB points at approximately `f0 ± bw/2`. Defaults `f0=7.2 Hz`,
+`bw=5.0 Hz` → attenuated band ≈ 4.7-9.7 Hz, covering the diagnosed 5-10 Hz range. Both `f0` and
+`bw` are runtime-tunable (`indi_gains.notch_f0/notch_bw`, no reflash needed to retune) since the
+shake frequency has drifted 6.3-7.9 Hz across sessions.
+
+**Applied symmetrically to all three signal chains that feed the final torque command**, matching
+exactly how the existing stage-1 Butterworth is applied to `alpha_meas`/`alpha_ref` (and, given
+this yaml's `filt_tau=1`, to `tau_current` too) — verified end-to-end so no chain can end up at a
+different filter depth than the others when the notch is enabled:
+
+| Chain | Stage-1 Butterworth | Stage-2 notch (`notch_en=1`) |
+|---|---|---|
+| `alpha_meas` (measured) | always on | on, downstream of BW |
+| `alpha_ref` (reference) | always on | on, downstream of BW |
+| `tau_current` (increment base) | on if `filt_tau` **or** `notch_en` | on, downstream of BW |
+
+`tau_current`'s BW is force-enabled whenever `notch_en=1` regardless of `filt_tau`'s own value —
+closes an edge case where `tau_current` could otherwise reach the notch at a shallower depth (no
+BW) than `alpha_meas`/`alpha_ref` (always BW'd first), which would reintroduce a phase mismatch of
+the same class `filt_tau` exists to prevent for the stage-1 filter. All three notch filter
+instances run continuously every tick regardless of `notch_en` (state stays warmed up); only the
+*selection* of filtered-vs-unfiltered value feeding the control law is gated — so toggling
+`notch_en` at runtime has no cold-start transient on any chain.
+
+**Default off = byte-identical to prior behaviour**, verified: `notch_en=0` (C global default and
+yaml default) collapses `tau_bw_needed` back to exactly `filt_tau != 0` (today's condition) and the
+alpha-chain selection back to exactly `(alpha_ref_filt, alpha_meas)` (today's values) — no new code
+path executes differently, only extra (unused) computation happens.
+
+**Logging — both radio and SD, so the fix can be checked either way**:
+- Radio: new `indi_alp_notch` custom_topic (`indi.alp_notch_x/y/z`, 3 floats @ 100 Hz), always
+  populated regardless of `notch_en` (same "passive filter for characterisation" philosophy as the
+  existing `alp_raw`/`alp` split) — lets `alp_raw` / `alp` (BW) / `alp_notch` be compared from one
+  flight.
+- SD (500 Hz): `tools/usd_indi_diagnostic_config.txt` updated to add `indi.alp_notch_x/y` — this
+  required raising `MAX_USD_LOG_VARIABLES_PER_EVENT` in `crazyflie-firmware/src/deck/drivers/src/
+  usddeck.c` from 20 (previously exactly full) to 40 (pure `#define`, +800 bytes RAM, verified by
+  rebuild: RAM 90780→91580 bytes). `tools/decode_usd_log.py` renamed accordingly.
+
+**Runtime params added** (`indi_gains` group): `notch_en` (uint8, default 0), `notch_f0` (float,
+default 7.2), `notch_bw` (float, default 5.0). Pushed per-flight from `crazyflies.yaml` exactly
+like `kr`/`kw`/`fc_bw` (`notch_f0`/`notch_bw` are in the runtime-pushed float set; `notch_en` is
+metadata-only like `filt_order`/`ff_free`/`filt_tau`, boot-set from yaml, uint8 params aren't
+pushed via the float `setParam` loop).
+
+**Files touched**: `firmware_app/src/lib.rs` (filter + wiring), `firmware_app/traj_iface.c`
+(params + log bridge), `crazyswarm2/crazyflie/config/crazyflies.yaml` (params + custom_topic),
+`crazyswarm2/crazyflie_examples/crazyflie_examples/flight.py` (CSV/subscription wiring),
+`crazyflie-firmware/src/deck/drivers/src/usddeck.c` (SD var cap), `tools/usd_indi_diagnostic_
+config.txt` + `tools/decode_usd_log.py` (SD wiring).
+
+**Status**: implemented and build-verified (`make` clean, no new warnings) with `notch_en=0` in the
+active yaml block — **not yet flashed (`make cload`) or flight-tested**. Expected result if the
+resonance-amplification hypothesis is correct: `alp_notch` should show a sharp amplitude drop
+relative to `alp_raw`/`alp` at ~7 Hz, and `tau_x/tau_y` should visibly calm down with `notch_en=1`
+vs `notch_en=0` on an otherwise-identical hover/figure-8. Caveat: the notch removes resonant
+*energy*, not the *phase lag* itself — actuator lag (82° at 7.22 Hz, the larger of the two measured
+lag terms vs. EKF's 20°, §8's synthesis) is a separate mechanism this doesn't address; if the shake
+turns out to be phase-lag-dominated rather than amplitude/resonance-dominated, this alone may not
+fully resolve it. Next step: `make cload` + hover/figure-8 A/B flight with `notch_en` toggled.
+
+---
+
 ## Reference baselines (other drones, for comparison)
 
 - **Standard CF2.1 INDI:** 3.87 cm XY RMSE (June 20 2026, kr=1050) — `results_2026-06-20.md`

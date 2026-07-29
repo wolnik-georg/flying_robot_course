@@ -20,6 +20,7 @@ RENAME = {
     "indi.tau_x": "tau_x", "indi.tau_y": "tau_y",
     "indi.alp_x": "alp_x", "indi.alp_y": "alp_y",
     "indi.alp_raw_x": "alp_raw_x", "indi.alp_raw_y": "alp_raw_y",
+    "indi.alp_notch_x": "alp_notch_x", "indi.alp_notch_y": "alp_notch_y",
     "motor.m1": "motor_m1", "motor.m2": "motor_m2",
     "motor.m3": "motor_m3", "motor.m4": "motor_m4",
     "motor.m1_rpm": "motor_m1_rpm",

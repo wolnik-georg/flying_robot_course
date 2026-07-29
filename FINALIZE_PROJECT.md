@@ -31,6 +31,18 @@ near-zero-thrust singularity — `max_omega` of 300-500 rad/s (9-15x the ceiling
 flown kt values. Very likely the real explanation for the still-open, never-root-caused
 `teardrop_wide` crash mentioned in item 10a below. Not fixed this session.
 
+**Update (2026-07-28, end of session): `loop` now achieves a genuine post-flip recovery, not
+just the flip.** Full session in doc §9. Headline: flight `loop_mode1_kt0.15_2026-07-28_19-33-11`
+inverted, arrested a near-freefall descent, grazed the floor without crashing, and climbed back
+to positive altitude with level attitude — the first real recovery in this whole investigation.
+One narrowed, well-understood failure remains (a third tumble inside the auto-generated
+rest-to-rest exit ramp, which has no pin coverage) — four independent fix attempts were tried and
+ruled out with data (doc §9.5-9.6), not left unexplored. Code is committed at `ba25316` ("best
+loop thus far v5") — this is the exact version that produced the result above, verified matching.
+This is a stronger limitations-slide story than the 07-27 version if there's room: "flip AND
+recovery both demonstrated; the remaining failure mode is precisely characterized, with four
+plausible fixes tried and shown not to work, rather than an open question."
+
 **Remaining work — see the table in §11 below for the full list with status.** In short: video
 (Task 7, LED ring on), rehearsal (Task 8), buffer day (Task 9), and three optional bonus flight
 experiments (§10) that are not required to finish.
@@ -533,7 +545,7 @@ None of them block finishing the project; only pursue if Tasks 7-9 leave spare t
 | 9 | Buffer day (re-shoots, slide-typo fixes, video re-export, submit with margin) | Required | ⏳ reserved, not started |
 | 10a | Slalom kt sweep at a lower kt range, both platforms — test whether brushless out-tracks upgraded at sharp corners like it does on oval/circle | Bonus, optional | ⏳ not started |
 | 10b | A few more teardrop/inverted-loop attempts, brushless only — upgrade the placeholder limitations slide if one lands clean | Bonus, optional | ✅ far exceeded — clean repeatable inversion achieved, recovery still open, see `docs/investigation_inverted_loop_2026-07-27.md` |
-| 10c | Prototype the 5-10\,Hz notch-filter fix candidate — implement, fly, check whether it actually reduces the shake | Bonus, optional | ⏳ not started |
+| 10c | Prototype the 5-10\,Hz notch-filter fix candidate — implement, fly, check whether it actually reduces the shake | Bonus, optional | 🔧 implemented + build-verified (2026-07-28), not yet flashed/flown — see `docs/investigation_indi_oscillation_2026-07-21.md` §19 |
 
 Everything else (narrative, slide deck, scope-cut framing, motion-planning + INDI appendix slides)
 is done and signed off — this table is the complete remaining punch list.

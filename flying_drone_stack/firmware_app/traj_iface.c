@@ -211,6 +211,19 @@ float   g_indi_tau_z_max    = 0.0025f; /* [Nm]  yaw torque clamp        (CF21BL 
 float   g_indi_tilt_max_deg = 30.0f;   /* [deg] max desired-thrust-vector tilt from vertical */
 float   g_indi_thrust_max   = 0.8f;    /* [N]   total thrust clamp (4x THRUST_MAX cf21bl)    */
 
+/* Optional stage-2 notch (band-reject) filter (2026-07-28, shake investigation). The stage-1
+ * Butterworth (fc_bw above) sits at 60-70 Hz and measurably does NOT touch the 5-10 Hz shake band
+ * (|alpha_filtered|/|alpha_raw|=1.000 at 7.22 Hz, 500 Hz SD-log analysis) -- and lowering fc_bw
+ * down into that band was tried and made things 3-4x worse (adds phase lag everywhere, not just
+ * at the shake frequency). This filter instead targets ONLY the diagnosed band (RBJ Audio-EQ-
+ * Cookbook band-reject biquad), applied identically to both alpha_meas and alpha_ref_filt so the
+ * two stay phase-matched (mirrors why fc_bw already applies to both). Default OFF = byte-identical
+ * to prior behaviour. f0/bw are runtime-tunable [Hz] so the notch can be re-centred without a
+ * reflash if the shake frequency drifts (6.3-7.9 Hz measured across different sessions). */
+uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
+float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
+float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
+
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
@@ -234,6 +247,9 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, tau_z_max,    &g_indi_tau_z_max)
   PARAM_ADD(PARAM_FLOAT, tilt_max_deg, &g_indi_tilt_max_deg)
   PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
+  PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
+  PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
+  PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
@@ -295,6 +311,7 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 static float log_alp_raw_x, log_alp_raw_y, log_alp_raw_z;
 static float log_alp_x,     log_alp_y,     log_alp_z;
 static float log_tau_x,     log_tau_y,     log_tau_z;
+static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
 
 void indi_log_write(float arx, float ary, float arz,
                     float ax,  float ay,  float az)
@@ -308,6 +325,14 @@ void indi_tau_write(float tx, float ty, float tz)
     log_tau_x = tx; log_tau_y = ty; log_tau_z = tz;
 }
 
+/* Stage-2 notch output (indi_gains.notch_en, 2026-07-28) -- alpha_meas AFTER the optional
+ * band-reject filter, always computed/logged regardless of notch_en so alp_raw / alp (stage-1 BW)
+ * / alp_notch (stage-2 notch) can all be compared from one flight. */
+void indi_notch_log_write(float anx, float any, float anz)
+{
+    log_alp_notch_x = anx; log_alp_notch_y = any; log_alp_notch_z = anz;
+}
+
 LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
   LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
@@ -318,4 +343,7 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, tau_x,     &log_tau_x)
   LOG_ADD(LOG_FLOAT, tau_y,     &log_tau_y)
   LOG_ADD(LOG_FLOAT, tau_z,     &log_tau_z)
+  LOG_ADD(LOG_FLOAT, alp_notch_x, &log_alp_notch_x)
+  LOG_ADD(LOG_FLOAT, alp_notch_y, &log_alp_notch_y)
+  LOG_ADD(LOG_FLOAT, alp_notch_z, &log_alp_notch_z)
 LOG_GROUP_STOP(indi)

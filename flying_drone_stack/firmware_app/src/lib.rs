@@ -74,6 +74,52 @@ impl Butterworth2 {
     fn reset_state(&mut self) { self.seed(0.0); }
 }
 
+// ── Optional stage-2 filter: 2nd-order notch (band-reject), runtime-tunable ──
+// Added 2026-07-28: the shake investigation's own final conclusion (500 Hz SD-log
+// analysis, docs/results_2026-07-15_brushless.md §16.6) found the 5-8 Hz shake is a
+// genuine NARROW spectral peak (7.22 Hz measured), not broadband, and that the
+// existing Butterworth is set way above it (fc_bw=60-70 Hz, |filt/raw|=1.000 at
+// 7.22 Hz measured directly) -- lowering fc_bw down to that band was tried and made
+// things 3-4x worse (adds phase lag everywhere, not just at the shake frequency).
+// This filter targets ONLY the diagnosed band, leaving the rest of the spectrum --
+// and its phase -- untouched by construction (that's what "notch" means). RBJ
+// Audio-EQ-Cookbook band-reject biquad, Direct Form I. f0 (center) and bandwidth
+// are runtime params (indi_gains.notch_f0/notch_bw) so this can be re-tuned without
+// reflashing if the shake frequency drifts session-to-session (6.3-7.9 Hz measured
+// across different sessions in the prior investigation).
+#[derive(Copy, Clone)]
+struct NotchFilter {
+    b0: f32, b1: f32, b2: f32, a1: f32, a2: f32,
+    x1: f32, x2: f32, y1: f32, y2: f32,
+}
+impl NotchFilter {
+    const fn zero() -> Self {
+        Self { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0, x1: 0.0, x2: 0.0, y1: 0.0, y2: 0.0 }
+    }
+    /// f0: notch center [Hz]. bw: notch bandwidth [Hz] (Q = f0/bw -- e.g. f0=7.2,
+    /// bw=5.0 -> Q=1.44, -3dB points near 5 and 10 Hz, matching the diagnosed band).
+    fn init(&mut self, f0: f32, bw: f32, dt: f32) {
+        let w0 = 2.0 * core::f32::consts::PI * f0 * dt;
+        let q = (f0 / bw.max(0.1)).max(0.1);
+        let alpha = libm::sinf(w0) / (2.0 * q);
+        let cos_w0 = libm::cosf(w0);
+        let a0 = 1.0 + alpha;
+        self.b0 =  1.0        / a0;
+        self.b1 = -2.0*cos_w0 / a0;
+        self.b2 =  1.0        / a0;
+        self.a1 = -2.0*cos_w0 / a0;
+        self.a2 = (1.0 - alpha) / a0;
+    }
+    fn update(&mut self, x: f32) -> f32 {
+        let y = self.b0*x + self.b1*self.x1 + self.b2*self.x2
+              - self.a1*self.y1 - self.a2*self.y2;
+        self.x2 = self.x1; self.x1 = x;
+        self.y2 = self.y1; self.y1 = y;
+        y
+    }
+    fn reset_state(&mut self) { self.x1 = 0.0; self.x2 = 0.0; self.y1 = 0.0; self.y2 = 0.0; }
+}
+
 // ── Stage-3 filter: 1st-order IIR ──────────────────────────────────────────
 // k = dt/(dt+RC), RC = 1/(2π·fc) — precomputed at init for fixed-rate 500 Hz
 // y[n] = k·x[n] + (1−k)·y[n−1]
@@ -582,6 +628,22 @@ struct State {
     bw_tau_init: bool,
     // INDI reference filter: α_ref → BW → α_ref_filt (phase alignment with α_meas)
     bw_ref_x: Butterworth2, bw_ref_y: Butterworth2, bw_ref_z: Butterworth2,
+    // Optional stage-2 notch (indi_gains.notch_en, 2026-07-28): α_meas → notch →
+    // α_meas_notch (always computed, for filter-characterisation logging in ALL
+    // modes, same philosophy as alpha_raw/alpha_meas above). α_ref_filt gets the
+    // SAME notch applied (notch_ref_*) so measurement and reference stay
+    // phase-matched when the notch is enabled -- mirrors why bw_ref_* exists.
+    notch_x: NotchFilter, notch_y: NotchFilter, notch_z: NotchFilter,
+    notch_ref_x: NotchFilter, notch_ref_y: NotchFilter, notch_ref_z: NotchFilter,
+    // Notch on the increment-base term tau_current (mu_f), mirroring bw_tau_x/y/z's own
+    // reasoning: tau_current sums DIRECTLY into the final command (tau = tau_current +
+    // delta_tau), so if only alpha_meas/alpha_ref got the notch and tau_current didn't,
+    // the two terms of that sum would carry mismatched phase lag at the notch's own
+    // frequency -- same class of problem filt_tau exists to prevent for the stage-1
+    // Butterworth. Physically also matters: tau_current is RPM-derived (or tau_prev
+    // feedback) and can carry the same 5-10 Hz resonance directly.
+    notch_tau_x: NotchFilter, notch_tau_y: NotchFilter, notch_tau_z: NotchFilter,
+    notch_f0_last: f32, notch_bw_last: f32,
     // v2 improvement #3: accelerometer pre-filter for position INDI outer loop
     bw_acc_x: Butterworth2, bw_acc_y: Butterworth2, bw_acc_z: Butterworth2,
     // v2 fix #5: XY velocity-error feedback low-pass (robustness to mocap noise)
@@ -609,6 +671,10 @@ impl State {
             bw_tau_x: Butterworth2::zero(), bw_tau_y: Butterworth2::zero(), bw_tau_z: Butterworth2::zero(),
             bw_tau_init: false,
             bw_ref_x: Butterworth2::zero(), bw_ref_y: Butterworth2::zero(), bw_ref_z: Butterworth2::zero(),
+            notch_x: NotchFilter::zero(), notch_y: NotchFilter::zero(), notch_z: NotchFilter::zero(),
+            notch_ref_x: NotchFilter::zero(), notch_ref_y: NotchFilter::zero(), notch_ref_z: NotchFilter::zero(),
+            notch_tau_x: NotchFilter::zero(), notch_tau_y: NotchFilter::zero(), notch_tau_z: NotchFilter::zero(),
+            notch_f0_last: 0.0, notch_bw_last: 0.0,
             bw_acc_x: Butterworth2::zero(), bw_acc_y: Butterworth2::zero(), bw_acc_z: Butterworth2::zero(),
             bw_vel_x: Butterworth2::zero(), bw_vel_y: Butterworth2::zero(),
             bw_vel_init: false,
@@ -632,6 +698,9 @@ impl State {
         self.bw_tau_x.reset_state(); self.bw_tau_y.reset_state(); self.bw_tau_z.reset_state();
         self.bw_tau_init = false;
         self.bw_ref_x.reset_state(); self.bw_ref_y.reset_state(); self.bw_ref_z.reset_state();
+        self.notch_x.reset_state(); self.notch_y.reset_state(); self.notch_z.reset_state();
+        self.notch_ref_x.reset_state(); self.notch_ref_y.reset_state(); self.notch_ref_z.reset_state();
+        self.notch_tau_x.reset_state(); self.notch_tau_y.reset_state(); self.notch_tau_z.reset_state();
         self.bw_acc_x.reset_state(); self.bw_acc_y.reset_state(); self.bw_acc_z.reset_state();
         self.bw_vel_x.reset_state(); self.bw_vel_y.reset_state();
         self.bw_vel_init = false;
@@ -653,6 +722,7 @@ static mut CTRL: State = State::zero();
 extern "C" {
     fn indi_log_write(arx: f32, ary: f32, arz: f32, ax: f32, ay: f32, az: f32);
     fn indi_tau_write(tx: f32, ty: f32, tz: f32);
+    fn indi_notch_log_write(anx: f32, any: f32, anz: f32);
 }
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
@@ -686,6 +756,11 @@ extern "C" {
     static mut g_indi_kt4:    f32;
     static mut g_indi_fc_bw:  f32;
     static mut g_indi_mass:   f32;
+    // Optional stage-2 notch filter (2026-07-28, shake investigation): 0=off (default,
+    // byte-identical to today), 1=on. f0/bw are runtime-tunable [Hz] (Q = f0/bw).
+    static mut g_indi_notch_en: u8;
+    static mut g_indi_notch_f0: f32;
+    static mut g_indi_notch_bw: f32;
     // H1a diagnostic: force tau_current = tau_prev even when RPM deck is active (0=off, 1=on)
     static mut g_indi_ff_free: u8;
     // 0 = legacy diff-then-filter order (default), 1 = paper order (filter-then-diff)
@@ -1333,6 +1408,18 @@ fn controller_step(
     unsafe { indi_log_write(alpha_raw.x, alpha_raw.y, alpha_raw.z,
                              alpha_meas.x, alpha_meas.y, alpha_meas.z); }
 
+    // Stage-2 notch on alpha_meas -- ALWAYS computed and logged (all modes), same
+    // "passive filter for characterisation logging" philosophy as alpha_raw/alpha_meas
+    // above, regardless of whether notch_en actually gates it into the control law
+    // below. Lets alpha_raw / alpha_meas (BW) / alpha_meas_notch be compared directly
+    // from one flight without needing to fly twice.
+    let alpha_meas_notch = Vec3::new(
+        s.notch_x.update(alpha_meas.x),
+        s.notch_y.update(alpha_meas.y),
+        s.notch_z.update(alpha_meas.z),
+    );
+    unsafe { indi_notch_log_write(alpha_meas_notch.x, alpha_meas_notch.y, alpha_meas_notch.z); }
+
     // v2 fix C: gyro used in the attitude-rate error (KW damping). Runs every cycle for filter
     // continuity; returns raw ω when disabled. Feedforward (ω×Jω) and α-chain keep raw ω.
     let omega_fb = gyro_feedback(omega, dt, s);
@@ -1380,7 +1467,14 @@ fn controller_step(
         // Karaman Eq. 29/31 (μ_f filtered) + stock controller_indi.c (filtered command base). 0 =
         // legacy (unfiltered tau_current), byte-identical to prior behaviour. Seed on first use to
         // avoid a startup transient; passes DC so hover steady-state torque is unchanged.
-        let tau_current = if unsafe { g_indi_filt_tau } != 0 {
+        // ALSO forced on whenever notch_en=1, regardless of filt_tau's own value -- otherwise
+        // tau_current could reach the stage-2 notch below at a shallower filter depth (raw,
+        // no BW) than alpha_meas/alpha_ref (always BW'd first), reintroducing exactly the
+        // phase-mismatch class filt_tau exists to prevent. This makes notch_en self-contained:
+        // enabling it alone always gives tau_current the same BW-then-notch depth as the other
+        // two chains, independent of what filt_tau happens to be set to.
+        let tau_bw_needed = unsafe { g_indi_filt_tau != 0 || g_indi_notch_en != 0 };
+        let tau_current = if tau_bw_needed {
             if !s.bw_tau_init {
                 s.bw_tau_x.seed(tau_current_raw.x);
                 s.bw_tau_y.seed(tau_current_raw.y);
@@ -1396,6 +1490,26 @@ fn controller_step(
             tau_current_raw
         };
 
+        // Stage-2 notch on tau_current (indi_gains.notch_en) -- tau_current is now
+        // guaranteed BW-filtered first whenever notch_en=1 (tau_bw_needed above), so this
+        // always sees the same BW-then-notch depth as alpha_meas/alpha_ref, regardless of
+        // filt_tau's own setting. Default off = byte-identical to prior behaviour.
+        // ALWAYS updated (not just when notch_en=1), same "always run, gate only the
+        // selection" pattern as alpha_meas_notch/alpha_ref_notch above -- keeps the filter
+        // state continuously warmed up so toggling notch_en at runtime has no cold-start
+        // transient on this chain specifically (matching the other two chains, whose notch
+        // filters never stop running).
+        let tau_current_notch = Vec3::new(
+            s.notch_tau_x.update(tau_current.x),
+            s.notch_tau_y.update(tau_current.y),
+            s.notch_tau_z.update(tau_current.z),
+        );
+        let tau_current = if unsafe { g_indi_notch_en } != 0 {
+            tau_current_notch
+        } else {
+            tau_current
+        };
+
         // delta_tau = j_scale*J*(alpha_ref_filt - alpha_meas),  tau = tau_current + delta_tau
         // j_scale (indi_gains.j_scale, default 1.0) scales the INDI effectiveness estimate. The
         // increment applies torque j_scale*J per unit alpha error; the motor produces a real
@@ -1406,7 +1520,29 @@ fn controller_step(
         // sweep j_scale down (1.0→0.8→0.65→0.5) to find the ratio that stops the oscillation.
         // Default 1.0 = byte-identical to prior behaviour; standard/upgraded unaffected.
         let j_scale = unsafe { g_indi_j_scale };
-        let alpha_err = alpha_ref_filt.sub(alpha_meas);
+
+        // Stage-2 notch on alpha_ref_filt -- SAME filter (same f0/bw, same phase
+        // response) applied to the reference chain as was just applied to the
+        // measured chain above (alpha_meas_notch), mirroring exactly why bw_ref_x/y/z
+        // exists for the stage-1 Butterworth: measurement and reference must go
+        // through matched filtering or the error term picks up a spurious phase
+        // mismatch. Always computed (cheap, no side effects) so notch_en can toggle
+        // at runtime without a reinit-timing hazard.
+        let alpha_ref_notch = Vec3::new(
+            s.notch_ref_x.update(alpha_ref_filt.x),
+            s.notch_ref_y.update(alpha_ref_filt.y),
+            s.notch_ref_z.update(alpha_ref_filt.z),
+        );
+        // notch_en (indi_gains.notch_en, default 0): 0 = today's behaviour exactly
+        // (alpha_ref_filt, alpha_meas -- stage-1 BW only). 1 = both chains additionally
+        // go through the matched stage-2 notch targeting the diagnosed 5-10 Hz shake
+        // band, leaving the rest of the spectrum -- and its phase -- untouched.
+        let (alpha_ref_for_err, alpha_meas_for_err) = if unsafe { g_indi_notch_en } != 0 {
+            (alpha_ref_notch, alpha_meas_notch)
+        } else {
+            (alpha_ref_filt, alpha_meas)
+        };
+        let alpha_err = alpha_ref_for_err.sub(alpha_meas_for_err);
         let delta_tau = Vec3::new(
             j_scale*JXX*alpha_err.x,
             j_scale*JYY*alpha_err.y,
@@ -1454,6 +1590,13 @@ pub extern "C" fn controllerOutOfTreeInit() {
         s.bw_ref_x.init(fc_bw, DT); s.bw_ref_y.init(fc_bw, DT); s.bw_ref_z.init(fc_bw, DT);
         s.bw_acc_x.init(fc_bw, DT); s.bw_acc_y.init(fc_bw, DT); s.bw_acc_z.init(fc_bw, DT);
         s.fc_bw_last = fc_bw;
+        let notch_f0 = g_indi_notch_f0;
+        let notch_bw = g_indi_notch_bw;
+        s.notch_x.init(notch_f0, notch_bw, DT);     s.notch_y.init(notch_f0, notch_bw, DT);     s.notch_z.init(notch_f0, notch_bw, DT);
+        s.notch_ref_x.init(notch_f0, notch_bw, DT); s.notch_ref_y.init(notch_f0, notch_bw, DT); s.notch_ref_z.init(notch_f0, notch_bw, DT);
+        s.notch_tau_x.init(notch_f0, notch_bw, DT); s.notch_tau_y.init(notch_f0, notch_bw, DT); s.notch_tau_z.init(notch_f0, notch_bw, DT);
+        s.notch_f0_last = notch_f0;
+        s.notch_bw_last = notch_bw;
     }
 }
 
@@ -1482,6 +1625,18 @@ pub unsafe extern "C" fn controllerOutOfTree(
         s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
         s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
+    }
+
+    // Reinit the optional notch filter when its center/bandwidth change at runtime
+    // (independent of fc_bw above -- separate params, separate change-detection).
+    let notch_f0 = g_indi_notch_f0;
+    let notch_bw = g_indi_notch_bw;
+    if (notch_f0 - s.notch_f0_last).abs() > 0.05 || (notch_bw - s.notch_bw_last).abs() > 0.05 {
+        s.notch_x.init(notch_f0, notch_bw, DT_NOM);     s.notch_y.init(notch_f0, notch_bw, DT_NOM);     s.notch_z.init(notch_f0, notch_bw, DT_NOM);
+        s.notch_ref_x.init(notch_f0, notch_bw, DT_NOM); s.notch_ref_y.init(notch_f0, notch_bw, DT_NOM); s.notch_ref_z.init(notch_f0, notch_bw, DT_NOM);
+        s.notch_tau_x.init(notch_f0, notch_bw, DT_NOM); s.notch_tau_y.init(notch_f0, notch_bw, DT_NOM); s.notch_tau_z.init(notch_f0, notch_bw, DT_NOM);
+        s.notch_f0_last = notch_f0;
+        s.notch_bw_last = notch_bw;
     }
 
     let dt = if s.last_tick == 0 { 0.002_f32 }
