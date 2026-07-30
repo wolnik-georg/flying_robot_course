@@ -27,6 +27,7 @@
 \title[Advanced Flying Robots -- Final Results]{Advanced Flying Robots -- Final Results}
 \subtitle{INDI Across Three Platforms: Standard, Thrust-Upgraded, Brushless CF21BL}
 \author{Georg Wolnik}
+\institute{Multi Robot Systems Project \\ Mentors: Omar Elsayed, Khaled Wahba \\ Supervisor: Prof.\ Wolfgang H\"onig}
 \date{Final Presentation}
 
 \newcommand{\img}[2]{%
@@ -66,7 +67,7 @@
   \setlength{\itemsep}{0.35cm}
   \item Recap: planned trajectories + geometric vs.\ INDI (standard drone)
   \item Core result: figure-8 across all four modes
-  \item Upgraded vs.\ brushless: oval, circle, slalom + kt sweeps
+  \item Upgraded vs.\ brushless: oval, circle + kt sweeps
   \item Limitations \& complications
   \item Summary
 \end{enumerate}
@@ -88,6 +89,33 @@
 \end{block}
 \end{frame}
 
+\begin{frame}{Motion Planning --- The Idea}
+\begin{small}
+\begin{block}{Core idea, in one sentence}
+Turn a handful of waypoints into \textbf{one smooth, closed-form path} --- and get the drone's
+full attitude and thrust commands \textbf{for free} from that same path, instead of planning
+them separately.
+\end{block}
+\vspace{0.15cm}
+\begin{itemize}
+  \setlength{\itemsep}{0.15cm}
+  \item \textbf{Problem}: waypoints alone are not a flyable trajectory --- need something smooth,
+        dynamically feasible, and exactly repeatable, not just ``connect the dots.''
+  \item \textbf{Minimum-snap polynomials} (Mellinger \& Kumar 2011): fit a piecewise polynomial
+        through the waypoints minimizing snap (4th derivative of position), continuous up to snap
+        at every segment boundary --- snap drives \emph{required thrust and attitude rate}, so
+        smoother snap means gentler, more achievable commands.
+  \item \textbf{Differential flatness} (Mellinger \& Kumar 2011; rotor-drag extension: Faessler et
+        al.\ 2018): the quadrotor's full state --- attitude, body rate, thrust --- is recovered in
+        \emph{closed form} from the position path and its derivatives plus yaw. No attitude has to
+        be authored by hand.
+  \item \textbf{Full feedforward for every controller}: geometric \emph{and} INDI both get thrust,
+        attitude, body rate, and angular acceleration from the same path --- enabling a fair,
+        apples-to-apples comparison across controllers and platforms.
+\end{itemize}
+\end{small}
+\end{frame}
+
 \begin{frame}{Planned Trajectories --- Figure-8 / Circle / Corner}
 \twopics{0.33}{flying_drone_stack/results/planning_sim/reference/mode1/figure8/trajectory_3d_orientation.png}{0.33}{flying_drone_stack/results/planning_sim/reference/mode3/circle/trajectory_3d_orientation.png}
 \end{frame}
@@ -96,13 +124,39 @@
 \twopics{0.5}{flying_drone_stack/results/planning_sim/reference/mode3/corkscrew/trajectory_3d_orientation.png}{0.5}{flying_drone_stack/results/planning_sim/reference/mode3/screw/trajectory_3d_orientation.png}
 \end{frame}
 
-\begin{frame}{Planned Trajectories --- Racing: Oval / Slalom}
-\twopics{0.5}{flying_drone_stack/results/planning_sim/reference/mode1/oval/trajectory_3d_orientation.png}{0.5}{flying_drone_stack/results/planning_sim/reference/mode1/slalom/trajectory_3d_orientation.png}
+\begin{frame}{Planned Trajectories --- Racing: Oval / Tilted Oval}
+\twopics{0.5}{flying_drone_stack/results/planning_sim/reference/mode1/oval/trajectory_3d_orientation.png}{0.5}{flying_drone_stack/results/planning_sim/reference/mode1/tilted_oval/trajectory_3d_orientation.png}
 \end{frame}
 
-\begin{frame}{Planned Trajectories --- Tilted Oval}
-\framesubtitle{Teardrop, loop-train, roller-coaster plots pending regeneration (data intact, plotting script not yet rerun) --- available if wanted for the talk}
-\imgh{flying_drone_stack/results/planning_sim/reference/mode1/tilted_oval/trajectory_3d_orientation.png}
+\begin{frame}{INDI --- Attitude Control via Incremental Sensor Feedback}
+\begin{footnotesize}
+\begin{block}{Core idea, in one sentence}
+Don't compute the torque you need from scratch --- \textbf{measure the torque the motors are
+already producing right now}, and command only the \textbf{small correction} needed to close
+the remaining gap to the desired angular acceleration.
+\end{block}
+\vspace{0.05cm}
+\begin{itemize}
+  \setlength{\itemsep}{0.1cm}
+  \item \textbf{Classical (global) nonlinear dynamic inversion} computes the \emph{entire}
+        control input from a complete dynamics model every step --- get the model wrong and the
+        whole command is wrong.
+  \item \textbf{INDI} (Tal \& Karaman 2020) instead measures where the system already is and
+        only asks the model for the small step from there to the target:
+        \[
+          \underbrace{\tau}_{\text{command}} = \underbrace{\tau_{\text{current}}}_{\text{measured, RPM}^2}
+                 + \underbrace{J(\alpha_{\text{ref}} - \alpha_{\text{meas}})}_{\text{small correction, from model}}
+        \]
+        ($\alpha_{\text{meas}}$: measured from gyro; $\alpha_{\text{ref}}$: desired angular
+        acceleration.)
+  \item Only that \emph{small correction} needs the model (effectiveness $J$, thrust constants)
+        --- sensors answer ``where am I now,'' the model answers only ``how much does a small
+        extra input change things.''
+  \item \textbf{Advantage over standard controllers}: unlike PID (reacts after the fact) or pure
+        model-based control (only as accurate as its inertia model), INDI stays accurate even
+        when that model is wrong --- its largest gains landed on the one unidentified platform.
+\end{itemize}
+\end{footnotesize}
 \end{frame}
 
 \begin{frame}{Geometric vs.\ INDI --- Standard CF2.1, 10 Flights Each}
@@ -129,10 +183,6 @@ not contradictory; see Limitations).}
 
 \begin{frame}{Figure-8 --- Best Flight, All Four Modes: Per-Axis}
 \imgh{flying_drone_stack/docs/platform_compare_best_analysis_axes.png}
-\end{frame}
-
-\begin{frame}{Figure-8 --- Best Flight, All Four Modes: Kinematics}
-\imgh{flying_drone_stack/docs/platform_compare_best_analysis_kinematics.png}
 \end{frame}
 
 \begin{frame}{Figure-8 --- Best Flight, All Four Modes: 3D Orientation}
@@ -175,29 +225,17 @@ kt & Upgraded & Brushless & Upgraded & Brushless & Upgraded & Brushless \\
 \normalsize Working ceiling: upgraded \textasciitilde kt 0.3--0.4, brushless \textasciitilde kt 0.5--0.7.
 \end{frame}
 
-\begin{frame}{Oval kt=0.4 --- Both Platforms: Overview}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_analysis.png}
-\end{frame}
-
-\begin{frame}{Oval kt=0.4 --- Both Platforms: Per-Axis}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_analysis_axes.png}
-\end{frame}
-
-\begin{frame}{Oval kt=0.4 --- Both Platforms: Kinematics}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_analysis_kinematics.png}
-\end{frame}
-
 \begin{frame}{Oval kt=0.4 --- Both Platforms: 3D Orientation}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_3d_orientation.png}
+\begin{center}
+\includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{Controls/logs/platform_compare_oval_kt0.4_3d_orientation.png}
+\end{center}
+\vspace{0.1cm}
+\centering{\footnotesize XY/Z RMSE: upgraded 3.2/2.1\,cm, brushless 3.2/1.4\,cm --- comparable XY, brushless tighter on Z.}
 \end{frame}
 
 \begin{frame}{Oval kt=0.4 --- Both Platforms: INDI Panel}
 \framesubtitle{Torque command PSD --- watch for the brushless-only spectral peak}
 \imgh{Controls/logs/platform_compare_oval_kt0.4_indi_panel.png}
-\end{frame}
-
-\begin{frame}{Oval kt=0.4 --- Both Platforms: RPM Balance}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_rpm_balance.png}
 \end{frame}
 
 \begin{frame}{Circle kt Sweep --- Both Platforms}
@@ -230,20 +268,12 @@ kt & Upgraded & Brushless & Upgraded & Brushless & Upgraded & Brushless \\
 zone --- not a sharp wall, not a platform-specific quirk.}
 \end{frame}
 
-\begin{frame}{Circle kt=0.7 --- Both Platforms: Overview}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_analysis.png}
-\end{frame}
-
-\begin{frame}{Circle kt=0.7 --- Both Platforms: Per-Axis}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_analysis_axes.png}
-\end{frame}
-
-\begin{frame}{Circle kt=0.7 --- Both Platforms: Kinematics}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_analysis_kinematics.png}
-\end{frame}
-
 \begin{frame}{Circle kt=0.7 --- Both Platforms: 3D Orientation}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_3d_orientation.png}
+\begin{center}
+\includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{Controls/logs/platform_compare_circle_kt0.7_3d_orientation.png}
+\end{center}
+\vspace{0.1cm}
+\centering{\footnotesize XY/Z RMSE: upgraded 4.2/1.7\,cm, brushless 2.4/1.2\,cm --- brushless tighter on both axes here.}
 \end{frame}
 
 \begin{frame}{Circle kt=0.7 --- Both Platforms: INDI Panel}
@@ -251,127 +281,109 @@ zone --- not a sharp wall, not a platform-specific quirk.}
 \imgh{Controls/logs/platform_compare_circle_kt0.7_indi_panel.png}
 \end{frame}
 
-\begin{frame}{Circle kt=0.7 --- Both Platforms: RPM Balance}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_rpm_balance.png}
-\end{frame}
-
-\begin{frame}{Slalom --- A Different Failure Mode}
-\begin{itemize}
-  \setlength{\itemsep}{0.4cm}
-  \item Upgraded crashes on \texttt{slalom} at kt=0.05 --- the \emph{gentlest} speed tested ---
-        where brushless flies cleanly. Confirmed real and repeatable: \textbf{3 of 4 attempts}
-        showed crash-level altitude drops.
-  \item The two clearest crashes cut short early (6.5\,s, 9.9\,s into a longer planned flight) ---
-        the failure happens \emph{at the first sharp direction change}, not a growing oscillation.
-  \item \textbf{Not the shake mechanism}: upgraded (kr=603) never shows the sustained
-        resonant limit cycle seen on brushless --- it either tracks cleanly or crashes outright.
-        Brushless itself still shakes at lower kr too. Root cause of the slalom-specific failure
-        is genuinely open, not yet explained by anything else in this talk.
-  \item No matched-flight comparison plot (upgraded has zero clean flights) --- next slide
-        shows brushless's own clean record instead.
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Slalom --- Brushless Flies It Cleanly}
-\framesubtitle{Single clean flight, kt=0.05: RMSE 3.6\,cm, roll err 6.3\textdegree, pitch err 6.4\textdegree}
-\imgh{Controls/logs/slalom_mode1_kt0.05_2026-07-22_18-25-08_analysis.png}
-\end{frame}
-
-\begin{frame}{Slalom --- 3D Trajectory, Flown vs Planned}
-\imgh{Controls/logs/slalom_mode1_kt0.05_2026-07-22_18-25-08_3d_orientation.png}
-\end{frame}
-
 % ============================================================
 \section{Limitations \& Complications}
 
-\begin{frame}{Limitations --- The Brushless ``Shaky Shaky''}
+\begin{frame}{The Brushless ``Shaky Shaky'' --- What We Saw}
 \begin{block}{What we saw}
 \begin{itemize}
-  \item Full INDI on brushless CF21BL: a self-sustained \textasciitilde7\,Hz oscillation.
-  \item Reproducible in hover \emph{and} under maneuvering load --- same mechanism throughout.
-  \item \textbf{This is why brushless underperforms upgraded on some maneuvers} (e.g.\
-        crash ceiling on oval/circle at high kt) despite otherwise excellent figure-8 tracking ---
+  \item Full INDI on brushless CF21BL: a self-sustained \textasciitilde7\,Hz oscillation,
+        reproducible in hover \emph{and} under maneuvering load --- same mechanism throughout.
+  \item \textbf{This is why brushless underperforms upgraded on some maneuvers} (e.g.\ crash
+        ceiling on oval/circle at high kt) despite otherwise excellent figure-8 tracking ---
         an unexpected, counterintuitive combination worth flagging explicitly.
 \end{itemize}
 \end{block}
+\vspace{0.05cm}
+\twopics{0.44}{flying_drone_stack/docs/usd_hover_2026-07-23_shake_diagnostic.png}{0.44}{flying_drone_stack/docs/usd_oval_2026-07-23_shake_diagnostic.png}
+
+{\footnotesize 500\,Hz SD-card diagnostic: hover (left) vs.\ oval load (right) --- same peak.}
 \end{frame}
 
-\begin{frame}{Shake --- Root Cause, Quantified (Hover)}
-\framesubtitle{500\,Hz SD-card diagnostic, kr=2400/kw=170}
-\imgh{flying_drone_stack/docs/usd_hover_2026-07-23_shake_diagnostic.png}
-\end{frame}
-
-\begin{frame}{Shake --- Confirmed Under Real Maneuvering Load}
-\framesubtitle{Same diagnostic, oval trajectory --- mechanism holds under real 4-motor differential thrust}
-\imgh{flying_drone_stack/docs/usd_oval_2026-07-23_shake_diagnostic.png}
-\end{frame}
-
-\begin{frame}{Root Cause, Quantified --- And Why the Obvious Fixes Don't Work}
+\begin{frame}{Root Cause --- A Gain-Driven, Low-Frequency Resonance, Not Noise}
+\begin{block}{The key match}
+$\omega_n=\sqrt{k_r}/2\pi = 7.8$\,Hz at $k_r=2400$ --- almost exactly the measured 7.22\,Hz
+shake. The controller is oscillating near its \emph{own} attitude-loop natural frequency. That
+makes this a \textbf{low-frequency, gain-driven} closed-loop resonance, not a high-frequency
+external noise/vibration source being poorly filtered.
+\end{block}
+\vspace{0.1cm}
 \centering
-\renewcommand{\arraystretch}{1.1}
+\renewcommand{\arraystretch}{1.05}
+\begin{small}
 \begin{tabular}{lll}
 \toprule
-Factor & Measured & Verdict \\
-\midrule
-Resonance \(\omega_n=\sqrt{k_r}/2\pi\) & 7.8\,Hz (kr=2400) vs.\ 7.22\,Hz shake & \textbf{root cause} \\
-Actuator lag @ 7.22\,Hz & 32\,ms $\rightarrow$ \textbf{82\textdegree} phase loss & \textbf{dominant} \\
-EKF attitude lag @ 7.22\,Hz & 7.9\,ms $\rightarrow$ 20\textdegree\ phase loss & minor \\
+What we tried & Result & Verdict \\
 \midrule
 Filter (fc\_bw=70\,Hz) & alp\_filt/alp\_raw ratio = 1.00 & dead end \\
-Detuning kr ($\approx$600) & still shaky; vibration is broadband & dead end \\
+Notch filter (0.25--20\,Hz) & tracking worse in every stable case & dead end \\
+Detuning kr ($\approx$1500) & cascade timescale violation instead & dead end \\
 \bottomrule
 \end{tabular}
+\end{small}
 \vspace{0.1cm}
 
 \begin{tiny}
 \begin{itemize}
-\setlength{\itemsep}{0.03cm}
-\item \textbf{Resonance}: $k_r$ sets the attitude loop's natural frequency ($\omega_n=\sqrt{k_r}/2\pi$). At $k_r=2400$ that's 7.8\,Hz --- almost exactly the 7.22\,Hz shake, i.e. the controller is oscillating near its \emph{own} natural frequency, not reacting to external vibration.
-\item \textbf{Actuator lag}: motor/ESC/prop response takes 32\,ms to catch up to a commanded change; at 7.22\,Hz that's 82\textdegree\ of phase shift --- enough to turn a stabilizing correction into a destabilizing one one cycle later. Confirmed in-flight under real 4-motor load, not bench-only --- why it's the dominant term.
-\item \textbf{EKF lag}: the attitude \emph{estimate} lags true motion by only 7.9\,ms (20\textdegree\ phase) --- an order of magnitude smaller than actuator lag, ruled out as the main driver.
-\item \textbf{Filter}: exists specifically to remove noise like this, but at fc\_bw=70\,Hz it passes 7.22\,Hz completely unchanged. Cutting the cutoff low enough to actually attenuate 7.22\,Hz means filtering right at that frequency --- reintroducing the same actuator-lag phase-loss mechanism above, right where correction authority is needed most. Same failure mode in a different place, not a fix.
-\item \textbf{Detuning $k_r$}: moves $\omega_n$ away from 7.22\,Hz, but still shaky at $k_r\approx600$ --- the underlying vibration is broadband, not one clean tone, so there's no quiet $k_r$ to retune into without giving up tracking bandwidth.
+\setlength{\itemsep}{0.05cm}
+\item \textbf{Why the noise-oriented fixes failed}: both filter and notch target a signal
+      problem; this is a gain problem. Attenuating the resonance in the error signal removes the
+      stabilizing feedback constraining it, rather than removing noise --- so it makes tracking
+      worse, not better, exactly as observed.
+\item \textbf{Why simply lowering $k_r$ failed}: the attitude loop cannot be detuned in
+      isolation --- it must stay meaningfully faster than the outer position loop, and lowering
+      $k_r$ alone breaks that separation before it fixes the resonance.
+\item Actuator lag (32\,ms $\to$ 82\textdegree\ phase at 7.22\,Hz) and EKF attitude lag
+      (7.9\,ms $\to$ 20\textdegree) are both measured and consistent with the picture, but
+      \emph{secondary} to the gain match above --- most likely the real lever is the gain/
+      bandwidth relationship itself, not a phase-loss source to filter or delay away.
 \end{itemize}
 \end{tiny}
 \end{frame}
 
-\begin{frame}{Real Fix Candidates --- Correctly Not Pursued}
+\begin{frame}{Fix Attempts --- What Was Tried and Ruled Out}
 \begin{small}
 \begin{itemize}
-  \setlength{\itemsep}{0.1cm}
-  \item \textbf{Primary candidate --- most consistent with the data}: a \textbf{narrow band-reject
-        (notch) filter around 5--10\,Hz}, instead of a broad low-pass. The shake is a genuine,
-        narrow spectral peak at 7.22\,Hz (hover \emph{and} maneuvering load alike) --- not
-        broadband noise. A plain low-pass cut low enough to touch it reintroduces the same
-        phase-lag mechanism as the actuator lag itself (Root Cause slide); a notch targeting just
-        that band removes the resonance while leaving the rest of the spectrum --- and its phase ---
-        untouched. The actual point of filtering, done narrowly instead of broadly.
-  \item Reduce actuator lag directly: faster ESC/motor/prop response, or a delay-compensating
-        term in the INDI control law.
-  \item Reduce vibration at the source: prop balancing, mount damping.
-  \item \textbf{Speculative, unproven}: motor-protocol-level rate/current limiting (e.g.\ DShot
-        slew-rate limiting) to blunt the torque swings feeding the resonance --- not yet backed by
-        data collected this project.
+  \setlength{\itemsep}{0.15cm}
+  \item \textbf{Narrow band-reject (notch) filter around 5--10\,Hz, tested.} Implemented,
+        build-verified, and flown across 0.25--20\,Hz bandwidth. Made tracking worse in every
+        stable configuration, one narrow setting $\approx20\times$ worse. Consistent with the
+        shake being the closed loop's own lightly damped resonant mode rather than exogenous
+        noise: attenuating it in the error signal removes the corrective feedback constraining
+        it instead of removing noise.
+  \item \textbf{Lowering $k_r$, tested.} Also failed, for a different reason: triggered a slower
+        divergence from a violated position/attitude cascade timescale separation, since $k_r$
+        cannot be reduced independently of the position gains.
+  \item \textbf{What the data directly shows}: brushless's raw angular-acceleration signal has a
+        narrowband spectral peak at $\approx7.22$\,Hz, and its commanded torque is markedly
+        larger than the other two platforms across all axes ($\tau_z$ RMS 2.17 vs.\ 0.19
+        (standard) and 0.14 (upgraded) N\,m --- roughly an order of magnitude higher). Both
+        directly measured, not inferred.
 \end{itemize}
 \end{small}
-{\footnotesize\textbf{All require hardware/firmware iteration beyond this project's remaining
-time} --- a scope decision, not a gap: diagnosis complete and quantified, fix is future work.}
+{\footnotesize\textbf{Both targeted fix attempts failed --- the resonance was not resolved
+within this project's scope.} Diagnosis is complete and quantified; the fix is genuine future
+work.}
 \end{frame}
 
 \begin{frame}{Limitations --- Teardrop / Inverted Loop}
-\begin{block}{Status: open, placeholder --- attempt planned for tomorrow}
+\begin{block}{Status: partial success, bonus work beyond core scope}
 \begin{itemize}
   \setlength{\itemsep}{0.4cm}
+  \item \textbf{Inverted vertical loop, brushless platform}: repeatable inversion achieved ---
+        roll $163$--$178^\circ$ at the apex, 3/3 flights, using a separate explicit-attitude
+        planning approach (not the flatness-based methods used elsewhere in this talk).
+  \item Reliable recovery after the flip has not yet been made to work; several fixes were tried
+        and ruled out.
   \item \texttt{teardrop\_wide}: crashed at kt=0.05 on \emph{both} platforms, even under plain
         geometric control (not just INDI) --- unexplained, never root-caused.
-  \item Inverted-loop / accel-pinned aerobatic maneuvers (loop-train, roller-coaster --- Phase 4
-        of the original project plan): never attempted at all, blocked by the unresolved brushless
-        shake (these maneuvers need brushless's higher thrust/omega; the upgraded drone is
-        insufficient).
-  \item \textbf{Plan: retry both tomorrow if time allows.} This slide will be updated with results
-        --- currently an honest placeholder, not a finished finding.
 \end{itemize}
 \end{block}
+\end{frame}
+
+\begin{frame}{Best Inverted-Loop Flight --- 3D Trajectory}
+\framesubtitle{\texttt{loop\_mode1\_kt0.15\_2026-07-28\_19-33-11} --- flip achieved, genuine recovery, tumble only in the un-pinned exit ramp}
+\imgh{Controls/logs/loop_best_flight_3d.png}
 \end{frame}
 
 % ============================================================
@@ -391,11 +403,10 @@ time} --- a scope decision, not a gap: diagnosis complete and quantified, fix is
         beats geometric on every platform, and brushless beats standard/upgraded on raw tracking
         (best figure-8 RMSE of all four, 2.45\,cm).
   \item \textbf{Artifacts}: flights across the full trajectory library (figure-8, oval, circle,
-        slalom, ...) on multiple platforms, at multiple speeds --- the concrete outcome of the
-        project.
-  \item \textbf{Limitations}: brushless "shaky shaky" behavior (diagnosed, not fixed) and the
-        teardrop/inverted-loop maneuver (not attempted) --- both correctly scoped out given
-        remaining project time.
+        ...) on multiple platforms, at multiple speeds --- the concrete outcome of the project.
+  \item \textbf{Limitations}: brushless "shaky shaky" behavior (two fix attempts tried and ruled
+        out, not resolved) and the inverted-loop maneuver (flip achieved, recovery not yet made
+        to work) --- both well-characterized open problems, not unexplained gaps.
 \end{enumerate}
 \end{small}
 \end{frame}
