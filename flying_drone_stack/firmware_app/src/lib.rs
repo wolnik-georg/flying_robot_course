@@ -1424,87 +1424,113 @@ fn controller_step(
     // continuity; returns raw ω when disabled. Feedforward (ω×Jω) and α-chain keep raw ω.
     let omega_fb = gyro_feedback(omega, dt, s);
 
+    // -- Reference-side alpha chain + tau_current chain: computed and filtered every cycle,
+    // same "always run, gate only the selection" pattern as alpha_meas/alpha_meas_notch above.
+    // BUG FIX 2026-07-29: this entire block used to live inside the `mode & 2 != 0` branch
+    // below, so alpha_ref_notch/tau_current_notch never ran during the geometric ramp phase
+    // (mode==0) and started completely cold (zero filter state) at the exact tick INDI took
+    // over -- injecting a large spurious alpha_err from the filters' own startup transient
+    // against the already-warm alpha_meas_notch. That mismatch, not notch bandwidth, was the
+    // actual cause of every notch_en=1 flight crashing at the geometric->INDI handover
+    // regardless of which bw was tried (2026-07-29 lab session, 100% crash rate at bw in
+    // {5, 6.5, 8, 10, 20}). Hoisting this out unconditionally keeps all three chains
+    // (alpha_meas, alpha_ref, tau_current) warmed up in lockstep the whole flight.
+
+    // alpha_ref = alpha_des - KR*eR - KW*e_omega  (Tal & Karaman Eq. 28)
+    let e_omega = omega_fb.sub(omega_d);
+    let alpha_ref = Vec3::new(
+        alpha_des.x - kr_xy*er.x - kw_xy*e_omega.x,
+        alpha_des.y - kr_xy*er.y - kw_xy*e_omega.y,
+        alpha_des.z - kr_z *er.z - kw_z *e_omega.z,
+    );
+
+    // Same BW on alpha_ref -> alpha_ref_filt (phase alignment with alpha_meas)
+    let alpha_ref_filt = Vec3::new(
+        s.bw_ref_x.update(alpha_ref.x),
+        s.bw_ref_y.update(alpha_ref.y),
+        s.bw_ref_z.update(alpha_ref.z),
+    );
+
+    // Stage-2 notch on alpha_ref_filt -- SAME filter (same f0/bw, same phase
+    // response) applied to the reference chain as was just applied to the
+    // measured chain above (alpha_meas_notch), mirroring exactly why bw_ref_x/y/z
+    // exists for the stage-1 Butterworth: measurement and reference must go
+    // through matched filtering or the error term picks up a spurious phase
+    // mismatch. Always computed (cheap, no side effects) so notch_en can toggle
+    // at runtime without a reinit-timing hazard.
+    let alpha_ref_notch = Vec3::new(
+        s.notch_ref_x.update(alpha_ref_filt.x),
+        s.notch_ref_y.update(alpha_ref_filt.y),
+        s.notch_ref_z.update(alpha_ref_filt.z),
+    );
+
+    // Increment base source (indi_gains.act_tau, 2026-07-22):
+    //   act_tau = 0 (default): tau_current from per-motor RPM^2 (falls back to tau_prev
+    //     when deck absent, or when H1a diagnostic ff_free forces it) — today's behaviour.
+    //   act_tau > 0: act_dyn base — first-order model of the previous (clamped) commands
+    //     with that time constant, replacing the RPM reading (stock controller_indi.c
+    //     structure). Sim (tests/test_indi_actuator_lag.rs) predicts a matched model is
+    //     EQUIVALENT to the RPM base; this is the hardware A/B knob to verify that.
+    let ff_free = unsafe { g_indi_ff_free } != 0;
+    let act_tau = unsafe { g_indi_act_tau };
+    let tau_current_raw = if act_tau > 0.0 {
+        let k = dt / (dt + act_tau);
+        s.tau_act = s.tau_act.add(s.tau_prev.sub(s.tau_act).scale(k));
+        s.tau_act
+    } else if rpms_active && !ff_free {
+        rpms_to_torque([m1, m2, m3, m4], [kt1, kt2, kt3, kt4])
+    } else {
+        s.tau_prev
+    };
+
+    // filt_tau (indi_gains.filt_tau, default 0): low-pass the increment base term (μ_f) with
+    // the SAME Butterworth as α_meas, so τ = μ_f + J·(α_ref − α_meas) is phase-matched — Tal &
+    // Karaman Eq. 29/31 (μ_f filtered) + stock controller_indi.c (filtered command base). 0 =
+    // legacy (unfiltered tau_current), byte-identical to prior behaviour. Seed on first use to
+    // avoid a startup transient; passes DC so hover steady-state torque is unchanged.
+    // ALSO forced on whenever notch_en=1, regardless of filt_tau's own value -- otherwise
+    // tau_current could reach the stage-2 notch below at a shallower filter depth (raw,
+    // no BW) than alpha_meas/alpha_ref (always BW'd first), reintroducing exactly the
+    // phase-mismatch class filt_tau exists to prevent. This makes notch_en self-contained:
+    // enabling it alone always gives tau_current the same BW-then-notch depth as the other
+    // two chains, independent of what filt_tau happens to be set to.
+    let tau_bw_needed = unsafe { g_indi_filt_tau != 0 || g_indi_notch_en != 0 };
+    let tau_current = if tau_bw_needed {
+        if !s.bw_tau_init {
+            s.bw_tau_x.seed(tau_current_raw.x);
+            s.bw_tau_y.seed(tau_current_raw.y);
+            s.bw_tau_z.seed(tau_current_raw.z);
+            s.bw_tau_init = true;
+        }
+        Vec3::new(
+            s.bw_tau_x.update(tau_current_raw.x),
+            s.bw_tau_y.update(tau_current_raw.y),
+            s.bw_tau_z.update(tau_current_raw.z),
+        )
+    } else {
+        tau_current_raw
+    };
+
+    // Stage-2 notch on tau_current (indi_gains.notch_en) -- tau_current is now
+    // guaranteed BW-filtered first whenever notch_en=1 (tau_bw_needed above), so this
+    // always sees the same BW-then-notch depth as alpha_meas/alpha_ref, regardless of
+    // filt_tau's own setting. Default off = byte-identical to prior behaviour.
+    // ALWAYS updated (not just when notch_en=1), same "always run, gate only the
+    // selection" pattern as alpha_meas_notch/alpha_ref_notch above -- keeps the filter
+    // state continuously warmed up so toggling notch_en at runtime has no cold-start
+    // transient on this chain specifically (matching the other two chains, whose notch
+    // filters never stop running).
+    let tau_current_notch = Vec3::new(
+        s.notch_tau_x.update(tau_current.x),
+        s.notch_tau_y.update(tau_current.y),
+        s.notch_tau_z.update(tau_current.z),
+    );
+
     // -- Attitude law ---------------------------------------------------------
     let torque = if mode & 2 != 0 {
-        // INDI attitude path — reuses alpha_raw/alpha_meas computed above
+        // INDI attitude path — reuses alpha_raw/alpha_meas/alpha_ref/tau_current computed above
 
-        // alpha_ref = alpha_des - KR*eR - KW*e_omega  (Tal & Karaman Eq. 28)
-        let e_omega = omega_fb.sub(omega_d);
-        let alpha_ref = Vec3::new(
-            alpha_des.x - kr_xy*er.x - kw_xy*e_omega.x,
-            alpha_des.y - kr_xy*er.y - kw_xy*e_omega.y,
-            alpha_des.z - kr_z *er.z - kw_z *e_omega.z,
-        );
-
-        // Same BW on alpha_ref -> alpha_ref_filt (phase alignment with alpha_meas)
-        let alpha_ref_filt = Vec3::new(
-            s.bw_ref_x.update(alpha_ref.x),
-            s.bw_ref_y.update(alpha_ref.y),
-            s.bw_ref_z.update(alpha_ref.z),
-        );
-
-        // Increment base source (indi_gains.act_tau, 2026-07-22):
-        //   act_tau = 0 (default): tau_current from per-motor RPM^2 (falls back to tau_prev
-        //     when deck absent, or when H1a diagnostic ff_free forces it) — today's behaviour.
-        //   act_tau > 0: act_dyn base — first-order model of the previous (clamped) commands
-        //     with that time constant, replacing the RPM reading (stock controller_indi.c
-        //     structure). Sim (tests/test_indi_actuator_lag.rs) predicts a matched model is
-        //     EQUIVALENT to the RPM base; this is the hardware A/B knob to verify that.
-        let ff_free = unsafe { g_indi_ff_free } != 0;
-        let act_tau = unsafe { g_indi_act_tau };
-        let tau_current_raw = if act_tau > 0.0 {
-            let k = dt / (dt + act_tau);
-            s.tau_act = s.tau_act.add(s.tau_prev.sub(s.tau_act).scale(k));
-            s.tau_act
-        } else if rpms_active && !ff_free {
-            rpms_to_torque([m1, m2, m3, m4], [kt1, kt2, kt3, kt4])
-        } else {
-            s.tau_prev
-        };
-
-        // filt_tau (indi_gains.filt_tau, default 0): low-pass the increment base term (μ_f) with
-        // the SAME Butterworth as α_meas, so τ = μ_f + J·(α_ref − α_meas) is phase-matched — Tal &
-        // Karaman Eq. 29/31 (μ_f filtered) + stock controller_indi.c (filtered command base). 0 =
-        // legacy (unfiltered tau_current), byte-identical to prior behaviour. Seed on first use to
-        // avoid a startup transient; passes DC so hover steady-state torque is unchanged.
-        // ALSO forced on whenever notch_en=1, regardless of filt_tau's own value -- otherwise
-        // tau_current could reach the stage-2 notch below at a shallower filter depth (raw,
-        // no BW) than alpha_meas/alpha_ref (always BW'd first), reintroducing exactly the
-        // phase-mismatch class filt_tau exists to prevent. This makes notch_en self-contained:
-        // enabling it alone always gives tau_current the same BW-then-notch depth as the other
-        // two chains, independent of what filt_tau happens to be set to.
-        let tau_bw_needed = unsafe { g_indi_filt_tau != 0 || g_indi_notch_en != 0 };
-        let tau_current = if tau_bw_needed {
-            if !s.bw_tau_init {
-                s.bw_tau_x.seed(tau_current_raw.x);
-                s.bw_tau_y.seed(tau_current_raw.y);
-                s.bw_tau_z.seed(tau_current_raw.z);
-                s.bw_tau_init = true;
-            }
-            Vec3::new(
-                s.bw_tau_x.update(tau_current_raw.x),
-                s.bw_tau_y.update(tau_current_raw.y),
-                s.bw_tau_z.update(tau_current_raw.z),
-            )
-        } else {
-            tau_current_raw
-        };
-
-        // Stage-2 notch on tau_current (indi_gains.notch_en) -- tau_current is now
-        // guaranteed BW-filtered first whenever notch_en=1 (tau_bw_needed above), so this
-        // always sees the same BW-then-notch depth as alpha_meas/alpha_ref, regardless of
-        // filt_tau's own setting. Default off = byte-identical to prior behaviour.
-        // ALWAYS updated (not just when notch_en=1), same "always run, gate only the
-        // selection" pattern as alpha_meas_notch/alpha_ref_notch above -- keeps the filter
-        // state continuously warmed up so toggling notch_en at runtime has no cold-start
-        // transient on this chain specifically (matching the other two chains, whose notch
-        // filters never stop running).
-        let tau_current_notch = Vec3::new(
-            s.notch_tau_x.update(tau_current.x),
-            s.notch_tau_y.update(tau_current.y),
-            s.notch_tau_z.update(tau_current.z),
-        );
-        let tau_current = if unsafe { g_indi_notch_en } != 0 {
+        let tau_current_sel = if unsafe { g_indi_notch_en } != 0 {
             tau_current_notch
         } else {
             tau_current
@@ -1521,18 +1547,6 @@ fn controller_step(
         // Default 1.0 = byte-identical to prior behaviour; standard/upgraded unaffected.
         let j_scale = unsafe { g_indi_j_scale };
 
-        // Stage-2 notch on alpha_ref_filt -- SAME filter (same f0/bw, same phase
-        // response) applied to the reference chain as was just applied to the
-        // measured chain above (alpha_meas_notch), mirroring exactly why bw_ref_x/y/z
-        // exists for the stage-1 Butterworth: measurement and reference must go
-        // through matched filtering or the error term picks up a spurious phase
-        // mismatch. Always computed (cheap, no side effects) so notch_en can toggle
-        // at runtime without a reinit-timing hazard.
-        let alpha_ref_notch = Vec3::new(
-            s.notch_ref_x.update(alpha_ref_filt.x),
-            s.notch_ref_y.update(alpha_ref_filt.y),
-            s.notch_ref_z.update(alpha_ref_filt.z),
-        );
         // notch_en (indi_gains.notch_en, default 0): 0 = today's behaviour exactly
         // (alpha_ref_filt, alpha_meas -- stage-1 BW only). 1 = both chains additionally
         // go through the matched stage-2 notch targeting the diagnosed 5-10 Hz shake
@@ -1551,7 +1565,7 @@ fn controller_step(
         // Clamp BEFORE storing tau_prev and logging: the increment memory and the log must
         // reflect the torque actually sent, never an unrealizable command (oval 2026-07-21
         // blow-up reached 52 mNm vs ~14 mNm physical headroom).
-        let tau       = clamp_torque(tau_current.add(delta_tau));
+        let tau       = clamp_torque(tau_current_sel.add(delta_tau));
         s.tau_prev    = tau;
 
         unsafe { indi_tau_write(tau.x, tau.y, tau.z); }

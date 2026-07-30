@@ -13,6 +13,7 @@
 \usepackage{titlesec}
 \usepackage{parskip}
 \usepackage{caption}
+\usepackage{float}
 
 \definecolor{frcblue}{RGB}{28,45,68}
 \definecolor{frcaccent}{RGB}{18,118,150}
@@ -53,25 +54,25 @@ on the Crazyflie 2.x Platform Family}
 \maketitle
 
 \begin{abstract}
-This report describes the design, implementation, and experimental evaluation of a full
-autonomous-flight stack: minimum-snap motion planning with automatic time allocation, a
-differential-flatness-based geometric SE(3) baseline controller, and an Incremental Nonlinear
-Dynamic Inversion (INDI) attitude controller. All three components were deployed and compared
-across three quadrotor platforms: a standard Crazyflie 2.1, a thrust-upgraded Crazyflie 2.1, and a
-Crazyflie 2.1 Brushless (CF21BL). Each platform was commissioned end-to-end (motor identification
-via RPM, filter tuning, cascaded gain tuning) and evaluated on a shared figure-8 tracking
-benchmark, plus oval and circle trajectories swept across a range of planner aggressiveness. The
-main result is a controller-and-platform comparison showing that full INDI reduces XY tracking
-RMSE by 37--60\% relative to the geometric SE(3) baseline. The brushless platform's higher motor
-bandwidth ($\tau\approx44$\,ms vs.\ 71\,ms for the thrust-upgraded platform) allows more aggressive
-attitude gains and gives the best overall tracking performance (2.45\,cm mean RMSE, $n=13$), but
-also brings a resonant $\approx7.2$\,Hz attitude oscillation that the thrust-upgraded platform's
-lower bandwidth avoids. We trace the root cause of this oscillation (closed-loop resonance at
-$\omega_n=\sqrt{K_R}$, with actuator lag as the dominant and EKF attitude-estimate lag as a
-secondary phase-loss term) and design a targeted band-reject (notch) filter as a fix; it is
-implemented and build-verified but has not yet been flight-tested. The remaining sections cover
-related work, the planning and control methods used, the experimental setup, the results, a
-discussion of the cross-platform differences, and the project's open limitations.
+This report describes the design, implementation, and experimental evaluation of a motion
+planning and control pipeline for quadrotors: minimum-snap motion planning with automatic time
+allocation, a differential-flatness-based geometric SE(3) baseline controller, and an Incremental
+Nonlinear Dynamic Inversion (INDI) attitude-and-position controller. All three components were
+deployed and compared across three quadrotor platforms: a standard Crazyflie 2.1, a
+thrust-upgraded Crazyflie 2.1, and a Crazyflie 2.1 Brushless (CF21BL). Each platform was
+commissioned end-to-end (motor identification via RPM, filter tuning, cascaded gain tuning) and
+evaluated on a shared figure-8 tracking benchmark, plus oval and circle trajectories swept across
+a range of planner aggressiveness. The main result is a controller-and-platform comparison
+showing that full INDI reduces XY tracking RMSE by 37--60\% relative to the geometric SE(3)
+baseline. The brushless platform's higher motor bandwidth ($\tau\approx44$\,ms vs.\ 71\,ms for the
+thrust-upgraded platform) allows more aggressive attitude gains and gives the best overall
+tracking performance (2.45\,cm mean RMSE, $n=13$), but also brings a low-frequency, gain-driven
+attitude resonance at $\approx7.2$\,Hz, close to the loop's own natural frequency
+$\omega_n=\sqrt{K_R}$, that the thrust-upgraded platform's lower bandwidth avoids. A targeted
+band-reject (notch) filter, implemented and flight-tested as a fix, did not resolve it --
+consistent with a gain-driven resonance rather than noise a filter can remove. The remaining
+sections cover related work, methods, experimental setup, results, a discussion of the
+cross-platform differences, and the project's open limitations.
 \end{abstract}
 
 %======================================================================
@@ -87,22 +88,21 @@ measurement of the vehicle's actual angular acceleration, so the attitude loop s
 unmodeled effects and platform-specific uncertainty.
 
 This project implements both. A minimum-snap planning pipeline with automatic time allocation
-(Richter et al.~\cite{richter2016}) generates the trajectories, and full INDI attitude control
-(Tal \& Karaman~\cite{tal2020}), including the RPM-feedback-based torque estimation it requires,
+(Richter et al.~\cite{richter2016}) generates the trajectories, and full INDI attitude-and-position
+control (Tal \& Karaman~\cite{tal2020}), including the RPM-feedback-based torque estimation it requires,
 tracks them on real Crazyflie hardware. We commissioned the full stack end to end (motor
 identification via RPM, filter tuning, cascaded gain tuning) on three physical platforms: a
 standard, a thrust-upgraded, and a brushless CF21BL Crazyflie 2.x. This lets us see how
 platform-specific actuator dynamics limit the achievable control bandwidth and tracking accuracy.
 Each platform is benchmarked against a common geometric SE(3) baseline and pushed across a
-planner-aggressiveness sweep ($k_t$) to find its practical ceiling.
-
-Two originally planned phases were dropped once a data-confirmed attitude resonance on the
+planner-aggressiveness sweep ($k_t$) to find its practical ceiling. Two originally planned phases
+were dropped once a data-confirmed attitude resonance on the
 highest-bandwidth platform became the project's main open question
 (Section~\ref{sec:shake-root-cause}): commissioning a third platform, and a dedicated accel-pinned
 aerobatics phase. Part of that aerobatics work, a fully inverted loop, was still completed as
-bonus work once time allowed (Section~\ref{sec:limitations}). It uses a separate,
-explicit-attitude planning approach that is not one of the two automatic-time-allocation planning
-modes used for every other experiment in this report (Section~\ref{sec:planning-methods}).
+bonus work once time allowed (Section~\ref{sec:limitations}), using the same planning modes as
+every other experiment (Section~\ref{sec:planning-methods}) with an added acceleration constraint
+at selected waypoints -- attitude is still recovered purely from flatness, never authored directly.
 
 %======================================================================
 \section{Related Work}
@@ -113,10 +113,11 @@ state and the control inputs can be written as algebraic functions of the positi
 $\mathbf{p}(t)$, yaw $\psi(t)$, and a finite number of their derivatives (up to snap for the full
 state, one derivative further for angular-acceleration feedforward). A smooth polynomial in
 position/yaw space is therefore enough to derive a complete, dynamically consistent reference
-without ever planning attitude directly. Our baseline attitude controller follows the geometric
-SE(3) approach of Lee et al.~\cite{lee2010}, which computes attitude and rate errors directly on
-SO(3), avoiding the singularities of an Euler-angle representation, and commands torque
-model-based from these errors plus a gyroscopic decoupling term. Trajectories are generated with
+without ever planning attitude directly. Our baseline controller follows the geometric SE(3)
+approach of Lee et al.~\cite{lee2010}: it tracks the flatness-derived desired attitude $R_d$ by
+computing attitude and rate errors on SO(3), avoiding Euler-angle singularities, and commands
+torque model-based from these errors plus a gyroscopic decoupling term. Trajectories are
+generated with
 Mellinger and Kumar's~\cite{mellinger2011} minimum-snap QP formulation, extended by Richter et
 al.~\cite{richter2016} to automate per-segment timing from a single aggressiveness scalar $k_t$.
 The INDI attitude law (Tal \& Karaman~\cite{tal2020}) replaces the geometric law's model-based
@@ -146,7 +147,7 @@ segment durations:
       T_i = \max\!\left(\frac{\mathrm{dist}_i}{v_{\mathrm{avg}}(k_t)},\, T_{\min}\right),
       \qquad v_{\mathrm{avg}} = 0.5 + 1.5\sqrt{k_t}, \qquad T_{\min}=0.15\,\mathrm{s}
     \]
-    below which the QP's $1/T^7$ segment weighting becomes numerically degenerate. We use zero
+    below which the QP's $1/T^7$ segment weighting becomes numerically unstable. We use zero
     redistribution iterations by default, favoring robustness and predictability over the
     marginal timing refinement the full paper formulation offers.
   \item \textbf{Mode~3} (\code{RichterTrajectory::plan\_paper()}) uses the same time-allocation
@@ -200,10 +201,13 @@ error with the same cascade structure). Because this law is purely model-based, 
 depends on how closely $J$ (inertia) and the thrust/torque allocation model match the real
 airframe.
 
-\subsection{INDI attitude control}
+\subsection{INDI: attitude loop}
+\label{sec:indi-attitude-methods}
 
-The INDI attitude law, following Tal \& Karaman~\cite{tal2020} directly, replaces the geometric
-law's model-based torque computation with four coupled equations.
+Full INDI has two loops, attitude and position; this subsection covers the attitude loop
+(the position loop follows in Section~\ref{sec:indi-position-methods}). The attitude-loop law,
+following Tal \& Karaman~\cite{tal2020} directly, replaces the geometric law's model-based torque
+computation with four coupled equations.
 
 \subsubsection{(1) Feedforward}
 
@@ -256,24 +260,33 @@ thrust-to-RPM response, aerodynamic drag, or other unmodeled disturbances, becau
 already shows up in $\boldsymbol{\alpha}_{\mathrm{meas}}$ and is rejected by the increment on the
 next cycle.
 
-\subsection{An added filter stage: targeting a diagnosed narrowband resonance}
+\subsection{INDI: position loop}
+\label{sec:indi-position-methods}
+
+The same incremental principle from the attitude loop above also drives the position loop
+(\code{ctrl\_mode} bit~0, active
+alongside the attitude bit on all three locked configurations, Appendix~B): instead of trusting
+the mass/thrust model for the feedforward acceleration, it measures the mismatch between that
+model's predicted and the IMU's actual net acceleration, and adds the mismatch directly to the
+desired acceleration, $\mathbf{f}_d = \mathbf{a}_d + K_P\mathbf{e}_p + K_V\mathbf{e}_v +
+\mathbf{a}_{\mathrm{indi}}$ where $\mathbf{a}_{\mathrm{indi}}=\mathbf{a}_{\mathrm{meas}}-\mathbf{a}_{\mathrm{model}}$.
+Same robustness argument as the attitude loop: unmodeled thrust/mass error shows up directly in
+that mismatch and is corrected next cycle rather than characterized in advance. Full equations in
+Appendix~\ref{sec:appendix-equations}.
+
+\subsection{An added filter stage: an attempted fix for a diagnosed narrowband resonance}
 \label{sec:notch-methods}
 
 Brushless-platform commissioning identified a narrowband attitude oscillation at
-$\approx7.22$\,Hz (Section~\ref{sec:shake-root-cause} gives the full root-cause analysis). We
-confirmed by 500\,Hz SD-card measurement that the Stage-1 Butterworth filter (cutoff 60--70\,Hz)
-passes this frequency essentially unattenuated
-($|\boldsymbol{\alpha}_{\mathrm{meas}}|/|\boldsymbol{\alpha}_{\mathrm{raw}}| = 1.000$), and that
-lowering the cutoff into that band degrades tracking substantially, since a broad low-pass trades
-off phase margin below its cutoff, not just at the resonant band. We designed a targeted fix
-instead: an optional, runtime-tunable second-stage band-reject (notch) filter, an RBJ
-Audio-EQ-Cookbook band-reject biquad ($Q=f_0/\mathrm{bw}$, default center 7.2\,Hz, bandwidth
-5\,Hz, giving a 4.7--9.7\,Hz attenuated band). When enabled it is applied identically to
+$\approx7.22$\,Hz (Section~\ref{sec:shake-root-cause} gives the full root-cause analysis), which
+the existing Stage-1 Butterworth filter does not attenuate. As a candidate fix we added an
+optional, runtime-tunable second-stage band-reject (notch) filter, applied identically to
 $\boldsymbol{\alpha}_{\mathrm{meas}}$, $\boldsymbol{\alpha}_{\mathrm{ref}}$, and
-$\boldsymbol{\tau}_{\mathrm{current}}$, so no term of the INDI sum ends up phase-mismatched,
-mirroring the Stage-1 Butterworth's own reasoning. It is disabled by default
-(\code{notch\_en=0}, verified byte-identical to prior behavior when off) and is implemented and
-build-verified but not yet flight-tested (Section~\ref{sec:limitations}).
+$\boldsymbol{\tau}_{\mathrm{current}}$ so no term of the INDI sum ends up phase-mismatched (full
+filter design in Appendix~\ref{sec:appendix-equations}). It is disabled by default
+(\code{notch\_en=0}, byte-identical to prior behavior when off) and was implemented,
+build-verified, and flight-tested across a range of bandwidths -- it did not resolve the
+resonance (Section~\ref{sec:limitations}).
 
 %======================================================================
 \section{Experimental Setup}
@@ -292,7 +305,7 @@ $k_T=\mathrm{thrust}/\mathrm{RPM}^2$) before any INDI flight.
 Trajectories are generated offline in Rust (\code{export\_poly4d}), converted to an 8-coefficient
 Poly4D representation, and uploaded via the Crazyswarm2 (CS2) ROS~2 framework. Position is
 estimated from OptiTrack and fed to the onboard EKF. The onboard high-level commander evaluates
-the uploaded polynomial at 1\,kHz and feeds the geometric or INDI attitude controller, running at
+the uploaded polynomial at 1\,kHz and feeds the geometric or INDI controller, running at
 500\,Hz, through the standard Crazyflie firmware loop. This gives globally drift-free pose for
 repeatable long-duration, high-speed flights.
 
@@ -378,9 +391,11 @@ balance) are reproduced at full size in Appendix~\ref{sec:appendix-figures}
 
 Full per-$k_t$ data (XY/Z RMSE, roll/pitch/yaw error, max speed) for both sweeps is in
 Appendix~\ref{sec:appendix-ktsweep} (Tables~\ref{tab:oval-ktsweep}--\ref{tab:circle-ktsweep}).
+Unlike the headline comparison above ($n=10$--$13$ flights), each $k_t$ point here is only 1--3
+flights -- enough for the qualitative clean/crash boundary, not fine-grained statistics.
 
 \textbf{Oval.} Both platforms flew cleanly up to $k_t\le0.3$--$0.4$. The upgraded platform
-crashed consistently at $k_t=0.5$--$0.6$ (3/3 attempts), while brushless stayed clean through
+crashed consistently at $k_t=0.5$--$0.6$ (5/5 attempts), while brushless stayed clean through
 $k_t=0.5$ and crashed only at $k_t=0.7$. Brushless's working ceiling is roughly $k_t\approx0.5$
 against upgraded's $k_t\approx0.3$--$0.4$. This tracks the bandwidth gap between them
 ($\omega_n\approx7.8\,\mathrm{Hz}$ for brushless vs.\ $\approx3.9\,\mathrm{Hz}$ for upgraded),
@@ -390,8 +405,9 @@ cost of sitting closer to its own resonant regime.
 \textbf{Circle.} This shape was newly swept on both platforms in this project; previously only
 $k_t=0.05$ had been flown. Both platforms show the same pattern: a clean-flight region followed
 by a marginal zone where crash and clean outcomes mix at the same $k_t$ rather than switching at
-a sharp threshold. Upgraded stays clean to $\approx0.6$, brushless to $\approx0.5$, and both show
-failures by $k_t=0.8$--$1.0$. Cross-platform RMSE at matched $k_t$ is tied at $k_t=0.05$ (1.7 vs.\
+a sharp threshold. Upgraded stays clean through $k_t=0.8$ (an isolated crash at $k_t=0.9$ notwithstanding), while
+brushless holds clean through $k_t=0.7$ before crashing at $0.8$--$0.9$. Cross-platform RMSE at
+matched $k_t$ is tied at $k_t=0.05$ (1.7 vs.\
 1.9\,cm) but favors brushless at $k_t=0.3$ (1.4 vs.\ 2.2\,cm, about 36\% lower), so which platform
 tracks better depends on $k_t$ rather than being a fixed ranking.
 
@@ -414,20 +430,16 @@ So on both metrics, brushless tracks best, thrust-upgraded second, standard thir
 the aggregate $n$-flight RMSE in Table~\ref{tab:headline} shows standard and upgraded close
 enough (3.87 vs.\ 3.72\,cm) to fall within one combined standard deviation of each other.
 
-Brushless's clear lead is well explained by achievable INDI attitude bandwidth, which is set by
-motor response speed rather than peak thrust. Its bench-measured actuator time constant
-($\tau\approx44$\,ms) is faster than the thrust-upgraded platform's ($\tau\approx71$\,ms), and
-because INDI's stability margin depends on how quickly the motor can realize a commanded change
-in angular acceleration, a faster actuator supports a higher stable $K_R$ (2400 vs.\ 603) and
-therefore a higher closed-loop attitude bandwidth. This is a hardware-set advantage rather than a
-tuning outcome. Brushless leads even with the $\approx7.22$\,Hz resonance below still unresolved;
-fixing it should widen this lead, not shrink it.
-
-The smaller gap between standard and upgraded does not fit the same explanation as cleanly: the
-standard platform reaches a higher stable $K_R$ (1050 vs.\ 603) yet tracks slightly worse on
-every metric above. We do not have a confirmed explanation for this reversal; it may reflect
-differences elsewhere in the position or attitude loop rather than actuator bandwidth, and we
-note it here rather than force a tidy story that the data does not fully support.
+Brushless's clear lead is well explained by achievable INDI attitude bandwidth, set by motor
+response speed rather than peak thrust: its actuator time constant ($\tau\approx44$\,ms) is
+faster than the thrust-upgraded platform's ($\tau\approx71$\,ms), and a faster actuator supports a
+higher stable $K_R$ (2400 vs.\ 603) and therefore higher closed-loop bandwidth -- a hardware-set
+advantage, not a tuning outcome. Brushless leads even with the $\approx7.22$\,Hz resonance below
+still unresolved; fixing it should widen this lead, not shrink it. The smaller gap between
+standard and upgraded does not fit as cleanly: standard reaches a higher
+stable $K_R$ (1050 vs.\ 603) yet tracks slightly worse on every metric above. No confirmed
+explanation for this reversal is available from the present data; we report it as an open
+observation rather than propose an explanation the evidence does not support.
 
 \subsection{The brushless attitude resonance: what we observed and our working hypothesis}
 \label{sec:shake-root-cause}
@@ -440,78 +452,81 @@ does essentially nothing to it ($|\mathrm{filtered}|/|\mathrm{raw}|=1.000$), sin
 markedly larger than on the other two platforms across all three axes in the same flight
 comparison (Appendix~\ref{sec:appendix-figures}, Figure~\ref{fig:best-indi}): $\tau_z$ RMS is
 2.17 vs.\ 0.19 (standard) and 0.14 (upgraded) N$\cdot$m, roughly an order of magnitude higher.
-
-Beyond these two observations, what follows is our working hypothesis for the mechanism, not a
-confirmed cause. Our leading candidate is a feedback resonance: $\omega_n=\sqrt{K_R}/2\pi =
-7.80$\,Hz at $K_R=2400$ is close to the measured 7.22\,Hz peak (within 8\%), consistent with the
-closed-loop attitude bandwidth sitting near its own resonant frequency and sustaining a
-self-oscillation there, per the classical Barkhausen/Nyquist condition. Converting the
-bench-measured actuator lag (31.6--33.6\,ms) to phase at 7.22\,Hz gives $\approx82^\circ$, about
-four times the $\approx20^\circ$ from EKF attitude-estimate lag, so if this picture is right,
-actuator lag is the larger of the two measured contributors. Lowering the filter cutoff into the
-resonant band directly made tracking measurably worse, consistent with a low-pass trading off
-phase margin across its whole passband to reach one narrow region. None of this proves the
-mechanism; we have not, for example, varied $K_R$ independently over a wide enough range to
-isolate it from other explanations. The full 500\,Hz diagnostic (hover and oval-maneuver spectra)
-is in Appendix~\ref{sec:appendix-figures} (Figures~\ref{fig:shake-hover}--\ref{fig:shake-oval});
-it shows the same peak at hover and under real maneuvering load.
-
-Whatever the exact mechanism turns out to be, the two observations alone motivate the fix: a
-narrowband energy peak sits in the signals that feed the INDI increment, and the existing filter
-does not touch it. Removing that energy with a notch filter (Section~\ref{sec:notch-methods})
-should reduce the oscillation it drives, whether or not our resonance explanation for why it
-sits at 7.22\,Hz turns out to be fully correct.
+Beyond these two observations, what follows is our working hypothesis, not a confirmed cause.
+$\approx7.22$\,Hz is comparatively low for mechanical/aerodynamic noise, which typically shows up
+higher, tied to prop/motor RPM; our supervisor's assessment was that a peak this low points toward
+a gain/bandwidth-driven mode rather than noise, matching our leading candidate: a feedback
+resonance, $\omega_n=\sqrt{K_R}/2\pi = 7.80$\,Hz at $K_R=2400$, close to the measured 7.22\,Hz
+peak (within 8\%), consistent with the closed-loop bandwidth sitting near its own resonant
+frequency and sustaining a self-oscillation there (Barkhausen/Nyquist
+condition). Converting the bench-measured actuator lag (31.6--33.6\,ms) to phase at 7.22\,Hz gives
+$\approx82^\circ$, about four times the $\approx20^\circ$ from EKF attitude-estimate lag, so
+actuator lag is the larger of the two measured contributors if this picture is right. Lowering the
+filter cutoff into the resonant band made tracking measurably worse, consistent with a low-pass
+trading off phase margin across its whole passband to reach one narrow region -- none of this
+proves the mechanism on its own. The full 500\,Hz diagnostic is in
+Appendix~\ref{sec:appendix-figures} (Figures~\ref{fig:shake-hover}--\ref{fig:shake-oval}), showing
+the same peak at hover and under real maneuvering load. Two follow-up flight tests
+(Section~\ref{sec:limitations}) add evidence without proving it: the notch filter made tracking
+worse, fitting a gain-driven resonance better than noise, and lowering $K_R$ also failed, for an
+unrelated reason.
 
 %======================================================================
 \section{Limitations \& Future Work}
 \label{sec:limitations}
 %======================================================================
 
-\textbf{Brushless attitude resonance (open, pending validation).} The notch filter is
-implemented and build-verified (byte-identical to prior behavior when disabled) but not yet
-flight-tested. We expect a sharp amplitude drop in the notch-filtered signal at $\approx7$\,Hz
-and calmer commanded torque; if the shake is instead dominated by actuator phase lag, this fix
-may only partially resolve it. Other candidates considered but not pursued, since they need
-hardware or firmware iteration beyond this project's scope: an actuator-lag compensation term in
-the control law, reducing vibration at the source (prop balancing, mount damping), and,
-speculatively, motor-protocol-level rate limiting (e.g.\ DShot slew-rate limiting).
+\textbf{Brushless attitude resonance (flight-tested, unresolved).} The notch filter was
+implemented, build-verified, and flight-tested in hover only, not on any trajectory, across
+0.25--20\,Hz bandwidth centered on the measured $\approx7$\,Hz peak. Several configurations
+destabilized the loop outright; among those that did not, tracking was still worse than
+unfiltered -- the filter measurably attenuated the target band in the signal itself, but that did
+not translate into better closed-loop behavior. $\omega_n=\sqrt{k_r}\approx7.8$\,Hz matches the
+measured peak closely: a low-frequency, gain-driven resonance, not high-frequency noise a filter
+can remove, so attenuating it in the error signal removes stabilizing feedback instead. Lowering
+$k_r$ also failed, triggering divergence from a violated position/attitude cascade timescale
+separation. The most direct remaining path -- reducing the phase lag sustaining the oscillation
+(actuator lag is the larger contributor, Section~\ref{sec:shake-root-cause}) or restructuring the
+cascade for a lower $k_r$ -- is beyond scope here.
 
-\textbf{A separate crash} that was never root-caused occurred on a different maneuver, a wide
-teardrop loop, under the plain geometric controller on both platforms at the mildest tested
-aggressiveness. It was flagged but not investigated further.
-
-\textbf{Inverted-loop aerobatic maneuver (bonus, beyond core scope).} Using a separate
-explicit-attitude approach outside this report's core planning methods
-(Section~\ref{sec:planning-methods}), we commissioned a fully inverted vertical loop on the
-brushless platform: a repeatable inversion (roll $163$--$178^\circ$ at the apex, 3/3 flights) and,
-in the best flight, a real post-inversion recovery. One narrower failure mode remains inside
-the maneuver's auto-generated exit ramp. Several fixes were tried and ruled out; the mechanism is
-well characterized but still unresolved.
-
-\textbf{Third platform and dedicated aggressive-maneuver phase.} Both were descoped once the
-resonance investigation became the dominant open question. The inverted-loop work above is a
-partial, unplanned recovery of the latter.
+\textbf{Inverted-loop aerobatic maneuver (bonus, beyond core scope).} Using the same planning
+modes as every other experiment (Section~\ref{sec:planning-methods}) with an added acceleration
+constraint at selected waypoints (attitude still purely from flatness, never authored directly),
+we commissioned a fully inverted vertical loop on the brushless platform. Pre-flip works as
+expected: a repeatable near-full inversion ($163$--$178^\circ$
+at the apex, 3/3 flights) followed by genuine recovery, arresting the fall and climbing back
+(Appendix~C, Fig.~\ref{fig:loop-best}). Post-flip is still unresolved: the drone tumbles again in
+the trajectory's auto-generated exit ramp, and recovering from it has not yet worked despite
+several fixes tried and ruled out. \textbf{A third platform and a dedicated aggressive-maneuver
+phase} were both descoped once the
+resonance investigation became dominant; the inverted-loop work above is a partial, unplanned
+recovery of the latter.
 
 %======================================================================
 \section{Conclusion}
 %======================================================================
 
 This project implemented minimum-snap motion planning with automatic time allocation, a
-differential-flatness-derived geometric baseline, and INDI attitude control, then commissioned and
-evaluated all three on three physically distinct quadrotor platforms. The central result is a
-37--60\% reduction in figure-8 tracking RMSE from INDI over the geometric baseline, governed almost
-entirely by each platform's achievable motor bandwidth rather than by tuning effort. The
-trajectory library was pushed beyond the core benchmark with oval and circle sweeps, which mapped
-out real, platform-specific speed ceilings. The project's most significant open finding, a
-narrowband $\approx7.22$\,Hz attitude resonance on the highest-bandwidth platform, is documented
-with the observations behind it, a working hypothesis for its mechanism, and a data-driven fix, a
-notch filter, that is implemented and ready for validation. Together with an unplanned excursion
-into fully inverted aerobatic flight, the limitations reported here are, in every case,
-well-characterized open problems rather than unexplained failures.
+differential-flatness-derived geometric baseline, and INDI attitude-and-position control, then
+commissioned and evaluated all three on three physically distinct quadrotor platforms. The
+central result is a 37--60\% reduction in figure-8 tracking RMSE from INDI over the geometric
+baseline, governed mostly by each platform's motor bandwidth, not tuning effort. The trajectory
+library was pushed beyond the core benchmark with oval and circle sweeps, mapping out real,
+platform-specific speed ceilings. The most significant open finding, a narrowband
+$\approx7.22$\,Hz attitude resonance on the highest-bandwidth platform, is documented with the
+observations behind it, a working hypothesis for its mechanism, and a notch-filter fix that was
+flight-tested but did not resolve it, pointing toward the loop's own gain-driven resonance, not
+noise, as the likely remaining lever. The limitations reported here, together with an unplanned
+excursion into fully inverted aerobatic flight, are well-characterized open problems, not
+unexplained failures.
 
 %======================================================================
 \begin{thebibliography}{9}
 %======================================================================
+
+\bibitem{richter2016}
+C.~Richter, A.~Bry, and N.~Roy, ``Polynomial trajectory planning for aggressive quadrotor
+flight in dense indoor environments,'' in \textit{Robotics Research}, Springer, 2016.
 
 \bibitem{tal2020}
 E.~Tal and S.~Karaman, ``Accurate Tracking of Aggressive Quadrotor Trajectories using
@@ -520,10 +535,6 @@ Incremental Nonlinear Dynamic Inversion and Differential Flatness,'' arXiv:1809.
 \bibitem{mellinger2011}
 D.~Mellinger and V.~Kumar, ``Minimum snap trajectory generation and control for quadrotors,''
 IEEE ICRA, 2011.
-
-\bibitem{richter2016}
-C.~Richter, A.~Bry, and N.~Roy, ``Polynomial trajectory planning for aggressive quadrotor
-flight in dense indoor environments,'' in \textit{Robotics Research}, Springer, 2016.
 
 \bibitem{lee2010}
 T.~Lee, M.~Leok, and N.~H.~McClamroch, ``Geometric tracking control of a quadrotor UAV on
@@ -601,7 +612,7 @@ $\Delta t$.
 
 The identical Butterworth filter (same cutoff, independent instances) is applied to
 $\boldsymbol{\alpha}_{\mathrm{ref}}$ to keep the reference and measured legs of the increment
-phase-matched before their difference is taken in Eq.~A.5 below.
+phase-matched before their difference is taken in Eq.~\eqref{eq:incremental-torque} below.
 
 \subsection{Optional stage-2 notch (band-reject) filter}
 
@@ -620,21 +631,21 @@ With default $f_0=7.2$\,Hz, $\mathrm{bw}=5.0$\,Hz ($Q\approx1.44$), the $-3$\,dB
 approximately $f_0\pm\mathrm{bw}/2 \approx 4.7$--$9.7$\,Hz, matching the diagnosed shake band.
 When enabled, this same filter (independent instances, identical coefficients) is applied to
 $\boldsymbol{\alpha}_{\mathrm{meas}}$, $\boldsymbol{\alpha}_{\mathrm{ref}}$, and the
-increment-base term $\boldsymbol{\tau}_{\mathrm{current}}$ (Eq.~A.7 below), so that all three
+increment-base term $\boldsymbol{\tau}_{\mathrm{current}}$ (Eq.~\eqref{eq:tau-current} below), so that all three
 terms entering the final torque command are attenuated identically at the resonant band.
 
 \subsection{Incremental torque law and RPM-based increment base}
 
 \begin{align}
   \delta\boldsymbol{\tau} &= J\left(\boldsymbol{\alpha}_{\mathrm{ref}}
-    - \boldsymbol{\alpha}_{\mathrm{meas}}\right) \\
+    - \boldsymbol{\alpha}_{\mathrm{meas}}\right) \label{eq:incremental-torque}\\
   \boldsymbol{\tau}_{\mathrm{new}} &= \boldsymbol{\tau}_{\mathrm{current}} + \delta\boldsymbol{\tau}
 \end{align}
 
 $\boldsymbol{\tau}_{\mathrm{current}}$ is estimated from measured per-motor RPM rather than the
 previous commanded torque:
 \begin{align}
-  F_i &= k_{T,i}\cdot \mathrm{RPM}_i^2, \qquad i=1,\dots,4 \\
+  F_i &= k_{T,i}\cdot \mathrm{RPM}_i^2, \qquad i=1,\dots,4 \label{eq:tau-current}\\
   \tau_x &= L\,(F_3+F_4-F_1-F_2) \\
   \tau_y &= L\,(F_2+F_3-F_1-F_4) \\
   \tau_z &= \kappa\,(F_2+F_4-F_1-F_3)
@@ -646,6 +657,29 @@ allocation map: rather than assuming a model of how commanded torque produces mo
 actually-realized motor speeds are read back and converted directly to the torque currently being
 applied --- the mechanism that makes the INDI increment $\delta\boldsymbol{\tau}$ correct for
 whatever gap exists between the model and reality on every control cycle.
+
+\subsection{Position INDI outer loop}
+
+Active when \code{ctrl\_mode} bit~0 is set (all three locked configurations, Appendix~B). The
+modeled and measured net world-frame acceleration are compared directly:
+\begin{align}
+  \mathbf{a}_{\mathrm{model}} &= \mathbf{z}_{b,w}\,\frac{F_{\mathrm{tot}}}{m} - g\hat{\mathbf{z}},
+    \qquad F_{\mathrm{tot}} = \sum_{i=1}^4 k_{T,i}\,\mathrm{RPM}_i^2 \\
+  \mathbf{a}_{\mathrm{meas}} &= R\,(\mathbf{a}_{\mathrm{body}}\,g) - g\hat{\mathbf{z}} \\
+  \mathbf{a}_{\mathrm{indi}} &= \mathbf{a}_{\mathrm{meas}} - \mathbf{a}_{\mathrm{model}}
+\end{align}
+where $\mathbf{z}_{b,w}$ is the body $z$-axis in world coordinates, $\mathbf{a}_{\mathrm{body}}$ is
+the raw accelerometer reading (in $g$), and $F_{\mathrm{tot}}$ reuses the same per-motor RPM and
+thrust constants $k_{T,i}$ as the attitude-loop increment base above. The desired specific force
+is then
+\[
+  \mathbf{f}_d = \mathbf{a}_d + K_P\mathbf{e}_p + K_V\mathbf{e}_v + K_I\!\!\int\!\mathbf{e}_p\,dt
+    + g\hat{\mathbf{z}} + \mathbf{a}_{\mathrm{indi}}
+\]
+with $\mathbf{e}_p = \mathbf{p}_d - \mathbf{p}$, $\mathbf{e}_v = \mathbf{v}_d - \mathbf{v}$, and
+$\mathbf{a}_d$ the flatness-derived acceleration feedforward (Section~\ref{sec:planning-methods}).
+Structurally identical to the attitude increment (Eq.~\eqref{eq:incremental-torque}): the model only has to be right about
+the mismatch between commanded and realized thrust, not the full translational dynamics.
 
 \subsection{Differential-flatness torque feedforward (planning side)}
 
@@ -659,15 +693,16 @@ using the flatness-derived $\boldsymbol{\omega}$, $\dot{\boldsymbol{\omega}}$ fr
 Section~\ref{sec:planning-methods}'s Eqs.~(4)--(5). This is distinct from, and only loosely
 coupled to, the INDI increment law above: the planning-side torque is a purely model-based
 reference used to check trajectory feasibility (peak torque/thrust against platform limits),
-while the control-side torque command (Eq.~A.6) is what is actually sent to the motor mixer.
+while the control-side torque command (Eq.~\eqref{eq:incremental-torque}) is what is actually sent to the motor mixer.
 
 
+\clearpage
 %======================================================================
 \section{Full Platform Configurations}
 \label{sec:appendix-configs}
 %======================================================================
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \footnotesize
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{1.2cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{4.5cm}@{}}
@@ -686,7 +721,7 @@ Brushless CF21BL & Brushless & 41.0\,g & $\mathrm{diag}(2.40,2.40,3.24)$\linebre
 \label{tab:platforms}
 \end{table}
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \begin{tabular}{@{}llll@{}}
 \toprule
@@ -704,7 +739,7 @@ Brushless CF21BL & Brushless & 41.0\,g & $\mathrm{diag}(2.40,2.40,3.24)$\linebre
 \label{tab:standard-config}
 \end{table}
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \begin{tabular}{@{}llll@{}}
 \toprule
@@ -722,7 +757,7 @@ Brushless CF21BL & Brushless & 41.0\,g & $\mathrm{diag}(2.40,2.40,3.24)$\linebre
 \label{tab:upgraded-config}
 \end{table}
 
-\begin{table}[t]
+\begin{table}[H]
 \centering
 \begin{tabular}{@{}llll@{}}
 \toprule
@@ -733,7 +768,6 @@ Brushless CF21BL & Brushless & 41.0\,g & $\mathrm{diag}(2.40,2.40,3.24)$\linebre
 \code{kw}, \code{kw\_z} & 170.0 & \code{kv\_xy} & 5.0 \\
 \code{fc\_bw} & 70.0\,Hz & \code{kv\_z} & 7.0 \\
 \code{filt\_tau} & 1 (phase-matched increment base) & & \\
-\code{j\_scale} & 1.0 & & \\
 \code{mass} & 0.041\,kg & & \\
 \code{kt1..kt4} & 4.1623, 4.0592, 4.1116, 4.0631 $\times10^{-10}\,\mathrm{N/RPM^2}$ & & \\
 \bottomrule
@@ -824,6 +858,17 @@ cropped into the main text.
   \caption{500\,Hz SD-card diagnostic under an oval maneuver, brushless platform: the resonance
     persists unchanged under real maneuvering load.}
   \label{fig:shake-oval}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.72\linewidth]{Controls/logs/loop_best_flight_3d.png}
+  \caption{Best inverted-loop flight (brushless), 3D trajectory with orientation triads. Pre-flip
+    behavior works as expected: a repeatable near-full inversion at the apex followed by a
+    genuine recovery (arrested fall, positive climb back). Post-flip, the drone tumbles again
+    once it reaches the trajectory's auto-generated exit ramp -- the recovery from that second
+    tumble is the unresolved part.}
+  \label{fig:loop-best}
 \end{figure}
 
 \clearpage
