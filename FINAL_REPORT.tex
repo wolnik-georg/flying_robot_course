@@ -45,7 +45,7 @@
 \title{\color{frcblue}Motion Planning and Incremental Nonlinear Dynamic Inversion\\
 for Aggressive Quadrotor Trajectory Tracking\\
 on the Crazyflie 2.x Platform Family}
-\author{Georg Wolnik \\ \small Advanced Flying Robots \\
+\author{Georg Wolnik \\ \small Multi-Robot Systems Project \\
 \small Supervisor: Prof.\ Wolfgang H\"onig \\ \small Mentor: Omar Elsayed (partially Khaled Wahba)}
 \date{}
 
@@ -68,7 +68,7 @@ baseline. The brushless platform's higher motor bandwidth ($\tau\approx44$\,ms v
 thrust-upgraded platform) allows more aggressive attitude gains and gives the best overall
 tracking performance (2.45\,cm mean RMSE, $n=13$), but also brings a low-frequency, gain-driven
 attitude resonance at $\approx7.2$\,Hz, close to the loop's own natural frequency
-$\omega_n=\sqrt{K_R}$, that the thrust-upgraded platform's lower bandwidth avoids. A targeted
+$\omega_n=\sqrt{K_R}/2\pi$, that the thrust-upgraded platform's lower bandwidth avoids. A targeted
 band-reject (notch) filter, implemented and flight-tested as a fix, did not resolve it --
 consistent with a gain-driven resonance rather than noise a filter can remove. The remaining
 sections cover related work, methods, experimental setup, results, a discussion of the
@@ -99,8 +99,8 @@ planner-aggressiveness sweep ($k_t$) to find its practical ceiling. Two original
 were dropped once a data-confirmed attitude resonance on the
 highest-bandwidth platform became the project's main open question
 (Section~\ref{sec:shake-root-cause}): commissioning a third platform, and a dedicated accel-pinned
-aerobatics phase. Part of that aerobatics work, a fully inverted loop, was still completed as
-bonus work once time allowed (Section~\ref{sec:limitations}), using the same planning modes as
+aerobatics phase. Part of that aerobatics work, a fully inverted loop, was still carried out once
+time allowed (Section~\ref{sec:limitations}), using the same planning modes as
 every other experiment (Section~\ref{sec:planning-methods}) with an added acceleration constraint
 at selected waypoints -- attitude is still recovered purely from flatness, never authored directly.
 
@@ -220,7 +220,7 @@ below is feedback.
 
 \[
   \boldsymbol{\alpha}_{\mathrm{ref}} = \boldsymbol{\alpha}_{\mathrm{des}}
-    - K_R \mathbf{e}_R - K_W \mathbf{e}_\omega \qquad \text{(Eq.~28)}
+    - K_R \mathbf{e}_R - K_W \mathbf{e}_\omega
 \]
 This has the same form as the geometric law's gains, but $\boldsymbol{\alpha}_{\mathrm{ref}}$ is a
 desired acceleration, not a torque. $K_R$ has units $1/\mathrm{s}^2$ (closed-loop bandwidth
@@ -247,7 +247,6 @@ increment law below.
 \begin{align}
   \delta\boldsymbol{\tau} &= J\left(\boldsymbol{\alpha}_{\mathrm{ref}} - \boldsymbol{\alpha}_{\mathrm{meas}}\right) \\
   \boldsymbol{\tau}_{\mathrm{new}} &= \boldsymbol{\tau}_{\mathrm{current}} + \delta\boldsymbol{\tau}
-    \qquad \text{(Eq.~31)}
 \end{align}
 
 This is the core INDI mechanism: a small correction to whatever torque is currently applied,
@@ -402,8 +401,8 @@ against upgraded's $k_t\approx0.3$--$0.4$. This tracks the bandwidth gap between
 which gives brushless more control authority to correct through sharp direction changes, at the
 cost of sitting closer to its own resonant regime.
 
-\textbf{Circle.} This shape was newly swept on both platforms in this project; previously only
-$k_t=0.05$ had been flown. Both platforms show the same pattern: a clean-flight region followed
+\textbf{Circle.} We swept this shape across $k_t$ on both the upgraded and brushless platforms.
+Both platforms show the same pattern: a clean-flight region followed
 by a marginal zone where crash and clean outcomes mix at the same $k_t$ rather than switching at
 a sharp threshold. Upgraded stays clean through $k_t=0.8$ (an isolated crash at $k_t=0.9$ notwithstanding), while
 brushless holds clean through $k_t=0.7$ before crashing at $0.8$--$0.9$. Cross-platform RMSE at
@@ -429,7 +428,6 @@ the same order, with position RMSE following the same order in that flight (3.6,
 So on both metrics, brushless tracks best, thrust-upgraded second, standard third, even though
 the aggregate $n$-flight RMSE in Table~\ref{tab:headline} shows standard and upgraded close
 enough (3.87 vs.\ 3.72\,cm) to fall within one combined standard deviation of each other.
-
 Brushless's clear lead is well explained by achievable INDI attitude bandwidth, set by motor
 response speed rather than peak thrust: its actuator time constant ($\tau\approx44$\,ms) is
 faster than the thrust-upgraded platform's ($\tau\approx71$\,ms), and a faster actuator supports a
@@ -459,7 +457,8 @@ a gain/bandwidth-driven mode rather than noise, matching our leading candidate: 
 resonance, $\omega_n=\sqrt{K_R}/2\pi = 7.80$\,Hz at $K_R=2400$, close to the measured 7.22\,Hz
 peak (within 8\%), consistent with the closed-loop bandwidth sitting near its own resonant
 frequency and sustaining a self-oscillation there (Barkhausen/Nyquist
-condition). Converting the bench-measured actuator lag (31.6--33.6\,ms) to phase at 7.22\,Hz gives
+condition). Converting the in-flight actuator lag (31.6--33.6\,ms, motor-to-RPM cross-correlation)
+to phase at 7.22\,Hz gives
 $\approx82^\circ$, about four times the $\approx20^\circ$ from EKF attitude-estimate lag, so
 actuator lag is the larger of the two measured contributors if this picture is right. Lowering the
 filter cutoff into the resonant band made tracking measurably worse, consistent with a low-pass
@@ -467,9 +466,9 @@ trading off phase margin across its whole passband to reach one narrow region --
 proves the mechanism on its own. The full 500\,Hz diagnostic is in
 Appendix~\ref{sec:appendix-figures} (Figures~\ref{fig:shake-hover}--\ref{fig:shake-oval}), showing
 the same peak at hover and under real maneuvering load. Two follow-up flight tests
-(Section~\ref{sec:limitations}) add evidence without proving it: the notch filter made tracking
-worse, fitting a gain-driven resonance better than noise, and lowering $K_R$ also failed, for an
-unrelated reason.
+(Section~\ref{sec:limitations}) add evidence without proving it: the notch filter crashed the
+flight at every tested bandwidth, fitting a gain-driven resonance better than noise, and lowering
+$K_R$ also failed, for an unrelated reason.
 
 %======================================================================
 \section{Limitations \& Future Work}
@@ -478,18 +477,18 @@ unrelated reason.
 
 \textbf{Brushless attitude resonance (flight-tested, unresolved).} The notch filter was
 implemented, build-verified, and flight-tested in hover only, not on any trajectory, across
-0.25--20\,Hz bandwidth centered on the measured $\approx7$\,Hz peak. Several configurations
-destabilized the loop outright; among those that did not, tracking was still worse than
-unfiltered -- the filter measurably attenuated the target band in the signal itself, but that did
-not translate into better closed-loop behavior. $\omega_n=\sqrt{k_r}\approx7.8$\,Hz matches the
+0.25--20\,Hz bandwidth centered on the measured $\approx7$\,Hz peak. Every configuration tested,
+across the full bandwidth range, destabilized the loop and crashed, without exception -- the
+filter measurably attenuated the target band in the signal itself, but that did not prevent the
+crash. $\omega_n=\sqrt{K_R}/2\pi\approx7.8$\,Hz matches the
 measured peak closely: a low-frequency, gain-driven resonance, not high-frequency noise a filter
 can remove, so attenuating it in the error signal removes stabilizing feedback instead. Lowering
-$k_r$ also failed, triggering divergence from a violated position/attitude cascade timescale
+$K_R$ also failed, triggering divergence from a violated position/attitude cascade timescale
 separation. The most direct remaining path -- reducing the phase lag sustaining the oscillation
 (actuator lag is the larger contributor, Section~\ref{sec:shake-root-cause}) or restructuring the
-cascade for a lower $k_r$ -- is beyond scope here.
+cascade for a lower $K_R$ -- is beyond scope here.
 
-\textbf{Inverted-loop aerobatic maneuver (bonus, beyond core scope).} Using the same planning
+\textbf{Inverted-loop aerobatic maneuver (partial success, recovery not yet reliable).} Using the same planning
 modes as every other experiment (Section~\ref{sec:planning-methods}) with an added acceleration
 constraint at selected waypoints (attitude still purely from flatness, never authored directly),
 we commissioned a fully inverted vertical loop on the brushless platform. Pre-flip works as
@@ -499,8 +498,8 @@ at the apex, 3/3 flights) followed by genuine recovery, arresting the fall and c
 the trajectory's auto-generated exit ramp, and recovering from it has not yet worked despite
 several fixes tried and ruled out. \textbf{A third platform and a dedicated aggressive-maneuver
 phase} were both descoped once the
-resonance investigation became dominant; the inverted-loop work above is a partial, unplanned
-recovery of the latter.
+resonance investigation became dominant; the inverted-loop work above is a partial follow-through
+on that planned aerobatics phase, carried out once time allowed.
 
 %======================================================================
 \section{Conclusion}
@@ -516,8 +515,8 @@ platform-specific speed ceilings. The most significant open finding, a narrowban
 $\approx7.22$\,Hz attitude resonance on the highest-bandwidth platform, is documented with the
 observations behind it, a working hypothesis for its mechanism, and a notch-filter fix that was
 flight-tested but did not resolve it, pointing toward the loop's own gain-driven resonance, not
-noise, as the likely remaining lever. The limitations reported here, together with an unplanned
-excursion into fully inverted aerobatic flight, are well-characterized open problems, not
+noise, as the likely remaining lever. The limitations reported here, together with the
+partially-completed fully inverted aerobatic flight, are well-characterized open problems, not
 unexplained failures.
 
 %======================================================================
@@ -767,7 +766,6 @@ Brushless CF21BL & Brushless & 41.0\,g & $\mathrm{diag}(2.40,2.40,3.24)$\linebre
 \code{kr}, \code{kr\_z} & 2400.0 & \code{kp\_z} & 48.0 \\
 \code{kw}, \code{kw\_z} & 170.0 & \code{kv\_xy} & 5.0 \\
 \code{fc\_bw} & 70.0\,Hz & \code{kv\_z} & 7.0 \\
-\code{filt\_tau} & 1 (phase-matched increment base) & & \\
 \code{mass} & 0.041\,kg & & \\
 \code{kt1..kt4} & 4.1623, 4.0592, 4.1116, 4.0631 $\times10^{-10}\,\mathrm{N/RPM^2}$ & & \\
 \bottomrule

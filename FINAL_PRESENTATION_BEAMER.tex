@@ -290,7 +290,7 @@ zone --- not a sharp wall, not a platform-specific quirk.}
   \item Full INDI on brushless CF21BL: a self-sustained \textasciitilde7\,Hz oscillation,
         reproducible in hover \emph{and} under maneuvering load --- same mechanism throughout.
   \item \textbf{This is why brushless underperforms upgraded on some maneuvers} (e.g.\ crash
-        ceiling on oval/circle at high kt) despite otherwise excellent figure-8 tracking ---
+        ceiling on circle at high kt) despite otherwise excellent figure-8 tracking ---
         an unexpected, counterintuitive combination worth flagging explicitly.
 \end{itemize}
 \end{block}
@@ -302,7 +302,7 @@ zone --- not a sharp wall, not a platform-specific quirk.}
 
 \begin{frame}{Root Cause --- A Gain-Driven, Low-Frequency Resonance, Not Noise}
 \begin{block}{The key match}
-$\omega_n=\sqrt{k_r}/2\pi = 7.8$\,Hz at $k_r=2400$ --- almost exactly the measured 7.22\,Hz
+$\omega_n=\sqrt{K_R}/2\pi = 7.8$\,Hz at $K_R=2400$ --- almost exactly the measured 7.22\,Hz
 shake. The controller is oscillating near its \emph{own} attitude-loop natural frequency. That
 makes this a \textbf{low-frequency, gain-driven} closed-loop resonance, not a high-frequency
 external noise/vibration source being poorly filtered.
@@ -330,9 +330,9 @@ Detuning kr ($\approx$1500) & cascade timescale violation instead & dead end \\
       problem; this is a gain problem. Attenuating the resonance in the error signal removes the
       stabilizing feedback constraining it, rather than removing noise --- so it makes tracking
       worse, not better, exactly as observed.
-\item \textbf{Why simply lowering $k_r$ failed}: the attitude loop cannot be detuned in
+\item \textbf{Why simply lowering $K_R$ failed}: the attitude loop cannot be detuned in
       isolation --- it must stay meaningfully faster than the outer position loop, and lowering
-      $k_r$ alone breaks that separation before it fixes the resonance.
+      $K_R$ alone breaks that separation before it fixes the resonance.
 \item Actuator lag (32\,ms $\to$ 82\textdegree\ phase at 7.22\,Hz) and EKF attitude lag
       (7.9\,ms $\to$ 20\textdegree) are both measured and consistent with the picture, but
       \emph{secondary} to the gain match above --- most likely the real lever is the gain/
@@ -351,8 +351,8 @@ Detuning kr ($\approx$1500) & cascade timescale violation instead & dead end \\
         shake being the closed loop's own lightly damped resonant mode rather than exogenous
         noise: attenuating it in the error signal removes the corrective feedback constraining
         it instead of removing noise.
-  \item \textbf{Lowering $k_r$, tested.} Also failed, for a different reason: triggered a slower
-        divergence from a violated position/attitude cascade timescale separation, since $k_r$
+  \item \textbf{Lowering $K_R$, tested.} Also failed, for a different reason: triggered a slower
+        divergence from a violated position/attitude cascade timescale separation, since $K_R$
         cannot be reduced independently of the position gains.
   \item \textbf{What the data directly shows}: brushless's raw angular-acceleration signal has a
         narrowband spectral peak at $\approx7.22$\,Hz, and its commanded torque is markedly
@@ -367,16 +367,15 @@ work.}
 \end{frame}
 
 \begin{frame}{Limitations --- Teardrop / Inverted Loop}
-\begin{block}{Status: partial success, bonus work beyond core scope}
+\begin{block}{Status: partial success --- flip works, recovery not yet reliable}
 \begin{itemize}
   \setlength{\itemsep}{0.4cm}
   \item \textbf{Inverted vertical loop, brushless platform}: repeatable inversion achieved ---
-        roll $163$--$178^\circ$ at the apex, 3/3 flights, using a separate explicit-attitude
-        planning approach (not the flatness-based methods used elsewhere in this talk).
+        roll $163$--$178^\circ$ at the apex, 3/3 flights, using the same Mode~1/3 planners as
+        every other trajectory in this talk, with an added acceleration constraint at selected
+        waypoints; attitude is still recovered purely from flatness, never authored directly.
   \item Reliable recovery after the flip has not yet been made to work; several fixes were tried
         and ruled out.
-  \item \texttt{teardrop\_wide}: crashed at kt=0.05 on \emph{both} platforms, even under plain
-        geometric control (not just INDI) --- unexplained, never root-caused.
 \end{itemize}
 \end{block}
 \end{frame}
@@ -452,7 +451,7 @@ $R_d,\ \omega_d,\ \dot\omega_{des}$ = flatness(f\_d$\cdot$mass, yaw\_d)\quad\tex
 \textit{-- attitude loop (inner), the "full INDI" part --}\\
 e\_R = 0.5$\,$vee($R_d^\top R - R^\top R_d$)\quad\textit{\small(attitude error on SO(3))}\\
 e$_\omega$ = $\omega - \omega_d$\\
-$\alpha$\_ref = $\dot\omega_{des} - K_r\,$e\_R $- K_w\,$e$_\omega$\quad\textit{\small(desired angular accel, Tal \& Karaman Eq.\,28)}\\
+$\alpha$\_ref = $\dot\omega_{des} - K_R\,$e\_R $- K_W\,$e$_\omega$\quad\textit{\small(desired angular accel, ref.\ blend)}\\
 $\alpha$\_meas = lowpass(diff($\omega$))\quad\textit{\small(measured angular accel, from gyro)}\\
 $\tau$\_current = rpm\_to\_torque(m1..m4)\quad\textit{\small(current torque, from motor RPM --- not a model)}\\
 \textbf{$\Delta\tau$ = J$\,(\alpha$\_ref -- $\alpha$\_meas)}\quad\textit{\small $\leftarrow$ INDI increment: correct only the error}\\
