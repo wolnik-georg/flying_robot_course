@@ -68,7 +68,8 @@
   \item Recap: planned trajectories + geometric vs.\ INDI (standard drone)
   \item Core result: figure-8 across all four modes
   \item Upgraded vs.\ brushless: oval, circle + kt sweeps
-  \item Limitations \& complications
+  \item Inverted loop
+  \item Videos / demonstration
   \item Summary
 \end{enumerate}
 \end{frame}
@@ -154,7 +155,7 @@ the remaining gap to the desired angular acceleration.
         extra input change things.''
   \item \textbf{Advantage over standard controllers}: unlike PID (reacts after the fact) or pure
         model-based control (only as accurate as its inertia model), INDI stays accurate even
-        when that model is wrong --- its largest gains landed on the one unidentified platform.
+        when that model is wrong.
 \end{itemize}
 \end{footnotesize}
 \end{frame}
@@ -163,7 +164,7 @@ the remaining gap to the desired angular acceleration.
 \framesubtitle{Identical figure-8 ($k_t=0.05$) and position gains, only the attitude law differs}
 \img{0.95}{flying_drone_stack/results/indi_commissioning/geo_vs_indi.png}
 \vspace{0.15cm}
-{\small \textbf{37\% lower RMSE with INDI}, consistent with the Tal \& Karaman reference paper.}
+{\small \textbf{37\% lower RMSE with INDI}.}
 \end{frame}
 
 % ============================================================
@@ -172,9 +173,7 @@ the remaining gap to the desired angular acceleration.
 \begin{frame}{Figure-8 --- Four-Way Comparison, Mean-Closest Flight}
 \imgh{flying_drone_stack/docs/5way_mean_comparison.png}
 \vspace{0.1cm}
-{\small Brushless has the best raw figure-8 RMSE of all four modes --- worth holding in mind
-against the shake finding later in this talk (better tracking \emph{and} a resonance problem are
-not contradictory; see Limitations).}
+{\small Brushless has the best raw figure-8 RMSE of all four modes.}
 \end{frame}
 
 \begin{frame}{Figure-8 --- Best Flight, All Four Modes: Overview}
@@ -187,14 +186,6 @@ not contradictory; see Limitations).}
 
 \begin{frame}{Figure-8 --- Best Flight, All Four Modes: 3D Orientation}
 \imgh{flying_drone_stack/docs/platform_compare_best_3d_orientation.png}
-\end{frame}
-
-\begin{frame}{Figure-8 --- Best Flight, All Four Modes: INDI Panel}
-\imgh{flying_drone_stack/docs/platform_compare_best_indi_panel.png}
-\end{frame}
-
-\begin{frame}{Figure-8 --- Best Flight, All Four Modes: RPM Balance}
-\imgh{flying_drone_stack/docs/platform_compare_best_rpm_balance.png}
 \end{frame}
 
 % ============================================================
@@ -231,11 +222,6 @@ kt & Upgraded & Brushless & Upgraded & Brushless & Upgraded & Brushless \\
 \end{center}
 \vspace{0.1cm}
 \centering{\footnotesize XY/Z RMSE: upgraded 3.2/2.1\,cm, brushless 3.2/1.4\,cm --- comparable XY, brushless tighter on Z.}
-\end{frame}
-
-\begin{frame}{Oval kt=0.4 --- Both Platforms: INDI Panel}
-\framesubtitle{Torque command PSD --- watch for the brushless-only spectral peak}
-\imgh{Controls/logs/platform_compare_oval_kt0.4_indi_panel.png}
 \end{frame}
 
 \begin{frame}{Circle kt Sweep --- Both Platforms}
@@ -276,113 +262,22 @@ zone --- not a sharp wall, not a platform-specific quirk.}
 \centering{\footnotesize XY/Z RMSE: upgraded 4.2/1.7\,cm, brushless 2.4/1.2\,cm --- brushless tighter on both axes here.}
 \end{frame}
 
-\begin{frame}{Circle kt=0.7 --- Both Platforms: INDI Panel}
-\framesubtitle{Torque command PSD --- a clean \textasciitilde7\,Hz peak, brushless only, both tau\_x and tau\_y}
-\imgh{Controls/logs/platform_compare_circle_kt0.7_indi_panel.png}
-\end{frame}
-
 % ============================================================
-\section{Limitations \& Complications}
-
-\begin{frame}{The Brushless ``Shaky Shaky'' --- What We Saw}
-\begin{block}{What we saw}
-\begin{itemize}
-  \item Full INDI on brushless CF21BL: a self-sustained \textasciitilde7\,Hz oscillation,
-        reproducible in hover \emph{and} under maneuvering load --- same mechanism throughout.
-  \item \textbf{This is why brushless underperforms upgraded on some maneuvers} (e.g.\ crash
-        ceiling on circle at high kt) despite otherwise excellent figure-8 tracking ---
-        an unexpected, counterintuitive combination worth flagging explicitly.
-\end{itemize}
-\end{block}
-\vspace{0.05cm}
-\twopics{0.44}{flying_drone_stack/docs/usd_hover_2026-07-23_shake_diagnostic.png}{0.44}{flying_drone_stack/docs/usd_oval_2026-07-23_shake_diagnostic.png}
-
-{\footnotesize 500\,Hz SD-card diagnostic: hover (left) vs.\ oval load (right) --- same peak.}
-\end{frame}
-
-\begin{frame}{Root Cause --- A Gain-Driven, Low-Frequency Resonance, Not Noise}
-\begin{block}{The key match}
-$\omega_n=\sqrt{K_R}/2\pi = 7.8$\,Hz at $K_R=2400$ --- almost exactly the measured 7.22\,Hz
-shake. The controller is oscillating near its \emph{own} attitude-loop natural frequency. That
-makes this a \textbf{low-frequency, gain-driven} closed-loop resonance, not a high-frequency
-external noise/vibration source being poorly filtered.
-\end{block}
-\vspace{0.1cm}
-\centering
-\renewcommand{\arraystretch}{1.05}
-\begin{small}
-\begin{tabular}{lll}
-\toprule
-What we tried & Result & Verdict \\
-\midrule
-Filter (fc\_bw=70\,Hz) & alp\_filt/alp\_raw ratio = 1.00 & dead end \\
-Notch filter (0.25--20\,Hz) & tracking worse in every stable case & dead end \\
-Detuning kr ($\approx$1500) & cascade timescale violation instead & dead end \\
-\bottomrule
-\end{tabular}
-\end{small}
-\vspace{0.1cm}
-
-\begin{tiny}
-\begin{itemize}
-\setlength{\itemsep}{0.05cm}
-\item \textbf{Why the noise-oriented fixes failed}: both filter and notch target a signal
-      problem; this is a gain problem. Attenuating the resonance in the error signal removes the
-      stabilizing feedback constraining it, rather than removing noise --- so it makes tracking
-      worse, not better, exactly as observed.
-\item \textbf{Why simply lowering $K_R$ failed}: the attitude loop cannot be detuned in
-      isolation --- it must stay meaningfully faster than the outer position loop, and lowering
-      $K_R$ alone breaks that separation before it fixes the resonance.
-\item Actuator lag (32\,ms $\to$ 82\textdegree\ phase at 7.22\,Hz) and EKF attitude lag
-      (7.9\,ms $\to$ 20\textdegree) are both measured and consistent with the picture, but
-      \emph{secondary} to the gain match above --- most likely the real lever is the gain/
-      bandwidth relationship itself, not a phase-loss source to filter or delay away.
-\end{itemize}
-\end{tiny}
-\end{frame}
-
-\begin{frame}{Fix Attempts --- What Was Tried and Ruled Out}
-\begin{small}
-\begin{itemize}
-  \setlength{\itemsep}{0.15cm}
-  \item \textbf{Narrow band-reject (notch) filter around 5--10\,Hz, tested.} Implemented,
-        build-verified, and flown across 0.25--20\,Hz bandwidth. Made tracking worse in every
-        stable configuration, one narrow setting $\approx20\times$ worse. Consistent with the
-        shake being the closed loop's own lightly damped resonant mode rather than exogenous
-        noise: attenuating it in the error signal removes the corrective feedback constraining
-        it instead of removing noise.
-  \item \textbf{Lowering $K_R$, tested.} Also failed, for a different reason: triggered a slower
-        divergence from a violated position/attitude cascade timescale separation, since $K_R$
-        cannot be reduced independently of the position gains.
-  \item \textbf{What the data directly shows}: brushless's raw angular-acceleration signal has a
-        narrowband spectral peak at $\approx7.22$\,Hz, and its commanded torque is markedly
-        larger than the other two platforms across all axes ($\tau_z$ RMS 2.17 vs.\ 0.19
-        (standard) and 0.14 (upgraded) N\,m --- roughly an order of magnitude higher). Both
-        directly measured, not inferred.
-\end{itemize}
-\end{small}
-{\footnotesize\textbf{Both targeted fix attempts failed --- the resonance was not resolved
-within this project's scope.} Diagnosis is complete and quantified; the fix is genuine future
-work.}
-\end{frame}
-
-\begin{frame}{Limitations --- Teardrop / Inverted Loop}
-\begin{block}{Status: partial success --- flip works, recovery not yet reliable}
-\begin{itemize}
-  \setlength{\itemsep}{0.4cm}
-  \item \textbf{Inverted vertical loop, brushless platform}: repeatable inversion achieved ---
-        roll $163$--$178^\circ$ at the apex, 3/3 flights, using the same Mode~1/3 planners as
-        every other trajectory in this talk, with an added acceleration constraint at selected
-        waypoints; attitude is still recovered purely from flatness, never authored directly.
-  \item Reliable recovery after the flip has not yet been made to work; several fixes were tried
-        and ruled out.
-\end{itemize}
-\end{block}
-\end{frame}
+\section{Inverted Loop}
 
 \begin{frame}{Best Inverted-Loop Flight --- 3D Trajectory}
 \framesubtitle{\texttt{loop\_mode1\_kt0.15\_2026-07-28\_19-33-11} --- flip achieved, genuine recovery, tumble only in the un-pinned exit ramp}
 \imgh{Controls/logs/loop_best_flight_3d.png}
+\end{frame}
+
+% ============================================================
+\section{Videos \& Demonstration}
+
+\begin{frame}{Videos \& Demonstration}
+\begin{center}
+\vspace{1cm}
+{\Large \textit{Flight footage.}}
+\end{center}
 \end{frame}
 
 % ============================================================
@@ -403,69 +298,11 @@ work.}
         (best figure-8 RMSE of all four, 2.45\,cm).
   \item \textbf{Artifacts}: flights across the full trajectory library (figure-8, oval, circle,
         ...) on multiple platforms, at multiple speeds --- the concrete outcome of the project.
-  \item \textbf{Limitations}: brushless "shaky shaky" behavior (two fix attempts tried and ruled
-        out, not resolved) and the inverted-loop maneuver (flip achieved, recovery not yet made
-        to work) --- both well-characterized open problems, not unexplained gaps.
+  \item \textbf{Limitations}: an unresolved brushless attitude resonance and the inverted-loop
+        maneuver (flip achieved, recovery not yet made to work) --- both well-characterized open
+        problems, not unexplained gaps.
 \end{enumerate}
 \end{small}
-\end{frame}
-
-\begin{frame}{Appendix --- Motion Planning, In Brief}
-\begin{small}
-\begin{enumerate}
-  \setlength{\itemsep}{0.25cm}
-  \item \textbf{Waypoints in, smooth path out}: a handful of position (+ yaw) waypoints go in;
-        a piecewise polynomial trajectory that passes through all of them comes out.
-  \item \textbf{Minimum-snap polynomials}: each segment between waypoints is a degree-7/8
-        polynomial, solved so the whole path is as smooth as possible (continuous up to snap,
-        the 4th derivative of position) --- this is what keeps the drone from having to make any
-        sudden, jerky corrections.
-  \item \textbf{Segment timing, two ways}: either give each segment a duration by hand (Mode 0,
-        Mellinger 2012), or give one aggressiveness scalar $k_t$ and let the planner pick
-        timings automatically (Mode 1, Richter et al.\ 2016) --- this is the $k_t$ used
-        throughout every sweep in this talk.
-  \item \textbf{Differential flatness turns a path into a full reference}: position and its
-        derivatives (velocity, acceleration, jerk, snap) plus yaw are enough to solve, in closed
-        form, for everything the controller needs --- desired attitude $R_d$, thrust, body rate
-        $\omega_d$, and angular acceleration $\dot\omega_d$ (Faessler, Franchi \& Scaramuzza 2018).
-        No attitude has to be authored by hand.
-  \item \textbf{Result}: a complete, physically consistent feedforward reference at every instant
-        in time --- not just a position setpoint --- exported as polynomial coefficients and
-        evaluated onboard at 500--1000\,Hz. Both the geometric and INDI controllers consume the
-        exact same reference.
-\end{enumerate}
-\end{small}
-\end{frame}
-
-\begin{frame}{Appendix --- Full INDI, Pseudocode}
-\framesubtitle{Simplified from \texttt{firmware\_app/src/lib.rs} \texttt{controller\_step()} --- filtering/clamping omitted for clarity}
-\ttfamily\scriptsize
-\textbf{every control cycle (dt):}\\[2pt]
-\textit{-- position loop (outer, full rate) --}\\
-e\_p = p\_d - p;\quad e\_v = v\_d - v\\
-a\_model = ($\sum_i k_{t,i}$rpm$_i^2$)/mass $\cdot\, R\,e_z - g\,e_z$\quad\textit{\small(predicted accel, from RPM\textsuperscript{2} thrust model)}\\
-a\_meas~ = $R\cdot$accel\_body $- g\,e_z$\quad\textit{\small(measured accel, from IMU)}\\
-\textbf{a\_indi = a\_meas -- a\_model}\quad\textit{\small $\leftarrow$ INDI increment: what the model misses}\\
-f\_d = a\_d + Kp$\,$e\_p + Kv$\,$e\_v + Ki$\int$e\_p + $g\,e_z$ + a\_indi\\
-$R_d,\ \omega_d,\ \dot\omega_{des}$ = flatness(f\_d$\cdot$mass, yaw\_d)\quad\textit{\small(desired attitude, from planning)}\\[3pt]
-\textit{-- attitude loop (inner), the "full INDI" part --}\\
-e\_R = 0.5$\,$vee($R_d^\top R - R^\top R_d$)\quad\textit{\small(attitude error on SO(3))}\\
-e$_\omega$ = $\omega - \omega_d$\\
-$\alpha$\_ref = $\dot\omega_{des} - K_R\,$e\_R $- K_W\,$e$_\omega$\quad\textit{\small(desired angular accel, ref.\ blend)}\\
-$\alpha$\_meas = lowpass(diff($\omega$))\quad\textit{\small(measured angular accel, from gyro)}\\
-$\tau$\_current = rpm\_to\_torque(m1..m4)\quad\textit{\small(current torque, from motor RPM --- not a model)}\\
-\textbf{$\Delta\tau$ = J$\,(\alpha$\_ref -- $\alpha$\_meas)}\quad\textit{\small $\leftarrow$ INDI increment: correct only the error}\\
-$\tau$ = $\tau$\_current + $\Delta\tau$\\[3pt]
-send(thrust, $\tau$) $\to$ motor mixer
-\normalfont
-\vspace{0.2cm}
-
-\begin{footnotesize}
-\textbf{The core idea}: instead of computing torque from a dynamics model alone, INDI takes the
-\emph{currently measured} torque/acceleration (from RPM and gyro) as the baseline and computes
-only a small correction for the gap between desired and measured --- far less sensitive to model
-error (motor dynamics, drag, mass) than a purely model-based controller.
-\end{footnotesize}
 \end{frame}
 
 \end{document}
