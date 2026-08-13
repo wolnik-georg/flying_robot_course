@@ -233,7 +233,7 @@ flying_drone_stack/
 │   ├── math/                         # Vec3, Quat, Mat9 (README.md inside)
 │   ├── dynamics/                     # MultirotorState, MultirotorParams, simulator
 │   ├── integration/                  # Euler, RK4, ExpEuler, ExpRK4
-│   ├── controller/                   # GeometricController (SE(3) Lee et al. 2010)
+│   ├── controller/                   # GeometricController (SE(3) Lee et al. 2010) + IndiController (Tal & Karaman 2020) — README.md + CLAUDE.md inside
 │   ├── trajectory/                   # CircleTrajectory, Figure8, Sequenced, …
 │   ├── planning/                     # SplineTrajectory, flatness, ExplorationPlanner (README.md)
 │   ├── estimation/                   # MEKF: predict + height/flow/VO updates (README.md)
