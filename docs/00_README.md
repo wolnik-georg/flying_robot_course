@@ -13,5 +13,6 @@ This folder contains the core planning and scientific documentation for the Mast
 - `05_Experimental_Protocol_2Robot.md` → Experimental protocol for the 2-robot comparison
 - `06_References_Overview.md` → Complete list of papers with reading status and relevance
 - `07_Thesis_Progress_Checklist.md` → Living progress tracker across planning, practical prep, experiments, and writing
+- `08_Trajectory_Upload_Paths.md` → Engineering reference: Mode D (onboard) vs Mode E (official Crazyswarm2 upload), which trajectories are valid on each, and how to run them
 
 This documentation is the single source of truth for the project. New documents should be added with increasing numbers (07_..., 08_..., etc.).

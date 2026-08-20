@@ -220,6 +220,19 @@ float   g_indi_thrust_max   = 0.8f;    /* [N]   total thrust clamp (4x THRUST_MA
  * two stay phase-matched (mirrors why fc_bw already applies to both). Default OFF = byte-identical
  * to prior behaviour. f0/bw are runtime-tunable [Hz] so the notch can be re-centred without a
  * reflash if the shake frequency drifts (6.3-7.9 Hz measured across different sessions). */
+/* omega_src — where the passthrough branch (g_traj_mode==0: HLC/Mode E, cmdFullState) takes
+ * the desired body rate omega_d from. The Crazyflie HLC builds its body frame Mellinger-style
+ * (y_B = z_B x x_C) in pptraj.c, while our controller's desired_rot/omega_desired build it
+ * Faessler-style (x_B = y_C x z_B). The two agree only when the tilt is axis-aligned, so
+ * trusting setpoint.attitudeRate gives an omega_d that is inconsistent with the R_d the
+ * controller itself uses (measured 0.04-0.22 rad/s on level trajectories; far larger through
+ * zero-thrust). Mode D never had this problem because it computes omega_d locally.
+ *   0 = setpoint.attitudeRate  (default — unchanged behaviour)
+ *   1 = recompute from HLC jerk via omega_desired() — matches Mode D's convention
+ * Falls back to attitudeRate automatically when jerk is absent (cmdFullState memsets it),
+ * so Mode B / hover keepalive are unaffected either way. */
+uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness from HLC jerk */
+
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
@@ -247,6 +260,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, tau_z_max,    &g_indi_tau_z_max)
   PARAM_ADD(PARAM_FLOAT, tilt_max_deg, &g_indi_tilt_max_deg)
   PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
+  PARAM_ADD(PARAM_UINT8, omega_src,    &g_indi_omega_src)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)

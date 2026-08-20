@@ -758,6 +758,7 @@ extern "C" {
     static mut g_indi_mass:   f32;
     // Optional stage-2 notch filter (2026-07-28, shake investigation): 0=off (default,
     // byte-identical to today), 1=on. f0/bw are runtime-tunable [Hz] (Q = f0/bw).
+    static mut g_indi_omega_src: u8;
     static mut g_indi_notch_en: u8;
     static mut g_indi_notch_f0: f32;
     static mut g_indi_notch_bw: f32;
@@ -1789,14 +1790,25 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let ad = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
         let jerk = Vec3::new(sp.jerk.x, sp.jerk.y, sp.jerk.z);
         let snap = Vec3::new(sp.snap.x, sp.snap.y, sp.snap.z);
-        // ω_d from HLC's flatness-derived body rates (deg/s → rad/s)
-        let omega_d = Vec3::new(
+        let yaw_d_local = sp.attitude.yaw * deg2rad;
+        // ω_d source — see g_indi_omega_src in traj_iface.c.
+        //   0 (default): HLC's flatness-derived body rates from the setpoint (deg/s → rad/s).
+        //   1: recompute locally from the HLC's jerk with omega_desired(), so ω_d uses the
+        //      SAME body-frame construction as desired_rot/R_d — i.e. Mode D's convention.
+        // Mode 1 needs jerk to be meaningful; cmdFullState memsets it to zero (Mode B, hover
+        // keepalive, takeoff/land streaming), so fall back to the setpoint rate when jerk is
+        // negligible. That keeps every non-HLC caller byte-identical under either setting.
+        let sp_omega = Vec3::new(
             sp.attitudeRate.roll  * deg2rad,
             sp.attitudeRate.pitch * deg2rad,
             sp.attitudeRate.yaw   * deg2rad,
         );
+        let omega_d = if g_indi_omega_src == 1 && jerk.norm() > 1e-4 {
+            omega_desired(ad, jerk, yaw_d_local)
+        } else {
+            sp_omega
+        };
         // α_des via differential flatness (Tal & Karaman Eq. 15) using HLC's jerk + snap
-        let yaw_d_local = sp.attitude.yaw * deg2rad;
         let alpha_des = alpha_desired(ad, jerk, snap, yaw_d_local);
         (pd, vd, ad, omega_d, alpha_des)
     };

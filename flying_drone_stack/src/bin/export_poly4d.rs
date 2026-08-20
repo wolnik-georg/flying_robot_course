@@ -19,6 +19,8 @@
 //! --out        : output CSV path (default: auto-generate in CS2 data folder)
 //! --onboard    : write OOT traj param format (19 floats/seg, normalised-time coefficients)
 //!                instead of HLC Poly4D (8-coef physical-time). Output: {label}_onboard.csv
+//! --no-rest-wrap : skip the rest-to-rest entry/exit wrap on periodic trajectories in the
+//!                HLC export (restores pre-2026-08-19 output). Diagnostic escape hatch only.
 //!
 //! (*) Mode 2 (SE3) exports the position-only path; attitude polynomials are not
 //!     supported by Poly4D. The geometric controller derives attitude from flatness.
@@ -50,6 +52,7 @@ fn main() {
     let out_override = args.iter().position(|a| a == "--out")
         .and_then(|i| args.get(i + 1)).cloned();
     let onboard = args.iter().any(|a| a == "--onboard");
+    let no_rest_wrap = args.iter().any(|a| a == "--no-rest-wrap");
 
     // Default kt differs per trajectory
     let default_kt = match trajectory.as_str() {
@@ -179,13 +182,47 @@ fn main() {
         eprintln!("Wrote metadata {} (periodic={}, n_entry={}, n_exit={})",
                   meta_path, periodic, n_entry, n_exit);
     } else {
-        // HLC Poly4D format: degree-7 physical-time coefficients (existing behaviour).
+        // HLC Poly4D format: degree-7 physical-time coefficients.
         let out_path = out_override.unwrap_or_else(|| {
             format!("{}/{}.csv", CS2_DATA_DIR, label)
         });
+
+        // Rest-to-rest wrap (same fix as the --onboard branch above, applied here
+        // 2026-08-19). Periodic cores start/end mid-lap at full lap speed; the HLC's
+        // startTrajectory(relative=True) shifts POSITION only, so without this wrap the
+        // drone receives a velocity step at t=0 (measured: circle 1.00 m/s, oval 1.19 m/s,
+        // tilted_oval 1.20 m/s) -- the same swing-out the onboard path was fixed for.
+        // Non-periodic trajectories are already rest-to-rest and pass through unchanged.
+        // `--no-rest-wrap` restores the pre-fix output byte-for-byte.
+        let periodic = is_loop_safe(&trajectory, mode);
+        let traj_out = if periodic && !no_rest_wrap {
+            let (wrapped, t_e) = wrap_rest_to_rest(&traj);
+            eprintln!(
+                "Rest-to-rest wrap: +entry/+exit {:.2}s each ({} → {} segs, total {:.3}s)",
+                t_e, traj.segments.len(), wrapped.segments.len(), wrapped.total_time
+            );
+            wrapped
+        } else {
+            if periodic {
+                eprintln!("--no-rest-wrap: periodic core exported unwrapped (starts at lap speed)");
+            }
+            traj.clone()
+        };
+
+        // Firmware cap: crtp_commander_high_level.c TRAJECTORY_MEMORY_SIZE 4096 bytes
+        // / sizeof(struct poly4d) 132 bytes = 31 pieces.
+        const HLC_MAX_PIECES: usize = 31;
+        if traj_out.segments.len() > HLC_MAX_PIECES {
+            eprintln!(
+                "ERROR: {} segments exceed the HLC trajectory memory cap of {} pieces",
+                traj_out.segments.len(), HLC_MAX_PIECES
+            );
+            std::process::exit(1);
+        }
+
         eprintln!("Writing {} → {}", label, out_path);
-        write_cs2_csv(&traj, &out_path).expect("Failed to write CSV");
-        eprintln!("Done. {} segments, total={:.3}s", traj.segments.len(), traj.total_time);
+        write_cs2_csv(&traj_out, &out_path).expect("Failed to write CSV");
+        eprintln!("Done. {} segments, total={:.3}s", traj_out.segments.len(), traj_out.total_time);
     }
 }
 
@@ -1045,4 +1082,133 @@ fn to_hermite_phys7(norm: &[f32; 9], big_t: f32) -> [f32; 8] {
     let c7 = x3 / t7;
 
     [c0, c1, c2, c3, c4, c5, c6, c7]
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+//
+// Regression cover for the HLC (Mode E) export path. These lock in the two
+// properties the Mode D -> Mode E migration depends on:
+//   1. the degree-8 -> degree-7 Hermite reduction preserves (p,v,a,j) at both
+//      segment ends -- i.e. C3 continuity survives, so no reference steps;
+//   2. periodic trajectories leave the HLC exporter rest-to-rest, so the drone
+//      never receives a velocity step at t=0 (startTrajectory(relative=True)
+//      shifts position only).
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Physical (p,v,a,j) at t=0 / t=T of a degree-7 physical-time segment.
+    fn phys7_boundary(c: &[f32; 8], t: f32, at_end: bool) -> (f32, f32, f32, f32) {
+        let x = if at_end { t } else { 0.0 };
+        let p: f32 = (0..8).map(|k| c[k] * x.powi(k as i32)).sum();
+        let v: f32 = (1..8).map(|k| k as f32 * c[k] * x.powi(k as i32 - 1)).sum();
+        let a: f32 = (2..8).map(|k| (k * (k - 1)) as f32 * c[k] * x.powi(k as i32 - 2)).sum();
+        let j: f32 = (3..8)
+            .map(|k| (k * (k - 1) * (k - 2)) as f32 * c[k] * x.powi(k as i32 - 3))
+            .sum();
+        (p, v, a, j)
+    }
+
+    fn assert_close(a: f32, b: f32, tol: f32, what: &str) {
+        assert!((a - b).abs() <= tol, "{what}: {a} vs {b} (tol {tol})");
+    }
+
+    /// The Hermite reduction must reproduce position, velocity, acceleration and
+    /// jerk exactly at both ends of every segment -- that is what keeps the
+    /// piecewise trajectory C3 across junctions after the 9 -> 8 coefficient drop.
+    #[test]
+    fn hermite_phys7_preserves_boundary_pvaj() {
+        let norm: [f32; 9] = [0.3, -1.1, 2.0, 0.7, -3.2, 1.4, 0.9, -0.6, 0.25];
+        for &t in &[0.35_f32, 1.0, 2.7] {
+            let c7 = to_hermite_phys7(&norm, t);
+            for &at_end in &[false, true] {
+                let (p8, v8, a8, j8) = boundary_state(&norm, t, at_end);
+                let (p7, v7, a7, j7) = phys7_boundary(&c7, t, at_end);
+                let s = if at_end { "end" } else { "start" };
+                assert_close(p7, p8, 1e-3, &format!("pos @{s} T={t}"));
+                assert_close(v7, v8, 1e-3, &format!("vel @{s} T={t}"));
+                assert_close(a7, a8, 1e-2, &format!("acc @{s} T={t}"));
+                assert_close(j7, j8, 5e-2, &format!("jerk @{s} T={t}"));
+            }
+        }
+    }
+
+    /// When the planner does not use the degree-8 term (c8 == 0 -- the case for
+    /// circle / figure8 / oval, where the min-snap QP reaches its degree-7
+    /// optimum) the reduction is exact everywhere, not just at the boundaries.
+    /// This is why Mode E reproduces Mode D bit-for-bit on those trajectories.
+    #[test]
+    fn hermite_phys7_exact_when_degree8_term_is_zero() {
+        let norm: [f32; 9] = [0.5, 1.2, -0.8, 0.4, 2.1, -1.7, 0.6, 0.3, 0.0];
+        let t = 1.6_f32;
+        let c7 = to_hermite_phys7(&norm, t);
+        for i in 0..=50 {
+            let tau = i as f32 / 50.0;
+            let p8: f32 = norm.iter().enumerate().map(|(k, &a)| a * tau.powi(k as i32)).sum();
+            let x = tau * t;
+            let p7: f32 = (0..8).map(|k| c7[k] * x.powi(k as i32)).sum();
+            assert_close(p7, p8, 2e-4, &format!("pos @tau={tau}"));
+        }
+    }
+
+    fn seg(cx: [f32; 9], cy: [f32; 9], duration: f32) -> SplineSegment {
+        SplineSegment { cx, cy, cz: [0.0; 9], cyaw: [0.0; 9], duration }
+    }
+
+    /// A periodic core starts mid-lap at full speed; after wrapping, the overall
+    /// trajectory must start and end at rest (v = a = 0). Without this the HLC
+    /// hands the controller a velocity step at t=0.
+    #[test]
+    fn wrap_rest_to_rest_makes_trajectory_start_and_end_at_rest() {
+        // Constant-velocity core: p(tau) = tau, so v = 1/T != 0 at both ends.
+        let mut cx = [0.0_f32; 9];
+        cx[1] = 1.0;
+        let core = SplineTrajectory { segments: vec![seg(cx, [0.0; 9], 1.0)], total_time: 1.0 };
+        let (_, v0, a0, _) = boundary_state(&core.segments[0].cx, 1.0, false);
+        assert!(v0.abs() > 0.5, "core should start with non-zero velocity, got {v0}");
+
+        let (wrapped, t_e) = wrap_rest_to_rest(&core);
+        assert!(t_e > 0.0, "entry/exit ramp must have positive duration");
+        assert_eq!(wrapped.segments.len(), core.segments.len() + 2, "expect +entry +exit");
+
+        let first = &wrapped.segments[0];
+        let last = wrapped.segments.last().unwrap();
+        for (c, at_end, what) in [(&first.cx, false, "start"), (&last.cx, true, "end")] {
+            let (_, v, a, _) = boundary_state(c, if at_end { last.duration } else { first.duration }, at_end);
+            assert_close(v, 0.0, 1e-3, &format!("wrapped velocity @{what}"));
+            assert_close(a, 0.0, 1e-2, &format!("wrapped accel @{what}"));
+        }
+        let _ = a0;
+    }
+
+    /// The wrap may only prepend/append ramps -- the flown lap itself must be
+    /// untouched, so tuning results carry over unchanged.
+    #[test]
+    fn wrap_rest_to_rest_leaves_core_segments_untouched() {
+        let mut cx = [0.0_f32; 9];
+        cx[1] = 1.0;
+        cx[2] = 0.25;
+        let core = SplineTrajectory { segments: vec![seg(cx, [0.0; 9], 1.0)], total_time: 1.0 };
+        let (wrapped, _) = wrap_rest_to_rest(&core);
+        let inner = &wrapped.segments[1..wrapped.segments.len() - 1];
+        assert_eq!(inner.len(), core.segments.len());
+        for (a, b) in core.segments.iter().zip(inner) {
+            assert_eq!(a.duration, b.duration, "core segment duration changed");
+            assert_eq!(a.cx, b.cx, "core cx coefficients changed");
+            assert_eq!(a.cy, b.cy, "core cy coefficients changed");
+        }
+    }
+
+    /// Which trajectories are periodic decides which get wrapped in BOTH the
+    /// --onboard and the HLC export. Guard the classification so the two paths
+    /// cannot silently diverge again.
+    #[test]
+    fn periodic_classification_matches_between_export_paths() {
+        for t in ["circle", "oval", "tilted_oval", "loop", "teardrop", "teardrop_wide"] {
+            assert!(is_loop_safe(t, 1), "{t} must be treated as periodic");
+        }
+        for t in ["figure8", "slalom", "helix", "corner", "corkscrew"] {
+            assert!(!is_loop_safe(t, 1), "{t} must NOT be treated as periodic");
+        }
+    }
 }
