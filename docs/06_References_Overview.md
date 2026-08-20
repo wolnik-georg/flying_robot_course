@@ -19,12 +19,12 @@ Status: ✅ = Read | 🔍 = Skimmed | ⬜ = Not yet read
 | Cascaded INDI (Smeur et al.) | 2018 | 🔍 | High | Classic cascaded INDI for MAVs |
 | Tal & Karaman INDI | 2018/21 | ✅ | High | High-performance INDI for aggressive flight |
 | RSS 2025 Downwash Characterisation | 2025 | 🔍 | High | Experimental forces, moments and flow fields |
-| L1 KNODE-DW MPC | 2025 | 🔍 | High | Learning-based MPC + adaptive control for 3-robot teams |
+| L1 KNODE-DW MPC (arXiv:2506.17488) | 2025 | 🔍 | High | Learning-based MPC + adaptive control for 3-robot teams |
 
 ## Lower Priority
 | Paper | Year | Status | Importance | Core Idea |
 |-------|------|--------|------------|---------|
-| KNODE-DW MPC (2024) | 2024 | ⬜ | Medium-High | Residual learning inside MPC |
+| KNODE-DW MPC (Chee, Hsieh, Pappas, Hsieh, arXiv:2410.09727) | 2024 | ✅ | Medium-High | "Flying Quadrotors in Tight Formations using Learning-based Model Predictive Control" — residual learning inside MPC; **main reference for Method 6** |
 | Docking with Learnt Downwash | 2023 | ⬜ | Medium | Practical vertical docking with residual models |
 | NDP-NMPC | 2023 | ⬜ | Medium | Neural predictor + NMPC |
 | Batra et al. End-to-end RL Swarms | 2021/22 | ⬜ | Medium | Multi-agent end-to-end RL on Crazyflie |

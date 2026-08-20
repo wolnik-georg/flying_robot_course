@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 13 August 2026
+**Last updated:** 19 August 2026
 
 This is a living document. Update it regularly so we always know what has been completed and what comes next.
 
@@ -26,13 +26,15 @@ This is a living document. Update it regularly so we always know what has been c
 
 ## B. Practical Preparation
 
-- [ ] Request FBL controller code via professor
-- [ ] Hardware inventory (number of working Crazyflie brushless drones, decks, batteries, firmware)
-- [ ] Verify / set up high-rate logging (states, motor commands, residual signals)
-- [ ] Confirm geometric and INDI controllers still run correctly on the brushless platforms
-- [ ] Prepare first residual-force data collection flights (using pure INDI)
+- [x] Request FBL controller code via professor (waiting for authors)
+- [x] Align planner/Crazyswarm2 polynomial format and use official upload path (legacy path preserved) — see `flying_drone_stack/docs/TRAJECTORY_UPLOAD_PATHS.md`
+- [ ] Hardware inventory
+- [ ] High-rate logging check
+- [ ] Sanity-check geometric and INDI on brushless
+- [ ] Re-validate Mode E in flight: hover → figure8 → circle, geometric then INDI, vs Mode D baseline
+- [ ] Prepare first INDI residual-force data collection
 
-**Status:** Next up
+**Status:** In progress
 
 ---
 
@@ -80,5 +82,5 @@ This is a living document. Update it regularly so we always know what has been c
 
 ## Quick Current Focus
 
-**Right now:** Finish Practical Preparation (Section B)  
+**Right now:** Finish remaining items in B, then start residual-force data collection with pure INDI. FBL code is not a blocker.  
 **Next major milestone:** Start residual-force data collection with pure INDI

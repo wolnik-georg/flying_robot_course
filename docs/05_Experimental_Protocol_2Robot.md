@@ -8,6 +8,11 @@ Fair comparison of:
 
 on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: Minimum = Methods 1–3, Ideal = Methods 1–5, Super perfect = all 7).
 
+**Phasing:** The first data-collection campaign uses **Pure INDI only** — it needs no learned
+residual model and no FBL code, so it can start immediately. Later campaigns add
+**Geometric + NN** and **FBL + NN** once the respective residual models / controller code are
+ready.
+
 ## Hardware
 - 2× Crazyflie brushless (identical configuration)
 - OptiTrack @ 100 Hz + Crazyswarm2

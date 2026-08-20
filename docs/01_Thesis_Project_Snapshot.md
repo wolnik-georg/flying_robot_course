@@ -1,5 +1,5 @@
 # Thesis Project Snapshot
-**Last updated:** 13 August 2026
+**Last updated:** 19 August 2026
 
 ## 1. Core Idea of the Thesis
 
@@ -67,9 +67,13 @@ First systematic multi-robot head-to-head comparison of the controller families 
 
 ## 5. Immediate Next Steps
 
-1. Save all documentation files
-2. Send Gap & Contribution Statement to mentors
-3. Clean geometric + INDI code
-4. Request FBL code via professor
-5. Check hardware status and set up high-rate logging
-6. Start residual-force data collection with pure INDI
+Planning, literature, the residual-wrench model, the experimental protocol, and repo cleanup are
+done. FBL controller code has been requested via the professor and is still waiting on the
+authors — this does not block starting. The actual thesis experiments begin with INDI
+close-proximity data collection.
+
+1. Hardware inventory
+2. High-rate logging check
+3. Sanity-check geometric and INDI controllers on the brushless platforms
+4. Prepare first INDI residual-force data collection
+5. Start residual-force data collection with pure INDI
