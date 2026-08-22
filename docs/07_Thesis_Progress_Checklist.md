@@ -20,6 +20,13 @@ bottom.
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
 | **Not blocking** | FBL code (Method 3) still with the authors; the other methods proceed without it |
 
+### Architecture decisions (fixed 2026-08-22)
+
+| Decision | Consequence |
+|---|---|
+| **NN inference runs ONBOARD; training is offline** | Every controller — geometric, hybrid, learning-based — runs on the brushless Crazyflie. Needs an MLP in `no_std` Rust + a weight-upload path (thesis C.2). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
+| **uSD logging is the dataset; radio is for monitoring** | Radio cannot carry 2 drones at full rate. 500 Hz onboard per drone, independent of radio — `tools/README_usd_thesis_logging.md`. Requires a Micro SD deck per drone. |
+
 ---
 
 ## A. Planning & Documentation — ✅ COMPLETE
@@ -51,6 +58,9 @@ bottom.
 - [x] **Log the residual** `indi.a_res_{x,y,z}` = `a_meas - a_model` = f_res/m — the core thesis measurement. Recorded in ALL controller modes, so downwash is measurable while flying geometric too
 - [x] Multi-drone analyser `experiments/analysis/analyze_formation.py` (separation + residual force + downwash report)
 - [x] Shared clock across per-drone loggers, so residual and relative position are correlatable
+- [x] Switch `crazyflies.yaml` to the **brushless CF21BL** gains (upgraded block preserved, commented)
+- [x] uSD logging config + guide for the thesis dataset (`tools/usd_thesis_config.txt`)
+- [x] Documented 1 ↔ N drone switching in one place (`crazyflies.yaml` header + multi-drone log note)
 
 ### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
 
@@ -72,9 +82,10 @@ bottom.
 ### B.3 Hardware configuration for two drones
 
 - [ ] 5. **Hardware inventory** — working brushless drones, decks, batteries *(blocks everything below)*
-- [ ] 6. Switch `crazyflies.yaml` `indi_gains` to the **brushless** block *(currently upgraded CF2.1, `mass 0.0386`)*
+- [ ] 6. ~~Switch `indi_gains` to brushless~~ — **done 2026-08-22** (mass 0.041, kr 2400, kw 170)
+- [ ] 6b. **Decide `clamp_en`** — currently `11` = tilt clamp OFF, set for inverted-loop work. Nothing in hover/figure8/circle needs it off. Decide before the first 2-drone flight
 - [ ] 7. Fill the three `cf_second` TODOs — real URI, real `initial_position`, platform
-- [ ] 8. Resolve radio bandwidth — 6 topics × 100 Hz × 2 drones saturates one Crazyradio *(2nd dongle, or lower rates)*
+- [ ] 8. Fit a Micro SD deck per drone + install `tools/usd_thesis_config.txt` as `config.txt`; drop radio log rates to 20 Hz for 2-drone flights
 - [ ] 9. Set `cf_second: enabled: true`
 - [ ] 10. High-rate logging check — states, motor commands, residual signals. **Confirm `indi.a_res_*` is non-zero in flight** (it needs an RPM source: `rpm.m*` deck or DShot `motor.m*_rpm`); zero means no telemetry and no thesis data
 
@@ -148,6 +159,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (2) | Decisions fixed: NN inference onboard / training offline; uSD is the dataset. Brushless gains activated. uSD config + 1↔N drone switching documented. Found peer position is already available onboard, so the NN input needs no new comms. |
 | 2026-08-22 | Mode E migration complete and merged to `main` (both repos). `formation_flight.py` added. `--laps`, figure8 rest-to-rest, single frame convention. 13 stale branches deleted, stable/finalized preserved. Docs + memory updated. B.2–B.4 laid out as the operational ladder. |
 | 2026-08-19 | Chee et al. (arXiv:2410.09727) read → Method 6 reference. FBL code requested, pending. Section A closed out. |
 | 2026-08-13 | Control strategies expanded to 7 methods; formation list broadened. |
