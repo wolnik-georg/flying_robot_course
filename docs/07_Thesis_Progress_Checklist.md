@@ -16,6 +16,7 @@ bottom.
 | **Phase** | B — Practical Preparation |
 | **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
 | **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
+| **New** | All 4 control modes now run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
 | **Not blocking** | FBL code (Method 3) still with the authors; the other methods proceed without it |
@@ -64,6 +65,7 @@ bottom.
 - [x] Documented 1 ↔ N drone switching in one place (`crazyflies.yaml` header + multi-drone log note)
 - [x] uSD logging started by **broadcast** (`allcfs.setParam`) so per-drone logs share an origin
 - [x] `tools/merge_usd_logs.py` — merges per-drone uSD logs, measures the actual offset/drift, emits relative state + f_res. Self-tested against known shifts
+- [x] **Thesis controllers run in simulation** — the same Rust firmware source, via SIL, selectable with `sim.oot_ctrl_mode` (0/1/2/3). Two-drone downwash reproduced in ROS under both geometric and full INDI (geo −30.5/−2.9 mm, INDI −58.8/−6.2 mm; the ~10x lower/upper asymmetry is the downwash signature, but the geo-vs-INDI difference is not yet a result). Five simulator fidelity bugs fixed first (missing accelerometer, wrong compiled airframe, mismatched motor calibrations, controller called at 2 kHz with a ms tick, and `firmware_params` never applied so the sim flew gains nobody flies) — [`09_Simulation.md`](09_Simulation.md)
 
 ### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
 
@@ -94,6 +96,7 @@ bottom.
 | Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
 | Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
 | Config | Brushless gains active; 1 <-> N drone switching documented |
+| Simulation | All 4 control modes + Neural-Swarm2 downwash, same source as the drone; airframe derived from firmware so plant and controller cannot diverge |
 | Housekeeping | Merged to `main`, branches cleaned, frozen branches preserved, docs + memory current |
 
 ### B.3 Hardware configuration for two drones
@@ -182,6 +185,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (3) | Geometric + all INDI modes wired into the CS2 simulator through the existing SIL bindings, running the same Rust source that flies. Five plant/config fidelity bugs found and fixed, each of which had looked like a controller fault — the last being that `crazyflies.yaml` firmware_params were never pushed to the simulated controller. Two-drone downwash reproduced under both geometric and full INDI with the correct 10x lower/upper asymmetry. `09_Simulation.md` added, including what the simulator still cannot show (no motor lag, no EKF, no noise). |
 | 2026-08-22 (2) | Decisions fixed: NN inference onboard / training offline; uSD is the dataset. Brushless gains activated. uSD config + 1↔N drone switching documented. Found peer position is already available onboard, so the NN input needs no new comms. |
 | 2026-08-22 | Mode E migration complete and merged to `main` (both repos). `formation_flight.py` added. `--laps`, figure8 rest-to-rest, single frame convention. 13 stale branches deleted, stable/finalized preserved. Docs + memory updated. B.2–B.4 laid out as the operational ladder. |
 | 2026-08-19 | Chee et al. (arXiv:2410.09727) read → Method 6 reference. FBL code requested, pending. Section A closed out. |

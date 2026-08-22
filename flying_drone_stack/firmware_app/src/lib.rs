@@ -716,6 +716,28 @@ impl State {
 
 static mut CTRL: State = State::zero();
 
+// Address and size of the controller state, for the host simulator ONLY.
+//
+// On the drone there is one vehicle per MCU, so a single static is correct. The
+// software-in-the-loop simulator, however, runs every simulated drone through this one
+// compiled controller, and the calls interleave: drone A, drone B, drone A... They would
+// share `last_tick`, the INDI filter chain and the integrators, which silently destroys
+// both. (Symptom: geometric flies fine because it is near-memoryless, while INDI never
+// leaves the ground.) The simulator swaps this block in and out per vehicle, giving each
+// one its own controller state.
+//
+// Nothing here reads or writes the state, and no control logic depends on it. It exists
+// so the host does not have to duplicate the layout of `State`, which would rot.
+#[no_mangle]
+pub extern "C" fn oot_state_ptr() -> *mut u8 {
+    core::ptr::addr_of_mut!(CTRL) as *mut u8
+}
+
+#[no_mangle]
+pub extern "C" fn oot_state_size() -> usize {
+    core::mem::size_of::<State>()
+}
+
 // ── INDI log variables (Mode 1) ────────────────────────────────────────────
 // Variables owned by C (traj_iface.c); Rust writes via C function calls which
 // are opaque to Rust LTO — values are always computed and stored correctly.
