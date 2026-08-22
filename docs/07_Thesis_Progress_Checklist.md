@@ -19,6 +19,7 @@ bottom.
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
 | **Not blocking** | FBL code (Method 3) still with the authors; the other methods proceed without it |
+| **Verify in the lab** | uSD sync is *predicted* at a few ms — `merge_usd_logs.py` prints the measured value; check it on the first 2-drone flight |
 
 ### Architecture decisions (fixed 2026-08-22)
 
@@ -61,6 +62,8 @@ bottom.
 - [x] Switch `crazyflies.yaml` to the **brushless CF21BL** gains (upgraded block preserved, commented)
 - [x] uSD logging config + guide for the thesis dataset (`tools/usd_thesis_config.txt`)
 - [x] Documented 1 ↔ N drone switching in one place (`crazyflies.yaml` header + multi-drone log note)
+- [x] uSD logging started by **broadcast** (`allcfs.setParam`) so per-drone logs share an origin
+- [x] `tools/merge_usd_logs.py` — merges per-drone uSD logs, measures the actual offset/drift, emits relative state + f_res. Self-tested against known shifts
 
 ### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
 
