@@ -82,6 +82,20 @@ bottom.
 > If 3 does not match 2, **stop and investigate** — the offline analysis would be incomplete.
 > figure8 is the cleanest comparison because it isolates the mode switch.
 
+### B.2b What is DONE in software — nothing here blocks you
+
+| Area | What exists |
+|---|---|
+| Trajectory | Mode E on the official Crazyswarm2 path; Mode D frozen byte-identical |
+| | Rest-to-rest on all closed loops incl. figure8; `--laps` continuous multi-lap |
+| | One frame convention (Mellinger) on Mode E |
+| Measurement | `indi.a_res_*` — the residual force, logged in **every** controller mode |
+| Multi-drone | `formation_flight.py` — N drones, formations, safety checks, dry-run |
+| Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
+| Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
+| Config | Brushless gains active; 1 <-> N drone switching documented |
+| Housekeeping | Merged to `main`, branches cleaned, frozen branches preserved, docs + memory current |
+
 ### B.3 Hardware configuration for two drones
 
 - [ ] 5. **Hardware inventory** — working brushless drones, decks, batteries *(blocks everything below)*
@@ -97,6 +111,12 @@ bottom.
 - [ ] 11. Dry run — `formation_flight -- ... --dry-run` *(prints the plan, commands nothing)*
 - [ ] 12. First 2-drone flight — `--formation vertical --separation 0.6` *(start wide)*
 - [ ] 13. Walk separation down — 0.6 → 0.4 → 0.3 → 0.25 → 0.2 m
+- [ ] 14. **Check the real uSD sync number** that `merge_usd_logs.py` prints — the few-ms figure is predicted from broadcast jitter and clock drift and has only been validated against synthetic data
+
+### B.5 Verify, then FREEZE the gains
+
+- [ ] 15. Confirm the locked brushless gains still track in formation
+- [ ] 16. **Freeze them.** Re-tuning per controller or per separation would measure tuning effort rather than the compensation methods, and invalidate the comparison
 
 ---
 
