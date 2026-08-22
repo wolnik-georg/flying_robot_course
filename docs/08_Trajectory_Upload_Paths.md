@@ -39,6 +39,60 @@ receives — `(pd, vd, ad, ω_d, α_des)`:
   `g_traj_mode == 1 || == 2`, and Poly4D has no attitude channel — so flip / immelmann / splits
   are structurally Mode D only.
 
+## Rest-to-rest: why there is a wind-up ramp, and why it stays
+
+Every closed-loop trajectory in the Mode E export starts and ends at **zero velocity**, so the
+drone never receives a velocity step. That is achieved by wrapping the lap with a 0.65 s
+entry/exit ramp.
+
+**These two properties cannot both hold**: a lap flown at constant speed has non-zero velocity
+everywhere on it, so starting from rest requires either (a) a ramp, or (b) a step at t=0. The
+ramp buys the accelerating distance *outside* the lap, which is what keeps the lap itself exact.
+
+The ramp is far gentler than "extra trajectory" suggests — it rolls backwards ~15 cm *along the
+path* and then accelerates forward through the start point at exactly lap speed:
+
+| circle, kt 0.1, lap-start `[0.75, 0, 0]` | position | \|v\| |
+|---|---|---|
+| t = 0.00 s | `[0.750, 0.000]` | 0.000 m/s |
+| t = 0.33 s | `[0.737, −0.111]` | 0.594 m/s |
+| t = 0.65 s | `[0.750, −0.000]` | **1.000 m/s** — enters the lap |
+
+Measured deviation of the ramps from the flown path: **5.7 mm** (circle 1.0 m/s), 14.7 mm
+(circle 1.6 m/s), 2.0 mm (oval). The lap itself is untouched — circle radius 0.7500 m with
+**0.00 mm** spread.
+
+### `--rest-to-rest` (on-path, opt-in) — measured worse, not recommended
+
+An alternative was implemented that plans the ring **non-periodically** instead, so the drone
+accelerates from rest *along* the path with no ramp at all (`spline.rs` already constrains
+derivatives 1–4 to zero at both ends when `periodic = false`). It does exactly what it says, but
+forcing accel and decel *inside* the lap makes the min-snap spline bow between waypoints and
+overspeed:
+
+| circle kt 0.1 | radial error vs the true circle | peak speed |
+|---|---|---|
+| **default (wind-up wrap)** | mean **0.4 mm**, max **5.7 mm** | **1.000 m/s** |
+| `--rest-to-rest` | mean 54.5 mm, max **160.5 mm** | **2.102 m/s** |
+
+The radius wanders 0.634 → 0.902 m on a 0.75 m circle. The flag is kept for completeness and
+prints a warning; **the default wind-up wrap is the correct choice.**
+
+### figure8 is now rest-to-rest on Mode E
+
+`figure8` is a genuine closed loop (end-vs-start mismatch 2.3e-8 m) but was historically flown
+unwrapped, starting and ending mid-lap at ~1.06 m/s. It is now wrapped in the HLC export via
+`hlc_rest_wrap()`, a superset of `is_loop_safe()`.
+
+The wrap is applied **only in the HLC branch**; the onboard export still uses `is_loop_safe()`,
+so Mode D's figure8 is byte-identical (verified pre-change vs post-change). Wrapping costs
+nothing in shape or speed:
+
+| figure8 | lap shape deviation | start/end \|v\| | peak \|v\| |
+|---|---|---|---|
+| unwrapped (Mode D, unchanged) | — | 1.0586 m/s | 1.067 m/s |
+| **wrapped (Mode E)** | **0.0 mm** | **0.0000 m/s** | 1.067 m/s |
+
 ## Continuous multi-lap flight — `--laps`
 
 Mode D loops **only the core lap**: the firmware knows which segments are the entry/exit ramps

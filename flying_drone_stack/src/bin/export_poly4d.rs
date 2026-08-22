@@ -21,6 +21,10 @@
 //!                instead of HLC Poly4D (8-coef physical-time). Output: {label}_onboard.csv
 //! --no-rest-wrap : skip the rest-to-rest entry/exit wrap on periodic trajectories in the
 //!                HLC export (restores pre-2026-08-19 output). Diagnostic escape hatch only.
+//! --rest-to-rest : HLC export only. Plan the ring NON-periodically so the drone starts at
+//!                rest ON the path, accelerates along it, and decelerates back to rest --
+//!                instead of the Hermite wind-up/wind-down ramps. Speed is then not
+//!                constant around the lap. circle|oval|tilted_oval|figure8. -> {label}_r2r.csv
 //! --laps N     : HLC export only. Bake N continuous core laps into ONE trajectory, so the
 //!                drone flies ramp-up -> N laps -> ramp-down from a single startTrajectory().
 //!                Requires a closed loop (verified at export). Output: {label}_laps{N}.csv.
@@ -57,6 +61,7 @@ fn main() {
         .and_then(|i| args.get(i + 1)).cloned();
     let onboard = args.iter().any(|a| a == "--onboard");
     let no_rest_wrap = args.iter().any(|a| a == "--no-rest-wrap");
+    let rest_to_rest = args.iter().any(|a| a == "--rest-to-rest");
     let laps: usize = args.iter().position(|a| a == "--laps")
         .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(1).max(1);
 
@@ -194,6 +199,7 @@ fn main() {
     } else {
         // HLC Poly4D format: degree-7 physical-time coefficients.
         let label = if laps > 1 { format!("{}_laps{}", label, laps) } else { label.clone() };
+        let label = if rest_to_rest { format!("{}_r2r", label) } else { label };
         let out_path = out_override.unwrap_or_else(|| {
             format!("{}/{}.csv", CS2_DATA_DIR, label)
         });
@@ -212,7 +218,43 @@ fn main() {
         // given, so the laps must be in the upload. Concatenation happens BEFORE the
         // rest-to-rest wrap, so the ramps end up on the outside of the whole stack rather
         // than around each lap.
-        let core = if laps > 1 {
+        // On-path rest-to-rest: re-plan the ring as a NON-periodic trajectory instead of
+        // wrapping a periodic core with wind-up/wind-down ramps. Starts at rest on the
+        // path, accelerates along it, decelerates back to rest -- no off-path excursion.
+        let r2r = if rest_to_rest {
+            match closed_loop_waypoints(&trajectory, speed) {
+                Some((wps, durs)) => {
+                    let t = plan_rest_to_rest(&trajectory, &wps, &durs, laps, mode, kt);
+                    eprintln!(
+                        "Rest-to-rest (on-path): {} lap(s) planned non-periodic, {} segs, {:.3}s \
+                         — no wind-up ramp",
+                        laps, t.segments.len(), t.total_time
+                    );
+                    eprintln!(
+                        "WARNING: --rest-to-rest is measurably WORSE than the default wind-up \
+                         wrap. Forcing accel-from-rest and decel-to-rest inside the lap itself \
+                         makes the min-snap spline bow off the path between waypoints and \
+                         overspeed: measured on circle kt=0.1, radial error 0.4mm -> 160mm and \
+                         peak speed 1.00 -> 2.10 m/s. Prefer the default."
+                    );
+                    Some(t)
+                }
+                None => {
+                    eprintln!(
+                        "ERROR: --rest-to-rest needs a closed waypoint ring; '{}' has none.\n  \
+                         Supported: circle, oval, tilted_oval, figure8.",
+                        trajectory
+                    );
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            None
+        };
+
+        let core = if let Some(t) = r2r {
+            t
+        } else if laps > 1 {
             let (dp, dv, da, dj) = loop_closure_error(&traj);
             // Tolerances are generous relative to the ~1e-6 a closed lap actually shows,
             // but far below the metres/m·s⁻¹ an open path would produce.
@@ -236,7 +278,8 @@ fn main() {
             traj.clone()
         };
 
-        let periodic = is_loop_safe(&trajectory, mode);
+        // Already rest-to-rest by construction -> never add the wind-up wrap on top.
+        let periodic = hlc_rest_wrap(&trajectory, mode) && !rest_to_rest;
         let traj_out = if periodic && !no_rest_wrap {
             let (wrapped, t_e) = wrap_rest_to_rest(&core);
             eprintln!(
@@ -744,6 +787,20 @@ fn build_tilted_oval(mode: u8, kt: f32, speed: f32) -> (SplineTrajectory, String
 /// rejects --reps>1 when false. figure8 is kept conservatively non-loopable
 /// regardless of mode — it's the established benchmark trajectory and its
 /// looping behavior has never been validated.
+/// Trajectories that get the rest-to-rest wrap in the HLC (Mode E) export.
+///
+/// A superset of `is_loop_safe`: figure8 is a genuine closed loop (end-vs-start mismatch
+/// 2.3e-8 m) but Mode D has always flown it unwrapped, starting and ending mid-lap at
+/// ~1.06 m/s. Wrapping it here fixes that velocity step for Mode E while leaving the
+/// onboard export -- and therefore every Mode D result -- byte-identical.
+///
+/// Verified: wrapping figure8 leaves the lap shape EXACTLY unchanged (0.0 mm deviation
+/// from the unwrapped path) and does not raise peak speed (1.067 m/s either way); it only
+/// adds the 0.65 s entry/exit ramps that bring it to rest.
+fn hlc_rest_wrap(trajectory: &str, mode: u8) -> bool {
+    is_loop_safe(trajectory, mode) || trajectory == "figure8"
+}
+
 fn is_loop_safe(trajectory: &str, mode: u8) -> bool {
     match trajectory {
         "circle" | "loop" | "teardrop" | "teardrop_wide" | "oval" | "tilted_oval"
@@ -809,6 +866,64 @@ fn mode_label(traj: &str, mode: u8, kt: f32, speed: f32) -> String {
             format!("{}_mode{}_kt{}", traj, mode, kt_str)
         }
     }
+}
+
+
+// ── On-path rest-to-rest planning ──────────────────────────────────────────
+//
+// The alternative to wrapping a periodic core with Hermite wind-up/wind-down ramps.
+// `SplineTrajectory::plan(.., periodic = false)` already constrains derivatives 1-4 to
+// zero at both ends (see spline.rs), so planning the ring directly as a NON-periodic
+// trajectory makes the drone start at rest ON the path, accelerate along it, and
+// decelerate back to rest -- no excursion off the path, no separate ramp segments.
+//
+// The trade-off vs the wind-up wrap: speed is no longer constant around the lap (the
+// QP has to fit the accel and decel inside the lap itself), so a single lap is flown
+// slower at its start and end. With several laps the middle ones settle near cruise.
+
+/// Waypoint ring + per-segment durations for the closed-loop trajectories that can be
+/// planned rest-to-rest. Returns None for open paths, which have no ring to repeat.
+fn closed_loop_waypoints(trajectory: &str, speed: f32) -> Option<(Vec<Waypoint>, Vec<f32>)> {
+    match trajectory {
+        "circle" => Some(circle_waypoints(speed)),
+        "oval" => Some(oval_waypoints(speed)),
+        "tilted_oval" => Some(tilted_oval_waypoints(speed)),
+        "figure8" => Some((
+            figure8_waypoints(),
+            FIGURE8_BASE_DURATIONS.iter().map(|&d| d / speed).collect(),
+        )),
+        _ => None,
+    }
+}
+
+/// Repeat a closed waypoint ring `laps` times.
+///
+/// The ring is `[w0 .. wn]` with `wn == w0`, so each extra lap contributes `[w1 .. wn]`
+/// -- the duplicated seam point is dropped, leaving one continuous waypoint list.
+fn repeat_ring(wps: &[Waypoint], durs: &[f32], laps: usize) -> (Vec<Waypoint>, Vec<f32>) {
+    let mut out_w = wps.to_vec();
+    let mut out_d = durs.to_vec();
+    for _ in 1..laps {
+        out_w.extend_from_slice(&wps[1..]);
+        out_d.extend_from_slice(durs);
+    }
+    (out_w, out_d)
+}
+
+/// Plan `laps` laps of a closed ring as one non-periodic (rest-to-rest) trajectory.
+fn plan_rest_to_rest(
+    name: &str, wps: &[Waypoint], durs: &[f32], laps: usize, mode: u8, kt: f32,
+) -> SplineTrajectory {
+    let (w, d) = repeat_ring(wps, durs, laps);
+    let planner = match mode {
+        1 => TrajectoryPlanner::richter(&w, kt, false)
+                .unwrap_or_else(|e| panic!("{} rest-to-rest Richter QP failed: {}", name, e)),
+        3 => TrajectoryPlanner::paper(&w, kt, false)
+                .unwrap_or_else(|e| panic!("{} rest-to-rest Paper QP failed: {}", name, e)),
+        _ => TrajectoryPlanner::spline(&w, &d, false)
+                .unwrap_or_else(|e| panic!("{} rest-to-rest Spline QP failed: {}", name, e)),
+    };
+    planner.as_spline().clone()
 }
 
 // ── CS2 CSV output ─────────────────────────────────────────────────────────
@@ -1283,6 +1398,21 @@ mod tests {
             assert_eq!(a.duration, b.duration, "core segment duration changed");
             assert_eq!(a.cx, b.cx, "core cx coefficients changed");
             assert_eq!(a.cy, b.cy, "core cy coefficients changed");
+        }
+    }
+
+    /// figure8 must be wrapped in the HLC export but NOT in the onboard export, so that
+    /// Mode E starts from rest while every Mode D result stays reproducible.
+    #[test]
+    fn figure8_wraps_for_hlc_but_not_for_onboard() {
+        assert!(hlc_rest_wrap("figure8", 1), "Mode E must wrap figure8");
+        assert!(!is_loop_safe("figure8", 1), "Mode D must NOT wrap figure8");
+        // Everything else agrees between the two predicates.
+        for t in ["circle", "oval", "tilted_oval", "loop", "teardrop"] {
+            assert!(is_loop_safe(t, 1) && hlc_rest_wrap(t, 1), "{t} should wrap in both");
+        }
+        for t in ["slalom", "helix", "corner", "corkscrew"] {
+            assert!(!is_loop_safe(t, 1) && !hlc_rest_wrap(t, 1), "{t} should wrap in neither");
         }
     }
 
