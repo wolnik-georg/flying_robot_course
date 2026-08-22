@@ -127,82 +127,26 @@ Every scenario also passes the runner's `--check`, which adds the safety gate: *
 parameter combinations, 0 failures**, with the extreme scenarios correctly refused when
 `--allow-extreme` is absent. Hover scenarios (A1) fly correctly in the simulator.
 
-### ⛔ What is NOT verified: moving scenarios in simulation
+### Moving scenarios in simulation
 
-**The simulator cannot yet validate any scenario that moves.** Our out-of-tree controller
-does not track high-level-commander trajectories in SIL — it diverges in attitude and
-crashes. This is **not** caused by the formation library. Measured on the same harness,
-geometric control, no downwash:
+Moving scenarios exercise the trajectory path, which had never been run in simulation
+before this work — only hover, takeoff and `goTo`. Doing so exposed a controller/simulator
+problem that is **not** caused by the formation library: the pre-existing exported
+trajectories failed *worse* than the generated ones (stock `oval` 168° of tilt, stock
+`circle` 139°, a library shuttle 79°), while the in-tree `mellinger` flew the identical
+`circle` file at a correct 27° bank.
 
-| Trajectory | Max tilt |
-|---|---|
-| Stock `circle_mode1_kt0.05` (pre-existing, unmodified) | **139°** |
-| Stock `figure8_mode1_kt0.05` | **79°** |
-| Stock `oval_mode1_kt0.05` | **168°** |
-| A formation-library shuttle | 79° |
-| Hover | 0° |
-| **Same stock circle under in-tree `mellinger`** | **27°** ✅ |
-| **Same stock circle under in-tree `pid`** | **28°** ✅ |
+Chasing it produced four real fixes — missing jerk/snap in the SIL setpoint, a hybrid
+CF2.1/CF21BL airframe in the host build, the plant using the wrong inertia, and a mixer
+deadband delivering 21% excess torque — and one unresolved gap: the simulator needs about
+twice the position damping of the real vehicle. Full account in
+[`09_Simulation.md`](09_Simulation.md).
 
-The pre-existing exported trajectories fail *worse* than the generated ones, and the
-in-tree controllers fly the identical file correctly at a physically sensible 27° bank. So
-the defect is in our controller's trajectory path under simulation, and it predates this
-work — the simulator had only ever been exercised on hover, takeoff and `goTo`, never on a
-trajectory.
-
-Ruled out so far: CSV coefficient precision (fixed, but the instability is identical when
-the CSV is bypassed entirely); piece count (79° at 2, 4, 8 and 16 pieces); the downwash
-model (fails with interaction disabled); and missing jerk/snap in the setpoint — the SIL
-was indeed dropping both where `crtp_commander_high_level.c` sets them, and that is now
-fixed, but the numbers did not move because `g_indi_omega_src` defaults to 0 and takes the
-body rate from the setpoint instead.
-
-Remaining leads, in order: the `attitudeRate` the SIL derives from `ev.omega` versus what
-the real HLC supplies; the position-loop gains (`kp_xy` 64 is high) under sustained lateral
-acceleration; and the integral term winding up over long trajectories.
-
-**Consequence for the plan:** the formation library is correct and safe *by construction and
-offline verification*, and A1 is confirmed in sim, but the moving scenarios have not been
-flown anywhere yet. Either fix the controller's sim trajectory path first, or treat the
-first hardware flights as the initial validation — with the offline geometry check as the
-guarantee, which is exactly what it was built for.
-
-Trajectory fitting is exact at segment boundaries and within 2 mm between them — and the
-self-test measures that **through the written CSV**, not on the in-memory fit, for the
-reason below.
-
-### One bug worth carrying forward
-
-The first sim flight of A3 crashed. Not the interaction, not the controller: **CSV
-coefficient precision.** A degree-7 coefficient scales as one over the piece duration to
-the seventh power, so on a 6.5 s piece `c7 ≈ 5e-5` while `c4 ≈ 2e-2` — four orders of
-magnitude apart in one row. Written with the Rust exporter's `%.6f`, `c7` keeps two
-significant figures, and since it multiplies `t⁷ ≈ 5e5` the damage is enormous: a clean
-**0.21 m/s²** trajectory came back out of the file at **241 m/s²**.
-
-Fixed with `%.12g`, and `verify_csv()` now re-reads every written file and checks it
-against the curve before anything is uploaded.
-
-> ⚠️ **`export_poly4d.rs` has the same latent bug.** Its `write_cs2_csv` writes `{:.6}`
-> (the onboard writer uses `{:.9}`). The induced error grows as the seventh power of the
-> piece duration, so it is entirely a question of how long the pieces are:
->
-> | Longest piece | Position error | Verdict |
-> |---|---|---|
-> | 1 s | 0.004 mm | fine |
-> | 2 s | 0.13 mm | fine |
-> | 3 s | 1.6 mm | marginal |
-> | 4 s | 11 mm | unusable |
-> | 6.5 s | 290 mm | what crashed A3 |
->
-> The longest piece across all 255 exported Mode E trajectories today is **3.00 s**
-> (`tilted_oval_mode1_kt*`), so the current library sits right at the marginal boundary at
-> roughly 1.6 mm — small, but not nothing, and it degrades fast if segments ever get
-> longer. Changing that writer to `{:.12e}` would cost nothing and remove the cliff.
-
-The general lesson, which cost a full debugging cycle: an in-memory fit error is not
-evidence the trajectory is correct. The file is what flies, so the file is what must be
-verified.
+With the sim-only `kv_xy: 10.0` in `crazyflies_sim.yaml`, the library trajectories track
+essentially perfectly — the A3 shuttle to **0.4 mm** and the A5 circle to **0.7 mm**, at
+1.2° and 3.2° of tilt respectively (3.1° is the correct bank for A5's centripetal
+acceleration). The stock trajectories track to 18–28 mm, their larger tilt coming from the
+wind-up ramps they carry.
 
 ---
 

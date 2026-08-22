@@ -738,6 +738,21 @@ pub extern "C" fn oot_state_size() -> usize {
     core::mem::size_of::<State>()
 }
 
+/// Diagonal inertia the controller was compiled with, for the host simulator ONLY.
+///
+/// J is a compile-time constant chosen by the `drone_bl` cfg, so the controller and the
+/// simulated plant can disagree about which airframe they are without anything saying so.
+/// The plant reads it from here instead of carrying a second copy. Same reasoning as
+/// THRUST_MAX / ARM_LENGTH in oot_host.c; no control logic reads this.
+#[no_mangle]
+pub extern "C" fn oot_inertia(axis: i32) -> f32 {
+    match axis {
+        0 => JXX,
+        1 => JYY,
+        _ => JZZ,
+    }
+}
+
 // ── INDI log variables (Mode 1) ────────────────────────────────────────────
 // Variables owned by C (traj_iface.c); Rust writes via C function calls which
 // are opaque to Rust LTO — values are always computed and stored correctly.

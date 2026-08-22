@@ -134,22 +134,54 @@ Consequence: **the simulator can prove a controller is broken; it cannot prove o
 
 ---
 
-## ⛔ Known blocker: trajectories do not fly in simulation
+## Trajectory tracking: three fixes, and one gap that remains
 
-Everything below was verified on hover, takeoff and `goTo`. **The out-of-tree controller
-does not track high-level-commander trajectories in SIL** — it diverges in attitude and
-crashes, on the pre-existing exported trajectories (`circle` 139°, `figure8` 79°, `oval`
-168° of tilt) as much as on generated ones. The in-tree `mellinger` and `pid` controllers
-fly the identical `circle` file at a correct 27° bank, so the defect is on our side of the
-simulator, not in the trajectories or the plant.
+Trajectories were never exercised in simulation until the formation library needed them —
+only hover, takeoff and `goTo`. When they were, the controller diverged on any curved path.
+Chasing that produced three real fixes and one unresolved discrepancy.
 
-Ruled out: CSV coefficient precision, piece count, the downwash model, and the missing
-jerk/snap in the SIL setpoint (which was a genuine omission against
-`crtp_commander_high_level.c`, now fixed — but not the cause; `g_indi_omega_src` defaults
-to taking the body rate from the setpoint instead).
+### Fixed
 
-Until this is resolved the simulator can validate **static** formation geometry only. See
-[`10_Formation_Library.md`](10_Formation_Library.md) for the measurements.
+| Was | Effect |
+|---|---|
+| The SIL dropped `jerk` and `snap` from the setpoint, where `crtp_commander_high_level.c:395` sets both | A flatness-based controller got a permanently zero jerk in sim. Position looked right; only the attitude feedforward was wrong |
+| The host controller compiled **non-brushless** (`DRONE_PLATFORM` unset) while the bindings compiled as CF21BL | Hybrid airframe: CF2.1 inertia with CF21BL arm and thrust. Build the host lib with `DRONE_PLATFORM=bl` |
+| The plant used the np backend's default CF2.0 inertia | Now read from the controller via `oot_inertia()`, so the two cannot disagree |
+| `pwm_to_rpm` applied a `pwm < 10000` idle deadband on the `kt` path | A motor legitimately given a small force was zeroed, losing thrust **and delivering 21% more torque than commanded** at a 10 mNm request. Verified exact after the fix |
+
+The deadband one is worth remembering: an attitude loop whose gain is a fifth higher than
+the controller believes, by an amount that grows with the command, is exactly the shape of
+error that turns an adequately damped cascade into an oscillating one.
+
+### ⚠️ Still open: the simulator needs about twice the damping of the real vehicle
+
+None of the above fixed it. The measured position:
+
+| | Hardware | Simulator |
+|---|---|---|
+| Stability wall | between `kv_xy` 4 and 5 (ζ 0.25–0.31) | between `kv_xy` 8 and 10 (ζ 0.50–0.62) |
+| At `kv_xy=5` (ζ 0.31) | **flies, 2.4 cm RMSE — the best measured result** | 1.33 Hz oscillation, diverges |
+| At `kv_xy=10` (ζ 0.62) | flies, 2.8–3.0 cm RMSE | flies, 18–28 mm tracking error |
+
+1.33 Hz is the position loop's own frequency (`√kp_xy = √64 = 8 rad/s`), so this is the
+outer loop ringing against an inner loop only ~2.5× faster — a cascade ratio the design
+notes in `firmware_app/CLAUDE.md` acknowledge as tight (2.28×).
+
+Both agree there **is** a wall near there; the simulator puts it about twice as far out.
+Ruled out: trajectory generation, CSV coefficient precision, polynomial piece count, the
+downwash model, missing jerk/snap, inertia mismatch, and the mixer deadband. Not yet
+examined: rotor drag (absent from the plant entirely), and thrust saturation behaviour
+during large attitude excursions.
+
+**Workaround:** `crazyflies_sim.yaml` sets `kv_xy: 10.0` for simulation only, with the
+rationale in-file. `crazyflies.yaml` keeps the flight-proven 5.0 and must not be changed
+to match. ζ=0.625 is not invented — the tuning notes record it as the ratio held for the
+whole campaign before the 2026-07-19 test lowered it.
+
+**One thing this is worth flagging for the thesis:** hardware crashed 2 of 2 at `kv=4` and
+flies at `kv=5`, so the flight configuration is sitting on a very thin margin. Formation
+flight adds downwash and a second vehicle to that same loop. Whether ζ=0.31 survives close
+formation is an open question the simulator is, at minimum, warning about.
 
 ---
 

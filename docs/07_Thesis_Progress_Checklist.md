@@ -18,7 +18,8 @@ bottom.
 | **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
 | **Also open** | The formation geofence (`formations/safety.py FLIGHT_SPACE`) is a deliberate placeholder — **measure the real flight volume** |
-| **⛔ Blocker (new)** | Our controller does not track HLC trajectories in SIL — stock `mellinger`/`pid` fly the same file fine, so it is our side. Pre-existing; the sim had only ever been run on hover/goTo. Blocks sim validation of every moving formation scenario |
+| **Open (sim)** | Sim needs ~2x the position damping of the real drone (wall at ζ≈0.5-0.6 vs hardware ζ≈0.25-0.31). Worked around with a SIM-ONLY `kv_xy: 10` in `crazyflies_sim.yaml`; hardware keeps 5.0. Four real bugs fixed en route — see [`09_Simulation.md`](09_Simulation.md) |
+| **Flag for the lab** | Hardware crashed 2/2 at `kv_xy=4` and flies at 5 — a thin margin, and formation flight adds downwash to that same loop |
 | **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
@@ -100,7 +101,7 @@ bottom.
 | Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
 | Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
 | Config | Brushless gains active; 1 <-> N drone switching documented |
-| Formations | 16 scenarios, offline-verified (38 spec cases, 31 safety combos); hover confirmed in sim, **moving scenarios blocked by the trajectory defect above** |
+| Formations | 16 scenarios, offline-verified (38 spec cases, 31 safety combos); flying in sim — library trajectories track to 0.4-0.7 mm |
 | Simulation | All 4 control modes + Neural-Swarm2 downwash, same source as the drone; airframe derived from firmware so plant and controller cannot diverge |
 | Housekeeping | Merged to `main`, branches cleaned, frozen branches preserved, docs + memory current |
 
