@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 19 August 2026
+**Last updated:** 22 August 2026
 
 This is a living document. Update it regularly so we always know what has been completed and what comes next.
 
@@ -27,7 +27,9 @@ This is a living document. Update it regularly so we always know what has been c
 ## B. Practical Preparation
 
 - [x] Request FBL controller code via professor (waiting for authors)
-- [x] Align planner/Crazyswarm2 polynomial format and use official upload path (legacy path preserved) — see `flying_drone_stack/docs/TRAJECTORY_UPLOAD_PATHS.md`
+- [x] Align planner/Crazyswarm2 polynomial format and use official upload path (legacy path preserved) — see [`08_Trajectory_Upload_Paths.md`](08_Trajectory_Upload_Paths.md)
+- [x] Multi-robot flight script (`formation_flight.py`, Crazyswarm2) — offline-verified, unflown
+- [x] Repository/branch cleanup — merged to `main`, stale branches removed, stable/finalized branches preserved
 - [ ] Hardware inventory
 - [ ] High-rate logging check
 - [ ] Sanity-check geometric and INDI on brushless
