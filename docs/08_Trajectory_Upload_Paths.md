@@ -61,12 +61,42 @@ They agree only at axis-aligned tilt, so in Mode E the setpoint's `attitudeRate`
 with the `R_d` the controller derives itself (0.04–0.22 rad/s on level trajectories). Mode D
 never had this because it computes ω_d locally.
 
-- `omega_src = 0` — use `setpoint.attitudeRate` (current, default)
-- `omega_src = 1` — recompute via `omega_desired()` from the HLC's jerk, matching Mode D
+- `omega_src = 0` — use `setpoint.attitudeRate` (default)
+- `omega_src = 1` — recompute via `omega_desired()` from the HLC's jerk
 
 Runtime-switchable, so the two can be A/B'd back-to-back without reflashing. Falls back to the
 setpoint rate when jerk is negligible, so `cmdFullState` callers (hover keepalive, takeoff/land
-streaming, legacy Mode B binaries) are unaffected under either setting.
+streaming, legacy Mode B binaries) are unaffected under either setting. Largely superseded by
+`frame_conv` below — with `frame_conv = 1` the local and HLC values agree, so `omega_src` no
+longer changes anything.
+
+**3. `indi_gains.frame_conv` (default 1 = Mellinger) — ⚠️ this changes Mode D too.**
+z_B is unambiguous (the thrust direction); the only choice is where yaw sits around it, and the
+two standard constructions agree only at axis-aligned tilt.
+
+| Component | Convention |
+|---|---|
+| `desired_rot()` → R_d | Mellinger (always was) |
+| official `controller_lee.c` — R_d **and** ω_des | Mellinger |
+| official `controller_mellinger.c`, HLC `pptraj.c` | Mellinger |
+| `omega_desired()` / `alpha_desired()` **before 2026-08-22** | **Faessler** (App. A) |
+
+So the controller was internally **mixed**: R_d in one frame, ω_d/α_des in another. This was
+never intentional — `desired_rot` came from the Lee/Mellinger lineage while ω_d/α_des were
+written from Faessler et al. 2018. `controller_lee.c` derives its `omega_des` from the same
+`xdes`/`ydes` it used for R_d; ours did not.
+
+- `frame_conv = 1` — Mellinger everywhere. R_d, ω_d and α_des share one frame, α_des is a valid
+  derivative of ω_d, and the locally computed ω_d equals the HLC's. **Default.**
+- `frame_conv = 0` — legacy Faessler ω_d/α_des, reproducing every flight before 2026-08-22.
+
+ω_d feeds the `KW` damping term of **both** the geometric and INDI attitude laws; α_des feeds
+the INDI snap feedforward only. Measured effect of the switch on level trajectories: ω_d
+0.002–0.17 rad/s, α_des ~1–1.5 %.
+
+**Consequence:** unlike the first two fixes, this one is *not* Mode-D-neutral. Flashing changes
+Mode D behaviour by the amounts above. Re-validate Mode D as well, or set `frame_conv = 0` to
+reproduce the old baseline exactly.
 
 ## Running
 

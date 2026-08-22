@@ -233,6 +233,23 @@ float   g_indi_thrust_max   = 0.8f;    /* [N]   total thrust clamp (4x THRUST_MA
  * so Mode B / hover keepalive are unaffected either way. */
 uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness from HLC jerk */
 
+/* frame_conv — which body-frame construction omega_desired()/alpha_desired() use when
+ * turning jerk/snap into omega_d / alpha_des. z_B is unambiguous (thrust direction); the
+ * choice is only how yaw is placed around it, and the two agree only at axis-aligned tilt.
+ *   1 = Mellinger (DEFAULT): y_B = normalize(z_B x x_C), x_B = y_B x z_B.
+ *       Matches desired_rot() (which builds R_d), the official controller_lee.c and
+ *       controller_mellinger.c, and the HLC's pptraj.c -- i.e. everything else on this
+ *       platform. Makes R_d, omega_d and alpha_des share one frame, and makes the locally
+ *       computed omega_d identical to the HLC's (so omega_src stops mattering).
+ *   0 = Faessler et al. 2018 App. A: x_B = normalize(y_C x z_B), y_B = normalize(z_B x x_B).
+ *       What every flight before 2026-08-22 used for omega_d/alpha_des, while R_d was
+ *       already Mellinger -- i.e. the old behaviour was internally mixed. Kept so that
+ *       pre-existing results can be reproduced exactly.
+ * omega_d feeds the KW damping term of BOTH the geometric and INDI attitude laws;
+ * alpha_des feeds the INDI snap feedforward only. Measured effect of the switch on level
+ * trajectories: omega_d 0.002-0.17 rad/s, alpha_des ~1-1.5%. */
+uint8_t g_indi_frame_conv = 1;  /* 1 = Mellinger (default), 0 = Faessler (legacy) */
+
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
@@ -261,6 +278,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, tilt_max_deg, &g_indi_tilt_max_deg)
   PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
   PARAM_ADD(PARAM_UINT8, omega_src,    &g_indi_omega_src)
+  PARAM_ADD(PARAM_UINT8, frame_conv,   &g_indi_frame_conv)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)

@@ -759,6 +759,7 @@ extern "C" {
     // Optional stage-2 notch filter (2026-07-28, shake investigation): 0=off (default,
     // byte-identical to today), 1=on. f0/bw are runtime-tunable [Hz] (Q = f0/bw).
     static mut g_indi_omega_src: u8;
+    static mut g_indi_frame_conv: u8;
     static mut g_indi_notch_en: u8;
     static mut g_indi_notch_f0: f32;
     static mut g_indi_notch_bw: f32;
@@ -1027,26 +1028,54 @@ unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32, f32)
     (pz, vz, az, jz, sz)
 }
 
+/// Desired body x/y axes for a thrust vector `acc_g` and yaw ψ, in the convention
+/// selected by `conv` (see `g_indi_frame_conv` in traj_iface.c).
+///
+/// z_B is unambiguous — it is the thrust direction. The only choice is where yaw sits
+/// around it, and the two standard constructions agree ONLY when the tilt is aligned
+/// with a principal axis; off-axis they diverge with tilt.
+///
+/// `conv == 1` — Mellinger (default): `y_B = normalize(z_B × x_C)`, `x_B = y_B × z_B`.
+///   Identical to `desired_rot()` above, to the official `controller_lee.c` /
+///   `controller_mellinger.c`, and to the HLC's `pptraj.c`.
+/// `conv == 0` — Faessler et al. 2018 App. A: `x_B = normalize(y_C × z_B)`,
+///   `y_B = normalize(z_B × x_B)`. Legacy: what ω_d/α_des used before 2026-08-22.
+#[inline]
+fn body_axes(acc_g: Vec3, yaw: f32, conv: u8) -> (Vec3, Vec3) {
+    let cos_psi = libm::cosf(yaw);
+    let sin_psi = libm::sinf(yaw);
+    if conv == 1 {
+        let zb = acc_g.normalize();
+        let xc = Vec3::new(cos_psi, sin_psi, 0.0);
+        let zcx = zb.cross(xc);
+        // Degenerate when the thrust axis is parallel to x_C (tilt ≈ 90° into the yaw
+        // direction) — mirrors the same guard in desired_rot().
+        let yb = if zcx.norm() > 1e-9 { zcx.normalize() } else { Vec3::new(0.0, 1.0, 0.0) };
+        (yb.cross(zb), yb)
+    } else {
+        let yc = Vec3::new(-sin_psi, cos_psi, 0.0);
+        let xb = yc.cross(acc_g).normalize();
+        (xb, acc_g.cross(xb).normalize())
+    }
+}
+
 /// Compute desired body angular velocity ω_d from flatness (yaw=const → ψ̇=0).
 ///
-/// From Faessler et al. 2018, Appendix A, simplified for ψ̇ = 0:
+/// Simplified for ψ̇ = 0 (structure is identical in both frame conventions; only the
+/// basis differs — cf. `controller_lee.c`'s `omega_des`):
 ///   ωx = −(yb · jerk) / c
 ///   ωy =  (xb · jerk) / c
 ///   ωz = 0
-/// where `c = |acc + g·ez|` and `xb`, `yb` are the desired body x/y axes.
+/// where `c = |acc + g·ez|` and `xb`, `yb` come from `body_axes(.., conv)`.
+///
+/// Feeds the KW attitude-rate damping term of BOTH the geometric and INDI laws.
 #[inline]
-fn omega_desired(acc: Vec3, jerk: Vec3, yaw: f32) -> Vec3 {
-    let cos_psi = libm::cosf(yaw);
-    let sin_psi = libm::sinf(yaw);
-    let yc = Vec3::new(-sin_psi, cos_psi, 0.0);
-
+fn omega_desired(acc: Vec3, jerk: Vec3, yaw: f32, conv: u8) -> Vec3 {
     let acc_g = Vec3::new(acc.x, acc.y, acc.z + GRAVITY);
     let c = acc_g.norm();
     if c < 0.1 { return Vec3::zero(); }
 
-    // Body axes from flatness (same construction as desired_rot)
-    let xb = yc.cross(acc_g).normalize();
-    let yb = acc_g.cross(xb).normalize();
+    let (xb, yb) = body_axes(acc_g, yaw, conv);
 
     let omega_x = -yb.dot(jerk) / c;
     let omega_y =  xb.dot(jerk) / c;
@@ -1063,18 +1092,16 @@ fn omega_desired(acc: Vec3, jerk: Vec3, yaw: f32) -> Vec3 {
 ///   αx = 2(yb·j)(b3·j)/c² − (yb·s)/c
 ///   αy = (xb·s)/c − 2(xb·j)(b3·j)/c²
 ///   αz = 0
+/// Frame convention follows `body_axes(.., conv)` — must match `omega_desired`, since
+/// α_des is analytically the time-derivative of ω_d. Feeds the INDI snap feedforward
+/// only (the geometric law does not use it).
 #[inline]
-fn alpha_desired(acc: Vec3, jerk: Vec3, snap: Vec3, yaw: f32) -> Vec3 {
-    let cos_psi = libm::cosf(yaw);
-    let sin_psi = libm::sinf(yaw);
-    let yc = Vec3::new(-sin_psi, cos_psi, 0.0);
-
+fn alpha_desired(acc: Vec3, jerk: Vec3, snap: Vec3, yaw: f32, conv: u8) -> Vec3 {
     let acc_g = Vec3::new(acc.x, acc.y, acc.z + GRAVITY);
     let c = acc_g.norm();
     if c < 0.1 { return Vec3::zero(); }
 
-    let xb    = yc.cross(acc_g).normalize();
-    let yb    = acc_g.cross(xb).normalize();
+    let (xb, yb) = body_axes(acc_g, yaw, conv);
     let b3    = acc_g.scale(1.0 / c);
     let c_dot = b3.dot(jerk);   // ċ = b3·j
 
@@ -1751,6 +1778,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
         }
     }
 
+    // Body-frame convention for omega_d / alpha_des (see g_indi_frame_conv).
+    let frame_conv = g_indi_frame_conv;
+
     let (pd, vd, ad, omega_d, alpha_des) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
         // ── Mode D: onboard trajectory eval ───────────────────────────────
         // All trajectory types (flat, helix, loop) — Z source selected by z_mode:
@@ -1777,9 +1807,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let jerk_3d = Vec3::new(jerk.x, jerk.y, jz);
         let snap_3d = Vec3::new(snap.x, snap.y, sz);
         // ω_d feedforward: include Z jerk when z_mode=1 (non-zero for 3D paths).
-        let omega_d  = omega_desired(ad, jerk_3d, 0.0_f32);
+        let omega_d  = omega_desired(ad, jerk_3d, 0.0_f32, frame_conv);
         // α_des feedforward: snap → Ω̇_ref via flatness (Tal & Karaman Eq. 15).
-        let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32);
+        let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32, frame_conv);
         (pd, vd, ad, omega_d, alpha_des)
     } else {
         // Mode B passthrough: read full feedforward from CRTP setpoint.
@@ -1804,12 +1834,12 @@ pub unsafe extern "C" fn controllerOutOfTree(
             sp.attitudeRate.yaw   * deg2rad,
         );
         let omega_d = if g_indi_omega_src == 1 && jerk.norm() > 1e-4 {
-            omega_desired(ad, jerk, yaw_d_local)
+            omega_desired(ad, jerk, yaw_d_local, frame_conv)
         } else {
             sp_omega
         };
         // α_des via differential flatness (Tal & Karaman Eq. 15) using HLC's jerk + snap
-        let alpha_des = alpha_desired(ad, jerk, snap, yaw_d_local);
+        let alpha_des = alpha_desired(ad, jerk, snap, yaw_d_local, frame_conv);
         (pd, vd, ad, omega_d, alpha_des)
     };
 
