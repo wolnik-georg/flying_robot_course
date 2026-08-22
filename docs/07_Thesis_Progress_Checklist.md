@@ -32,6 +32,8 @@ This is a living document. Update it regularly so we always know what has been c
 - [ ] High-rate logging check
 - [ ] Sanity-check geometric and INDI on brushless
 - [ ] Re-validate Mode E in flight: hover → figure8 → circle, geometric then INDI, vs Mode D baseline
+- [ ] Enable second drone in `crazyflies.yaml` (URI, initial_position, platform) + switch `indi_gains` to the brushless block + resolve radio bandwidth for 2 drones
+- [ ] First 2-drone formation flight (`formation_flight --dry-run` first, vertical, start wide)
 - [ ] Prepare first INDI residual-force data collection
 
 **Status:** In progress

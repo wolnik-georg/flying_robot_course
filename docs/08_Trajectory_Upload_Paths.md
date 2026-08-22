@@ -39,6 +39,27 @@ receives — `(pd, vd, ad, ω_d, α_des)`:
   `g_traj_mode == 1 || == 2`, and Poly4D has no attitude channel — so flip / immelmann / splits
   are structurally Mode D only.
 
+## Known limitation — `--reps` means something different in each mode
+
+Mode D loops **only the core lap**: the firmware knows which segments are the entry/exit ramps
+(`n_entry`/`n_exit` in the `.meta.json` sidecar) and wraps time within the core, giving
+`ramp-up → N continuous laps → ramp-down` as one uninterrupted flight.
+
+Mode E has no such concept — `startTrajectory` replays the *whole* uploaded trajectory, so
+`--reps N` gives `(ramp-up → 1 lap → ramp-down)` repeated N times, with a pause between. Fine for
+"repeat the run ≥5 times" as the experimental protocol asks, but it is **not** a way to get one
+long continuous formation flight.
+
+To fly continuous laps on Mode E the trajectory must be exported with the laps baked in. That is
+not implemented (`export_poly4d` has no `--laps`), and the 31-piece cap bounds how far it could
+go:
+
+| Trajectory | pieces | max laps in one upload |
+|---|---|---|
+| figure8 | 10 (non-periodic) | 3 |
+| circle | 8 core + 2 ramps | 3 |
+| oval / tilted_oval | 12 core + 2 ramps | 2 |
+
 ## Controller equivalence
 
 The geometric and INDI laws are **identical between modes** — there is one `controller_step()`
@@ -46,6 +67,28 @@ call site (`firmware_app/src/lib.rs`), reached by both branches with the same ga
 INDI state. Only the *source* of the reference differs. Full feedforward reaches the controller
 in both modes because this firmware fork plumbs jerk and snap through `traj_eval`, `setpoint_t`
 and `crtp_commander_high_level.c` (stock Crazyswarm2 cannot do this).
+
+### Measured, as shipped
+
+Replaying both reference pipelines over `figure8`, `circle`, `oval`, `tilted_oval`:
+
+| Signal | Conversion only (same convention) | As shipped (D=Faessler, E=Mellinger) |
+|---|---|---|
+| position | 0.000008 m | 0.000008 m |
+| velocity | 0.000075 m/s | 0.000075 m/s |
+| acceleration | 0.000397 m/s² | 0.000397 m/s² |
+| jerk | 0.0019 m/s³ | 0.0019 m/s³ |
+| snap | 0.032 m/s⁴ | 0.032 m/s⁴ |
+| **ω_d** | 0.00023 rad/s | **0.166 rad/s (2.1 %)** |
+| **α_des** | 0.0049 rad/s² | **2.68 rad/s² (1.3 %)** |
+
+Left column: the degree-8 → degree-7 CSV conversion is **lossless** for these trajectories.
+Right column: the trajectory is identical, and the only remaining difference is the deliberate
+frame-convention split — Mode D pinned to Faessler, Mode E on Mellinger.
+
+**So Mode D and Mode E are no longer bit-identical, by design.** Expect ~1–2 % difference in
+attitude feedforward when comparing them. That is far below the ~2.5 cm tracking noise floor, but
+it means a Mode D vs Mode E flight comparison is a *behavioural* check, not an exact one.
 
 ## Two fixes made for Mode E (2026-08-19)
 
