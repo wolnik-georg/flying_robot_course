@@ -44,6 +44,14 @@ ros2 launch crazyflie launch.py backend:=sim \
 ros2 run crazyflie_examples sim_downwash_test --ros-args -p use_sim_time:=true
 ```
 
+⚠️ The `crazyflie-firmware/bindings/` changes this depends on live in a tree that tracks **bitcraze
+upstream**, so they are deliberately **not committed** anywhere. They are ~110 lines and touch no
+in-tree source, but the simulator does not build without them, and a `git checkout` or upstream pull
+in that tree would remove them silently. A copy is kept as
+`flying_drone_stack/firmware_app/host/cffirmware_bindings.patch` — see
+[`host/README.md`](../flying_drone_stack/firmware_app/host/README.md) for how to re-apply. **If the
+simulator stops building, check this first.**
+
 **Both yaml arguments are required.** Give only `server_yaml_file` and you get the hardware roster,
 which is one drone — the two-drone case silently does not happen. **`use_sim_time:=true` is
 required** on every client: `launch.py` sets it for rviz and the gui only, so without it commands

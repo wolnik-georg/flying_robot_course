@@ -16,7 +16,8 @@ bottom.
 | **Phase** | B — Practical Preparation |
 | **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
 | **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
-| **New** | All 4 control modes now run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
+| **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
+| **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
 | **Not blocking** | FBL code (Method 3) still with the authors; the other methods proceed without it |
@@ -107,6 +108,7 @@ bottom.
 - [ ] 7. Fill the three `cf_second` TODOs — real URI, real `initial_position`, platform
 - [ ] 8. Fit a Micro SD deck per drone + install `tools/usd_thesis_config.txt` as `config.txt`; drop radio log rates to 20 Hz for 2-drone flights
 - [ ] 9. Set `cf_second: enabled: true`
+- [ ] 9b. **Re-check `clamp_en`** against what the sim now shows — the tilt clamp is off (`11`) from the inverted-loop work and nothing in the planned flights needs it off
 - [ ] 10. High-rate logging check — states, motor commands, residual signals. **Confirm `indi.a_res_*` is non-zero in flight** (it needs an RPM source: `rpm.m*` deck or DShot `motor.m*_rpm`); zero means no telemetry and no thesis data
 
 ### B.4 First multi-drone flights
@@ -126,13 +128,14 @@ bottom.
 ## C. Core Experimental Work — ⬜ NOT STARTED
 
 ### C.1 Data & Models
+- [ ] **Use the simulator first for each new method** — a controller that cannot hold hover in sim will not fly. Cheap disproof; not evidence it works (no motor lag, no EKF, no noise)
 - [ ] Collect residual-force data with pure INDI
 - [ ] Train first NN residual models
 - [ ] Validate residual model quality
 
 ### C.2 Controller Integration (7 methods)
 - [ ] 1. Pure INDI
-- [ ] 2. Geometric + NN
+- [ ] 2. Geometric + NN *(when adding it: give any new stateful controller a per-vehicle state swap, or multi-drone sim silently shares its filters — see `09_Simulation.md`)*
 - [ ] 3. FBL + NN *(once code is available)*
 - [ ] 4. (Optional) Hybrid — Neural-Augmented INDI
 - [ ] 5. (Optional) Residual RL — ProxFly-style
@@ -185,6 +188,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (4) | `crazyflie-firmware` deliberately NOT forked; its ~110 bindings lines kept as a patch in this repo with `host/README.md` covering re-apply, since that tree follows bitcraze upstream. |
 | 2026-08-22 (3) | Geometric + all INDI modes wired into the CS2 simulator through the existing SIL bindings, running the same Rust source that flies. Five plant/config fidelity bugs found and fixed, each of which had looked like a controller fault — the last being that `crazyflies.yaml` firmware_params were never pushed to the simulated controller. Two-drone downwash reproduced under both geometric and full INDI with the correct 10x lower/upper asymmetry. `09_Simulation.md` added, including what the simulator still cannot show (no motor lag, no EKF, no noise). |
 | 2026-08-22 (2) | Decisions fixed: NN inference onboard / training offline; uSD is the dataset. Brushless gains activated. uSD config + 1↔N drone switching documented. Found peer position is already available onboard, so the NN input needs no new comms. |
 | 2026-08-22 | Mode E migration complete and merged to `main` (both repos). `formation_flight.py` added. `--laps`, figure8 rest-to-rest, single frame convention. 13 stale branches deleted, stable/finalized preserved. Docs + memory updated. B.2–B.4 laid out as the operational ladder. |

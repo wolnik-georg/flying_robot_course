@@ -1,0 +1,150 @@
+diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
+index d4ae77ca..dfad6410 100755
+--- a/bindings/cffirmware.i
++++ b/bindings/cffirmware.i
+@@ -41,6 +41,69 @@
+ %include "controller_mellinger.h"
+ %include "controller_brescianini.h"
+ %include "controller_lee.h"
++
++/* ── Out-of-tree controller (flying_drone_stack firmware_app) ────────────────
++ * The same geometric SE(3) / INDI controller that runs on the drone, compiled for
++ * the host and linked in by setup.py. Declared by hand rather than %include'd
++ * because it is a Rust staticlib with no C header.
++ *
++ * Gains are the g_* globals from traj_iface.c, so the simulator tunes the controller
++ * exactly the way crazyflies.yaml does over CRTP -- same names, same defaults.
++ * indi_gains.ctrl_mode is g_controller_mode: 0 geometric, 1 pos INDI, 2 att INDI,
++ * 3 full INDI. Feed true motor speeds with oot_set_rpm() before each step, otherwise
++ * attitude INDI falls back to tau_prev and you are not testing the real thing. */
++%{
++extern void controllerOutOfTreeInit(void);
++extern bool controllerOutOfTreeTest(void);
++extern void controllerOutOfTree(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++extern float oot_get_a_res(int i);
++void oot_select_drone(int idx);
++float oot_thrust_max(void);
++float oot_arm_length(void);
++float oot_thrust2torque(void);
++extern float oot_get_tau(int i);
++extern float oot_get_alp(int i);
++extern float oot_get_alp_raw(int i);
++extern float oot_get_alp_notch(int i);
++extern uint8_t g_controller_mode;
++extern float g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z;
++extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_indi_fc_bw, g_indi_mass;
++extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
++extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en;
++extern float g_indi_j_scale, g_indi_act_tau;
++extern float g_indi_tau_xy_max, g_indi_tau_z_max, g_indi_tilt_max_deg, g_indi_thrust_max;
++extern float g_indi_notch_f0, g_indi_notch_bw;
++%}
++extern void controllerOutOfTreeInit(void);
++extern bool controllerOutOfTreeTest(void);
++extern void controllerOutOfTree(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++extern float oot_get_a_res(int i);
++void oot_select_drone(int idx);
++float oot_thrust_max(void);
++float oot_arm_length(void);
++float oot_thrust2torque(void);
++extern float oot_get_tau(int i);
++extern float oot_get_alp(int i);
++extern float oot_get_alp_raw(int i);
++extern float oot_get_alp_notch(int i);
++extern uint8_t g_controller_mode;
++extern float g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z;
++extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_indi_fc_bw, g_indi_mass;
++extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
++extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en;
++extern float g_indi_j_scale, g_indi_act_tau;
++extern float g_indi_tau_xy_max, g_indi_tau_z_max, g_indi_tilt_max_deg, g_indi_thrust_max;
++extern float g_indi_notch_f0, g_indi_notch_bw;
+ %include "power_distribution.h"
+ %include "axis3fSubSampler.h"
+ %include "outlierFilterTdoa.h"
+diff --git a/bindings/setup.py b/bindings/setup.py
+index 5f650752..6ef2b7a5 100644
+--- a/bindings/setup.py
++++ b/bindings/setup.py
+@@ -4,6 +4,21 @@ import distutils.command.build
+ from distutils.core import setup, Extension
+ import os
+ 
++# ── Out-of-tree controller (optional) ────────────────────────────────────────
++# When the flying_drone_stack firmware_app has been built for the host, link it in
++# so the SAME geometric/INDI controller that flies on the drone can be exercised in
++# simulation. Not a reimplementation -- the identical Rust source, compiled for
++# x86_64. Build it with:
++#   cd firmware_app && RUSTFLAGS="-C panic=abort" \
++#       cargo build --release --target x86_64-unknown-linux-gnu
++# If the archive is absent the bindings build exactly as before, so this stays
++# optional and nothing breaks for anyone without that repo.
++OOT_DIR = os.environ.get(
++    "OOT_FIRMWARE_APP",
++    os.path.expanduser("~/Desktop/flying_robot_course/flying_drone_stack/firmware_app"))
++OOT_LIB = os.path.join(OOT_DIR, "target/x86_64-unknown-linux-gnu/release/libcf_controller_rs.a")
++OOT_AVAILABLE = os.path.isfile(OOT_LIB)
++
+ include = [
+     "src/modules/interface",
+     "src/modules/interface/controller",
+@@ -57,17 +72,47 @@ fw_sources = [
+     "src/modules/src/kalman_core/mm_distance.c",
+ ]
+ 
++oot_sources, oot_objects, oot_defines = [], [], []
++if OOT_AVAILABLE:
++    oot_sources = [
++        os.path.join(OOT_DIR, "traj_iface.c"),   # gains/globals, single source of truth
++        os.path.join(OOT_DIR, "host/oot_host.c"),  # RPM injection + log sinks
++    ]
++    oot_objects = [OOT_LIB]
++    # traj_iface.c's rpm_get_all reads the RPM deck through the firmware log system,
++    # which does not exist here; rename it so host/oot_host.c can provide one the
++    # simulator feeds with true motor speeds.
++    # traj_iface.c's RPM reader and log sinks target the firmware's log system, which
++    # does not exist here. Rename them all out of the way; host/oot_host.c provides
++    # replacements the simulator can drive and read.
++    oot_defines = ["-D%s=%s_fw_unused" % (n, n) for n in (
++        "rpm_get_all", "indi_log_write", "indi_tau_write",
++        "indi_notch_log_write", "indi_a_res_write")]
++    print("[setup] out-of-tree controller: linking", OOT_LIB)
++else:
++    print("[setup] out-of-tree controller: not built, skipping (sim will lack 'oot')")
++
+ cffirmware = Extension(
+     "_cffirmware",
+     include_dirs=include,
+-    sources=fw_sources + ["build/cffirmware_wrap.c"],
++    sources=fw_sources + oot_sources + ["build/cffirmware_wrap.c"],
++    extra_objects=oot_objects,
+     extra_compile_args=[
+         "-O3",
+         # The following flags are also used for compiling the actual firmware
+         "-fno-strict-aliasing",
+         "-Wno-address-of-packed-member",
+         "-DUNIT_TEST_MODE",
+-    ],
++        # Which airframe the firmware believes it is flying. Without this the
++        # bindings fall back to the generic defaults (THRUST_MAX 0.1125 N/motor,
++        # ARM_LENGTH 0.046 m) -- a smaller motor than our thesis drone actually has.
++        # powerDistribution then maps a legitimate force command to a PWM above
++        # UINT16_MAX, the mixer saturates, and controllers that command large
++        # torques (attitude INDI) get three motors cut to zero and never lift off.
++        # This is the same failure that was traced on the upgraded CF2.1 hardware.
++        # Override with OOT_PLATFORM=CONFIG_PLATFORM_CF2 for the brushed drone.
++        "-D" + os.environ.get("OOT_PLATFORM", "CONFIG_PLATFORM_CF21BL"),
++    ] + oot_defines,
+ )
+ 
+ # Override build command to specify custom "build" directory
