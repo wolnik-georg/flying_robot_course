@@ -15,7 +15,8 @@ bottom.
 |---|---|
 | **Phase** | B — Practical Preparation |
 | **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
-| **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
+| **Next action** | **Finish the sim validation matrix, then B.2 step 1 — flash and fly the ladder** |
+| **In progress** | 🔄 Sim formation validation matrix: 20 runs (A1,A1,A2,A3,A4,A5,A8 × 2 robots + B1,B2,B3 × 3 robots) × {geometric, INDI}. ~3 min/run. Results land in `experiments/sim_validation/matrix_results.md` |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
 | **Also open** | The formation geofence (`formations/safety.py FLIGHT_SPACE`) is a deliberate placeholder — **measure the real flight volume** |
 | **Open (sim), time-boxed** | Sim needs more position damping than hardware: wall now `kv_xy` 8 (was 10) vs hardware 5. Motor lag closed ~40%; KI_P, rotor drag, inertia, airframe all refuted. SIM-ONLY `kv_xy: 8.0`; hardware keeps 5.0. **Investigation paused — hardware readiness is the priority** |
@@ -70,6 +71,8 @@ bottom.
 - [x] uSD logging started by **broadcast** (`allcfs.setParam`) so per-drone logs share an origin
 - [x] **Formation scenario library** — 16 scenarios (A1–A8, B1–B3, C1–C5) covering the downwash geometries from the interaction-force literature, each with parameterised separations, a specification check and a safety gate. Per-robot trajectories on the stock Crazyswarm2 upload path — [`10_Formation_Library.md`](10_Formation_Library.md)
 - [x] `tools/merge_usd_logs.py` — merges per-drone uSD logs, measures the actual offset/drift, emits relative state + f_res. Self-tested against known shifts
+- [x] **Sim verification infrastructure** — `run_formation` writes a sidecar JSON with the exact sim-clock trajectory start (needed because a hover scenario gives no recoverable window), and `experiments/analysis/verify_formation_sim.py` checks the `record_states` output against the commanded geometry. Replaces the runner's own report, which cannot work in sim: the radio log topics do not exist there and `/pose` is published only by the hardware server
+- [x] **3-robot sim roster** — `crazyflies_sim3.yaml`, three floor-start drones. `crazyflies_sim.yaml` untouched so the 2-drone downwash test still works
 - [x] **Thesis controllers run in simulation** — the same Rust firmware source, via SIL, selectable with `sim.oot_ctrl_mode` (0/1/2/3). Two-drone downwash reproduced in ROS under both geometric and full INDI (geo −30.5/−2.9 mm, INDI −58.8/−6.2 mm; the ~10x lower/upper asymmetry is the downwash signature, but the geo-vs-INDI difference is not yet a result). Five simulator fidelity bugs fixed first (missing accelerometer, wrong compiled airframe, mismatched motor calibrations, controller called at 2 kHz with a ms tick, and `firmware_params` never applied so the sim flew gains nobody flies) — [`09_Simulation.md`](09_Simulation.md)
 
 ### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
@@ -101,7 +104,8 @@ bottom.
 | Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
 | Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
 | Config | Brushless gains active; 1 <-> N drone switching documented |
-| Formations | 16 scenarios, offline-verified (38 spec cases, 31 safety combos); flying in sim — library trajectories track to 0.4-0.7 mm |
+| Formations | 16 scenarios, offline-verified (38 spec cases, 20 safety combos). ROS-sim execution matrix **in progress** — see `experiments/sim_validation/` |
+| Sim verification | Automated commanded-vs-realised geometry check, no hardware `/pose` needed |
 | Simulation | All 4 control modes + Neural-Swarm2 downwash, same source as the drone; airframe derived from firmware so plant and controller cannot diverge |
 | Housekeeping | Merged to `main`, branches cleaned, frozen branches preserved, docs + memory current |
 
@@ -196,6 +200,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (8) | Sim execution gaps addressed. Infrastructure: sidecar JSON + `verify_formation_sim.py` (automated commanded-vs-realised check that works without hardware `/pose`), `crazyflies_sim3.yaml` for the 3-robot scenarios, `run_sim_matrix.sh` harness. Full 20-run matrix (Priority A × 2 robots, Priority B × 3 robots, each under geometric and INDI) launched. First result: A1/geometric PASS at 27.6 mm, which is the downwash sag rather than tracking error. |
 | 2026-08-22 (7) | Damping investigation time-boxed and paused. KI_P refuted (bit-identical with the integral off); motor lag added to the plant and closes ~40% of the gap (wall 10 -> 8); rotor drag and airframe refuted. Config policy frozen: sim `kv_xy` 8.0, hardware 5.0, cross-warnings in both files. `11_Hardware_Readiness_Checklist.md` added. |
 | 2026-08-22 (6) | Found that the OOT controller cannot track HLC trajectories in simulation (stock controllers can), which blocks sim validation of moving formation scenarios. Pre-existing and unrelated to the formation work. CSV coefficient precision fixed along the way (`%.6f` -> `%.12g`); `export_poly4d.rs` has the same latent bug at 3.00 s pieces. |
 | 2026-08-22 (5) | Formation scenario library added: 16 scenarios, one curve→Poly4D compiler, spec check (38 cases) and safety gate (31 combinations, extreme scenarios gated). Sim-validated; same command runs on hardware. `10_Formation_Library.md` added, including an explicit assessment of what the set still does not cover. |

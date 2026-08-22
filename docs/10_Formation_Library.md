@@ -94,15 +94,44 @@ Same command in simulation and on hardware; only the launch differs.
 # verify without flying: builds, checks the spec, runs the safety gate, writes the CSVs
 ros2 run crazyflie_examples run_formation --scenario A3 --dz 0.30 --check
 
-# simulation, geometric control
+# --- simulation: TWO yaml files, and each one selects something different --------
+#   crazyflies_yaml_file  -> HOW MANY ROBOTS      (sim = 2, sim3 = 3)
+#   server_yaml_file      -> WHICH CONTROLLER     (geo = geometric, indi = full INDI)
 ros2 launch crazyflie launch.py backend:=sim \
     crazyflies_yaml_file:=$PWD/crazyflie/config/crazyflies_sim.yaml \
     server_yaml_file:=$PWD/crazyflie/config/server_sim_geo.yaml
+
 ros2 run crazyflie_examples run_formation --scenario A3 --dz 0.30 --yes \
     --ros-args -p use_sim_time:=true
 
-# same scenario under full INDI: swap the server yaml for server_sim_indi.yaml
+# three robots (B1/B2/B3, C1-C3): swap the roster
+#   crazyflies_yaml_file:=$PWD/crazyflie/config/crazyflies_sim3.yaml
+# full INDI: swap the server
+#   server_yaml_file:=$PWD/crazyflie/config/server_sim_indi.yaml
 ```
+
+**The controller is chosen by the server yaml, not by the runner.** `run_formation` is a
+client; the controller lives in the server process. Its `setParam` calls are what would
+select the mode on hardware, and they fail harmlessly in simulation (the `keyError`
+warnings in the client log are expected). The server prints which law it is running at
+startup — check that line rather than assuming.
+
+### Verifying a simulated run
+
+The runner's own post-flight report does not work in simulation: the radio log topics it
+subscribes to do not exist there, and `/pose` is published by the hardware C++ server, not
+the simulated one. So the runner writes a sidecar `<SID>_<stamp>.meta.json` recording the
+exact simulation-clock instant the trajectory started — which matters, because for a
+pure-hover scenario like A1 no heuristic could recover that window from the data — and a
+separate tool checks the recorded states against it:
+
+```bash
+python experiments/analysis/verify_formation_sim.py \
+    experiments/logs/A3_<stamp>.meta.json  state_geo/<timestamp>/csv  --controller geo
+```
+
+It reports, per robot pair, commanded vs realised dx/dy/dz with mean, standard deviation,
+max error and RMSE, and a PASS/FAIL against a stated tolerance.
 
 Swapping only the server yaml is what makes the library useful — identical commanded
 excitation, different control law, and the difference is attributable. See
@@ -126,6 +155,30 @@ trajectory through the written CSV, and reports piece count and fit error. All 3
 Every scenario also passes the runner's `--check`, which adds the safety gate: **31
 parameter combinations, 0 failures**, with the extreme scenarios correctly refused when
 `--allow-extreme` is absent. Hover scenarios (A1) fly correctly in the simulator.
+
+### ROS-sim verification status
+
+| Layer | Status |
+|---|---|
+| Geometry vs each scenario's own spec (offline, through the written CSV) | ✅ 38/38 parameter cases |
+| Safety gate (speed, accel, separation, geofence, extreme gating) | ✅ 20/20 combinations |
+| **ROS-sim end-to-end, geometric** | 🔄 matrix running |
+| **ROS-sim end-to-end, full INDI** | 🔄 matrix running |
+| 3-robot scenarios (B1/B2/B3, C1–C3) | 🔄 unblocked by `crazyflies_sim3.yaml`, in the matrix |
+| Hardware | ⬜ nothing has flown |
+
+Live results: `experiments/sim_validation/matrix_results.md`. Full write-up when the matrix
+finishes: `docs/12_Sim_Formation_Validation_Report.md`.
+
+**Pass criteria:** mean |Δz error| < 50 mm, mean horizontal error < 80 mm, no divergence
+(automatic fail above 60° tilt), and the fraction of the trajectory actually recorded is
+reported so a run cut short by the server timeout cannot masquerade as a pass.
+
+One calibration point worth keeping in mind when reading the numbers: A1 at Δz 0.50 m
+reports 27.6 mm of error under geometric control, and that is almost entirely the lower
+vehicle **sagging in the wash** — it independently matches the −30.5 mm measured in the
+standalone downwash test. It is physics being measured correctly, not a tracking failure,
+and it consumes half the tolerance budget before the scenario does anything.
 
 ### Moving scenarios in simulation
 
