@@ -168,10 +168,53 @@ outer loop ringing against an inner loop only ~2.5× faster — a cascade ratio 
 notes in `firmware_app/CLAUDE.md` acknowledge as tight (2.28×).
 
 Both agree there **is** a wall near there; the simulator puts it about twice as far out.
+
+#### Rotor drag — investigated and refuted
+
+Rotor drag was the leading suspect: it is genuinely absent from the plant (the model's own
+docstring says "no drag"), and it damps the position loop directly. It is now implemented
+(`sim.physics.drag`, body-frame diagonal `a = -R D Rᵀ v`, folded into the body force so the
+accelerometer feels it — a drag force the IMU did not see would appear as a spurious
+residual). It is **not** the explanation, on two independent grounds.
+
+*Required*: closing a ~4.5 s⁻¹ damping deficit means 0.18 N per m/s, i.e. **129 mN at
+0.7 m/s — 32% of the vehicle's weight**.
+
+*Measured*, sweeping `d` on figure8 at `kv_xy=5`:
+
+| d [1/s] | drag at 0.7 m/s | Result |
+|---|---|---|
+| 0.15 (plausible) | 4.3 mN | unstable |
+| 0.50 (generous) | 14.3 mN | unstable |
+| 1.00 | 28.7 mN | unstable |
+| **2.00** | **57.4 mN** | first stable |
+
+A bluff-body estimate for a 10 cm frame gives ~3 mN at 0.7 m/s, and rotor drag typically
+exceeds body drag by 2–3×, so the physical value is ~0.1–0.5 s⁻¹. The threshold is
+**5–15× higher than anything physical**. Rotor drag is real and worth having in the model,
+but it does not account for the gap.
+
+#### Airframe — also refuted
+
+The position gains were tuned in July on hardware; the sim is configured as CF21BL. Running
+the identical case under all three airframes at `kv_xy=5`: brushless (J=2.395e-5, cascade
+ratio 2.55×) unstable, upgraded CF2.1 (J=1.657e-5, 3.07×) unstable, standard CF2.1
+unstable. The airframe is not the difference either.
+
+#### Still to examine
+
 Ruled out: trajectory generation, CSV coefficient precision, polynomial piece count, the
-downwash model, missing jerk/snap, inertia mismatch, and the mixer deadband. Not yet
-examined: rotor drag (absent from the plant entirely), and thrust saturation behaviour
-during large attitude excursions.
+downwash model, missing jerk/snap, inertia mismatch, the mixer deadband, rotor drag, and
+the airframe. Remaining leads, noting that the in-tree `mellinger` and `pid` fly the same
+trajectory in the same plant — so the plant is flyable and the difference is specific to
+our outer loop:
+
+1. **The position integral term** (`KI_P = 0.05`, `KI_LIMIT = 2.0`). Untested, a compile-time
+   constant rather than a parameter, and the classic destabiliser of a marginally damped
+   loop. This is where I would look next.
+2. Thrust-saturation behaviour during large attitude excursions.
+3. Whether the July hardware campaign that produced `kv=5` used the same trajectories at
+   the same speeds as these test cases.
 
 **Workaround:** `crazyflies_sim.yaml` sets `kv_xy: 10.0` for simulation only, with the
 rationale in-file. `crazyflies.yaml` keeps the flight-proven 5.0 and must not be changed
