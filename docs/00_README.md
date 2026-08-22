@@ -15,5 +15,6 @@ This folder contains the core planning and scientific documentation for the Mast
 - `07_Thesis_Progress_Checklist.md` → **START HERE.** Single source of truth for project status: what is done, where we are, what is next. Kept current as work happens.
 - `08_Trajectory_Upload_Paths.md` → Engineering reference: Mode D (onboard) vs Mode E (official Crazyswarm2 upload), which trajectories are valid on each, and how to run them
 - `09_Simulation.md` → Engineering reference: running the thesis controllers in the Crazyswarm2 simulator with the downwash model, and what the simulator can and cannot show
+- `10_Formation_Library.md` → The multi-robot formation scenarios used to excite downwash (A1–A8, B1–B3, C1–C5), how to run them, and what the set does not yet cover
 
 This documentation is the single source of truth for the project. New documents should be added with increasing numbers (07_..., 08_..., etc.).

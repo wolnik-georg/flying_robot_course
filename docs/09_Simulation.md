@@ -134,6 +134,25 @@ Consequence: **the simulator can prove a controller is broken; it cannot prove o
 
 ---
 
+## ⛔ Known blocker: trajectories do not fly in simulation
+
+Everything below was verified on hover, takeoff and `goTo`. **The out-of-tree controller
+does not track high-level-commander trajectories in SIL** — it diverges in attitude and
+crashes, on the pre-existing exported trajectories (`circle` 139°, `figure8` 79°, `oval`
+168° of tilt) as much as on generated ones. The in-tree `mellinger` and `pid` controllers
+fly the identical `circle` file at a correct 27° bank, so the defect is on our side of the
+simulator, not in the trajectories or the plant.
+
+Ruled out: CSV coefficient precision, piece count, the downwash model, and the missing
+jerk/snap in the SIL setpoint (which was a genuine omission against
+`crtp_commander_high_level.c`, now fixed — but not the cause; `g_indi_omega_src` defaults
+to taking the body rate from the setpoint instead).
+
+Until this is resolved the simulator can validate **static** formation geometry only. See
+[`10_Formation_Library.md`](10_Formation_Library.md) for the measurements.
+
+---
+
 ## Verified results (22 August 2026)
 
 Single drone, takeoff to 1.0 m, 15 s, brushless gains from `crazyflies.yaml`: all four control

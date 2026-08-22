@@ -17,6 +17,8 @@ bottom.
 | **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
 | **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
+| **Also open** | The formation geofence (`formations/safety.py FLIGHT_SPACE`) is a deliberate placeholder — **measure the real flight volume** |
+| **⛔ Blocker (new)** | Our controller does not track HLC trajectories in SIL — stock `mellinger`/`pid` fly the same file fine, so it is our side. Pre-existing; the sim had only ever been run on hover/goTo. Blocks sim validation of every moving formation scenario |
 | **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
 | **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
@@ -65,6 +67,7 @@ bottom.
 - [x] uSD logging config + guide for the thesis dataset (`tools/usd_thesis_config.txt`)
 - [x] Documented 1 ↔ N drone switching in one place (`crazyflies.yaml` header + multi-drone log note)
 - [x] uSD logging started by **broadcast** (`allcfs.setParam`) so per-drone logs share an origin
+- [x] **Formation scenario library** — 16 scenarios (A1–A8, B1–B3, C1–C5) covering the downwash geometries from the interaction-force literature, each with parameterised separations, a specification check and a safety gate. Per-robot trajectories on the stock Crazyswarm2 upload path — [`10_Formation_Library.md`](10_Formation_Library.md)
 - [x] `tools/merge_usd_logs.py` — merges per-drone uSD logs, measures the actual offset/drift, emits relative state + f_res. Self-tested against known shifts
 - [x] **Thesis controllers run in simulation** — the same Rust firmware source, via SIL, selectable with `sim.oot_ctrl_mode` (0/1/2/3). Two-drone downwash reproduced in ROS under both geometric and full INDI (geo −30.5/−2.9 mm, INDI −58.8/−6.2 mm; the ~10x lower/upper asymmetry is the downwash signature, but the geo-vs-INDI difference is not yet a result). Five simulator fidelity bugs fixed first (missing accelerometer, wrong compiled airframe, mismatched motor calibrations, controller called at 2 kHz with a ms tick, and `firmware_params` never applied so the sim flew gains nobody flies) — [`09_Simulation.md`](09_Simulation.md)
 
@@ -97,6 +100,7 @@ bottom.
 | Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
 | Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
 | Config | Brushless gains active; 1 <-> N drone switching documented |
+| Formations | 16 scenarios, offline-verified (38 spec cases, 31 safety combos); hover confirmed in sim, **moving scenarios blocked by the trajectory defect above** |
 | Simulation | All 4 control modes + Neural-Swarm2 downwash, same source as the drone; airframe derived from firmware so plant and controller cannot diverge |
 | Housekeeping | Merged to `main`, branches cleaned, frozen branches preserved, docs + memory current |
 
@@ -113,8 +117,10 @@ bottom.
 
 ### B.4 First multi-drone flights
 
+- [ ] 10b. **Measure the flight volume** and set `FLIGHT_SPACE` in `formations/safety.py` (currently a deliberately-too-small placeholder, so scenarios are refused rather than flown into the netting)
 - [ ] 11. Dry run — `formation_flight -- ... --dry-run` *(prints the plan, commands nothing)*
 - [ ] 12. First 2-drone flight — `--formation vertical --separation 0.6` *(start wide)*
+- [ ] 12b. Then walk the formation library: **A1 → A3 → A2 → A8 → A4 → A5**, wide separations first. B1–B3 need a third drone; A6/A7/C4 are `--allow-extreme` and come last
 - [ ] 13. Walk separation down — 0.6 → 0.4 → 0.3 → 0.25 → 0.2 m
 - [ ] 14. **Check the real uSD sync number** that `merge_usd_logs.py` prints — the few-ms figure is predicted from broadcast jitter and clock drift and has only been validated against synthetic data
 
@@ -188,6 +194,8 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (6) | Found that the OOT controller cannot track HLC trajectories in simulation (stock controllers can), which blocks sim validation of moving formation scenarios. Pre-existing and unrelated to the formation work. CSV coefficient precision fixed along the way (`%.6f` -> `%.12g`); `export_poly4d.rs` has the same latent bug at 3.00 s pieces. |
+| 2026-08-22 (5) | Formation scenario library added: 16 scenarios, one curve→Poly4D compiler, spec check (38 cases) and safety gate (31 combinations, extreme scenarios gated). Sim-validated; same command runs on hardware. `10_Formation_Library.md` added, including an explicit assessment of what the set still does not cover. |
 | 2026-08-22 (4) | `crazyflie-firmware` deliberately NOT forked; its ~110 bindings lines kept as a patch in this repo with `host/README.md` covering re-apply, since that tree follows bitcraze upstream. |
 | 2026-08-22 (3) | Geometric + all INDI modes wired into the CS2 simulator through the existing SIL bindings, running the same Rust source that flies. Five plant/config fidelity bugs found and fixed, each of which had looked like a controller fault — the last being that `crazyflies.yaml` firmware_params were never pushed to the simulated controller. Two-drone downwash reproduced under both geometric and full INDI with the correct 10x lower/upper asymmetry. `09_Simulation.md` added, including what the simulator still cannot show (no motor lag, no EKF, no noise). |
 | 2026-08-22 (2) | Decisions fixed: NN inference onboard / training offline; uSD is the dataset. Brushless gains activated. uSD config + 1↔N drone switching documented. Found peer position is already available onboard, so the NN input needs no new comms. |
