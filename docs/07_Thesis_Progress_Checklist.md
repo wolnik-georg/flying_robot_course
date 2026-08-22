@@ -48,6 +48,9 @@ bottom.
 - [x] Single body-frame convention (Mellinger) on Mode E; Mode D pinned to its original
 - [x] Repository/branch cleanup — merged to `main`, 13 stale branches removed, stable/finalized preserved
 - [x] Documentation + memory updated
+- [x] **Log the residual** `indi.a_res_{x,y,z}` = `a_meas - a_model` = f_res/m — the core thesis measurement. Recorded in ALL controller modes, so downwash is measurable while flying geometric too
+- [x] Multi-drone analyser `experiments/analysis/analyze_formation.py` (separation + residual force + downwash report)
+- [x] Shared clock across per-drone loggers, so residual and relative position are correlatable
 
 ### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
 
@@ -73,7 +76,7 @@ bottom.
 - [ ] 7. Fill the three `cf_second` TODOs — real URI, real `initial_position`, platform
 - [ ] 8. Resolve radio bandwidth — 6 topics × 100 Hz × 2 drones saturates one Crazyradio *(2nd dongle, or lower rates)*
 - [ ] 9. Set `cf_second: enabled: true`
-- [ ] 10. High-rate logging check — states, motor commands, residual signals
+- [ ] 10. High-rate logging check — states, motor commands, residual signals. **Confirm `indi.a_res_*` is non-zero in flight** (it needs an RPM source: `rpm.m*` deck or DShot `motor.m*_rpm`); zero means no telemetry and no thesis data
 
 ### B.4 First multi-drone flights
 

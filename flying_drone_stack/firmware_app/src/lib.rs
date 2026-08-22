@@ -723,6 +723,7 @@ extern "C" {
     fn indi_log_write(arx: f32, ary: f32, arz: f32, ax: f32, ay: f32, az: f32);
     fn indi_tau_write(tx: f32, ty: f32, tz: f32);
     fn indi_notch_log_write(anx: f32, any: f32, anz: f32);
+    fn indi_a_res_write(ax: f32, ay: f32, az: f32);
 }
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
@@ -1329,8 +1330,19 @@ fn controller_step(
         s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
     );
 
-    // Position INDI: a_indi = a_meas - a_model (world frame)
-    let a_indi = if mode & 1 != 0 && rpms_active {
+    // Residual acceleration a_res = a_meas - a_model (world frame).
+    //
+    // This is f_res / m — the unmodelled force acting on the vehicle, which in close-proximity
+    // formation flight is dominated by the downwash of the other drones. It is the quantity the
+    // residual-learning literature (Neural-Swarm2, Aggregate Downwash, Flatness-Preserving
+    // Residual) trains on, so it is logged as `indi.a_res_{x,y,z}`.
+    //
+    // Computed whenever RPMs are available and INDEPENDENT of controller mode, so the residual
+    // can be measured while flying the plain geometric controller too — training data for
+    // Geometric+NN has to come from non-INDI flights. Only the *control* use below is gated on
+    // the position-INDI bit, so behaviour is unchanged: when the loop is off, a_indi is zero
+    // exactly as before, and a_res is merely observed.
+    let a_res = if rpms_active {
         let f_total = kt1*(m1 as f32)*(m1 as f32)
                     + kt2*(m2 as f32)*(m2 as f32)
                     + kt3*(m3 as f32)*(m3 as f32)
@@ -1344,6 +1356,10 @@ fn controller_step(
     } else {
         Vec3::zero()
     };
+    unsafe { indi_a_res_write(a_res.x, a_res.y, a_res.z); }
+
+    // Position INDI feedforward — unchanged: only fed into f_d when the outer loop is enabled.
+    let a_indi = if mode & 1 != 0 { a_res } else { Vec3::zero() };
 
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
     // v2 improvement #1: position integral (zero term when disabled)

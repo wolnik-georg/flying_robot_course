@@ -348,6 +348,7 @@ static float log_alp_raw_x, log_alp_raw_y, log_alp_raw_z;
 static float log_alp_x,     log_alp_y,     log_alp_z;
 static float log_tau_x,     log_tau_y,     log_tau_z;
 static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
+static float log_a_res_x, log_a_res_y, log_a_res_z;
 
 void indi_log_write(float arx, float ary, float arz,
                     float ax,  float ay,  float az)
@@ -369,6 +370,18 @@ void indi_notch_log_write(float anx, float any, float anz)
     log_alp_notch_x = anx; log_alp_notch_y = any; log_alp_notch_z = anz;
 }
 
+/* Residual acceleration a_res = a_meas - a_model [m/s^2], world frame (2026-08-22).
+ * Equals f_res/m -- the unmodelled force on the vehicle, dominated by other drones' downwash in
+ * close-proximity formation flight. This is the quantity the residual-learning literature trains
+ * on, so it is the core measurement of the thesis.
+ * Written every tick whenever RPMs are available, REGARDLESS of indi_gains.ctrl_mode, so the
+ * residual can be recorded while flying the plain geometric controller (training data for
+ * Geometric+NN must come from non-INDI flights). Zero when no RPM source is present. */
+void indi_a_res_write(float ax, float ay, float az)
+{
+    log_a_res_x = ax; log_a_res_y = ay; log_a_res_z = az;
+}
+
 LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
   LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
@@ -382,4 +395,7 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_notch_x, &log_alp_notch_x)
   LOG_ADD(LOG_FLOAT, alp_notch_y, &log_alp_notch_y)
   LOG_ADD(LOG_FLOAT, alp_notch_z, &log_alp_notch_z)
+  LOG_ADD(LOG_FLOAT, a_res_x,   &log_a_res_x)
+  LOG_ADD(LOG_FLOAT, a_res_y,   &log_a_res_y)
+  LOG_ADD(LOG_FLOAT, a_res_z,   &log_a_res_z)
 LOG_GROUP_STOP(indi)
