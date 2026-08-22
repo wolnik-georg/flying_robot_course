@@ -201,6 +201,35 @@ the identical case under all three airframes at `kv_xy=5`: brushless (J=2.395e-5
 ratio 2.55×) unstable, upgraded CF2.1 (J=1.657e-5, 3.07×) unstable, standard CF2.1
 unstable. The airframe is not the difference either.
 
+#### Motor lag — partially explains it, and is now enabled
+
+The plant had no actuator dynamics at all: commanded thrust appeared instantly. That is both
+unfaithful (measured hardware rotor time constant is 44 ms brushless, 71 ms upgraded — and
+the project's own Rust simulator carries 30 ms) and optimistic.
+
+First-order motor lag is now in the plant (`sim.physics.motor_tau`, enabled at 0.044 s by
+default). Measured effect on the stability wall:
+
+| Motor τ | First stable `kv_xy` |
+|---|---|
+| none (was) | 10.0 |
+| 0.030 s | **8.0** |
+| 0.044 s | **8.0** (saturates) |
+
+That closes roughly **40%** of the gap to hardware's 5.0, and the plant is more faithful for
+it. `crazyflies_sim.yaml` was lowered from `kv_xy: 10.0` to `8.0` accordingly.
+
+Note this is a plant property and cannot be derived from the controller: `indi_gains.act_tau`
+is the controller's *model* of actuator lag and is deliberately 0 (the act_dyn experiment was
+refuted).
+
+#### `KI_P` — refuted
+
+The position integral (`KI_P = 0.05`, `KI_LIMIT = 2.0`) was the leading suspect after drag.
+Rebuilding with `KI_P = 0.0` gives results **bit-identical** to `0.05` (4337.8 mm tracking
+error in both, same wall at `kv_xy=10`). With good tracking the error integral stays tiny and
+the clamp never engages, so the term contributes nothing here.
+
 #### Still to examine
 
 Ruled out: trajectory generation, CSV coefficient precision, polynomial piece count, the
@@ -209,12 +238,20 @@ the airframe. Remaining leads, noting that the in-tree `mellinger` and `pid` fly
 trajectory in the same plant — so the plant is flyable and the difference is specific to
 our outer loop:
 
-1. **The position integral term** (`KI_P = 0.05`, `KI_LIMIT = 2.0`). Untested, a compile-time
-   constant rather than a parameter, and the classic destabiliser of a marginally damped
-   loop. This is where I would look next.
-2. Thrust-saturation behaviour during large attitude excursions.
-3. Whether the July hardware campaign that produced `kv=5` used the same trajectories at
-   the same speeds as these test cases.
+A useful constraint on what is left: **the remaining explanation has to be something that
+makes the REAL vehicle more stable than the current model**, worth roughly 3 more units of
+`kv_xy`. That rules out the two obvious remaining fidelity items — adding control/estimator
+delay and adding sensor filtering both *reduce* phase margin, so they would make the sim more
+faithful while widening the discrepancy, not closing it.
+
+Candidates that would go the right way:
+
+1. **Thrust saturation / battery sag** reducing effective loop gain at large excursions.
+2. **EKF velocity smoothing** — the controller flies on an estimate, not truth. Whether that
+   helps or hurts here is not obvious and is worth a direct test.
+3. Whether the July campaign that produced `kv=5` used comparable trajectories and speeds to
+   these test cases. If it was tuned on gentler flights, `kv=5` may simply have less margin
+   than the notes imply — which the hardware crash at `kv=4` is consistent with.
 
 **Workaround:** `crazyflies_sim.yaml` sets `kv_xy: 10.0` for simulation only, with the
 rationale in-file. `crazyflies.yaml` keeps the flight-proven 5.0 and must not be changed

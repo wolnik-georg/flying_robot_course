@@ -18,7 +18,7 @@ bottom.
 | **Next action** | **B.2 step 1 — flash the firmware, then fly the validation ladder** |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
 | **Also open** | The formation geofence (`formations/safety.py FLIGHT_SPACE`) is a deliberate placeholder — **measure the real flight volume** |
-| **Open (sim)** | Sim needs ~2x the position damping of the real drone (wall at ζ≈0.5-0.6 vs hardware ζ≈0.25-0.31). Worked around with a SIM-ONLY `kv_xy: 10` in `crazyflies_sim.yaml`; hardware keeps 5.0. Four real bugs fixed en route — see [`09_Simulation.md`](09_Simulation.md) |
+| **Open (sim), time-boxed** | Sim needs more position damping than hardware: wall now `kv_xy` 8 (was 10) vs hardware 5. Motor lag closed ~40%; KI_P, rotor drag, inertia, airframe all refuted. SIM-ONLY `kv_xy: 8.0`; hardware keeps 5.0. **Investigation paused — hardware readiness is the priority** |
 | **Flag for the lab** | Hardware crashed 2/2 at `kv_xy=4` and flies at 5 — a thin margin, and formation flight adds downwash to that same loop |
 | **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
 | **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
@@ -118,6 +118,7 @@ bottom.
 
 ### B.4 First multi-drone flights
 
+- [ ] 10a. **Work through [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md)** — Stage 0 bench items, then the single-robot ladder, then 2 robots at large separation only
 - [ ] 10b. **Measure the flight volume** and set `FLIGHT_SPACE` in `formations/safety.py` (currently a deliberately-too-small placeholder, so scenarios are refused rather than flown into the netting)
 - [ ] 11. Dry run — `formation_flight -- ... --dry-run` *(prints the plan, commands nothing)*
 - [ ] 12. First 2-drone flight — `--formation vertical --separation 0.6` *(start wide)*
@@ -195,6 +196,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-22 (7) | Damping investigation time-boxed and paused. KI_P refuted (bit-identical with the integral off); motor lag added to the plant and closes ~40% of the gap (wall 10 -> 8); rotor drag and airframe refuted. Config policy frozen: sim `kv_xy` 8.0, hardware 5.0, cross-warnings in both files. `11_Hardware_Readiness_Checklist.md` added. |
 | 2026-08-22 (6) | Found that the OOT controller cannot track HLC trajectories in simulation (stock controllers can), which blocks sim validation of moving formation scenarios. Pre-existing and unrelated to the formation work. CSV coefficient precision fixed along the way (`%.6f` -> `%.12g`); `export_poly4d.rs` has the same latent bug at 3.00 s pieces. |
 | 2026-08-22 (5) | Formation scenario library added: 16 scenarios, one curve→Poly4D compiler, spec check (38 cases) and safety gate (31 combinations, extreme scenarios gated). Sim-validated; same command runs on hardware. `10_Formation_Library.md` added, including an explicit assessment of what the set still does not cover. |
 | 2026-08-22 (4) | `crazyflie-firmware` deliberately NOT forked; its ~110 bindings lines kept as a patch in this repo with `host/README.md` covering re-apply, since that tree follows bitcraze upstream. |
