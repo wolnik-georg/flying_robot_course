@@ -70,7 +70,7 @@ streaming, legacy Mode B binaries) are unaffected under either setting. Largely 
 `frame_conv` below — with `frame_conv = 1` the local and HLC values agree, so `omega_src` no
 longer changes anything.
 
-**3. `indi_gains.frame_conv` (default 1 = Mellinger) — ⚠️ this changes Mode D too.**
+**3. `indi_gains.frame_conv` (default 1 = Mellinger) — Mode E only; Mode D is pinned.**
 z_B is unambiguous (the thrust direction); the only choice is where yaw sits around it, and the
 two standard constructions agree only at axis-aligned tilt.
 
@@ -88,15 +88,24 @@ written from Faessler et al. 2018. `controller_lee.c` derives its `omega_des` fr
 
 - `frame_conv = 1` — Mellinger everywhere. R_d, ω_d and α_des share one frame, α_des is a valid
   derivative of ω_d, and the locally computed ω_d equals the HLC's. **Default.**
-- `frame_conv = 0` — legacy Faessler ω_d/α_des, reproducing every flight before 2026-08-22.
+- `frame_conv = 0` — legacy Faessler ω_d/α_des.
 
 ω_d feeds the `KW` damping term of **both** the geometric and INDI attitude laws; α_des feeds
 the INDI snap feedforward only. Measured effect of the switch on level trajectories: ω_d
 0.002–0.17 rad/s, α_des ~1–1.5 %.
 
-**Consequence:** unlike the first two fixes, this one is *not* Mode-D-neutral. Flashing changes
-Mode D behaviour by the amounts above. Re-validate Mode D as well, or set `frame_conv = 0` to
-reproduce the old baseline exactly.
+**Scope — Mode D is unaffected.** `frame_conv` governs the passthrough (Mode E / HLC) branch
+only. Mode D is pinned to Faessler by `FRAME_CONV_MODE_D` in `lib.rs` and ignores the parameter
+entirely, so the completed INDI project's gain blocks, kt ceilings and results stay exactly
+reproducible. A full Mode D flight is unchanged end to end:
+
+| Phase | ω_d | α_des | Changed? |
+|---|---|---|---|
+| Trajectory (Mode D branch) | Faessler (pinned) | Faessler (pinned) | no |
+| Takeoff / land (HLC passthrough) | `sp.attitudeRate`, i.e. HLC Mellinger — as before | unused: the ramp runs `ctrl_mode = 0` (geometric), which has no snap feedforward | no |
+
+The one way to disturb Mode D would be running the takeoff/landing ramp under INDI
+(`ctrl_mode >= 2`); `flight.py` hardcodes `_RAMP_CTRL_MODE = 0`, so this does not arise.
 
 ## Running
 

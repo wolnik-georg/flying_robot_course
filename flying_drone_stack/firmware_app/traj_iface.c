@@ -247,7 +247,11 @@ uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness fro
  *       pre-existing results can be reproduced exactly.
  * omega_d feeds the KW damping term of BOTH the geometric and INDI attitude laws;
  * alpha_des feeds the INDI snap feedforward only. Measured effect of the switch on level
- * trajectories: omega_d 0.002-0.17 rad/s, alpha_des ~1-1.5%. */
+ * trajectories: omega_d 0.002-0.17 rad/s, alpha_des ~1-1.5%.
+ *
+ * SCOPE: this applies to the passthrough branch (Mode E / HLC) ONLY. Mode D (onboard
+ * trajectory eval) is pinned to Faessler in lib.rs via FRAME_CONV_MODE_D and ignores this
+ * parameter, so the completed INDI project's flight results stay reproducible. */
 uint8_t g_indi_frame_conv = 1;  /* 1 = Mellinger (default), 0 = Faessler (legacy) */
 
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */

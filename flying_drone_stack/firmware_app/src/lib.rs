@@ -1028,6 +1028,13 @@ unsafe fn eval_z_poly(t_global: f32, n_segs: usize) -> (f32, f32, f32, f32, f32)
     (pz, vz, az, jz, sz)
 }
 
+/// Frame convention pinned for Mode D (onboard trajectory eval). Mode D is the flight
+/// artifact of the completed INDI project — every result, gain block and kt ceiling was
+/// obtained with the Faessler ω_d/α_des construction, so it stays on it permanently and
+/// is NOT affected by `g_indi_frame_conv`. Change this constant only if you intend to
+/// invalidate that baseline.
+const FRAME_CONV_MODE_D: u8 = 0;
+
 /// Desired body x/y axes for a thrust vector `acc_g` and yaw ψ, in the convention
 /// selected by `conv` (see `g_indi_frame_conv` in traj_iface.c).
 ///
@@ -1779,6 +1786,7 @@ pub unsafe extern "C" fn controllerOutOfTree(
     }
 
     // Body-frame convention for omega_d / alpha_des (see g_indi_frame_conv).
+    // Applies to the passthrough (Mode E / HLC) branch only — Mode D is pinned below.
     let frame_conv = g_indi_frame_conv;
 
     let (pd, vd, ad, omega_d, alpha_des) = if g_traj_mode == 1 && TRAJ_T0 > 0 {
@@ -1807,9 +1815,13 @@ pub unsafe extern "C" fn controllerOutOfTree(
         let jerk_3d = Vec3::new(jerk.x, jerk.y, jz);
         let snap_3d = Vec3::new(snap.x, snap.y, sz);
         // ω_d feedforward: include Z jerk when z_mode=1 (non-zero for 3D paths).
-        let omega_d  = omega_desired(ad, jerk_3d, 0.0_f32, frame_conv);
+        // Frame convention is PINNED to Faessler here and deliberately ignores
+        // g_indi_frame_conv: Mode D is the completed INDI project's flight artifact and
+        // must keep reproducing the gains/kt ceilings it was commissioned with. The
+        // Mellinger correction applies to the Mode E path only.
+        let omega_d  = omega_desired(ad, jerk_3d, 0.0_f32, FRAME_CONV_MODE_D);
         // α_des feedforward: snap → Ω̇_ref via flatness (Tal & Karaman Eq. 15).
-        let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32, frame_conv);
+        let alpha_des = alpha_desired(ad, jerk_3d, snap_3d, 0.0_f32, FRAME_CONV_MODE_D);
         (pd, vd, ad, omega_d, alpha_des)
     } else {
         // Mode B passthrough: read full feedforward from CRTP setpoint.
