@@ -39,26 +39,60 @@ receives — `(pd, vd, ad, ω_d, α_des)`:
   `g_traj_mode == 1 || == 2`, and Poly4D has no attitude channel — so flip / immelmann / splits
   are structurally Mode D only.
 
-## Known limitation — `--reps` means something different in each mode
+## Continuous multi-lap flight — `--laps`
 
 Mode D loops **only the core lap**: the firmware knows which segments are the entry/exit ramps
 (`n_entry`/`n_exit` in the `.meta.json` sidecar) and wraps time within the core, giving
 `ramp-up → N continuous laps → ramp-down` as one uninterrupted flight.
 
-Mode E has no such concept — `startTrajectory` replays the *whole* uploaded trajectory, so
-`--reps N` gives `(ramp-up → 1 lap → ramp-down)` repeated N times, with a pause between. Fine for
-"repeat the run ≥5 times" as the experimental protocol asks, but it is **not** a way to get one
-long continuous formation flight.
+The HLC has no equivalent — `startTrajectory` replays whatever it was given. So on Mode E the
+laps are baked into the export instead:
 
-To fly continuous laps on Mode E the trajectory must be exported with the laps baked in. That is
-not implemented (`export_poly4d` has no `--laps`), and the 31-piece cap bounds how far it could
-go:
+```bash
+cargo run --release --bin export_poly4d -- --trajectory circle --mode 1 --kt 0.1 --laps 3
+#   -> circle_mode1_kt0.1_laps3.csv   (26 pieces, 15.44 s, starts and ends at rest)
+ros2 run crazyflie_examples formation_flight -- --trajectory circle --mode 1 --kt 0.1 --laps 3 ...
+```
 
-| Trajectory | pieces | max laps in one upload |
+Concatenation happens **before** the rest-to-rest wrap, so the ramps end up on the outside of the
+whole stack — `ramp-up → N laps → ramp-down` — exactly the Mode D shape. Repeating is a plain
+segment copy: coefficients are normalised to τ∈[0,1] per segment with the duration carried
+alongside, so there is no re-fit and no QP re-solve. Each lap seam *is* the core's own wraparound
+junction, which the planner already made C3.
+
+Measured on the generated files — lap seams are indistinguishable from ordinary junctions:
+
+| | pieces | max junction jump (pos / vel) | start–end \|v\| |
+|---|---|---|---|
+| circle ×3 | 26 | 6.8e-7 m / 1.4e-5 m/s | 0.0000 → 0.0000 m/s |
+| oval ×2 | 26 | 3.0e-6 m / 1.2e-5 m/s | 0.0000 → 0.0001 m/s |
+| figure8 ×3 | 30 | 9.1e-7 m / 7.8e-6 m/s | 1.0586 → 1.0586 m/s |
+
+**Only closed loops can be repeated.** The exporter checks the end-vs-start mismatch and refuses
+otherwise, because repeating an open path would jump the reference from the end back to the
+start. The separation is unambiguous:
+
+| Repeatable (≈1e-7 m) | Refused (mismatch) |
+|---|---|
+| figure8, circle, oval, tilted_oval, helix, teardrop, teardrop_wide | slalom (4.4 m), roller_coaster (3.2 m), loop_train (1.4 m), corner (1.3 m), corkscrew (1.0 m) |
+
+The 31-piece cap bounds the lap count; exceeding it is a clear error naming the limit:
+
+| Trajectory | pieces/lap | max laps |
 |---|---|---|
-| figure8 | 10 (non-periodic) | 3 |
+| figure8 | 10 (no ramps) | 3 |
 | circle | 8 core + 2 ramps | 3 |
 | oval / tilted_oval | 12 core + 2 ramps | 2 |
+
+`--laps` is HLC-only; passing it with `--onboard` prints a note and is ignored, since Mode D
+already repeats the core in firmware.
+
+### `--laps` vs `--reps`
+
+| | Meaning |
+|---|---|
+| `--laps N` (export + flight script) | **N continuous core laps in one flight**: ramp-up → N laps → ramp-down, one `startTrajectory` |
+| `--reps N` (flight script) | **N separate runs**: full ramp-up/lap/ramp-down each time, with a pause. What the protocol's "repeat ≥ 5 times" asks for |
 
 ## Controller equivalence
 

@@ -21,6 +21,10 @@
 //!                instead of HLC Poly4D (8-coef physical-time). Output: {label}_onboard.csv
 //! --no-rest-wrap : skip the rest-to-rest entry/exit wrap on periodic trajectories in the
 //!                HLC export (restores pre-2026-08-19 output). Diagnostic escape hatch only.
+//! --laps N     : HLC export only. Bake N continuous core laps into ONE trajectory, so the
+//!                drone flies ramp-up -> N laps -> ramp-down from a single startTrajectory().
+//!                Requires a closed loop (verified at export). Output: {label}_laps{N}.csv.
+//!                Mode D ignores this -- it repeats the core in firmware via traj.reps.
 //!
 //! (*) Mode 2 (SE3) exports the position-only path; attitude polynomials are not
 //!     supported by Poly4D. The geometric controller derives attitude from flatness.
@@ -53,6 +57,8 @@ fn main() {
         .and_then(|i| args.get(i + 1)).cloned();
     let onboard = args.iter().any(|a| a == "--onboard");
     let no_rest_wrap = args.iter().any(|a| a == "--no-rest-wrap");
+    let laps: usize = args.iter().position(|a| a == "--laps")
+        .and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(1).max(1);
 
     // Default kt differs per trajectory
     let default_kt = match trajectory.as_str() {
@@ -90,6 +96,10 @@ fn main() {
     };
 
     if onboard {
+        if laps > 1 {
+            eprintln!("NOTE: --laps is ignored with --onboard — Mode D repeats the core in \
+                firmware via traj.reps (see n_entry/n_exit in the .meta.json sidecar).");
+        }
         // OOT traj param format: normalised-time coefficients, 19 floats/segment.
         // Used by flight.py --onboard (Mode D) — uploaded via traj.ci/cv/cw params.
         let out_path = out_override.unwrap_or_else(|| {
@@ -183,6 +193,7 @@ fn main() {
                   meta_path, periodic, n_entry, n_exit);
     } else {
         // HLC Poly4D format: degree-7 physical-time coefficients.
+        let label = if laps > 1 { format!("{}_laps{}", label, laps) } else { label.clone() };
         let out_path = out_override.unwrap_or_else(|| {
             format!("{}/{}.csv", CS2_DATA_DIR, label)
         });
@@ -194,19 +205,50 @@ fn main() {
         // tilted_oval 1.20 m/s) -- the same swing-out the onboard path was fixed for.
         // Non-periodic trajectories are already rest-to-rest and pass through unchanged.
         // `--no-rest-wrap` restores the pre-fix output byte-for-byte.
+        // Multi-lap: bake `laps` copies of the core into ONE trajectory so the HLC flies
+        // ramp-up → N continuous laps → ramp-down from a single startTrajectory() call.
+        // This is what Mode D gets from traj.reps (the firmware wraps time within the core
+        // using n_entry/n_exit); the HLC has no equivalent, it replays whatever it was
+        // given, so the laps must be in the upload. Concatenation happens BEFORE the
+        // rest-to-rest wrap, so the ramps end up on the outside of the whole stack rather
+        // than around each lap.
+        let core = if laps > 1 {
+            let (dp, dv, da, dj) = loop_closure_error(&traj);
+            // Tolerances are generous relative to the ~1e-6 a closed lap actually shows,
+            // but far below the metres/m·s⁻¹ an open path would produce.
+            if dp > 1e-3 || dv > 1e-2 || da > 1e-1 {
+                eprintln!(
+                    "ERROR: '{}' is not a closed loop — cannot fly multiple laps.\n  \
+                     end-vs-start mismatch: pos {:.4} m, vel {:.4} m/s, acc {:.4} m/s²\n  \
+                     Repeating it would jump the reference from the end back to the start. \
+                     Use --laps 1 (or flight --reps N for separate runs).",
+                    trajectory, dp, dv, da
+                );
+                std::process::exit(1);
+            }
+            eprintln!(
+                "Multi-lap: {} laps, loop closure ok (pos {:.2e} m, vel {:.2e} m/s, \
+                 acc {:.2e} m/s², jerk {:.2e} m/s³)",
+                laps, dp, dv, da, dj
+            );
+            repeat_core(&traj, laps)
+        } else {
+            traj.clone()
+        };
+
         let periodic = is_loop_safe(&trajectory, mode);
         let traj_out = if periodic && !no_rest_wrap {
-            let (wrapped, t_e) = wrap_rest_to_rest(&traj);
+            let (wrapped, t_e) = wrap_rest_to_rest(&core);
             eprintln!(
                 "Rest-to-rest wrap: +entry/+exit {:.2}s each ({} → {} segs, total {:.3}s)",
-                t_e, traj.segments.len(), wrapped.segments.len(), wrapped.total_time
+                t_e, core.segments.len(), wrapped.segments.len(), wrapped.total_time
             );
             wrapped
         } else {
             if periodic {
                 eprintln!("--no-rest-wrap: periodic core exported unwrapped (starts at lap speed)");
             }
-            traj.clone()
+            core
         };
 
         // Firmware cap: crtp_commander_high_level.c TRAJECTORY_MEMORY_SIZE 4096 bytes
@@ -214,8 +256,9 @@ fn main() {
         const HLC_MAX_PIECES: usize = 31;
         if traj_out.segments.len() > HLC_MAX_PIECES {
             eprintln!(
-                "ERROR: {} segments exceed the HLC trajectory memory cap of {} pieces",
-                traj_out.segments.len(), HLC_MAX_PIECES
+                "ERROR: {} segments exceed the HLC trajectory memory cap of {} pieces{}",
+                traj_out.segments.len(), HLC_MAX_PIECES,
+                if laps > 1 { format!(" — try fewer than {} laps", laps) } else { String::new() }
             );
             std::process::exit(1);
         }
@@ -883,6 +926,50 @@ fn hermite_norm9(p0: f32, v0: f32, a0: f32, j0: f32,
     [c0, c1, c2, c3, c4, c5, c6, c7, 0.0]
 }
 
+/// Largest mismatch between a trajectory's END state and its START state, per
+/// derivative order, in physical units: `(dp, dv, da, dj)`.
+///
+/// A closed lap planned with `periodic = true` has C3 wraparound continuity between its
+/// last and first segment, so this is ~0 and copies of the core can be concatenated
+/// without introducing any discontinuity. An open path (helix climbs, teardrop ends
+/// elsewhere) has a large mismatch and must NOT be repeated -- doing so would teleport
+/// the reference from the end back to the start.
+fn loop_closure_error(traj: &SplineTrajectory) -> (f32, f32, f32, f32) {
+    let first = &traj.segments[0];
+    let last = traj.segments.last().expect("empty trajectory");
+    let mut worst = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
+    for (cf, cl) in [
+        (&first.cx, &last.cx),
+        (&first.cy, &last.cy),
+        (&first.cz, &last.cz),
+    ] {
+        let (p0, v0, a0, j0) = boundary_state(cf, first.duration, false);
+        let (p1, v1, a1, j1) = boundary_state(cl, last.duration, true);
+        worst.0 = worst.0.max((p1 - p0).abs());
+        worst.1 = worst.1.max((v1 - v0).abs());
+        worst.2 = worst.2.max((a1 - a0).abs());
+        worst.3 = worst.3.max((j1 - j0).abs());
+    }
+    worst
+}
+
+/// Concatenate `laps` copies of a periodic core into one continuous trajectory.
+///
+/// Segment coefficients are normalised to τ∈[0,1] per segment and each segment carries its
+/// own duration, so repeating is a plain copy -- no re-fitting, no re-solve. Continuity at
+/// each lap seam is exactly the core's own wraparound junction, which the planner already
+/// made C3.
+fn repeat_core(traj: &SplineTrajectory, laps: usize) -> SplineTrajectory {
+    let mut segments = Vec::with_capacity(traj.segments.len() * laps);
+    for _ in 0..laps {
+        segments.extend(traj.segments.iter().cloned());
+    }
+    SplineTrajectory {
+        total_time: traj.total_time * laps as f32,
+        segments,
+    }
+}
+
 /// Wrap a periodic core with one rest-to-rest entry and one exit segment.
 ///
 /// Entry: from rest AT the lap-start point to the lap's full (p,v,a,j) at phase 0
@@ -1196,6 +1283,74 @@ mod tests {
             assert_eq!(a.duration, b.duration, "core segment duration changed");
             assert_eq!(a.cx, b.cx, "core cx coefficients changed");
             assert_eq!(a.cy, b.cy, "core cy coefficients changed");
+        }
+    }
+
+    /// A closed lap must report ~zero end-vs-start mismatch, so copies of it can be
+    /// concatenated; an open path must report a large one and be refused.
+    #[test]
+    fn loop_closure_error_separates_closed_from_open() {
+        // Closed: p(tau) = sin(2*pi*tau) approximated by a poly is awkward here, so use the
+        // simplest closed case -- a constant. Start state == end state exactly.
+        let closed = SplineTrajectory {
+            segments: vec![seg([0.0; 9], [0.0; 9], 1.0)],
+            total_time: 1.0,
+        };
+        let (dp, dv, da, _) = loop_closure_error(&closed);
+        assert!(dp < 1e-6 && dv < 1e-6 && da < 1e-6, "closed loop reported {dp} {dv} {da}");
+
+        // Open: p(tau) = tau -> ends 1 m away from where it started.
+        let mut cx = [0.0_f32; 9];
+        cx[1] = 1.0;
+        let open = SplineTrajectory {
+            segments: vec![seg(cx, [0.0; 9], 1.0)],
+            total_time: 1.0,
+        };
+        let (dp, _, _, _) = loop_closure_error(&open);
+        assert!(dp > 0.5, "open path should show a large position mismatch, got {dp}");
+    }
+
+    /// Repeating a core must copy segments verbatim and scale total_time -- no re-fit.
+    #[test]
+    fn repeat_core_duplicates_segments_and_time() {
+        let mut cx = [0.0_f32; 9];
+        cx[2] = 0.5;
+        let core = SplineTrajectory {
+            segments: vec![seg(cx, [0.0; 9], 0.7), seg([0.0; 9], cx, 1.3)],
+            total_time: 2.0,
+        };
+        let out = repeat_core(&core, 3);
+        assert_eq!(out.segments.len(), 6, "3 laps of a 2-segment core");
+        assert!((out.total_time - 6.0).abs() < 1e-6, "total_time should scale with laps");
+        for lap in 0..3 {
+            for (k, orig) in core.segments.iter().enumerate() {
+                let got = &out.segments[lap * core.segments.len() + k];
+                assert_eq!(got.cx, orig.cx);
+                assert_eq!(got.cy, orig.cy);
+                assert_eq!(got.duration, orig.duration);
+            }
+        }
+    }
+
+    /// Laps are concatenated BEFORE the rest-to-rest wrap, so the ramps sit on the outside
+    /// of the whole stack (ramp -> N laps -> ramp), not around each individual lap.
+    #[test]
+    fn wrap_applies_outside_the_repeated_laps() {
+        let mut cx = [0.0_f32; 9];
+        cx[1] = 1.0;
+        let core = SplineTrajectory {
+            segments: vec![seg(cx, [0.0; 9], 1.0)],
+            total_time: 1.0,
+        };
+        let laps = 4;
+        let repeated = repeat_core(&core, laps);
+        let (wrapped, _) = wrap_rest_to_rest(&repeated);
+        // exactly two extra segments in total, regardless of lap count
+        assert_eq!(wrapped.segments.len(), laps + 2);
+        let inner = &wrapped.segments[1..wrapped.segments.len() - 1];
+        assert_eq!(inner.len(), laps, "every lap must survive between the two ramps");
+        for s in inner {
+            assert_eq!(s.cx, core.segments[0].cx, "lap coefficients altered by wrapping");
         }
     }
 
