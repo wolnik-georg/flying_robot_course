@@ -12,7 +12,7 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | **W.7** — Chapter 5, experimental setup |
+> | Next | **C.0 stage 1** — validate the controllers | **W.9** — Chapter 1, introduction |
 > | Blocked by | Lab access | Nothing |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan

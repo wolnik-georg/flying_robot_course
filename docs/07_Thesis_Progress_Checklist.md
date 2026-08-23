@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.7 — Chapter 5, experimental setup.** Chapters 2–4 drafted, **24 pages**, building clean ([`thesis/`](thesis/)) |
+| **Next action — writing** | **W.9 — Chapter 1, introduction.** Chapters 2–5 drafted, **31 pages**, building clean ([`thesis/`](thesis/)) |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.7** — Chapter 5, experimental setup |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.9** — Chapter 1, introduction |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -296,7 +296,8 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.5** | **Chapter 2 prose** | ✅ **Drafted** — [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex), ~3200 words, builds clean |
 | **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) |
 | **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — [`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) |
-| **W.7** | **Chapter 5** — experimental setup & protocol | ⬅️ **NEXT** |
+| **W.7** | **Chapter 5** — experimental setup & protocol | ✅ **Drafted** — [`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) |
+| **W.9** | **Chapter 1** — introduction | ⬅️ **NEXT** (last chapter unblocked by the lab) |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -507,15 +508,40 @@ Two design questions are recorded rather than left implicit: the Strategy 4 form
 vs. INDI correcting only the network's residual — the two measure different things), and whether
 Strategy 6 is feasible onboard at all, which is itself an RQ4 result.
 
-### W.7 — Chapter 5, experimental setup ⬅️ NEXT
+### W.7 — Chapter 5, experimental setup ✅
 
-Not blocked. Feeds from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md)
-and [`11`](11_Hardware_Readiness_Checklist.md), all of which already exist in detail.
+[`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) — ~2460 words.
+**Combined build is 31 pages** across Chapters 2–5, zero undefined citations or references.
 
-- [ ] Platform, motion capture, logging (uSD at 500 Hz; radio saturates near 2 drones)
-- [ ] The 16-scenario library and why it is frozen
-- [ ] The C.0 gate, the freeze point, and the null-scenario role from Chapter 3
-- [ ] Metrics: tracking error, residual rejection, robustness — and the measurement floor
+Platform, flight volume, the 16 frozen scenarios, the measurement chain, the C.0 gate, the metrics,
+and an explicit threats-to-validity table. The reasoning throughout is the same: the design exists
+to remove alternative explanations for an observed difference.
+
+Three things the chapter makes explicit that were previously only in planning docs:
+
+| | |
+|---|---|
+| **Why the null scenarios are the most important in the library** | The residual is a catch-all and non-zero even in isolated flight (Ch. 3), so a residual in formation cannot be attributed to interaction without a reference. C1–C3 bound the measurement floor *and* detect mis-identified mass or `kt` |
+| **Why collection runs under the uncompensated baseline** | A compensating controller records the residual that *survived* compensation — not the quantity a predictive model should be fitted to |
+| **Why the split is by contiguous segment, not by sample** | At 500 Hz a random per-sample split puts a near-duplicate of almost every test point into training, and reports a validation error that means nothing |
+
+**Simulation's role is stated and bounded**: used to disprove implementations, never to validate a
+method — because the interaction force in simulation comes from a learned model of the same family
+being fitted. No result in Ch. 6–7 rests on it.
+
+⚠️ **The chapter is written in the future tense because nothing has flown.** A `\todo{}` marks the
+requirement to revise it to past tense as the campaign proceeds and to record protocol deviations
+there rather than only in the results.
+
+### W.9 — Chapter 1, introduction ⬅️ NEXT
+
+The last chapter not blocked by the lab. Best written now that 2–5 exist, since an introduction
+promises what the body delivers.
+
+- [ ] Motivation, from the physics (Ch. 2 §2.2) rather than from generic swarm applications
+- [ ] The gap in one paragraph, and the four research questions
+- [ ] Contribution summary, from [`19`](19_Contribution_Statement.md) — honest, no new method claimed
+- [ ] Thesis outline
 
 ---
 
@@ -715,6 +741,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (18) | W.7 done: **Chapter 5 drafted**, ~2460 words; combined build 31 pages across Chapters 2–5, zero undefined citations or references. The chapter promotes three things from planning docs into the thesis argument: why the null scenarios C1–C3 are the most important in the library (the residual is a catch-all and non-zero in isolated flight, so formation measurements need a reference — and the same scenarios detect a mis-identified mass or `kt`); why collection runs under the *uncompensated* baseline (a compensating controller records only the residual that survived compensation); and why the train/test split is by contiguous segment rather than by sample (at 500 Hz a random split leaks a near-duplicate of every test point into training). Simulation's role is bounded explicitly — used to disprove implementations, never to validate a method, because the simulated interaction comes from a learned model of the same family being fitted. The chapter is deliberately in the future tense with a `todo` requiring revision to past tense as the campaign runs, since nothing has flown. Four of the nine chapters are now drafted; Chapter 1 is the last one unblocked by the lab. No code touched. |
 | 2026-08-23 (17) | W.8 done: **Chapter 4 drafted**, ~2850 words; combined build now 24 pages across Chapters 2–4 with no undefined citations and no dangling references. The chapter is organised around the observation that strategies 0, 1, 2 and 4 are terms in one shared control law, differing only in which residual term is active — a fairness argument that is verifiable from the source rather than asserted. §4.9 states what that does *not* guarantee, before results rather than after: strategies 3 and 6 do not share the substrate, so their comparison is structurally weaker; frozen shared gains are fair but not neutral, and the alternative reintroduces the tuning confound; and each implementation represents a family rather than reproducing a paper, so underperformance is a statement about this implementation on this platform. Implementation status is stated honestly per strategy — 2 flying, 1 unflown, 1 as components, 3 not implemented — and unimplemented strategies are not described as existing. Two design questions recorded rather than left implicit: the Strategy 4 form (independent terms vs. INDI correcting only the network's residual, which measure different things) and whether Strategy 6 fits onboard at all. No code touched. |
 | 2026-08-23 (16) | W.6 done: **Chapter 3 drafted**, ~2250 words; combined build with Chapter 2 is 16 pages with no undefined references. The chapter's job is to establish that every strategy estimates the *same* quantity — two controllers compensating differently-defined residuals are not comparable however similar their block diagrams look — so it gives both routes to the residual in one notation, entering the control law at one point with one sign. **A real inconsistency was found: `04` and the Chapter 2 draft wrote gravity as `+m g e₃`, but the implementation is z-up (ENU) with `−e₃`.** Left alone the thesis equations would have carried the opposite sign to the flight code; corrected in Chapter 2 and `04` banner-annotated. §3.3.3 derives the compensation sign and turns the simulation-era sign bug into a falsifiable prediction for C.4 (inverted sign ⇒ ≈2× the uncompensated displacement, while looking perfectly stable). §3.5 tabulates seven assumptions with their failure modes so a negative result can be attributed to a specific assumption. No code touched. |
 | 2026-08-23 (15) | W.5 done: **Chapter 2 drafted** as `docs/thesis/ch2_related_work.tex`, ~3200 words, 9 pages with references, building clean with zero undefined citations. Written strictly from `20_Verified_Claims.md` — every number in it is one recorded there in the source's own words. §2.8 makes the gap argument methodologically rather than critically, anchored by a table of each work's platform, team size, separation and reported quantity showing no two share all four. The chapter's central framing came out of W.2c and is the opposite of what the first structural draft assumed: the field is not short of strong results, it is short of comparable ones. `docs/thesis/` added with a drafting-only preamble that stubs `siunitx` and renders forward references as `[?]`; build artefacts gitignored, sources tracked. `references.bib` entry types corrected from article to misc (arXiv preprints), which also removed the empty-journal warnings. Four `\todo{}` markers remain in the chapter as real open items. No code touched. |
