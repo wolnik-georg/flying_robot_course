@@ -12,3 +12,14 @@ log/
 # docs/references.bib (every entry carries its arXiv id). The .bib and the fetch script ARE
 # tracked, so a clone can rebuild the library; the PDFs themselves are not.
 docs/papers/*.pdf
+
+# LaTeX build artefacts. The .tex and .bib are tracked; everything a build regenerates is not.
+docs/thesis/*.pdf
+docs/thesis/*.aux
+docs/thesis/*.bbl
+docs/thesis/*.blg
+docs/thesis/*.log
+docs/thesis/*.out
+docs/thesis/*.fls
+docs/thesis/*.fdb_latexmk
+docs/thesis/*.toc

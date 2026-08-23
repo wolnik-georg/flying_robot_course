@@ -12,7 +12,7 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | **W.5** — draft Chapter 2 prose |
+> | Next | **C.0 stage 1** — validate the controllers | **W.6** — Chapter 3, system modelling |
 > | Blocked by | Lab access | Nothing |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
@@ -44,7 +44,7 @@ else is detail hanging off it.
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
-| **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md) |
+| **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md); the draft is [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex) |
 | **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md), then quote from [`20`](20_Verified_Claims.md) |
 | Understand what the 7 strategies do differently | [`18`](18_Strategy_Descriptions.md) |
 | State the thesis contribution | [`19`](19_Contribution_Statement.md) |

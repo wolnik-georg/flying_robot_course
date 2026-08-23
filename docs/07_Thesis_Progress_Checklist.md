@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.5 — draft Chapter 2 prose.** W.1–W.4 drafted; all 15 sources held and **read at claim level** ([`20`](20_Verified_Claims.md)). Chapter 2 is now unblocked |
+| **Next action — writing** | **W.6 — Chapter 3, system modelling.** Chapter 2 drafted and building ([`thesis/`](thesis/)); W.1–W.5 complete |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.5** — draft Chapter 2 prose |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.6** — Chapter 3, system modelling |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -293,7 +293,8 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.0** | **Source ledger & citation discipline** — added after a misattribution was found | ✅ [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
 | **W.2b** | **Collect the paper PDFs + a `.bib`** | ✅ **Done** — 15 papers, [`references.bib`](references.bib) |
 | **W.2c** | **Read the held papers at claim level** | ✅ **Done** — all 15, [`20`](20_Verified_Claims.md) |
-| **W.5** | **Chapter 2 prose**, following the [`16`](16_Related_Work_Structure.md) skeleton | ⬅️ **NEXT** |
+| **W.5** | **Chapter 2 prose** | ✅ **Drafted** — [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex), ~3200 words, builds clean |
+| **W.6** | **Chapter 3** — system modelling & residual formulation | ⬅️ **NEXT** |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -426,17 +427,41 @@ training data, **5 ms** loop. SO(2)-equivariant reports **36 %** 3D / **56 %** v
 vehicles from **5 minutes** of data. §2.8 must not imply the field lacks strong results — it lacks
 *comparable* ones.
 
-### W.5 — Chapter 2 prose ⬅️ NEXT
+### W.5 — Chapter 2 prose ✅
 
-Now unblocked: the skeleton exists ([`16`](16_Related_Work_Structure.md)), the sources are held,
-and the claims are verified with quotes ([`20`](20_Verified_Claims.md)).
+[`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex) — ~3200 words, 9 pages with
+references, **builds clean** (`latexmk -pdf ch2_standalone.tex`, zero undefined citations, all 15
+sources cited).
 
-- [ ] Draft §2.1–2.9 following the skeleton
-- [ ] Run the §5 standing check in [`17`](17_Source_Ledger_and_Citation_Discipline.md) on every
-      paragraph before considering it final
-- [ ] Resolve the Lee et al. citation choice — our implementation follows the CDC 2010 *geometric
-      tracking* paper, which is **not** the arXiv entry we hold ([`20`](20_Verified_Claims.md))
-- [ ] Verify the "first systematic comparison" claim ([`19`](19_Contribution_Statement.md) §4)
+Written strictly from [`20_Verified_Claims.md`](20_Verified_Claims.md): every number in the chapter
+is one recorded there in the source's own words. Follows the [`16`](16_Related_Work_Structure.md)
+skeleton, with §2.8 arguing the gap methodologically — including
+Table~`tab:rw-conditions`, which lists each work's platform, team size, separation and reported
+quantity and shows that **no two rows share all four**.
+
+The chapter's framing, carried over from the verified reading: the field is **not short of strong
+results** — a factor of 2–4, a factor of 3, 36 %/56 %, 31 %, ~40 % are all real — it is short of
+**comparable** ones. That is a narrower and far more defensible claim.
+
+`preamble_draft.tex` is drafting-only: it stubs `siunitx` if absent and renders forward references
+to unwritten chapters as `[?]`. The real thesis preamble replaces both.
+
+**Four `\todo{}` markers are live open items in the text**, not prose placeholders:
+
+| Where | What |
+|---|---|
+| §2.1 | The Lee et al. citation — we hold *Control of Complex Maneuvers*, but our implementation follows the CDC 2010 *geometric tracking* paper |
+| §2.8 | Two separations and one team size still unread (abstract-level only) |
+| §2.9 | The "no such comparison exists" claim rests on our own survey; re-audit before submission |
+
+### W.6 — Chapter 3, system modelling ⬅️ NEXT
+
+Not blocked. Feeds from [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md),
+and Chapter 2 already fixes the notation (`eq:rw-trans`, `eq:rw-rot`).
+
+- [ ] Formalise \(f_{res}\), \(\tau_{res}\) and the measurement \(a_{meas} - a_{model}\)
+- [ ] State the assumptions the residual formulation makes, and where each could fail
+- [ ] Define the deep-sets input and the superposition it assumes, with the §2.4 caveat carried over
 
 ---
 
@@ -636,6 +661,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (15) | W.5 done: **Chapter 2 drafted** as `docs/thesis/ch2_related_work.tex`, ~3200 words, 9 pages with references, building clean with zero undefined citations. Written strictly from `20_Verified_Claims.md` — every number in it is one recorded there in the source's own words. §2.8 makes the gap argument methodologically rather than critically, anchored by a table of each work's platform, team size, separation and reported quantity showing no two share all four. The chapter's central framing came out of W.2c and is the opposite of what the first structural draft assumed: the field is not short of strong results, it is short of comparable ones. `docs/thesis/` added with a drafting-only preamble that stubs `siunitx` and renders forward references as `[?]`; build artefacts gitignored, sources tracked. `references.bib` entry types corrected from article to misc (arXiv preprints), which also removed the empty-journal warnings. Four `\todo{}` markers remain in the chapter as real open items. No code touched. |
 | 2026-08-23 (14) | W.2c done: **all 15 papers read at claim level**, with every quotable claim recorded in the paper's own words in `20_Verified_Claims.md` and the depth of reading stated per paper. **RQ3 had to be reframed.** It asked whether pairwise interactions superpose; Shi et al. (2020) state outright that they do not, and Gielis et al. (2023) exists because of it — asking it would have claimed to discover published work. Narrowed to *how much* accuracy our 2-robot-trained model loses on 3 robots, which is a quantitative question about our platform and still worth asking. Two more matrix errors corrected (Neural-Swarm separation is 25 cm, not ~30; "usable onboard" for Gielis is unsupported), and one over-correction reversed — "L1 KNODE-DW MPC" is the paper's own method name. Verified figures now known: flatness-preserving residual reports 31 % error reduction, NMPC-matching at ~10× less compute, <30 s training data, 5 ms loop; SO(2)-equivariant 36 % 3D / 56 % vertical on two vehicles from 5 min of data. These are the bars our comparison sits beside, and §2.8 must not imply the field lacks strong results — it lacks comparable ones. Chapter 2 prose (W.5) is now unblocked. No code touched. |
 | 2026-08-23 (13) | W.2b done: **15 papers collected**, `docs/references.bib` generated from the arXiv API rather than typed from memory, PDFs gitignored but rebuildable via `papers/fetch_papers.sh`. Two papers not previously in our matrix were found (Yang/Welde/Matni 2025 flatness theory; Bauersfeld et al. RA-L 2024 airflow characterisation). **Five bibliographic errors in our own notes were corrected**, including a wrong paper title, a wrong method name (LINDI, not "IL-NDI"), and the Hsieh ambiguity resolved (Pei-An Hsieh first author vs M. Ani Hsieh senior author on three different papers). **A second misattribution was found**: the W.3 draft had corrected the NA-INDI result to "lowest tracking error", taken from our own `paper_summaries.md`; the full text shows the hybrid's margin is small and condition-dependent, and the paper's headline is sensor elimination. Corrected in five documents; `paper_summaries.md` now carries a DO NOT CITE banner. The sequence — two wrong claims in a row, both from trusting our own summaries — is written up in `17` §1 as the justification for the citation rules. Only 2 of 15 papers are verified at claim level; W.2c is that work. |
 | 2026-08-23 (12) | W.3 and W.4 drafted, plus an unplanned W.0. **A misattribution was found and corrected:** `03` stated that the neural-augmented INDI hybrid showed "limited benefit"; the detailed summary in `paper_summaries.md` reports it achieving the **lowest tracking error** of the methods compared. The false version had already propagated into `15` (H4) and `16` (§2.7) because both were drafted from `03` rather than from the source. Corrected in all three — and the correct attribution yields a *stronger* gap: the hybrid works well where the residual is self-induced, and the multi-robot case, where it is caused by other vehicles and is a function of measurable relative state, is a different and untested problem. `17_Source_Ledger_and_Citation_Discipline.md` added in response: seven citation rules, per-paper verification status, and the known discrepancies. It records that **the repository holds no full text of any core interaction-force paper and no `.bib`**, so most citable claims are currently supported only by our own one-line matrix entries — Chapter 2 can be structured but not finalised. `18_Strategy_Descriptions.md` describes all seven strategies with *what we implement* and *the reference method* strictly separated. `19_Contribution_Statement.md` states five claims and an explicit what-is-not-claimed table, and notes that the "first systematic comparison" phrasing itself needs verifying. Writing-track next item is now W.2b, collecting the sources. No code touched. |

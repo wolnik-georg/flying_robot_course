@@ -25,7 +25,7 @@ is the map of every other document.
 >
 > **✍️ Writing track** — blocked by nothing. W.1 problem statement ✅ · W.2 related-work structure ✅
 > · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ · W.2b paper library ✅ · W.2c all 15
-> read at claim level ✅ · **W.5 draft Chapter 2 prose ⬅️ next**
+> read at claim level ✅ · W.5 Chapter 2 draft ✅ · **W.6 Chapter 3 ⬅️ next**
 >
 > Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
 
