@@ -272,15 +272,41 @@ can run in parallel and is not gated on any of them.
 **⬅️ THE NEXT ACTIONABLE PHASE.** Not an experiment — the check that nothing is broken before any
 measurement counts. Acceptance criteria: [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) Checklist B.
 
+C.0 runs in **three stages, strictly ordered** (confirmed 2026-08-23). The ordering is the whole
+point: tuning before validating means you tune against an unknown fault, and flying two robots
+before freezing means the gains move underneath the dataset.
+
+#### Stage 1 — Validate that the controllers still behave
+
 - [ ] Hardware inventory and bench checks (Checklist A); tape-measure the flight volume
 - [ ] Confirm gains read back correctly — **`kv_xy` must be 5.0, not the simulator's 8.0**
 - [ ] Single-robot ladder: figure8 Mode D → figure8 Mode E → circle. **Mode E has never flown**
-- [ ] **Geometric SE(3) flies cleanly** — single robot, then two robots at large separation
-- [ ] **Corrected full INDI flies cleanly** — the residual sign fix inverts a control term
-- [ ] Log and inspect `a_res` under **both** controllers: magnitude, sign, noise.
-      **Zero means no thesis data at all**
-- [ ] Check the measured uSD sync offset on the first 2-robot flight
-- [ ] **Freeze the gains** (Checklist C). Re-tuning later would measure tuning effort, not methods
+- [ ] **Geometric SE(3) flies cleanly**, single robot
+- [ ] **Corrected full INDI flies cleanly**, single robot — the residual sign fix inverts a
+      control term
+- [ ] Confirm the three unflown changes introduce no new instability
+
+> Single-robot flights **cannot** confirm the three changes are *correct* — only that they are not
+> catastrophic. `a_res ≈ 0` with no neighbour, so all three are invisible here. Correctness is
+> established at stage 3.
+
+#### Stage 2 — Retune the brushless attitude loop *if needed*, then FREEZE
+
+- [ ] Retune the attitude loop to remove the remaining oscillation — **allowed here and only here**
+- [ ] **FREEZE THE GAINS** (Checklist C)
+
+> ⚠️ **This is the last moment any gain may change.** After the freeze, re-tuning would mean the
+> campaign measures tuning effort rather than the control methods. The earlier blanket "do not
+> change brushless KR/KW" rule is scoped to this: changeable inside C.0, fixed afterwards.
+
+#### Stage 3 — Multi-robot and logging, at large separation
+
+- [ ] Two robots at **large** separation, geometric first, then INDI
+- [ ] **Confirm `indi.a_res_*` is non-zero and correctly signed.** Zero means no thesis data at all
+- [ ] Confirm the residual sign fix behaves — this is the first flight where it is observable
+- [ ] Check the measured uSD sync offset (`merge_usd_logs.py` prints it; the few-ms figure is
+      predicted, never measured)
+- [ ] Verify the merged multi-drone log actually contains relative state and `f_res`
 
 **The three unflown flight-code changes cleared here:**
 
@@ -288,12 +314,10 @@ measurement counts. Acceptance criteria: [`11_Hardware_Readiness_Checklist.md`](
 |---|---|---|
 | 1 | **Residual sign fix** | Position INDI was *adding* `a_res` instead of subtracting it, reinforcing every unmodelled force at exactly 2.00×. The fix inverts a control term |
 | 2 | **`a_res` gating fix** | RPM was read only when `mode != 0`, so `a_res` was dead under geometric — silently blocking all Geometric+NN training data |
-| 3 | **`rnn.en` compensation** | The learned residual now feeds the position loop. Default off → byte-identical, but it is a control term |
+| 3 | **`rnn.en` compensation** | The learned residual now feeds the position loop. Default off → byte-identical, but it is a control term. **Leave it off for all of C.0** |
 
 > **None of the three is detectable in single-drone flight** — `a_res ≈ 0` with no neighbour.
-> They only appear once another vehicle's downwash is present.
-
----
+> They only appear once another vehicle's downwash is present, which is why stage 3 exists.
 
 ### C.1 — Residual Data Collection
 
@@ -413,6 +437,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (10) | C.0 entry sequence confirmed and recorded as three strictly ordered stages: (1) validate the controllers still behave, single robot, geometric then INDI; (2) retune the brushless attitude loop if needed, then **freeze the gains**; (3) two robots at large separation, confirm `a_res` non-zero, check uSD sync. Tuning before validating would mean tuning against an unknown fault; flying two robots before the freeze would let the gains move underneath the dataset. **The blanket "do not change brushless KR/KW" constraint is now scoped** rather than absolute — an attitude retune is explicitly permitted inside C.0 stage 2 and forbidden after the freeze, updated in `docs/14` and `flying_drone_stack/CLAUDE.md`. Also made explicit that single-robot flights cannot confirm the three unflown changes are *correct*, only that they are not catastrophic: `a_res ≈ 0` with no neighbour, so correctness is established at stage 3. |
 | 2026-08-23 (9) | **Core Thesis Workflow recorded as the master plan, and the preparation phase declared finished.** `docs/07` now leads with the five ordered steps — C.0 Hardware Gate → C.1 Residual Data Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic Comparison — with the preparation/core boundary made explicit throughout. Section C was renumbered from four phases to five (training and integration were one step, now two); the four documents referencing the old C.2/C.3 were updated. `11_Hardware_Readiness_Checklist.md` is now titled as the operational detail of C.0 and states that it is the next actionable phase. `05_Experimental_Protocol_2Robot.md` was aligned: its prose formations mapped onto the frozen scenario library, metrics restated as the three C.4 axes (tracking error, residual rejection, robustness), and the freeze-the-gains constraint added. `13_Residual_Learning.md` opens with the foundation marked complete and a table placing it in each workflow step. **One real inconsistency corrected:** `01_Thesis_Project_Snapshot.md` still said data collection would start with *pure INDI*; C.1 uses *pure Geometric*, because INDI compensates the disturbance and would partly cancel the residual being measured. New memory `project_core_thesis_workflow.md` plus a rewritten MEMORY.md header so a future session lands on this immediately. No code changed. |
 | 2026-08-23 (8) | Documentation consolidation pass. Root cause fixed first: `flying_drone_stack/.gitignore` had a blanket `*.md` rule with a hand-maintained allowlist, silently hiding **14 files** including the entire INDI oscillation investigation, the inverted-loop investigation, `GLOSSARY.md`, `paper_summaries.md`, the uSD logging README and `LOCAL_MODIFICATIONS.md` — every new document written there was invisible to git unless someone remembered to add an exception. Now ignores by name, not extension. (Separately, the **root** `.gitignore` excludes `**/CLAUDE.md` outright, so no `CLAUDE.md` in this repo is tracked at all. That rule looks deliberate and was left alone — but it means the agent instruction files live only on this machine.) `docs/14_Repository_Map.md` added (three repos, end-to-end signal flow, which-file-for-which-task, and the traps that have cost time). `docs/00_README.md` rewritten as a navigation map; root `README.md`, `flying_drone_stack/README.md`, both stack `CLAUDE.md` files, `crazyflie_examples/CLAUDE.md`, `experiments/README.md` and `sim_validation/README.md` brought current. Five course-era documents (ROADMAP, VALIDATION_PLAN, SLAM_STATUS, ADVANCED, CS2_ARCHITECTURE_PLAN) banner themselves as historical rather than being rewritten or deleted. Corrected three concrete inaccuracies: the branch tables named deleted branches, `firmware_app/CLAUDE.md` still described the controller mode as a recompiled constant rather than a runtime parameter, and `crazyflie_examples/CLAUDE.md` documented a log path that exists only on the lab machine. |
 | 2026-08-23 (7) | Residual-learning step 3 of 3: end-to-end dry run in simulation. Collect under geometric → train → upload through the real `rnn.*` protocol → enable → measure, all through the code paths the lab will use. The simulator had to grow three things: peer injection (positions only, matching the real peer API), a residual log written in the same schema `merge_usd_logs.py` produces so one loader serves sim and hardware, and commanded-position logging — without which realised separation cannot be told apart from commanded motion, which made the first attempt's geometry section meaningless. `rnn.en` now feeds the prediction into the position loop (strategy 2), default off and byte-identical. Result: 90.4%/75.9% of the measured residual predicted open-loop, held z separation error 4.66 → 0.63 mm with compensation on. Simulation only — the residual is generated by a model of the same family being fitted, so this says the pipeline is ready, not that the method works. |

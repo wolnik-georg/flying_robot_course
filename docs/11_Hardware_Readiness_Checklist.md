@@ -10,6 +10,17 @@
 >
 > C.0 is not an experiment. It is the check that nothing is broken, so that everything measured
 > afterwards means something. **No data collected before C.0 passes counts.**
+>
+> **C.0 runs in three strictly ordered stages** (confirmed 2026-08-23):
+>
+> | Stage | What | Note |
+> |---|---|---|
+> | **1** | Validate the controllers still behave — single robot, geometric then INDI | Cannot confirm the three unflown changes are *correct*, only that they are not catastrophic |
+> | **2** | Retune the brushless attitude loop **if needed**, then **FREEZE THE GAINS** | The retune is allowed **here and only here**. The freeze is the last moment any gain may change |
+> | **3** | Two robots at large separation; confirm `a_res` non-zero; check uSD sync | The first flights where the residual sign fix is observable at all |
+>
+> Tuning before validating means tuning against an unknown fault. Flying two robots before the
+> freeze means the gains move underneath the dataset.
 
 Everything that must be true before the first real flights, and the order to fly them in.
 This document does not authorise anything. Each item is either a measurement you take or a

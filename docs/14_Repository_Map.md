@@ -143,7 +143,11 @@ wrong produces a `ModuleNotFoundError`, which is at least loud.
 - **Commit and push only when asked.** Never add a `Co-Authored-By:` or AI-attribution trailer.
 - **Never delete files** — move them (`archive/` exists for this).
 - **Do not fork `crazyflie-firmware`.**
-- **Do not change brushless attitude gains (KR/KW).**
+- **Brushless attitude gains (KR/KW): changeable ONLY inside C.0, then frozen.** The original
+  rule was a blanket "do not change"; it was scoped on 2026-08-23 — an attitude retune to remove
+  the remaining oscillation is explicitly allowed during the Hardware Gate. **After the freeze
+  (Checklist C) no gain may change for the rest of the campaign**, or the comparison measures
+  tuning effort instead of the methods.
 - **Do not start the RL policy networks** (strategies 5 and 7) — deliberately deferred.
 - **Never tick a checklist box for something unverified.** Code that compiles is not code that
   flew; several things here are marked *built, unflown* on purpose.
