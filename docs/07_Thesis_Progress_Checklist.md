@@ -59,21 +59,28 @@ everything in **Left** stands between here and collecting the first real dataset
 | 10 | Flight-code bugs found & fixed | Residual sign (INDI was *doubling* disturbances); `a_res` dead under geometric (blocked Geometric+NN data) | §6 of [`12`](12_Sim_Formation_Validation_Report.md) |
 | 11 | Lab volume applied | x −1…1, y −2…2, z 0.30…1.70; all 19 configs fit via `--auto-center --rotate 90` | [`11`](11_Hardware_Readiness_Checklist.md) |
 | 12 | Docs & memory | This file, 08–12, external review brief, memory current | — |
+| 13 | **Firmware local modifications — RESOLVED** | Decision 2026-08-23: kept as local, intentional, **do not touch**. All four files annotated in place; durable manifest written | [`LOCAL_MODIFICATIONS.md`](../flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md) |
+| 14 | **Hardware inventory checklist — PREPARED** | Vehicles, decks, power, logging, environment — tick only after a power-on check | [`11` Checklist A](11_Hardware_Readiness_Checklist.md) |
+| 15 | **C.0 acceptance criteria — PREPARED** | 6 required flights, log checks, explicit pass/fail for the two unflown fixes | [`11` Checklist B](11_Hardware_Readiness_Checklist.md) |
+| 16 | **Freeze-the-gains criteria — PREPARED** | Required flights, acceptance metrics, what is frozen, the one legitimate exception | [`11` Checklist C](11_Hardware_Readiness_Checklist.md) |
+| 17 | **Residual collection order — DECIDED** | A1 (0.75→0.50) → A3 (0.40→0.30) → A4 (0.60, offset 0.10), under geometric | [`11`](11_Hardware_Readiness_Checklist.md) |
 
-### ⬜ Left before the core work
+### ⬜ Left before the core work — **all lab-only**
 
-| # | Task | Why it blocks | Owner |
+Every remaining item is a measurement, a decision made at the bench, or a flight. **Nothing here
+is software.**
+
+| # | Task | Type | Why it blocks |
 |---|---|---|---|
-| 1 | **Tape-measure the flight volume** | Current numbers are an estimate; scenarios sit within ~10 cm of the walls | You |
-| 2 | Resolve firmware bindings provenance | ~110 uncommitted lines; the simulator does not build without them | Decision |
-| 3 | Hardware inventory | Drones, decks, batteries, SD cards counted and working | You |
-| 4 | Flash firmware, confirm gains read back | `kv_xy` must be **5.0**, not the simulator's 8.0 | Bench |
-| 5 | **Single-robot ladder** | **Mode E has never flown.** figure8 Mode D → figure8 Mode E → circle | Flight |
-| 6 | Re-validate INDI hover after the sign fix | It changes a control term; treat as a new configuration | Flight |
-| 7 | First 2-robot flights, large separation | A1 at Δz 0.75 → 0.50, then A3. Nothing under 0.5 m on day one | Flight |
-| 8 | Confirm `a_res` non-zero in flight | Needs a rotor-speed source; zero means no thesis data | Flight |
-| 9 | Check measured uSD sync | The few-ms figure is predicted, never measured on real logs. **Not in the external review's list — kept because it silently corrupts multi-drone training pairs if wrong** | Flight |
-| 10 | **Freeze the gains** | Re-tuning per controller would measure tuning effort, not the methods | Decision |
+| 1 | **Tape-measure the flight volume** | Lab measurement | Current numbers are an estimate; scenarios sit within ~10 cm of the walls |
+| 2 | Hardware inventory | Lab check | Checklist A — tick only after a power-on check |
+| 3 | Flash firmware, confirm gains read back | Bench | `kv_xy` must be **5.0**, not the simulator's 8.0 |
+| 4 | **Single-robot ladder** | Flight | **Mode E has never flown.** figure8 Mode D → figure8 Mode E → circle |
+| 5 | **C.0 — validate the two unflown fixes** | Flight | Checklist B. No data collected before this passes counts |
+| 6 | Two-robot at large separation | Flight | A1 at Δz 0.75 → 0.50, then A3 |
+| 7 | Confirm `a_res` non-zero and correctly signed | Flight | Zero means no thesis data at all |
+| 8 | Check measured uSD sync | Flight | The few-ms figure is predicted, never measured on real logs |
+| 9 | **Freeze the gains** | Decision | Checklist C. Re-tuning later would measure tuning effort, not the methods |
 
 > **Ordering is a constraint, not a suggestion.** Items 5 onward must not be attempted until the
 > preceding ones are clean — the single-robot rungs exist to separate "the migration broke
@@ -276,6 +283,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (4) | Remote decisions closed. Firmware local modifications resolved — kept as local by decision, all four annotated in place, durable manifest at `host/LOCAL_MODIFICATIONS.md`; found that `usddeck.c`'s raised log-variable limit is load-bearing for the 34-variable thesis config and would silently truncate if lost. Three checklists prepared (hardware inventory, C.0 acceptance, freeze-the-gains) and the residual collection order decided: A1 → A3 → A4 under geometric. |
 | 2026-08-23 (3) | External review returned. Confirmed the assessment and found no additional scenario gaps beyond the five already documented — a weak positive, not proof of completeness. Contributed the Core Task sequencing, now §C.0–C.3, with hardware validation of the two unflown flight-code fixes as an explicit gate before any data collection. |
 | 2026-08-23 (2) | Validation extended to the full library: 34/34 cases, 33 pass, 1 expected, 0 defects. A6/A7/C1–C5 run for the first time (C5 needed a 1-drone roster). Flight volume applied and corroborated; scenario rotation added so all 19 configs fit the real room at full parameters. Shareable report artifact published. |
 | 2026-08-23 | Sim formation validation completed: 20/20 cases, 19 pass. Two flight-code bugs found and fixed — the residual sign (position INDI reinforced disturbances at exactly 2.00x instead of rejecting them) and `a_res` being dead under geometric (blocking Geometric+NN training data). Neither is detectable in single-drone flight. INDI now reduces residual displacement by 2-3 orders of magnitude in sim; not a thesis result until hardware confirms. |
