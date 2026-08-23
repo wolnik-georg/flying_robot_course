@@ -1,10 +1,15 @@
 # Literature Matrix – Interaction-Force Aware Multirotor Control
 
+> ⚠️ **This table is a navigation aid, never a citation.** Two misattributions in this project came
+> from treating our own summaries as sources. Entries marked ✅ were checked against the PDF on
+> 2026-08-23; the rest are unverified. Quotable claims with their evidence:
+> [`20_Verified_Claims.md`](20_Verified_Claims.md). Rules: [`17`](17_Source_Ledger_and_Citation_Discipline.md).
+
 | Paper | Year | Residual / Force Model | Controller Type | How compensation is done | Formations & min. separation | Key Metrics | Onboard / Compute notes | Key Assumptions | Relevance to our thesis |
 |-------|------|------------------------|-----------------|---------------------------|------------------------------|-------------|-------------------------|-----------------|------------------------|
-| Neural-Swarm (Shi et al.) | 2020 | Permutation-invariant DNN | Nonlinear tracking | Learned residual as feed-forward | 2–5 Crazyflies, ~30 cm vertical | Height tracking error | Real-time on MCU | Relative states known | Foundational predictive architecture |
-| Neural-Swarm2 (Shi, Hönig et al.) | 2022 | Heterogeneous Deep Sets | Nonlinear tracking + planning | Learned residual in planning & control | Up to 16 robots, ~24 cm vertical | Tracking error, density | Efficient | Relative states available | Core predictive reference |
-| Aggregate Downwash (Gielis et al.) | 2023 | Graph-based learned aggregation | Force modelling | Non-linear force aggregation | Up to 4 vehicles | Force prediction accuracy | Usable onboard | Homogeneous vehicles | Core force modelling |
+| Neural-Swarm (Shi et al.) | 2020 | Permutation-invariant DNN | Nonlinear tracking | Learned residual as feed-forward | Trained on 2/3/4 CFs; **25 cm** vertical separation ✅verified | Height tracking error | Real-time on MCU | Relative states known | Foundational predictive architecture |
+| Neural-Swarm2 (Shi, Hönig et al.) | 2022 | Heterogeneous Deep Sets + spectral normalisation ✅ | Nonlinear tracking + planning | Learned residual in planning & control | 16 robots, **24 cm** vertical ✅verified | Tracking error, density | Efficient | Relative states available | Core predictive reference |
+| Aggregate Downwash (Gielis et al.) | 2023 | Graph-based learned aggregation | Force modelling (test rig, not free flight) ✅ | Non-linear force aggregation | Up to 4 vehicles ✅ | Force prediction accuracy | ⚠️unverified — "usable onboard" not supported | Homogeneous vehicles | Core force modelling |
 | SO(2)-Equivariant Downwash (Smith et al.) | 2023 | SO(2)-equivariant NN | Residual force learning | Equivariant prediction | 2 vehicles, close proximity | Tracking improvement (36%/56%) | Lightweight | Rotational symmetry | Efficient residual model |
 | Flatness-Preserving Residual (Hsieh et al.) | 2026 | Physics-informed residual (flatness-preserving) | FBL + residual | Feed-forward in FBL | 2-quadrotor stacked | Tracking vs NMPC, compute | Very lightweight | Flatness preserved | Core FBL + NN method |
 | Neural-Augmented INDI (Cobo-Briesewitz et al.) | 2026 | NN approximates INDI residual | Hybrid | NN + sensor-based INDI | Single vehicle + payload | Tracking error | Real multirotor | Can remove RPM sensors | Core hybrid paper |

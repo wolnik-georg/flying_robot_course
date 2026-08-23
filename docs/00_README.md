@@ -12,7 +12,7 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | **W.2c** — read the held papers at claim level |
+> | Next | **C.0 stage 1** — validate the controllers | **W.5** — draft Chapter 2 prose |
 > | Blocked by | Lab access | Nothing |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
@@ -45,7 +45,7 @@ else is detail hanging off it.
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
 | **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md) |
-| **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
+| **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md), then quote from [`20`](20_Verified_Claims.md) |
 | Understand what the 7 strategies do differently | [`18`](18_Strategy_Descriptions.md) |
 | State the thesis contribution | [`19`](19_Contribution_Statement.md) |
 | **Get the paper PDFs** | [`papers/`](papers/) — `./fetch_papers.sh`; metadata in [`references.bib`](references.bib) |
@@ -71,6 +71,7 @@ else is detail hanging off it.
 | [`references.bib`](references.bib) + [`papers/`](papers/) | The bibliography, generated from the arXiv API, and the 15 PDFs (gitignored, rebuildable) |
 | [`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md) | The seven strategies, each split into *what we implement* and *the reference method it follows* — never merged |
 | [`19_Contribution_Statement.md`](19_Contribution_Statement.md) | What the thesis claims, and an explicit table of what it does **not** claim |
+| [`20_Verified_Claims.md`](20_Verified_Claims.md) | **Every claim we may cite, in each paper's own words**, with the depth of reading recorded per paper. Cite from here or from the PDF — never from `02` |
 
 ### Status
 | | |
@@ -115,7 +116,7 @@ else is detail hanging off it.
 ## Conventions
 
 - **Numbering:** `01`–`06` planning, `07` status, `08`–`10` + `13` engineering reference,
-  `11`–`12` checklists and results, `14` orientation, `15`–`19` writing track. New documents
+  `11`–`12` checklists and results, `14` orientation, `15`–`20` writing track. New documents
   get the next number.
 - **Update in the same change that alters state**, not afterwards. A doc that lags reality is
   worse than no doc, because it is trusted.

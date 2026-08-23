@@ -24,8 +24,8 @@ is the map of every other document.
 > Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison
 >
 > **✍️ Writing track** — blocked by nothing. W.1 problem statement ✅ · W.2 related-work structure ✅
-> · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ · W.2b paper library ✅ (15 PDFs +
-> `references.bib`) · **W.2c read them at claim level ⬅️ next** (only 2 of 15 verified so far)
+> · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ · W.2b paper library ✅ · W.2c all 15
+> read at claim level ✅ · **W.5 draft Chapter 2 prose ⬅️ next**
 >
 > Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
 
@@ -37,7 +37,7 @@ is the map of every other document.
 | Find my way around the three repos | [`docs/14`](docs/14_Repository_Map.md) |
 | Know what the thesis is asking | [`docs/15`](docs/15_Problem_Statement_and_Research_Questions.md) |
 | Write the Related Work chapter | [`docs/16`](docs/16_Related_Work_Structure.md) |
-| Cite a paper — check first | [`docs/17`](docs/17_Source_Ledger_and_Citation_Discipline.md) |
+| Cite a paper — check first | [`docs/17`](docs/17_Source_Ledger_and_Citation_Discipline.md), quote from [`docs/20`](docs/20_Verified_Claims.md) |
 | See what the 7 strategies do differently | [`docs/18`](docs/18_Strategy_Descriptions.md) |
 | Fly a single-robot trajectory | [`docs/08`](docs/08_Trajectory_Upload_Paths.md) |
 | Fly a formation (2–3 robots) | [`docs/10`](docs/10_Formation_Library.md) |
