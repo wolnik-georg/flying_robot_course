@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 22 August 2026
+**Last updated:** 23 August 2026
 
 **This is the single source of truth for project status.** It is the one file to read to know what
 is done, where we are, and what comes next. Keep it current — see *Keeping this current* at the
@@ -11,34 +11,85 @@ bottom.
 
 ## ▶ WHERE WE ARE
 
+> ### 🏁 **Software preparation is FINISHED. The next actionable phase is the Hardware Gate (C.0).**
+>
+> Everything that could be built, tested or verified away from the lab has been. Nothing on the
+> critical path is a software task any more. The project is now waiting on a drone.
+
 | | |
 |---|---|
-| **Phase** | B — Practical Preparation |
-| **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
-| **Next action** | **Hardware readiness — see ◆ PREPARATION OVERVIEW below.** All simulation work is complete |
-| **Done** | ✅ Sim formation validation complete — **34/34 cases, 33 pass, 1 expected, 0 defects** ([`12_Sim_Formation_Validation_Report.md`](12_Sim_Formation_Validation_Report.md)). All 16 scenarios fly under BOTH controllers. Found and fixed **two flight-code bugs** neither of which single-drone flight could catch |
-| **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
-| **Flight volume** | x −1..1, y −2..2, z 0.30..1.70 — applied and **corroborated** by an independent statement from 2026-07-27 (z, x identical; y then ±2.1). Still not tape-measured. With `--auto-center --rotate 90` **all 19 configs fit at full default parameters** |
-| **Open (sim), time-boxed** | Sim needs more position damping than hardware: wall now `kv_xy` 8 (was 10) vs hardware 5. Motor lag closed ~40%; KI_P, rotor drag, inertia, airframe all refuted. SIM-ONLY `kv_xy: 8.0`; hardware keeps 5.0. **Investigation paused — hardware readiness is the priority** |
-| **Flag for the lab** | Hardware crashed 2/2 at `kv_xy=4` and flies at 5 — a thin margin, and formation flight adds downwash to that same loop |
-| **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
-| **Real gate** | B.2 step 3 (figure8 on Mode E). Everything is offline-verified; nothing has flown. |
-| **Hard blocker** | B.3 step 5 (hardware inventory) — gates everything multi-drone |
-| **Not blocking** | FBL code (Method 3) still with the authors; the other methods proceed without it |
-| **Verify in the lab** | uSD sync is *predicted* at a few ms — `merge_usd_logs.py` prints the measured value; check it on the first 2-drone flight |
+| **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work (starts at C.0)** |
+| **Next action** | **C.0 — Hardware Gate.** See the Core Thesis Workflow below and [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
+| **Blocking** | Lab access. No software work blocks C.0 |
+| **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
+
+### What is complete
+
+| | |
+|---|---|
+| Formation library | **Complete and frozen** — 16 scenarios (A1–A8, B1–B3, C1–C5) — [`10`](10_Formation_Library.md) |
+| Sim validation of the library | **34/34 cases, 33 pass, 1 EXPECTED, 0 defects** — [`12`](12_Sim_Formation_Validation_Report.md). Found two flight-code bugs single-drone flight could not catch |
+| Residual measurement path | **Complete** — `indi.a_res_*` = f_res/m, logged in every controller mode |
+| `no_std` residual MLP + weight upload | **Complete and verified** — 987 weights, 10/10 checks against an independent reference — [`13`](13_Residual_Learning.md) |
+| Training pipeline | **Complete and verified** — 12/12 checks end to end against the *compiled* controller |
+| End-to-end simulation dry run | **Complete** — collect → train → upload → enable → measure. The plumbing works |
+| Simulation of all 4 control modes | **Complete** — same Rust source that flies — [`09`](09_Simulation.md) |
+| Documentation & repo map | **Complete** — [`00`](00_README.md), [`14`](14_Repository_Map.md) |
+
+### Carry into the lab
+
+| | |
+|---|---|
+| **Flight volume** | x −1..1, y −2..2, z 0.30..1.70 — corroborated but **not tape-measured**. With `--auto-center --rotate 90` all 19 configs fit at full default parameters |
+| **Thin damping margin** | Hardware crashed 2/2 at `kv_xy = 4` and flies at 5. Formation flight adds downwash to that same loop |
+| **uSD sync** | Predicted at a few ms, never measured. `merge_usd_logs.py` prints the real value — check it on the first 2-drone flight |
+| **`a_res` must be non-zero** | It reads exactly 0.0 without an RPM source. Zero means no thesis data at all |
+| **Sim-only gain** | Simulator uses `kv_xy: 8.0`; **hardware keeps 5.0**. Confirm the readback before flying |
+| **Fragile** | The simulator depends on uncommitted lines in `crazyflie-firmware/bindings/`. Patch: `firmware_app/host/cffirmware_bindings.patch` |
+| **Not blocking** | FBL code (Strategy 3) still with the authors; the other strategies proceed without it |
+| **Open, paused** | Sim needs ~2× hardware's position damping. Time-boxed and deliberately parked — `KI_P`, rotor drag, inertia and airframe all refuted; motor lag closed ~40% |
+
+---
+
+## ★ CORE THESIS WORKFLOW — the master plan
+
+This is the plan the rest of the project follows. Preparation (everything above) is **done**;
+the five steps below are the thesis itself. They are strictly ordered.
+
+| # | Phase | State |
+|---|---|---|
+| **1** | **[C.0 — Hardware Gate](#c0--hardware-gate)** | ⬅️ **NEXT** |
+| **2** | [C.1 — Residual Data Collection](#c1--residual-data-collection) | ⬜ Blocked by C.0 |
+| **3** | [C.2 — Train the Residual Model](#c2--train-the-residual-model) | ⬜ Blocked by C.1. *Pipeline ready; needs real data* |
+| **4** | [C.3 — Integrate the Strategies](#c3--integrate-the-strategies) | ⬜ 1 of 7 wired |
+| **5** | [C.4 — Systematic Comparison](#c4--systematic-comparison) | ⬜ The thesis result |
+
+**Ordering is a constraint, not a suggestion.** Each step exists to make the next one
+interpretable. If a two-robot flight is the first thing that fails, "the migration broke
+something" and "the interaction broke something" are indistinguishable.
+
+---
 
 ### Architecture decisions (fixed 2026-08-22)
 
 | Decision | Consequence |
 |---|---|
-| **NN inference runs ONBOARD; training is offline** | Every controller — geometric, hybrid, learning-based — runs on the brushless Crazyflie. Needs an MLP in `no_std` Rust + a weight-upload path (thesis C.2). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
+| **NN inference runs ONBOARD; training is offline** | Every controller — geometric, hybrid, learning-based — runs on the brushless Crazyflie. Needed an MLP in `no_std` Rust + a weight-upload path — **built and verified**, see [`13`](13_Residual_Learning.md). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
 | **uSD logging is the dataset; radio is for monitoring** | Radio cannot carry 2 drones at full rate. 500 Hz onboard per drone, independent of radio — `tools/README_usd_thesis_logging.md`. Requires a Micro SD deck per drone. |
 
 ---
 
 ---
 
-## ◆ PREPARATION OVERVIEW — everything before the thesis core
+## ◆ PREPARATION OVERVIEW — ✅ FINISHED
+
+**The preparation phase is complete.** Everything below is the detailed record of it. Nothing here
+is on the critical path any more — the project's next action is C.0 in the Core Thesis Workflow
+above. This section is kept as evidence of what was built and verified, not as a to-do list.
+
+The **Left** rows below are lab-only items that have been folded into C.0; they are listed here
+because they were identified during preparation, and they are tracked in
+[`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md).
 
 One table for "what is actually ready". Nothing in the **Done** rows still needs work;
 everything in **Left** stands between here and collecting the first real dataset.
@@ -51,7 +102,7 @@ everything in **Left** stands between here and collecting the first real dataset
 | 2 | Trajectory path | Mode D → Mode E migration; Mode D frozen byte-identical; `--laps`, rest-to-rest closed loops, one frame convention | [`08`](08_Trajectory_Upload_Paths.md) |
 | 3 | **Residual measurement** | `indi.a_res_*` = f_res/m, logged in **every** controller mode | §5 of [`12`](12_Sim_Formation_Validation_Report.md) |
 | 4 | Multi-drone execution | `formation_flight.py` (shared trajectory) + `run_formation.py` (per-robot trajectories), staged takeoff, safety gate | [`10`](10_Formation_Library.md) |
-| 5 | Logging | uSD 500 Hz × 34 vars, broadcast start so per-drone logs share an origin, `merge_usd_logs.py` measures the real offset | — |
+| 5 | Logging | uSD 500 Hz × 35 vars (incl. `rnn.pred_*`), broadcast start so per-drone logs share an origin, `merge_usd_logs.py` measures the real offset | — |
 | 6 | Analysis tooling | `analyze_formation.py`, `verify_formation_sim.py`, `summarise_matrix.py` (completeness audit) | — |
 | 7 | **Simulation** | Geometric + all 3 INDI modes run as the *same Rust source that flies*, with the Neural-Swarm2 downwash model | [`09`](09_Simulation.md) |
 | 8 | **Formation library** | 16 scenarios (A1–A8, B1–B3, C1–C5), spec-checked, safety-gated | [`10`](10_Formation_Library.md) |
@@ -64,11 +115,15 @@ everything in **Left** stands between here and collecting the first real dataset
 | 15 | **C.0 acceptance criteria — PREPARED** | 6 required flights, log checks, explicit pass/fail for the two unflown fixes | [`11` Checklist B](11_Hardware_Readiness_Checklist.md) |
 | 16 | **Freeze-the-gains criteria — PREPARED** | Required flights, acceptance metrics, what is frozen, the one legitimate exception | [`11` Checklist C](11_Hardware_Readiness_Checklist.md) |
 | 17 | **Residual collection order — DECIDED** | A1 (0.75→0.50) → A3 (0.40→0.30) → A4 (0.60, offset 0.10), under geometric | [`11`](11_Hardware_Readiness_Checklist.md) |
+| 18 | **Residual network onboard — BUILT & TESTED** | Deep-sets MLP (987 weights) in `no_std` Rust, `rnn.*` upload protocol, prediction logged every tick regardless of `rnn.en`. 10/10 numerical checks against an independent reference | [`13`](13_Residual_Learning.md) |
+| 19 | **Residual training pipeline — BUILT & TESTED** | uSD loader, PyTorch model, training with provenance, normalisation folded at export, ROS uploader. 12/12 checks end-to-end against the *compiled* controller. Found two silent-data-loss bugs in the uSD log path | [`13` §6](13_Residual_Learning.md) |
+| 20 | **Residual dry run in simulation — DONE** — *this closed the software preparation phase* | Collect → train → upload → enable → measure, through the lab's code paths. Simulator grew peer injection, a residual log in the merged-uSD schema, and commanded-position logging | [`13` §7](13_Residual_Learning.md), [report](../experiments/sim_validation/RESIDUAL_DRYRUN.md) |
 
-### ⬜ Left before the core work — **all lab-only**
+### ⬜ Left before data collection — **all lab-only, all inside C.0**
 
 Every remaining item is a measurement, a decision made at the bench, or a flight. **Nothing here
-is software.**
+is software.** These are the same items as the C.0 checklist above, listed in the order they were
+identified.
 
 | # | Task | Type | Why it blocks |
 |---|---|---|---|
@@ -95,8 +150,9 @@ is software.**
 | Library coverage gaps | Yaw fixed at zero; no vertical relative motion except A7/C4; nothing above 3 robots |
 | External review | Brief sent for independent check of scenario-set completeness |
 
-**Then the core begins:** collect residual data → train the NN residual models → integrate the
-7 methods → run the systematic 2-robot comparison → extend to ≥3 robots.
+**Then the core begins** — see ★ CORE THESIS WORKFLOW above: C.0 Hardware Gate → C.1 Residual Data
+Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic
+Comparison.
 
 
 ## A. Planning & Documentation — ✅ COMPLETE
@@ -114,7 +170,7 @@ is software.**
 
 ---
 
-## B. Practical Preparation — 🔄 IN PROGRESS
+## B. Practical Preparation — ✅ SOFTWARE COMPLETE; remaining items are lab work folded into C.0
 
 ### B.1 Software — ✅ COMPLETE
 
@@ -141,7 +197,7 @@ is software.**
 - [x] **3-robot sim roster** — `crazyflies_sim3.yaml`, three floor-start drones. `crazyflies_sim.yaml` untouched so the 2-drone downwash test still works
 - [x] **Thesis controllers run in simulation** — the same Rust firmware source, via SIL, selectable with `sim.oot_ctrl_mode` (0/1/2/3). Two-drone downwash reproduced in ROS under both geometric and full INDI (geo −30.5/−2.9 mm, INDI −58.8/−6.2 mm; the ~10x lower/upper asymmetry is the downwash signature, but the geo-vs-INDI difference is not yet a result). Five simulator fidelity bugs fixed first (missing accelerometer, wrong compiled airframe, mismatched motor calibrations, controller called at 2 kHz with a ms tick, and `firmware_params` never applied so the sim flew gains nobody flies) — [`09_Simulation.md`](09_Simulation.md)
 
-### B.2 Flight-validate Mode E — single drone ⬅️ **NEXT**
+### B.2 Flight-validate Mode E — single drone → *now the single-robot ladder inside C.0*
 
 | # | Task | Command | Pass criterion |
 |---|---|---|---|
@@ -167,7 +223,7 @@ is software.**
 | | One frame convention (Mellinger) on Mode E |
 | Measurement | `indi.a_res_*` — the residual force, logged in **every** controller mode |
 | Multi-drone | `formation_flight.py` — N drones, formations, safety checks, dry-run |
-| Logging | uSD config (500 Hz x 34 vars); broadcast start so logs share an origin |
+| Logging | uSD config (500 Hz x 35 vars, incl. `rnn.pred_*`); broadcast start so logs share an origin |
 | Analysis | `analyze_formation.py` (separation + downwash), `merge_usd_logs.py` (merge + measured sync) |
 | Config | Brushless gains active; 1 <-> N drone switching documented |
 | Formations | 16 scenarios, offline-verified (38 spec cases, 20 safety combos). ROS-sim execution matrix **in progress** — see `experiments/sim_validation/` |
@@ -203,46 +259,119 @@ is software.**
 
 ---
 
-## C. Core Experimental Work — ⬜ NOT STARTED
+## C. CORE EXPERIMENTAL WORK — ⬜ NOT STARTED
 
-Gated behind the whole of §B. Theoretical writing (problem statement, related work) can run in
-parallel and is not listed here.
+**This is the thesis.** Everything in §A and §B was preparation and is complete. The five steps
+below are the Core Thesis Workflow summarised at the top of this file. Theoretical writing (§D)
+can run in parallel and is not gated on any of them.
 
-### C.0 — Hardware validation that nothing is broken
+---
 
-The first core task is not an experiment, it is a check. Two things changed in flight code that
-have never flown.
+### C.0 — Hardware Gate
 
-- [ ] Geometric SE(3) flies cleanly on hardware — single robot, then large-separation two robots
-- [ ] Corrected full INDI flies cleanly — **the residual sign fix inverts a control term**
-- [ ] Explicitly confirm the sign fix introduced no new instability
-- [ ] Log and inspect `a_res` under **both** controllers; confirm magnitude, sign and noise
+**⬅️ THE NEXT ACTIONABLE PHASE.** Not an experiment — the check that nothing is broken before any
+measurement counts. Acceptance criteria: [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) Checklist B.
 
-### C.1 — Residual data collection
+- [ ] Hardware inventory and bench checks (Checklist A); tape-measure the flight volume
+- [ ] Confirm gains read back correctly — **`kv_xy` must be 5.0, not the simulator's 8.0**
+- [ ] Single-robot ladder: figure8 Mode D → figure8 Mode E → circle. **Mode E has never flown**
+- [ ] **Geometric SE(3) flies cleanly** — single robot, then two robots at large separation
+- [ ] **Corrected full INDI flies cleanly** — the residual sign fix inverts a control term
+- [ ] Log and inspect `a_res` under **both** controllers: magnitude, sign, noise.
+      **Zero means no thesis data at all**
+- [ ] Check the measured uSD sync offset on the first 2-robot flight
+- [ ] **Freeze the gains** (Checklist C). Re-tuning later would measure tuning effort, not methods
 
-- [ ] Fly the validated scenarios under **geometric** control while logging `a_res`, states and
-      rotor speeds. Geometric is the right choice here: it does not compensate, so the residual is
-      observed rather than partly cancelled
-- [ ] Start with A1, A3, A4, A7 at safe separations
-- [ ] Stage progressively smaller separations only once large-separation flights are clean
-- [ ] This is the training set for **every** residual-learning method
+**The three unflown flight-code changes cleared here:**
 
-### C.2 — Train the models and integrate the seven strategies
+| # | Change | Why it cannot be skipped |
+|---|---|---|
+| 1 | **Residual sign fix** | Position INDI was *adding* `a_res` instead of subtracting it, reinforcing every unmodelled force at exactly 2.00×. The fix inverts a control term |
+| 2 | **`a_res` gating fix** | RPM was read only when `mode != 0`, so `a_res` was dead under geometric — silently blocking all Geometric+NN training data |
+| 3 | **`rnn.en` compensation** | The learned residual now feeds the position loop. Default off → byte-identical, but it is a control term |
 
-- [ ] Train the neural residual models on the collected data
-- [ ] Validate residual model quality before integrating
-- [ ] Integrate all seven strategies into the same codebase:
-      1. Pure INDI · 2. Geometric + NN · 3. FBL + NN *(code pending from authors)* ·
-      4. Hybrid neural-augmented INDI · 5. Residual RL (ProxFly-style) ·
-      6. Light learning-based MPC · 7. Geometric + residual RL
-- [ ] *(When adding any stateful controller: give it a per-vehicle state swap, or multi-drone sim
-      silently shares its filters — see [`09_Simulation.md`](09_Simulation.md))*
+> **None of the three is detectable in single-drone flight** — `a_res ≈ 0` with no neighbour.
+> They only appear once another vehicle's downwash is present.
 
-### C.3 — The comparison campaign
+---
 
-- [ ] Systematic 2-robot comparison under the frozen formation library
-- [ ] Extend the best methods to ≥ 3 robots
-- [ ] Analyse and compute the protocol metrics
+### C.1 — Residual Data Collection
+
+Fly the validated formations under **pure Geometric control**, logging high-quality `a_res` and
+states. Geometric is the right choice: it does not compensate, so the residual is *observed*
+rather than partly cancelled.
+
+- [ ] Confirm `a_res` is non-zero and correctly signed before collecting anything
+- [ ] Collect at safe separations first, tightening only once the loose cases are clean
+- [ ] **Must include both vertical and lateral motion** — A1, A3 (vertical), **A4, A7 (lateral)**
+- [ ] Log `a_res`, full state and rotor speeds at 500 Hz to uSD (radio cannot carry two drones)
+- [ ] Verify the merged multi-drone logs actually contain relative state and `f_res`
+
+> ⚠️ **A4/A7 are not optional.** The simulation dry run showed A3 alone never excites relative
+> `y` — `train.py` reported `sigma = 1.0` for those inputs. Collecting only vertical scenarios
+> leaves the model extrapolating across half its input space the first time a formation moves
+> sideways.
+
+Order and separations: [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md).
+This is the training set for **every** residual-learning strategy.
+
+---
+
+### C.2 — Train the Residual Model
+
+The pipeline is **built and verified**; this step is running it on real data for the first time.
+Tooling: `flying_drone_stack/tools/residual/` — [`13_Residual_Learning.md`](13_Residual_Learning.md) §6.
+
+- [ ] Merge the per-drone uSD logs onto a common clock (`merge_usd_logs.py`)
+- [ ] Train the deep-sets residual network on the collected flights
+- [ ] **Validate model quality before integrating** — RMSE against *predicting zero* is the number
+      that matters; a model that cannot beat that has learned nothing
+- [ ] Export (normalisation folded into layer 1) and upload the weights
+- [ ] Fly once with weights loaded and **`rnn.en = 0`** — predicted vs measured residual, open
+      loop. This is the only comparison that distinguishes a good model from a lucky feedback loop
+
+---
+
+### C.3 — Integrate the Strategies
+
+All seven share one residual model, one weight format and one upload path, so they differ in
+*how they use the prediction* rather than in how they obtain it. That is what makes the comparison
+a comparison.
+
+| # | Strategy | Uses the NN residual? | State |
+|---|---|---|---|
+| 1 | **Pure INDI** | No — reacts to the *measured* residual | ✅ Implemented, flying |
+| 2 | **Geometric + NN residual** | Yes, as feedforward | ✅ Implemented (`rnn.en`), **unflown** |
+| 3 | **FBL + NN residual** | Yes | ⬜ *FBL code still with the authors* |
+| 4 | **Hybrid Neural-Augmented INDI** | Yes, alongside the INDI measurement | ⬜ Not wired |
+| 5 | **Residual RL** | Separate policy network | ⬜ **Deliberately deferred** |
+| 6 | **Learning-based MPC** | Yes, as the prediction model in the horizon | ⬜ Not wired |
+| 7 | **Geometric + Residual RL** | Separate policy network | ⬜ **Deliberately deferred** |
+
+- [ ] Wire strategies 4 and 6 to the existing prediction
+- [ ] Strategy 3 when the FBL code arrives — it does not block the others
+- [ ] Strategies 5 and 7 last
+- [ ] *Any stateful controller needs a per-vehicle state swap, or the multi-drone simulator
+      silently shares its filters — see [`09_Simulation.md`](09_Simulation.md)*
+
+> Strategies 2 and 4 may run the measured and predicted residual **together**. Double-counting is
+> a real risk and is exactly what Strategy 4 exists to measure; it is not prevented in code,
+> because preventing it would remove the comparison.
+
+---
+
+### C.4 — Systematic Comparison
+
+**The thesis result.** Fly the same frozen formation library under every strategy.
+
+- [ ] Run the full library per strategy, 2 robots
+- [ ] Measure **tracking error**, **residual rejection**, and **robustness**
+- [ ] Extend the best strategies to the **3-robot** tight formations (B1–B3)
+- [ ] Verify interactions superpose — B1/B2 exist for exactly this
+- [ ] Analyse against the protocol metrics ([`05_Experimental_Protocol_2Robot.md`](05_Experimental_Protocol_2Robot.md))
+
+The coplanar control cases C1–C3 measured **0.0 mm under both controllers** in simulation. That
+null result is what makes the positive ones meaningful; keep them in the campaign.
 
 ## D. Writing & Finalisation — ⬜ NOT STARTED
 
@@ -270,6 +399,7 @@ Update this file **in the same change** that alters project state — not afterw
 | Something is descoped | Strike it with a one-line reason — never delete silently |
 | A blocker changes | Update ▶ *Hard blocker* |
 | Anything is added | Add the task **and** a History line below |
+| A new document is created | Index it in [`00_README.md`](00_README.md) **and** in the root `README.md` |
 
 Rules that keep it trustworthy:
 
@@ -283,8 +413,13 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (9) | **Core Thesis Workflow recorded as the master plan, and the preparation phase declared finished.** `docs/07` now leads with the five ordered steps — C.0 Hardware Gate → C.1 Residual Data Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic Comparison — with the preparation/core boundary made explicit throughout. Section C was renumbered from four phases to five (training and integration were one step, now two); the four documents referencing the old C.2/C.3 were updated. `11_Hardware_Readiness_Checklist.md` is now titled as the operational detail of C.0 and states that it is the next actionable phase. `05_Experimental_Protocol_2Robot.md` was aligned: its prose formations mapped onto the frozen scenario library, metrics restated as the three C.4 axes (tracking error, residual rejection, robustness), and the freeze-the-gains constraint added. `13_Residual_Learning.md` opens with the foundation marked complete and a table placing it in each workflow step. **One real inconsistency corrected:** `01_Thesis_Project_Snapshot.md` still said data collection would start with *pure INDI*; C.1 uses *pure Geometric*, because INDI compensates the disturbance and would partly cancel the residual being measured. New memory `project_core_thesis_workflow.md` plus a rewritten MEMORY.md header so a future session lands on this immediately. No code changed. |
+| 2026-08-23 (8) | Documentation consolidation pass. Root cause fixed first: `flying_drone_stack/.gitignore` had a blanket `*.md` rule with a hand-maintained allowlist, silently hiding **14 files** including the entire INDI oscillation investigation, the inverted-loop investigation, `GLOSSARY.md`, `paper_summaries.md`, the uSD logging README and `LOCAL_MODIFICATIONS.md` — every new document written there was invisible to git unless someone remembered to add an exception. Now ignores by name, not extension. (Separately, the **root** `.gitignore` excludes `**/CLAUDE.md` outright, so no `CLAUDE.md` in this repo is tracked at all. That rule looks deliberate and was left alone — but it means the agent instruction files live only on this machine.) `docs/14_Repository_Map.md` added (three repos, end-to-end signal flow, which-file-for-which-task, and the traps that have cost time). `docs/00_README.md` rewritten as a navigation map; root `README.md`, `flying_drone_stack/README.md`, both stack `CLAUDE.md` files, `crazyflie_examples/CLAUDE.md`, `experiments/README.md` and `sim_validation/README.md` brought current. Five course-era documents (ROADMAP, VALIDATION_PLAN, SLAM_STATUS, ADVANCED, CS2_ARCHITECTURE_PLAN) banner themselves as historical rather than being rewritten or deleted. Corrected three concrete inaccuracies: the branch tables named deleted branches, `firmware_app/CLAUDE.md` still described the controller mode as a recompiled constant rather than a runtime parameter, and `crazyflie_examples/CLAUDE.md` documented a log path that exists only on the lab machine. |
+| 2026-08-23 (7) | Residual-learning step 3 of 3: end-to-end dry run in simulation. Collect under geometric → train → upload through the real `rnn.*` protocol → enable → measure, all through the code paths the lab will use. The simulator had to grow three things: peer injection (positions only, matching the real peer API), a residual log written in the same schema `merge_usd_logs.py` produces so one loader serves sim and hardware, and commanded-position logging — without which realised separation cannot be told apart from commanded motion, which made the first attempt's geometry section meaningless. `rnn.en` now feeds the prediction into the position loop (strategy 2), default off and byte-identical. Result: 90.4%/75.9% of the measured residual predicted open-loop, held z separation error 4.66 → 0.63 mm with compensation on. Simulation only — the residual is generated by a model of the same family being fitted, so this says the pipeline is ready, not that the method works. |
+| 2026-08-23 (6) | Residual-learning step 2 of 3: the training pipeline (`tools/residual/`). uSD loader that owns the sign convention and replays the firmware's own input guards, PyTorch model matching the onboard layer shapes, training with a contiguous-block split and a predict-zero baseline, export folding normalisation into layer 1, weights carrying provenance, and a ROS uploader that deliberately does not enable what it uploads. Verified by 12 end-to-end checks that push a trained model through the real export and upload protocol into the *compiled* controller — agreement ~1e-6 m/s². Found two silent-data-loss bugs on the way: `decode_usd_log.py` never mapped `stateEstimate.*`, `indi.a_res_*` or `acc.*`, so `merge_usd_logs.py` would have produced no relative state and no `f_res` while reporting success; and the synthetic path bypassed the firmware's distance guards. Still trained on nothing real — no formation flight has happened. |
+| 2026-08-23 (5) | Residual-learning infrastructure started (step 1 of 3). Onboard deep-sets network in `no_std` Rust — 987 weights, permutation-invariant so one weight set serves 2 or 3 robots — plus the `rnn.*` parameter upload protocol, which refuses a partial upload outright rather than running half-loaded. Peer velocity is differenced onboard from the position-only peer API, with the history kept per-vehicle inside `State` so the multi-drone simulator cannot cross-contaminate it. Prediction is logged every tick regardless of `rnn.en`, because comparing predicted against measured residual is the evaluation of every learned method. Verified by 10 numerical checks against an independent NumPy implementation; nothing consumes the prediction yet. `13_Residual_Learning.md` added. |
 | 2026-08-23 (4) | Remote decisions closed. Firmware local modifications resolved — kept as local by decision, all four annotated in place, durable manifest at `host/LOCAL_MODIFICATIONS.md`; found that `usddeck.c`'s raised log-variable limit is load-bearing for the 34-variable thesis config and would silently truncate if lost. Three checklists prepared (hardware inventory, C.0 acceptance, freeze-the-gains) and the residual collection order decided: A1 → A3 → A4 under geometric. |
-| 2026-08-23 (3) | External review returned. Confirmed the assessment and found no additional scenario gaps beyond the five already documented — a weak positive, not proof of completeness. Contributed the Core Task sequencing, now §C.0–C.3, with hardware validation of the two unflown flight-code fixes as an explicit gate before any data collection. |
+| 2026-08-23 (3) | External review returned. Confirmed the assessment and found no additional scenario gaps beyond the five already documented — a weak positive, not proof of completeness. Contributed the Core Task sequencing, then §C.0–C.3 (renumbered to §C.0–C.4 on 2026-08-23), with hardware validation of the two unflown flight-code fixes as an explicit gate before any data collection. |
 | 2026-08-23 (2) | Validation extended to the full library: 34/34 cases, 33 pass, 1 expected, 0 defects. A6/A7/C1–C5 run for the first time (C5 needed a 1-drone roster). Flight volume applied and corroborated; scenario rotation added so all 19 configs fit the real room at full parameters. Shareable report artifact published. |
 | 2026-08-23 | Sim formation validation completed: 20/20 cases, 19 pass. Two flight-code bugs found and fixed — the residual sign (position INDI reinforced disturbances at exactly 2.00x instead of rejecting them) and `a_res` being dead under geometric (blocking Geometric+NN training data). Neither is detectable in single-drone flight. INDI now reduces residual displacement by 2-3 orders of magnitude in sim; not a thesis result until hardware confirms. |
 | 2026-08-22 (8) | Sim execution gaps addressed. Infrastructure: sidecar JSON + `verify_formation_sim.py` (automated commanded-vs-realised check that works without hardware `/pose`), `crazyflies_sim3.yaml` for the 3-robot scenarios, `run_sim_matrix.sh` harness. Full 20-run matrix (Priority A × 2 robots, Priority B × 3 robots, each under geometric and INDI) launched. First result: A1/geometric PASS at 27.6 mm, which is the downwash sag rather than tracking error. |

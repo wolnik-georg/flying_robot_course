@@ -5,6 +5,24 @@ simulation, SE(3) geometric control, MEKF state estimation, minimum-snap motion 
 3D occupancy mapping, visual odometry (VO), loop-closure SLAM, and autonomous frontier
 exploration — all validated against real flight logs.
 
+**This crate is now the code half of a Master's thesis** — *Comparison of Control Strategies for
+Interaction-Force Aware Multirotor Teams*. Project status, and the map of every document, live one
+level up:
+
+| | |
+|---|---|
+| **Status — read this first** | [`../docs/07_Thesis_Progress_Checklist.md`](../docs/07_Thesis_Progress_Checklist.md) |
+| Map of all documentation | [`../docs/00_README.md`](../docs/00_README.md) |
+| Working notes for this crate | [`CLAUDE.md`](CLAUDE.md) |
+| Onboard controller | [`firmware_app/CLAUDE.md`](firmware_app/CLAUDE.md) |
+| Residual training pipeline | [`tools/residual/README.md`](tools/residual/README.md) |
+
+Sections below describe the stack as built during the course project. Still accurate as a
+reference for the Rust modules and the legacy flight modes, but **Mode E (Crazyswarm2 + OptiTrack)
+is the current standard** — see [`../docs/08_Trajectory_Upload_Paths.md`](../docs/08_Trajectory_Upload_Paths.md).
+SLAM/perception (`src/mapping/`, `src/perception/`) is complete but **not part of the thesis**;
+leave it as it is.
+
 > **Course assignments with results and plots → [ASSIGNMENTS.md](ASSIGNMENTS.md)**
 >
 > **Planning plot interpretation guide → [docs/PLANNING_VISUALIZATION_GUIDE.md](docs/PLANNING_VISUALIZATION_GUIDE.md)**
@@ -17,7 +35,7 @@ cd flying_drone_stack
 # Build everything
 cargo build --release
 
-# Run all tests (249 tests, 0 failures)
+# Run all tests (479 tests, 0 failures)
 cargo test
 ```
 

@@ -784,17 +784,17 @@ No outliers — RMSE spans only 2.3-2.7 cm (std 0.14, tightest of any config thi
 
 #### Best flight — `14-26-53` (RMSE 2.3 cm, Roll err 4.8°, Pitch err 4.4°, best combined result)
 
-![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis.png)
+![analysis](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis.png)
 
-![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_axes.png)
+![analysis_axes](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_axes.png)
 
-![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_kinematics.png)
+![analysis_kinematics](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_analysis_kinematics.png)
 
-![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_3d_orientation.png)
+![3d_orientation](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_3d_orientation.png)
 
-![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_indi_panel.png)
+![indi_panel](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_indi_panel.png)
 
-![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_rpm_balance.png)
+![rpm_balance](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-19_14-26-53_rpm_balance.png)
 
 ### 5d-validation-fc70. fc_bw=70 re-validation (supervisor request) — 2026-07-20
 
@@ -837,17 +837,17 @@ fc_bw=60) — no meaningful difference in either direction.
 
 #### Best flight — `17-27-26` (RMSE 2.2 cm, Roll err 4.9°, Pitch err 3.2°, lowest RMSE of the fc_bw=70 batch)
 
-![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis.png)
+![analysis](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis.png)
 
-![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis_axes.png)
+![analysis_axes](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis_axes.png)
 
-![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis_kinematics.png)
+![analysis_kinematics](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_analysis_kinematics.png)
 
-![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_3d_orientation.png)
+![3d_orientation](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_3d_orientation.png)
 
-![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_indi_panel.png)
+![indi_panel](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_indi_panel.png)
 
-![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_rpm_balance.png)
+![rpm_balance](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-20_17-27-26_rpm_balance.png)
 
 ### 5e. Levers exhausted — full checklist before locking in
 
@@ -1456,13 +1456,13 @@ their own real startup latency), onboard-8 reference when available, and the sum
 pitch numbers now restricted to the actual lap window (matching `onboard8_metrics_over_window`)
 while the full-length error-vs-time traces still show the pre-motion segment for context.
 
-![circle kt=0.05 — Upgraded vs Brushless](../../Controls/logs/circle_mode1_kt0.05_2026-07-23_19-12-43_vs_circle_mode1_kt0.05_2026-07-22_18-26-28.png)
+![circle kt=0.05 — Upgraded vs Brushless](../../archive/Controls/logs/circle_mode1_kt0.05_2026-07-23_19-12-43_vs_circle_mode1_kt0.05_2026-07-22_18-26-28.png)
 
-![oval kt=0.05 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.05_2026-07-23_19-21-06_vs_oval_mode1_kt0.05_2026-07-22_18-21-47.png)
+![oval kt=0.05 — Upgraded vs Brushless](../../archive/Controls/logs/oval_mode1_kt0.05_2026-07-23_19-21-06_vs_oval_mode1_kt0.05_2026-07-22_18-21-47.png)
 
-![oval kt=0.2 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.2_2026-07-23_19-27-51_vs_oval_mode1_kt0.2_2026-07-22_18-38-26.png)
+![oval kt=0.2 — Upgraded vs Brushless](../../archive/Controls/logs/oval_mode1_kt0.2_2026-07-23_19-27-51_vs_oval_mode1_kt0.2_2026-07-22_18-38-26.png)
 
-![oval kt=0.3 — Upgraded vs Brushless](../../Controls/logs/oval_mode1_kt0.3_2026-07-23_19-28-35_vs_oval_mode1_kt0.3_2026-07-22_18-39-15.png)
+![oval kt=0.3 — Upgraded vs Brushless](../../archive/Controls/logs/oval_mode1_kt0.3_2026-07-23_19-28-35_vs_oval_mode1_kt0.3_2026-07-22_18-39-15.png)
 
 All four show the same picture as §9.5/§9.6's tables: the XY-path panels trace nearly identical
 loops for both platforms, and the XY-error-vs-time panels show the same shape — a large transient
@@ -1472,13 +1472,13 @@ small, near-equal steady-state error for both colors once the trajectory actuall
 The two anomalous types from §9.5 look visually different from the four above, and different from
 each other — confirming both are real, not the same recurring bug:
 
-![helix kt=0.05 — Upgraded vs Brushless](../../Controls/logs/helix_mode1_kt0.05_2026-07-23_19-20-08_vs_helix_mode1_kt0.05_2026-07-22_18-22-32.png)
+![helix kt=0.05 — Upgraded vs Brushless](../../archive/Controls/logs/helix_mode1_kt0.05_2026-07-23_19-20-08_vs_helix_mode1_kt0.05_2026-07-22_18-22-32.png)
 
 `helix`: both platforms' flown loops (solid) are visibly smaller-radius than the planned spiral
 (dashed) — a real shape undershoot, not a phase artifact. Steady-state error settles around
 45-55cm (brushless) / 65-75cm (upgraded) rather than the few-cm floor seen on circle/oval.
 
-![tilted_oval kt=0.05 — Upgraded vs Brushless](../../Controls/logs/tilted_oval_mode1_kt0.05_2026-07-23_19-23-44_vs_tilted_oval_mode1_kt0.05_2026-07-22_18-24-20.png)
+![tilted_oval kt=0.05 — Upgraded vs Brushless](../../archive/Controls/logs/tilted_oval_mode1_kt0.05_2026-07-23_19-23-44_vs_tilted_oval_mode1_kt0.05_2026-07-22_18-24-20.png)
 
 `tilted_oval`: brushless (red) sits at its usual few-cm floor throughout. Upgraded (blue) shows a
 distinctive sawtooth — large excursions (up to ~180cm) recurring roughly once per lap, with sharp
@@ -1553,7 +1553,7 @@ control-authority ceiling independent of platform/tuning).
 | 0.05 | 1.7 cm | 1.9 cm (tied) |
 | 0.3 | 2.2 cm | **1.4 cm** (brushless ~36% lower — a real difference here, unlike kt=0.05) |
 
-![circle kt=0.3 — Upgraded vs Brushless](../../Controls/logs/circle_mode1_kt0.3_2026-07-25_12-50-20_vs_circle_mode1_kt0.3_2026-07-25_14-16-08.png)
+![circle kt=0.3 — Upgraded vs Brushless](../../archive/Controls/logs/circle_mode1_kt0.3_2026-07-25_12-50-20_vs_circle_mode1_kt0.3_2026-07-25_14-16-08.png)
 
 At kt=0.3, brushless tracks noticeably tighter than upgraded (1.4cm vs 2.2cm) — both platforms'
 XY paths hug the planned circle closely (visible in the plot), but brushless is measurably closer.

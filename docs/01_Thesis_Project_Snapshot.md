@@ -1,5 +1,10 @@
 # Thesis Project Snapshot
-**Last updated:** 19 August 2026
+**Last updated:** 23 August 2026
+
+> **Status:** software preparation is **finished**. The next actionable phase is
+> **C.0 — Hardware Gate**, step 1 of the five-step Core Thesis Workflow in
+> [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md), which is the master plan
+> and the single source of truth for status. This document holds the *idea*; `07` holds the *plan*.
 
 ## 1. Core Idea of the Thesis
 
@@ -67,13 +72,28 @@ First systematic multi-robot head-to-head comparison of the controller families 
 
 ## 5. Immediate Next Steps
 
-Planning, literature, the residual-wrench model, the experimental protocol, and repo cleanup are
-done. FBL controller code has been requested via the professor and is still waiting on the
-authors — this does not block starting. The actual thesis experiments begin with INDI
-close-proximity data collection.
+**All planning, literature, modelling, protocol, tooling and simulation work is complete.** So is
+the entire residual-learning software foundation: the onboard network, the weight-upload path, the
+training pipeline, and an end-to-end dry run in simulation ([`13`](13_Residual_Learning.md)).
+Nothing in software blocks progress.
 
-1. Hardware inventory
-2. High-rate logging check
-3. Sanity-check geometric and INDI controllers on the brushless platforms
-4. Prepare first INDI residual-force data collection
-5. Start residual-force data collection with pure INDI
+FBL controller code (Strategy 3) was requested via the professor and is still with the authors.
+**This does not block anything** — the other strategies proceed without it.
+
+The next steps are the Core Thesis Workflow — see
+[`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md) for the full version:
+
+1. **C.0 — Hardware Gate** ⬅️ *next.* Inventory, flight-volume measurement, single-robot ladder,
+   geometric and INDI both flying cleanly, the three unflown flight-code changes cleared,
+   gains frozen
+2. **C.1 — Residual Data Collection** under **pure Geometric** control, vertical *and* lateral
+   (A1, A3, A4, A7)
+3. **C.2 — Train the Residual Model** on real flight data; export and upload weights
+4. **C.3 — Integrate the Strategies**
+5. **C.4 — Systematic Comparison** across the frozen formation library
+
+> ⚠️ **Correction to earlier plans.** An earlier version of this document said data collection
+> would start with **pure INDI**. It starts with **pure Geometric** instead: INDI actively
+> compensates the disturbance, so it would partly cancel the very residual being measured.
+> Geometric does not compensate, so the residual is *observed* rather than suppressed — which is
+> what a training set needs. Pure INDI remains Strategy 1 in the comparison at C.4.

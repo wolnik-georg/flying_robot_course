@@ -13,13 +13,40 @@ deleted.
 
 ## Start here
 
+**Read [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md) first** — the
+single source of truth for what is done and what comes next. [`docs/00_README.md`](docs/00_README.md)
+is the map of every other document.
+
+> ### ★ Core Thesis Workflow — the master plan
+> **Software preparation is FINISHED. Next actionable phase: C.0 — Hardware Gate.**
+>
+> **C.0** Hardware Gate ⬅️ next → **C.1** Residual Data Collection → **C.2** Train the Residual
+> Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison
+>
+> Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
+
+
+| I want to | Go to |
+|---|---|
+| Know where the project stands | [`docs/07`](docs/07_Thesis_Progress_Checklist.md) |
+| Find any document | [`docs/00`](docs/00_README.md) |
+| Find my way around the three repos | [`docs/14`](docs/14_Repository_Map.md) |
+| Fly a single-robot trajectory | [`docs/08`](docs/08_Trajectory_Upload_Paths.md) |
+| Fly a formation (2–3 robots) | [`docs/10`](docs/10_Formation_Library.md) |
+| Run something in simulation | [`docs/09`](docs/09_Simulation.md) |
+| Work on the learned residual model | [`docs/13`](docs/13_Residual_Learning.md) |
+| Prepare for the first real flights | [`docs/11`](docs/11_Hardware_Readiness_Checklist.md) |
+
+### Where the code is
+
 | | |
 |---|---|
-| **Thesis planning docs** | [`docs/`](docs/) — thesis snapshot, literature matrix, gap/contribution statement, residual-wrench model, experimental protocol, references |
-| **Active codebase** | [`flying_drone_stack/`](flying_drone_stack/) — Rust controller/estimator/planning stack |
-| **Simulation library** | [`bitcraze_rs_lib/`](bitcraze_rs_lib/) |
-| **Thesis experiments (new)** | [`experiments/`](experiments/) — logs, analysis, protocols for the ongoing thesis work |
-| **Flying a trajectory** | [`docs/08_Trajectory_Upload_Paths.md`](docs/08_Trajectory_Upload_Paths.md) — Mode D vs Mode E, which trajectories are valid on each, how to run them |
+| **Rust stack** — planning, controllers, offline analysis | [`flying_drone_stack/`](flying_drone_stack/) |
+| **Onboard controller** — `no_std`, 500 Hz on the drone | [`flying_drone_stack/firmware_app/`](flying_drone_stack/firmware_app/) |
+| **Residual training pipeline** | [`flying_drone_stack/tools/residual/`](flying_drone_stack/tools/residual/) |
+| **Experiments** — logs, analysis scripts, results | [`experiments/`](experiments/) |
+| **Flight + formation scripts, simulator** | `~/Desktop/crazyswarm2/` (separate repo, also ours) |
+| **Firmware** | `~/Desktop/crazyflie-firmware/` (bitcraze upstream — deliberately **not** forked; local changes are listed in [`LOCAL_MODIFICATIONS.md`](flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md)) |
 | **Archived course project** | [`archive/`](archive/) — see below |
 
 ## `archive/` — historical course material
@@ -71,12 +98,29 @@ Mode D is preserved byte-for-byte and is still required for the manoeuvres Mode 
 represent. Full details, measurements and the trajectory allowlist:
 [`docs/08_Trajectory_Upload_Paths.md`](docs/08_Trajectory_Upload_Paths.md).
 
-## Quick build/test
+## Quick build / test
 
 ```bash
+# Rust stack
 cd flying_drone_stack && cargo build --release
-cd flying_drone_stack && cargo test              # 479 tests, 0 failures expected
+cd flying_drone_stack && cargo test                    # 479 tests, 0 failures expected
+
+# Onboard firmware (brushless CF21BL is the default target)
+cd flying_drone_stack/firmware_app && make             # build; `make cload` flashes
+
+# Onboard residual network, checked against an independent reference
+cd flying_drone_stack/firmware_app && python3 host/test_residual_nn.py
+
+# Residual training pipeline, checked end to end against the compiled controller
+cd flying_drone_stack/tools/residual && python3 test_pipeline.py
+
+# Formation scenario library: spec check, no hardware or ROS needed
+cd ~/Desktop/crazyswarm2/crazyflie_examples/crazyflie_examples \
+   && python3 -m formations.scenarios --self-test
 ```
+
+**Use system `python3`** for anything touching torch or the simulator bindings. The pyenv
+`flying_robots` environment has neither; it is for the older cflib flight scripts.
 
 ## Still at repo root (actively useful)
 

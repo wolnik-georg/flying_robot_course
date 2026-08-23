@@ -1,13 +1,25 @@
-# Hardware Readiness Checklist
+# Hardware Readiness Checklist — the operational detail of **C.0**
 
-**Last updated:** 22 August 2026
+**Last updated:** 23 August 2026
+
+> ### ⬅️ **This is the next actionable phase of the thesis.**
+>
+> **C.0 — Hardware Gate** is step 1 of the five-step Core Thesis Workflow in
+> [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md). **Software preparation is
+> finished**; nothing in software blocks these items. The project is waiting on a drone.
+>
+> C.0 is not an experiment. It is the check that nothing is broken, so that everything measured
+> afterwards means something. **No data collected before C.0 passes counts.**
 
 Everything that must be true before the first real flights, and the order to fly them in.
-This is a preparation document — it does not authorise anything. Each item is either a
-measurement you take or a decision you make.
+This document does not authorise anything. Each item is either a measurement you take or a
+decision you make.
 
 Status lives in [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md); this
 is the operational detail.
+
+**What C.0 unlocks:** C.1 Residual Data Collection → C.2 Train the Residual Model →
+C.3 Integrate the Strategies → C.4 Systematic Comparison.
 
 ---
 
@@ -18,6 +30,16 @@ several things that would have been discovered the hard way, but it is **not** a
 for a flight, and it currently runs at different position gains than hardware (see
 [`09_Simulation.md`](09_Simulation.md)). So the ladder starts with the least risky flight
 that can still fail informatively, and each rung must pass before the next.
+
+**Three flight-code changes have never flown and are cleared here.** All three alter control
+behaviour and **none is detectable in single-drone flight**, because `a_res ≈ 0` with no
+neighbour present:
+
+| # | Change | Risk if it is wrong |
+|---|---|---|
+| 1 | **Residual sign fix** | Position INDI previously *reinforced* every unmodelled force at exactly 2.00×. The fix inverts a control term |
+| 2 | **`a_res` gating fix** | `a_res` was dead under geometric, silently blocking all Geometric+NN training data |
+| 3 | **`rnn.en` compensation** | The learned residual can now feed the position loop. Default off → byte-identical, but it is a control term. **Leave it off until the rest of C.0 has passed** |
 
 **Do not skip to two robots.** The single-robot rungs exist to separate "the migration
 broke something" from "the interaction broke something". If a two-robot flight is the first

@@ -1,5 +1,14 @@
 # SLAM & Perception — Status Document
 
+> ## ⚠️ HISTORICAL (last updated 2026-04-07)
+> This document describes the SLAM/perception work, all 8 phases of which are complete. **SLAM is not part of the
+> thesis** -- `src/perception/` and `src/mapping/` are inactive and should be left as they are.
+>
+> **The current source of truth for project status is
+> [`docs/07_Thesis_Progress_Checklist.md`](../docs/07_Thesis_Progress_Checklist.md);
+> [`docs/00_README.md`](../docs/00_README.md) maps every other document.** Kept because it
+> records what was decided and why -- do not act on it as if it were current.
+
 > Last updated: 2026-04-07
 > Purpose: Session-closing snapshot. Use this to resume or build on top of the SLAM work.
 

@@ -290,13 +290,35 @@ and it is the effect the thesis sets out to compensate.
 steady hover only, with no motor lag in the plant and gains that were tuned on hardware for
 trajectory tracking rather than for hover disturbance rejection. It says the pipeline works and
 produces plausible physics; it does not say which controller rejects downwash better. That
-comparison belongs to Section C.3 and needs the protocol in
+comparison belongs to Section C.4 and needs the protocol in
 [`05_Experimental_Protocol_2Robot.md`](05_Experimental_Protocol_2Robot.md).
 
 An earlier version of these numbers reported INDI failing outright. That was a bad steady-window
 filter in the analysis, not the controller.
 
 ---
+
+
+## Residual-learning support (added 2026-08-23)
+
+Three additions, all off unless a config asks for them. See
+[`13_Residual_Learning.md`](13_Residual_Learning.md) §7 for the reasoning and the dry-run result.
+
+| Config key | Effect |
+|---|---|
+| `sim.residual_log` | CSV of position, velocity, `a_res`, the network prediction **and the commanded position**, in the same schema `merge_usd_logs.py` produces from real uSD logs — so one loader serves simulation and flight with no special cases |
+| `sim.residual_log_hz` | Sample rate, default 100 Hz |
+| `sim.rnn_weights` | `.npz` from `tools/residual/train.py`, uploaded through the real `rnn.*` protocol |
+| `sim.rnn_enable` | Whether `rnn.en` is set. Separate from loading on purpose: the useful first run records prediction against measurement *without* the model touching the vehicle |
+
+**Peer positions are injected by the server**, since the simulator has no `peer_localization`.
+Positions only, matching the real API — handing over a velocity the firmware cannot have would
+make simulation easier than reality in exactly the place the residual model depends on.
+
+**Log the commanded position, not just the realised one.** Without it, realised separation cannot
+be separated from commanded motion, and any "did the formation hold its geometry" number is a
+mixture of tracking error and the trajectory itself. This was got wrong once and produced a
+plausible table that meant nothing.
 
 ## Why not Isaac Sim
 

@@ -216,22 +216,22 @@ The upgraded drone with correct thrust model (0.18 N) + kt=2.25–2.53e-10 + kr=
 ### Best Flight Plots — `16-33-19` (Phase XY RMSE = 3.2 cm · Geom RMSE = 2.2 cm · Roll err = 5.3° · Pitch err = 3.4°)
 
 #### Main dashboard
-![analysis](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis.png)
+![analysis](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis.png)
 
 #### Per-axis positions
-![analysis_axes](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_axes.png)
+![analysis_axes](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_axes.png)
 
 #### Kinematics
-![analysis_kinematics](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_kinematics.png)
+![analysis_kinematics](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_analysis_kinematics.png)
 
 #### 3D orientation
-![3d_orientation](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_3d_orientation.png)
+![3d_orientation](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_3d_orientation.png)
 
 #### INDI internals
-![indi_panel](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_indi_panel.png)
+![indi_panel](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_indi_panel.png)
 
 #### RPM balance
-![rpm_balance](../../Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_rpm_balance.png)
+![rpm_balance](../../archive/Controls/logs/figure8_mode1_kt0.05_2026-07-15_16-33-19_rpm_balance.png)
 
 ---
 

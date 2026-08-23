@@ -1,5 +1,15 @@
 # Component Validation Plan
 
+> ## ⚠️ HISTORICAL (last updated 2026-03-21)
+> This document describes component-level validation of the Rust stack during the course project. The thesis-era
+> validation lives in `docs/12_Sim_Formation_Validation_Report.md` (formations) and
+> `docs/11_Hardware_Readiness_Checklist.md` (hardware gates).
+>
+> **The current source of truth for project status is
+> [`docs/07_Thesis_Progress_Checklist.md`](../docs/07_Thesis_Progress_Checklist.md);
+> [`docs/00_README.md`](../docs/00_README.md) maps every other document.** Kept because it
+> records what was decided and why -- do not act on it as if it were current.
+
 > Last updated: 2026-03-21
 > Purpose: Validate each architectural layer in isolation before end-to-end testing.
 > Order is strictly bottom-up — each tier depends on the one before passing.
@@ -297,7 +307,9 @@ cargo run --release --bin main -- --maneuver hover   --ai-deck
 cargo run --release --bin main -- --maneuver circle  --ai-deck
 cargo run --release --bin main -- --maneuver explore --ai-deck
 
-# Tier 8 — INDI (set CONTROLLER_MODE=1 in firmware_app/src/lib.rs, then make cload)
+# Tier 8 — INDI
+# NOTE (2026-08): superseded. The control law is now chosen at RUNTIME via the
+# `indi_gains.ctrl_mode` parameter from crazyflies.yaml -- no source edit, no reflash.
 cargo run --release --bin indi_hover
 ~/.pyenv/versions/flying_robots/bin/python Controls/run_figure8.py
 

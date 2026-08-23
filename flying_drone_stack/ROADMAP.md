@@ -1,5 +1,15 @@
 # Flying Drone Stack — Roadmap
 
+> ## ⚠️ HISTORICAL (last updated 2026-05-09)
+> This document describes the course project. Phases 1-2 are done; phase 3 (third drone) and phase 4 (accel-pinned
+> aggressive manoeuvres) were explicitly descoped on the deck's scope-cut slide and are not being
+> pursued.
+>
+> **The current source of truth for project status is
+> [`docs/07_Thesis_Progress_Checklist.md`](../docs/07_Thesis_Progress_Checklist.md);
+> [`docs/00_README.md`](../docs/00_README.md) maps every other document.** Kept because it
+> records what was decided and why -- do not act on it as if it were current.
+
 > Last updated: 2026-05-09
 > Tests: 264 lib + 195 integration = **459 passing, 0 failures**
 > Build: `cargo build --release` clean
