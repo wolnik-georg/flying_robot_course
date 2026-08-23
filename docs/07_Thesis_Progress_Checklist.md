@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.9 — Chapter 1, introduction.** Chapters 2–5 drafted, **31 pages**, building clean ([`thesis/`](thesis/)) |
+| **Next action — writing** | **W.10 — close the 7 open verification items.** **Chapters 1–5 drafted — every chapter the lab does not block. 35 pages, ~12,600 words** ([`thesis/`](thesis/)) |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.9** — Chapter 1, introduction |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.10** — close the open verification items |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -297,7 +297,8 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) |
 | **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — [`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) |
 | **W.7** | **Chapter 5** — experimental setup & protocol | ✅ **Drafted** — [`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) |
-| **W.9** | **Chapter 1** — introduction | ⬅️ **NEXT** (last chapter unblocked by the lab) |
+| **W.9** | **Chapter 1** — introduction | ✅ **Drafted** — [`thesis/ch1_introduction.tex`](thesis/ch1_introduction.tex) |
+| **W.10** | **Close the open verification items** | ⬅️ **NEXT** — the writing track's remaining work |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -533,15 +534,40 @@ being fitted. No result in Ch. 6–7 rests on it.
 requirement to revise it to past tense as the campaign proceeds and to record protocol deviations
 there rather than only in the results.
 
-### W.9 — Chapter 1, introduction ⬅️ NEXT
+### W.9 — Chapter 1, introduction ✅
 
-The last chapter not blocked by the lab. Best written now that 2–5 exist, since an introduction
-promises what the body delivers.
+[`thesis/ch1_introduction.tex`](thesis/ch1_introduction.tex) — ~1810 words. **The combined build is
+35 pages, ~12,600 words across Chapters 1–5**, zero undefined citations or references.
 
-- [ ] Motivation, from the physics (Ch. 2 §2.2) rather than from generic swarm applications
-- [ ] The gap in one paragraph, and the four research questions
-- [ ] Contribution summary, from [`19`](19_Contribution_Statement.md) — honest, no new method claimed
-- [ ] Thesis outline
+Written last of the unblocked chapters deliberately: an introduction promises what the body
+delivers, and Chapters 2–5 now exist to be checked against. Its five contributions correspond
+one-to-one to C1–C5 in [`19`](19_Contribution_Statement.md); its four research questions to
+[`15`](15_Problem_Statement_and_Research_Questions.md). Those three documents must move together.
+
+The motivation opens from the physics rather than from generic swarm applications: a
+\SI{9}{\centi\metre} vehicle is commonly flown with a \SI{60}{\centi\metre} safety margin, that
+margin sets operating density, and the applications that motivate teams are the ones with no space
+to spare. It states plainly that data-driven methods **have worked** — the margin has already been
+substantially reduced — so the gap is not that the field lacks results.
+
+**No result is claimed anywhere in it.** Contributions are phrased as what the thesis sets out to
+establish, and a paragraph states explicitly that a null result is also a contribution and is
+designed to be distinguishable from a failed experiment.
+
+> ### ✍️ This completes every chapter that the lab does not block.
+> Chapters 6–9 need C.4 data. The writing track's remaining work is verification, not prose.
+
+### W.10 — Close the open verification items ⬅️ NEXT
+
+Seven `\todo{}` markers are live in the drafted chapters. In order of risk:
+
+| # | Item | Why it matters |
+|---|---|---|
+| 1 | **Re-audit the "first systematic comparison" claim** | Contribution 1 rests on our own survey — the document that already produced seven errors. If a comparable study exists, narrow the claim rather than dropping it |
+| 2 | **Resolve the Lee et al. citation** | We hold *Control of Complex Maneuvers*; the implementation follows the CDC 2010 *geometric tracking* paper. Different papers |
+| 3 | Fill three abstract-only details in Ch. 2's evaluation table | Two separations and one team size |
+| 4 | Tape-measure the flight volume | Ch. 5 states corroborated-but-unmeasured figures |
+| 5 | Revise Ch. 5 to past tense as the campaign runs | A setup chapter that no longer matches what was done is worse than none |
 
 ---
 
@@ -741,6 +767,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (19) | W.9 done: **Chapter 1 drafted**, ~1810 words. **This completes every chapter the lab does not block** — Chapters 1–5, 35 pages, ~12,600 words, building clean with no undefined citations or references. The introduction was written last of the unblocked chapters on purpose, so its promises could be checked against a body that already exists: its five contributions correspond one-to-one to C1–C5 in `19` and its four research questions to `15`, and those three documents must now move together. The motivation opens from the physics rather than from generic swarm applications, and states plainly that data-driven methods have already worked — the gap is not that the field lacks results but that they do not compose. No result is claimed anywhere in the chapter, and a paragraph states that a null result is also a contribution and is designed to be distinguishable from a failed experiment. The writing track's remaining work is verification rather than prose: seven live `todo` markers, the highest-risk being the re-audit of the "first systematic comparison" claim, which rests on the same survey that has already produced seven errors. No code touched. |
 | 2026-08-23 (18) | W.7 done: **Chapter 5 drafted**, ~2460 words; combined build 31 pages across Chapters 2–5, zero undefined citations or references. The chapter promotes three things from planning docs into the thesis argument: why the null scenarios C1–C3 are the most important in the library (the residual is a catch-all and non-zero in isolated flight, so formation measurements need a reference — and the same scenarios detect a mis-identified mass or `kt`); why collection runs under the *uncompensated* baseline (a compensating controller records only the residual that survived compensation); and why the train/test split is by contiguous segment rather than by sample (at 500 Hz a random split leaks a near-duplicate of every test point into training). Simulation's role is bounded explicitly — used to disprove implementations, never to validate a method, because the simulated interaction comes from a learned model of the same family being fitted. The chapter is deliberately in the future tense with a `todo` requiring revision to past tense as the campaign runs, since nothing has flown. Four of the nine chapters are now drafted; Chapter 1 is the last one unblocked by the lab. No code touched. |
 | 2026-08-23 (17) | W.8 done: **Chapter 4 drafted**, ~2850 words; combined build now 24 pages across Chapters 2–4 with no undefined citations and no dangling references. The chapter is organised around the observation that strategies 0, 1, 2 and 4 are terms in one shared control law, differing only in which residual term is active — a fairness argument that is verifiable from the source rather than asserted. §4.9 states what that does *not* guarantee, before results rather than after: strategies 3 and 6 do not share the substrate, so their comparison is structurally weaker; frozen shared gains are fair but not neutral, and the alternative reintroduces the tuning confound; and each implementation represents a family rather than reproducing a paper, so underperformance is a statement about this implementation on this platform. Implementation status is stated honestly per strategy — 2 flying, 1 unflown, 1 as components, 3 not implemented — and unimplemented strategies are not described as existing. Two design questions recorded rather than left implicit: the Strategy 4 form (independent terms vs. INDI correcting only the network's residual, which measure different things) and whether Strategy 6 fits onboard at all. No code touched. |
 | 2026-08-23 (16) | W.6 done: **Chapter 3 drafted**, ~2250 words; combined build with Chapter 2 is 16 pages with no undefined references. The chapter's job is to establish that every strategy estimates the *same* quantity — two controllers compensating differently-defined residuals are not comparable however similar their block diagrams look — so it gives both routes to the residual in one notation, entering the control law at one point with one sign. **A real inconsistency was found: `04` and the Chapter 2 draft wrote gravity as `+m g e₃`, but the implementation is z-up (ENU) with `−e₃`.** Left alone the thesis equations would have carried the opposite sign to the flight code; corrected in Chapter 2 and `04` banner-annotated. §3.3.3 derives the compensation sign and turns the simulation-era sign bug into a falsifiable prediction for C.4 (inverted sign ⇒ ≈2× the uncompensated displacement, while looking perfectly stable). §3.5 tabulates seven assumptions with their failure modes so a negative result can be attributed to a specific assumption. No code touched. |
