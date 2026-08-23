@@ -6,9 +6,13 @@ Three repositories on this machine make one system. This document says which is 
 be committed where, and which file to open for a given task. Status lives in
 [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md); this is geography.
 
-> **★ Core Thesis Workflow:** **C.0** Hardware Gate ⬅️ next → **C.1** Residual Data Collection →
-> **C.2** Train the Residual Model → **C.3** Integrate the Strategies → **C.4** Systematic
-> Comparison. Software preparation is **finished**; the project is waiting on lab access.
+> **⇄ Two parallel tracks.**
+> **🔬 Lab:** **C.0** Hardware Gate ⬅️ next → **C.1** Residual Data Collection → **C.2** Train the
+> Residual Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison. Software
+> preparation is **finished**; waiting on lab access.
+> **✍️ Writing:** W.1 problem statement ✅ · W.2 related-work structure ✅ · **W.3 strategy
+> descriptions ⬅️ next** · W.4 contribution statement. Blocked by nothing, and it must never touch
+> flight code.
 
 ---
 

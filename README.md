@@ -17,11 +17,14 @@ deleted.
 single source of truth for what is done and what comes next. [`docs/00_README.md`](docs/00_README.md)
 is the map of every other document.
 
-> ### ★ Core Thesis Workflow — the master plan
-> **Software preparation is FINISHED. Next actionable phase: C.0 — Hardware Gate.**
+> ### ⇄ Two parallel tracks
 >
+> **🔬 Lab track** — software preparation is FINISHED; blocked only on lab access.
 > **C.0** Hardware Gate ⬅️ next → **C.1** Residual Data Collection → **C.2** Train the Residual
 > Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison
+>
+> **✍️ Writing track** — blocked by nothing. W.1 problem statement ✅ · W.2 related-work structure ✅
+> · **W.3 strategy descriptions ⬅️ next** · W.4 contribution statement
 >
 > Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
 
@@ -31,6 +34,8 @@ is the map of every other document.
 | Know where the project stands | [`docs/07`](docs/07_Thesis_Progress_Checklist.md) |
 | Find any document | [`docs/00`](docs/00_README.md) |
 | Find my way around the three repos | [`docs/14`](docs/14_Repository_Map.md) |
+| Know what the thesis is asking | [`docs/15`](docs/15_Problem_Statement_and_Research_Questions.md) |
+| Write the Related Work chapter | [`docs/16`](docs/16_Related_Work_Structure.md) |
 | Fly a single-robot trajectory | [`docs/08`](docs/08_Trajectory_Upload_Paths.md) |
 | Fly a formation (2–3 robots) | [`docs/10`](docs/10_Formation_Library.md) |
 | Run something in simulation | [`docs/09`](docs/09_Simulation.md) |

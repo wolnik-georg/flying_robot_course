@@ -7,7 +7,15 @@ Georg Wolnik, supervised by Prof. Wolfgang Hönig.
 it is the single source of truth for what is done, where we are, and what comes next. Everything
 else is detail hanging off it.
 
-> ### ★ Core Thesis Workflow — the master plan
+> ### ⇄ Two parallel tracks
+>
+> | | 🔬 **Lab track** | ✍️ **Writing track** |
+> |---|---|---|
+> | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
+> | Next | **C.0 stage 1** — validate the controllers | **W.3** — strategy descriptions |
+> | Blocked by | Lab access | Nothing |
+>
+> ### ★ Core Thesis Workflow — the lab-track master plan
 > **Software preparation is FINISHED. Next actionable phase: C.0 — Hardware Gate.**
 >
 > | # | Phase | Detail |
@@ -35,6 +43,8 @@ else is detail hanging off it.
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
+| **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
+| **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md) |
 | Find a paper | [`02`](02_Literature_Matrix.md), [`06`](06_References_Overview.md) |
 | Know the 2-robot experiment protocol | [`05`](05_Experimental_Protocol_2Robot.md) |
 
@@ -51,6 +61,8 @@ else is detail hanging off it.
 | [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md) | The residual-force model — the maths behind `indi.a_res_*` |
 | [`05_Experimental_Protocol_2Robot.md`](05_Experimental_Protocol_2Robot.md) | Protocol for the 2-robot comparison |
 | [`06_References_Overview.md`](06_References_Overview.md) | Every paper, with reading status |
+| [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md) | **The thesis's formal problem statement and its four research questions**, with hypotheses, the experiment answering each, and threats to validity |
+| [`16_Related_Work_Structure.md`](16_Related_Work_Structure.md) | Skeleton and argument of Chapter 2 — nine sections ordered so that reading them produces the gap statement |
 
 ### Status
 | | |
@@ -95,7 +107,8 @@ else is detail hanging off it.
 ## Conventions
 
 - **Numbering:** `01`–`06` planning, `07` status, `08`–`10` + `13` engineering reference,
-  `11`–`12` checklists and results, `14` orientation. New documents get the next number.
+  `11`–`12` checklists and results, `14` orientation, `15`–`16` writing track. New documents
+  get the next number.
 - **Update in the same change that alters state**, not afterwards. A doc that lags reality is
   worse than no doc, because it is trusted.
 - **Never tick a box for something that has not been verified.** Code that compiles is not code

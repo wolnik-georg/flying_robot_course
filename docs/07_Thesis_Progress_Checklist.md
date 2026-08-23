@@ -18,9 +18,10 @@ bottom.
 
 | | |
 |---|---|
-| **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work (starts at C.0)** |
-| **Next action** | **C.0 — Hardware Gate.** See the Core Thesis Workflow below and [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Blocking** | Lab access. No software work blocks C.0 |
+| **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
+| **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
+| **Next action — writing** | **W.3 — strategy descriptions.** W.1 and W.2 drafted ([`15`](15_Problem_Statement_and_Research_Questions.md), [`16`](16_Related_Work_Structure.md)) |
+| **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
 ### What is complete
@@ -48,6 +49,25 @@ bottom.
 | **Fragile** | The simulator depends on uncommitted lines in `crazyflie-firmware/bindings/`. Patch: `firmware_app/host/cffirmware_bindings.patch` |
 | **Not blocking** | FBL code (Strategy 3) still with the authors; the other strategies proceed without it |
 | **Open, paused** | Sim needs ~2× hardware's position damping. Time-boxed and deliberately parked — `KI_P`, rotor drag, inertia and airframe all refuted; motor lag closed ~40% |
+
+---
+
+## ⇄ TWO PARALLEL TRACKS
+
+From 23 August 2026 the project runs two tracks that do not block each other. Keep them separate:
+work on one should never be reported as progress on the other.
+
+| | **🔬 LAB TRACK** | **✍️ WRITING TRACK** |
+|---|---|---|
+| **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
+| **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
+| **Blocked by** | **Lab access.** No software work blocks it | Nothing |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.3** — strategy descriptions |
+| **Rule** | Nothing here is a desk task | Nothing here touches flight code |
+
+The writing track exists so that time without lab access is not idle time, and so that the
+theoretical chapters are not written under deadline after the experiments finish. Chapters that
+depend on results (6–8) wait; everything else does not.
 
 ---
 
@@ -259,6 +279,64 @@ Comparison.
 
 ---
 
+## ✍️ WRITING TRACK — the theoretical backbone
+
+Runs in parallel with the lab track and is blocked by nothing. Items W.1–W.4 are the theoretical
+foundation; W.5 onward are the chapters themselves, which are tracked in §D.
+
+| # | Item | State |
+|---|---|---|
+| **W.1** | **Problem statement & research questions** | ✅ **Drafted** — [`15`](15_Problem_Statement_and_Research_Questions.md) |
+| **W.2** | **Related Work structure** | ✅ **Drafted** — [`16`](16_Related_Work_Structure.md) |
+| **W.3** | **Strategy descriptions** — the 7 methods, with their treatment of the interaction force made explicit | ⬅️ **NEXT** |
+| **W.4** | **Contribution statement** — revised from [`03`](03_Gap_and_Contribution_Statement.md) against W.1/W.2 | ⬜ |
+| **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
+| **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
+| **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
+
+### W.1 — Problem statement & research questions ✅
+
+Drafted in [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md):
+formal problem statement in the notation of [`04`](04_Unified_Residual_Wrench_Model.md), an explicit
+scope table, **four research questions** with falsifiable hypotheses, a mapping from each question
+to the experiment that answers it, and a threats-to-validity table.
+
+| RQ | Question | Answered by |
+|---|---|---|
+| **RQ1** | How do reactive, predictive and hybrid compensation compare under identical conditions? | C.4 |
+| **RQ2** | Does the advantage depend on the interaction regime (separation, relative velocity, transient vs quasi-static)? | C.4 + a deliberate train/test split across scenario classes |
+| **RQ3** | Does a 2-robot residual model transfer to 3 robots — do interactions superpose? | C.1 logs + C.2. **Needs only logged data, not a working 3-robot controller** |
+| **RQ4** | What does each strategy cost in sensing, compute and data — is the hybrid justified? | C.2, C.4 |
+
+> **Three open questions for the supervisor** are listed at the end of `15`, including whether RQ3
+> should be promoted to a primary question.
+
+### W.2 — Related Work structure ✅
+
+Drafted in [`16_Related_Work_Structure.md`](16_Related_Work_Structure.md): nine sections ordered so
+that reading them **produces** the gap statement rather than asserting it, each grounding a specific
+strategy or research question. §2.8 — *how these methods are evaluated, and why the results do not
+compose* — is the load-bearing section and the one that makes this thesis a contribution rather
+than a re-implementation.
+
+### W.3 — Strategy descriptions ⬅️ NEXT
+
+- [ ] Short, precise description of each of the 7 strategies
+- [ ] **Make the differences in interaction-force handling explicit** — what each one knows about
+      the residual, when it knows it, and where it enters the control law
+- [ ] Identify, for each, the specific paper it follows and any deviation. RQ1's validity rests on
+      each implementation being a defensible representative of its family
+
+### W.4 — Contribution statement ⬜
+
+- [ ] Revise [`03`](03_Gap_and_Contribution_Statement.md) against W.1 and W.2
+- [ ] **Honest and non-inflated.** Claim the comparison and the conditions under which it is valid;
+      do not claim a new control method — the thesis proposes none
+- [ ] State what the thesis does **not** establish (single airframe; no wind; pre-planned
+      trajectories; simulation used only to disprove)
+
+---
+
 ## C. CORE EXPERIMENTAL WORK — ⬜ NOT STARTED
 
 **This is the thesis.** Everything in §A and §B was preparation and is complete. The five steps
@@ -397,20 +475,37 @@ a comparison.
 The coplanar control cases C1–C3 measured **0.0 mm under both controllers** in simulation. That
 null result is what makes the positive ones meaningful; keep them in the campaign.
 
-## D. Writing & Finalisation — ⬜ NOT STARTED
+## D. Writing & Finalisation — 🔄 STARTED (writing track)
+
+Chapters. The theoretical ones are **not blocked** and are being drafted now via the ✍️ Writing
+Track above; the results chapters wait on the lab track.
+
+| Chapter | Blocked by | Feeds from |
+|---|---|---|
+| 1. Introduction | — | [`15`](15_Problem_Statement_and_Research_Questions.md) |
+| 2. Background & Related Work | — | **W.5**, skeleton in [`16`](16_Related_Work_Structure.md) |
+| 3. System Modelling & Residual-Force Formulation | — | **W.6**, from [`04`](04_Unified_Residual_Wrench_Model.md) |
+| 4. Control Architectures | — | **W.3**, then [`13`](13_Residual_Learning.md) |
+| 5. Experimental Setup & Protocol | — | **W.7**, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) |
+| 6. Results — 2-robot | **C.4** | — |
+| 7. Results — ≥3 robots | **C.4** | — |
+| 8. Discussion | C.4 | Threats to validity, [`15`](15_Problem_Statement_and_Research_Questions.md) §4 |
+| 9. Conclusion & Future Work | C.4 | — |
 
 - [ ] Ch. 1 Introduction
 - [ ] Ch. 2 Background & Related Work
 - [ ] Ch. 3 System Modelling & Residual-Force Formulation
 - [ ] Ch. 4 Control Architectures
 - [ ] Ch. 5 Experimental Setup & Protocol
-- [ ] Ch. 6 Results — 2-robot
-- [ ] Ch. 7 Results — ≥ 3 robots
-- [ ] Ch. 8 Discussion
-- [ ] Ch. 9 Conclusion & Future Work
+- [ ] Ch. 6 Results — 2-robot *(blocked by C.4)*
+- [ ] Ch. 7 Results — ≥ 3 robots *(blocked by C.4)*
+- [ ] Ch. 8 Discussion *(blocked by C.4)*
+- [ ] Ch. 9 Conclusion & Future Work *(blocked by C.4)*
 - [ ] Final polishing and defence preparation
 
----
+> **Five of the nine chapters are not blocked by the lab.** That is the point of running two tracks:
+> if the theoretical chapters are still unwritten when the experiments finish, the writing track was
+> not used.
 
 ## Keeping this current
 
@@ -424,6 +519,7 @@ Update this file **in the same change** that alters project state — not afterw
 | A blocker changes | Update ▶ *Hard blocker* |
 | Anything is added | Add the task **and** a History line below |
 | A new document is created | Index it in [`00_README.md`](00_README.md) **and** in the root `README.md` |
+| Work happens on either track | Update **that track's** section only. Writing progress is not lab progress |
 
 Rules that keep it trustworthy:
 
@@ -437,6 +533,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (11) | **Writing track opened, running in parallel with the lab track.** The two are now explicitly separated at the top of this file: the lab track (C.0–C.4) is blocked on lab access, the writing track on nothing. W.1 drafted — `15_Problem_Statement_and_Research_Questions.md`: formal problem statement in the notation of `04`, an explicit scope table, and **four research questions with falsifiable hypotheses**, each mapped to the experiment that answers it, plus a threats-to-validity table written now so the experimental design can protect against them. Notably RQ3 (does a 2-robot residual model transfer to 3 robots — do interactions superpose?) needs only logged data, so it survives even if the 3-robot control campaign is descoped. W.2 drafted — `16_Related_Work_Structure.md`: nine sections ordered so that reading them produces the gap statement rather than asserting it, with §2.8 (how the field evaluates these methods, and why the results do not compose) as the load-bearing section. §D reorganised to show that **five of the nine chapters are not blocked by the lab**. No results are claimed in either document; hypotheses are labelled as such. No code touched. |
 | 2026-08-23 (10) | C.0 entry sequence confirmed and recorded as three strictly ordered stages: (1) validate the controllers still behave, single robot, geometric then INDI; (2) retune the brushless attitude loop if needed, then **freeze the gains**; (3) two robots at large separation, confirm `a_res` non-zero, check uSD sync. Tuning before validating would mean tuning against an unknown fault; flying two robots before the freeze would let the gains move underneath the dataset. **The blanket "do not change brushless KR/KW" constraint is now scoped** rather than absolute — an attitude retune is explicitly permitted inside C.0 stage 2 and forbidden after the freeze, updated in `docs/14` and `flying_drone_stack/CLAUDE.md`. Also made explicit that single-robot flights cannot confirm the three unflown changes are *correct*, only that they are not catastrophic: `a_res ≈ 0` with no neighbour, so correctness is established at stage 3. |
 | 2026-08-23 (9) | **Core Thesis Workflow recorded as the master plan, and the preparation phase declared finished.** `docs/07` now leads with the five ordered steps — C.0 Hardware Gate → C.1 Residual Data Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic Comparison — with the preparation/core boundary made explicit throughout. Section C was renumbered from four phases to five (training and integration were one step, now two); the four documents referencing the old C.2/C.3 were updated. `11_Hardware_Readiness_Checklist.md` is now titled as the operational detail of C.0 and states that it is the next actionable phase. `05_Experimental_Protocol_2Robot.md` was aligned: its prose formations mapped onto the frozen scenario library, metrics restated as the three C.4 axes (tracking error, residual rejection, robustness), and the freeze-the-gains constraint added. `13_Residual_Learning.md` opens with the foundation marked complete and a table placing it in each workflow step. **One real inconsistency corrected:** `01_Thesis_Project_Snapshot.md` still said data collection would start with *pure INDI*; C.1 uses *pure Geometric*, because INDI compensates the disturbance and would partly cancel the residual being measured. New memory `project_core_thesis_workflow.md` plus a rewritten MEMORY.md header so a future session lands on this immediately. No code changed. |
 | 2026-08-23 (8) | Documentation consolidation pass. Root cause fixed first: `flying_drone_stack/.gitignore` had a blanket `*.md` rule with a hand-maintained allowlist, silently hiding **14 files** including the entire INDI oscillation investigation, the inverted-loop investigation, `GLOSSARY.md`, `paper_summaries.md`, the uSD logging README and `LOCAL_MODIFICATIONS.md` — every new document written there was invisible to git unless someone remembered to add an exception. Now ignores by name, not extension. (Separately, the **root** `.gitignore` excludes `**/CLAUDE.md` outright, so no `CLAUDE.md` in this repo is tracked at all. That rule looks deliberate and was left alone — but it means the agent instruction files live only on this machine.) `docs/14_Repository_Map.md` added (three repos, end-to-end signal flow, which-file-for-which-task, and the traps that have cost time). `docs/00_README.md` rewritten as a navigation map; root `README.md`, `flying_drone_stack/README.md`, both stack `CLAUDE.md` files, `crazyflie_examples/CLAUDE.md`, `experiments/README.md` and `sim_validation/README.md` brought current. Five course-era documents (ROADMAP, VALIDATION_PLAN, SLAM_STATUS, ADVANCED, CS2_ARCHITECTURE_PLAN) banner themselves as historical rather than being rewritten or deleted. Corrected three concrete inaccuracies: the branch tables named deleted branches, `firmware_app/CLAUDE.md` still described the controller mode as a recompiled constant rather than a runtime parameter, and `crazyflie_examples/CLAUDE.md` documented a log path that exists only on the lab machine. |
