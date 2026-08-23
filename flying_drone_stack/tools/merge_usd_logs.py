@@ -182,6 +182,21 @@ def merge(logs, names, rate, mass):
                 continue
             out[f"{name}.{k}"] = np.interp(grid, l["t"], v)
 
+    # Every drone must actually carry the channels the rest of this depends on. Without this
+    # check the two blocks below are silently skipped by their `in out` guards and the merge
+    # succeeds while producing no relative state and no f_res at all.
+    required = ("x", "y", "z", "vx", "vy", "vz")
+    for name in names:
+        missing = [c for c in required if f"{name}.{c}" not in out]
+        if missing:
+            raise SystemExit(
+                f"{name}: log is missing {missing}. Expected the names produced by "
+                f"decode_usd_log.RENAME (x/y/z/vx/vy/vz, a_res_*). If the log has "
+                f"'stateEstimate.x' instead, that channel is unmapped -- fix RENAME.")
+        if f"{name}.a_res_x" not in out:
+            print(f"WARNING: {name}: no a_res_* -- f_res will not be computed. "
+                  f"On hardware this also means no RPM source was present.", file=sys.stderr)
+
     # relative state: the NN input. Sign convention: i relative to j.
     for i in range(len(names)):
         for j in range(len(names)):
