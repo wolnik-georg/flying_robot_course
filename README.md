@@ -25,7 +25,7 @@ is the map of every other document.
 >
 > **✍️ Writing track** — blocked by nothing. W.1 problem statement ✅ · W.2 related-work structure ✅
 > · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ · W.2b paper library ✅ · W.2c all 15
-> read at claim level ✅ · W.5 Ch. 2 ✅ · W.6 Ch. 3 ✅ · W.8 Ch. 4 ✅ · W.7 Ch. 5 ✅ · **W.9 Ch. 1 ✅ — all lab-unblocked chapters drafted (35 pp, ~12,600 w)** · next: close 7 verification items
+> read at claim level ✅ · W.5 Ch. 2 ✅ · W.6 Ch. 3 ✅ · W.8 Ch. 4 ✅ · W.7 Ch. 5 ✅ · **W.9 Ch. 1 ✅ — all lab-unblocked chapters drafted (35 pp, ~12,600 w)** · W.10 verification 3/5 ✅ · **next: non-arXiv literature sweep**
 >
 > Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
 
