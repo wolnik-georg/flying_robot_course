@@ -12,7 +12,7 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | **W.3** — strategy descriptions |
+> | Next | **C.0 stage 1** — validate the controllers | **W.2b** — collect the paper PDFs + `.bib` |
 > | Blocked by | Lab access | Nothing |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
@@ -45,6 +45,9 @@ else is detail hanging off it.
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
 | **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md) |
+| **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
+| Understand what the 7 strategies do differently | [`18`](18_Strategy_Descriptions.md) |
+| State the thesis contribution | [`19`](19_Contribution_Statement.md) |
 | Find a paper | [`02`](02_Literature_Matrix.md), [`06`](06_References_Overview.md) |
 | Know the 2-robot experiment protocol | [`05`](05_Experimental_Protocol_2Robot.md) |
 
@@ -63,6 +66,9 @@ else is detail hanging off it.
 | [`06_References_Overview.md`](06_References_Overview.md) | Every paper, with reading status |
 | [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md) | **The thesis's formal problem statement and its four research questions**, with hypotheses, the experiment answering each, and threats to validity |
 | [`16_Related_Work_Structure.md`](16_Related_Work_Structure.md) | Skeleton and argument of Chapter 2 — nine sections ordered so that reading them produces the gap statement |
+| [`17_Source_Ledger_and_Citation_Discipline.md`](17_Source_Ledger_and_Citation_Discipline.md) | **Read before citing anything.** Seven citation rules, the verification status of every source, and the known discrepancies. Records that no full text is held in-repo yet |
+| [`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md) | The seven strategies, each split into *what we implement* and *the reference method it follows* — never merged |
+| [`19_Contribution_Statement.md`](19_Contribution_Statement.md) | What the thesis claims, and an explicit table of what it does **not** claim |
 
 ### Status
 | | |
@@ -107,7 +113,7 @@ else is detail hanging off it.
 ## Conventions
 
 - **Numbering:** `01`–`06` planning, `07` status, `08`–`10` + `13` engineering reference,
-  `11`–`12` checklists and results, `14` orientation, `15`–`16` writing track. New documents
+  `11`–`12` checklists and results, `14` orientation, `15`–`19` writing track. New documents
   get the next number.
 - **Update in the same change that alters state**, not afterwards. A doc that lags reality is
   worse than no doc, because it is trusted.

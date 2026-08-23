@@ -10,9 +10,9 @@ be committed where, and which file to open for a given task. Status lives in
 > **🔬 Lab:** **C.0** Hardware Gate ⬅️ next → **C.1** Residual Data Collection → **C.2** Train the
 > Residual Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison. Software
 > preparation is **finished**; waiting on lab access.
-> **✍️ Writing:** W.1 problem statement ✅ · W.2 related-work structure ✅ · **W.3 strategy
-> descriptions ⬅️ next** · W.4 contribution statement. Blocked by nothing, and it must never touch
-> flight code.
+> **✍️ Writing:** W.1–W.4 drafted ✅ · **W.2b collect the paper PDFs + `.bib` ⬅️ next.** Blocked by
+> nothing, and it must never touch flight code. ⚠️ No full text of any cited interaction-force
+> paper is held in-repo — see [`17`](17_Source_Ledger_and_Citation_Discipline.md) before citing.
 
 ---
 

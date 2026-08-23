@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.3 — strategy descriptions.** W.1 and W.2 drafted ([`15`](15_Problem_Statement_and_Research_Questions.md), [`16`](16_Related_Work_Structure.md)) |
+| **Next action — writing** | **W.2b — collect the paper PDFs + `.bib`.** W.1–W.4 drafted ([`15`](15_Problem_Statement_and_Research_Questions.md), [`16`](16_Related_Work_Structure.md), [`18`](18_Strategy_Descriptions.md), [`19`](19_Contribution_Statement.md)). ⚠️ Chapter 2 cannot be finalised without the sources — see [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.3** — strategy descriptions |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.2b** — collect the paper PDFs and build the `.bib` |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -288,8 +288,10 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 |---|---|---|
 | **W.1** | **Problem statement & research questions** | ✅ **Drafted** — [`15`](15_Problem_Statement_and_Research_Questions.md) |
 | **W.2** | **Related Work structure** | ✅ **Drafted** — [`16`](16_Related_Work_Structure.md) |
-| **W.3** | **Strategy descriptions** — the 7 methods, with their treatment of the interaction force made explicit | ⬅️ **NEXT** |
-| **W.4** | **Contribution statement** — revised from [`03`](03_Gap_and_Contribution_Statement.md) against W.1/W.2 | ⬜ |
+| **W.3** | **Strategy descriptions** — the 7 methods, with their treatment of the interaction force made explicit | ✅ **Drafted** — [`18`](18_Strategy_Descriptions.md) |
+| **W.4** | **Contribution statement** | ✅ **Drafted** — [`19`](19_Contribution_Statement.md) |
+| **W.0** | **Source ledger & citation discipline** — added after a misattribution was found | ✅ [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
+| **W.2b** | **Collect the paper PDFs + a `.bib`** — Chapter 2 cannot be finalised without them | ⬅️ **NEXT** |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -319,21 +321,48 @@ strategy or research question. §2.8 — *how these methods are evaluated, and w
 compose* — is the load-bearing section and the one that makes this thesis a contribution rather
 than a re-implementation.
 
-### W.3 — Strategy descriptions ⬅️ NEXT
+### W.3 — Strategy descriptions ✅
 
-- [ ] Short, precise description of each of the 7 strategies
-- [ ] **Make the differences in interaction-force handling explicit** — what each one knows about
-      the residual, when it knows it, and where it enters the control law
-- [ ] Identify, for each, the specific paper it follows and any deviation. RQ1's validity rests on
-      each implementation being a defensible representative of its family
+[`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md). All seven, each split into **what we
+implement** (verifiable against our source) and **the reference method** (attributed, with a
+verification status and stated deviations) — never merged into one sentence. The differences are
+made explicit as three questions: what the controller knows about the residual, *when* it knows it,
+and *where* that knowledge enters the control law.
 
-### W.4 — Contribution statement ⬜
+Implementation reality, stated plainly: **S1 flying · S2 implemented, unflown · S3, S4, S6 not
+wired · S5, S7 deliberately deferred.** The uncompensated geometric baseline (S0) is added as a
+flown condition — without it, "how much did compensation help" has no denominator.
 
-- [ ] Revise [`03`](03_Gap_and_Contribution_Statement.md) against W.1 and W.2
-- [ ] **Honest and non-inflated.** Claim the comparison and the conditions under which it is valid;
-      do not claim a new control method — the thesis proposes none
-- [ ] State what the thesis does **not** establish (single airframe; no wind; pre-planned
-      trajectories; simulation used only to disprove)
+### W.4 — Contribution statement ✅
+
+[`19_Contribution_Statement.md`](19_Contribution_Statement.md). Five claims (C1 controlled
+comparison, C2 hybrid multi-robot, C3 superposition test, C4 cost account, C5 apparatus), an
+explicit **what this thesis does not claim** table, and a one-paragraph abstract version. Two
+honesty notes carried in the document: the "first systematic comparison" claim depends on a survey
+our own source ledger rates as least-verified and must be re-audited before use; and a null result
+(strategies do not separate) is designed to be distinguishable from a failed experiment.
+
+### W.0 — Source ledger & citation discipline ✅ *(added, not originally planned)*
+
+[`17_Source_Ledger_and_Citation_Discipline.md`](17_Source_Ledger_and_Citation_Discipline.md).
+Added after drafting W.1/W.2 propagated a misattribution out of [`03`](03_Gap_and_Contribution_Statement.md):
+the neural-augmented INDI hybrid was described as showing "limited benefit" when the source reports
+it achieving the **lowest tracking error**. Corrected in three documents.
+
+Holds seven citation rules, a per-paper **verification status**, and the known discrepancies.
+
+> ⚠️ **The repository holds no full text of any core interaction-force paper and no `.bib`.**
+> Most citable claims are currently 🔴 *matrix only* — supported by a one-line entry in our own
+> literature matrix. **Chapter 2 can be structured but not finalised until the PDFs are collected.**
+
+### W.2b — Collect the PDFs and build the bibliography ⬅️ NEXT
+
+- [ ] Collect the papers into `docs/papers/`; create `docs/references.bib`
+- [ ] Promote each 🔴 entry in [`17`](17_Source_Ledger_and_Citation_Discipline.md) to 🟢 by reading
+      at claim level, recording the section each claim comes from
+- [ ] Resolve the three known discrepancies (Cobo-Briesewitz year; the two distinct Hsieh papers;
+      Neural-Swarm vs Neural-Swarm2)
+- [ ] Re-audit [`02`](02_Literature_Matrix.md) — the most-cited internal document and the least verified
 
 ---
 
@@ -533,6 +562,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (12) | W.3 and W.4 drafted, plus an unplanned W.0. **A misattribution was found and corrected:** `03` stated that the neural-augmented INDI hybrid showed "limited benefit"; the detailed summary in `paper_summaries.md` reports it achieving the **lowest tracking error** of the methods compared. The false version had already propagated into `15` (H4) and `16` (§2.7) because both were drafted from `03` rather than from the source. Corrected in all three — and the correct attribution yields a *stronger* gap: the hybrid works well where the residual is self-induced, and the multi-robot case, where it is caused by other vehicles and is a function of measurable relative state, is a different and untested problem. `17_Source_Ledger_and_Citation_Discipline.md` added in response: seven citation rules, per-paper verification status, and the known discrepancies. It records that **the repository holds no full text of any core interaction-force paper and no `.bib`**, so most citable claims are currently supported only by our own one-line matrix entries — Chapter 2 can be structured but not finalised. `18_Strategy_Descriptions.md` describes all seven strategies with *what we implement* and *the reference method* strictly separated. `19_Contribution_Statement.md` states five claims and an explicit what-is-not-claimed table, and notes that the "first systematic comparison" phrasing itself needs verifying. Writing-track next item is now W.2b, collecting the sources. No code touched. |
 | 2026-08-23 (11) | **Writing track opened, running in parallel with the lab track.** The two are now explicitly separated at the top of this file: the lab track (C.0–C.4) is blocked on lab access, the writing track on nothing. W.1 drafted — `15_Problem_Statement_and_Research_Questions.md`: formal problem statement in the notation of `04`, an explicit scope table, and **four research questions with falsifiable hypotheses**, each mapped to the experiment that answers it, plus a threats-to-validity table written now so the experimental design can protect against them. Notably RQ3 (does a 2-robot residual model transfer to 3 robots — do interactions superpose?) needs only logged data, so it survives even if the 3-robot control campaign is descoped. W.2 drafted — `16_Related_Work_Structure.md`: nine sections ordered so that reading them produces the gap statement rather than asserting it, with §2.8 (how the field evaluates these methods, and why the results do not compose) as the load-bearing section. §D reorganised to show that **five of the nine chapters are not blocked by the lab**. No results are claimed in either document; hypotheses are labelled as such. No code touched. |
 | 2026-08-23 (10) | C.0 entry sequence confirmed and recorded as three strictly ordered stages: (1) validate the controllers still behave, single robot, geometric then INDI; (2) retune the brushless attitude loop if needed, then **freeze the gains**; (3) two robots at large separation, confirm `a_res` non-zero, check uSD sync. Tuning before validating would mean tuning against an unknown fault; flying two robots before the freeze would let the gains move underneath the dataset. **The blanket "do not change brushless KR/KW" constraint is now scoped** rather than absolute — an attitude retune is explicitly permitted inside C.0 stage 2 and forbidden after the freeze, updated in `docs/14` and `flying_drone_stack/CLAUDE.md`. Also made explicit that single-robot flights cannot confirm the three unflown changes are *correct*, only that they are not catastrophic: `a_res ≈ 0` with no neighbour, so correctness is established at stage 3. |
 | 2026-08-23 (9) | **Core Thesis Workflow recorded as the master plan, and the preparation phase declared finished.** `docs/07` now leads with the five ordered steps — C.0 Hardware Gate → C.1 Residual Data Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic Comparison — with the preparation/core boundary made explicit throughout. Section C was renumbered from four phases to five (training and integration were one step, now two); the four documents referencing the old C.2/C.3 were updated. `11_Hardware_Readiness_Checklist.md` is now titled as the operational detail of C.0 and states that it is the next actionable phase. `05_Experimental_Protocol_2Robot.md` was aligned: its prose formations mapped onto the frozen scenario library, metrics restated as the three C.4 axes (tracking error, residual rejection, robustness), and the freeze-the-gains constraint added. `13_Residual_Learning.md` opens with the foundation marked complete and a table placing it in each workflow step. **One real inconsistency corrected:** `01_Thesis_Project_Snapshot.md` still said data collection would start with *pure INDI*; C.1 uses *pure Geometric*, because INDI compensates the disturbance and would partly cancel the residual being measured. New memory `project_core_thesis_workflow.md` plus a rewritten MEMORY.md header so a future session lands on this immediately. No code changed. |
