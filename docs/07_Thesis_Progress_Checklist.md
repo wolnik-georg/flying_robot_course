@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **A non-arXiv literature sweep** (IEEE Xplore / ACM DL / Scholar) — the last verification item, and the one the contribution rests on. Chapters 1–5 drafted, 35 pages, ~12,600 words |
+| **Next action — writing** | **Nothing blocking.** Chapters 1–5 drafted (35 pp, ~12,600 words); all desk-side verification closed. Remaining writing items need flight data or the lab |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **Non-arXiv literature sweep** |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | *(nothing blocking — awaiting flight data)* |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -298,7 +298,7 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — [`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) |
 | **W.7** | **Chapter 5** — experimental setup & protocol | ✅ **Drafted** — [`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) |
 | **W.9** | **Chapter 1** — introduction | ✅ **Drafted** — [`thesis/ch1_introduction.tex`](thesis/ch1_introduction.tex) |
-| **W.10** | **Close the open verification items** | ✅ **3 of 5 closed**; 2 remain and both need something outside the desk |
+| **W.10** | **Close the open verification items** | ✅ **4 of 5 closed** — incl. the non-arXiv sweep. The last needs the lab |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -561,7 +561,7 @@ designed to be distinguishable from a failed experiment.
 
 | # | Item | Outcome |
 |---|---|---|
-| 1 | **"First systematic comparison"** | ✅ **Audited, claim narrowed.** arXiv keyword sweep found no comparison or survey study — but it covered arXiv **only**, so the wording is now *"to the best of our knowledge"* rather than unqualified. A non-arXiv sweep remains open |
+| 1 | **"First systematic comparison"** | ✅ **Audited twice, claim sharpened.** arXiv sweep, then a cross-database sweep (OpenAlex/Crossref/DBLP/S2) **plus a citation-graph scan of 157 works citing the Neural-Swarm line**. Two adjacent comparisons found and now cited — see below |
 | 2 | **Lee et al. citation** | ✅ **Resolved — the citation was already correct.** arXiv:1003.2005 contains our exact attitude error (eq. 8, `eR = ½(Rdᵀ R − Rᵀ Rd)ᵛ`) and our exact torque law (eq. 11, `M = −kR eR − kΩ eΩ + Ω × JΩ`). The doubt was unfounded |
 | 3 | **Three abstract-only details in Ch. 2's table** | ✅ **Filled from the experimental sections:** Hsieh 2026 flies **2** quadrotors at **0.2–0.5 m**; Smith 2023 closes to **≈0.5 m**; ProxFly uses **0.5 m** (heterogeneous pair; docking from 0.05 m) |
 | 4 | Tape-measure the flight volume | ⬜ Needs the lab — first C.0 session |
@@ -577,12 +577,30 @@ Chapter 2 §2.5:
 
 The library is now **17 papers**; all are cited and all citations resolve.
 
-> ### ⚠️ The one item that still matters
->
-> The audit searched **arXiv only**. It did not cover IEEE Xplore, the ACM Digital Library or
-> Google Scholar, and it was keyword-based. **Absence of evidence in a keyword search is weak
-> evidence of absence**, which is exactly why the claim was narrowed rather than confirmed. The
-> non-arXiv sweep is the last verification item standing between the contribution and submission.
+### The non-arXiv sweep found two adjacent comparisons — and they improve the claim
+
+The strongest test was structural rather than lexical: **every work citing Neural-Swarm,
+Neural-Swarm2 or Gielis et al. — 157 in total — filtered for comparison/survey-like titles.** Any
+systematic comparison of these methods would almost certainly cite one of the three.
+
+| Study | Compares | Why it is not this thesis |
+|---|---|---|
+| Gu, Zhao & Rizzo, **JIRS 2025** | Four *online-learning* uncertainty estimators (ELM, RBFNN, ESN, GP) — accuracy, tracking, real-time cost, sim **and** hardware | **Single vehicle**, generic uncertainty, **online** learning. Compares estimators *within* one family. Full text obtained |
+| Abro, Alsayegh & Mustafa, **IEEE JESTIE 2025** | Fractional-order PID / LQR / integral state feedback for close-proximity swarms, motivated by downwash | Multi-vehicle and downwash-aware, but classical regulators — **none estimates or predicts the interaction force**. Abstract only (paywalled) |
+
+**The claim is now sharper, not weaker.** "Nobody compares controllers for close-proximity flight"
+would be **false** — Abro et al. do. What holds is that the families defined by *how they obtain
+information about the interaction force* have not been placed under common conditions. Chapter 2
+gains §2.8.1 stating this against both studies rather than in a vacuum, which is more honest and
+more useful to a reader who knows the field.
+
+Gu et al.\ also gives a **methodological precedent**: a comparison whose conclusion is a set of
+trade-offs rather than a winner. That is the shape this thesis should aim for.
+
+> **Still not proof of absence.** Both audits are keyword- and citation-based; a study citing none
+> of the three seeds, or using different terminology, would be missed. IEEE Xplore and the ACM DL
+> could not be searched through their own interfaces, though their content is indexed by the
+> databases used. The *"to the best of our knowledge"* phrasing stays.
 
 ---
 
@@ -782,6 +800,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (21) | **Non-arXiv sweep done — the last desk-side verification item.** OpenAlex, Crossref, DBLP and Semantic Scholar (which index IEEE Xplore, the ACM DL, Springer and Elsevier), plus the decisive test: a **citation-graph scan of all 157 works citing Neural-Swarm, Neural-Swarm2 or Gielis et al.**, filtered for comparison/survey-like titles. Asking structurally rather than by guessing keywords. **Two genuine comparison studies were found, both adjacent, neither ours**, and both are now cited in a new §2.8.1: Gu, Zhao & Rizzo (JIRS 2025) benchmark four *online-learning* uncertainty estimators on a *single* vehicle — a methodological precedent whose conclusion is a set of trade-offs rather than a winner, which is the shape this thesis should aim for; and Abro, Alsayegh & Mustafa (IEEE JESTIE 2025) evaluate fractional-order regulators for close-proximity swarms, downwash-motivated and multi-vehicle, but comparing classical controllers that neither estimate nor predict the interaction force. **These sharpen the claim rather than threaten it.** "Nobody compares controllers for close-proximity flight" would now be false; what holds is that the families defined by *how they obtain information about the interaction force* have not been placed under common conditions. Stating the gap against two named studies is both more honest and more useful than stating it in a vacuum. Library now 19 papers, all cited. The "to the best of our knowledge" phrasing stays — neither audit is exhaustive. No code touched. |
 | 2026-08-23 (20) | W.10: three of five verification items closed. **The Lee citation was already correct** — arXiv:1003.2005 contains our exact attitude error (eq. 8) and torque law (eq. 11); the `todo` recorded my own unfounded doubt rather than a real problem, and checking cost less than carrying it. **Chapter 2's evaluation table is now complete** from the experimental sections (Hsieh 2026: 2 quadrotors at 0.2–0.5 m; Smith 2023: to ≈0.5 m; ProxFly: 0.5 m, heterogeneous, docking from 0.05 m). **The "first systematic comparison" claim was audited and narrowed**: an arXiv keyword sweep found no comparison or survey study, but it covered arXiv only and was keyword-based, so the wording is now "to the best of our knowledge" rather than unqualified — absence of evidence in a keyword search is weak evidence of absence. The audit found two papers we did not have, both added and cited: Li et al. NDP-NMPC (2023), a second instance of Strategy 6's injection point, and Shankar/Woo/Prorok on docking with learnt downwash (2023), the closest published setting to our tightest scenarios and the regime where compensation becomes a feasibility condition rather than an accuracy improvement. Library now 17 papers, all cited, all resolving. The two remaining items are not desk work: tape-measuring the flight volume needs the lab, and revising Ch. 5 to past tense follows the campaign. A non-arXiv sweep remains the last verification item. No code touched. |
 | 2026-08-23 (19) | W.9 done: **Chapter 1 drafted**, ~1810 words. **This completes every chapter the lab does not block** — Chapters 1–5, 35 pages, ~12,600 words, building clean with no undefined citations or references. The introduction was written last of the unblocked chapters on purpose, so its promises could be checked against a body that already exists: its five contributions correspond one-to-one to C1–C5 in `19` and its four research questions to `15`, and those three documents must now move together. The motivation opens from the physics rather than from generic swarm applications, and states plainly that data-driven methods have already worked — the gap is not that the field lacks results but that they do not compose. No result is claimed anywhere in the chapter, and a paragraph states that a null result is also a contribution and is designed to be distinguishable from a failed experiment. The writing track's remaining work is verification rather than prose: seven live `todo` markers, the highest-risk being the re-audit of the "first systematic comparison" claim, which rests on the same survey that has already produced seven errors. No code touched. |
 | 2026-08-23 (18) | W.7 done: **Chapter 5 drafted**, ~2460 words; combined build 31 pages across Chapters 2–5, zero undefined citations or references. The chapter promotes three things from planning docs into the thesis argument: why the null scenarios C1–C3 are the most important in the library (the residual is a catch-all and non-zero in isolated flight, so formation measurements need a reference — and the same scenarios detect a mis-identified mass or `kt`); why collection runs under the *uncompensated* baseline (a compensating controller records only the residual that survived compensation); and why the train/test split is by contiguous segment rather than by sample (at 500 Hz a random split leaks a near-duplicate of every test point into training). Simulation's role is bounded explicitly — used to disprove implementations, never to validate a method, because the simulated interaction comes from a learned model of the same family being fitted. The chapter is deliberately in the future tense with a `todo` requiring revision to past tense as the campaign runs, since nothing has flown. Four of the nine chapters are now drafted; Chapter 1 is the last one unblocked by the lab. No code touched. |
