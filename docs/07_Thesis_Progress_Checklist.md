@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.8 — Chapter 4, control architectures.** Chapters 2–3 drafted, 16 pages, building clean ([`thesis/`](thesis/)) |
+| **Next action — writing** | **W.7 — Chapter 5, experimental setup.** Chapters 2–4 drafted, **24 pages**, building clean ([`thesis/`](thesis/)) |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.8** — Chapter 4, control architectures |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.7** — Chapter 5, experimental setup |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -295,7 +295,8 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.2c** | **Read the held papers at claim level** | ✅ **Done** — all 15, [`20`](20_Verified_Claims.md) |
 | **W.5** | **Chapter 2 prose** | ✅ **Drafted** — [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex), ~3200 words, builds clean |
 | **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) |
-| **W.8** | **Chapter 4** — control architectures, from [`18`](18_Strategy_Descriptions.md) | ⬅️ **NEXT** |
+| **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — [`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) |
+| **W.7** | **Chapter 5** — experimental setup & protocol | ⬅️ **NEXT** |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -479,14 +480,42 @@ Three things the chapter states that the experiments then depend on:
 | **The sign derivation** | §3.3.3 derives why the residual is *subtracted*, and predicts that an inverted sign gives ≈2× the uncompensated displacement while looking perfectly stable. That is a falsifiable prediction for C.4, and it is the bug that was found in simulation |
 | **Assumptions table with failure modes** | Seven assumptions, each with where it breaks and what it costs, so a negative result can be attributed to an assumption rather than to the model as a whole |
 
-### W.8 — Chapter 4, control architectures ⬅️ NEXT
+### W.8 — Chapter 4, control architectures ✅
 
-Not blocked. Feeds from [`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md), which already
-separates *what we implement* from *the reference method*.
+[`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) — ~2850 words.
+**Combined build is now 24 pages** across Chapters 2–4, no undefined citations, no dangling
+references, all 15 sources cited.
 
-- [ ] The seven strategies, each with the point at which it injects its knowledge of the residual
-- [ ] Keep the implementation/reference separation of `18` — it is what keeps RQ1 defensible
-- [ ] State the deviations from each reference method explicitly
+Organised around one observation: strategies 0, 1, 2 and 4 are **terms in a single shared control
+law** — they differ only in which of the two residual terms in the desired-acceleration vector is
+active. That is the strongest fairness argument available, and it is verifiable from the source
+rather than asserted.
+
+§4.9 states what that does **not** guarantee, before results rather than after:
+
+| Limitation | Why it is stated up front |
+|---|---|
+| Strategies 3 and 6 do **not** share the substrate | A linearising law and a receding-horizon optimiser are different controllers, not different terms. For those, "identical conditions" means trajectories and hardware, not structure — a weaker comparison, and a difference could be attributed to the controller |
+| Frozen shared gains are fair but not neutral | Gains suiting a geometric loop may disadvantage a strategy that could take more aggressive ones. The alternative reintroduces the tuning confound. Neither is free of criticism; the choice is deliberate |
+| Each implementation represents a family, not a paper | Where a strategy underperforms, the conclusion concerns *this implementation* on *this* platform |
+
+**Implementation status is stated honestly**: 2 flying, 1 implemented and unflown, 1 as separable
+components, 3 not implemented. The chapter does not describe unimplemented strategies as though
+they exist.
+
+Two design questions are recorded rather than left implicit: the Strategy 4 form (independent terms
+vs. INDI correcting only the network's residual — the two measure different things), and whether
+Strategy 6 is feasible onboard at all, which is itself an RQ4 result.
+
+### W.7 — Chapter 5, experimental setup ⬅️ NEXT
+
+Not blocked. Feeds from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md)
+and [`11`](11_Hardware_Readiness_Checklist.md), all of which already exist in detail.
+
+- [ ] Platform, motion capture, logging (uSD at 500 Hz; radio saturates near 2 drones)
+- [ ] The 16-scenario library and why it is frozen
+- [ ] The C.0 gate, the freeze point, and the null-scenario role from Chapter 3
+- [ ] Metrics: tracking error, residual rejection, robustness — and the measurement floor
 
 ---
 
@@ -686,6 +715,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (17) | W.8 done: **Chapter 4 drafted**, ~2850 words; combined build now 24 pages across Chapters 2–4 with no undefined citations and no dangling references. The chapter is organised around the observation that strategies 0, 1, 2 and 4 are terms in one shared control law, differing only in which residual term is active — a fairness argument that is verifiable from the source rather than asserted. §4.9 states what that does *not* guarantee, before results rather than after: strategies 3 and 6 do not share the substrate, so their comparison is structurally weaker; frozen shared gains are fair but not neutral, and the alternative reintroduces the tuning confound; and each implementation represents a family rather than reproducing a paper, so underperformance is a statement about this implementation on this platform. Implementation status is stated honestly per strategy — 2 flying, 1 unflown, 1 as components, 3 not implemented — and unimplemented strategies are not described as existing. Two design questions recorded rather than left implicit: the Strategy 4 form (independent terms vs. INDI correcting only the network's residual, which measure different things) and whether Strategy 6 fits onboard at all. No code touched. |
 | 2026-08-23 (16) | W.6 done: **Chapter 3 drafted**, ~2250 words; combined build with Chapter 2 is 16 pages with no undefined references. The chapter's job is to establish that every strategy estimates the *same* quantity — two controllers compensating differently-defined residuals are not comparable however similar their block diagrams look — so it gives both routes to the residual in one notation, entering the control law at one point with one sign. **A real inconsistency was found: `04` and the Chapter 2 draft wrote gravity as `+m g e₃`, but the implementation is z-up (ENU) with `−e₃`.** Left alone the thesis equations would have carried the opposite sign to the flight code; corrected in Chapter 2 and `04` banner-annotated. §3.3.3 derives the compensation sign and turns the simulation-era sign bug into a falsifiable prediction for C.4 (inverted sign ⇒ ≈2× the uncompensated displacement, while looking perfectly stable). §3.5 tabulates seven assumptions with their failure modes so a negative result can be attributed to a specific assumption. No code touched. |
 | 2026-08-23 (15) | W.5 done: **Chapter 2 drafted** as `docs/thesis/ch2_related_work.tex`, ~3200 words, 9 pages with references, building clean with zero undefined citations. Written strictly from `20_Verified_Claims.md` — every number in it is one recorded there in the source's own words. §2.8 makes the gap argument methodologically rather than critically, anchored by a table of each work's platform, team size, separation and reported quantity showing no two share all four. The chapter's central framing came out of W.2c and is the opposite of what the first structural draft assumed: the field is not short of strong results, it is short of comparable ones. `docs/thesis/` added with a drafting-only preamble that stubs `siunitx` and renders forward references as `[?]`; build artefacts gitignored, sources tracked. `references.bib` entry types corrected from article to misc (arXiv preprints), which also removed the empty-journal warnings. Four `\todo{}` markers remain in the chapter as real open items. No code touched. |
 | 2026-08-23 (14) | W.2c done: **all 15 papers read at claim level**, with every quotable claim recorded in the paper's own words in `20_Verified_Claims.md` and the depth of reading stated per paper. **RQ3 had to be reframed.** It asked whether pairwise interactions superpose; Shi et al. (2020) state outright that they do not, and Gielis et al. (2023) exists because of it — asking it would have claimed to discover published work. Narrowed to *how much* accuracy our 2-robot-trained model loses on 3 robots, which is a quantitative question about our platform and still worth asking. Two more matrix errors corrected (Neural-Swarm separation is 25 cm, not ~30; "usable onboard" for Gielis is unsupported), and one over-correction reversed — "L1 KNODE-DW MPC" is the paper's own method name. Verified figures now known: flatness-preserving residual reports 31 % error reduction, NMPC-matching at ~10× less compute, <30 s training data, 5 ms loop; SO(2)-equivariant 36 % 3D / 56 % vertical on two vehicles from 5 min of data. These are the bars our comparison sits beside, and §2.8 must not imply the field lacks strong results — it lacks comparable ones. Chapter 2 prose (W.5) is now unblocked. No code touched. |
