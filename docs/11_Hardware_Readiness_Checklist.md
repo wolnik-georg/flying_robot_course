@@ -44,10 +44,12 @@ thing that fails, those two causes are indistinguishable.
 FLIGHT_SPACE = dict(x=(-1.0, 1.0), y=(-2.0, 2.0), z=(0.30, 1.70))
 ```
 
-**These came from "I believe / I guess", not a tape measure (2026-08-23).** Confirm them
-before the first flight. Several scenarios sit within ~10 cm of these walls, so an error of
-that size changes which ones are allowed to fly — this is the single most load-bearing
-unverified number in the project.
+**Corroborated, but still not tape-measured.** These were given on 2026-08-23 as an estimate
+("I believe / I guess") — and they match a figure stated independently on 2026-07-27, before
+this one was given: z and x identical, y quoted then as ±2.1 against ±2.0 now. The applied
+value takes the more conservative 2.0. Two independent statements a month apart agreeing to
+within 10 cm is much stronger than a lone guess, but neither is a measurement, and several
+scenarios sit within ~10 cm of these walls. **Confirm with a tape measure before flying.**
 
 Note also that **no margin is subtracted**: the check runs on *commanded* positions, and
 real tracking error and overshoot sit on top. When you measure, quote a box you are happy

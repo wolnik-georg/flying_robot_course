@@ -221,9 +221,11 @@ simulator itself changes.
 ## 7. Flight volume — all sixteen scenarios fit
 
 **x −1.0 … 1.0 m, y −2.0 … 2.0 m, z 0.30 … 1.70 m.**
-⚠️ Operator estimate (23 August 2026), **not a tape-measure result.** Confirm before flying:
-several scenarios sit within ~10 cm of these walls, and no margin is subtracted — the check
-runs on *commanded* positions, so real tracking error sits on top.
+⚠️ Operator estimate (23 August 2026), **not a tape-measure result** — though corroborated: it
+matches a figure stated independently a month earlier (z and x identical, y then ±2.1 against
+±2.0 now; the conservative value is applied). Confirm before flying: several scenarios sit
+within ~10 cm of these walls, and no margin is subtracted — the check runs on *commanded*
+positions, so real tracking error sits on top.
 
 The room is **long in y (4 m) and narrow in x (2 m)**, but every translating scenario was
 defined along x. Two options fix that:
