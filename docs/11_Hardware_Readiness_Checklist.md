@@ -36,18 +36,31 @@ thing that fails, those two causes are indistinguishable.
 | 0.5 | Confirm gains on the drone | `indi_gains.*` and `pos_gains.*` read back as `crazyflies.yaml` intends — **`kv_xy` must be 5.0, not the simulator's 10.0** |
 | 0.6 | Confirm `clamp_en` | Currently `11` (tilt clamp OFF, set for inverted-loop work). Decide deliberately |
 
-### ⚠️ 0.1 — the geofence is a placeholder
+### ⚠️ 0.1 — the flight volume is an ESTIMATE, not a measurement
 
-`FLIGHT_SPACE` in `crazyflie_examples/formations/safety.py` is deliberately set smaller than
-any plausible lab, so an unmeasured volume causes a *refused scenario* rather than a vehicle
-in the netting:
+`FLIGHT_SPACE` in `crazyflie_examples/formations/safety.py` now holds:
 
 ```python
-FLIGHT_SPACE = dict(x=(-1.75, 1.75), y=(-1.75, 1.75), z=(0.15, 2.20))
+FLIGHT_SPACE = dict(x=(-1.0, 1.0), y=(-2.0, 2.0), z=(0.30, 1.70))
 ```
 
-Replace with the measured volume, minus a margin for tracking error and overshoot. Until
-then every run needs `--geofence xmin,xmax,ymin,ymax,zmin,zmax` explicitly.
+**These came from "I believe / I guess", not a tape measure (2026-08-23).** Confirm them
+before the first flight. Several scenarios sit within ~10 cm of these walls, so an error of
+that size changes which ones are allowed to fly — this is the single most load-bearing
+unverified number in the project.
+
+Note also that **no margin is subtracted**: the check runs on *commanded* positions, and
+real tracking error and overshoot sit on top. When you measure, quote a box you are happy
+for a drone to reach, not the physical wall.
+
+**The room is long in y (4 m) and narrow in x (2 m), but every translating scenario moves
+along x.** That is why `--auto-center` exists: it places the scenario's bounding box in the
+middle of the volume instead of wherever drone 0 happens to sit. Without it, 8 of 19
+scenario configurations are refused; with it, 18 of 19 fit. The one that still does not is
+C2, which needs 2.2 m of x — run it as `--gap 0.40 --length 0.90`.
+
+A worthwhile future change is to let translating scenarios run along **y** and use the long
+axis of the room; that would remove the constraint entirely.
 
 ### ⚠️ 0.5 — the simulator and hardware run different position gains
 

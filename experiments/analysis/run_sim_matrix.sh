@@ -37,6 +37,7 @@ one_run() {
 
   local ROSTER=crazyflies_sim.yaml
   [ "$NROB" = "3" ] && ROSTER=crazyflies_sim3.yaml
+  [ "$NROB" = "1" ] && ROSTER=crazyflies_sim1.yaml
   local STATE=state_$CTRL
   rm -rf "$STATE"
 
@@ -49,7 +50,7 @@ one_run() {
 
   local MARKER=$(mktemp)
   sleep 1                       # so "newer than MARKER" cannot catch a same-second file
-  timeout 380 ros2 run crazyflie_examples run_formation "$@" --yes \
+  timeout 380 ros2 run crazyflie_examples run_formation "$@" --auto-center --yes \
     --ros-args -p use_sim_time:=true > "$OUT/client_$CTRL.log" 2>&1
   local RC=$?
   sleep 2

@@ -59,3 +59,17 @@
 | B2 | geo | 3 | PASS | 42.6 | 42.7 | 1.2 | no | 100% | dz1=0.2,dz2=0.3,r=0.1,speed=0.4,length=1.2,radius=0.75,period=7.5,laps=2.0,hold=12.0 | `state_geo/2026-08-23_155005/csv` |
 | B3 | geo | 3 | PASS | 3.9 | 7.7 | 0.8 | no | 100% | dz=0.22,span=0.55,duration=8.0,settle=2.0 | `state_geo/2026-08-23_155314/csv` |
 | B1 | geo | 3 | FAIL | 58.7 | 58.7 | 1.2 | no | 100% | dz1=0.2,dz2=0.3,speed=0.4,length=1.2,radius=0.75,period=7.5,laps=2.0,hold=12.0 | `state_geo/2026-08-23_155638/csv` |
+| A6 | geo | 2 | PASS | 3.2 | 8.2 | 1.2 | no | 100% | dz=0.1,speed=0.2,length=1.0,passes=2 | `state_geo/2026-08-23_161841/csv` |
+| A7 | geo | 2 | PASS | 25.5 | 28.6 | 0.9 | no | 100% | dz_start=1.1,dz_end=0.1,speed=0.3,length=1.2,settle=3.0,rotate_deg=0.0 | `state_geo/2026-08-23_162223/csv` |
+| C4 | geo | 2 | PASS | 7.2 | 12.2 | 0.8 | no | 100% | lateral=1.0,dz_start=0.5,dz_end=0.1,duration=8.0,settle=2.0,rotate_deg=0.0 | `state_geo/2026-08-23_162522/csv` |
+| C1 | geo | 3 | PASS | 0.0 | 1.4 | 0.9 | no | 100% | sep=0.3,n=3,hold=12.0,rotate_deg=0.0 | `state_geo/2026-08-23_162749/csv` |
+| C2 | geo | 3 | PASS | 0.0 | 0.3 | 1.7 | no | 100% | gap=0.4,n=3,speed=0.4,length=0.9,rotate_deg=0.0 | `state_geo/2026-08-23_163123/csv` |
+| C3 | geo | 3 | PASS | 0.0 | 1.6 | 1.0 | no | 100% | side=0.5,hold=12.0,rotate_deg=0.0 | `state_geo/2026-08-23_163438/csv` |
+| C5 | geo | 1 | PASS | nan | nan | 0.8 | no | 100% | z=0.15,speed=0.25,length=1.2,passes=2,rotate_deg=0.0 | `state_geo/2026-08-23_163808/csv` |
+| A6 | indi | 2 | PASS | 0.4 | 1.1 | 0.4 | no | 100% | dz=0.1,speed=0.2,length=1.0,passes=2,rotate_deg=0.0 | `state_indi/2026-08-23_164011/csv` |
+| A7 | indi | 2 | PASS | 0.3 | 0.5 | 0.7 | no | 100% | dz_start=1.1,dz_end=0.1,speed=0.3,length=1.2,settle=3.0,rotate_deg=0.0 | `state_indi/2026-08-23_164339/csv` |
+| C4 | indi | 2 | PASS | 0.2 | 0.5 | 0.7 | no | 100% | lateral=1.0,dz_start=0.5,dz_end=0.1,duration=8.0,settle=2.0,rotate_deg=0.0 | `state_indi/2026-08-23_164631/csv` |
+| C1 | indi | 3 | PASS | 0.0 | 0.0 | 0.0 | no | 100% | sep=0.3,n=3,hold=12.0,rotate_deg=0.0 | `state_indi/2026-08-23_164855/csv` |
+| C2 | indi | 3 | PASS | 0.0 | 0.0 | 1.6 | no | 100% | gap=0.4,n=3,speed=0.4,length=0.9,rotate_deg=0.0 | `state_indi/2026-08-23_165216/csv` |
+| C3 | indi | 3 | PASS | 0.0 | 0.0 | 0.0 | no | 100% | side=0.5,hold=12.0,rotate_deg=0.0 | `state_indi/2026-08-23_165524/csv` |
+| C5 | indi | 1 | PASS | nan | nan | 0.5 | no | 100% | z=0.15,speed=0.25,length=1.2,passes=2,rotate_deg=0.0 | `state_indi/2026-08-23_165846/csv` |

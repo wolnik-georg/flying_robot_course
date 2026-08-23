@@ -20,3 +20,19 @@ A8 |indi|2|--scenario A8 --dz 0.25
 B1 |indi|3|--scenario B1 --dz2 0.30 --path line
 B2 |indi|3|--scenario B2 --dz2 0.30 --r 0.10 --path line
 B3 |indi|3|--scenario B3 --dz 0.22
+# Added 2026-08-23: the remaining library scenarios, so the matrix covers everything
+# defined for 1, 2 and 3 robots. A6/A7/C4 need --allow-extreme by design.
+A6 |geo|2|--scenario A6 --dz 0.10 --allow-extreme
+A7 |geo|2|--scenario A7 --allow-extreme
+C4 |geo|2|--scenario C4 --allow-extreme
+C1 |geo|3|--scenario C1
+C2 |geo|3|--scenario C2 --gap 0.40 --length 0.90
+C3 |geo|3|--scenario C3
+C5 |geo|1|--scenario C5
+A6 |indi|2|--scenario A6 --dz 0.10 --allow-extreme
+A7 |indi|2|--scenario A7 --allow-extreme
+C4 |indi|2|--scenario C4 --allow-extreme
+C1 |indi|3|--scenario C1
+C2 |indi|3|--scenario C2 --gap 0.40 --length 0.90
+C3 |indi|3|--scenario C3
+C5 |indi|1|--scenario C5

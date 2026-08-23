@@ -18,7 +18,7 @@ bottom.
 | **Next action** | **Finish the sim validation matrix, then B.2 step 1 — flash and fly the ladder** |
 | **Done** | ✅ Sim formation validation complete — 20/20 cases, 19 pass, [`12_Sim_Formation_Validation_Report.md`](12_Sim_Formation_Validation_Report.md). Found and fixed **two flight-code bugs** neither of which single-drone flight could catch |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
-| **Also open** | The formation geofence (`formations/safety.py FLIGHT_SPACE`) is a deliberate placeholder — **measure the real flight volume** |
+| **Flight volume** | Set to x −1..1, y −2..2, z 0.30..1.70 (operator ESTIMATE 2026-08-23, **not measured** — confirm with a tape measure). Room is long in y but scenarios translate in x, so `--auto-center` is required: 18 of 19 configs then fit |
 | **Open (sim), time-boxed** | Sim needs more position damping than hardware: wall now `kv_xy` 8 (was 10) vs hardware 5. Motor lag closed ~40%; KI_P, rotor drag, inertia, airframe all refuted. SIM-ONLY `kv_xy: 8.0`; hardware keeps 5.0. **Investigation paused — hardware readiness is the priority** |
 | **Flag for the lab** | Hardware crashed 2/2 at `kv_xy=4` and flies at 5 — a thin margin, and formation flight adds downwash to that same loop |
 | **Fragile** | The sim depends on ~110 uncommitted lines in `crazyflie-firmware/bindings/` (upstream tree, deliberately not forked). Patch preserved at `firmware_app/host/cffirmware_bindings.patch` — re-apply if the sim stops building |
@@ -126,7 +126,7 @@ bottom.
 ### B.4 First multi-drone flights
 
 - [ ] 10a. **Work through [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md)** — Stage 0 bench items, then the single-robot ladder, then 2 robots at large separation only
-- [ ] 10b. **Measure the flight volume** and set `FLIGHT_SPACE` in `formations/safety.py` (currently a deliberately-too-small placeholder, so scenarios are refused rather than flown into the netting)
+- [ ] 10b. **Confirm the flight volume with a tape measure** (currently an estimate: x −1..1, y −2..2, z 0.30..1.70) and set `FLIGHT_SPACE` in `formations/safety.py` (currently a deliberately-too-small placeholder, so scenarios are refused rather than flown into the netting)
 - [ ] 11. Dry run — `formation_flight -- ... --dry-run` *(prints the plan, commands nothing)*
 - [ ] 12. First 2-drone flight — `--formation vertical --separation 0.6` *(start wide)*
 - [ ] 12b. Then walk the formation library: **A1 → A3 → A2 → A8 → A4 → A5**, wide separations first. B1–B3 need a third drone; A6/A7/C4 are `--allow-extreme` and come last
