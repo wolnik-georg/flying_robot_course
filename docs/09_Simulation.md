@@ -275,7 +275,13 @@ Two drones stacked 0.5 m apart, `neuralswarm` backend, ROS end to end:
 | Control | lower drone (in the wash), cmd 1.0 m | upper drone, cmd 1.5 m |
 |---|---|---|
 | Geometric SE(3) | **−30.5 mm** | **−2.9 mm** |
-| Full INDI | **−58.8 mm** | **−6.2 mm** |
+| Full INDI *(pre-fix — obsolete)* | ~~−58.8 mm~~ | ~~−6.2 mm~~ |
+
+> ⚠️ The INDI row above was measured **before the `a_res` sign fix** and is kept only as a
+> record of what the bug looked like. Position INDI was adding the residual instead of
+> subtracting it, so it doubled the sag it was supposed to remove. After the fix INDI holds
+> commanded geometry to under a millimetre — see
+> [`12_Sim_Formation_Validation_Report.md`](12_Sim_Formation_Validation_Report.md).
 
 The ~10x asymmetry between lower and upper is the signature of downwash rather than a trim error,
 and it is the effect the thesis sets out to compensate.
