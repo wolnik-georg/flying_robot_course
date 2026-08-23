@@ -1,0 +1,69 @@
+### indi 2 --scenario A1 --dz 0.50 --hold 10
+
+  A1  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 0.0 deg
+         bottom-top  dz -0.500 (cmd -0.500, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.0 mm  RMSE    0.0 mm  ok
+### indi 2 --scenario A1 --dz 0.25 --hold 10
+
+  A1  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 0.0 deg
+         bottom-top  dz -0.250 (cmd -0.250, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.0 mm  RMSE    0.0 mm  ok
+### indi 2 --scenario A2 --dz 0.30 --path line
+
+  A2  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+         bottom-top  dz -0.300 (cmd -0.300, sd 0.000)  mean|ez|   0.1 mm  max|ez|    0.2 mm  RMSE    0.1 mm  ok
+### indi 2 --scenario A3 --dz 0.30 --passes 2
+
+  A3  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+         bottom-top  dz -0.300 (cmd -0.300, sd 0.002)  mean|ez|   0.6 mm  max|ez|    6.6 mm  RMSE    1.6 mm  ok
+### indi 2 --scenario A4 --dz 0.60 --offset 0.10 --laps 1
+
+  A4  controller=indi  FAIL  (geometry out of tolerance)
+    window covered 100% of the trajectory, max tilt 4.1 deg
+         bottom-top  dz -0.600 (cmd -0.600, sd 0.000)  mean|ez|   0.2 mm  max|ez|    1.6 mm  RMSE  208.4 mm  OUT OF TOL
+### indi 2 --scenario A5 --dz 0.50 --laps 1
+
+  A5  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 6.0 deg
+         bottom-top  dz -0.500 (cmd -0.500, sd 0.001)  mean|ez|   0.5 mm  max|ez|    4.7 mm  RMSE    1.4 mm  ok
+### indi 2 --scenario A8 --dz 0.25
+
+  A8  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+         bottom-top  dz -0.250 (cmd -0.250, sd 0.001)  mean|ez|   0.3 mm  max|ez|    4.2 mm  RMSE    1.1 mm  ok
+### indi 3 --scenario B1 --dz2 0.30 --path line
+
+  B1  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+      bottom-center  dz -0.300 (cmd -0.300, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.1 mm  RMSE    0.1 mm  ok
+         bottom-top  dz -0.500 (cmd -0.500, sd 0.000)  mean|ez|   0.1 mm  max|ez|    0.2 mm  RMSE    0.1 mm  ok
+         center-top  dz -0.200 (cmd -0.200, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.1 mm  RMSE    0.1 mm  ok
+### indi 3 --scenario B2 --dz2 0.30 --r 0.10 --path line
+
+  B2  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+      bottom-center  dz -0.300 (cmd -0.300, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.2 mm  RMSE    0.1 mm  ok
+         bottom-top  dz -0.500 (cmd -0.500, sd 0.000)  mean|ez|   0.1 mm  max|ez|    0.2 mm  RMSE    0.1 mm  ok
+         center-top  dz -0.200 (cmd -0.200, sd 0.000)  mean|ez|   0.0 mm  max|ez|    0.1 mm  RMSE    0.0 mm  ok
+### indi 3 --scenario B3 --dz 0.22
+
+  B3  controller=indi  PASS
+    window covered 100% of the trajectory, max tilt 0.7 deg
+      bottom-center  dz -0.220 (cmd -0.220, sd 0.002)  mean|ez|   0.7 mm  max|ez|    6.2 mm  RMSE    1.6 mm  ok
+         bottom-top  dz -0.440 (cmd -0.440, sd 0.001)  mean|ez|   0.3 mm  max|ez|    4.9 mm  RMSE    1.1 mm  ok
+         center-top  dz -0.220 (cmd -0.220, sd 0.001)  mean|ez|   0.4 mm  max|ez|    6.2 mm  RMSE    1.3 mm  ok
+### geo 2 A4
+
+  A4  controller=geo  FAIL  (geometry out of tolerance)
+    window covered 100% of the trajectory, max tilt 4.0 deg
+         bottom-top  dz -0.602 (cmd -0.600, sd 0.003)  mean|ez|   2.0 mm  max|ez|    9.9 mm  RMSE  208.4 mm  OUT OF TOL
+### geo 3 B1
+
+  B1  controller=geo  FAIL  (geometry out of tolerance)
+    window covered 100% of the trajectory, max tilt 1.2 deg
+      bottom-center  dz -0.323 (cmd -0.300, sd 0.000)  mean|ez|  22.7 mm  max|ez|   23.6 mm  RMSE   22.7 mm  ok
+         bottom-top  dz -0.559 (cmd -0.500, sd 0.001)  mean|ez|  58.7 mm  max|ez|   60.2 mm  RMSE   58.7 mm  OUT OF TOL
+         center-top  dz -0.236 (cmd -0.200, sd 0.001)  mean|ez|  36.0 mm  max|ez|   38.1 mm  RMSE   36.0 mm  ok
+RERUN12DONE

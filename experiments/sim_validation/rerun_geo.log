@@ -1,0 +1,52 @@
+### geo 2 --scenario A1 --dz 0.50 --hold 10
+
+  A1  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 0.0 deg
+         bottom-top  dz -0.528 (cmd -0.500, sd 0.000)  mean|ez|  27.6 mm  max|ez|   27.6 mm  RMSE   27.6 mm  ok
+### geo 2 --scenario A1 --dz 0.25 --hold 10
+
+  A1  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 0.0 deg
+         bottom-top  dz -0.291 (cmd -0.250, sd 0.000)  mean|ez|  41.5 mm  max|ez|   41.5 mm  RMSE   41.5 mm  ok
+### geo 2 --scenario A2 --dz 0.30 --path line
+
+  A2  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+         bottom-top  dz -0.338 (cmd -0.300, sd 0.001)  mean|ez|  38.4 mm  max|ez|   39.8 mm  RMSE   38.4 mm  ok
+### geo 2 --scenario A3 --dz 0.30 --passes 2
+
+  A3  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 1.8 deg
+         bottom-top  dz -0.303 (cmd -0.300, sd 0.007)  mean|ez|   3.5 mm  max|ez|   37.6 mm  RMSE    8.0 mm  ok
+### geo 2 --scenario A5 --dz 0.50 --laps 1
+
+  A5  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 6.4 deg
+         bottom-top  dz -0.503 (cmd -0.500, sd 0.009)  mean|ez|   4.2 mm  max|ez|   31.8 mm  RMSE    9.5 mm  ok
+### geo 2 --scenario A8 --dz 0.25
+
+  A8  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 1.7 deg
+         bottom-top  dz -0.252 (cmd -0.250, sd 0.003)  mean|ez|   2.1 mm  max|ez|   20.9 mm  RMSE    4.0 mm  ok
+### geo 3 --scenario B2 --dz2 0.30 --r 0.10 --path line
+
+  B2  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 1.2 deg
+      bottom-center  dz -0.333 (cmd -0.300, sd 0.001)  mean|ez|  33.0 mm  max|ez|   34.0 mm  RMSE   33.0 mm  ok
+         bottom-top  dz -0.543 (cmd -0.500, sd 0.001)  mean|ez|  42.6 mm  max|ez|   44.2 mm  RMSE   42.7 mm  ok
+         center-top  dz -0.210 (cmd -0.200, sd 0.000)  mean|ez|   9.6 mm  max|ez|   10.3 mm  RMSE    9.6 mm  ok
+### geo 3 --scenario B3 --dz 0.22
+
+  B3  controller=geo  PASS
+    window covered 100% of the trajectory, max tilt 0.8 deg
+      bottom-center  dz -0.221 (cmd -0.220, sd 0.008)  mean|ez|   3.9 mm  max|ez|   34.4 mm  RMSE    7.7 mm  ok
+         bottom-top  dz -0.442 (cmd -0.440, sd 0.004)  mean|ez|   2.1 mm  max|ez|   26.1 mm  RMSE    4.6 mm  ok
+         center-top  dz -0.221 (cmd -0.220, sd 0.006)  mean|ez|   1.9 mm  max|ez|   33.5 mm  RMSE    5.7 mm  ok
+### geo 3 B1
+
+  B1  controller=geo  FAIL  (geometry out of tolerance)
+    window covered 100% of the trajectory, max tilt 1.2 deg
+      bottom-center  dz -0.323 (cmd -0.300, sd 0.000)  mean|ez|  22.7 mm  max|ez|   23.6 mm  RMSE   22.7 mm  ok
+         bottom-top  dz -0.559 (cmd -0.500, sd 0.001)  mean|ez|  58.7 mm  max|ez|   60.2 mm  RMSE   58.7 mm  OUT OF TOL
+         center-top  dz -0.236 (cmd -0.200, sd 0.001)  mean|ez|  36.0 mm  max|ez|   38.1 mm  RMSE   36.0 mm  ok
+GEODONE

@@ -17,5 +17,6 @@ This folder contains the core planning and scientific documentation for the Mast
 - `09_Simulation.md` → Engineering reference: running the thesis controllers in the Crazyswarm2 simulator with the downwash model, and what the simulator can and cannot show
 - `10_Formation_Library.md` → The multi-robot formation scenarios used to excite downwash (A1–A8, B1–B3, C1–C5), how to run them, and what the set does not yet cover
 - `11_Hardware_Readiness_Checklist.md` → What must be true before the first real flights, and the order to fly them in (bench → single robot → two robots at large separation)
+- `12_Sim_Formation_Validation_Report.md` → Results of running every Priority A and B formation scenario in the ROS simulator under both controllers, the two flight-code bugs it found, and what is still required before hardware
 
 This documentation is the single source of truth for the project. New documents should be added with increasing numbers (07_..., 08_..., etc.).
