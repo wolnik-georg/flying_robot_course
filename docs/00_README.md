@@ -45,6 +45,7 @@ else is detail hanging off it.
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
 | **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md); the draft is [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex) |
+| **Hand the thesis to a reviewer** | [`THESIS_REVIEW_BRIEF.md`](THESIS_REVIEW_BRIEF.md) |
 | **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md), then quote from [`20`](20_Verified_Claims.md) |
 | Understand what the 7 strategies do differently | [`18`](18_Strategy_Descriptions.md) |
 | State the thesis contribution | [`19`](19_Contribution_Statement.md) |
