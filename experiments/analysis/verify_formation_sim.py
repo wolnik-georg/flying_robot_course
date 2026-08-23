@@ -113,11 +113,18 @@ def main():
     ap.add_argument('--controller', default='?')
     ap.add_argument('--tol-z', type=float, default=0.05, help='mean |dz error| [m]')
     ap.add_argument('--tol-xy', type=float, default=0.08, help='mean horizontal error [m]')
+    ap.add_argument('--min-coverage', type=float, default=0.0,
+                    help='fail if less than this fraction of the trajectory was recorded')
     ap.add_argument('--append', default=None, help='append a one-line summary here')
     a = ap.parse_args()
 
     meta = json.load(open(a.meta))
     r = verify(Path(a.meta), Path(a.states_dir), a.tol_z, a.tol_xy)
+    # A run cut short must not pass on the strength of the fraction that was recorded.
+    if r['covered'] < a.min_coverage:
+        r['ok'] = False
+        r['reason'] = (f"only {r['covered'] * 100:.0f}% of the trajectory was recorded "
+                       f"(need {a.min_coverage * 100:.0f}%)")
     sid = meta['scenario']
     verdict = 'PASS' if r['ok'] else 'FAIL'
 

@@ -1337,9 +1337,13 @@ fn controller_step(
 
     // -- Read RPMs once (shared by pos INDI a_model and att INDI tau_current) -
     let mut m1 = 0u16; let mut m2 = 0u16; let mut m3 = 0u16; let mut m4 = 0u16;
-    if mode != 0 {
-        unsafe { rpm_get_all(&mut m1, &mut m2, &mut m3, &mut m4); }
-    }
+    // Read RPM in EVERY mode. This used to be gated on `mode != 0`, which silently
+    // defeated the intent stated at a_res below: the residual is supposed to be
+    // measurable while flying plain geometric, because the training data for
+    // Geometric+NN has to come from non-INDI flights. With the gate in place a_res read
+    // exactly zero whenever the geometric controller was selected. Reading RPM does not
+    // change geometric's control law -- a_indi stays zero there -- only what is logged.
+    unsafe { rpm_get_all(&mut m1, &mut m2, &mut m3, &mut m4); }
     let rpms_active = (m1 | m2 | m3 | m4) > 0;
 
     // v2 fix A: INDI RPM sanity/hold guard (protects both a_indi and tau_current below).
@@ -1416,7 +1420,14 @@ fn controller_step(
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(ki_term)
         .add(Vec3::new(0.0, 0.0, gz_comp))
-        .add(a_indi);
+        // MINUS the residual, not plus. From m*a = f_thrust + f_res + m*g, the thrust
+        // needed to hold a_des is m*a_des - m*g_vec - f_res, so the desired-acceleration
+        // vector carries -a_res. Adding it instead made the controller reinforce every
+        // unmodelled force rather than reject it: measured at exactly 2.00x the
+        // geometric sag under a known 20 mN disturbance, and 1.89-2.10x across every
+        // formation scenario in simulation. Invisible in single-drone flight, where
+        // a_res ~ 0 -- it only appears once another vehicle's downwash is present.
+        .sub(a_indi);
     let mut thrust_vec = f_d.scale(mass);
 
     // Tilt clamp (clamp_en bit2): limit the desired-thrust-vector angle from vertical, mirroring

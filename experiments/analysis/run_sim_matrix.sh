@@ -16,7 +16,7 @@
 # Each run takes roughly 3 minutes -- the neuralswarm backend is about 4x slower than
 # real time, and every run pays a fresh server start.
 
-set -u
+# NOT `set -u`: ROS's setup.bash references unbound variables and aborts under it.
 REPO=/home/georg/Desktop/flying_robot_course
 CS2=/home/georg/Desktop/crazyswarm2
 OUT=$REPO/experiments/sim_validation
@@ -47,6 +47,8 @@ one_run() {
   local GPID=$!
   sleep 15
 
+  local MARKER=$(mktemp)
+  sleep 1                       # so "newer than MARKER" cannot catch a same-second file
   timeout 380 ros2 run crazyflie_examples run_formation "$@" --yes \
     --ros-args -p use_sim_time:=true > "$OUT/client_$CTRL.log" 2>&1
   local RC=$?
@@ -54,18 +56,39 @@ one_run() {
   kill -- -$GPID 2>/dev/null
   sleep 5          # record_states flushes on server shutdown
 
+  # Pair with THIS run's sidecar only. Taking the newest sidecar unconditionally is
+  # wrong: if a run dies before it writes one, the previous run's file is still the
+  # newest, and the flight silently gets verified against a different scenario's
+  # commanded geometry. That produced a plausible-looking but meaningless number once
+  # (A1 at dz=0.25 scored against dz=0.50, giving exactly the 0.21 m difference).
   local META CSVDIR
-  META=$(ls -t "$LOGDIR"/*.meta.json 2>/dev/null | head -1)
+  META=$(find "$LOGDIR" -name '*.meta.json' -newer "$MARKER" 2>/dev/null | sort | tail -1)
   CSVDIR=$(ls -dt "$STATE"/*/csv 2>/dev/null | head -1)
   if [ -z "$META" ] || [ -z "$CSVDIR" ]; then
-    echo "  [$CTRL/$NROB $*] NO DATA (client rc=$RC)"
-    echo "| ${*} | $CTRL | $NROB | NO-DATA | - | - | - | - | 0% | - | - |" >> "$RESULTS"
-  else
-    ~/.pyenv/versions/flying_robots/bin/python \
-      "$REPO/experiments/analysis/verify_formation_sim.py" \
-      "$META" "$CSVDIR" --controller "$CTRL" --append "$RESULTS"
+    echo "  [$CTRL/$NROB $*] NO SIDECAR from this run (client rc=$RC)"
+    return 1
   fi
-  echo "RUNDONE $CTRL/$NROB/$*"
+  ~/.pyenv/versions/flying_robots/bin/python \
+    "$REPO/experiments/analysis/verify_formation_sim.py" \
+    "$META" "$CSVDIR" --controller "$CTRL" --append "$RESULTS" --min-coverage 0.9
+  return $?
+}
+
+# One retry. The sim clock free-runs before the client connects, so a slow start can
+# leave the trajectory beginning after the recording ends -- a transient, not a real
+# failure of the scenario. Retrying once absorbs it; a second failure is recorded.
+run_with_retry() {
+  local CTRL=$1 NROB=$2; shift 2
+  if one_run "$CTRL" "$NROB" "$@"; then
+    echo "RUNDONE $CTRL/$NROB/$*"; return 0
+  fi
+  echo "  retrying $CTRL/$NROB/$*"
+  if one_run "$CTRL" "$NROB" "$@"; then
+    echo "RUNDONE $CTRL/$NROB/$* (2nd attempt)"; return 0
+  fi
+  echo "| ${*} | $CTRL | $NROB | NO-DATA | - | - | - | - | 0% | - | failed twice |" >> "$RESULTS"
+  echo "RUNDONE $CTRL/$NROB/$* (FAILED TWICE)"
+  return 1
 }
 
 # Priority A, two robots. Lap/pass counts trimmed where the default is long; the
@@ -95,10 +118,10 @@ case "${1:-all}" in
     header
     for CTRL in geo indi; do
       for ARGS in "${A_SET[@]}"; do
-        echo "### $CTRL 2 $ARGS"; one_run $CTRL 2 $ARGS
+        echo "### $CTRL 2 $ARGS"; run_with_retry $CTRL 2 $ARGS
       done
       for ARGS in "${B_SET[@]}"; do
-        echo "### $CTRL 3 $ARGS"; one_run $CTRL 3 $ARGS
+        echo "### $CTRL 3 $ARGS"; run_with_retry $CTRL 3 $ARGS
       done
     done
     echo MATRIXDONE

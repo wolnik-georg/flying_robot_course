@@ -1,0 +1,22 @@
+# The validation matrix, one case per line:  id | controller | n_robots | runner args
+# Shared by run_sim_matrix.sh and rerun_failures.sh so the two cannot drift apart.
+A1a|geo|2|--scenario A1 --dz 0.50 --hold 10
+A1b|geo|2|--scenario A1 --dz 0.25 --hold 10
+A2 |geo|2|--scenario A2 --dz 0.30 --path line
+A3 |geo|2|--scenario A3 --dz 0.30 --passes 2
+A4 |geo|2|--scenario A4 --dz 0.60 --offset 0.10 --laps 1
+A5 |geo|2|--scenario A5 --dz 0.50 --laps 1
+A8 |geo|2|--scenario A8 --dz 0.25
+B1 |geo|3|--scenario B1 --dz2 0.30 --path line
+B2 |geo|3|--scenario B2 --dz2 0.30 --r 0.10 --path line
+B3 |geo|3|--scenario B3 --dz 0.22
+A1a|indi|2|--scenario A1 --dz 0.50 --hold 10
+A1b|indi|2|--scenario A1 --dz 0.25 --hold 10
+A2 |indi|2|--scenario A2 --dz 0.30 --path line
+A3 |indi|2|--scenario A3 --dz 0.30 --passes 2
+A4 |indi|2|--scenario A4 --dz 0.60 --offset 0.10 --laps 1
+A5 |indi|2|--scenario A5 --dz 0.50 --laps 1
+A8 |indi|2|--scenario A8 --dz 0.25
+B1 |indi|3|--scenario B1 --dz2 0.30 --path line
+B2 |indi|3|--scenario B2 --dz2 0.30 --r 0.10 --path line
+B3 |indi|3|--scenario B3 --dz 0.22
