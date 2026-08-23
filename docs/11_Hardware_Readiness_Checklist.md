@@ -36,33 +36,38 @@ thing that fails, those two causes are indistinguishable.
 | 0.5 | Confirm gains on the drone | `indi_gains.*` and `pos_gains.*` read back as `crazyflies.yaml` intends — **`kv_xy` must be 5.0, not the simulator's 10.0** |
 | 0.6 | Confirm `clamp_en` | Currently `11` (tilt clamp OFF, set for inverted-loop work). Decide deliberately |
 
-### ⚠️ 0.1 — the flight volume is an ESTIMATE, not a measurement
+### 0.1 — the flight volume, and the floor we choose
 
-`FLIGHT_SPACE` in `crazyflie_examples/formations/safety.py` now holds:
+Two different limits, deliberately separated in `formations/safety.py`:
 
 ```python
-FLIGHT_SPACE = dict(x=(-1.0, 1.0), y=(-2.0, 2.0), z=(0.30, 1.70))
+FLIGHT_SPACE          = dict(x=(-1.0, 1.0), y=(-2.0, 2.0), z=(0.0, 1.70))  # where mocap sees
+Z_FLOOR_DEFAULT       = 0.30    # where we choose to fly formations
+Z_FLOOR_GROUND_EFFECT = 0.10    # only when ground effect is the measurement
 ```
 
-**Corroborated, but still not tape-measured.** These were given on 2026-08-23 as an estimate
-("I believe / I guess") — and they match a figure stated independently on 2026-07-27, before
-this one was given: z and x identical, y quoted then as ±2.1 against ±2.0 now. The applied
-value takes the more conservative 2.0. Two independent statements a month apart agreeing to
-within 10 cm is much stronger than a lone guess, but neither is a measurement, and several
-scenarios sit within ~10 cm of these walls. **Confirm with a tape measure before flying.**
+**The physical volume** is what the cameras track — z runs to the floor. Confirmed 2026-08-23 and
+consistent with an independent statement from 2026-07-27 (x and z identical, y then quoted as
+±2.1; the conservative ±2.0 is applied). Still not tape-measured.
 
-Note also that **no margin is subtracted**: the check runs on *commanded* positions, and
-real tracking error and overshoot sit on top. When you measure, quote a box you are happy
-for a drone to reach, not the physical wall.
+**The operational floor is a separate decision.** Near the ground a rotor's downwash reflects and
+pushes the vehicle up — ground effect, roughly the same magnitude as the inter-vehicle downwash
+this thesis measures, and *not* the quantity under study. A formation at 0.15 m would contaminate
+every residual with a second unmodelled force having nothing to do with the other drone. 0.30 m is
+several rotor diameters up and comfortably clear.
 
-**The room is long in y (4 m) and narrow in x (2 m), but every translating scenario moves
-along x.** That is why `--auto-center` exists: it places the scenario's bounding box in the
-middle of the volume instead of wherever drone 0 happens to sit. Without it, 8 of 19
-scenario configurations are refused; with it, 18 of 19 fit. The one that still does not is
-C2, which needs 2.2 m of x — run it as `--gap 0.40 --length 0.90`.
+**But ground effect is itself a residual force**, and this project measures residual forces. C5
+exists to characterise it in isolation and has to go low to see anything, so it gets
+`--z-floor 0.10` rather than being treated as a safety exception. Whether the same learned models
+can compensate it is a legitimate extension — see [`10`](10_Formation_Library.md).
 
-A worthwhile future change is to let translating scenarios run along **y** and use the long
-axis of the room; that would remove the constraint entirely.
+> `--auto-center` centres **horizontally only**. Altitude is an experimental parameter, not
+> something to optimise for clearance: vertical centring silently lifted C5 from 0.15 m to 0.85 m,
+> which is a different experiment. If a scenario does not fit at the requested `--height`, the
+> check refuses and says so.
+
+**Heights that fit** (with `--auto-center --rotate 90`): most scenarios at `--height 1.0`;
+A1 Δz 0.75 needs 0.85; A4, B1, B2, B3, C4 need 0.9; A7 needs 0.5; C5 flies at 0.15.
 
 ### ⚠️ 0.5 — the simulator and hardware run different position gains
 
