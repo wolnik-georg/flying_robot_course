@@ -26,6 +26,7 @@
 #undef indi_tau_write
 #undef indi_notch_log_write
 #undef indi_a_res_write
+#undef peer_get_all
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -137,4 +138,37 @@ void oot_select_drone(int idx)
   }
   memcpy(live, g_slot[idx], n);                  /* load the incoming vehicle */
   g_current = idx;
+}
+
+/* ---- Peer positions, host simulator only ----------------------------------
+   On the drone these come from peer_localization, which Crazyswarm2 populates by broadcasting
+   every vehicle's pose. The simulator has no such module, so the SIL layer injects the other
+   vehicles' positions directly and the residual network sees the same input it would in
+   flight. Without this the network would train and run against an empty neighbour list in
+   simulation, which is the one thing that would make a sim dry-run worthless. */
+#define OOT_MAX_PEERS 3
+static float    g_peer_x[OOT_MAX_PEERS], g_peer_y[OOT_MAX_PEERS], g_peer_z[OOT_MAX_PEERS];
+static uint32_t g_peer_t[OOT_MAX_PEERS];
+static uint8_t  g_peer_n = 0;
+
+void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms)
+{
+  if (idx < 0 || idx >= OOT_MAX_PEERS) return;
+  g_peer_x[idx] = x; g_peer_y[idx] = y; g_peer_z[idx] = z; g_peer_t[idx] = t_ms;
+}
+
+void oot_set_peer_count(int n)
+{
+  if (n < 0) n = 0;
+  if (n > OOT_MAX_PEERS) n = OOT_MAX_PEERS;
+  g_peer_n = (uint8_t)n;
+}
+
+uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
+{
+  uint8_t n = g_peer_n < max ? g_peer_n : max;
+  for (uint8_t i = 0; i < n; ++i) {
+    xs[i] = g_peer_x[i]; ys[i] = g_peer_y[i]; zs[i] = g_peer_z[i]; ts[i] = g_peer_t[i];
+  }
+  return n;
 }

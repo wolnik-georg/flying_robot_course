@@ -1,8 +1,16 @@
 diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
-index d4ae77ca..dfad6410 100755
+index d4ae77ca..ce8d435d 100755
 --- a/bindings/cffirmware.i
 +++ b/bindings/cffirmware.i
-@@ -41,6 +41,69 @@
+@@ -1,3 +1,7 @@
++// LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Exposes the out-of-tree thesis
++// controller and its gain globals to the SIL simulator. Additive only. This tree tracks
++// bitcraze upstream and is deliberately not forked, so these lines stay uncommitted by
++// design. See flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
+ %module cffirmware
+ %include <stdint.i>
+ 
+@@ -41,6 +45,85 @@
  %include "controller_mellinger.h"
  %include "controller_brescianini.h"
  %include "controller_lee.h"
@@ -26,6 +34,14 @@ index d4ae77ca..dfad6410 100755
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
 +void oot_select_drone(int idx);
++float oot_inertia(int axis);
++void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
++void oot_set_peer_count(int n);
++extern uint16_t g_rnn_wi, g_rnn_n;
++extern float g_rnn_wv;
++extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
++extern float g_rnn_pred_x, g_rnn_pred_y, g_rnn_pred_z;
++
 +float oot_thrust_max(void);
 +float oot_arm_length(void);
 +float oot_thrust2torque(void);
@@ -52,6 +68,14 @@ index d4ae77ca..dfad6410 100755
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
 +void oot_select_drone(int idx);
++float oot_inertia(int axis);
++void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
++void oot_set_peer_count(int n);
++extern uint16_t g_rnn_wi, g_rnn_n;
++extern float g_rnn_wv;
++extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
++extern float g_rnn_pred_x, g_rnn_pred_y, g_rnn_pred_z;
++
 +float oot_thrust_max(void);
 +float oot_arm_length(void);
 +float oot_thrust2torque(void);
@@ -73,11 +97,20 @@ index d4ae77ca..dfad6410 100755
  %include "axis3fSubSampler.h"
  %include "outlierFilterTdoa.h"
 diff --git a/bindings/setup.py b/bindings/setup.py
-index 5f650752..6ef2b7a5 100644
+index 5f650752..370e6bb3 100644
 --- a/bindings/setup.py
 +++ b/bindings/setup.py
-@@ -4,6 +4,21 @@ import distutils.command.build
+@@ -2,8 +2,30 @@
+ 
+ import distutils.command.build
  from distutils.core import setup, Extension
++# ─── LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT ────────────────────────
++# Links the out-of-tree thesis controller into the SIL bindings so the simulator runs the same
++# Rust source that flies. Additive only; a checkout without that controller still builds.
++# This tree tracks bitcraze upstream and is deliberately NOT forked, so these lines stay
++# uncommitted by design. Patch copy and rationale:
++#   flying_drone_stack/firmware_app/host/cffirmware_bindings.patch
++#   flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md
  import os
  
 +# ── Out-of-tree controller (optional) ────────────────────────────────────────
@@ -98,7 +131,7 @@ index 5f650752..6ef2b7a5 100644
  include = [
      "src/modules/interface",
      "src/modules/interface/controller",
-@@ -57,17 +72,47 @@ fw_sources = [
+@@ -57,17 +79,47 @@ fw_sources = [
      "src/modules/src/kalman_core/mm_distance.c",
  ]
  
@@ -117,7 +150,7 @@ index 5f650752..6ef2b7a5 100644
 +    # replacements the simulator can drive and read.
 +    oot_defines = ["-D%s=%s_fw_unused" % (n, n) for n in (
 +        "rpm_get_all", "indi_log_write", "indi_tau_write",
-+        "indi_notch_log_write", "indi_a_res_write")]
++        "indi_notch_log_write", "indi_a_res_write", "peer_get_all")]
 +    print("[setup] out-of-tree controller: linking", OOT_LIB)
 +else:
 +    print("[setup] out-of-tree controller: not built, skipping (sim will lack 'oot')")

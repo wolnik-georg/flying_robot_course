@@ -112,6 +112,75 @@ uint16_t g_traj_coef_ci  = 0;     /* coefficient index (0..265) — u16, see TRA
 float   g_traj_coef_cv   = 0.0f;  /* coefficient value to write at g_traj_coef_ci        */
 uint8_t g_traj_coef_cw   = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
 
+/* ── Residual-network weight upload ──────────────────────────────────────────
+ * Same index / value / commit shape as the trajectory upload above, for the same reason:
+ * CRTP parameters are the only writable channel that needs no new packet type.
+ *
+ * The count is declared UP FRONT (rnn.n) and checked on commit. A half-arrived network is
+ * the dangerous failure -- it produces plausible numbers rather than an obvious fault, and
+ * would be indistinguishable from a badly trained model. Refusing an incomplete upload turns
+ * a dropped packet into "compensation off", which is diagnosable from the logs.        */
+uint16_t g_rnn_wi  = 0;    /* weight index                                              */
+float    g_rnn_wv  = 0.0f; /* weight value to write at g_rnn_wi                          */
+uint8_t  g_rnn_wc  = 0;    /* commit flag: host sets 1; Rust clears to 0                 */
+uint16_t g_rnn_n   = 0;    /* number of weights the host intends to send                 */
+uint8_t  g_rnn_begin = 0;  /* host sets 1 to start a fresh upload; Rust clears           */
+uint8_t  g_rnn_end   = 0;  /* host sets 1 when done; Rust validates and clears           */
+uint8_t  g_rnn_en    = 0;  /* 0 = predict but do not use; 1 = feed into the controller    */
+uint8_t  g_rnn_ready = 0;  /* read-only: 1 once a complete, finite weight set is loaded   */
+
+/* Logged so the prediction can be compared against the measured residual in flight --
+ * that comparison IS the evaluation of every learned method in this thesis.            */
+float    g_rnn_pred_x = 0.0f;
+float    g_rnn_pred_y = 0.0f;
+float    g_rnn_pred_z = 0.0f;
+uint8_t  g_rnn_clamped = 0;  /* last evaluation hit the output clamp -- a fault, not a result */
+
+/* Peer positions for the residual model.
+ *
+ * Crazyswarm2 broadcasts every vehicle's pose and the firmware already stores the ones that
+ * are not its own, so the network's main input costs no new communication. Note the API
+ * offers POSITION ONLY -- there is no peer velocity -- so relative velocity is differenced
+ * onboard from the timestamps the same struct carries. */
+#ifdef CRAZYFLIE_FW   /* peer_localization is drone-only; the host simulator injects peers instead */
+#include "peer_localization.h"
+uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
+{
+  uint8_t n = 0;
+  for (uint8_t i = 0; i < max; ++i) {
+    peerLocalizationOtherPosition_t *p = peerLocalizationGetPositionByIdx(i);
+    if (p == NULL) break;
+    xs[n] = p->pos.x; ys[n] = p->pos.y; zs[n] = p->pos.z; ts[n] = p->pos.timestamp;
+    ++n;
+  }
+  return n;
+}
+#endif
+
+void rnn_pred_write(float x, float y, float z, uint8_t clamped)
+{
+  g_rnn_pred_x = x; g_rnn_pred_y = y; g_rnn_pred_z = z; g_rnn_clamped = clamped;
+}
+
+PARAM_GROUP_START(rnn)
+  PARAM_ADD(PARAM_UINT16, wi,    &g_rnn_wi)
+  PARAM_ADD(PARAM_FLOAT,  wv,    &g_rnn_wv)
+  PARAM_ADD(PARAM_UINT8,  wc,    &g_rnn_wc)
+  PARAM_ADD(PARAM_UINT16, n,     &g_rnn_n)
+  PARAM_ADD(PARAM_UINT8,  begin, &g_rnn_begin)
+  PARAM_ADD(PARAM_UINT8,  end,   &g_rnn_end)
+  PARAM_ADD(PARAM_UINT8,  en,    &g_rnn_en)
+  PARAM_ADD(PARAM_UINT8,  ready, &g_rnn_ready)
+PARAM_GROUP_STOP(rnn)
+
+LOG_GROUP_START(rnn)
+  LOG_ADD(LOG_FLOAT, pred_x,  &g_rnn_pred_x)
+  LOG_ADD(LOG_FLOAT, pred_y,  &g_rnn_pred_y)
+  LOG_ADD(LOG_FLOAT, pred_z,  &g_rnn_pred_z)
+  LOG_ADD(LOG_UINT8, clamped, &g_rnn_clamped)
+  LOG_ADD(LOG_UINT8, ready,   &g_rnn_ready)
+LOG_GROUP_STOP(rnn)
+
 /* ── CRTP parameter group ────────────────────────────────────────────────── */
 PARAM_GROUP_START(traj)
   PARAM_ADD(PARAM_UINT8, mode,     &g_traj_mode)

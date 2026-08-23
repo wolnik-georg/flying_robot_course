@@ -15,6 +15,9 @@ mod bindings {
 }
 use bindings::{control_s, setpoint_s, sensorData_s, state_s};
 
+mod residual_nn;
+use residual_nn::ResidualNet;
+
 // ── Vector3 helpers ────────────────────────────────────────────────────────
 #[derive(Copy, Clone)]
 struct Vec3 {
@@ -659,6 +662,10 @@ struct State {
     tau_act: Vec3,      // act_dyn base state (first-order model of clamped commands)
     indi_init: bool,
     fc_bw_last: f32,
+    /// Previous peer sample (x, y, z, timestamp_ms), for differencing a relative velocity the
+    /// peer API does not provide. Per-vehicle, hence in State rather than a global: the host
+    /// simulator swaps this block per drone, and shared peer history would corrupt both.
+    peer_prev: [(f32, f32, f32, u32); residual_nn::MAX_NEIGHBOURS],
 }
 
 impl State {
@@ -686,6 +693,7 @@ impl State {
             tau_act: Vec3::zero(),
             indi_init: false,
             fc_bw_last: 0.0,
+            peer_prev: [(0.0, 0.0, 0.0, 0); residual_nn::MAX_NEIGHBOURS],
         }
     }
     fn reset(&mut self) {
@@ -711,10 +719,89 @@ impl State {
         self.tau_prev = Vec3::zero();
         self.tau_act = Vec3::zero();
         self.indi_init = false;
+        self.peer_prev = [(0.0, 0.0, 0.0, 0); residual_nn::MAX_NEIGHBOURS];
     }
 }
 
 static mut CTRL: State = State::zero();
+
+/// Learned residual model. Inert until a complete weight set is uploaded, so a drone that has
+/// never been given weights behaves exactly as it did before this existed.
+static mut RNN: ResidualNet = ResidualNet::new();
+
+/// Evaluate the learned residual from the peers the firmware already knows about.
+///
+/// Crazyswarm2 broadcasts every vehicle's pose and the firmware stores the ones that are not
+/// its own, so this needs no new communication. The peer API carries position only, so the
+/// relative velocity is differenced against the previous sample using the timestamp that comes
+/// with it; a peer seen for the first time, or one whose timestamp has not advanced, is given
+/// zero relative velocity rather than a divided-by-nothing spike.
+///
+/// The prediction is always computed and logged, whatever `rnn.en` says. Comparing predicted
+/// against measured residual IS the evaluation of every learned method here, and that
+/// comparison is only possible if the prediction is recorded on flights where it is not being
+/// used -- including flights under the geometric controller.
+unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
+    const M: usize = residual_nn::MAX_NEIGHBOURS;
+    let (mut xs, mut ys, mut zs) = ([0.0f32; M], [0.0f32; M], [0.0f32; M]);
+    let mut ts = [0u32; M];
+    let n = peer_get_all(xs.as_mut_ptr(), ys.as_mut_ptr(), zs.as_mut_ptr(),
+                         ts.as_mut_ptr(), M as u8) as usize;
+
+    let mut rel = [(Vec3::zero(), Vec3::zero()); M];
+    for k in 0..n.min(M) {
+        let p = Vec3::new(xs[k], ys[k], zs[k]);
+        let (px, py, pz, pt) = s.peer_prev[k];
+        let dt_ms = ts[k].wrapping_sub(pt);
+        let v = if pt != 0 && dt_ms > 0 && dt_ms < 500 {
+            let inv = 1000.0 / dt_ms as f32;
+            Vec3::new((p.x - px) * inv, (p.y - py) * inv, (p.z - pz) * inv)
+        } else {
+            Vec3::zero()
+        };
+        s.peer_prev[k] = (p.x, p.y, p.z, ts[k]);
+        rel[k] = (p.sub(own_pos), v.sub(own_vel));
+    }
+
+    let pred = RNN.eval(&rel, n);
+    rnn_pred_write(pred.x, pred.y, pred.z, RNN.clamped as u8);
+    pred
+}
+
+/// Service the weight-upload protocol. Called once per control tick, before the arming check so
+/// the network can be loaded while the drone is still on the ground; each call handles at most
+/// one parameter write, which is all the host can deliver per CRTP packet anyway.
+///
+/// Kept entirely separate from the control path: uploading weights mid-flight changes nothing
+/// until `rnn.en` is set, and an incomplete upload leaves `ready` at 0.
+unsafe fn rnn_service() {
+    if g_rnn_begin != 0 {
+        RNN.begin_upload(g_rnn_n);
+        g_rnn_begin = 0;
+        g_rnn_ready = 0;
+    }
+    if g_rnn_wc != 0 {
+        RNN.set_weight(g_rnn_wi as usize, g_rnn_wv);
+        g_rnn_wc = 0;
+    }
+    if g_rnn_end != 0 {
+        g_rnn_ready = if RNN.finish_upload() { 1 } else { 0 };
+        g_rnn_end = 0;
+    }
+}
+
+/// Run one pass of the weight-upload protocol, for the host simulator ONLY.
+///
+/// On the drone `rnn_service` is called from `controllerOutOfTree` on every tick, before the
+/// arming check, so weights load while the vehicle is on the ground. The simulator's SIL layer
+/// returns early when a vehicle is idle and never calls the controller at all, so piggybacking
+/// there would stall the upload until takeoff and then load weights mid-flight. This exists so
+/// the simulator can drive the SAME protocol on the SAME state at the same point in the run.
+/// It adds no second code path: it calls `rnn_service` and nothing else.
+#[no_mangle]
+pub extern "C" fn oot_rnn_service() {
+    unsafe { rnn_service() }
+}
 
 // Address and size of the controller state, for the host simulator ONLY.
 //
@@ -757,6 +844,8 @@ pub extern "C" fn oot_inertia(axis: i32) -> f32 {
 // Variables owned by C (traj_iface.c); Rust writes via C function calls which
 // are opaque to Rust LTO — values are always computed and stored correctly.
 extern "C" {
+    fn peer_get_all(xs: *mut f32, ys: *mut f32, zs: *mut f32, ts: *mut u32, max: u8) -> u8;
+    fn rnn_pred_write(x: f32, y: f32, z: f32, clamped: u8);
     fn indi_log_write(arx: f32, ary: f32, arz: f32, ax: f32, ay: f32, az: f32);
     fn indi_tau_write(tx: f32, ty: f32, tz: f32);
     fn indi_notch_log_write(anx: f32, any: f32, anz: f32);
@@ -818,6 +907,16 @@ extern "C" {
     static mut g_indi_tilt_max_deg: f32; // [deg]
     static mut g_indi_thrust_max:   f32; // [N]
     // Runtime-tunable position gains (traj_iface.c PARAM_GROUP pos_gains)
+    // Residual-network weight upload and control, mirroring the trajectory upload protocol.
+    static mut g_rnn_wi:    u16;
+    static mut g_rnn_wv:    f32;
+    static mut g_rnn_wc:    u8;
+    static mut g_rnn_n:     u16;
+    static mut g_rnn_begin: u8;
+    static mut g_rnn_end:   u8;
+    static mut g_rnn_en:    u8;
+    static mut g_rnn_ready: u8;
+
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
     static mut g_kv_xy: f32;
@@ -1361,6 +1460,11 @@ fn controller_step(
         s.rpm_prev = [m1, m2, m3, m4];
     }
 
+    // Evaluate the learned residual. Always computed and logged, whatever rnn.en says --
+    // comparing predicted against measured a_res IS the evaluation of every learned method
+    // here, and that needs the prediction recorded on flights where it is not used.
+    let rnn_pred = unsafe { rnn_predict(s, pos, vel) };
+
     // -- Position loop --------------------------------------------------------
     let ep = pd.sub(pos);
     let ev = condition_vel_error(vd.sub(vel), dt, s);   // v2 fixes 5 & 6 (no-op when off)
@@ -1402,6 +1506,24 @@ fn controller_step(
     // Position INDI feedforward — unchanged: only fed into f_d when the outer loop is enabled.
     let a_indi = if mode & 1 != 0 { a_res } else { Vec3::zero() };
 
+    // Learned residual feedforward — strategy 2 (Geometric + NN), and the predictive half of
+    // strategy 4 (hybrid) when the INDI term above is also on.
+    //
+    // Gated on rnn.en, which is 0 unless a host sets it, so with the network idle this is
+    // exactly zero and the control law is byte-identical to what flew before. It carries the
+    // same sign as a_res below, for the same reason: it is an estimate of the SAME quantity.
+    // The difference is only in where the number comes from -- INDI measures the disturbance
+    // after the fact, the network predicts it before it arrives.
+    //
+    // Note the two are deliberately allowed to be on together. Double-counting is a real risk
+    // and is exactly what strategy 4 exists to measure; it is not prevented here, because
+    // preventing it would remove the comparison.
+    let a_nn = if unsafe { g_rnn_en } != 0 && unsafe { g_rnn_ready } != 0 {
+        rnn_pred
+    } else {
+        Vec3::zero()
+    };
+
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
     // v2 improvement #1: position integral (zero term when disabled)
     let ki_term = if ENABLE_POSITION_INTEGRAL {
@@ -1427,7 +1549,8 @@ fn controller_step(
         // geometric sag under a known 20 mN disturbance, and 1.89-2.10x across every
         // formation scenario in simulation. Invisible in single-drone flight, where
         // a_res ~ 0 -- it only appears once another vehicle's downwash is present.
-        .sub(a_indi);
+        .sub(a_indi)
+        .sub(a_nn);
     let mut thrust_vec = f_d.scale(mass);
 
     // Tilt clamp (clamp_en bit2): limit the desired-thrust-vector angle from vertical, mirroring
@@ -1789,6 +1912,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
     // ── Coefficient upload handlers ────────────────────────────────────────
     // Position / Z / Attitude: laptop writes idx, value, commit=1; we store and clear.
     // All run at 500 Hz → max latency 2 ms, well within the radio round-trip.
+    // Residual-network weights: same idx/value/commit protocol, same 500 Hz service rate.
+    rnn_service();
+
     if g_traj_coef_cw != 0 {
         let ci = g_traj_coef_ci as usize;
         if ci < TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG {
