@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **W.6 — Chapter 3, system modelling.** Chapter 2 drafted and building ([`thesis/`](thesis/)); W.1–W.5 complete |
+| **Next action — writing** | **W.8 — Chapter 4, control architectures.** Chapters 2–3 drafted, 16 pages, building clean ([`thesis/`](thesis/)) |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -62,7 +62,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.6** — Chapter 3, system modelling |
+| **Next** | **C.0 stage 1** — validate the controllers still behave | **W.8** — Chapter 4, control architectures |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -294,7 +294,8 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 | **W.2b** | **Collect the paper PDFs + a `.bib`** | ✅ **Done** — 15 papers, [`references.bib`](references.bib) |
 | **W.2c** | **Read the held papers at claim level** | ✅ **Done** — all 15, [`20`](20_Verified_Claims.md) |
 | **W.5** | **Chapter 2 prose** | ✅ **Drafted** — [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex), ~3200 words, builds clean |
-| **W.6** | **Chapter 3** — system modelling & residual formulation | ⬅️ **NEXT** |
+| **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) |
+| **W.8** | **Chapter 4** — control architectures, from [`18`](18_Strategy_Descriptions.md) | ⬅️ **NEXT** |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
 | **W.7** | Chapter 5 — experimental setup, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) | ⬜ |
@@ -454,14 +455,38 @@ to unwritten chapters as `[?]`. The real thesis preamble replaces both.
 | §2.8 | Two separations and one team size still unread (abstract-level only) |
 | §2.9 | The "no such comparison exists" claim rests on our own survey; re-audit before submission |
 
-### W.6 — Chapter 3, system modelling ⬅️ NEXT
+### W.6 — Chapter 3, system modelling ✅
 
-Not blocked. Feeds from [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md),
-and Chapter 2 already fixes the notation (`eq:rw-trans`, `eq:rw-rot`).
+[`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) — ~2250 words. Combined build
+with Chapter 2 is **16 pages, no undefined references** (`latexmk -pdf thesis_draft.tex`).
 
-- [ ] Formalise \(f_{res}\), \(\tau_{res}\) and the measurement \(a_{meas} - a_{model}\)
-- [ ] State the assumptions the residual formulation makes, and where each could fail
-- [ ] Define the deep-sets input and the superposition it assumes, with the §2.4 caveat carried over
+Defines the residual wrench as the single quantity every strategy estimates, then gives both routes
+to it: measurement from `a_meas − a_model` and prediction from the deep-sets form. Both are
+expressed as accelerations in the world frame and enter the control law at the same point with the
+same sign — which is what makes the comparison a comparison rather than a set of separately-tuned
+controllers.
+
+**A real inconsistency was found and fixed.** [`04`](04_Unified_Residual_Wrench_Model.md) and the
+first Chapter 2 draft both wrote gravity as `+m g e₃`; the implementation uses **z-up (ENU)**, where
+gravity acts along `−e₃`. Left alone, the thesis equations would have had the opposite sign to the
+flight code. Corrected in Chapter 2, and `04` now carries a superseded-on-this-point banner.
+
+Three things the chapter states that the experiments then depend on:
+
+| | |
+|---|---|
+| **The residual is a catch-all, not a physical quantity** | It is non-zero in isolated flight. The interaction can only be isolated by differencing against a no-neighbour condition — which is what the coplanar null scenarios are for |
+| **The sign derivation** | §3.3.3 derives why the residual is *subtracted*, and predicts that an inverted sign gives ≈2× the uncompensated displacement while looking perfectly stable. That is a falsifiable prediction for C.4, and it is the bug that was found in simulation |
+| **Assumptions table with failure modes** | Seven assumptions, each with where it breaks and what it costs, so a negative result can be attributed to an assumption rather than to the model as a whole |
+
+### W.8 — Chapter 4, control architectures ⬅️ NEXT
+
+Not blocked. Feeds from [`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md), which already
+separates *what we implement* from *the reference method*.
+
+- [ ] The seven strategies, each with the point at which it injects its knowledge of the residual
+- [ ] Keep the implementation/reference separation of `18` — it is what keeps RQ1 defensible
+- [ ] State the deviations from each reference method explicitly
 
 ---
 
@@ -661,6 +686,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (16) | W.6 done: **Chapter 3 drafted**, ~2250 words; combined build with Chapter 2 is 16 pages with no undefined references. The chapter's job is to establish that every strategy estimates the *same* quantity — two controllers compensating differently-defined residuals are not comparable however similar their block diagrams look — so it gives both routes to the residual in one notation, entering the control law at one point with one sign. **A real inconsistency was found: `04` and the Chapter 2 draft wrote gravity as `+m g e₃`, but the implementation is z-up (ENU) with `−e₃`.** Left alone the thesis equations would have carried the opposite sign to the flight code; corrected in Chapter 2 and `04` banner-annotated. §3.3.3 derives the compensation sign and turns the simulation-era sign bug into a falsifiable prediction for C.4 (inverted sign ⇒ ≈2× the uncompensated displacement, while looking perfectly stable). §3.5 tabulates seven assumptions with their failure modes so a negative result can be attributed to a specific assumption. No code touched. |
 | 2026-08-23 (15) | W.5 done: **Chapter 2 drafted** as `docs/thesis/ch2_related_work.tex`, ~3200 words, 9 pages with references, building clean with zero undefined citations. Written strictly from `20_Verified_Claims.md` — every number in it is one recorded there in the source's own words. §2.8 makes the gap argument methodologically rather than critically, anchored by a table of each work's platform, team size, separation and reported quantity showing no two share all four. The chapter's central framing came out of W.2c and is the opposite of what the first structural draft assumed: the field is not short of strong results, it is short of comparable ones. `docs/thesis/` added with a drafting-only preamble that stubs `siunitx` and renders forward references as `[?]`; build artefacts gitignored, sources tracked. `references.bib` entry types corrected from article to misc (arXiv preprints), which also removed the empty-journal warnings. Four `\todo{}` markers remain in the chapter as real open items. No code touched. |
 | 2026-08-23 (14) | W.2c done: **all 15 papers read at claim level**, with every quotable claim recorded in the paper's own words in `20_Verified_Claims.md` and the depth of reading stated per paper. **RQ3 had to be reframed.** It asked whether pairwise interactions superpose; Shi et al. (2020) state outright that they do not, and Gielis et al. (2023) exists because of it — asking it would have claimed to discover published work. Narrowed to *how much* accuracy our 2-robot-trained model loses on 3 robots, which is a quantitative question about our platform and still worth asking. Two more matrix errors corrected (Neural-Swarm separation is 25 cm, not ~30; "usable onboard" for Gielis is unsupported), and one over-correction reversed — "L1 KNODE-DW MPC" is the paper's own method name. Verified figures now known: flatness-preserving residual reports 31 % error reduction, NMPC-matching at ~10× less compute, <30 s training data, 5 ms loop; SO(2)-equivariant 36 % 3D / 56 % vertical on two vehicles from 5 min of data. These are the bars our comparison sits beside, and §2.8 must not imply the field lacks strong results — it lacks comparable ones. Chapter 2 prose (W.5) is now unblocked. No code touched. |
 | 2026-08-23 (13) | W.2b done: **15 papers collected**, `docs/references.bib` generated from the arXiv API rather than typed from memory, PDFs gitignored but rebuildable via `papers/fetch_papers.sh`. Two papers not previously in our matrix were found (Yang/Welde/Matni 2025 flatness theory; Bauersfeld et al. RA-L 2024 airflow characterisation). **Five bibliographic errors in our own notes were corrected**, including a wrong paper title, a wrong method name (LINDI, not "IL-NDI"), and the Hsieh ambiguity resolved (Pei-An Hsieh first author vs M. Ani Hsieh senior author on three different papers). **A second misattribution was found**: the W.3 draft had corrected the NA-INDI result to "lowest tracking error", taken from our own `paper_summaries.md`; the full text shows the hybrid's margin is small and condition-dependent, and the paper's headline is sensor elimination. Corrected in five documents; `paper_summaries.md` now carries a DO NOT CITE banner. The sequence — two wrong claims in a row, both from trusting our own summaries — is written up in `17` §1 as the justification for the citation rules. Only 2 of 15 papers are verified at claim level; W.2c is that work. |

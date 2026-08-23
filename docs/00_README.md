@@ -12,7 +12,7 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | **W.6** — Chapter 3, system modelling |
+> | Next | **C.0 stage 1** — validate the controllers | **W.8** — Chapter 4, control architectures |
 > | Blocked by | Lab access | Nothing |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
@@ -62,7 +62,7 @@ else is detail hanging off it.
 | [`01_Thesis_Project_Snapshot.md`](01_Thesis_Project_Snapshot.md) | The idea, the 7 control strategies, timeline, status |
 | [`02_Literature_Matrix.md`](02_Literature_Matrix.md) | Structured overview of the relevant papers |
 | [`03_Gap_and_Contribution_Statement.md`](03_Gap_and_Contribution_Statement.md) | Gap analysis and contribution claim |
-| [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md) | The residual-force model — the maths behind `indi.a_res_*` |
+| [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md) | Short statement of how each controller family uses the residual. ⚠️ **Superseded on the gravity sign** by [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex), which matches the flight code (z-up) |
 | [`05_Experimental_Protocol_2Robot.md`](05_Experimental_Protocol_2Robot.md) | Protocol for the 2-robot comparison |
 | [`06_References_Overview.md`](06_References_Overview.md) | Every paper, with reading status |
 | [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md) | **The thesis's formal problem statement and its four research questions**, with hypotheses, the experiment answering each, and threats to validity |
