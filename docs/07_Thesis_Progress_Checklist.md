@@ -15,7 +15,7 @@ bottom.
 |---|---|
 | **Phase** | B — Practical Preparation |
 | **Done** | All software. Mode E migration, multi-robot script, repo/branch cleanup, docs. |
-| **Next action** | **Finish the sim validation matrix, then B.2 step 1 — flash and fly the ladder** |
+| **Next action** | **Hardware readiness — see ◆ PREPARATION OVERVIEW below.** All simulation work is complete |
 | **Done** | ✅ Sim formation validation complete — **34/34 cases, 33 pass, 1 expected, 0 defects** ([`12_Sim_Formation_Validation_Report.md`](12_Sim_Formation_Validation_Report.md)). All 16 scenarios fly under BOTH controllers. Found and fixed **two flight-code bugs** neither of which single-drone flight could catch |
 | **New** | All 4 control modes run in the CS2 simulator with the downwash model — [`09_Simulation.md`](09_Simulation.md). Sim can disprove a controller, not validate one |
 | **Flight volume** | x −1..1, y −2..2, z 0.30..1.70 — applied and **corroborated** by an independent statement from 2026-07-27 (z, x identical; y then ±2.1). Still not tape-measured. With `--auto-center --rotate 90` **all 19 configs fit at full default parameters** |
@@ -35,6 +35,57 @@ bottom.
 | **uSD logging is the dataset; radio is for monitoring** | Radio cannot carry 2 drones at full rate. 500 Hz onboard per drone, independent of radio — `tools/README_usd_thesis_logging.md`. Requires a Micro SD deck per drone. |
 
 ---
+
+---
+
+## ◆ PREPARATION OVERVIEW — everything before the thesis core
+
+One table for "what is actually ready". Nothing in the **Done** rows still needs work;
+everything in **Left** stands between here and collecting the first real dataset.
+
+### ✅ Done
+
+| # | Area | What exists | Evidence |
+|---|---|---|---|
+| 1 | Planning & literature | 7 control strategies defined, literature matrix, gap statement, residual-wrench model, 2-robot protocol, chapter structure | [`01`](01_Thesis_Project_Snapshot.md)–[`06`](06_References_Overview.md) |
+| 2 | Trajectory path | Mode D → Mode E migration; Mode D frozen byte-identical; `--laps`, rest-to-rest closed loops, one frame convention | [`08`](08_Trajectory_Upload_Paths.md) |
+| 3 | **Residual measurement** | `indi.a_res_*` = f_res/m, logged in **every** controller mode | §5 of [`12`](12_Sim_Formation_Validation_Report.md) |
+| 4 | Multi-drone execution | `formation_flight.py` (shared trajectory) + `run_formation.py` (per-robot trajectories), staged takeoff, safety gate | [`10`](10_Formation_Library.md) |
+| 5 | Logging | uSD 500 Hz × 34 vars, broadcast start so per-drone logs share an origin, `merge_usd_logs.py` measures the real offset | — |
+| 6 | Analysis tooling | `analyze_formation.py`, `verify_formation_sim.py`, `summarise_matrix.py` (completeness audit) | — |
+| 7 | **Simulation** | Geometric + all 3 INDI modes run as the *same Rust source that flies*, with the Neural-Swarm2 downwash model | [`09`](09_Simulation.md) |
+| 8 | **Formation library** | 16 scenarios (A1–A8, B1–B3, C1–C5), spec-checked, safety-gated | [`10`](10_Formation_Library.md) |
+| 9 | **Formation validation in sim** | **34 cases = 16 scenarios × 2 controllers. 33 pass, 1 expected, 0 defects** | [`12`](12_Sim_Formation_Validation_Report.md) |
+| 10 | Flight-code bugs found & fixed | Residual sign (INDI was *doubling* disturbances); `a_res` dead under geometric (blocked Geometric+NN data) | §6 of [`12`](12_Sim_Formation_Validation_Report.md) |
+| 11 | Lab volume applied | x −1…1, y −2…2, z 0.30…1.70; all 19 configs fit via `--auto-center --rotate 90` | [`11`](11_Hardware_Readiness_Checklist.md) |
+| 12 | Docs & memory | This file, 08–12, external review brief, memory current | — |
+
+### ⬜ Left before the core work
+
+| # | Task | Why it blocks | Owner |
+|---|---|---|---|
+| 1 | **Tape-measure the flight volume** | Current numbers are an estimate; scenarios sit within ~10 cm of the walls | You |
+| 2 | Resolve firmware bindings provenance | ~110 uncommitted lines; the simulator does not build without them | Decision |
+| 3 | Hardware inventory | Drones, decks, batteries, SD cards counted and working | You |
+| 4 | Flash firmware, confirm gains read back | `kv_xy` must be **5.0**, not the simulator's 8.0 | Bench |
+| 5 | **Single-robot ladder** | **Mode E has never flown.** figure8 Mode D → figure8 Mode E → circle | Flight |
+| 6 | Re-validate INDI hover after the sign fix | It changes a control term; treat as a new configuration | Flight |
+| 7 | First 2-robot flights, large separation | A1 at Δz 0.75 → 0.50, then A3. Nothing under 0.5 m on day one | Flight |
+| 8 | Confirm `a_res` non-zero in flight | Needs a rotor-speed source; zero means no thesis data | Flight |
+| 9 | Check measured uSD sync | The few-ms figure is predicted, never measured on real logs | Flight |
+| 10 | **Freeze the gains** | Re-tuning per controller would measure tuning effort, not the methods | Decision |
+
+### 🔎 Open, tracked, not blocking
+
+| Item | State |
+|---|---|
+| Sim needs ~2× hardware's position damping | Time-boxed and paused. Motor lag closed ~40%; `KI_P`, rotor drag, inertia, airframe all refuted |
+| Library coverage gaps | Yaw fixed at zero; no vertical relative motion except A7/C4; nothing above 3 robots |
+| External review | Brief sent for independent check of scenario-set completeness |
+
+**Then the core begins:** collect residual data → train the NN residual models → integrate the
+7 methods → run the systematic 2-robot comparison → extend to ≥3 robots.
+
 
 ## A. Planning & Documentation — ✅ COMPLETE
 
