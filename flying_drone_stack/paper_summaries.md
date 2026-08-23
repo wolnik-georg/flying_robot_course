@@ -15,6 +15,25 @@
 ### Neural-Augmented Incremental Nonlinear Dynamic Inversion for Quadrotors with Payload Adaptation
 **by Eckart Cobo-Briesewitz, Khaled Wahba, and Wolfgang Hönig (~2025)**
 
+> ## ⚠️ THIS SUMMARY CONTAINS ERRORS — DO NOT CITE FROM IT
+>
+> Checked against the full text on 2026-08-23
+> (`docs/papers/cobo_briesewitz_learned_indi_2025.pdf`). Three problems:
+>
+> 1. **Wrong title.** The paper is *"Learned Incremental Nonlinear Dynamic Inversion for Quadrotors
+>    with and without Slung Payloads"*, L4DC 2026, arXiv:2503.09441.
+> 2. **Wrong method name.** The learned method is **LINDI**, not "IL-NDI".
+> 3. **Wrong result ordering.** This summary says *"NA-INDI lowest error, IL-NDI slightly better
+>    than classical INDI"*. The paper reports NA-INDI best **without** payload *"although with a
+>    small margin"* (4.14 vs 4.28 cm INDI, figure-8), and **similar to INDI** with a payload
+>    (5.39 vs 5.38 cm). LINDI is *similar to* INDI, not better — on figure-8 it is slightly worse
+>    (4.41 vs 4.28). The paper's headline is **sensor elimination**: LINDI matches INDI without
+>    rotor-speed measurement.
+>
+> An incorrect claim from this summary propagated into `docs/03`, `15`, `16` before being caught.
+> See `docs/17_Source_Ledger_and_Citation_Discipline.md` §1–2. The rest of this file has **not**
+> been re-verified; treat every summary here as a drafting aid, never a citation.
+
 **Abstract (explained in full)**  
 Traditional quadrotor flight controllers model most of the forces and torques acting on the vehicle (rotor thrust, gravity) but ignore so-called residual forces/torques (fa, τa) caused by blade flapping, drag, ground effect, or the swinging dynamics of a slung payload. Computing these residuals analytically is too expensive for real-time onboard use. Incremental Nonlinear Dynamic Inversion (INDI) estimates them on the fly by comparing IMU measurements with the nominal model, but it requires noisy special sensors (e.g., rotor RPM) and still produces noisy estimates.
 

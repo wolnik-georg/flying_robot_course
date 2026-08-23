@@ -7,3 +7,8 @@ __pycache__/
 **/*.zip
 # colcon build logs (this repo is also a colcon workspace root)
 log/
+
+# Downloaded papers: 48 MB of third-party PDFs. Not ours to redistribute, and reproducible from
+# docs/references.bib (every entry carries its arXiv id). The .bib and the fetch script ARE
+# tracked, so a clone can rebuild the library; the PDFs themselves are not.
+docs/papers/*.pdf

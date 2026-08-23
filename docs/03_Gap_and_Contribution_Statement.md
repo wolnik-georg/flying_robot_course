@@ -13,7 +13,7 @@ Two main families of methods address aerodynamic interaction forces (mainly down
 - **Reactive methods** (primarily INDI) estimate residual forces online from inertial measurements and compensate them incrementally. They are computationally light and react quickly, but do not use prior knowledge of the interaction.
 - **Predictive methods** learn a neural network model of the residual interaction forces from relative states and inject the prediction as feed-forward into a baseline controller (geometric SE(3), feedback-linearising, or MPC).
 
-A hybrid approach combining neural residual prediction with INDI has been proposed and validated for a **single vehicle**, with and without a slung payload (Cobo-Briesewitz et al.). There the hybrid achieved the **lowest tracking error of the methods compared**. It has not been studied in the multi-robot case, where the residual is caused by neighbouring vehicles rather than by the vehicle itself.
+A hybrid approach combining a learned residual with INDI has been demonstrated on a **single vehicle**, with and without a slung payload (Cobo-Briesewitz et al., L4DC 2026). There the hybrid (NA-INDI) was best without a payload but **by a small margin** (4.14 cm vs 4.28 cm for INDI on a figure-8), and with a payload it *"remains similar in performance"* to INDI. That paper's headline contribution is a different one: a learned residual (LINDI) that matches INDI **without requiring rotor-speed sensors**. The hybrid has not been studied in the multi-robot case, where the residual is caused by neighbouring vehicles rather than by the vehicle itself and is a function of measurable relative state.
 
 ### The Gap
 

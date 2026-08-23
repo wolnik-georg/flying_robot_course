@@ -24,8 +24,8 @@ is the map of every other document.
 > Model → **C.3** Integrate the Strategies → **C.4** Systematic Comparison
 >
 > **✍️ Writing track** — blocked by nothing. W.1 problem statement ✅ · W.2 related-work structure ✅
-> · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ ·
-> **W.2b collect the paper PDFs + `.bib` ⬅️ next** (Chapter 2 cannot be finalised without them)
+> · W.3 strategy descriptions ✅ · W.4 contribution statement ✅ · W.2b paper library ✅ (15 PDFs +
+> `references.bib`) · **W.2c read them at claim level ⬅️ next** (only 2 of 15 verified so far)
 >
 > Full plan: [`docs/07_Thesis_Progress_Checklist.md`](docs/07_Thesis_Progress_Checklist.md)
 
