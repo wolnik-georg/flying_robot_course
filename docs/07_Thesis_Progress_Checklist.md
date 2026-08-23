@@ -72,8 +72,13 @@ everything in **Left** stands between here and collecting the first real dataset
 | 6 | Re-validate INDI hover after the sign fix | It changes a control term; treat as a new configuration | Flight |
 | 7 | First 2-robot flights, large separation | A1 at Δz 0.75 → 0.50, then A3. Nothing under 0.5 m on day one | Flight |
 | 8 | Confirm `a_res` non-zero in flight | Needs a rotor-speed source; zero means no thesis data | Flight |
-| 9 | Check measured uSD sync | The few-ms figure is predicted, never measured on real logs | Flight |
+| 9 | Check measured uSD sync | The few-ms figure is predicted, never measured on real logs. **Not in the external review's list — kept because it silently corrupts multi-drone training pairs if wrong** | Flight |
 | 10 | **Freeze the gains** | Re-tuning per controller would measure tuning effort, not the methods | Decision |
+
+> **Ordering is a constraint, not a suggestion.** Items 5 onward must not be attempted until the
+> preceding ones are clean — the single-robot rungs exist to separate "the migration broke
+> something" from "the interaction broke something". If a two-robot flight is the first thing that
+> fails, those two causes are indistinguishable.
 
 ### 🔎 Open, tracked, not blocking
 
@@ -193,27 +198,44 @@ everything in **Left** stands between here and collecting the first real dataset
 
 ## C. Core Experimental Work — ⬜ NOT STARTED
 
-### C.1 Data & Models
-- [ ] **Use the simulator first for each new method** — a controller that cannot hold hover in sim will not fly. Cheap disproof; not evidence it works (no motor lag, no EKF, no noise)
-- [ ] Collect residual-force data with pure INDI
-- [ ] Train first NN residual models
-- [ ] Validate residual model quality
+Gated behind the whole of §B. Theoretical writing (problem statement, related work) can run in
+parallel and is not listed here.
 
-### C.2 Controller Integration (7 methods)
-- [ ] 1. Pure INDI
-- [ ] 2. Geometric + NN *(when adding it: give any new stateful controller a per-vehicle state swap, or multi-drone sim silently shares its filters — see `09_Simulation.md`)*
-- [ ] 3. FBL + NN *(once code is available)*
-- [ ] 4. (Optional) Hybrid — Neural-Augmented INDI
-- [ ] 5. (Optional) Residual RL — ProxFly-style
-- [ ] 6. (Extra) Light Learning-based MPC — residual-MPC / simplified KNODE
-- [ ] 7. (Extra) Geometric + Residual RL
+### C.0 — Hardware validation that nothing is broken
 
-### C.3 Experiments
-- [ ] Systematic 2-robot comparison (INDI vs Geometric+NN vs FBL+NN)
-- [ ] Extend best methods to ≥ 3 robots
-- [ ] Analyse results and compute metrics
+The first core task is not an experiment, it is a check. Two things changed in flight code that
+have never flown.
 
----
+- [ ] Geometric SE(3) flies cleanly on hardware — single robot, then large-separation two robots
+- [ ] Corrected full INDI flies cleanly — **the residual sign fix inverts a control term**
+- [ ] Explicitly confirm the sign fix introduced no new instability
+- [ ] Log and inspect `a_res` under **both** controllers; confirm magnitude, sign and noise
+
+### C.1 — Residual data collection
+
+- [ ] Fly the validated scenarios under **geometric** control while logging `a_res`, states and
+      rotor speeds. Geometric is the right choice here: it does not compensate, so the residual is
+      observed rather than partly cancelled
+- [ ] Start with A1, A3, A4, A7 at safe separations
+- [ ] Stage progressively smaller separations only once large-separation flights are clean
+- [ ] This is the training set for **every** residual-learning method
+
+### C.2 — Train the models and integrate the seven strategies
+
+- [ ] Train the neural residual models on the collected data
+- [ ] Validate residual model quality before integrating
+- [ ] Integrate all seven strategies into the same codebase:
+      1. Pure INDI · 2. Geometric + NN · 3. FBL + NN *(code pending from authors)* ·
+      4. Hybrid neural-augmented INDI · 5. Residual RL (ProxFly-style) ·
+      6. Light learning-based MPC · 7. Geometric + residual RL
+- [ ] *(When adding any stateful controller: give it a per-vehicle state swap, or multi-drone sim
+      silently shares its filters — see [`09_Simulation.md`](09_Simulation.md))*
+
+### C.3 — The comparison campaign
+
+- [ ] Systematic 2-robot comparison under the frozen formation library
+- [ ] Extend the best methods to ≥ 3 robots
+- [ ] Analyse and compute the protocol metrics
 
 ## D. Writing & Finalisation — ⬜ NOT STARTED
 
@@ -254,6 +276,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-08-23 (3) | External review returned. Confirmed the assessment and found no additional scenario gaps beyond the five already documented — a weak positive, not proof of completeness. Contributed the Core Task sequencing, now §C.0–C.3, with hardware validation of the two unflown flight-code fixes as an explicit gate before any data collection. |
 | 2026-08-23 (2) | Validation extended to the full library: 34/34 cases, 33 pass, 1 expected, 0 defects. A6/A7/C1–C5 run for the first time (C5 needed a 1-drone roster). Flight volume applied and corroborated; scenario rotation added so all 19 configs fit the real room at full parameters. Shareable report artifact published. |
 | 2026-08-23 | Sim formation validation completed: 20/20 cases, 19 pass. Two flight-code bugs found and fixed — the residual sign (position INDI reinforced disturbances at exactly 2.00x instead of rejecting them) and `a_res` being dead under geometric (blocking Geometric+NN training data). Neither is detectable in single-drone flight. INDI now reduces residual displacement by 2-3 orders of magnitude in sim; not a thesis result until hardware confirms. |
 | 2026-08-22 (8) | Sim execution gaps addressed. Infrastructure: sidecar JSON + `verify_formation_sim.py` (automated commanded-vs-realised check that works without hardware `/pose`), `crazyflies_sim3.yaml` for the 3-robot scenarios, `run_sim_matrix.sh` harness. Full 20-run matrix (Priority A × 2 robots, Priority B × 3 robots, each under geometric and INDI) launched. First result: A1/geometric PASS at 27.6 mm, which is the downwash sag rather than tracking error. |
