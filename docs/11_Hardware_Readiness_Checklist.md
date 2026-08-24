@@ -1,6 +1,25 @@
 # Hardware Readiness Checklist — the operational detail of **C.0**
 
-**Last updated:** 23 August 2026
+**Last updated:** 24 August 2026
+
+---
+
+## ✂️ FLIGHT-DAY CARD — three checks, in this order
+
+**Keep this visible at the bench. If any one fails, stop — everything after it is meaningless.**
+
+| # | Check | Where | Pass | Fail means |
+|---|---|---|---|---|
+| **1** | `kv_xy` reads back **5.0** | Param readback after flash | `5.0` | **`8.0` is the simulator's value.** Hardware crashed 2/2 at 4 and flies at 5 — do not take off on a sim gain |
+| **2** | `a_res` is **non-zero** | `indi.a_res_*` on a 2-drone hover | visibly non-zero, moves with separation | Reads exactly `0.0` → **no RPM source → no thesis data at all.** Not a small error; the entire signal is absent |
+| **3** | `a_res` **cancels, not amplifies** | 2-drone A1, INDI on vs off | compensation *reduces* separation error | If error grows, the **sign fix did not take**. Pre-fix this measured exactly **2.00×** — the controller reinforcing the disturbance it should cancel |
+
+**Check 3 is the one that matters.** The first lab objective is proving the residual is subtracted,
+not that trajectories look elegant. Every INDI number recorded before the sign fix is obsolete.
+
+Probe: `experiments/analysis/probe_residual_sign.py`
+
+---
 
 > ### ⬅️ **This is the next actionable phase of the thesis.**
 >
@@ -262,14 +281,29 @@ that is a *result about the method*, and it is reported as such — not fixed by
 Decided 2026-08-23. Flown under **geometric** control — it does not compensate, so the residual is
 observed rather than partly cancelled by the controller being measured.
 
-| Order | Scenario | Separation | Why here |
-|---|---|---|---|
-| 1 | **A1** vertical stack hover | Δz 0.75 m → 0.50 m | Widest and least dynamic. Both vehicles stationary, so any displacement is the interaction itself |
-| 2 | **A3** static-top | Δz 0.40 m → 0.30 m | Adds motion to one vehicle only. Captures wash entry and exit, not just the steady level |
-| 3 | **A4** offset stack | Δz 0.60 m, offset 0.10 m | Partial overlap — the asymmetric regime a model needs and cannot infer from aligned cases |
+| Order | Scenario | Separation | Status | Why here |
+|---|---|---|---|---|
+| 1 | **A1** vertical stack hover | Δz 0.75 m → 0.50 m | **Required** | Widest and least dynamic. Both vehicles stationary, so any displacement is the interaction itself |
+| 2 | **A3** static-top | Δz 0.40 m → 0.30 m | **Required** | Adds motion to one vehicle only. Captures wash entry and exit, not just the steady level |
+| 3 | **A4** offset stack | Δz 0.60 m, offset 0.10 m | **REQUIRED — dataset is invalid without it** | Partial overlap — the asymmetric regime a model needs and cannot infer from aligned cases. **The only scenario in this list that excites relative _y_** |
+| 4 | **A7** merge, or a short lateral translate under a stack | per scenario spec | Strongly preferred | Adds lateral *motion* rather than a static lateral offset. Without it the model sees relative *y* only at one value |
 
-**Only after all three are clean** does anything closer follow — A2 and A5 for constant-separation
-tracking, then A7's merge, and the `--allow-extreme` scenarios (A6, C4) last of all.
+### 🚦 Minimum viable dataset — the gate on C.2
+
+**A1 + A3 + A4.** All three, or C.2 does not start.
+
+**A4 is not the optional third item.** If a session runs short, the instinct is to stop after the
+two clean vertical cases — and that produces a dataset in which relative *y* is constant. The
+simulation dry run showed exactly this: `train.py` reported `sigma = 1.0` for the lateral inputs
+when fed A3 alone, meaning the normaliser saw zero variance. A model trained that way is
+extrapolating the first time any formation moves sideways, and **RQ3 becomes unanswerable** —
+not badly answered, unanswerable.
+
+Confirmed against external review 2026-08-24.
+
+**Only after the required set is clean** does anything closer follow — A2 and A5 for
+constant-separation tracking, then A7's full merge, and the `--allow-extreme` scenarios
+(A6, C4) last of all.
 
 
 ---

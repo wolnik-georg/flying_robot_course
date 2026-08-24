@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 23 August 2026
+**Last updated:** 24 August 2026
 
 **This is the single source of truth for project status.** It is the one file to read to know what
 is done, where we are, and what comes next. Keep it current — see *Keeping this current* at the
@@ -20,7 +20,7 @@ bottom.
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **C.0 stage 1 — validate the controllers still behave.** [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) |
-| **Next action — writing** | **Nothing blocking.** Chapters 1–5 drafted (35 pp, ~12,600 words); all desk-side verification closed. Remaining writing items need flight data or the lab |
+| **Next action — writing** | **Nothing blocking.** Chapters 1–5 drafted (38 pp, ~14,356 words) and revised 24 Aug — full-text reading of every held source, 3 misattributions + 18 accuracy corrections applied. Remaining writing items need flight data or the lab |
 | **Blocking** | Lab track: lab access. Writing track: nothing |
 | **⚠️ Must clear in C.0** | **Three flight-code changes have never flown**: (1) residual sign fix, (2) `a_res` gating fix, (3) `rnn.en` residual compensation. All three change control behaviour and **none is detectable in single-drone flight** |
 
@@ -112,6 +112,25 @@ something" and "the interaction broke something" are indistinguishable.
 |---|---|
 | **NN inference runs ONBOARD; training is offline** | Every controller — geometric, hybrid, learning-based — runs on the brushless Crazyflie. Needed an MLP in `no_std` Rust + a weight-upload path — **built and verified**, see [`13`](13_Residual_Learning.md). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
 | **uSD logging is the dataset; radio is for monitoring** | Radio cannot carry 2 drones at full rate. 500 Hz onboard per drone, independent of radio — `tools/README_usd_thesis_logging.md`. Requires a Micro SD deck per drone. |
+
+---
+
+### Design decisions closed by external review (2026-08-24)
+
+Six open design questions were put to independent review and are now **settled**. They are recorded
+here so they are not re-opened without new evidence.
+
+| # | Question | Decision | Reason |
+|---|---|---|---|
+| 1 | C.1 scenario order | **Changed — A4 is now mandatory**, A7 or a lateral translate strongly preferred | A3 never excites relative *y*; without A4 the model trains on a degenerate slice and RQ3 becomes unanswerable. See [`11`](11_Hardware_Readiness_Checklist.md) § Minimum viable dataset |
+| 2 | Frozen shared gains vs per-method tuning | **Keep frozen and shared** | Strategies 0/1/2/4 share the whole loop, so freezing is the stronger scientific choice. Record the residual risk for 3/6 under threats to validity |
+| 3 | Strategy 4 form | **Keep the reference form** — NN predicts the bulk, incremental term corrects the remainder | Independent subtraction double-counts. Masking of a poor prediction is mitigated by assessing model quality open-loop |
+| 4 | 2 vs 3 robots | **2 robots suffice for the primary ranking (RQ1); 3 are required for the transfer-penalty claim (RQ3)** | The library already supports 3 — **do not descope the B scenarios** |
+| 5 | Strategies 5 / 7 (RL) | **Explicitly deferred / stretch, not core** | The contribution does not depend on them. Do **not** invest in an RL training environment now |
+| 6 | Mode E maturity | **The 3-rung ladder is necessary and sufficient**: figure-8 Mode D → figure-8 Mode E → circle Mode E, only then multi-robot | One trajectory flight is not enough trust for a whole campaign |
+
+**Explicitly not to be done now:** wire Strategy 4 or 6 · per-method gain tuning · RL environment
+work · further simulator fidelity archaeology · results chapters.
 
 ---
 
