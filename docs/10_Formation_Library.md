@@ -86,6 +86,60 @@ Separations are always parameters, never constants; the defaults are the literat
 
 ---
 
+## Experimental grids — separation and speed
+
+Separation and speed are the two factors RQ2 turns on: the interaction is strongly
+nonlinear in distance, and its character changes with relative motion. Both are explicit,
+**discrete** parameters. The grids are small on purpose — they exist to cover the regimes
+the literature reports, not to search a continuum.
+
+| Factor | Grid | Flag | Applies to |
+|---|---|---|---|
+| **Speed** | 0.20, 0.30, 0.40, 0.50 m/s (hover = 0) | `--speed` | scenarios with a moving path |
+| **Vertical separation** | 0.50, 0.40, 0.30, 0.20 m | `--dz` (`--dz1`/`--dz2` for 3 robots) | all stacks; below 0.20 m needs `--allow-extreme` |
+| **Lateral separation** | 0.00, 0.10, 0.20 m | `--offset` (`--r`, `--sep`, `--gap`) | A4, B2, C1, C2 |
+
+```bash
+ros2 run crazyflie_examples run_formation --scenario A2 --dz 0.40 --speed 0.30 --check
+ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.60 --offset 0.20 --speed 0.30 --check
+ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.50 --hold 10 --check
+```
+
+### How `--speed` reaches the curve
+
+Two kinds of path, one flag:
+
+- **Paced by speed** — `line`, `shuttle`. `--speed` sets the peak of the rest-to-rest
+  profile directly.
+- **Paced by period** — `circle`, `lemniscate`. These take a period, not a speed, so
+  `build()` converts: peak speed scales exactly as `1/period`, so the requested speed
+  fixes the period. `--period` still works and **wins over `--speed`** when both are given.
+
+For a circle the conversion is the textbook `T = 2πr / v` (r = 0.75 m by default). **For a
+lemniscate it is not** — that formula is 42% low at the default radius, because the fastest
+point of a figure-of-eight does not lie on a circle of radius *a*. The conversion is scaled
+from a measurement of the actual curve, so both are exact.
+
+A `--speed` that cannot reach the curve is now **an error, not a silent default**, as is any
+flag a scenario does not take.
+
+> ### ⚠️ Speed metadata recorded before 2026-08-24 is wrong
+>
+> `--speed` never reached `circle` or `lemniscate` paths, yet was still recorded. Runs of
+> **A2, B1, B2** logged `speed = 0.4` and flew **0.63 m/s**; **A4** logged 0.4 and flew 0.50.
+> Every circular scenario in the 34-case validation matrix ran at 0.63 m/s — above the
+> 0.2–0.5 m/s band this work targets — and speed was never actually varied.
+>
+> The **geometry** results are unaffected: separations were verified independently and
+> correctly, and the defaults are unchanged by the fix. Only the speed field was wrong.
+> Sidecars now carry a `realised` block holding the peak speed the curves actually
+> produce, and `verify_formation_sim.py` checks it against the flown states.
+>
+> Full fix report, 16-cell validation matrix and negative control:
+> [`../experiments/sim_validation/SPEED_MATRIX.md`](../experiments/sim_validation/SPEED_MATRIX.md)
+
+---
+
 ## Running
 
 Same command in simulation and on hardware; only the launch differs.

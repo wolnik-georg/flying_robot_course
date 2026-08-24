@@ -4,6 +4,9 @@
 
 ---
 
+> 📄 **Printable one-page sequence with exact commands: [`C0_FLIGHT_CARD.md`](C0_FLIGHT_CARD.md).**
+> This document is the reasoning behind it.
+
 ## ✂️ FLIGHT-DAY CARD — three checks, in this order
 
 **Keep this visible at the bench. If any one fails, stop — everything after it is meaningless.**
@@ -85,7 +88,7 @@ thing that fails, those two causes are indistinguishable.
 | 0.2 | Hardware inventory | Working brushless drones, decks, charged batteries, spare props — counted |
 | 0.3 | Firmware bindings decision | `crazyflie-firmware/bindings/` changes committed somewhere durable, or the patch confirmed re-appliable |
 | 0.4 | Flash firmware | `cd flying_drone_stack/firmware_app && make cload` completes |
-| 0.5 | Confirm gains on the drone | `indi_gains.*` and `pos_gains.*` read back as `crazyflies.yaml` intends — **`kv_xy` must be 5.0, not the simulator's 10.0** |
+| 0.5 | Confirm gains on the drone | `indi_gains.*` and `pos_gains.*` read back as `crazyflies.yaml` intends — **`kv_xy` must be 5.0, not the simulator's 8.0** (the sim was moved 10 → 8; `crazyflies_sim*.yaml` says 8.0) |
 | 0.6 | Confirm `clamp_en` | Currently `11` (tilt clamp OFF, set for inverted-loop work). Decide deliberately |
 
 ### 0.1 — the flight volume, and the floor we choose

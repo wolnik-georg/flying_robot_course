@@ -116,6 +116,12 @@ flight.** Validate figure8 Mode D → figure8 Mode E → circle before trusting 
 - **Any stateful controller needs a per-vehicle state swap**, or the multi-drone simulator silently
   shares its filters between vehicles.
 
+**Speed and separation are explicit discrete factors** (closed 2026-08-24): speed
+`{0.20, 0.30, 0.40, 0.50}` m/s + hover, Δz `{0.50, 0.40, 0.30, 0.20}` m, lateral
+`{0.00, 0.10, 0.20}` m. Before this, `--speed` was silently ignored on circular paths while
+still being recorded — A2/B1/B2 logged 0.4 m/s and flew 0.63. Geometry results are unaffected;
+only the speed field was wrong. See `experiments/sim_validation/SPEED_MATRIX.md`.
+
 **Known coverage gaps:** yaw fixed at zero · no vertical relative motion except A7/C4 · nothing
 above 3 robots.
 
@@ -158,7 +164,8 @@ Inference onboard, training offline. Peer position is already available onboard 
 ## 7. Where the work stands
 
 ```
-PREPARATION ████████████████████ 100%  ✅ finished
+PREPARATION              ████████████████████ 100%  ✅ finished
+Speed/separation sim fix ████████████████████ 100%  ✅ closed 2026-08-24
 C.0 Hardware Gate  ░░░░░░░░░░░░░░░░░░  ⬅️ NEXT — blocked on lab access
 C.1 Data collection ░░░░░░░░░░░░░░░░░  blocked by C.0
 C.2 Train model     ░░░░░░░░░░░░░░░░░  pipeline ready, needs real data

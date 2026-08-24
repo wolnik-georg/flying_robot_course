@@ -33,6 +33,13 @@ from crazyflie_examples.formations import scenarios as S  # noqa: E402
 # record_states columns: timestamp,x,y,z,qw,qx,qy,qz
 T, X, Y, Z, QW, QX, QY, QZ = range(8)
 
+# Tolerance on realised peak speed: commanded peak vs the peak actually flown, which
+# differ by tracking lag, overshoot and differentiation noise on the recorded states.
+# Whichever is larger. Loose enough not to fire on tracking error, tight enough to
+# catch a cell that ran at the wrong speed -- the case being guarded is 0.4 vs 0.63.
+SPEED_TOL_ABS = 0.08   # m/s
+SPEED_TOL_REL = 0.25   # fraction of commanded
+
 
 def load_states(csv_dir: Path, names: list[str]):
     out = []
@@ -101,9 +108,28 @@ def verify(meta_path: Path, csv_dir: Path, tol_z: float, tol_xy: float):
     diverged = max_tilt > 60.0
     if diverged:
         ok = False
+
+    # Speed is an independent variable of the sweep, so it has to be verified, not
+    # assumed. Circular paths are paced by period and used to ignore --speed entirely
+    # while still recording it, so a cell could be logged at 0.4 m/s and flown at 0.63.
+    # Compare what the rebuilt scenario commands against what the vehicles actually did.
+    v_cmd = max(r.curve.peaks()[0] for r in sc.robots) / float(meta.get('timescale', 1.0))
+    dt = grid[1] - grid[0]
+    v_got = float(max(np.linalg.norm(np.gradient(p, dt, axis=0), axis=1).max() for p in pos))
+    # Wide because it compares a commanded peak against a tracked one: the vehicle
+    # lags, overshoots and carries estimator noise, none of which is a speed error.
+    speed_ok = abs(v_got - v_cmd) <= max(SPEED_TOL_ABS, SPEED_TOL_REL * max(v_cmd, 1e-6))
+    if not speed_ok:
+        ok = False
+
+    reason = ''
+    if not ok:
+        reason = ('diverged' if diverged
+                  else 'speed out of tolerance' if not speed_ok
+                  else 'geometry out of tolerance')
     return dict(ok=ok, rows=rows, max_tilt=max_tilt, diverged=diverged,
-                covered=covered, reason='' if ok else
-                ('diverged' if diverged else 'geometry out of tolerance'))
+                v_cmd=v_cmd, v_got=v_got, speed_ok=speed_ok,
+                covered=covered, reason=reason)
 
 
 def main():
@@ -132,6 +158,9 @@ def main():
           + (f"  ({r['reason']})" if r['reason'] else ''))
     print(f"    window covered {r['covered'] * 100:.0f}% of the trajectory"
           + (f", max tilt {r['max_tilt']:.1f} deg" if 'max_tilt' in r else ''))
+    if 'v_cmd' in r:
+        print(f"    peak speed {r['v_got']:.3f} m/s (cmd {r['v_cmd']:.3f}) "
+              + ('ok' if r['speed_ok'] else 'OUT OF TOL'))
     for row in r['rows']:
         print(f"    {row['pair']:>15}  dz {row['dz_got']:+.3f} (cmd {row['dz_cmd']:+.3f}, "
               f"sd {row['dz_std']:.3f})  mean|ez| {row['mean_ez'] * 1000:5.1f} mm  "

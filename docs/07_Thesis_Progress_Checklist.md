@@ -115,6 +115,30 @@ something" and "the interaction broke something" are indistinguishable.
 
 ---
 
+### Speed & separation are now real experimental factors — CLOSED 2026-08-24
+
+Separation was already parameterised. **Speed was not**: `--speed` never reached `circle` or
+`lemniscate` paths — the defaults for A2, A4, B1, B2 — yet was still recorded, so those runs
+logged 0.4 m/s and flew **0.63**, above the 0.2–0.5 m/s band this work targets. Three fixes:
+speed converts to a period, the *realised* speed is recorded and verified, and an inapplicable
+flag is now an error instead of a silent default.
+
+Validated 16/16 in sim on both controllers, with a negative control proving the new check fires.
+All 16 scenarios remain byte-identical at their defaults, and 40/40 existing sidecars replay
+unchanged. **Geometry conclusions in [`12`](12_Sim_Formation_Validation_Report.md) stand** —
+only the speed field was ever wrong.
+
+Report: [`../experiments/sim_validation/SPEED_MATRIX.md`](../experiments/sim_validation/SPEED_MATRIX.md).
+Official grids are in [`10_Formation_Library.md`](10_Formation_Library.md) § Experimental grids.
+
+> **Do not expand this.** No further grid growth, no combinatorial sweeps. The mm figures are
+> simulation against the Neural-Swarm2 model — a hypothesis for the lab, not thesis results.
+
+**Known, deliberately unfixed:** `run_sim_matrix.sh` deletes `state_$CTRL` each run, so raw
+states are not re-examinable after the fact. Non-blocking; fix only if re-inspection matters.
+
+---
+
 ### Design decisions closed by external review (2026-08-24)
 
 Six open design questions were put to independent review and are now **settled**. They are recorded

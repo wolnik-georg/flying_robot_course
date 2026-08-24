@@ -20,7 +20,9 @@
 REPO=/home/georg/Desktop/flying_robot_course
 CS2=/home/georg/Desktop/crazyswarm2
 OUT=$REPO/experiments/sim_validation
-RESULTS=$OUT/matrix_results.md
+# Overridable so a companion matrix can reuse one_run()/run_with_retry() without
+# writing into this matrix's results file.
+RESULTS=${RESULTS:-$OUT/matrix_results.md}
 LOGDIR=$REPO/experiments/logs
 mkdir -p "$OUT"
 
@@ -39,7 +41,12 @@ one_run() {
   [ "$NROB" = "3" ] && ROSTER=crazyflies_sim3.yaml
   [ "$NROB" = "1" ] && ROSTER=crazyflies_sim1.yaml
   local STATE=state_$CTRL
-  rm -rf "$STATE"
+  # Each run already lands in its own timestamped subdirectory, so nothing needs
+  # clearing -- and clearing threw away every earlier run's raw states, leaving only
+  # the last one per controller. The results tables then pointed at directories that
+  # no longer existed, so no cell could be re-examined after the fact. Keep them; the
+  # pairing below selects this run's by age, not by being the only one present.
+  mkdir -p "$STATE"
 
   setsid timeout 420 ros2 launch crazyflie launch.py backend:=sim \
     crazyflies_yaml_file:=$CS2/crazyflie/config/$ROSTER \
@@ -64,7 +71,10 @@ one_run() {
   # (A1 at dz=0.25 scored against dz=0.50, giving exactly the 0.21 m difference).
   local META CSVDIR
   META=$(find "$LOGDIR" -name '*.meta.json' -newer "$MARKER" 2>/dev/null | sort | tail -1)
-  CSVDIR=$(ls -dt "$STATE"/*/csv 2>/dev/null | head -1)
+  # Same reasoning as the sidecar above, and now load-bearing: earlier runs' state
+  # directories are kept, so "newest" alone would happily pair this run's sidecar with
+  # a previous run's flight. Require it to postdate this run's marker.
+  CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv -newer "$MARKER" 2>/dev/null | sort | tail -1)
   if [ -z "$META" ] || [ -z "$CSVDIR" ]; then
     echo "  [$CTRL/$NROB $*] NO SIDECAR from this run (client rc=$RC)"
     return 1
@@ -111,6 +121,9 @@ B_SET=(
 )
 
 case "${1:-all}" in
+  # Load the helpers without running anything, for a companion matrix script.
+  --source-only)
+    return 0 2>/dev/null || exit 0 ;;
   one)
     shift
     one_run "$@"
