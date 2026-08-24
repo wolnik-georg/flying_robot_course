@@ -52,6 +52,22 @@ bottom.
 
 ---
 
+---
+
+## ✍️ Writing-track files are LOCAL ONLY
+
+The thesis prose (`docs/thesis/`), its supporting documents (`15`–`20`, the review brief), the
+bibliography (`docs/references.bib`) and the paper library (`docs/papers/`) are **deliberately not
+versioned in this repository**. They were removed from the pushed history on 2026-08-24 and are
+gitignored so they cannot be re-added by accident.
+
+They still exist in the working tree, and a copy is kept outside the repository at
+`~/Desktop/flying_robot_course_THESIS_LOCAL`. **Back that up separately — git no longer protects
+it.**
+
+The written record of *what* was done stays here (§ Writing Track and the History table below);
+only the manuscript itself is absent.
+
 ## ⇄ TWO PARALLEL TRACKS
 
 From 23 August 2026 the project runs two tracks that do not block each other. Keep them separate:
@@ -286,18 +302,18 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 
 | # | Item | State |
 |---|---|---|
-| **W.1** | **Problem statement & research questions** | ✅ **Drafted** — [`15`](15_Problem_Statement_and_Research_Questions.md) |
-| **W.2** | **Related Work structure** | ✅ **Drafted** — [`16`](16_Related_Work_Structure.md) |
-| **W.3** | **Strategy descriptions** — the 7 methods, with their treatment of the interaction force made explicit | ✅ **Drafted** — [`18`](18_Strategy_Descriptions.md) |
-| **W.4** | **Contribution statement** | ✅ **Drafted** — [`19`](19_Contribution_Statement.md) |
-| **W.0** | **Source ledger & citation discipline** — added after a misattribution was found | ✅ [`17`](17_Source_Ledger_and_Citation_Discipline.md) |
-| **W.2b** | **Collect the paper PDFs + a `.bib`** | ✅ **Done** — 15 papers, [`references.bib`](references.bib) |
-| **W.2c** | **Read the held papers at claim level** | ✅ **Done** — all 15, [`20`](20_Verified_Claims.md) |
-| **W.5** | **Chapter 2 prose** | ✅ **Drafted** — [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex), ~3200 words, builds clean |
-| **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) |
-| **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — [`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) |
-| **W.7** | **Chapter 5** — experimental setup & protocol | ✅ **Drafted** — [`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) |
-| **W.9** | **Chapter 1** — introduction | ✅ **Drafted** — [`thesis/ch1_introduction.tex`](thesis/ch1_introduction.tex) |
+| **W.1** | **Problem statement & research questions** | ✅ **Drafted** — `15` |
+| **W.2** | **Related Work structure** | ✅ **Drafted** — `16` |
+| **W.3** | **Strategy descriptions** — the 7 methods, with their treatment of the interaction force made explicit | ✅ **Drafted** — `18` |
+| **W.4** | **Contribution statement** | ✅ **Drafted** — `19` |
+| **W.0** | **Source ledger & citation discipline** — added after a misattribution was found | ✅ `17` |
+| **W.2b** | **Collect the paper PDFs + a `.bib`** | ✅ **Done** — 15 papers, `references.bib` |
+| **W.2c** | **Read the held papers at claim level** | ✅ **Done** — all 15, `20` |
+| **W.5** | **Chapter 2 prose** | ✅ **Drafted** — `thesis/ch2_related_work.tex`, ~3200 words, builds clean |
+| **W.6** | **Chapter 3** — system modelling & residual formulation | ✅ **Drafted** — `thesis/ch3_system_modelling.tex` |
+| **W.8** | **Chapter 4** — control architectures | ✅ **Drafted** — `thesis/ch4_control_architectures.tex` |
+| **W.7** | **Chapter 5** — experimental setup & protocol | ✅ **Drafted** — `thesis/ch5_experimental_setup.tex` |
+| **W.9** | **Chapter 1** — introduction | ✅ **Drafted** — `thesis/ch1_introduction.tex` |
 | **W.10** | **Close the open verification items** | ✅ **4 of 5 closed** — incl. the non-arXiv sweep. The last needs the lab |
 | **W.5** | Chapter 2 prose, following the W.2 skeleton | ⬜ |
 | **W.6** | Chapter 3 — system modelling, from [`04`](04_Unified_Residual_Wrench_Model.md) | ⬜ |
@@ -305,7 +321,7 @@ foundation; W.5 onward are the chapters themselves, which are tracked in §D.
 
 ### W.1 — Problem statement & research questions ✅
 
-Drafted in [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md):
+Drafted in `15_Problem_Statement_and_Research_Questions.md`:
 formal problem statement in the notation of [`04`](04_Unified_Residual_Wrench_Model.md), an explicit
 scope table, **four research questions** with falsifiable hypotheses, a mapping from each question
 to the experiment that answers it, and a threats-to-validity table.
@@ -322,7 +338,7 @@ to the experiment that answers it, and a threats-to-validity table.
 
 ### W.2 — Related Work structure ✅
 
-Drafted in [`16_Related_Work_Structure.md`](16_Related_Work_Structure.md): nine sections ordered so
+Drafted in `16_Related_Work_Structure.md`: nine sections ordered so
 that reading them **produces** the gap statement rather than asserting it, each grounding a specific
 strategy or research question. §2.8 — *how these methods are evaluated, and why the results do not
 compose* — is the load-bearing section and the one that makes this thesis a contribution rather
@@ -330,7 +346,7 @@ than a re-implementation.
 
 ### W.3 — Strategy descriptions ✅
 
-[`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md). All seven, each split into **what we
+`18_Strategy_Descriptions.md`. All seven, each split into **what we
 implement** (verifiable against our source) and **the reference method** (attributed, with a
 verification status and stated deviations) — never merged into one sentence. The differences are
 made explicit as three questions: what the controller knows about the residual, *when* it knows it,
@@ -342,7 +358,7 @@ flown condition — without it, "how much did compensation help" has no denomina
 
 ### W.4 — Contribution statement ✅
 
-[`19_Contribution_Statement.md`](19_Contribution_Statement.md). Five claims (C1 controlled
+`19_Contribution_Statement.md`. Five claims (C1 controlled
 comparison, C2 hybrid multi-robot, C3 superposition test, C4 cost account, C5 apparatus), an
 explicit **what this thesis does not claim** table, and a one-paragraph abstract version. Two
 honesty notes carried in the document: the "first systematic comparison" claim depends on a survey
@@ -351,7 +367,7 @@ our own source ledger rates as least-verified and must be re-audited before use;
 
 ### W.0 — Source ledger & citation discipline ✅ *(added, not originally planned)*
 
-[`17_Source_Ledger_and_Citation_Discipline.md`](17_Source_Ledger_and_Citation_Discipline.md).
+`17_Source_Ledger_and_Citation_Discipline.md`.
 Added after drafting W.1/W.2 propagated a misattribution out of [`03`](03_Gap_and_Contribution_Statement.md):
 the neural-augmented INDI hybrid was described as showing "limited benefit" when the source reports
 it achieving the **lowest tracking error**. Corrected in three documents.
@@ -364,7 +380,7 @@ Holds seven citation rules, a per-paper **verification status**, and the known d
 
 ### W.2b — Collect the PDFs and build the bibliography ✅
 
-**15 papers** collected in [`papers/`](papers/), with [`references.bib`](references.bib) generated
+**15 papers** collected in `papers/`, with `references.bib` generated
 **from the arXiv API** rather than typed from memory. Filenames match the BibTeX keys. PDFs are
 gitignored (48 MB of third-party work, not ours to redistribute) and rebuildable via
 `papers/fetch_papers.sh`, since every entry carries its arXiv id.
@@ -392,12 +408,12 @@ flatness-preserving-residual theory the 2026 formation paper builds on; and Baue
 > is **sensor elimination** (LINDI matching INDI without rotor-speed measurement).
 >
 > Corrected in `03`, `15`, `16`, `18`, `19`. `paper_summaries.md` now carries a **DO NOT CITE**
-> banner. Full account: [`17`](17_Source_Ledger_and_Citation_Discipline.md) §1.
+> banner. Full account: `17` §1.
 
 ### W.2c — Read the held papers at claim level ✅
 
 All 15 read. Every quotable claim is recorded **in the paper's own words** in
-[`20_Verified_Claims.md`](20_Verified_Claims.md), with the depth of reading stated per paper (two
+`20_Verified_Claims.md`, with the depth of reading stated per paper (two
 deep — abstract, results, conclusion; thirteen at abstract level, which is what the chapter needs
 from them and is marked as such). **Cite from `20` or the PDF, never from `02`.**
 
@@ -422,8 +438,8 @@ Tight Formations*; both names are correct.
 > **Narrowed to:** *how much* accuracy does our 2-robot-trained deep-sets model lose on 3-robot
 > formations, and is the loss small enough that the simpler architecture stays the right
 > engineering choice? A quantitative penalty on our platform — defensible, and still worth asking.
-> Updated in [`15`](15_Problem_Statement_and_Research_Questions.md) and C3 of
-> [`19`](19_Contribution_Statement.md).
+> Updated in `15` and C3 of
+> `19`.
 
 **Bars our work is measured against** (now known, and stronger than assumed): flatness-preserving
 residual reports **31 %** error reduction, **NMPC-matching at ~10× less compute**, **< 30 s**
@@ -433,12 +449,12 @@ vehicles from **5 minutes** of data. §2.8 must not imply the field lacks strong
 
 ### W.5 — Chapter 2 prose ✅
 
-[`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex) — ~3200 words, 9 pages with
+`thesis/ch2_related_work.tex` — ~3200 words, 9 pages with
 references, **builds clean** (`latexmk -pdf ch2_standalone.tex`, zero undefined citations, all 15
 sources cited).
 
-Written strictly from [`20_Verified_Claims.md`](20_Verified_Claims.md): every number in the chapter
-is one recorded there in the source's own words. Follows the [`16`](16_Related_Work_Structure.md)
+Written strictly from `20_Verified_Claims.md`: every number in the chapter
+is one recorded there in the source's own words. Follows the `16`
 skeleton, with §2.8 arguing the gap methodologically — including
 Table~`tab:rw-conditions`, which lists each work's platform, team size, separation and reported
 quantity and shows that **no two rows share all four**.
@@ -460,7 +476,7 @@ to unwritten chapters as `[?]`. The real thesis preamble replaces both.
 
 ### W.6 — Chapter 3, system modelling ✅
 
-[`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex) — ~2250 words. Combined build
+`thesis/ch3_system_modelling.tex` — ~2250 words. Combined build
 with Chapter 2 is **16 pages, no undefined references** (`latexmk -pdf thesis_draft.tex`).
 
 Defines the residual wrench as the single quantity every strategy estimates, then gives both routes
@@ -484,7 +500,7 @@ Three things the chapter states that the experiments then depend on:
 
 ### W.8 — Chapter 4, control architectures ✅
 
-[`thesis/ch4_control_architectures.tex`](thesis/ch4_control_architectures.tex) — ~2850 words.
+`thesis/ch4_control_architectures.tex` — ~2850 words.
 **Combined build is now 24 pages** across Chapters 2–4, no undefined citations, no dangling
 references, all 15 sources cited.
 
@@ -511,7 +527,7 @@ Strategy 6 is feasible onboard at all, which is itself an RQ4 result.
 
 ### W.7 — Chapter 5, experimental setup ✅
 
-[`thesis/ch5_experimental_setup.tex`](thesis/ch5_experimental_setup.tex) — ~2460 words.
+`thesis/ch5_experimental_setup.tex` — ~2460 words.
 **Combined build is 31 pages** across Chapters 2–5, zero undefined citations or references.
 
 Platform, flight volume, the 16 frozen scenarios, the measurement chain, the C.0 gate, the metrics,
@@ -536,13 +552,13 @@ there rather than only in the results.
 
 ### W.9 — Chapter 1, introduction ✅
 
-[`thesis/ch1_introduction.tex`](thesis/ch1_introduction.tex) — ~1810 words. **The combined build is
+`thesis/ch1_introduction.tex` — ~1810 words. **The combined build is
 35 pages, ~12,600 words across Chapters 1–5**, zero undefined citations or references.
 
 Written last of the unblocked chapters deliberately: an introduction promises what the body
 delivers, and Chapters 2–5 now exist to be checked against. Its five contributions correspond
-one-to-one to C1–C5 in [`19`](19_Contribution_Statement.md); its four research questions to
-[`15`](15_Problem_Statement_and_Research_Questions.md). Those three documents must move together.
+one-to-one to C1–C5 in `19`; its four research questions to
+`15`. Those three documents must move together.
 
 The motivation opens from the physics rather than from generic swarm applications: a
 \SI{9}{\centi\metre} vehicle is commonly flown with a \SI{60}{\centi\metre} safety margin, that
@@ -749,14 +765,14 @@ Track above; the results chapters wait on the lab track.
 
 | Chapter | Blocked by | Feeds from |
 |---|---|---|
-| 1. Introduction | — | [`15`](15_Problem_Statement_and_Research_Questions.md) |
-| 2. Background & Related Work | — | **W.5**, skeleton in [`16`](16_Related_Work_Structure.md) |
+| 1. Introduction | — | `15` |
+| 2. Background & Related Work | — | **W.5**, skeleton in `16` |
 | 3. System Modelling & Residual-Force Formulation | — | **W.6**, from [`04`](04_Unified_Residual_Wrench_Model.md) |
 | 4. Control Architectures | — | **W.3**, then [`13`](13_Residual_Learning.md) |
 | 5. Experimental Setup & Protocol | — | **W.7**, from [`05`](05_Experimental_Protocol_2Robot.md), [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) |
 | 6. Results — 2-robot | **C.4** | — |
 | 7. Results — ≥3 robots | **C.4** | — |
-| 8. Discussion | C.4 | Threats to validity, [`15`](15_Problem_Statement_and_Research_Questions.md) §4 |
+| 8. Discussion | C.4 | Threats to validity, `15` §4 |
 | 9. Conclusion & Future Work | C.4 | — |
 
 - [ ] Ch. 1 Introduction

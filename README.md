@@ -35,10 +35,10 @@ is the map of every other document.
 | Know where the project stands | [`docs/07`](docs/07_Thesis_Progress_Checklist.md) |
 | Find any document | [`docs/00`](docs/00_README.md) |
 | Find my way around the three repos | [`docs/14`](docs/14_Repository_Map.md) |
-| Know what the thesis is asking | [`docs/15`](docs/15_Problem_Statement_and_Research_Questions.md) |
-| Write the Related Work chapter | [`docs/16`](docs/16_Related_Work_Structure.md) |
-| Cite a paper — check first | [`docs/17`](docs/17_Source_Ledger_and_Citation_Discipline.md), quote from [`docs/20`](docs/20_Verified_Claims.md) |
-| See what the 7 strategies do differently | [`docs/18`](docs/18_Strategy_Descriptions.md) |
+| Know what the thesis is asking | `docs/15` |
+| Write the Related Work chapter | `docs/16` |
+| Cite a paper — check first | `docs/17`, quote from `docs/20` |
+| See what the 7 strategies do differently | `docs/18` |
 | Fly a single-robot trajectory | [`docs/08`](docs/08_Trajectory_Upload_Paths.md) |
 | Fly a formation (2–3 robots) | [`docs/10`](docs/10_Formation_Library.md) |
 | Run something in simulation | [`docs/09`](docs/09_Simulation.md) |

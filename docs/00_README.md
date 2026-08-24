@@ -43,13 +43,13 @@ else is detail hanging off it.
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
-| **Know what the thesis is asking** | [`15`](15_Problem_Statement_and_Research_Questions.md) |
-| **Write the Related Work chapter** | [`16`](16_Related_Work_Structure.md); the draft is [`thesis/ch2_related_work.tex`](thesis/ch2_related_work.tex) |
-| **Hand the thesis to a reviewer** | [`THESIS_REVIEW_BRIEF.md`](THESIS_REVIEW_BRIEF.md) |
-| **Cite a paper — check before you do** | [`17`](17_Source_Ledger_and_Citation_Discipline.md), then quote from [`20`](20_Verified_Claims.md) |
-| Understand what the 7 strategies do differently | [`18`](18_Strategy_Descriptions.md) |
-| State the thesis contribution | [`19`](19_Contribution_Statement.md) |
-| **Get the paper PDFs** | [`papers/`](papers/) — `./fetch_papers.sh`; metadata in [`references.bib`](references.bib) |
+| **Know what the thesis is asking** | `15` |
+| **Write the Related Work chapter** | `16`; the draft is `thesis/ch2_related_work.tex` |
+| **Hand the thesis to a reviewer** | `THESIS_REVIEW_BRIEF.md` |
+| **Cite a paper — check before you do** | `17`, then quote from `20` |
+| Understand what the 7 strategies do differently | `18` |
+| State the thesis contribution | `19` |
+| **Get the paper PDFs** | `papers/` — `./fetch_papers.sh`; metadata in `references.bib` |
 | Find a paper | [`02`](02_Literature_Matrix.md), [`06`](06_References_Overview.md) |
 | Know the 2-robot experiment protocol | [`05`](05_Experimental_Protocol_2Robot.md) |
 
@@ -63,16 +63,16 @@ else is detail hanging off it.
 | [`01_Thesis_Project_Snapshot.md`](01_Thesis_Project_Snapshot.md) | The idea, the 7 control strategies, timeline, status |
 | [`02_Literature_Matrix.md`](02_Literature_Matrix.md) | Structured overview of the relevant papers |
 | [`03_Gap_and_Contribution_Statement.md`](03_Gap_and_Contribution_Statement.md) | Gap analysis and contribution claim |
-| [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md) | Short statement of how each controller family uses the residual. ⚠️ **Superseded on the gravity sign** by [`thesis/ch3_system_modelling.tex`](thesis/ch3_system_modelling.tex), which matches the flight code (z-up) |
+| [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench_Model.md) | Short statement of how each controller family uses the residual. ⚠️ **Superseded on the gravity sign** by `thesis/ch3_system_modelling.tex`, which matches the flight code (z-up) |
 | [`05_Experimental_Protocol_2Robot.md`](05_Experimental_Protocol_2Robot.md) | Protocol for the 2-robot comparison |
 | [`06_References_Overview.md`](06_References_Overview.md) | Every paper, with reading status |
-| [`15_Problem_Statement_and_Research_Questions.md`](15_Problem_Statement_and_Research_Questions.md) | **The thesis's formal problem statement and its four research questions**, with hypotheses, the experiment answering each, and threats to validity |
-| [`16_Related_Work_Structure.md`](16_Related_Work_Structure.md) | Skeleton and argument of Chapter 2 — nine sections ordered so that reading them produces the gap statement |
-| [`17_Source_Ledger_and_Citation_Discipline.md`](17_Source_Ledger_and_Citation_Discipline.md) | **Read before citing anything.** Seven citation rules, the verification status of all 15 sources, and two misattributions that actually happened |
-| [`references.bib`](references.bib) + [`papers/`](papers/) | The bibliography, generated from the arXiv API, and the 15 PDFs (gitignored, rebuildable) |
-| [`18_Strategy_Descriptions.md`](18_Strategy_Descriptions.md) | The seven strategies, each split into *what we implement* and *the reference method it follows* — never merged |
-| [`19_Contribution_Statement.md`](19_Contribution_Statement.md) | What the thesis claims, and an explicit table of what it does **not** claim |
-| [`20_Verified_Claims.md`](20_Verified_Claims.md) | **Every claim we may cite, in each paper's own words**, with the depth of reading recorded per paper. Cite from here or from the PDF — never from `02` |
+| `15_Problem_Statement_and_Research_Questions.md` | **The thesis's formal problem statement and its four research questions**, with hypotheses, the experiment answering each, and threats to validity |
+| `16_Related_Work_Structure.md` | Skeleton and argument of Chapter 2 — nine sections ordered so that reading them produces the gap statement |
+| `17_Source_Ledger_and_Citation_Discipline.md` | **Read before citing anything.** Seven citation rules, the verification status of all 15 sources, and two misattributions that actually happened |
+| `references.bib` + `papers/` | The bibliography, generated from the arXiv API, and the 15 PDFs (gitignored, rebuildable) |
+| `18_Strategy_Descriptions.md` | The seven strategies, each split into *what we implement* and *the reference method it follows* — never merged |
+| `19_Contribution_Statement.md` | What the thesis claims, and an explicit table of what it does **not** claim |
+| `20_Verified_Claims.md` | **Every claim we may cite, in each paper's own words**, with the depth of reading recorded per paper. Cite from here or from the PDF — never from `02` |
 
 ### Status
 | | |

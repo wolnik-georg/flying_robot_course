@@ -8,18 +8,18 @@ __pycache__/
 # colcon build logs (this repo is also a colcon workspace root)
 log/
 
-# Downloaded papers: 48 MB of third-party PDFs. Not ours to redistribute, and reproducible from
-# docs/references.bib (every entry carries its arXiv id). The .bib and the fetch script ARE
-# tracked, so a clone can rebuild the library; the PDFs themselves are not.
-docs/papers/*.pdf
-
-# LaTeX build artefacts. The .tex and .bib are tracked; everything a build regenerates is not.
-docs/thesis/*.pdf
-docs/thesis/*.aux
-docs/thesis/*.bbl
-docs/thesis/*.blg
-docs/thesis/*.log
-docs/thesis/*.out
-docs/thesis/*.fls
-docs/thesis/*.fdb_latexmk
-docs/thesis/*.toc
+# ── Thesis writing track: LOCAL ONLY ────────────────────────────────────────────────
+# The thesis prose, its supporting documents and its bibliography are deliberately kept off
+# the remote. They were purged from the pushed history on 2026-08-24 and must not be
+# re-added. The files still exist in the working tree and are backed up outside the repo;
+# they are simply not versioned here. Adding any of them back would put the draft on GitHub.
+docs/thesis/
+docs/papers/
+docs/references.bib
+docs/15_Problem_Statement_and_Research_Questions.md
+docs/16_Related_Work_Structure.md
+docs/17_Source_Ledger_and_Citation_Discipline.md
+docs/18_Strategy_Descriptions.md
+docs/19_Contribution_Statement.md
+docs/20_Verified_Claims.md
+docs/THESIS_REVIEW_BRIEF.md

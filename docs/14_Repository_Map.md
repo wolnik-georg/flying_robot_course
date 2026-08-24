@@ -12,7 +12,7 @@ be committed where, and which file to open for a given task. Status lives in
 > preparation is **finished**; waiting on lab access.
 > **✍️ Writing:** W.1–W.4 drafted ✅ · **W.2b collect the paper PDFs + `.bib` ⬅️ next.** Blocked by
 > nothing, and it must never touch flight code. ⚠️ No full text of any cited interaction-force
-> paper is held in-repo — see [`17`](17_Source_Ledger_and_Citation_Discipline.md) before citing.
+> paper is held in-repo — see `17` before citing.
 
 ---
 
@@ -126,6 +126,7 @@ Kept here because each one cost real time and none is obvious from the code.
 | **Shared controller state across simulated drones** | One `State` for N vehicles destroys every filter and integrator. Geometric looks fine (near-memoryless); INDI never leaves the ground |
 | **Scoring a run against the wrong sidecar** | Taking the newest `*.meta.json` pairs a flight with the *previous* scenario's geometry if a run died. Use a pre-run marker |
 | **Unmapped uSD channel names** | `merge_usd_logs.py` guards lookups with `if key in dict`, so an unmapped channel makes the merge **succeed while producing nothing** |
+| **Thesis files are gitignored and purged from history** | `docs/thesis/`, `docs/15`–`20`, the review brief, `references.bib` and `docs/papers/` are local-only as of 2026-08-24. They live in the working tree and at `~/Desktop/flying_robot_course_THESIS_LOCAL`, **not in git** — back them up separately |
 | **A blanket `*.md` gitignore** | Hid 14 documents in `flying_drone_stack/` from git, including two whole investigations. Removed 2026-08-23. The separate root rule for `CLAUDE.md` still stands |
 
 ---

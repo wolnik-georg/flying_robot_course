@@ -1,10 +1,10 @@
 # Gap & Contribution Statement
 
 > **Superseded in part, 2026-08-23.** The *contribution* section below is superseded by
-> [`19_Contribution_Statement.md`](19_Contribution_Statement.md), which was written against the
-> research questions in [`15`](15_Problem_Statement_and_Research_Questions.md) and states what the
+> `19_Contribution_Statement.md`, which was written against the
+> research questions in `15` and states what the
 > thesis does **not** claim. The gap statement here has been corrected (see
-> [`17`](17_Source_Ledger_and_Citation_Discipline.md) §1) and is retained as the shorter version.
+> `17` §1) and is retained as the shorter version.
 
 ### Current State of the Literature
 

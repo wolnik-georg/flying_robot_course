@@ -3,7 +3,7 @@
 
 > **Status:** software preparation is **finished**. The project now runs **two parallel tracks** —
 > a lab track and a writing track. The formal problem statement and research questions are in
-> [`15`](15_Problem_Statement_and_Research_Questions.md); this document holds the *idea*, `15` the
+> `15`; this document holds the *idea*, `15` the
 > *questions*, and `07` the *plan*.
 >
 > Lab track: next is **C.0 — Hardware Gate**, step 1 of the five-step Core Thesis Workflow in

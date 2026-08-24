@@ -4,7 +4,7 @@
 > from treating our own summaries as sources. Entries marked ✅ were checked against the PDF; ❌ marks
 > an attribute the full text **refuted**. As of 2026-08-24 every paper except Abro et al. (paywalled)
 > has been read in full, and the corrections that reading produced are folded in below. Quotable claims with their evidence:
-> [`20_Verified_Claims.md`](20_Verified_Claims.md). Rules: [`17`](17_Source_Ledger_and_Citation_Discipline.md).
+> `20_Verified_Claims.md`. Rules: `17`.
 
 | Paper | Year | Residual / Force Model | Controller Type | How compensation is done | Formations & min. separation | Key Metrics | Onboard / Compute notes | Key Assumptions | Relevance to our thesis |
 |-------|------|------------------------|-----------------|---------------------------|------------------------------|-------------|-------------------------|-----------------|------------------------|
