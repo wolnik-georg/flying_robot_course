@@ -58,6 +58,15 @@ Neural-Swarm2, ProxFly, tight-formation MPC).
 
 ---
 
+> ### ⚠️ The `speed` field in these runs' sidecars is wrong
+>
+> `--speed` never reached `circle` or `lemniscate` curves, which are paced by a period, yet was
+> still recorded. The **A2, A5, B1 and B2** runs below logged `speed = 0.4` and actually flew
+> **0.63 m/s**. **No conclusion in this report depends on it** — nothing here cites speed, and
+> the geometry was verified independently against the commanded curves, which were correct.
+> Fixed 2026-08-24; the raw sidecars from this matrix were not rewritten and still carry the
+> wrong value. See [`../experiments/sim_validation/SPEED_MATRIX.md`](../experiments/sim_validation/SPEED_MATRIX.md).
+
 ## 2. Results — all 34 cases
 
 **Pass criteria:** mean |Δz error| < 50 mm, mean horizontal error < 80 mm, no divergence

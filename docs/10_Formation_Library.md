@@ -249,7 +249,8 @@ deadband delivering 21% excess torque — and one unresolved gap: the simulator 
 twice the position damping of the real vehicle. Full account in
 [`09_Simulation.md`](09_Simulation.md).
 
-With the sim-only `kv_xy: 10.0` in `crazyflies_sim.yaml`, the library trajectories track
+With the sim-only `kv_xy` in `crazyflies_sim.yaml` (**8.0**; hardware keeps 5.0), the library
+trajectories track
 essentially perfectly — the A3 shuttle to **0.4 mm** and the A5 circle to **0.7 mm**, at
 1.2° and 3.2° of tilt respectively (3.1° is the correct bank for A5's centripetal
 acceleration). The stock trajectories track to 18–28 mm, their larger tilt coming from the

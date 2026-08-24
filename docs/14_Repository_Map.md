@@ -90,6 +90,10 @@ simulator, so simulation runs the controller that flies, not a re-implementation
 | Which law runs | `indi_gains.ctrl_mode` in `crazyswarm2/crazyflie/config/crazyflies.yaml` (runtime; no reflash) |
 | Gains | same yaml — pushed over CRTP at connect, so **the yaml wins over firmware defaults** |
 | The learned residual model | `flying_drone_stack/firmware_app/src/residual_nn.rs` → [`13`](13_Residual_Learning.md) |
+| **Fly the C.0 gate** | [`C0_FLIGHT_CARD.md`](C0_FLIGHT_CARD.md) — printable ladder, commands, abort table |
+| Engineering status for an outside reader | [`Flight_Stack_Status_Handoff.md`](Flight_Stack_Status_Handoff.md) |
+| Separation / speed grids and how `--speed` reaches a curve | [`10`](10_Formation_Library.md) § Experimental grids · `experiments/sim_validation/SPEED_MATRIX.md` |
+| Re-run the speed/separation grid in sim | `experiments/analysis/run_speed_matrix.sh` |
 
 ### To work with data
 

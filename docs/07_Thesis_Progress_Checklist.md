@@ -595,8 +595,9 @@ there rather than only in the results.
 
 ### W.9 — Chapter 1, introduction ✅
 
-`thesis/ch1_introduction.tex` — ~1810 words. **The combined build is
-35 pages, ~12,600 words across Chapters 1–5**, zero undefined citations or references.
+`thesis/ch1_introduction.tex` — ~1810 words. At the time W.9 closed the combined build was
+35 pages, ~12,600 words across Chapters 1–5, zero undefined citations or references.
+**Current figure after the 24 Aug revision and accuracy passes: 38 pages, ~14,356 words.**
 
 Written last of the unblocked chapters deliberately: an introduction promises what the body
 delivers, and Chapters 2–5 now exist to be checked against. Its five contributions correspond

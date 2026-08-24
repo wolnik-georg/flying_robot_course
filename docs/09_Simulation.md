@@ -253,7 +253,8 @@ Candidates that would go the right way:
    these test cases. If it was tuned on gentler flights, `kv=5` may simply have less margin
    than the notes imply — which the hardware crash at `kv=4` is consistent with.
 
-**Workaround:** `crazyflies_sim.yaml` sets `kv_xy: 10.0` for simulation only, with the
+**Workaround:** `crazyflies_sim.yaml` sets `kv_xy: 8.0` for simulation only (originally 10.0;
+lowered once the motor-lag fix closed ~40% of the gap — see above), with the
 rationale in-file. `crazyflies.yaml` keeps the flight-proven 5.0 and must not be changed
 to match. ζ=0.625 is not invented — the tuning notes record it as the ratio held for the
 whole campaign before the 2026-07-19 test lowered it.

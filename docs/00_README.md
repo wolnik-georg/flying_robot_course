@@ -43,6 +43,9 @@ else is detail hanging off it.
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
+| **Walk into the lab and fly C.0** | [`C0_FLIGHT_CARD.md`](C0_FLIGHT_CARD.md) — print it; `11` is the reasoning behind it |
+| Brief someone on the whole engineering state | [`Flight_Stack_Status_Handoff.md`](Flight_Stack_Status_Handoff.md) |
+| Set separation / speed for a run | [`10`](10_Formation_Library.md) § Experimental grids; fix report in `../experiments/sim_validation/SPEED_MATRIX.md` |
 | **Know what the thesis is asking** | `15` |
 | **Write the Related Work chapter** | `16`; the draft is `thesis/ch2_related_work.tex` |
 | **Hand the thesis to a reviewer** | `THESIS_REVIEW_BRIEF.md` |
