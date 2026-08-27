@@ -1,0 +1,30 @@
+% Minimal preamble for building individual chapters standalone during drafting.
+% The real thesis will have its own; this exists so a chapter can be checked without one.
+\documentclass[11pt,a4paper]{report}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+% siunitx if available; otherwise minimal stand-ins, so a chapter builds on a machine
+% without texlive-science. The real thesis preamble should require siunitx properly.
+\IfFileExists{siunitx.sty}{\usepackage{siunitx}}{%
+  \providecommand{\SI}[2]{##1\,##2}%
+  \providecommand{\num}[1]{##1}%
+  \providecommand{\SIrange}[3]{##1--##2\,##3}%
+  \providecommand{\percent}{\%}%
+  \providecommand{\centi}{c}\providecommand{\milli}{m}\providecommand{\kilo}{k}%
+  \providecommand{\metre}{m}\providecommand{\second}{s}\providecommand{\hour}{h}%
+  \providecommand{\gram}{g}\providecommand{\hertz}{Hz}\providecommand{\newton}{N}%
+  \providecommand{\degree}{$^\circ$}\providecommand{\per}{/}\providecommand{\squared}{$^2$}%
+}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[margin=3cm]{geometry}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage[textsize=small]{todonotes}
+\presetkeys{todonotes}{inline,backgroundcolor=yellow!30}{}
+% Chapters 1-5 are cross-referenced with plain \ref and resolve normally. Chapters 6-9 do not
+% exist yet and are referred to by name in the text rather than by a reference that cannot
+% resolve; convert those to \ref once the chapters are written.
+% \chapref is retained only so that any stale usage fails loudly rather than silently.
+\newcommand{\chapref}[1]{\textbf{[UNRESOLVED: #1]}}

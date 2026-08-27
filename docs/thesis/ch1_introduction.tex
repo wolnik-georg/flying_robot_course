@@ -1,0 +1,263 @@
+% =====================================================================================
+%  Chapter 1 — Introduction
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT, 23 August 2026 (writing-track item W.9). Written last of the unblocked chapters,
+%  deliberately: an introduction promises what the body delivers, and Chapters 2-5 now exist
+%  to be checked against.
+%
+%  RULES FOR THIS CHAPTER.
+%  1. No result is claimed. Nothing has flown. The contribution is stated as what the thesis
+%     sets out to establish, not as what it found.
+%  2. THIS FILE IS THE SOURCE OF TRUTH for every claim it makes about prior work. Verify a
+%     claim against the paper itself, never against a summary or ledger in docs/.
+%  3. The contribution list must match docs/19_Contribution_Statement.md, including its
+%     "what this thesis does not claim" table. If they drift apart, THIS FILE WINS.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+%  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
+% =====================================================================================
+
+\chapter{Introduction}
+\label{ch:intro}
+
+% -------------------------------------------------------------------------------------
+\section{Motivation}
+\label{sec:intro-motivation}
+
+A Crazyflie~2.0 measures \SI{9}{\centi\metre} rotor-to-rotor, and when the interaction between
+vehicles is left unmodelled, planners have adopted conservative separations --- Shi et
+al.~\cite{shi2020neuralswarm} cite \SI{60}{\centi\metre} from earlier planning work as one such
+example. The margin is not arbitrary caution. Below it, the downwash of one vehicle acting on another is strong enough to destabilise
+the lower one, and the standard remedy is to keep the vehicles far enough apart that the effect can
+be ignored.
+
+That margin is expensive. It sets the density at which a team can operate, and therefore the size
+of the space a given number of vehicles requires. Applications that motivate multirotor teams in
+the first place --- inspection in confined spaces, cooperative transport, aerial docking --- are
+precisely those in which the space is not available. In some of them, close approach is the task
+rather than a hazard to be avoided.
+
+Removing the margin requires a controller that accounts for the interaction rather than avoiding
+it, and that is difficult for a specific reason. The interaction is not a small perturbation
+around a known model: it is strongly nonlinear in the relative configuration of the team, growing
+sharply as vehicles close and decaying quickly with lateral offset, and it is markedly asymmetric,
+since the vehicle above is affected far less than the one below. It is also hard to derive from
+first principles in the regime that matters. Simplified models exist for part of the problem ---
+the mean flow from a quadrotor's propellers in hover is well approximated by a turbulent jet
+beyond about two and a half motor-to-motor distances below it~\cite{bauersfeld2024airflow} --- but
+formation flight operates closer than that, in a near field for which those authors report no
+closed-form model.
+
+The field's response has been to obtain the interaction from data rather than from theory, and it
+has worked. Reported results include a reduction in worst-case height error by a factor of two or
+better, up to four~\cite{shi2020neuralswarm}, sixteen vehicles flying at a minimum vertical
+separation of
+\SI{24}{\centi\metre}~\cite{shi2022neuralswarm2}, and average reductions of \SI{56}{\percent} in
+vertical and \SI{36}{\percent} in three-dimensional tracking error for a pair of
+vehicles~\cite{smith2023so2equivariant}. The margin has been substantially reduced.
+
+% -------------------------------------------------------------------------------------
+\section{Problem}
+\label{sec:intro-problem}
+
+A controller can obtain information about the interaction force in exactly two ways, and the
+distinction organises the entire field.
+
+It can \textbf{measure} the residual online, by comparing the acceleration the vehicle actually
+experienced against the acceleration its nominal model predicts for the actuation it applied. This
+requires no prior knowledge of the interaction and works equally against disturbances never seen
+before. But the estimate exists only after the disturbance has begun to act, and in its established
+form it depends on rotor-speed sensing.
+
+Or it can \textbf{predict} the residual before it acts, from the relative states of its neighbours,
+using a model learned offline. This can compensate ahead of the disturbance rather than after it,
+but the model is only valid over the configurations its training data covered, and outside them its
+behaviour is not merely degraded but unconstrained.
+
+These are complementary rather than competing: one is reactive and general, the other predictive
+and specific. A hybrid is therefore an obvious construction, and has been built --- for a single
+vehicle, where its advantage over the reactive method alone was described as small without a
+payload, and as leaving performance similar to the reactive method with
+one~\cite{cobobriesewitz2026lindi}.
+
+The practical question a system designer faces is which to use, and it has no answer in the
+literature. Not because the individual results are weak, and not because the field avoids
+systematic comparison --- recent work benchmarks online-learning estimators on a single
+vehicle~\cite{gu2025comparative} and fractional-order and classical regulators for close-proximity
+swarms~\cite{abro2025fractional}. It is that the results for \emph{these} families cannot be
+composed: each is reported against its own baseline, on its own airframe, at its own separations,
+on its own trajectories, under its own metrics.
+
+% -------------------------------------------------------------------------------------
+\section{Gap}
+\label{sec:intro-gap}
+
+\emph{Representative methods exist for reactive compensation, for predictive compensation, and for
+their hybrid, and each is individually validated --- but, to the best of our knowledge, they have
+not been evaluated against one another under identical conditions, and the field's reporting conventions make such a comparison
+impossible to assemble after the fact.} A \SI{36}{\percent} improvement measured on two vehicles in
+close proximity and a \SI{31}{\percent} improvement measured in a tight formation are not the same
+quantity; neither can be subtracted from the other, and their ordering says nothing about which
+method would prevail if both were flown under the same conditions.
+
+This is not a criticism of any individual work. Each is internally valid, and none violated a
+convention of the field. It is a property of the literature taken as a whole: the results were not
+designed to compose, and establishing a ranking requires an experiment built for that purpose.
+
+Two narrower gaps follow. The hybrid has been demonstrated only where the residual is
+\emph{self-induced} --- a single vehicle, with effects such as blade flapping, drag and ground
+forces, optionally carrying a slung payload --- and not
+where it is produced by other vehicles and is therefore a function of a measurable relative state,
+which is where the predictive component has the most to contribute. And the summation that
+predictive architectures use to aggregate per-neighbour contributions is known to be an
+approximation~\cite{shi2020neuralswarm,gielis2023aggregate}, yet the size of the penalty it carries
+for a deployed model is not reported.
+
+% -------------------------------------------------------------------------------------
+\section{Research questions}
+\label{sec:intro-rq}
+
+\begin{description}
+  \item[RQ1] Under identical hardware, trajectories, formations and separations, how do reactive,
+    predictive and hybrid interaction-force compensation strategies compare in trajectory-tracking
+    accuracy and residual-force rejection?
+
+  \item[RQ2] Does the relative advantage of reactive versus predictive compensation depend on the
+    interaction regime --- separation, relative velocity, and whether the disturbance is
+    quasi-static or transient?
+
+  \item[RQ3] How much prediction accuracy does a deep-sets residual model trained only on
+    two-vehicle data lose when applied to three-vehicle formations, and is that loss small enough
+    for the summed per-neighbour architecture to remain the right engineering choice? \emph{This
+    is a measurement of the transfer penalty, not a test of whether superposition holds: it does
+    not, and that is already established}~\cite{shi2020neuralswarm,gielis2023aggregate}.
+
+  \item[RQ4] What are the sensing, computational and data requirements of each strategy, and is the
+    added complexity of the hybrid justified in the multi-robot case?
+\end{description}
+
+RQ1 is the primary question and the one the experimental design serves. RQ2 carries the most
+engineering value, because it converts a ranking into a rule about when to use which. RQ3 is
+deliberately narrower than asking whether interactions superpose --- they do not, and that is
+already reported --- and asks instead for the magnitude of the resulting error on a deployed model.
+RQ4 exists because a method that wins by a small margin while requiring additional sensing, an
+offline training campaign and a larger compute budget may still be the wrong choice.
+
+The questions are stated with falsifiable hypotheses in Chapter~\ref{ch:related} and
+Chapter~\ref{ch:setup}; each is answerable by the experiments described in
+Chapter~\ref{ch:setup}, and a negative answer to any of them is reported as a result rather
+than as a failure.
+
+% -------------------------------------------------------------------------------------
+\section{Contributions}
+\label{sec:intro-contrib}
+
+This thesis sets out to establish the following. Nothing here is a claim about results; the
+experiments are described in Chapter~\ref{ch:setup} and reported in
+the two- and multi-robot results chapters.
+
+\begin{enumerate}
+  \item \textbf{A controlled comparison.} To the best of our knowledge the first evaluation of
+    reactive, predictive and hybrid compensation on the same airframe, the same trajectories, the same formations and the same
+    frozen gains, with a single definition of the residual and a measured noise floor. The
+    methodological content is in the word \emph{controlled}. For Strategies 0, 1, 2 and 4 it is
+    unusually strong: those four are not four controllers but four settings of one, differing only
+    in which residual term is active, so a difference between them cannot be attributed to
+    anything else. \emph{This does not extend to Strategies 3 and 6}, which are structurally
+    different controllers --- a feedback-linearising law and a receding-horizon optimiser --- and
+    for which ``identical conditions'' means identical trajectories, formations and hardware but
+    not identical structure. The design provides: a frozen scenario library so every strategy
+    meets identical excitation; gains fixed before data collection so a difference cannot
+    be a tuning artefact; one residual definition logged identically under every controller,
+    including those that do not use it; and null conditions in which no interaction is expected, so
+    that a positive result is separable from noise.
+
+  \item \textbf{The first multi-robot evaluation of the reactive--predictive hybrid,} extending a
+    result established for a single vehicle into the regime where its premise is strongest.
+
+  \item \textbf{A quantification of what the summed per-neighbour approximation costs} when a
+    model trained on two vehicles meets three. This measures a penalty whose \emph{existence} is
+    already established in the literature~\cite{shi2020neuralswarm,gielis2023aggregate}; the
+    contribution is its magnitude for a deployed model, not the finding that it exists.
+
+  \item \textbf{An engineering account of cost}: sensing prerequisites, onboard computation and
+    training-data requirements, reported alongside performance so that the comparison supports a
+    decision rather than only a ranking.
+
+\end{enumerate}
+
+Supporting these, but explicitly \emph{not} a scientific contribution, is the apparatus that makes
+them feasible: the frozen scenario library, the residual measurement path, an onboard network with
+a weight-upload protocol, an offline training pipeline verified against the compiled controller,
+and a simulation environment running the same controller source that flies. It is described in
+Chapter~\ref{ch:setup} and offered for reuse. A thesis whose contribution is its tooling has
+not answered a question, and it is listed here only so that the engineering effort is visible.
+
+\paragraph{What this thesis does not claim.} No new control method is proposed: every strategy
+follows published work, and the contribution is the comparison. The residual model is not offered
+as an improvement on published architectures. Results concern a single airframe and a single class
+of disturbance; generalisation beyond either is discussed rather than demonstrated. No claim rests
+on simulation, which is used to disprove implementations and never to validate a method. And no
+strategy is claimed to be best in general --- the useful outcome is conditional, which is RQ2.
+
+\paragraph{A negative result would also be a contribution.} If the strategies do not separate, the
+conclusion is that the choice of compensation family matters less than whether compensation is
+present at all, and the engineering question becomes one of cost. The experimental design is built
+so that this outcome is distinguishable from a failed experiment, which is what the null conditions
+and the frozen gains are for.
+
+\todo[color=green!25]{\textbf{Provenance, not pending work.} ``To the best of our knowledge'' is supported by two audits: an arXiv keyword
+sweep and a cross-database sweep including a citation-graph scan. Both found adjacent comparisons, cited in §\ref{sec:rw-existing-comparisons},
+but none spanning these families. Neither audit is exhaustive.}
+
+% -------------------------------------------------------------------------------------
+\section{Scope}
+\label{sec:intro-scope}
+
+The scope is deliberately narrow, because the contribution is a controlled comparison and every
+degree of freedom left open is an alternative explanation for an observed difference.
+
+\begin{table}[h]
+  \centering
+  \caption{Scope of this thesis.}
+  \label{tab:intro-scope}
+  \small
+  \begin{tabular}{@{}p{0.46\linewidth}p{0.46\linewidth}@{}}
+    \toprule
+    In scope & Out of scope \\
+    \midrule
+    Inter-vehicle aerodynamic interaction, principally downwash & Wind, gusts, and other external disturbances \\
+    Teams of two and three vehicles & Large swarms \\
+    Homogeneous vehicles & Heterogeneous teams \\
+    Tracking of pre-planned, collision-free formations & Interaction-aware planning; collision avoidance \\
+    Onboard inference, offline training & Online or on-board learning \\
+    The force residual & The moment residual, which is measured but not separately compensated \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% -------------------------------------------------------------------------------------
+\section{Outline}
+\label{sec:intro-outline}
+
+\textbf{Chapter~\ref{ch:related}} surveys the field as an argument rather than a catalogue:
+what the disturbance is, the two ways of obtaining information about it, why the injection point
+into the control law matters, and why the individual results do not compose into a comparison.
+
+\textbf{Chapter~\ref{ch:model}} defines the residual wrench that every strategy estimates, gives
+both routes to it in one notation, and states the assumptions the formulation makes together with
+where each is expected to fail.
+
+\textbf{Chapter~\ref{ch:control}} describes the seven strategies and the point at which each
+injects its knowledge of the interaction, separating in each case what is implemented here from the
+published method it follows.
+
+\textbf{Chapter~\ref{ch:setup}} describes the platform, the frozen scenario library, the
+measurement chain and the protocol, and states the threats to validity the design is built against
+--- including those it does not eliminate.
+
+\textbf{the two- and multi-robot results chapters} report the two- and
+three-vehicle results. \textbf{the discussion chapter} interprets them against the
+research questions and the stated assumptions, and \textbf{the concluding chapter}
+concludes.

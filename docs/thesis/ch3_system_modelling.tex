@@ -1,0 +1,352 @@
+% =====================================================================================
+%  Chapter 3 — System Modelling and Residual-Force Formulation
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT, 23 August 2026 (writing-track item W.6).
+%
+%  SOURCES.
+%  Claims about prior work: verify against the paper itself, never against a summary or ledger
+%  in docs/ (see the ch2 header). This file is the source of truth for what it states.
+%  Claims about OUR system: verifiable against firmware_app/src/lib.rs and
+%  firmware_app/src/residual_nn.rs. Where this chapter states a constant or an equation,
+%  it is the one in the code, not an idealisation of it. If the code changes, this
+%  chapter changes.
+%
+%  FRAME CONVENTION: z-up (ENU), gravity acts along -e_3. This matches the implementation
+%  and Crazyswarm2. Note that docs/04_Unified_Residual_Wrench_Model.md was written with a
+%  +g e_3 term; that document predates this chapter and is superseded on this point.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+%  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
+% =====================================================================================
+
+\chapter{System Modelling and Residual-Force Formulation}
+\label{ch:model}
+
+Chapter~\ref{ch:related} described methods that either measure or predict the aerodynamic
+interaction between vehicles. This chapter defines precisely what is being measured or predicted,
+so that the strategies compared in Chapter~\ref{ch:control} can be said to estimate the
+\emph{same} quantity. That is a prerequisite for the comparison: two controllers that compensate
+differently-defined residuals are not comparable, however similar their block diagrams look.
+
+The chapter also states the assumptions the formulation rests on, and where each one is expected
+to fail. Several are known to be imperfect --- the summation in
+Section~\ref{sec:model-deepsets} most conspicuously --- and stating them here is what allows
+the discussion chapter to interpret a negative result as evidence about an assumption
+rather than as an unexplained failure.
+
+% -------------------------------------------------------------------------------------
+\section{Notation and conventions}
+\label{sec:model-notation}
+
+Vectors are expressed in a world frame that is \emph{east-north-up}: the third basis vector $e_3$
+points away from the ground and gravity acts along $-e_3$. This matches the convention used by the
+flight software and the motion-capture system, and is stated explicitly because the opposite
+convention is common in the quadrotor literature and the sign of the gravity term differs between
+them.
+
+For vehicle $i$: $p_i \in \mathbb{R}^3$ is position, $v_i \in \mathbb{R}^3$ velocity,
+$R_i \in SO(3)$ the rotation from body to world, and $\omega_i \in \mathbb{R}^3$ the body angular
+velocity. The hat map $\hat{\cdot} : \mathbb{R}^3 \to \mathfrak{so}(3)$ is defined by
+$\hat{a}b = a \times b$. The vehicles are homogeneous, of mass $m$ and diagonal inertia $J$.
+Rotor $k$ spins at $\varpi_k$ and produces thrust $k_{t,k}\varpi_k^2$ along the body $z$-axis.
+
+% -------------------------------------------------------------------------------------
+\section{Rigid-body model with a residual wrench}
+\label{sec:model-dynamics}
+
+Each vehicle is modelled as a rigid body driven by a collective thrust $f_i$ along its body
+$z$-axis and a body torque $\tau_i$:
+%
+\begin{align}
+  \dot{p}_i &= v_i, &
+  m\,\dot{v}_i &= -m g e_3 + f_i R_i e_3 + f_{\mathrm{res},i}, \label{eq:model-trans}\\
+  \dot{R}_i &= R_i \hat{\omega}_i, &
+  J\dot{\omega}_i &= -\omega_i \times J\omega_i + \tau_i + \tau_{\mathrm{res},i}.
+  \label{eq:model-rot}
+\end{align}
+%
+The terms $f_{\mathrm{res},i}$ and $\tau_{\mathrm{res},i}$ form the \emph{residual wrench}: by
+construction they collect every force and moment that \eqref{eq:model-trans}--\eqref{eq:model-rot}
+otherwise omits. This includes blade flapping, rotor drag, ground effect and errors in $m$, $J$ and
+$k_t$, as well as the inter-vehicle aerodynamic interaction that is the subject of this thesis.
+
+That the residual is a catch-all rather than a physical quantity has two consequences that matter
+for the experiments. First, a residual measured in isolated free flight is not zero; it is whatever
+the nominal model gets wrong about a single vehicle. Second, the interaction can only be isolated
+by \emph{differencing} --- comparing the residual measured in formation against the residual
+measured alone under the same trajectory. The coplanar control scenarios in
+Chapter~\ref{ch:setup} exist for exactly this purpose.
+
+\subsection{Scope: force, not moment}
+
+This thesis compensates the \emph{force} residual $f_{\mathrm{res}}$. The moment residual
+$\tau_{\mathrm{res}}$ is measured and logged, but no strategy compensates it separately: the
+attitude loop rejects it as a disturbance in the usual way. This is a scoping decision, not a claim
+that $\tau_{\mathrm{res}}$ is negligible --- the characterisation literature measures interaction
+\emph{moments} alongside forces on a test rig~\cite{kiran2025downwash}, and the discussion chapter
+returns to what leaving them uncompensated may cost.
+
+% -------------------------------------------------------------------------------------
+\section{Measuring the residual}
+\label{sec:model-measure}
+
+The residual can be recovered without any model of the interaction, by comparing what the vehicle
+actually accelerated with what the nominal model says it should have accelerated given the
+actuation actually applied. Rearranging \eqref{eq:model-trans},
+%
+\begin{equation}
+  \frac{f_{\mathrm{res},i}}{m}
+  \;=\; \underbrace{\dot{v}_i}_{a_{\mathrm{meas}}}
+      - \underbrace{\left( \frac{f_i}{m} R_i e_3 - g e_3 \right)}_{a_{\mathrm{model}}} .
+  \label{eq:model-ares}
+\end{equation}
+%
+Both terms are available onboard. The measured acceleration comes from the accelerometer, which
+senses specific force in the body frame and therefore excludes gravity by construction; rotating it
+into the world frame and subtracting $g e_3$ gives $a_{\mathrm{meas}}$. The model acceleration
+requires the applied thrust, which is reconstructed from measured rotor speeds as
+$f_i = \sum_{k=1}^{4} k_{t,k}\varpi_k^2$.
+
+The implementation evaluates \eqref{eq:model-ares} at every control step and logs it as
+$a_{\mathrm{res}}$, in every controller mode --- including modes that make no use of it. This is
+deliberate. The training data for every predictive strategy is collected under the
+\emph{uncompensated} geometric controller, so the measurement must exist when no INDI term is
+active; and the comparison of a predicted residual against a measured one, which is how a learned
+model is evaluated, requires both quantities on the same flight.
+
+\subsection{What this measurement requires, and how it fails}
+\label{sec:model-measure-fail}
+
+Three properties of \eqref{eq:model-ares} shape the experimental design.
+
+\paragraph{It requires rotor-speed sensing.} Without $\varpi_k$ the applied thrust is unknown and
+$a_{\mathrm{model}}$ cannot be formed. This is the hardware prerequisite identified in
+Section~\ref{sec:rw-reactive}, and the same one that Cobo-Briesewitz et
+al.~\cite{cobobriesewitz2026lindi} remove by learning the residual instead of computing it. In the
+implementation, the absence of a rotor-speed source causes $a_{\mathrm{res}}$ to read
+\emph{identically zero}. That failure is silent and is indistinguishable, in a log file, from a
+flight in which no interaction occurred. Verifying that $a_{\mathrm{res}} \neq 0$ is therefore the
+first check of every experimental session (Chapter~\ref{ch:setup}).
+
+\paragraph{It is delayed.} $a_{\mathrm{meas}}$ is differentiated from noisy inertial measurement
+and must be filtered; the reconstructed thrust inherits the rotor-speed sensing delay. The estimate
+therefore exists only after the disturbance has begun to act. No amount of tuning removes this: it
+is the structural property that motivates prediction.
+
+\paragraph{It absorbs model error.} Any error in $m$ or $k_t$ appears in $a_{\mathrm{model}}$ and is
+attributed to $f_{\mathrm{res}}$. A miscalibrated thrust constant produces a residual that looks
+like a constant interaction force. This is why the airframe constants are identified once and
+frozen, and why the null scenarios matter: a residual that persists when no neighbour is present is
+model error, not interaction.
+
+\subsection{Sign convention in the control law}
+\label{sec:model-sign}
+
+The compensation enters with a sign that is easy to get wrong and whose error is not obvious in
+flight. From \eqref{eq:model-trans}, holding a desired acceleration $a_{\mathrm{des}}$ requires
+%
+\begin{equation}
+  f_i R_i e_3 \;=\; m\,a_{\mathrm{des}} + m g e_3 - f_{\mathrm{res},i},
+  \label{eq:model-sign}
+\end{equation}
+%
+so the desired-acceleration vector passed to the thrust-and-attitude allocation carries
+$-f_{\mathrm{res},i}/m$. The residual is \emph{subtracted}, whether it was measured
+(Section~\ref{sec:model-measure}) or predicted (Section~\ref{sec:model-deepsets}).
+
+Adding it instead does not merely fail to compensate: it doubles the disturbance, because the
+controller then commands a thrust error equal and opposite to the correction it should have made.
+The resulting behaviour is a stable, well-controlled vehicle that tracks slightly worse in
+formation --- which is what an uncompensated vehicle also looks like. In single-vehicle flight the
+error is invisible altogether, since $f_{\mathrm{res}} \approx 0$ with no neighbour present. This is
+recorded here because it is a property of the formulation rather than a coding detail, and because
+it establishes a specific prediction that the two-robot results chapter can check: with the sign
+correct, position-INDI compensation must \emph{reduce} the formation-induced displacement, and with
+it inverted the displacement must be approximately twice the uncompensated value.
+
+% -------------------------------------------------------------------------------------
+\section{Predicting the residual from relative state}
+\label{sec:model-deepsets}
+
+The interaction force on vehicle $i$ is a function of the configuration of the team relative to it,
+%
+\begin{equation}
+  f_{\mathrm{res},i} \;\approx\; \mathcal{F}\!\left( \{\, p_j - p_i,\; v_j - v_i \,\}_{j \neq i} \right),
+  \label{eq:model-F}
+\end{equation}
+%
+and \eqref{eq:model-F} is what a predictive strategy learns. Two structural properties are required
+of any parameterisation of $\mathcal{F}$, and both follow from the physics rather than from
+convenience. The value must not depend on the order in which neighbours are enumerated, and it must
+be defined for a varying number of them, since a vehicle in a three-robot team has two neighbours
+and one in a pair has one.
+
+\subsection{Deep-sets parameterisation}
+
+The parameterisation used here satisfies both by construction:
+%
+\begin{equation}
+  \hat{a}_{\mathrm{res},i}
+  \;=\; \rho\!\left( \sum_{j \neq i} \phi\!\left( p_j - p_i,\; v_j - v_i \right) \right),
+  \label{eq:model-deepsets}
+\end{equation}
+%
+where $\phi$ is applied to each neighbour independently and $\rho$ maps the summed embedding to a
+residual acceleration in the world frame. Summation is permutation-invariant and accepts any number
+of terms, so one parameter set serves teams of different sizes. The output is an acceleration rather
+than a force so that it is directly comparable with the measured $a_{\mathrm{res}}$ of
+\eqref{eq:model-ares}; the two quantities are in the same units, in the same frame, at the same
+point in the control loop.
+
+The concrete network is small: $\phi$ maps $6 \rightarrow 16 \rightarrow 16 \rightarrow 8$ and
+$\rho$ maps $8 \rightarrow 16 \rightarrow 16 \rightarrow 3$, with rectified-linear activations
+throughout except at the output, which is linear because an interaction force may point either way.
+This is \num{987} parameters, evaluated onboard within the control period. The sizing is discussed
+in Chapter~\ref{ch:control}; what matters here is that \eqref{eq:model-deepsets} is the model,
+and the layer widths are an implementation choice within it.
+
+\paragraph{These equations are the code.} Equation~\eqref{eq:model-deepsets}, the layer widths
+above, the distance guards of Section~\ref{sec:model-guards} and the output bound are the values
+in \texttt{firmware\_app/src/residual\_nn.rs}, not an idealisation of them, and were read from it
+rather than reconstructed. The same applies to \eqref{eq:model-ares} and the sign convention of
+Section~\ref{sec:model-sign}, which correspond to the residual computation and the
+desired-acceleration assembly in \texttt{firmware\_app/src/lib.rs}. If the implementation changes,
+this chapter changes with it; a modelling chapter that has drifted from the flight code describes a
+system that was never flown.
+
+\subsection{The superposition assumption}
+\label{sec:model-superposition}
+
+Equation~\eqref{eq:model-deepsets} assumes the aggregate interaction is a sum of per-neighbour
+contributions in the latent space of $\phi$. This is more general than summing forces directly ---
+$\rho$ is free to be nonlinear in the sum --- but it is still an assumption, and the literature
+states plainly that it does not hold exactly. Shi et al.~\cite{shi2020neuralswarm} report that with
+more than two vehicles the aerodynamic effect is not a simple superposition of each pair, and Gielis
+et al.~\cite{gielis2023aggregate} motivate a learned aggregation model, measured on a load stand,
+precisely on the grounds that a single-vehicle downwash model is unlikely to suffice for predicting
+aggregate forces.
+
+The assumption is retained here for two reasons. It is what makes one trained model applicable to
+teams of two and three without retraining, which the comparison requires. And a controller does not
+need an exact model: it needs one whose residual after compensation is smaller than the residual
+before it. The relevant question is therefore not whether \eqref{eq:model-deepsets} is exact, which
+it is not, but how large the resulting error is on a deployed model --- which is what
+the multi-robot results chapter measures.
+
+\subsection{Input conditioning}
+\label{sec:model-guards}
+
+Two guards are applied to the inputs of $\phi$, and both are part of the model rather than
+defensive programming, because they change the function being learned.
+
+A neighbour farther than \SI{2}{\metre} is excluded from the sum. Beyond that distance the
+interaction is below the noise floor of the measurement, and including such neighbours would ask
+the network to learn that distant vehicles do nothing --- spending capacity on a region where the
+answer is known.
+
+A separation closer than \SI{4}{\centi\metre} is clamped to that value, preserving direction. Below
+it the model would extrapolate beyond anything the training data can contain, since the vehicles are
+\SI{9}{\centi\metre} across and such a configuration is a collision. A learned function is least
+trustworthy exactly where the physics is strongest, and the clamp bounds the extrapolation rather
+than trusting it.
+
+The output is bounded as well, at \SI{8}{\metre\per\second\squared} --- comfortably above the
+interaction accelerations expected between vehicles of this size, and far below what an
+ill-conditioned network can emit. This is not a hypothetical failure mode. In simulation, Gu et
+al.~\cite{gu2025comparative} report a radial-basis-function estimator crashing the vehicle under
+periodic wind, and an extreme learning machine becoming unstable on landing under ground effect;
+their echo state network and Gaussian process did not. The authors say the failure \emph{may be
+attributed} to the random initialisation of the input-to-hidden weights, which \emph{``can produce
+excessively large prediction values''}. Their vehicle is a single quadrotor and their disturbances
+are wind and ground effect, so this is not evidence about inter-vehicle interaction --- but it is
+evidence that an unbounded learned term can destabilise a controller. A saturating output converts
+that failure into a bounded and, because saturation is logged, a visible one.
+
+The training data must pass through the same guards as the deployed model. A model fitted to
+unguarded inputs is fitted to a different distribution than the one it will meet, and the
+discrepancy is invisible until predicted and measured residuals are compared in flight.
+
+\subsection{Normalisation}
+
+Input scaling is folded into the first layer of $\phi$ at export rather than applied onboard. For
+weights $W_1$ and bias $b_1$ trained on inputs normalised by mean $\mu$ and standard deviation
+$\sigma$,
+%
+\begin{equation}
+  W_1 \frac{x - \mu}{\sigma} + b_1
+  \;=\; \underbrace{\left(W_1 \oslash \sigma\right)}_{W_1'} x
+      + \underbrace{\left(b_1 - \left(W_1 \oslash \sigma\right)\mu\right)}_{b_1'},
+  \label{eq:model-fold}
+\end{equation}
+%
+with $\oslash$ denoting column-wise division. The two forms are arithmetically identical, so the
+deployed network computes the same function as the trained one while the flight software carries no
+normalisation constants that could fall out of step with the model.
+
+% -------------------------------------------------------------------------------------
+\section{Assumptions and where they fail}
+\label{sec:model-assumptions}
+
+Table~\ref{tab:model-assumptions} collects the assumptions this formulation makes. Each is stated
+with the condition under which it is expected to break, so that an experimental result can be
+attributed to a specific assumption rather than to the model as a whole.
+
+\begin{table}[t]
+  \centering
+  \caption{Assumptions of the residual formulation and their expected failure modes.}
+  \label{tab:model-assumptions}
+  \small
+  \begin{tabular}{@{}p{0.30\linewidth}p{0.30\linewidth}p{0.32\linewidth}@{}}
+    \toprule
+    Assumption & Where it fails & Consequence \\
+    \midrule
+    Rigid body; no aeroelastic deformation
+      & Not expected to fail at this scale
+      & --- \\
+    $m$, $J$, $k_t$ known and constant
+      & Battery discharge; rotor wear; miscalibration
+      & Model error appears as a constant residual; bounded by the null scenarios \\
+    Residual is dominated by inter-vehicle interaction
+      & Near the ground; near walls
+      & Flight volume is bounded away from both (Chapter~\ref{ch:setup}) \\
+    Neighbour relative states are known accurately
+      & Motion-capture dropout; latency
+      & Prediction degrades; measurement is unaffected, which is itself a comparison result \\
+    Aggregate interaction superposes in latent space
+      & Three or more vehicles, overlapping wakes
+      & \textbf{Known to be imperfect}~\cite{shi2020neuralswarm,gielis2023aggregate}; magnitude measured in the multi-robot results chapter \\
+    Interaction lies within the training distribution
+      & Unseen separations, faster relative motion
+      & Prediction degrades while measurement does not; this is the crossover of \textbf{RQ2} \\
+    Rotor-speed measurement available
+      & No RPM source fitted
+      & $a_{\mathrm{res}}$ reads identically zero --- silent, and checked every session \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Two entries deserve emphasis because they are not merely caveats but hypotheses the experiments
+test. The superposition assumption is known to be imperfect, and the experimental question is the
+size of the penalty rather than its existence. And the training-distribution assumption is exactly
+what separates the predictive family from the reactive one: a measurement has no training
+distribution to leave. Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} observe precisely this
+effect for their purely learned method in the no-payload case, attributing a drop in performance on
+the circular trajectory to its being out of distribution relative to the training data.
+
+% -------------------------------------------------------------------------------------
+\section{Summary}
+\label{sec:model-summary}
+
+The residual wrench of \eqref{eq:model-trans}--\eqref{eq:model-rot} is the single quantity every
+strategy in this thesis estimates. It can be recovered online from
+\eqref{eq:model-ares}, which needs no model of the interaction but requires rotor-speed sensing and
+is available only after the disturbance acts; or predicted from \eqref{eq:model-deepsets}, which
+acts ahead of the disturbance but is valid only within its training distribution and assumes an
+aggregation that is known to be approximate. Both are expressed as accelerations in the world frame
+and enter the control law at the same point with the same sign, \eqref{eq:model-sign}.
+
+That common definition is what makes the comparison in the two-robot results chapter a
+comparison rather than a collection of separately-tuned controllers. Chapter~\ref{ch:control}
+describes the seven strategies built on it, and the point at which each injects its knowledge of
+the interaction.

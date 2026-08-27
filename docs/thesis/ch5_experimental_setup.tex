@@ -1,0 +1,356 @@
+% =====================================================================================
+%  Chapter 5 — Experimental Setup and Protocol
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT, 23 August 2026 (writing-track item W.7).
+%  Sources: docs/05_Experimental_Protocol_2Robot.md, docs/10_Formation_Library.md,
+%           docs/11_Hardware_Readiness_Checklist.md, docs/09_Simulation.md.
+%
+%  HONESTY NOTE. At the time of writing NOTHING HAS FLOWN. This chapter describes a design,
+%  not a completed campaign. Every statement about what "is" done must be checkable; every
+%  statement about what will be done is written as such. Do not let the future tense slip
+%  into the past as chapters 6-7 are drafted -- update this chapter instead.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+%  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
+% =====================================================================================
+
+\chapter{Experimental Setup and Protocol}
+\label{ch:setup}
+
+Chapter~\ref{ch:control} described seven strategies and argued that four of them differ only in
+which residual term is active. That argument is only worth as much as the experiment that exercises
+it. This chapter describes the platform, the scenarios, the measurement chain and the protocol, and
+in each case the reasoning is the same: the design exists to remove alternative explanations for an
+observed difference.
+
+Section~\ref{sec:setup-validity} states the threats this design is built against, and which of
+them it does not eliminate.
+
+% -------------------------------------------------------------------------------------
+\section{Platform}
+\label{sec:setup-platform}
+
+The vehicles are Crazyflie~2.1 brushless quadrotors, nominally \SI{41}{\gram} and
+\SI{9}{\centi\metre} rotor-to-rotor. All vehicles in a team are the same platform: the gain block
+is shared across robots, so a mixed team would fly at least one vehicle on the wrong mass, thrust
+constant and inertia --- which would appear in the logs as a residual and be indistinguishable from
+an interaction force (Section~\ref{sec:model-measure-fail}).
+
+Two vehicles are the minimum for the protocol. A third is required for the three-robot scenarios,
+which cannot be run without it.
+
+Each vehicle carries two additions that are not optional for this work:
+
+\paragraph{A rotor-speed source} --- optical RPM deck or DShot telemetry. Without it the applied
+thrust cannot be reconstructed, so $a_{\mathrm{res}}$ is unavailable and \emph{reads identically
+zero} rather than failing loudly. Strategies 1 and 4 additionally cannot run at all. This is the
+single most consequential hardware prerequisite in the setup.
+
+\paragraph{A micro SD deck} --- the recording medium for the dataset, for the reasons in
+Section~\ref{sec:setup-logging}.
+
+State estimation uses the on-board extended Kalman filter, fed with external pose from a
+motion-capture system at \SI{100}{\hertz}. The control loop runs at \SI{500}{\hertz} onboard.
+
+% -------------------------------------------------------------------------------------
+\section{Flight volume}
+\label{sec:setup-volume}
+
+The tracked volume measures approximately \SI{2}{\metre} $\times$ \SI{4}{\metre} horizontally and
+extends to \SI{1.7}{\metre} in height. Two distinct limits are enforced and should not be
+conflated: the \emph{tracked volume}, outside which the motion-capture system cannot see the
+vehicles, and an \emph{operational floor} of \SI{0.30}{\metre}, chosen so that ground effect does
+not contaminate the measurement of inter-vehicle interaction.
+
+The floor is lowered to \SI{0.10}{\metre} for one scenario only --- the near-ground pass of
+Section~\ref{sec:setup-scenarios}, whose purpose is to measure ground effect in isolation so that
+it can be separated from downwash rather than confounded with it.
+
+The volume is a binding constraint rather than a formality. Several scenarios sit within
+approximately \SI{10}{\centi\metre} of a wall at their extremes, and the scenario definitions are
+automatically centred and, where necessary, rotated to fit. That a configuration fits is checked
+before flight, not discovered during it.
+
+\todo{The volume figures are corroborated from two independent statements but have not been
+tape-measured. Measure before the first session and update this section
+(docs/11\_Hardware\_Readiness\_Checklist.md).}
+
+% -------------------------------------------------------------------------------------
+\section{The formation library}
+\label{sec:setup-scenarios}
+
+Sixteen scenarios, fixed before any data collection and not modified afterwards. Freezing them is
+what allows every strategy to meet identical excitation; a library that evolved during the campaign
+would make later strategies incomparable with earlier ones.
+
+The scenarios are parameterised rather than hard-coded --- separations, offsets and speeds are
+arguments --- so that a separation sweep is the same scenario at different parameters rather than
+a different scenario. Each is compiled to a per-vehicle polynomial trajectory and uploaded through
+the standard trajectory interface, so that the same command produces the same motion in simulation
+and on hardware.
+
+\begin{table}[t]
+  \centering
+  \caption{The formation library. Scenarios marked $\dagger$ carry elevated risk and are gated
+    behind an explicit acknowledgement; those marked $\ast$ are null conditions in which no
+    inter-vehicle interaction is expected.}
+  \label{tab:setup-scenarios}
+  \small
+  \begin{tabular}{@{}llp{0.46\linewidth}@{}}
+    \toprule
+    & Scenario & Purpose \\
+    \midrule
+    \multicolumn{3}{@{}l}{\emph{Two vehicles}}\\
+    A1 & Vertical stack, hover      & Baseline. Nothing moves, so any relative displacement is interaction rather than tracking error \\
+    A2 & Vertical stack, tracking   & Constant separation while both vehicles move \\
+    A3 & Static top                 & Fixed wash source, lower vehicle sweeps through: captures the transition, not only the level \\
+    A4 & Offset stack               & Partial overlap; asymmetric and hardest to model \\
+    A5 & Reverse-circle stack       & Lateral offset swept twice per lap at constant height and speed \\
+    A6 & Extreme stack $\dagger$    & Strongest interaction, smallest error budget \\
+    A7 & Dynamic merge $\dagger$    & One continuous sweep of the whole separation range: gives a model the gradient, not only levels \\
+    A8 & Vertical swap              & Wash arrives as a transient with a known arrival time; hardest case for a feedforward model \\
+    \midrule
+    \multicolumn{3}{@{}l}{\emph{Three vehicles}}\\
+    B1 & I-stack                    & Lowest vehicle in the combined wash of two \\
+    B2 & V-stack                    & Asymmetric aggregation, which B1 cannot produce \\
+    B3 & Vertical swap              & Three crossings at three height differences in one flight \\
+    \midrule
+    \multicolumn{3}{@{}l}{\emph{Controls and coverage}}\\
+    C1 & Side-by-side coplanar $\ast$ & A residual here, and not in A1, is not downwash \\
+    C2 & Leader--follower line $\ast$ & Wake rather than wash \\
+    C3 & Equilateral triangle $\ast$  & Coplanar three-body control \\
+    C4 & Docking approach $\dagger$   & Simultaneous lateral and vertical closure \\
+    C5 & Near-ground pass, one vehicle & Ground effect alone, separable from downwash \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{The null scenarios}
+\label{sec:setup-null}
+
+C1--C3 are the most important scenarios in the library and the least interesting to watch. They
+place the vehicles in configurations where no significant inter-vehicle interaction should exist,
+and they exist because of the property established in Section~\ref{sec:model-dynamics}: the
+residual is a catch-all, non-zero even in isolated flight, so a residual measured in formation
+cannot be attributed to the interaction without a reference.
+
+They serve two purposes. They bound the measurement floor, so that a reported improvement can be
+distinguished from noise. And they detect model error: a residual that appears when no neighbour is
+in the wash is a mis-identified mass or thrust constant, not an interaction, and must be corrected
+before the campaign proceeds rather than explained afterwards.
+
+\subsection{Regimes, and why the library spans them}
+
+The scenarios are not a list of poses but a deliberate spread across the interaction regimes that
+Research Question~2 distinguishes. A1 and C1--C3 are static; A2 and A3 are quasi-static; A4 and A5
+sweep lateral offset; A7 sweeps separation continuously; A8 and B3 present the disturbance as a
+transient with a known arrival time. A model fitted on one regime and evaluated on another is what
+makes ``outside the training distribution'' a measurable condition rather than a caveat.
+
+\begin{quote}
+\textbf{Requirement for data collection: the set must excite lateral relative motion.}
+A purely vertical scenario holds the lateral components of the relative state constant, so a model
+trained only on such data has seen no variation in half of its six inputs and is extrapolating the
+first time a formation moves sideways. \textbf{The collection set must therefore include A4, A5
+and A7 --- not only the vertical stacks A1, A2 and A3.} This is not a preference about coverage; a
+set without them produces a model that cannot be evaluated on the scenarios it will meet.
+\end{quote}
+
+This was established in simulation before any flight: a dry run collecting only a vertical stack
+produced training data in which two of the six network inputs never varied, which the training
+pipeline reports as a degenerate normalisation statistic and which no amount of training can
+repair.
+
+% -------------------------------------------------------------------------------------
+\section{Measurement and logging}
+\label{sec:setup-logging}
+
+\subsection{Why the dataset is recorded onboard}
+
+Radio telemetry saturates at approximately two vehicles: each drone transmits on the order of
+\num{800} packets per second at full rate against a per-dongle ceiling near \num{1000}. Recording
+the dataset over radio would therefore couple the sampling rate to the team size, which is
+unacceptable for a study whose subject is what happens as vehicles are added.
+
+The micro SD deck records \num{35} variables at \SI{500}{\hertz} on each vehicle independently of
+radio and of team size. Radio logging is retained for live monitoring and for single-vehicle
+tuning, where the bandwidth exists.
+
+\subsection{What is recorded}
+
+Position and velocity estimates; attitude; gyro and accelerometer; the measured residual
+$a_{\mathrm{res}}$; the INDI torque and filtered angular acceleration; the network prediction
+$\hat{a}_{\mathrm{res}}$ and its saturation flag; the commanded setpoint; and the four motor
+commands.
+
+Two of these deserve comment. The measured residual is recorded \emph{in every controller mode},
+including those that make no use of it, because the training data is collected under the
+uncompensated baseline. And the network prediction is recorded \emph{whether or not it is enabled},
+because comparing prediction against measurement is how a learned model is evaluated, and that
+comparison is only meaningful on a flight where the prediction is not also changing the vehicle's
+behaviour.
+
+The logging configuration is fixed before data collection and shared by the collection and
+evaluation flights. A configuration change between the two would silently make the two halves of
+the dataset incomparable.
+
+\subsection{Time alignment across vehicles}
+
+Each vehicle timestamps its samples against its own boot, so the logs share no clock. Recording is
+started by a single broadcast, which aligns the vehicles to within the broadcast jitter plus one
+logging period. Residual error comes from propagation, task wake phase and crystal drift between
+vehicles; the last is a rate error and accumulates over a flight.
+
+The merge tool therefore \emph{measures} the offset by cross-correlating each vehicle's onboard
+trace against a radio trace sharing a common clock, and reports offset and drift rather than
+assuming them. The predicted alignment is a few milliseconds; that figure is to be confirmed
+against real logs on the first two-vehicle flight.
+
+% -------------------------------------------------------------------------------------
+\section{Protocol}
+\label{sec:setup-protocol}
+
+\subsection{Hardware gate}
+\label{sec:setup-gate}
+
+No data collected before the following sequence passes is used. The gate is not an experiment; it
+is the check that nothing is broken, so that what is measured afterwards means something.
+
+\begin{enumerate}
+  \item \textbf{Validate.} Single vehicle, geometric first and then INDI, on the trajectory ladder.
+        Confirm the gains read back as configured.
+  \item \textbf{Tune, then freeze.} Any remaining attitude tuning happens here and only here. The
+        gains are then frozen for the remainder of the campaign.
+  \item \textbf{Two vehicles at large separation.} Confirm $a_{\mathrm{res}}$ is non-zero and
+        correctly signed; confirm the measured time alignment.
+\end{enumerate}
+
+The order carries the reasoning. Tuning before validating means tuning against an unknown fault.
+Flying two vehicles before the freeze means the gains move underneath the dataset.
+
+Stage~1 cannot confirm that the compensation terms are \emph{correct}, only that they are not
+catastrophic: with no neighbour present $a_{\mathrm{res}} \approx 0$, so a compensation term is
+dormant and a clean single-vehicle flight demonstrates nothing about it. Stage~3 is the first point
+at which the sign of the compensation is observable at all, which is why it is part of the gate
+rather than the first experiment.
+
+\subsection{Data collection}
+\label{sec:setup-collect}
+
+Collection flights are flown under the \emph{uncompensated} baseline of
+Section~\ref{sec:ctrl-s0}. This is not a convenience: a compensating controller partly cancels the
+disturbance, so the residual it records is the one that survived compensation, which is not the
+quantity a predictive model should be fitted to.
+
+Separations are approached from large to small, and a tighter configuration is attempted only after
+the looser ones are clean.
+
+\textbf{The set must span both vertical and lateral excitation} --- A1/A2/A3 \emph{and} A4/A5/A7
+--- for the reason given in Section~\ref{sec:setup-scenarios}. A collection campaign that omits the
+laterally excited scenarios cannot support the predictive strategies, and the omission is not
+recoverable without re-flying.
+
+\subsection{Comparison campaign}
+\label{sec:setup-campaign}
+
+Each strategy flies the frozen library. Because the control law is selected at runtime
+(Section~\ref{sec:ctrl-runtime}), strategies are interleaved within a session rather than flown on
+separate days, which pairs them against the same battery state, temperature and calibration.
+Each condition is repeated to allow a distribution rather than a single number to be reported.
+
+The comparison is tightest among Strategies 0, 1, 2 and 4, which share the entire position and
+attitude loop and differ only in which residual term is active; a shared gain set is meaningful for
+them in a way it is not across structurally different controllers. Strategies 3 and 6 are compared
+under identical trajectories, formations and hardware, but not under an identical control
+structure, and the discussion chapter must phrase their results accordingly.
+
+\subsection{Metrics}
+\label{sec:setup-metrics}
+
+Three axes, corresponding to the research questions.
+
+\paragraph{Tracking error.} Position RMSE, total and per axis, and the maximum deviation from the
+commanded trajectory.
+
+\paragraph{Residual rejection.} The error in the \emph{separation between vehicles}, measured
+against the commanded separation. Downwash acts as a bias --- the lower vehicle sags, closing the
+gap --- so the mean error is reported as the primary quantity and the spread as secondary. A
+compensator that works moves the mean back toward the commanded value. Reporting only the spread
+would hide precisely the effect being studied.
+
+Alongside it, the magnitude of the measured residual that remains after compensation, and for every
+strategy carrying a learned model, the prediction against the measurement.
+
+\paragraph{Robustness and cost.} Control effort; behaviour as separation tightens; abort and
+failure rate; onboard computation per control step; sensing prerequisites; and the quantity of
+training data required to reach a given prediction accuracy.
+
+% -------------------------------------------------------------------------------------
+\section{The role of simulation}
+\label{sec:setup-sim}
+
+A software-in-the-loop simulator runs the same controller source that flies, with a published
+downwash model providing the interaction force. It was used throughout development, and its role in
+this thesis is deliberately limited.
+
+\textbf{Simulation is used to disprove implementations, never to validate a method.} It established
+that every scenario in the library executes and produces the commanded geometry under both
+controllers, and it exposed two defects in flight code that single-vehicle testing could not have
+found. It cannot support a claim about how well a method works, for a reason specific to this
+subject: the interaction force in simulation is produced by a learned model of the same family as
+the one being fitted, and learning a network's output with another network is a substantially
+easier problem than learning real air.
+
+No result in the two-robot results chapter or~the multi-robot results chapter rests on simulation.
+
+% -------------------------------------------------------------------------------------
+\section{Threats to validity}
+\label{sec:setup-validity}
+
+\begin{table}[t]
+  \centering
+  \caption{Threats to validity and the design decisions taken against them.}
+  \label{tab:setup-threats}
+  \small
+  \begin{tabular}{@{}p{0.28\linewidth}p{0.34\linewidth}p{0.30\linewidth}@{}}
+    \toprule
+    Threat & Mitigation & Residual risk \\
+    \midrule
+    Tuning confound & Gains frozen before collection; shared across strategies; runtime selection allows interleaving & Shared gains may suit some strategies better. Justified for 1/2/4, which share the whole loop; weaker for 3 and 6, which do not (§\ref{sec:ctrl-fairness}) \\
+    Measurement floor & Null scenarios C1--C3 bound it under the same pipeline & --- \\
+    Model error read as interaction & Null scenarios detect it; airframe constants identified once and frozen & Battery discharge within a flight is not compensated \\
+    Training/test leakage & Held-out scenarios; split by contiguous flight segment, never by sample & --- \\
+    Session effects & Strategies interleaved within a session; repeated conditions & --- \\
+    Silent loss of the residual & $a_{\mathrm{res}} \neq 0$ verified at the start of every session & --- \\
+    Simulation-to-hardware gap & No claim rests on simulation & --- \\
+    Single airframe & --- & \textbf{Not mitigated.} Generalisation beyond this platform is discussed, not demonstrated \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Splitting the training and test data by contiguous flight segment rather than by sample deserves a
+note, because the obvious alternative is badly wrong here. At \SI{500}{\hertz} consecutive samples
+are nearly identical, so a random per-sample split places a near-duplicate of almost every test
+point in the training set and reports a validation error that means nothing.
+
+Two threats are not mitigated and are stated as limitations rather than managed. The results
+concern a single airframe; quantities are normalised where a normalisation is defensible, but
+generalisation to other platforms is argued rather than shown. And battery discharge changes the
+thrust constant slightly within a flight, which appears as a slow drift in the measured residual;
+the effect is bounded by the null scenarios but not removed.
+
+% -------------------------------------------------------------------------------------
+\section{Summary}
+\label{sec:setup-summary}
+
+Two or three identical brushless quadrotors, each carrying a rotor-speed source and an SD card,
+flying sixteen frozen scenarios inside a tracked volume of roughly \SI{2}{\metre} $\times$
+\SI{4}{\metre} $\times$ \SI{1.7}{\metre}, with \num{35} variables recorded onboard at
+\SI{500}{\hertz} independently of team size. Gains are frozen before any data is collected;
+strategies are selected at runtime and interleaved within sessions; and three null scenarios
+establish what a measurement of zero looks like under the same pipeline.
+
+\todo{This chapter describes a design. At the time of writing no flight has taken place. Revise to
+past tense as the campaign proceeds, and record deviations from this protocol here rather than only
+in the results.}

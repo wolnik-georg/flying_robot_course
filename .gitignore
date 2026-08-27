@@ -9,13 +9,18 @@ __pycache__/
 log/
 
 # ── Thesis writing track: LOCAL ONLY ────────────────────────────────────────────────
-# The thesis prose, its supporting documents and its bibliography are deliberately kept off
-# the remote. They were purged from the pushed history on 2026-08-24 and must not be
-# re-added. The files still exist in the working tree and are backed up outside the repo;
-# they are simply not versioned here. Adding any of them back would put the draft on GitHub.
-docs/thesis/
+# The thesis SUPPORTING DOCUMENTS and the paper library stay off the remote. They were
+# purged from the pushed history on 2026-08-24 and must not be re-added.
+#
+# CHANGED 2026-08-27: the manuscript SOURCES are now tracked, so the citation baseline can be
+# a real git tag rather than a hash list. Only .tex and CITATION_BASELINE.md are let back in;
+# build artefacts, the compiled PDF and everything else under docs/thesis/ stay out. Note that
+# **/*.pdf at the top of this file already excludes every PDF, including thesis_draft.pdf.
+docs/thesis/*
+!docs/thesis/*.tex
+!docs/thesis/CITATION_BASELINE.md
 docs/papers/
-docs/references.bib
+# docs/references.bib -- the manuscript bibliography -- is tracked with the sources above.
 docs/15_Problem_Statement_and_Research_Questions.md
 docs/16_Related_Work_Structure.md
 docs/17_Source_Ledger_and_Citation_Discipline.md
@@ -23,3 +28,9 @@ docs/18_Strategy_Descriptions.md
 docs/19_Contribution_Statement.md
 docs/20_Verified_Claims.md
 docs/THESIS_REVIEW_BRIEF.md
+# Archived 2026-08-27 to docs/_archive/citation_notes/. The ignore rules are path-specific,
+# so the move would otherwise have un-ignored these and made them committable again.
+docs/_archive/citation_notes/16_Related_Work_Structure.md
+docs/_archive/citation_notes/17_Source_Ledger_and_Citation_Discipline.md
+docs/_archive/citation_notes/20_Verified_Claims.md
+docs/_archive/citation_notes/THESIS_REVIEW_BRIEF.md
