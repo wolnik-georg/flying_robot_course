@@ -1,5 +1,7 @@
 # C.0 flight card — one page, print it
 
+> **Citation audit closed 27 Aug 2026. Do not block C.0 on more papers.**
+
 **Read nothing else on flight day.** Detail lives in
 [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md); this is the
 sequence and the abort criteria.

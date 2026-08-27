@@ -1,5 +1,7 @@
 # Hardware Readiness Checklist — the operational detail of **C.0**
 
+> **Citation audit closed 27 Aug 2026. Do not block C.0 on more papers.**
+
 **Last updated:** 24 August 2026
 
 ---
