@@ -33,8 +33,25 @@ states *fact*. **Confirm on the vehicle** — cfclient → Parameters tab → `p
 | Launched with `crazyflies.yaml` | not `crazyflies_sim*.yaml` | the sim roster carries the sim gain |
 | uSD card in each drone | present, empty | no card = no dataset |
 
-☐ Tape-measure the flight volume before trusting the geofence — scenarios sit within ~10 cm of
-the walls. Current numbers (x ±1, y ±2, z 0.30–1.70) are corroborated, **not measured**.
+### ☐ The three unflown residual changes are on the bird
+
+Flash, then confirm the build actually carries all three. None is detectable in single-drone
+flight, and §2 is meaningless if any of them is missing from the firmware being flown.
+
+| # | Change | Confirm |
+|---|---|---|
+| 1 | **Residual sign fix** | present in the flashed build — `probe_residual_sign.py` on the first two-robot log |
+| 2 | **`a_res` gating fix** | `indi.a_res_*` is live under **geometric**, not only under INDI |
+| 3 | **`rnn.en`** | parameter exists and reads **0** — leave it off until the rest of C.0 passes |
+
+### ☐ Tape-measure the flight volume — before any two-robot flight
+
+Scenarios sit within ~10 cm of the walls. Current numbers (x ±1, y ±2, z 0.30–1.70) are
+corroborated but **not measured**. Write the real limits into `formations/safety.py`
+(`FLIGHT_SPACE`), replacing the placeholder.
+
+**This gates §2 and §4.** A two-robot flight inside an unverified geofence is a wall strike
+waiting for the right scenario, and A1 at Δz 0.75 needs `--height 0.85` to fit at all.
 
 ---
 
@@ -118,6 +135,9 @@ ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.50 --brushless
 
 Order: **A1 @ 0.75 → A1 @ 0.50 → A3 @ 0.40 → A3 @ 0.30.** Nothing below Δz 0.50 on day one.
 A6/A7/C4 are `--allow-extreme` gated for a reason and come last.
+
+**Stay inside the measured geofence** — the one written into `formations/safety.py` at §0, not
+the placeholder.
 
 | Check on the first two-robot flight | Why |
 |---|---|

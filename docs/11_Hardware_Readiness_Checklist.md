@@ -131,7 +131,7 @@ A1 Δz 0.75 needs 0.85; A4, B1, B2, B3, C4 need 0.9; A7 needs 0.5; C5 flies at 0
 | | `kv_xy` | ζ |
 |---|---|---|
 | `crazyflies.yaml` (hardware) | **5.0** | 0.31 |
-| `crazyflies_sim.yaml` (simulation only) | 10.0 | 0.62 |
+| `crazyflies_sim.yaml` (simulation only) | **8.0** | 0.50 |
 
 The simulator needs about twice the damping of the real vehicle for reasons not yet
 understood. **Never copy the simulator value onto hardware**, and never assume a
