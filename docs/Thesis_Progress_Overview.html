@@ -1,0 +1,353 @@
+<title>Two Tracks to the Thesis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap">
+
+<style>
+:root{
+  --ground:#F7F8F7; --surface:#FFFFFF; --surface-2:#F0F2F2;
+  --ink:#14181A; --ink-2:#3A4347; --muted:#6B7478; --rule:#DCE1E1;
+  --accent:#0E7C7B; --accent-soft:#E2EDEC;
+  --warn:#C4501E; --warn-soft:#F7E8E0;
+  --ok:#3F7D3B; --ok-soft:#E7F0E6;
+  --sans:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1214; --surface:#161B1E; --surface-2:#1D2429;
+    --ink:#E8EDEE; --ink-2:#BAC4C7; --muted:#8D989C; --rule:#2A3238;
+    --accent:#2FA8A6; --accent-soft:#12302F;
+    --warn:#E2703A; --warn-soft:#332016;
+    --ok:#66B05F; --ok-soft:#1A2A19;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1214; --surface:#161B1E; --surface-2:#1D2429;
+  --ink:#E8EDEE; --ink-2:#BAC4C7; --muted:#8D989C; --rule:#2A3238;
+  --accent:#2FA8A6; --accent-soft:#12302F;
+  --warn:#E2703A; --warn-soft:#332016;
+  --ok:#66B05F; --ok-soft:#1A2A19;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--serif); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:clamp(28px,5vw,64px) clamp(18px,4vw,40px) 80px}
+
+h1,h2,h3,.lbl,th{font-family:var(--sans)}
+h1{
+  font-size:clamp(2rem,5.2vw,3.1rem); font-weight:700; line-height:1.05;
+  letter-spacing:-.02em; margin:.1em 0 .2em; text-wrap:balance;
+}
+h2{
+  font-size:clamp(1.15rem,2.4vw,1.45rem); font-weight:700; letter-spacing:-.01em;
+  margin:0 0 .2em; text-wrap:balance;
+}
+h3{font-size:1rem; font-weight:600; margin:0 0 .35em; letter-spacing:-.005em}
+p{margin:0 0 .9em; max-width:66ch}
+a{color:var(--accent)}
+
+.lbl{
+  font-family:var(--mono); font-size:.68rem; font-weight:500;
+  letter-spacing:.13em; text-transform:uppercase; color:var(--muted);
+}
+
+/* ── header ─────────────────────────────── */
+header{border-bottom:2px solid var(--ink); padding-bottom:22px; margin-bottom:34px}
+.sub{font-size:1.06rem; color:var(--ink-2); max-width:60ch; margin:.5em 0 1.1em}
+.statusline{
+  display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center;
+  font-family:var(--mono); font-size:.78rem;
+}
+.pill{
+  display:inline-flex; align-items:center; gap:7px;
+  padding:5px 11px; border-radius:2px; font-weight:500;
+  background:var(--ok-soft); color:var(--ok); border:1px solid currentColor;
+}
+.pill.blocked{background:var(--warn-soft); color:var(--warn)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+
+/* ── stats ──────────────────────────────── */
+.stats{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px; background:var(--rule); border:1px solid var(--rule);
+  margin:0 0 44px;
+}
+.stat{background:var(--surface); padding:18px 18px 16px}
+.stat .n{
+  font-family:var(--mono); font-size:clamp(1.5rem,3.4vw,2rem); font-weight:600;
+  letter-spacing:-.03em; color:var(--accent); font-variant-numeric:tabular-nums;
+  display:block; line-height:1.1;
+}
+.stat .t{font-family:var(--sans); font-size:.85rem; color:var(--ink-2); margin-top:5px; display:block}
+
+/* ── two lanes ──────────────────────────── */
+.lanes{display:grid; grid-template-columns:1fr 1fr; gap:26px; margin-bottom:14px}
+@media(max-width:760px){.lanes{grid-template-columns:1fr}}
+.lane{
+  background:var(--surface); border:1px solid var(--rule);
+  border-top:3px solid var(--accent); padding:22px 22px 18px;
+}
+.lane.lab{border-top-color:var(--warn)}
+.lane-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:14px}
+.lane ul{margin:0; padding:0; list-style:none}
+.lane li{
+  position:relative; padding-left:22px; margin-bottom:9px; font-size:.94rem; line-height:1.5;
+}
+.lane li::before{
+  content:""; position:absolute; left:0; top:.58em;
+  width:9px; height:9px; border:1.5px solid var(--ok); background:var(--ok);
+}
+.lane li.pending::before{background:transparent; border-color:var(--muted)}
+.lane li em{font-style:normal; font-family:var(--mono); font-size:.84em; color:var(--muted)}
+
+/* ── tables ─────────────────────────────── */
+.scroll{overflow-x:auto; margin:0 0 34px}
+table{border-collapse:collapse; width:100%; font-size:.9rem; min-width:460px}
+th{
+  text-align:left; font-size:.7rem; font-weight:600; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); padding:0 14px 8px 0;
+  border-bottom:1.5px solid var(--ink);
+}
+td{padding:10px 14px 10px 0; border-bottom:1px solid var(--rule); vertical-align:top}
+td.num{font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:right; padding-right:0; color:var(--ink-2)}
+th.num{text-align:right; padding-right:0}
+tr:last-child td{border-bottom:1.5px solid var(--ink)}
+.ch{font-family:var(--mono); color:var(--accent); font-weight:500}
+
+/* ── ladder ─────────────────────────────── */
+.ladder{list-style:none; margin:0 0 30px; padding:0; counter-reset:rung}
+.ladder li{
+  counter-increment:rung; position:relative; padding:0 0 18px 52px;
+  border-left:1px solid var(--rule); margin-left:14px;
+}
+.ladder li:last-child{border-left-color:transparent; padding-bottom:0}
+.ladder li::before{
+  content:counter(rung); position:absolute; left:-14px; top:-2px;
+  width:28px; height:28px; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.8rem; font-weight:600;
+  background:var(--surface); color:var(--muted);
+  border:1px solid var(--rule); border-radius:50%;
+}
+.ladder li.key::before{background:var(--warn); color:#fff; border-color:var(--warn)}
+.ladder h3{margin-bottom:.15em}
+.ladder .why{font-size:.9rem; color:var(--ink-2); margin:0; max-width:60ch}
+
+/* ── callout ────────────────────────────── */
+.risk{
+  background:var(--warn-soft); border:1px solid var(--warn);
+  border-left-width:4px; padding:20px 22px; margin:0 0 34px;
+}
+.risk h2{color:var(--warn); margin-bottom:.3em}
+.risk p{margin-bottom:.55em}
+.risk p:last-child{margin-bottom:0}
+code{
+  font-family:var(--mono); font-size:.86em; background:var(--surface-2);
+  padding:1px 5px; border-radius:2px;
+}
+.risk code{background:rgba(0,0,0,.07)}
+:root[data-theme="dark"] .risk code{background:rgba(255,255,255,.1)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .risk code{background:rgba(255,255,255,.1)}
+}
+
+section{margin-bottom:46px}
+.sec-head{margin-bottom:18px; padding-bottom:9px; border-bottom:1px solid var(--rule)}
+.note{font-size:.88rem; color:var(--muted); max-width:64ch; font-style:italic}
+footer{
+  border-top:1px solid var(--rule); padding-top:18px; margin-top:14px;
+  font-family:var(--mono); font-size:.74rem; color:var(--muted);
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="lbl">Master's thesis · progress overview · 26 August 2026</span>
+  <h1>Two Tracks to the Thesis</h1>
+  <p class="sub">
+    Comparison of control strategies for interaction-force aware multirotor teams —
+    Crazyflie&nbsp;2.1 brushless, Crazyswarm2, an out-of-tree controller in Rust.
+  </p>
+  <div class="statusline">
+    <span class="pill"><span class="dot"></span>Writing · unblocked</span>
+    <span class="pill blocked"><span class="dot"></span>Lab · waiting on access</span>
+    <span style="color:var(--muted)">Preparation complete — no software on the critical path</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><span class="n">38</span><span class="t">pages drafted, Ch.&nbsp;1–5</span></div>
+  <div class="stat"><span class="n">20</span><span class="t">sources, 18 read in full</span></div>
+  <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
+  <div class="stat"><span class="n">50</span><span class="t">sim cases passed, 0 defects</span></div>
+  <div class="stat"><span class="n">987</span><span class="t">weights running onboard</span></div>
+</div>
+
+<section>
+  <div class="sec-head"><h2>The two tracks</h2></div>
+  <p class="note" style="margin-bottom:20px">
+    They run in parallel and do not block each other. Work on one is never progress on the other.
+  </p>
+
+  <div class="lanes">
+    <div class="lane">
+      <div class="lane-head">
+        <h2>Literature &amp; writing</h2>
+        <span class="lbl" style="color:var(--ok)">Unblocked</span>
+      </div>
+      <ul>
+        <li>Problem statement + 4 research questions, each with a falsifiable hypothesis</li>
+        <li>Related-work structure built so that reading it produces the gap statement</li>
+        <li>Two literature sweeps — arXiv, then cross-database + citation graph <em>157 citing works screened</em></li>
+        <li>Every held paper read <strong>in full</strong>, not from abstracts <em>18 of 20; one paywalled</em></li>
+        <li>Claim ledger: every citable number in the source's own words</li>
+        <li>Chapters 1–5 drafted, revised and accuracy-audited</li>
+        <li>Seven strategies described, implementation separated from reference method</li>
+      </ul>
+    </div>
+
+    <div class="lane lab">
+      <div class="lane-head">
+        <h2>Code, sim &amp; flight</h2>
+        <span class="lbl" style="color:var(--warn)">Needs a drone</span>
+      </div>
+      <ul>
+        <li>Geometric + INDI controllers flying; one Rust source runs on hardware <em>and</em> in sim</li>
+        <li>Formation library — 16 scenarios, spec-checked and safety-gated</li>
+        <li>Validated in simulation on both controllers <em>34/34 geometry, 16/16 speed</em></li>
+        <li>Separation and speed are real, discrete experimental variables</li>
+        <li>Residual measurement <code>a_res</code> logged in every controller mode</li>
+        <li>Deep-sets network onboard + offline training pipeline + end-to-end dry run</li>
+        <li>uSD logging at 500&nbsp;Hz per drone — the dataset path, independent of radio</li>
+        <li class="pending">Nothing has flown since the trajectory-upload migration</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Chapters drafted</h2></div>
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr><th>Ch.</th><th>Title</th><th>What it establishes</th><th class="num">Words</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="ch">1</td><td>Introduction</td><td>Motivation from the physics; contributions; why a null result still counts</td><td class="num">2,026</td></tr>
+      <tr><td class="ch">2</td><td>Background &amp; Related Work</td><td>The two ways to learn an interaction force — measure it, or predict it</td><td class="num">4,143</td></tr>
+      <tr><td class="ch">3</td><td>System Modelling</td><td>The residual-force formulation; verified line by line against the firmware</td><td class="num">2,443</td></tr>
+      <tr><td class="ch">4</td><td>Control Architectures</td><td>Seven strategies as settings of one control law — and where that stops holding</td><td class="num">3,178</td></tr>
+      <tr><td class="ch">5</td><td>Experimental Setup</td><td>Scenarios, protocol, frozen gains, what would falsify each hypothesis</td><td class="num">2,670</td></tr>
+      <tr><td class="ch">6–9</td><td style="color:var(--muted)">Results, discussion, conclusion</td><td style="color:var(--muted)">Waiting on flight data — deliberately not started</td><td class="num" style="color:var(--muted)">—</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">
+    Chapter 5 is written in future tense on purpose: nothing has been flown, and no result is
+    claimed anywhere in the draft.
+  </p>
+</section>
+
+<section>
+  <div class="sec-head"><h2>What the literature work actually changed</h2></div>
+  <p>
+    Reading the papers in full rather than from abstracts moved several claims. A headline
+    36&nbsp;% improvement turned out to be <strong>lateral</strong>, not three-dimensional — the
+    paper contradicts its own abstract. A 5&nbsp;ms control loop cited as evidence of onboard
+    feasibility runs <strong>off-board on a laptop</strong>. A result read as refuting force
+    superposition in fact reports three regimes, one of which <em>does</em> superpose — which
+    sharpened a research question rather than supporting it.
+  </p>
+  <p>
+    Three misattributions were caught and logged, all from the same cause: trusting our own
+    earlier summary as if it were the source. The gap claim has been narrowed twice under
+    evidence, and now reads as what survives scrutiny rather than what would sound strongest.
+  </p>
+</section>
+
+<div class="risk">
+  <h2>The one thing that gates everything</h2>
+  <p>
+    A sign error meant the controller <strong>added</strong> the interaction force it was supposed
+    to cancel — reinforcing every disturbance instead of removing it. It measured at exactly
+    <strong>2.00×</strong> on a known input. It is fixed in code and <strong>has never flown</strong>.
+  </p>
+  <p>
+    It cannot be seen with one drone: <code>a_res</code> is essentially zero when there is nothing
+    to interact with. So the first lab objective is not tracking quality — it is proving the
+    residual <strong>cancels rather than amplifies</strong>. Every downstream number depends on
+    that single flight coming out right.
+  </p>
+</div>
+
+<section>
+  <div class="sec-head"><h2>Next — in the lab</h2></div>
+  <p class="note" style="margin-bottom:22px">
+    Strictly ordered. Each rung exists so that a failure has exactly one explanation.
+  </p>
+  <ol class="ladder">
+    <li>
+      <h3>Bench check</h3>
+      <p class="why">Confirm the position gain on the drone is the flight-proven value, not the
+      simulator's. Tape-measure the flight volume — scenarios sit within ~10&nbsp;cm of the walls.</p>
+    </li>
+    <li>
+      <h3>Single-drone hover</h3>
+      <p class="why">The residual signal must be small but <em>not</em> identically zero. Exactly
+      zero means no rotor-speed source, and therefore no thesis data at all.</p>
+    </li>
+    <li class="key">
+      <h3>Prove the residual sign</h3>
+      <p class="why">Two drones stacked, compensation on versus off. Enabling it must
+      <em>shrink</em> the separation error. This is the decisive flight.</p>
+    </li>
+    <li>
+      <h3>Trajectory ladder</h3>
+      <p class="why">Figure-8 on the old upload path, then the new one, then a circle. The new
+      path has 180 hover flights but only one trajectory flight — this buys the right to trust it.</p>
+    </li>
+    <li>
+      <h3>Two drones, wide first</h3>
+      <p class="why">Widest separation, then tighter. Confirm the residual grows as the gap closes —
+      that is what shows it measures the interaction rather than noise.</p>
+    </li>
+    <li>
+      <h3>Freeze the gains</h3>
+      <p class="why">Written down and unchanged from here. Re-tuning later would measure tuning
+      effort rather than the methods being compared.</p>
+    </li>
+  </ol>
+  <p>
+    Then data collection — vertical <em>and</em> lateral scenarios. A vertical-only dataset has no
+    lateral variation at all, and the model would be extrapolating the first time a formation
+    moves sideways.
+  </p>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Next — on paper</h2></div>
+  <p>
+    Nothing blocks the writing track, and nothing is left in it that does not need data. Chapters
+    6–9 need the comparison campaign. Chapter 5 turns to past tense once it has been run. One
+    paper remains abstract-only behind a paywall — the closest published work to this setting, and
+    the single verification gap that cannot be closed by reading harder.
+  </p>
+  <p>
+    Three of the seven strategies are deliberately not implemented: one waits on code from its
+    authors, two need a model that only real flight data can train, and two reinforcement-learning
+    variants are explicitly a stretch goal rather than part of the contribution.
+  </p>
+</section>
+
+<footer>
+  Detail: docs/07 (status) · docs/C0_FLIGHT_CARD.md (the ladder above, with commands) ·
+  docs/10 (formations) · docs/13 (residual learning) · docs/12 &amp; SPEED_MATRIX.md (sim validation)
+</footer>
+
+</div>
