@@ -22,7 +22,8 @@
 **Check 3 is the one that matters.** The first lab objective is proving the residual is subtracted,
 not that trajectories look elegant. Every INDI number recorded before the sign fix is obsolete.
 
-Probe: `experiments/analysis/probe_residual_sign.py`
+Analyse with `experiments/analysis/analyze_formation.py <timestamp>` (timestamp, not a path).
+`probe_residual_sign.py` is a **simulation** probe and cannot read a hardware log.
 
 ---
 

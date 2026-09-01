@@ -40,7 +40,7 @@ flight, and §2 is meaningless if any of them is missing from the firmware being
 
 | # | Change | Confirm |
 |---|---|---|
-| 1 | **Residual sign fix** | present in the flashed build — `probe_residual_sign.py` on the first two-robot log |
+| 1 | **Residual sign fix** | present in the flashed build — confirmed in flight at §2, not at the bench |
 | 2 | **`a_res` gating fix** | `indi.a_res_*` is live under **geometric**, not only under INDI |
 | 3 | **`rnn.en`** | parameter exists and reads **0** — leave it off until the rest of C.0 passes |
 
@@ -96,7 +96,21 @@ ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.75 --brushless  #
 **Abort if** enabling compensation makes separation error **larger**. That is the sign fix not
 having taken, and every downstream number would be built on it.
 
-Probe: `experiments/analysis/probe_residual_sign.py`
+**Analyse with:** `experiments/analysis/analyze_formation.py <timestamp>` — it takes a
+**timestamp, not a file path**, and reports commanded-vs-achieved separation together with
+`f_res = m·a_res`. Those are exactly the two numbers this rung turns on.
+
+```bash
+python3 experiments/analysis/analyze_formation.py 2026-09-02_14-15-10
+```
+
+> **Not `probe_residual_sign.py`** — that is a *simulation* probe. It injects a force into the SIL
+> controller and needs `cffirmware` on `PYTHONPATH`; it cannot read a hardware log.
+>
+> **Radio saturates with two drones** (~600 pkt/s per drone against a ~1000 pkt/s dongle limit), so
+> the live stream will look thin here. That is expected, not a fault: `run_formation` turns uSD
+> logging on for the flight, and **the uSD logs are the numbers you judge this rung by** — merge
+> them with `flying_drone_stack/tools/merge_usd_logs.py`, which also prints the measured sync.
 
 ---
 
