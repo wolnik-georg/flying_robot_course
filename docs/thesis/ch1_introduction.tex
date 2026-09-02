@@ -26,7 +26,7 @@
 \label{sec:intro-motivation}
 
 A Crazyflie~2.0 measures \SI{9}{\centi\metre} rotor-to-rotor, and when the interaction between
-vehicles is left unmodelled, planners have adopted conservative separations --- Shi et
+vehicles is left unmodelled, planners have adopted conservative separations, Shi et
 al.~\cite{shi2020neuralswarm} cite \SI{60}{\centi\metre} from earlier planning work as one such
 example. The margin is not arbitrary caution. Below it, the downwash of one vehicle acting on another is strong enough to destabilise
 the lower one, and the standard remedy is to keep the vehicles far enough apart that the effect can
@@ -34,7 +34,7 @@ be ignored.
 
 That margin is expensive. It sets the density at which a team can operate, and therefore the size
 of the space a given number of vehicles requires. Applications that motivate multirotor teams in
-the first place --- inspection in confined spaces, cooperative transport, aerial docking --- are
+the first place, inspection in confined spaces, cooperative transport, aerial docking, are
 precisely those in which the space is not available. In some of them, close approach is the task
 rather than a hazard to be avoided.
 
@@ -43,9 +43,9 @@ it, and that is difficult for a specific reason. The interaction is not a small 
 around a known model: it is strongly nonlinear in the relative configuration of the team, growing
 sharply as vehicles close and decaying quickly with lateral offset, and it is markedly asymmetric,
 since the vehicle above is affected far less than the one below. It is also hard to derive from
-first principles in the regime that matters. Simplified models exist for part of the problem ---
+first principles in the regime that matters. Simplified models exist for part of the problem:
 the mean flow from a quadrotor's propellers in hover is well approximated by a turbulent jet
-beyond about two and a half motor-to-motor distances below it~\cite{bauersfeld2024airflow} --- but
+beyond about two and a half motor-to-motor distances below it~\cite{bauersfeld2024airflow}, but
 formation flight operates closer than that, in a near field for which those authors report no
 closed-form model.
 
@@ -76,14 +76,14 @@ but the model is only valid over the configurations its training data covered, a
 behaviour is not merely degraded but unconstrained.
 
 These are complementary rather than competing: one is reactive and general, the other predictive
-and specific. A hybrid is therefore an obvious construction, and has been built --- for a single
+and specific. A hybrid is therefore an obvious construction, and has been built, for a single
 vehicle, where its advantage over the reactive method alone was described as small without a
 payload, and as leaving performance similar to the reactive method with
 one~\cite{cobobriesewitz2026lindi}.
 
 The practical question a system designer faces is which to use, and it has no answer in the
 literature. Not because the individual results are weak, and not because the field avoids
-systematic comparison --- recent work benchmarks online-learning estimators on a single
+systematic comparison, recent work benchmarks online-learning estimators on a single
 vehicle~\cite{gu2025comparative} and fractional-order and classical regulators for close-proximity
 swarms~\cite{abro2025fractional}. It is that the results for \emph{these} families cannot be
 composed: each is reported against its own baseline, on its own airframe, at its own separations,
@@ -94,7 +94,7 @@ on its own trajectories, under its own metrics.
 \label{sec:intro-gap}
 
 \emph{Representative methods exist for reactive compensation, for predictive compensation, and for
-their hybrid, and each is individually validated --- but, to the best of our knowledge, they have
+their hybrid, and each is individually validated, but, to the best of our knowledge, they have
 not been evaluated against one another under identical conditions, and the field's reporting conventions make such a comparison
 impossible to assemble after the fact.} A \SI{36}{\percent} improvement measured on two vehicles in
 close proximity and a \SI{31}{\percent} improvement measured in a tight formation are not the same
@@ -106,8 +106,8 @@ convention of the field. It is a property of the literature taken as a whole: th
 designed to compose, and establishing a ranking requires an experiment built for that purpose.
 
 Two narrower gaps follow. The hybrid has been demonstrated only where the residual is
-\emph{self-induced} --- a single vehicle, with effects such as blade flapping, drag and ground
-forces, optionally carrying a slung payload --- and not
+\emph{self-induced}, a single vehicle, with effects such as blade flapping, drag and ground
+forces, optionally carrying a slung payload, and not
 where it is produced by other vehicles and is therefore a function of a measurable relative state,
 which is where the predictive component has the most to contribute. And the summation that
 predictive architectures use to aggregate per-neighbour contributions is known to be an
@@ -124,7 +124,7 @@ for a deployed model is not reported.
     accuracy and residual-force rejection?
 
   \item[RQ2] Does the relative advantage of reactive versus predictive compensation depend on the
-    interaction regime --- separation, relative velocity, and whether the disturbance is
+    interaction regime, separation, relative velocity, and whether the disturbance is
     quasi-static or transient?
 
   \item[RQ3] How much prediction accuracy does a deep-sets residual model trained only on
@@ -139,8 +139,8 @@ for a deployed model is not reported.
 
 RQ1 is the primary question and the one the experimental design serves. RQ2 carries the most
 engineering value, because it converts a ranking into a rule about when to use which. RQ3 is
-deliberately narrower than asking whether interactions superpose --- they do not, and that is
-already reported --- and asks instead for the magnitude of the resulting error on a deployed model.
+deliberately narrower than asking whether interactions superpose, they do not, and that is
+already reported, and asks instead for the magnitude of the resulting error on a deployed model.
 RQ4 exists because a method that wins by a small margin while requiring additional sensing, an
 offline training campaign and a larger compute budget may still be the wrong choice.
 
@@ -161,10 +161,10 @@ the two- and multi-robot results chapters.
   \item \textbf{A controlled comparison.} To the best of our knowledge the first evaluation of
     reactive, predictive and hybrid compensation on the same airframe, the same trajectories, the same formations and the same
     frozen gains, with a single definition of the residual and a measured noise floor. The
-    methodological content is in the word \emph{controlled}. For Strategies 0, 1, 2 and 4 it is
+    methodological content is in the word \emph{controlled}. For Strategies 1, 2, 3 and 5 it is
     unusually strong: those four are not four controllers but four settings of one, differing only
     in which residual term is active, so a difference between them cannot be attributed to
-    anything else. \emph{This does not extend to Strategies 3 and 6}, which are structurally
+    anything else. \emph{This does not extend to Strategies 4 and 6}, which are structurally
     different controllers --- a feedback-linearising law and a receding-horizon optimiser --- and
     for which ``identical conditions'' means identical trajectories, formations and hardware but
     not identical structure. The design provides: a frozen scenario library so every strategy
@@ -199,7 +199,7 @@ follows published work, and the contribution is the comparison. The residual mod
 as an improvement on published architectures. Results concern a single airframe and a single class
 of disturbance; generalisation beyond either is discussed rather than demonstrated. No claim rests
 on simulation, which is used to disprove implementations and never to validate a method. And no
-strategy is claimed to be best in general --- the useful outcome is conditional, which is RQ2.
+strategy is claimed to be best in general, the useful outcome is conditional, which is RQ2.
 
 \paragraph{A negative result would also be a contribution.} If the strategies do not separate, the
 conclusion is that the choice of compensation family matters less than whether compensation is
@@ -245,19 +245,19 @@ degree of freedom left open is an alternative explanation for an observed differ
 what the disturbance is, the two ways of obtaining information about it, why the injection point
 into the control law matters, and why the individual results do not compose into a comparison.
 
-\textbf{Chapter~\ref{ch:model}} defines the residual wrench that every strategy estimates, gives
+\textbf{Chapter~\ref{ch:model}} defines the residual this stack measures and logs. Strategies that
+consume a force residual use that number; Strategy~7 does not form it. It gives
 both routes to it in one notation, and states the assumptions the formulation makes together with
 where each is expected to fail.
 
-\textbf{Chapter~\ref{ch:control}} describes the seven strategies and the point at which each
+\textbf{Chapter~\ref{ch:control}} describes Strategies~1--6 plus 7a and 7b (eight controllers; seven families, with residual
+reinforcement learning split by inner loop), and the point at which each
 injects its knowledge of the interaction, separating in each case what is implemented here from the
 published method it follows.
 
 \textbf{Chapter~\ref{ch:setup}} describes the platform, the frozen scenario library, the
-measurement chain and the protocol, and states the threats to validity the design is built against
---- including those it does not eliminate.
+measurement chain and the protocol, and states the threats to validity the design is built against, including those it does not eliminate.
 
-\textbf{the two- and multi-robot results chapters} report the two- and
-three-vehicle results. \textbf{the discussion chapter} interprets them against the
-research questions and the stated assumptions, and \textbf{the concluding chapter}
-concludes.
+\textbf{The two- and multi-robot results chapters} report the two- and three-vehicle results.
+\textbf{The discussion chapter} interprets them against the research questions and the stated
+assumptions, and \textbf{the concluding chapter} concludes.

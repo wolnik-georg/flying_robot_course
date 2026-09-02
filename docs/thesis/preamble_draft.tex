@@ -18,6 +18,7 @@
   \providecommand{\degree}{$^\circ$}\providecommand{\per}{/}\providecommand{\squared}{$^2$}%
 }
 \usepackage{booktabs}
+\IfFileExists{makecell.sty}{\usepackage{makecell}}{\providecommand{\makecell}[2][]{#2}}
 \usepackage{graphicx}
 \usepackage[margin=3cm]{geometry}
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}

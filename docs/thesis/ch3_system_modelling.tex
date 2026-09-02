@@ -23,15 +23,21 @@
 \chapter{System Modelling and Residual-Force Formulation}
 \label{ch:model}
 
-Chapter~\ref{ch:related} described methods that either measure or predict the aerodynamic
-interaction between vehicles. This chapter defines precisely what is being measured or predicted,
-so that the strategies compared in Chapter~\ref{ch:control} can be said to estimate the
-\emph{same} quantity. That is a prerequisite for the comparison: two controllers that compensate
-differently-defined residuals are not comparable, however similar their block diagrams look.
+Chapter~\ref{ch:related} surveyed families that measure a residual, predict one, plan over one, or
+learn a corrective action with no force estimate at all. Those families are comparable as
+\emph{controllers}, on the same vehicles, trajectories and formations. They are not required to
+compute the same internal quantity.
+
+This chapter defines the residual acceleration $a_{\mathrm{res}}$ that \emph{this} stack measures
+and logs. Two things follow. Strategies~2, 3 and~5, and any other method that consumes a force
+residual, then refer to one number rather than to several differently-defined ones. And a predicted
+residual can be checked against a measured one on the same flight, which is how a learned model is
+evaluated here. Residual reinforcement learning (Strategy~7) never forms that number. That is a
+property of the method, not a reason to exclude it from a comparison of performance.
 
 The chapter also states the assumptions the formulation rests on, and where each one is expected
-to fail. Several are known to be imperfect --- the summation in
-Section~\ref{sec:model-deepsets} most conspicuously --- and stating them here is what allows
+to fail. Several are known to be imperfect, the summation in
+Section~\ref{sec:model-deepsets} most conspicuously, and stating them here is what allows
 the discussion chapter to interpret a negative result as evidence about an assumption
 rather than as an unexplained failure.
 
@@ -74,18 +80,27 @@ $k_t$, as well as the inter-vehicle aerodynamic interaction that is the subject 
 That the residual is a catch-all rather than a physical quantity has two consequences that matter
 for the experiments. First, a residual measured in isolated free flight is not zero; it is whatever
 the nominal model gets wrong about a single vehicle. Second, the interaction can only be isolated
-by \emph{differencing} --- comparing the residual measured in formation against the residual
+by \emph{differencing}, comparing the residual measured in formation against the residual
 measured alone under the same trajectory. The coplanar control scenarios in
 Chapter~\ref{ch:setup} exist for exactly this purpose.
 
-\subsection{Scope: force, not moment}
+\paragraph{Scope: force, not moment}
 
 This thesis compensates the \emph{force} residual $f_{\mathrm{res}}$. The moment residual
 $\tau_{\mathrm{res}}$ is measured and logged, but no strategy compensates it separately: the
 attitude loop rejects it as a disturbance in the usual way. This is a scoping decision, not a claim
-that $\tau_{\mathrm{res}}$ is negligible --- the characterisation literature measures interaction
-\emph{moments} alongside forces on a test rig~\cite{kiran2025downwash}, and the discussion chapter
-returns to what leaving them uncompensated may cost.
+that $\tau_{\mathrm{res}}$ is negligible.
+
+The decision has company. Neural-Swarm compensates the vertical interaction
+force~\cite{shi2020neuralswarm}, and the hardware controller of Hsieh et
+al.~\cite{hsieh2026flatness} likewise commands thrust and angular rates, leaving residual torque to
+the rate loop. Kiran et al.~\cite{kiran2025downwash} and Gielis et al.~\cite{gielis2023aggregate}
+do measure both force and moment, but on a rig rather than as a flight residual.
+
+We therefore log $\tau_{\mathrm{res}}$ and do not cancel it as a separate term. The cost is that
+interaction torque is left to the attitude loop. The benefit is a single compensation channel that
+fits the existing allocator and the onboard budget. The discussion chapter returns to what leaving
+it uncompensated may cost.
 
 % -------------------------------------------------------------------------------------
 \section{Measuring the residual}
@@ -109,7 +124,7 @@ requires the applied thrust, which is reconstructed from measured rotor speeds a
 $f_i = \sum_{k=1}^{4} k_{t,k}\varpi_k^2$.
 
 The implementation evaluates \eqref{eq:model-ares} at every control step and logs it as
-$a_{\mathrm{res}}$, in every controller mode --- including modes that make no use of it. This is
+$a_{\mathrm{res}}$, in every controller mode, including modes that make no use of it. This is
 deliberate. The training data for every predictive strategy is collected under the
 \emph{uncompensated} geometric controller, so the measurement must exist when no INDI term is
 active; and the comparison of a predicted residual against a measured one, which is how a learned
@@ -158,7 +173,7 @@ $-f_{\mathrm{res},i}/m$. The residual is \emph{subtracted}, whether it was measu
 Adding it instead does not merely fail to compensate: it doubles the disturbance, because the
 controller then commands a thrust error equal and opposite to the correction it should have made.
 The resulting behaviour is a stable, well-controlled vehicle that tracks slightly worse in
-formation --- which is what an uncompensated vehicle also looks like. In single-vehicle flight the
+formation, which is what an uncompensated vehicle also looks like. In single-vehicle flight the
 error is invisible altogether, since $f_{\mathrm{res}} \approx 0$ with no neighbour present. This is
 recorded here because it is a property of the formulation rather than a coding detail, and because
 it establishes a specific prediction that the two-robot results chapter can check: with the sign
@@ -199,6 +214,13 @@ than a force so that it is directly comparable with the measured $a_{\mathrm{res
 \eqref{eq:model-ares}; the two quantities are in the same units, in the same frame, at the same
 point in the control loop.
 
+\paragraph{What is borrowed and what is ours.} The \emph{family} is the permutation-invariant deep
+set used by Neural-Swarm and Neural-Swarm2~\cite{shi2020neuralswarm,shi2022neuralswarm2}. The layer
+widths and the resulting \num{987} parameters are ours, sized for the STM32 control period. This is
+not the network of Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi}, and it is not a copy of
+Neural-Swarm2's layers. Spectral normalisation is not used here. An architecture ablation would be a
+separate study and is out of scope unless time remains after the comparison.
+
 The concrete network is small: $\phi$ maps $6 \rightarrow 16 \rightarrow 16 \rightarrow 8$ and
 $\rho$ maps $8 \rightarrow 16 \rightarrow 16 \rightarrow 3$, with rectified-linear activations
 throughout except at the output, which is linear because an interaction force may point either way.
@@ -208,10 +230,11 @@ and the layer widths are an implementation choice within it.
 
 \paragraph{These equations are the code.} Equation~\eqref{eq:model-deepsets}, the layer widths
 above, the distance guards of Section~\ref{sec:model-guards} and the output bound are the values
-in \texttt{firmware\_app/src/residual\_nn.rs}, not an idealisation of them, and were read from it
-rather than reconstructed. The same applies to \eqref{eq:model-ares} and the sign convention of
-Section~\ref{sec:model-sign}, which correspond to the residual computation and the
-desired-acceleration assembly in \texttt{firmware\_app/src/lib.rs}. If the implementation changes,
+in the residual-network source file,\footnote{\texttt{firmware\_app/src/residual\_nn.rs} for the
+network; \texttt{firmware\_app/src/lib.rs} for the residual computation and the
+desired-acceleration assembly.} not an idealisation of them, and were read from it rather than
+reconstructed. The same applies to \eqref{eq:model-ares} and the sign convention of
+Section~\ref{sec:model-sign}. If the implementation changes,
 this chapter changes with it; a modelling chapter that has drifted from the flight code describes a
 system that was never flown.
 
@@ -219,8 +242,8 @@ system that was never flown.
 \label{sec:model-superposition}
 
 Equation~\eqref{eq:model-deepsets} assumes the aggregate interaction is a sum of per-neighbour
-contributions in the latent space of $\phi$. This is more general than summing forces directly ---
-$\rho$ is free to be nonlinear in the sum --- but it is still an assumption, and the literature
+contributions in the latent space of $\phi$. This is more general than summing forces directly,
+$\rho$ is free to be nonlinear in the sum, but it is still an assumption, and the literature
 states plainly that it does not hold exactly. Shi et al.~\cite{shi2020neuralswarm} report that with
 more than two vehicles the aerodynamic effect is not a simple superposition of each pair, and Gielis
 et al.~\cite{gielis2023aggregate} motivate a learned aggregation model, measured on a load stand,
@@ -231,7 +254,7 @@ The assumption is retained here for two reasons. It is what makes one trained mo
 teams of two and three without retraining, which the comparison requires. And a controller does not
 need an exact model: it needs one whose residual after compensation is smaller than the residual
 before it. The relevant question is therefore not whether \eqref{eq:model-deepsets} is exact, which
-it is not, but how large the resulting error is on a deployed model --- which is what
+it is not, but how large the resulting error is on a deployed model, which is what
 the multi-robot results chapter measures.
 
 \subsection{Input conditioning}
@@ -242,7 +265,7 @@ defensive programming, because they change the function being learned.
 
 A neighbour farther than \SI{2}{\metre} is excluded from the sum. Beyond that distance the
 interaction is below the noise floor of the measurement, and including such neighbours would ask
-the network to learn that distant vehicles do nothing --- spending capacity on a region where the
+the network to learn that distant vehicles do nothing, spending capacity on a region where the
 answer is known.
 
 A separation closer than \SI{4}{\centi\metre} is clamped to that value, preserving direction. Below
@@ -251,7 +274,7 @@ it the model would extrapolate beyond anything the training data can contain, si
 trustworthy exactly where the physics is strongest, and the clamp bounds the extrapolation rather
 than trusting it.
 
-The output is bounded as well, at \SI{8}{\metre\per\second\squared} --- comfortably above the
+The output is bounded as well, at \SI{8}{\metre\per\second\squared}, comfortably above the
 interaction accelerations expected between vehicles of this size, and far below what an
 ill-conditioned network can emit. This is not a hypothetical failure mode. In simulation, Gu et
 al.~\cite{gu2025comparative} report a radial-basis-function estimator crashing the vehicle under
@@ -259,7 +282,7 @@ periodic wind, and an extreme learning machine becoming unstable on landing unde
 their echo state network and Gaussian process did not. The authors say the failure \emph{may be
 attributed} to the random initialisation of the input-to-hidden weights, which \emph{``can produce
 excessively large prediction values''}. Their vehicle is a single quadrotor and their disturbances
-are wind and ground effect, so this is not evidence about inter-vehicle interaction --- but it is
+are wind and ground effect, so this is not evidence about inter-vehicle interaction, but it is
 evidence that an unbounded learned term can destabilise a controller. A saturating output converts
 that failure into a bounded and, because saturation is logged, a visible one.
 
@@ -338,8 +361,10 @@ the circular trajectory to its being out of distribution relative to the trainin
 \section{Summary}
 \label{sec:model-summary}
 
-The residual wrench of \eqref{eq:model-trans}--\eqref{eq:model-rot} is the single quantity every
-strategy in this thesis estimates. It can be recovered online from
+The residual of \eqref{eq:model-trans}--\eqref{eq:model-rot} is what this stack measures and logs.
+Strategies~2, 3 and~5 consume it. Strategy~7 never forms it, which is a property of residual
+reinforcement learning rather than a reason to exclude it from a comparison of performance. The
+residual can be recovered online from
 \eqref{eq:model-ares}, which needs no model of the interaction but requires rotor-speed sensing and
 is available only after the disturbance acts; or predicted from \eqref{eq:model-deepsets}, which
 acts ahead of the disturbance but is valid only within its training distribution and assumes an
@@ -348,5 +373,5 @@ and enter the control law at the same point with the same sign, \eqref{eq:model-
 
 That common definition is what makes the comparison in the two-robot results chapter a
 comparison rather than a collection of separately-tuned controllers. Chapter~\ref{ch:control}
-describes the seven strategies built on it, and the point at which each injects its knowledge of
+describes the strategies built on it, and the point at which each injects its knowledge of
 the interaction.

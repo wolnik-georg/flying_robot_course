@@ -23,27 +23,61 @@
 \label{ch:control}
 
 Chapter~\ref{ch:model} defined the residual wrench and the two ways of obtaining it. This
-chapter describes the seven control strategies compared in this thesis, and in each case the point
+chapter describes the control strategies compared in this thesis, and in each case the point
 at which knowledge of the interaction enters the control law.
 
-The chapter is organised around a single observation: the strategies share far more than they
-differ by. All of them track the same trajectories, on the same airframe, through the same attitude
-allocation. What separates them is which terms are present in one vector --- the desired
-acceleration of the position loop --- and where that vector's information comes from. Presenting
-them this way is not a simplification for exposition; it is the structural property that makes the
-comparison fair, and Section~\ref{sec:ctrl-fairness} states precisely what it does and does not
-guarantee.
+Strategies~1--6 plus 7a and 7b (eight controllers; seven families, with residual
+reinforcement learning split by inner loop). Table~\ref{tab:ctrl-summary} lists them, and the rest of the
+chapter takes them in order.
+
+\begin{table}[t]
+  \centering
+  \caption{The strategies compared, and the implementation status of each at the time of writing.
+    ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction
+    of it, both, or neither.}
+  \label{tab:ctrl-summary}
+  \small
+  \begin{tabular}{@{}clllcc@{}}
+    \toprule
+    \# & Strategy & Knows & Enters at & Rotor speed & Status \\
+    \midrule
+    1  & Geometric baseline           & nothing    & ---                        & no  & flying \\
+    2  & Pure INDI                    & measured   & $a_{\mathrm{des}}$, torque & yes & flying \\
+    3  & Geometric + NN               & predicted  & $a_{\mathrm{des}}$         & no  & implemented, unflown \\
+    4  & FBL + NN                     & predicted  & linearising law            & no  & not implemented \\
+    5  & Hybrid NA-INDI               & both       & $a_{\mathrm{des}}$, torque & yes & form fixed, not wired \\
+    6  & Learning-based MPC           & predicted  & MPC prediction model       & no  & not implemented \\
+    7a & Residual RL, cascaded        & neither    & actuation                  & no  & deferred \\
+    7b & Residual RL, geometric       & neither    & actuation                  & no  & deferred \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The chapter is organised around a single observation. The strategies share far more than they
+differ by. The fair set, Strategies~1, 2, 3 and~5, tracks the same trajectories on the same airframe through
+the same attitude allocation; Strategies~4, 6 and~7 do not share that allocator. What separates them is which terms are present in one vector, the desired acceleration
+of the position loop, and where that vector's information comes from. Presenting them this way is
+not a simplification for exposition. It is the structural property that makes the comparison fair,
+and Section~\ref{sec:ctrl-fairness} states precisely what it does and does not guarantee.
 
 Each strategy is described in two parts, kept deliberately separate: what is implemented here, and
-the published method it follows. Our implementations are representatives of their families, not
-reproductions of specific papers, and the deviations are stated rather than glossed.
+the published method it follows.
+
+Core Strategies~1, 2, 3 and~5 run on one geometric-plus-optional-INDI substrate, so that the
+comparison isolates how interaction information enters $a_{\mathrm{des}}$. They follow published
+\emph{families}, and the deviations from each source paper are listed in that strategy's section.
+They are not bit-identical replicas. Optional Strategies~4, 6 and~7 aim for closer fidelity to
+their sources if author code arrives; until then they stay unimplemented rather than guessed.
 
 % -------------------------------------------------------------------------------------
 \section{The common substrate}
 \label{sec:ctrl-common}
 
-Every strategy is built on a geometric tracking controller on $SE(3)$. The position loop forms a
-desired acceleration and the attitude loop realises the corresponding thrust direction.
+On \emph{this} stack, Strategies~1, 2, 3 and~5 share a geometric position and attitude substrate.
+The position loop forms a desired acceleration and the attitude loop realises the corresponding
+thrust direction. Strategy~2 replaces the attitude law with an incremental one. Strategies~4, 6
+and~7 use different published structures, namely feedback linearisation, receding-horizon
+optimisation and residual reinforcement learning, and therefore do not share that substrate.
 
 \subsection{Position loop}
 
@@ -67,13 +101,13 @@ construction.
 
 The last two terms of \eqref{eq:ctrl-ades} are the whole subject of this thesis, and both are
 subtracted, for the reason derived in Section~\ref{sec:model-sign}. \emph{Which residual
-information is present is what distinguishes Strategies 0, 1, 2 and 4 from one another}, and
-nothing else about the position loop changes between them: Strategy~0 has neither term,
-Strategy~1 the measured one, and Strategy~2 the predicted one.
+information is present is what distinguishes Strategies 1, 2, 3 and 5 from one another}, and
+nothing else about the position loop changes between them: Strategy~1 has neither term,
+Strategy~2 the measured one, and Strategy~3 the predicted one.
 
-Strategy~4, which has both, does not simply enable the two terms together. It uses the predicted
+Strategy~5, which has both, does not simply enable the two terms together. It uses the predicted
 residual and then corrects with the \emph{difference} between measurement and prediction, for the
-reason given in Section~\ref{sec:ctrl-s4}; \eqref{eq:ctrl-hybrid} states that form. Written as
+reason given in Section~\ref{sec:ctrl-s5}; \eqref{eq:ctrl-hybrid} states that form. Written as
 \eqref{eq:ctrl-ades} with both terms active, the two would double-count whatever they capture in
 common.
 
@@ -92,8 +126,8 @@ $e_\omega = \omega - \omega_{\mathrm{des}}$. In the geometric configuration the 
 the third term compensating the gyroscopic coupling. This is a reduced form of the law
 in~\cite{lee2010geometrictracking}: it drops that work's angular-feedforward bracket and adds an
 integral term the source does not have --- see \eqref{eq:ctrl-tau-lee} and the discussion in
-Section~\ref{sec:ctrl-s0}. The INDI configurations replace
-\eqref{eq:ctrl-tau-geo} with an incremental law, described in Section~\ref{sec:ctrl-indi}.
+Section~\ref{sec:ctrl-s1}. The INDI configurations replace
+\eqref{eq:ctrl-tau-geo} with an incremental law, described in Section~\ref{sec:ctrl-s2}.
 
 \subsection{Runtime selection}
 \label{sec:ctrl-runtime}
@@ -104,20 +138,20 @@ third parameter enables the learned prediction. All are pushed to the vehicle at
 from a single configuration file.
 
 This matters more than it may appear. Comparing strategies that require different firmware
-introduces a confound that is impossible to rule out afterwards --- a flash cycle changes more than
+introduces a confound that is impossible to rule out afterwards, a flash cycle changes more than
 the control law, and strategies flown on different days meet different battery states, different
 temperatures and different motion-capture calibrations. Runtime selection allows the strategies to
 be interleaved within a single session, which is what makes the comparison a paired one.
 
 % -------------------------------------------------------------------------------------
-\section{Strategy 0: uncompensated geometric baseline}
-\label{sec:ctrl-s0}
+\section{Strategy 1: uncompensated geometric baseline}
+\label{sec:ctrl-s1}
 
 \paragraph{Implemented.} Equations~\eqref{eq:ctrl-ades} and \eqref{eq:ctrl-tau-geo} with both
 residual terms zero. No knowledge of the interaction whatsoever.
 
 \paragraph{Reference.} Geometric tracking on $SE(3)$~\cite{lee2010geometrictracking}, which tracks
-a position trajectory together with a single heading direction --- four outputs, not a full
+a position trajectory together with a single heading direction, four outputs, not a full
 six-degree-of-freedom pose. The attitude error of \eqref{eq:ctrl-tau-geo} is that work's
 $e_R = \tfrac{1}{2}(R_d^\top R - R^\top R_d)^\vee$, verified against the source rather than
 reproduced from memory.
@@ -135,24 +169,26 @@ with $e_\Omega = \Omega - R^\top R_d \Omega_d$. Equation~\eqref{eq:ctrl-tau-geo}
 proportional, damping and gyroscopic terms but omits the final feedforward bracket, and adds an
 integral term on attitude error that the source does not contain. It is therefore a
 \emph{reduced} law in the same family, not the torque law of~\cite{lee2010geometrictracking}, and
-no stability result proved there transfers to it unexamined.
+no stability result proved there transfers to it unexamined. Restoring the feedforward bracket
+would be a firmware change rather than a wording change, and is outside the scope of this draft.
 
 \paragraph{What the source proves.} Not global asymptotic tracking. With the attitude error
-function $\Psi$, exponential stability is established on $\Psi(0) < 1$ --- initial attitude errors
-below \SI{90}{\degree} --- and almost-global exponential attractiveness on $1 \le \Psi < 2$,
+function $\Psi$, exponential stability is established on $\Psi(0) < 1$, initial attitude errors
+below \SI{90}{\degree}, and almost-global exponential attractiveness on $1 \le \Psi < 2$,
 below \SI{180}{\degree}. The distinction matters here only in that this thesis claims neither: the
 baseline is flown as a reference condition, not as a certified controller.
 
-\paragraph{Role.} Not one of the seven, but flown as a condition in every scenario. Without it,
-``how much did compensation help'' has no denominator, and the interaction cannot be separated from
-the model error discussed in Section~\ref{sec:model-measure-fail}. It is also the controller under
+\paragraph{Role.} Strategy~1 is the uncompensated baseline of Table~\ref{tab:ctrl-summary}. It is
+flown in every scenario so that ``how much did compensation help'' has a denominator, and so that
+the interaction can be separated from the model error discussed in
+Section~\ref{sec:model-measure-fail}. It is also the controller under
 which all training data is collected, precisely because it does not compensate: a residual observed
 under a compensating controller is the residual that survived compensation, which is not what a
 predictive model should be fitted to.
 
 % -------------------------------------------------------------------------------------
-\section{Strategy 1: pure INDI}
-\label{sec:ctrl-indi}
+\section{Strategy 2: pure INDI}
+\label{sec:ctrl-s2}
 
 \paragraph{Implemented.} The measured residual of \eqref{eq:model-ares} enters the position loop as
 $-a_{\mathrm{res}}$ in \eqref{eq:ctrl-ades}. In the attitude loop the geometric torque law is
@@ -182,9 +218,10 @@ Section~\ref{sec:model-measure-fail}; the filter cutoff sets the trade-off betwe
 the noise admitted from the gyro.
 
 The position and attitude increments are independently selectable, giving four configurations:
-geometric, position-INDI only, attitude-INDI only, and full INDI. Strategy~1 refers to the full
-configuration; the intermediate ones are diagnostic and are used in the two-robot results chapter
-to attribute an effect to one loop or the other.
+geometric, position-INDI only, attitude-INDI only, and full INDI. Strategy~2 refers to the full
+configuration, and that is the controller the comparison reports. The intermediate ones are
+diagnostic bits used in the two-robot results chapter to attribute an effect to one loop or the
+other. They are not additional strategies and will not be reported as Strategy~2.
 
 \paragraph{Reference.} The incremental formulation with flatness-derived
 feedforward follows Tal and Karaman~\cite{tal2018indi}; the cascaded arrangement of position and
@@ -193,25 +230,26 @@ attitude INDI follows Smeur et al.~\cite{smeur2017cascadedindi}.
 \paragraph{Deviations.} The airframe, gains and filter cutoffs are ours and were identified for
 this platform. Tal and Karaman obtain rotor speed from optical encoders~\cite{tal2018indi}; this
 implementation uses the platform's own rotor-speed measurement. No claim is made that this
-implementation reproduces the tracking performance reported in either work --- that would require a
+implementation reproduces the tracking performance reported in either work, that would require a
 like-for-like replication which is not part of this thesis.
 
 \paragraph{Requirements.} Rotor-speed sensing, without which $\tau_{\mathrm{cur}}$ and
 $a_{\mathrm{res}}$ are both unavailable and the method degrades silently
-(Section~\ref{sec:model-measure-fail}). No training data.
+(Section~\ref{sec:model-measure-fail}). The method needs no training data; the residual is formed
+online from inertial and rotor-speed measurements.
 
 % -------------------------------------------------------------------------------------
-\section{Strategy 2: geometric with a learned residual}
-\label{sec:ctrl-s2}
+\section{Strategy 3: geometric with a learned residual}
+\label{sec:ctrl-s3}
 
-\paragraph{Implemented.} The geometric controller of Section~\ref{sec:ctrl-s0} with the deep-sets
+\paragraph{Implemented.} The geometric controller of Section~\ref{sec:ctrl-s1} with the deep-sets
 prediction $\hat{a}_{\mathrm{res}}$ of \eqref{eq:model-deepsets} subtracted in
 \eqref{eq:ctrl-ades}. The network is evaluated onboard at the control rate from the relative states
 of the neighbours, which the flight stack already broadcasts, so the input requires no additional
-communication. Weights are trained offline on data collected under Strategy~0 and uploaded before
+communication. Weights are trained offline on data collected under Strategy~1 and uploaded before
 flight.
 
-The prediction is computed and logged \emph{whether or not it is enabled}. This is what makes the
+The prediction is computed and logged \emph{whether it is enabled or not}. This is what makes the
 model's own accuracy measurable independently of its effect on the vehicle: on a flight where the
 prediction is not driving the controller, predicted and measured residuals are two independent
 quantities and their comparison is meaningful. Once the prediction is driving the controller, the
@@ -223,7 +261,7 @@ permutation-invariant network and applying it as feedforward follows the Neural-
 line~\cite{shi2020neuralswarm,shi2022neuralswarm2}.
 
 \paragraph{Deviations.} These are substantial and are stated plainly. The architecture here is a
-deep-sets model of our own sizing --- \num{987} parameters --- rather than a reproduction of any
+deep-sets model of our own sizing, \num{987} parameters, rather than a reproduction of any
 published network. Neural-Swarm2 applies spectral normalisation to obtain stability
 and generalisation guarantees~\cite{shi2022neuralswarm2}; this implementation does not, and the
 guarantees that follow from it are correspondingly not claimed. Neural-Swarm2 also uses the learned
@@ -235,8 +273,8 @@ Neural-Swarm2.
 \paragraph{Requirements.} Neighbour relative states; training data. No rotor-speed sensing.
 
 % -------------------------------------------------------------------------------------
-\section{Strategy 3: feedback linearisation with a flatness-preserving residual}
-\label{sec:ctrl-s3}
+\section{Strategy 4: feedback linearisation with a flatness-preserving residual}
+\label{sec:ctrl-s4}
 
 \paragraph{Implemented.} \textbf{Not implemented.} The controller code was requested from the
 authors and had not been received at the time of writing. The strategy does not block the others,
@@ -247,8 +285,8 @@ and its absence is a scope limitation rather than a failure of the comparison
 al.~\cite{yang2025flatnessresiduals}. The distinguishing property is where the prediction enters:
 not as a feedforward term added to a desired acceleration, but inside a feedback-linearising law
 whose validity depends on the augmented system remaining differentially flat. A generic learned
-residual can destroy that flatness; residuals with a lower-triangular structure --- a structured
-correction inside the state derivative, not a free wrench --- preserve it, and with it the original
+residual can destroy that flatness; residuals with a lower-triangular structure, a structured
+correction inside the state derivative, not a free wrench, preserve it, and with it the original
 flat output~\cite{yang2025flatnessresiduals}. That theory is established in simulation on a planar
 quadrotor; the hardware demonstration is Hsieh et al.'s.
 
@@ -257,22 +295,23 @@ Its relevance to this comparison is that it is the strongest published counter-a
 reduction in average tracking error; on hardware the body reports \SI{24}{\percent} RMSE for
 ROM-FBL over nominal FBL and a further \SI{29}{\percent} for learned FBL over ROM-FBL, matching
 the tracking error published by Chee et al.\ for nonlinear model predictive control, at an order
-of magnitude less computation in simulation, from under \SI{30}{\second} of training data --- and
+of magnitude less computation in simulation, from under \SI{30}{\second} of training data, and
 at a \SI{5}{\milli\second} loop rate obtained \emph{off-board}~\cite{hsieh2026flatness}. Those are
 the figures a predictive strategy in this class should be measured against, with the caveat that
 none of them was produced by a controller running on the vehicle.
 
 % -------------------------------------------------------------------------------------
-\section{Strategy 4: hybrid neural-augmented INDI}
-\label{sec:ctrl-s4}
+\section{Strategy 5: hybrid neural-augmented INDI}
+\label{sec:ctrl-s5}
 
 \paragraph{Form adopted.} The hybrid follows the \emph{reference} arrangement. The network
 predicts the bulk of the residual and the incremental term corrects only what the network leaves
 behind, so that the desired acceleration carries
 %
 \begin{equation}
-  \dots \;-\; \hat{a}_{\mathrm{res}}
-        \;-\; \underbrace{\bigl(a_{\mathrm{res}} - \hat{a}_{\mathrm{res}}\bigr)}
+  a_{\mathrm{des}} = a_{\mathrm{ff}} + K_p e_p + K_v e_v + K_i \!\int\! e_p \,\mathrm{d}t + g e_3
+        \;\underbrace{-\; \hat{a}_{\mathrm{res}}}_{\text{prediction}}
+        \;\underbrace{-\; \bigl(a_{\mathrm{res}} - \hat{a}_{\mathrm{res}}\bigr)}
                  _{\text{what the prediction missed}} ,
   \label{eq:ctrl-hybrid}
 \end{equation}
@@ -284,19 +323,19 @@ portion of the disturbance the two capture in common, so a network that predicte
 would produce over-compensation rather than better compensation, and the strategy would then be
 measuring an artefact of the arrangement instead of the value of combining the two information
 sources. Equation~\eqref{eq:ctrl-hybrid} degrades gracefully at both limits: with a perfect
-prediction the incremental term vanishes and the strategy reduces to Strategy~2, and with no
-prediction it reduces exactly to Strategy~1.
+prediction the incremental term vanishes and the strategy reduces to Strategy~3, and with no
+prediction it reduces exactly to Strategy~2.
 
 The cost of the choice is stated rather than hidden. Because the incremental term absorbs whatever
 the network misses, a poor prediction is partly masked, and the hybrid's tracking performance alone
 cannot reveal how good the model is. This is why the predicted and measured residuals are logged
-separately on every flight (Section~\ref{sec:ctrl-s2}): model quality is assessed from
+separately on every flight (Section~\ref{sec:ctrl-s3}): model quality is assessed from
 $\hat{a}_{\mathrm{res}}$ against $a_{\mathrm{res}}$ on a flight where the prediction is not driving
 the vehicle, never inferred from how well the hybrid tracks.
 
 \paragraph{Implemented.} \textbf{Not yet wired.} Both components exist and are individually
-selectable --- the measured residual through the position-INDI bit, the prediction through
-\texttt{rnn.en} --- but the differencing in \eqref{eq:ctrl-hybrid} is not implemented. It is a
+selectable, the measured residual through the position-INDI bit, the prediction through
+\texttt{rnn.en}, but the differencing in \eqref{eq:ctrl-hybrid} is not implemented. It is a
 change to the control law and belongs after the hardware gate of Chapter~\ref{ch:setup}.
 
 \paragraph{Reference.} Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi}, who propose both a
@@ -311,12 +350,12 @@ in the range of \SIrange{19}{24}{\percent}. The hybrid gave the best performance
 though the authors describe the margin as small, and with a payload the authors describe it as
 remaining \emph{similar} to the incremental method alone. Their headline result is a different one:
 the learned model generates smooth approximations of the incremental estimate \emph{without
-rotor-speed sensing} at runtime --- rotor speeds are still required to produce the training labels,
+rotor-speed sensing} at runtime, rotor speeds are still required to produce the training labels,
 and the hybrid's incremental branch still uses them~\cite{cobobriesewitz2026lindi}.
 
 The setting differs from ours in a way that bears directly on whether the hybrid's small margin
-transfers. There the residual is self-induced --- their introduction names blade flapping, drag and
-ground forces --- and is predicted from the vehicle's own state; in the payload case the network
+transfers. There the residual is self-induced, their introduction names blade flapping, drag and
+ground forces, and is predicted from the vehicle's own state; in the payload case the network
 takes a \num{28}-dimensional input comprising vehicle and payload velocity and acceleration and the
 cable direction, with the cable tension itself belonging to the nominal payload model rather than
 to the residual. Here it is produced by other vehicles and predicted
@@ -326,7 +365,7 @@ informative, since it would indicate that the reactive term alone suffices and t
 campaign is not worth its cost.
 
 \paragraph{Requirements.} Rotor-speed sensing \emph{and} neighbour relative states \emph{and}
-training data --- the union of Strategies~1 and~2, which is itself a result for the cost accounting
+training data, the union of Strategies~2 and~3, which is itself a result for the cost accounting
 of the discussion chapter.
 
 % -------------------------------------------------------------------------------------
@@ -334,8 +373,11 @@ of the discussion chapter.
 \label{sec:ctrl-s6}
 
 \paragraph{Implemented.} \textbf{Not implemented.} Whether it can run within the control period on
-this platform is an open question, and one that is itself relevant: this is the only strategy in
-the comparison whose computational cost may exclude it from the target hardware.
+this platform is an open engineering question, and one that is itself relevant. This is the only
+strategy in the comparison whose computational cost may exclude it from the target hardware. Nothing
+in the literature settles it either way for our vehicle: Chee et al.\ and Hsieh et al.\ both run
+their optimisation off-board, and Li et al.\ run theirs on a Jetson companion computer, not on an
+STM32.
 
 \paragraph{Reference.} Chee et al.~\cite{chee2024knodedwmpc} embed a mixed-expert KNODE-DW model
 --- first principles plus a lightweight neural ODE component --- inside the prediction constraint
@@ -348,74 +390,66 @@ residual-acceleration estimate into the same prediction model, evaluated on hard
 to \SI{0.2}{\metre}, and report that the adaptive module is most effective when paired with an
 accurate dynamics model. Only the $\mathcal{L}_1$ estimate adapts online.
 
-\paragraph{Where the prediction enters.} Not at an instant, as in Strategies~2 and~4, but inside
+\paragraph{Where the prediction enters.} Not at an instant, as in Strategies~3 and~5, but inside
 the prediction model over which the optimiser reasons. The controller therefore plans against a
-disturbance it expects to meet rather than cancelling the one present now --- the most distinct
+disturbance it expects to meet rather than cancelling the one present now, the most distinct
 injection point in the comparison, and the reason the strategy is retained in the set even though
 it may prove infeasible onboard.
 
 % -------------------------------------------------------------------------------------
-\section{Strategies 5 and 7: residual reinforcement learning}
-\label{sec:ctrl-rl}
+\section{Strategy 7a: residual reinforcement learning on a cascaded baseline}
+\label{sec:ctrl-s7a}
 
 \paragraph{Implemented.} \textbf{Not implemented, and deliberately scheduled last.}
 
 \paragraph{Reference.} Zhang et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning
-module on top of a \emph{cascaded} controller --- not a geometric one --- producing corrections that
-compensate the disturbance and thrust loss caused by downwash, using domain randomisation to reduce
-the dependence on accurate system identification. Their residual and high-level controller run
-off-board at \SI{50}{\hertz} above an onboard low-level loop at \SI{500}{\hertz}, on regular-sized
-quadcopters. Strategy~5 follows this arrangement; Strategy~7 pairs the same stance with
-the geometric baseline used elsewhere in this thesis, a combination which is ours rather than any
-paper's.
+module on top of a \emph{cascaded} controller, not a geometric one. It produces corrections that
+compensate the disturbance and thrust loss caused by downwash, and uses domain randomisation to
+reduce the dependence on accurate system identification. Their residual and high-level controller
+run off-board at \SI{50}{\hertz} above an onboard low-level loop at \SI{500}{\hertz}, on
+regular-sized quadcopters. Strategy~7a follows that arrangement.
+
+% -------------------------------------------------------------------------------------
+\section{Strategy 7b: residual reinforcement learning on the geometric baseline}
+\label{sec:ctrl-s7b}
+
+\paragraph{Implemented.} \textbf{Not implemented.} This pairing is ours, not any paper's.
+
+\paragraph{What it shares with Strategy 7a.} The stance is identical. A policy outputs a corrective
+action, and no explicit force estimate is formed at any point. Both are therefore evaluated on
+tracking performance alone, and neither can be checked by comparing a predicted residual against a
+measured one.
+
+\paragraph{What differs.} The inner loop. Strategy~7a sits on the cascaded controller of
+\cite{zhang2024proxfly}; Strategy~7b sits on the geometric position and attitude substrate used by
+Strategies~1, 2, 3 and~5 in this thesis. Separating them matters because a residual policy is
+trained against whatever the baseline leaves uncorrected, so the same learning stance on a
+different inner loop is a different experiment, not a re-run.
 
 \paragraph{Why they are scheduled last, stated plainly.} They answer a different question.
-Strategies~1--4 and~6 all reason about an explicit force: each produces, or consumes, an estimate
+Strategies~2--6 all reason about an explicit force: each produces, or consumes, an estimate
 of $f_{\mathrm{res}}$ that can be compared against the measurement of \eqref{eq:model-ares}. A
 residual policy produces a corrective action and never forms such an estimate, so the
 predicted-versus-measured comparison that underpins the evaluation of every other learned strategy
 is unavailable, and failures are correspondingly harder to attribute.
 
 One property nonetheless makes them worth retaining. The policy of Zhang et al.\ observes only the
-tracking error, the baseline controller's command and its own previous residual action --- no
+tracking error, the baseline controller's command and its own previous residual action, no
 neighbour state, and no communication between
 vehicles~\cite{zhang2024proxfly}. Every other predictive strategy here depends on knowing where the
 neighbours are. Removing that dependency removes a bandwidth requirement and a failure mode, at the
-cost of being unable to anticipate a neighbour the vehicle cannot perceive --- a trade-off that
+cost of being unable to anticipate a neighbour the vehicle cannot perceive, a trade-off that
 belongs in the cost accounting even if the strategies are not flown.
 
 % -------------------------------------------------------------------------------------
 \section{What makes the comparison fair, and what it does not guarantee}
 \label{sec:ctrl-fairness}
 
-Table~\ref{tab:ctrl-summary} summarises the strategies along the three axes that distinguish them.
 
-\begin{table}[t]
-  \centering
-  \caption{The strategies compared, and the implementation status of each at the time of writing.
-    ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction
-    of it, both, or neither.}
-  \label{tab:ctrl-summary}
-  \small
-  \begin{tabular}{@{}clllcc@{}}
-    \toprule
-    \# & Strategy & Knows & Enters at & Rotor speed & Status \\
-    \midrule
-    0 & Geometric baseline        & nothing    & ---                       & no  & flying \\
-    1 & Pure INDI                 & measured   & $a_{\mathrm{des}}$, torque & yes & flying \\
-    2 & Geometric + NN            & predicted  & $a_{\mathrm{des}}$        & no  & implemented, unflown \\
-    3 & FBL + NN                  & predicted  & linearising law           & no  & not implemented \\
-    4 & Hybrid NA-INDI            & both       & $a_{\mathrm{des}}$, torque & yes & form fixed, not wired \\
-    5 & Residual RL               & neither    & actuation                 & no  & deferred \\
-    6 & Learning-based MPC        & predicted  & MPC prediction model      & no  & not implemented \\
-    7 & Geometric + residual RL   & neither    & actuation                 & no  & deferred \\
-    \bottomrule
-  \end{tabular}
-\end{table}
 
 \paragraph{What is held constant.} The airframe, the trajectories, the formations, the residual
-definition, the estimator, and the gains --- which are frozen before any data collection and shared
-across strategies wherever the architecture permits. Strategies 1, 2 and 4 additionally share the
+definition, the estimator, and the gains, which are frozen before any data collection and shared
+across strategies wherever the architecture permits. Strategies 2, 3 and 5 additionally share the
 entire position and attitude loop, differing only in which of the two residual terms in
 \eqref{eq:ctrl-ades} is active. For those three, a difference in outcome cannot be attributed to
 anything but the residual term, which is the strongest form of the fairness argument available here.
@@ -423,9 +457,12 @@ anything but the residual term, which is the strongest form of the fairness argu
 \paragraph{What this does not guarantee.} Three limitations are worth stating before results are
 presented rather than after.
 
-Strategies 3 and 6 do not share the substrate: a feedback-linearising law and a receding-horizon
+Core Strategies~1, 2, 3 and~5 follow published \emph{families} on one substrate, with the
+deviations listed per strategy; they are not bit-identical replicas. Optional Strategies~4, 6 and~7
+aim for closer fidelity if author code arrives, and stay unimplemented rather than guessed until
+then. Strategies 4 and 6 do not share the substrate: a feedback-linearising law and a receding-horizon
 optimiser are different controllers, not different terms in one controller. For those, ``identical
-conditions'' means identical trajectories, formations and hardware --- not an identical control
+conditions'' means identical trajectories, formations and hardware, not an identical control
 structure. The comparison is correspondingly weaker, and any difference could in principle be
 attributed to the controller rather than to the compensation.
 
@@ -439,24 +476,19 @@ online-learning estimators, using Bayesian optimisation on the parametric models
 operates near its best achievable performance under otherwise consistent conditions. The two choices trade different
 risks. Per-method tuning risks measuring tuning effort, and makes the result contingent on the
 optimiser and its budget; shared gains risk penalising a strategy the operating point does not
-suit. This thesis freezes shared gains because strategies 1, 2 and 4 share the entire control loop,
+suit. This thesis freezes shared gains because Strategies~2, 3 and~5 share the entire control loop,
 which makes a shared operating point meaningful in a way it would not be across structurally
-different controllers --- and because the tuning budget available here is one lab session, not an
+different controllers, and because the tuning budget available here is one lab session, not an
 automated search. the discussion chapter reports where a frozen gain appears to have
 disadvantaged a strategy.
-
-Finally, each implementation is a representative of its family and not a reproduction of the paper
-it follows. Where a strategy underperforms, the honest conclusion concerns \emph{this
-implementation} of that family on \emph{this} platform, and the discussion chapter is
-careful to phrase it that way.
 
 % -------------------------------------------------------------------------------------
 \section{Summary}
 \label{sec:ctrl-summary}
 
 Seven strategies, distinguished by what they know about the interaction force, when they know it,
-and where that knowledge enters the control law. Four of them --- the baseline, pure INDI, the
-learned feedforward and their hybrid --- are terms in a single shared control law, and their
+and where that knowledge enters the control law. Four of them, the baseline, pure INDI, the
+learned feedforward and their hybrid, are terms in a single shared control law, and their
 comparison is correspondingly tight. Three others inject the same information at structurally
 different points, and are compared under identical conditions but not identical structure.
 

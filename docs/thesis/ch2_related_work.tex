@@ -105,8 +105,8 @@ six-degree-of-freedom exogenous forces on a multirotor held on a purpose-built l
 thrust, while up to three further vehicles fly freely around it, and report strong nonlinearities
 in how those interactions aggregate. The vehicle experiencing the disturbance is therefore
 constrained rather than in free flight. Both measure the disturbance as a transducer load rather
-than inferring it from a flight controller's residual --- actuation is still present in each, at
-hover thrust --- which makes them, \emph{in our reading}, the natural ground truth against which a
+than inferring it from a flight controller's residual, actuation is still present in each, at
+hover thrust, which makes them, \emph{in our reading}, the natural ground truth against which a
 learned model should be checked. Neither paper makes that claim, and neither validates a learned
 model of ours or anyone else's.
 
@@ -142,7 +142,7 @@ and outdoors taking off and holding position on a consumer GNSS module in roughl
 \SI{5.1}{\metre\per\second} wind. Tal and Karaman~\cite{tal2018indi} use INDI for robust tracking of
 linear and angular accelerations in aggressive flight on a single custom \SI{609}{\gram} vehicle,
 and state the property that defines the family: no parametric model of the aerodynamic effects is
-required. That is narrower than it sounds --- mass, inertia, motor time constant, control
+required. That is narrower than it sounds, mass, inertia, motor time constant, control
 effectiveness and the throttle map are all still identified; it is the \emph{drag} model that is
 dispensed with.
 
@@ -151,8 +151,8 @@ which those authors achieve using closed-loop motor speed control based on optic
 their own vehicle's motors~\cite{tal2018indi}; encoders are what \emph{that} snap-and-torque path
 required, not a general prerequisite for INDI. Reconstructing the applied wrench well enough to
 difference it against measurement does, however, generally require some form of rotor-speed
-feedback --- Smeur et al.\ likewise use motor-speed
-measurement~\cite{smeur2017cascadedindi} --- which is additional hardware or firmware support that
+feedback, Smeur et al.\ likewise use motor-speed
+measurement~\cite{smeur2017cascadedindi}, which is additional hardware or firmware support that
 must be fitted, calibrated and maintained on every vehicle. A second limitation is structural rather than
 practical: the estimate is delayed by the sensing and filtering chain, and it exists only once the
 disturbance has already perturbed the vehicle. A reactive controller cannot, even in principle, act
@@ -225,14 +225,14 @@ with a \SI{45}{\hertz} network update. The closest \emph{training} stage is abou
 attribute the efficiency to exploiting the problem's latent geometry rather than learning it from
 data.
 
-\subsection{The superposition assumption}
 \label{sec:rw-superposition}
+\paragraph{The superposition assumption}
 
 The deep-sets architectures above aggregate per-neighbour terms by summation, which commits them
 to a form of superposition. The literature is explicit that this is an approximation.
 Shi et al.~\cite{shi2020neuralswarm} observe that with more than two vehicles the aerodynamic
 effect is not a simple superposition of each pair. Gielis et al.~\cite{gielis2023aggregate} make
-the same point as their motivation --- an accurate model of the downwash from one vehicle is
+the same point as their motivation, an accurate model of the downwash from one vehicle is
 unlikely to suffice for predicting the aggregate from several. Their abstract frames this as
 modelling the formation as a graph; the implementation learns the aggregation function with a
 sum-pooling deep-sets predictor, contrasted against a linear-summation baseline. Generalisation to
@@ -300,8 +300,8 @@ streaming commands over a Crazyradio link at \SI{400}{\hertz}, rather than on th
 supports is that the method is cheap enough to be worth porting, not that it has been shown to run
 onboard.
 
-On hardware they also compensate residual \emph{forces} only --- commanding thrust and angular
-velocity, and delegating residual torques to the vehicle's own rate controller --- the same scoping
+On hardware they also compensate residual \emph{forces} only, commanding thrust and angular
+velocity, and delegating residual torques to the vehicle's own rate controller, the same scoping
 decision taken in Chapter~\ref{ch:model}. Their simulation study does still model residual torques.
 
 \paragraph{Inside a model predictive control horizon.}
@@ -375,7 +375,7 @@ residual controller.
 
 One property distinguishes this approach sharply from everything in
 Section~\ref{sec:rw-predictive}: the policy's observation comprises the tracking error, the
-baseline cascaded controller's command and its own previous residual action --- no neighbour state,
+baseline cascaded controller's command and its own previous residual action, no neighbour state,
 and no communication between vehicles~\cite{zhang2024proxfly}. Every relative-state method depends on knowing where the
 neighbours are, whether by communication or by onboard sensing. Removing that dependency removes a
 bandwidth requirement and a failure mode, at the cost of the ability to anticipate a neighbour the
@@ -383,7 +383,7 @@ vehicle cannot perceive.
 
 The approach also gives up the explicit force estimate that the other families produce. That
 estimate is what makes a predicted residual comparable against a measured one, and its absence
-makes failures correspondingly harder to attribute --- a consideration in experimental design as
+makes failures correspondingly harder to attribute, a consideration in experimental design as
 much as in deployment.
 
 % -------------------------------------------------------------------------------------
@@ -400,7 +400,7 @@ neural network replaces INDI's residual estimate entirely, trained on smoothed d
 spline fitting. In the second, NA-INDI, the total residual is written \(f_a = f_{a,\mathrm{NN}} +
 f_{a,\mathrm{INDI}}\): the network predicts a component and the incremental term reasons about the
 remaining mismatch. Both are evaluated on a single quadrotor, with and without
-a slung payload, on figure-of-eight and circular trajectories --- neither of which was in the
+a slung payload, on figure-of-eight and circular trajectories, neither of which was in the
 training set.
 
 The headline result concerns sensing rather than the hybrid: a network can generate smooth
@@ -418,7 +418,7 @@ distribution relative to the training data, a direct instance of the limitation 
 predictive family.
 
 Two features of this setting bear on whether the result transfers. The residual there is
-self-induced --- blade flapping, drag, the swing of a payload --- and is predicted from the
+self-induced, blade flapping, drag, the swing of a payload, and is predicted from the
 vehicle's own state. In a multi-robot team the residual is produced by other vehicles and is a
 function of a measurable relative state, which gives the predictive component an input the
 single-vehicle setting does not provide. Whether that turns a small margin into a decisive one is
@@ -429,7 +429,7 @@ untested, and is one of the questions this thesis addresses.
 \label{sec:rw-eval}
 
 The preceding sections describe a field with strong results. Reported improvements include a
-factor of two or better --- up to four --- in worst-case height error~\cite{shi2020neuralswarm},
+factor of two or better, up to four, in worst-case height error~\cite{shi2020neuralswarm},
 up to a threefold reduction in worst-case tracking error against a zero-interaction
 baseline~\cite{shi2022neuralswarm2}, \SI{36}{\percent} and \SI{56}{\percent} improvements in
 three-dimensional and vertical tracking~\cite{smith2023so2equivariant}, \SI{31}{\percent} against
@@ -455,10 +455,10 @@ they were obtained.
     Neural-Swarm2~\cite{shi2022neuralswarm2}    & 16, heterogeneous  & \SI{24}{\centi\metre} vert. & worst-case tracking error\textsuperscript{\dag} \\
     Smith et al.~\cite{smith2023so2equivariant} & 2                  & \SIrange{0.6}{0.8}{\metre} eval.\ (train.\ to $\approx$\SI{0.5}{\metre}) & 3D and vertical tracking \\
     Gielis et al.~\cite{gielis2023aggregate}    & up to 4 total (rig sufferer $+\leq3$ flyers) & test rig, sufferer not in free flight & force-prediction accuracy \\
-    Hsieh et al.~\cite{hsieh2026flatness}       & 2                  & \SI{0.3}{\metre} and \SI{0.4}{\metre} vert.\textsuperscript{\ddag} & RMSE and max.\ $z$ error \\
+    Hsieh et al.~\cite{hsieh2026flatness}       & 2                  & \makecell[l]{\SI{0.3}{\metre} and \SI{0.4}{\metre}\\ vert.\textsuperscript{\ddag}} & RMSE and max.\ $z$ error \\
     Hsieh et al.~\cite{hsieh2025onlineadaptation} & 3                & V-stack and I-stack; pairwise \SI{0.2}{\metre} & tracking vs.\ MPC family \\
     Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} & 1 (+ payload) & n/a                 & position tracking error \\
-    Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \SI{0.50}{\metre} vert.\ hover/circle; docking approach to \SI{0.10}{\metre}, then release at \SI{0.05}{\metre} & position and attitude error \\
+    Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \makecell[l]{\SI{0.50}{\metre} vert.\ hover/circle;\\ dock to \SI{0.10}{\metre}, release at \SI{0.05}{\metre}} & position and attitude error \\
     \bottomrule
   \end{tabular}
 
@@ -486,8 +486,8 @@ whole: the results are not designed to compose, and no amount of careful reading
 into a ranking. Establishing one requires an experiment built for the purpose, which is what
 distinguishes a comparison from a survey.
 
-\subsection{Comparisons that do exist}
 \label{sec:rw-existing-comparisons}
+\paragraph{Comparisons that do exist}
 
 The field does conduct systematic comparisons, and two recent ones bound what remains open.
 
@@ -530,7 +530,7 @@ reactive, predictive and hybrid families remain uncompared against one another.
 
 Together these delimit the gap precisely. It is not that close-proximity control is uncompared, nor
 that the field lacks the methodology. It is that the specific families defined by \emph{how they
-obtain information about the interaction force} --- measure it, predict it, or both --- have not
+obtain information about the interaction force}, measure it, predict it, or both, have not
 been placed under common conditions.
 
 Such an experiment has requirements that follow directly from the failure modes above: a single
@@ -547,7 +547,7 @@ describes the resulting design.
 
 A controller can obtain information about the interaction force in two ways. It can measure the
 residual online, which requires no prior model and generalises to disturbances never seen, but is
-delayed and --- in its established form --- depends on rotor-speed sensing. Or it can predict the
+delayed and, in its established form, depends on rotor-speed sensing. Or it can predict the
 residual from the relative states of its neighbours using a model learned offline, which acts ahead
 of the disturbance but is valid only where the training data reached. A third approach learns the
 corrective action directly, forgoing an explicit force estimate and, in at least one instance,
@@ -583,5 +583,5 @@ citing the Neural-Swarm line. Both found adjacent comparisons but none spanning 
 Neither is exhaustive; keep the ``to the best of our knowledge'' phrasing.}
 
 Chapter~\ref{ch:model} formalises the residual wrench these methods estimate or predict, and
-Chapter~\ref{ch:control} describes the seven strategies compared in this thesis and the point at
+Chapter~\ref{ch:control} describes the strategies compared in this thesis and the point at
 which each injects its knowledge of the interaction into the control law.

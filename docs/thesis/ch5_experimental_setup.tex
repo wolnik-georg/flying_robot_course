@@ -18,7 +18,8 @@
 \chapter{Experimental Setup and Protocol}
 \label{ch:setup}
 
-Chapter~\ref{ch:control} described seven strategies and argued that four of them differ only in
+Chapter~\ref{ch:control} described Strategies~1--6 plus 7a and 7b (eight controllers; seven families, with residual
+reinforcement learning split by inner loop), and argued that four of them differ only in
 which residual term is active. That argument is only worth as much as the experiment that exercises
 it. This chapter describes the platform, the scenarios, the measurement chain and the protocol, and
 in each case the reasoning is the same: the design exists to remove alternative explanations for an
@@ -34,7 +35,7 @@ them it does not eliminate.
 The vehicles are Crazyflie~2.1 brushless quadrotors, nominally \SI{41}{\gram} and
 \SI{9}{\centi\metre} rotor-to-rotor. All vehicles in a team are the same platform: the gain block
 is shared across robots, so a mixed team would fly at least one vehicle on the wrong mass, thrust
-constant and inertia --- which would appear in the logs as a residual and be indistinguishable from
+constant and inertia, which would appear in the logs as a residual and be indistinguishable from
 an interaction force (Section~\ref{sec:model-measure-fail}).
 
 Two vehicles are the minimum for the protocol. A third is required for the three-robot scenarios,
@@ -42,12 +43,12 @@ which cannot be run without it.
 
 Each vehicle carries two additions that are not optional for this work:
 
-\paragraph{A rotor-speed source} --- optical RPM deck or DShot telemetry. Without it the applied
+\paragraph{A rotor-speed source}, optical RPM deck or DShot telemetry. Without it the applied
 thrust cannot be reconstructed, so $a_{\mathrm{res}}$ is unavailable and \emph{reads identically
-zero} rather than failing loudly. Strategies 1 and 4 additionally cannot run at all. This is the
+zero} rather than failing loudly. Strategies 2 and 5 additionally cannot run at all. This is the
 single most consequential hardware prerequisite in the setup.
 
-\paragraph{A micro SD deck} --- the recording medium for the dataset, for the reasons in
+\paragraph{A micro SD deck}, the recording medium for the dataset, for the reasons in
 Section~\ref{sec:setup-logging}.
 
 State estimation uses the on-board extended Kalman filter, fed with external pose from a
@@ -63,7 +64,7 @@ conflated: the \emph{tracked volume}, outside which the motion-capture system ca
 vehicles, and an \emph{operational floor} of \SI{0.30}{\metre}, chosen so that ground effect does
 not contaminate the measurement of inter-vehicle interaction.
 
-The floor is lowered to \SI{0.10}{\metre} for one scenario only --- the near-ground pass of
+The floor is lowered to \SI{0.10}{\metre} for one scenario only, the near-ground pass of
 Section~\ref{sec:setup-scenarios}, whose purpose is to measure ground effect in isolation so that
 it can be separated from downwash rather than confounded with it.
 
@@ -84,8 +85,8 @@ Sixteen scenarios, fixed before any data collection and not modified afterwards.
 what allows every strategy to meet identical excitation; a library that evolved during the campaign
 would make later strategies incomparable with earlier ones.
 
-The scenarios are parameterised rather than hard-coded --- separations, offsets and speeds are
-arguments --- so that a separation sweep is the same scenario at different parameters rather than
+The scenarios are parameterised rather than hard-coded, separations, offsets and speeds are
+arguments, so that a separation sweep is the same scenario at different parameters rather than
 a different scenario. Each is compiled to a per-vehicle polynomial trajectory and uploaded through
 the standard trajectory interface, so that the same command produces the same motion in simulation
 and on hardware.
@@ -129,7 +130,8 @@ and on hardware.
 \subsection{The null scenarios}
 \label{sec:setup-null}
 
-C1--C3 are the most important scenarios in the library and the least interesting to watch. They
+C1--C3, the coplanar controls in which the vehicles fly side by side at equal height, are the most
+important scenarios in the library and the least interesting to watch. They
 place the vehicles in configurations where no significant inter-vehicle interaction should exist,
 and they exist because of the property established in Section~\ref{sec:model-dynamics}: the
 residual is a catch-all, non-zero even in isolated flight, so a residual measured in formation
@@ -143,7 +145,8 @@ before the campaign proceeds rather than explained afterwards.
 \subsection{Regimes, and why the library spans them}
 
 The scenarios are not a list of poses but a deliberate spread across the interaction regimes that
-Research Question~2 distinguishes. A1 and C1--C3 are static; A2 and A3 are quasi-static; A4 and A5
+Research Question~2 distinguishes. A1, the two-robot vertical hover stack, and the coplanar
+controls C1--C3 are static; A2 and A3 are quasi-static; A4 and A5
 sweep lateral offset; A7 sweeps separation continuously; A8 and B3 present the disturbance as a
 transient with a known arrival time. A model fitted on one regime and evaluated on another is what
 makes ``outside the training distribution'' a measurable condition rather than a caveat.
@@ -178,6 +181,7 @@ radio and of team size. Radio logging is retained for live monitoring and for si
 tuning, where the bandwidth exists.
 
 \subsection{What is recorded}
+\label{sec:setup-recorded}
 
 Position and velocity estimates; attitude; gyro and accelerometer; the measured residual
 $a_{\mathrm{res}}$; the INDI torque and filtered angular acceleration; the network prediction
@@ -186,7 +190,7 @@ commands.
 
 Two of these deserve comment. The measured residual is recorded \emph{in every controller mode},
 including those that make no use of it, because the training data is collected under the
-uncompensated baseline. And the network prediction is recorded \emph{whether or not it is enabled},
+uncompensated baseline. And the network prediction is recorded \emph{whether it is enabled or not},
 because comparing prediction against measurement is how a learned model is evaluated, and that
 comparison is only meaningful on a flight where the prediction is not also changing the vehicle's
 behaviour.
@@ -239,7 +243,7 @@ rather than the first experiment.
 \label{sec:setup-collect}
 
 Collection flights are flown under the \emph{uncompensated} baseline of
-Section~\ref{sec:ctrl-s0}. This is not a convenience: a compensating controller partly cancels the
+Section~\ref{sec:ctrl-s1}. This is not a convenience: a compensating controller partly cancels the
 disturbance, so the residual it records is the one that survived compensation, which is not the
 quantity a predictive model should be fitted to.
 
@@ -259,9 +263,9 @@ Each strategy flies the frozen library. Because the control law is selected at r
 separate days, which pairs them against the same battery state, temperature and calibration.
 Each condition is repeated to allow a distribution rather than a single number to be reported.
 
-The comparison is tightest among Strategies 0, 1, 2 and 4, which share the entire position and
+The comparison is tightest among Strategies 1, 2, 3 and 5, which share the entire position and
 attitude loop and differ only in which residual term is active; a shared gain set is meaningful for
-them in a way it is not across structurally different controllers. Strategies 3 and 6 are compared
+them in a way it is not across structurally different controllers. Strategies 4 and 6 are compared
 under identical trajectories, formations and hardware, but not under an identical control
 structure, and the discussion chapter must phrase their results accordingly.
 
@@ -271,11 +275,15 @@ structure, and the discussion chapter must phrase their results accordingly.
 Three axes, corresponding to the research questions.
 
 \paragraph{Tracking error.} Position RMSE, total and per axis, and the maximum deviation from the
-commanded trajectory.
+commanded trajectory. Alongside these, the attitude tracking error, reported as the RMSE and peak
+of the geometric attitude error $e_R$. A compensator that improves position by working the attitude
+loop harder has not improved tracking so much as moved the cost, and only the attitude figure makes
+that visible. The logging configuration described in Section~\ref{sec:setup-recorded} records
+attitude but not $e_R$ itself; that signal will be added before the comparison campaign.
 
 \paragraph{Residual rejection.} The error in the \emph{separation between vehicles}, measured
-against the commanded separation. Downwash acts as a bias --- the lower vehicle sags, closing the
-gap --- so the mean error is reported as the primary quantity and the spread as secondary. A
+against the commanded separation. Downwash acts as a bias, the lower vehicle sags, closing the
+gap, so the mean error is reported as the primary quantity and the spread as secondary. A
 compensator that works moves the mean back toward the commanded value. Reporting only the spread
 would hide precisely the effect being studied.
 
