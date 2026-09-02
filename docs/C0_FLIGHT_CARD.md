@@ -44,14 +44,14 @@ flight, and §2 is meaningless if any of them is missing from the firmware being
 | 2 | **`a_res` gating fix** | `indi.a_res_*` is live under **geometric**, not only under INDI |
 | 3 | **`rnn.en`** | parameter exists and reads **0** — leave it off until the rest of C.0 passes |
 
-### ☐ Tape-measure the flight volume — before any two-robot flight
+### ☑ Tape-measure the flight volume — DONE 2026-09-02
 
-Scenarios sit within ~10 cm of the walls. Current numbers (x ±1, y ±2, z 0.30–1.70) are
-corroborated but **not measured**. Write the real limits into `formations/safety.py`
-(`FLIGHT_SPACE`), replacing the placeholder.
+Measured x ±1, y ±2, z 0–1.70 — matches the prior corroborated (not-measured) numbers exactly.
+`formations/safety.py` (`FLIGHT_SPACE`) updated to say tape-measured, not placeholder. Practical
+z-floor for actual flights (ground effect) confirmed ~0.3-0.4 m; `Z_FLOOR_DEFAULT = 0.30` kept
+as the low end of that, unchanged.
 
-**This gates §2 and §4.** A two-robot flight inside an unverified geofence is a wall strike
-waiting for the right scenario, and A1 at Δz 0.75 needs `--height 0.85` to fit at all.
+Scenarios sit within ~10 cm of the walls. A1 at Δz 0.75 still needs `--height 0.85` to fit.
 
 ---
 
