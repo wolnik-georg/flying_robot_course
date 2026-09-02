@@ -1,0 +1,50 @@
+# USD deck config — copy to SD card root as config.txt
+# Format: one variable per line, group.name — whitespace and # comments stripped by firmware
+# Limit: 32 variables per block (MAX_USD_LOG_VARIABLES_PER_EVENT raised from 20 to 32)
+1               # version (must be 1)
+2048            # ring buffer size in bytes (30 vars x 4 bytes = 120 bytes/sample, 100Hz = 12KB/s)
+gl_             # filename prefix  →  gl_00, gl_01, …
+0               # enable_on_startup: 0 = start/stop logging via usd.logging param
+on:fixedFrequency
+100             # sample rate [Hz]
+1               # mode: 1 = SynchronousStabilizer
+# --- EKF position [m] (same source as radio CSV x/y/z) ---
+stateEstimate.x
+stateEstimate.y
+stateEstimate.z
+# --- EKF velocity [m/s] ---
+stateEstimate.vx
+stateEstimate.vy
+stateEstimate.vz
+# --- attitude [deg] ---
+stabilizer.roll
+stabilizer.pitch
+stabilizer.yaw
+# --- thrust [PWM units] + battery [V] ---
+stabilizer.thrust
+pm.vbat
+# --- gyro [deg/s] ---
+gyro.x
+gyro.y
+gyro.z
+# --- accelerometer [g] ---
+acc.x
+acc.y
+acc.z
+# --- motor RPM ---
+rpm.m1
+rpm.m2
+rpm.m3
+rpm.m4
+# --- INDI torque [Nm] ---
+indi.tau_x
+indi.tau_y
+indi.tau_z
+# --- INDI filtered angular accel [rad/s^2] ---
+indi.alp_x
+indi.alp_y
+indi.alp_z
+# --- INDI raw angular accel [rad/s^2] ---
+indi.alp_raw_x
+indi.alp_raw_y
+indi.alp_raw_z
