@@ -49,7 +49,13 @@ one_run() {
 
   local MARKER=$(mktemp)
   sleep 1
-  timeout 180 ros2 run crazyflie_examples formation_flight -- \
+  # All six 3-drone cases hit the old flat 180s budget on 2026-09-03 (extra climb/converge
+  # stage + more setParam calls per phase than 2-drone) -- the flight itself completed each
+  # time (record_states data checked out physically), the client was just cut off during its
+  # own tail-end cleanup. 2-drone never came close to 180s, so it keeps the tighter budget.
+  local CLIENT_TIMEOUT=180
+  [ "$NROB" = "3" ] && CLIENT_TIMEOUT=280   # stay under the server's own 300s launch timeout
+  timeout "$CLIENT_TIMEOUT" ros2 run crazyflie_examples formation_flight -- \
     --trajectory figure8 --mode 1 --kt 0.05 \
     --formation "$FORM" --separation 0.4 --yes \
     --ros-args -p use_sim_time:=true > "$OUT/client_ff_${CTRL}_${NROB}.log" 2>&1
