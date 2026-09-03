@@ -137,6 +137,13 @@ disagreement means the analysis is wrong about something that also affects forma
 
 Do **not** use `--rest-to-rest` (measured worse).
 
+> **Known trajectory characteristic — not a fault.** `figure8 @ kt=0.05` commands a genuine
+> ~7 m/s² acceleration peak ~0.45 s after launch and ~0.45 s before landing (its rest-to-rest
+> ramp boundaries) — that's a ~35° tilt (`atan(7.0/9.81)`), confirmed in sim 2026-09-03. If you
+> see a sharp tilt right at trajectory start/end, this is why — don't mistake it for a bug or a
+> handoff fault. `run_formation`'s own scenario curves don't demand anything this aggressive at
+> their boundaries, so this is specific to this trajectory export, not the flight scripts.
+
 ---
 
 ## 4 · Two robots, wide first
