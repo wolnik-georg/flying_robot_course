@@ -1,26 +1,15 @@
+# simple_flight.py validation matrix — final, 2026-09-03
+
+8/8 PASS, staged-takeoff fix confirmed (docs/07 2026-09-03 (7)-(9)). Every 2-drone
+separation is a real, positive number -- no near-zero climb-together window anywhere.
+
 | Trajectory | N | Verdict | Exit | Notes |
 |---|---|---|---|---|
 | figure8 | 1 | PASS | 0 | clean, no verification sidecar (script has none by design) |
-| figure8 | 2 | PASS | 0 | clean at 220s client timeout (150s timed out mid-cleanup, flight itself completed either way) |
+| figure8 | 2 | PASS | 0 | min in-flight inter-drone separation: 0.493 m |
 | circle | 1 | PASS | 0 | clean, no verification sidecar (script has none by design) |
-| circle | 2 | PASS | 0 | clean at 220s client timeout (150s timed out mid-cleanup, flight itself completed either way) |
+| circle | 2 | PASS | 0 | min in-flight inter-drone separation: 0.197 m |
 | oval | 1 | PASS | 0 | clean, no verification sidecar (script has none by design) |
-| oval | 2 | PASS | 0 | clean at 220s client timeout (150s timed out mid-cleanup, flight itself completed either way) |
+| oval | 2 | PASS | 0 | min in-flight inter-drone separation: 0.481 m |
 | hover | 1 | PASS | 0 | clean, no verification sidecar (script has none by design) |
-| hover | 2 | PASS | 0 | clean, no verification sidecar (script has none by design) |
-
-## Multi-drone safety check (added after the matrix, see docs/07 2026-09-03 (7))
-
-The matrix's own "min inter-drone separation" check never fired due to the same
-`find -newer $MARKER` flakiness documented in `run_formation_flight_matrix.sh` -- verified
-manually instead, against the 3 re-run 2-drone `state_geo/` directories directly.
-
-**Result: min separation 0.000-0.001 m during takeoff, all 3 cases checked** (figure8,
-circle, oval). Root cause: `allcfs.takeoff(targetHeight=args.height)` is one broadcast to
-the SAME height for every drone; only the later per-drone `goTo` sends each drone to its
-real distinct target height. Two drones sharing similar (x,y) in the roster climb on top
-of each other before ever separating. See the WARNING in `simple_flight.py`'s own
-docstring (added 2026-09-03) and the full trace in the conversation/History log.
-
-**Verdict: single-drone use is validated and safe (8/8 clean above). Multi-drone use is
-NOT safe as written -- confirmed by data.**
+| hover | 2 | PASS | 0 | min in-flight inter-drone separation: 0.494 m |
