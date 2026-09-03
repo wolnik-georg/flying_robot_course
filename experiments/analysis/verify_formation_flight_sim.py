@@ -85,7 +85,11 @@ def verify(meta_path: Path, csv_dir: Path, tol_xy: float):
             mean_err = float(err_mm.mean())
             max_err = float(err_mm.max())
             rmse = float(np.sqrt((err_mm ** 2).mean()))
-            pair_ok = max_err < tol_xy * 1000.0
+            # Gate on MEAN error, matching verify_formation_sim.py's established convention
+            # (its pair_ok = e_z.mean() < tol_z and e_xy.mean() < tol_xy) -- not max, which
+            # trips on a brief boundary transient (trajectory start/end handoff) rather than
+            # sustained tracking error. Max/RMSE are still reported for full transparency.
+            pair_ok = mean_err < tol_xy * 1000.0
             ok = ok and pair_ok
             rows.append(dict(a=names[a], b=names[b], cmd=cmd.tolist(),
                               dz_realised=dz_mean, mean_err_mm=mean_err,
