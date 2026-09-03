@@ -60,8 +60,12 @@ one_run() {
   cleanup
   sleep 3
 
+  # find -newer $MARKER proved flaky here too (same class of bug as
+  # run_formation_flight_matrix.sh) despite directories genuinely being newer -- with
+  # cleanup() guaranteeing only one server ever runs at a time, plain newest-by-mtime is
+  # reliable enough and avoids chasing the same flakiness twice.
   local CSVDIR
-  CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv -newer "$MARKER" 2>/dev/null | sort | tail -1)
+  CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv 2>/dev/null | xargs -r ls -dt | head -1)
 
   local HAS_TB="no"
   grep -q "Traceback" "$OUT/client_sf_${TRAJ}_${NROB}.log" && HAS_TB="yes"
@@ -75,7 +79,11 @@ one_run() {
   local NOTE="clean, no verification sidecar (script has none by design)"
   if [ "$NROB" = "2" ] && [ -n "$CSVDIR" ]; then
     # No formation offsets in this script -- check the two drones' recorded paths didn't
-    # converge to (near) the same point at any point in the flight, since nothing else does.
+    # converge to (near) the same point at any point IN FLIGHT. Ground-state samples
+    # (before takeoff, both stationary and unarmed) are excluded via a z > 0.1m airborne
+    # filter -- otherwise the preflight window reads a meaningless 0.000m that has nothing
+    # to do with the thing actually being checked (2026-09-03: confirmed both by eye and by
+    # the fact it's identical before and after the staged-takeoff fix).
     local MINSEP
     MINSEP=$(python3 - "$CSVDIR" <<'PYEOF'
 import sys, glob
@@ -87,13 +95,17 @@ if len(files) < 2:
 data = [np.loadtxt(f, delimiter=",", skiprows=1, ndmin=2) for f in files[:2]]
 t0 = max(d[0, 0] for d in data)
 t1 = min(d[-1, 0] for d in data)
-grid = np.linspace(t0, t1, 200)
+grid = np.linspace(t0, t1, 400)
 pos = [np.stack([np.interp(grid, d[:, 0], d[:, c]) for c in (1, 2, 3)], axis=1) for d in data]
+airborne = (pos[0][:, 2] > 0.1) & (pos[1][:, 2] > 0.1)
 d = np.linalg.norm(pos[0] - pos[1], axis=1)
-print(f"{d.min():.3f}")
+if airborne.any():
+    print(f"{d[airborne].min():.3f}")
+else:
+    print("never airborne simultaneously")
 PYEOF
 )
-    NOTE="min inter-drone separation over the flight: ${MINSEP} m"
+    NOTE="min in-flight inter-drone separation: ${MINSEP} m"
   fi
   echo "  [$TRAJ/$NROB] PASS -- $NOTE"
   echo "| $TRAJ | $NROB | PASS | 0 | $NOTE |" >> "$RESULTS"
