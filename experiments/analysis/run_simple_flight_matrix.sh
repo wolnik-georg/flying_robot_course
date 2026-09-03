@@ -36,7 +36,7 @@ one_run() {
   local STATE=state_geo
   mkdir -p "$STATE"
 
-  setsid timeout 240 ros2 launch crazyflie launch.py backend:=sim \
+  setsid timeout 300 ros2 launch crazyflie launch.py backend:=sim \
     crazyflies_yaml_file:=$CS2/crazyflie/config/$ROSTER \
     server_yaml_file:=$CS2/crazyflie/config/server_sim_geo.yaml \
     gui:=false rviz:=false mocap:=false teleop:=false > "$OUT/run_sf_${TRAJ}_${NROB}.log" 2>&1 &
@@ -47,7 +47,12 @@ one_run() {
   sleep 1
   local ARGS="--trajectory $TRAJ"
   [ "$TRAJ" = "hover" ] && ARGS="$ARGS --duration 8"
-  timeout 150 ros2 run crazyflie_examples simple_flight -- $ARGS \
+  # 2-drone cases timed out at 150s on 2026-09-03 -- the flight itself completed each time
+  # (takeoff/trajectory/landing all printed), the client was just cut off during its own
+  # tail-end cleanup, same pattern as formation_flight.py's 3-drone timeout earlier that day.
+  local CLIENT_TIMEOUT=150
+  [ "$NROB" = "2" ] && CLIENT_TIMEOUT=220
+  timeout "$CLIENT_TIMEOUT" ros2 run crazyflie_examples simple_flight -- $ARGS \
     --ros-args -p use_sim_time:=true > "$OUT/client_sf_${TRAJ}_${NROB}.log" 2>&1
   local RC=$?
   sleep 2
