@@ -76,8 +76,23 @@ one_run() {
   # a previous run's flight. Require it to postdate this run's marker.
   CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv -newer "$MARKER" 2>/dev/null | sort | tail -1)
   if [ -z "$META" ] || [ -z "$CSVDIR" ]; then
-    echo "  [$CTRL/$NROB $*] NO SIDECAR from this run (client rc=$RC)"
-    return 1
+    # 2026-09-05: confirmed via direct reproduction that `find -newer` itself works
+    # correctly given a marker that genuinely predates the target -- this is NOT a find/
+    # bfs bug. Most likely cause in a long background job: this sandbox's realtime clock
+    # jumping during suspend/resume (observed directly as mid-session date changes while
+    # this exact matrix ran). Not reliably fixable with a clock-based heuristic, so:
+    # fall back to newest-overall rather than fail outright, but say so loudly -- do NOT
+    # silently trust this pairing the way the -newer path is trusted. Manually verify
+    # against the printed scenario/params before believing the appended row.
+    META=$(find "$LOGDIR" -name '*.meta.json' 2>/dev/null | sort | tail -1)
+    CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv 2>/dev/null | sort | tail -1)
+    if [ -z "$META" ] || [ -z "$CSVDIR" ]; then
+      echo "  [$CTRL/$NROB $*] NO SIDECAR from this run (client rc=$RC)"
+      return 1
+    fi
+    echo "  [$CTRL/$NROB $*] WARN: -newer \$MARKER found nothing (client rc=$RC)," \
+      "falling back to newest-overall ($META / $CSVDIR) -- VERIFY MANUALLY, this is not" \
+      "guaranteed to be THIS run's data."
   fi
   ~/.pyenv/versions/flying_robots/bin/python \
     "$REPO/experiments/analysis/verify_formation_sim.py" \
