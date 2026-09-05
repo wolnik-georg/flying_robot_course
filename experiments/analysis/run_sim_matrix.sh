@@ -84,8 +84,21 @@ one_run() {
     # fall back to newest-overall rather than fail outright, but say so loudly -- do NOT
     # silently trust this pairing the way the -newer path is trusted. Manually verify
     # against the printed scenario/params before believing the appended row.
-    META=$(find "$LOGDIR" -name '*.meta.json' 2>/dev/null | sort | tail -1)
-    CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv 2>/dev/null | sort | tail -1)
+    #
+    # $LOGDIR is shared with formation_flight.py's own sidecars (filenames like
+    # vertical_<stamp>.meta.json, key "formation" not "scenario") -- confirmed 2026-09-05
+    # this fallback grabbed a two-day-old one of those and crashed verify_formation_sim.py
+    # with KeyError: 'scenario'. Restrict the glob to run_formation's own naming
+    # (scenario ID prefix: one or two letters A-C, a digit, underscore -- e.g. A2_, B1_,
+    # C5_ -- disjoint from formation_flight.py's full-word names).
+    # `sort | tail -1` is lexicographic, not chronological -- fine for the -newer path
+    # above (normally one candidate survives that filter) but wrong here, where multiple
+    # scenario prefixes (A2_, B1_, C5_, ...) are compared at once and alphabetical order
+    # groups by scenario name before date. Sort by real mtime instead.
+    META=$(find "$LOGDIR" -name '[A-C][0-9]_*.meta.json' -exec stat -c '%Y %n' {} \; 2>/dev/null \
+      | sort -n | tail -1 | cut -d' ' -f2-)
+    CSVDIR=$(find "$STATE" -maxdepth 2 -type d -name csv -exec stat -c '%Y %n' {} \; 2>/dev/null \
+      | sort -n | tail -1 | cut -d' ' -f2-)
     if [ -z "$META" ] || [ -z "$CSVDIR" ]; then
       echo "  [$CTRL/$NROB $*] NO SIDECAR from this run (client rc=$RC)"
       return 1
