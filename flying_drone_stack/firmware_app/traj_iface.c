@@ -215,6 +215,15 @@ float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s^2]  — wn = sqrt(KR)  */
 float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]    — zeta = KW/(2*wn) */
 float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s^2]  */
 float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]    */
+/* Separate attitude gains for ctrl_mode==0 (geometric), added 2026-09-07: kr/kw above were
+ * tuned and locked via INDI (ctrl_mode=3) figure-8 tracking, and geometric's model-based
+ * torque law has no real-time RPM-based correction to compensate the way INDI's incremental
+ * term does -- the same gains are not guaranteed stable for both. Retuning geometric must not
+ * silently change INDI's already-validated gains, so it gets its own pair instead. */
+float g_indi_kr_geo   = 100.0f;  /* KR_GEO X/Y [1/s^2], used only when ctrl_mode==0 */
+float g_indi_kw_geo   = 30.0f;   /* KW_GEO X/Y [1/s]    */
+float g_indi_kr_z_geo = 100.0f;  /* KR_GEO Z   [1/s^2]  */
+float g_indi_kw_z_geo = 30.0f;   /* KW_GEO Z   [1/s]    */
 // float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
 // float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
 // float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
@@ -333,6 +342,10 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, kw,     &g_indi_kw)
   PARAM_ADD(PARAM_FLOAT, kr_z,   &g_indi_kr_z)
   PARAM_ADD(PARAM_FLOAT, kw_z,   &g_indi_kw_z)
+  PARAM_ADD(PARAM_FLOAT, kr_geo,   &g_indi_kr_geo)
+  PARAM_ADD(PARAM_FLOAT, kw_geo,   &g_indi_kw_geo)
+  PARAM_ADD(PARAM_FLOAT, kr_z_geo, &g_indi_kr_z_geo)
+  PARAM_ADD(PARAM_FLOAT, kw_z_geo, &g_indi_kw_z_geo)
   PARAM_ADD(PARAM_FLOAT, kt1,    &g_indi_kt1)
   PARAM_ADD(PARAM_FLOAT, kt2,    &g_indi_kt2)
   PARAM_ADD(PARAM_FLOAT, kt3,    &g_indi_kt3)

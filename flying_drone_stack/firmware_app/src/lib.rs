@@ -876,6 +876,11 @@ extern "C" {
     static mut g_indi_kw:     f32;
     static mut g_indi_kr_z:   f32;
     static mut g_indi_kw_z:   f32;
+    // Separate attitude gains for ctrl_mode==0 (geometric) -- see traj_iface.c.
+    static mut g_indi_kr_geo:   f32;
+    static mut g_indi_kw_geo:   f32;
+    static mut g_indi_kr_z_geo: f32;
+    static mut g_indi_kw_z_geo: f32;
     // Per-motor thrust coefficients [N/RPM²]
     static mut g_indi_kt1:    f32;
     static mut g_indi_kt2:    f32;
@@ -1424,10 +1429,13 @@ fn controller_step(
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     // -- Runtime params -------------------------------------------------------
-    let kr_xy = unsafe { g_indi_kr };
-    let kw_xy = unsafe { g_indi_kw };
-    let kr_z  = unsafe { g_indi_kr_z };
-    let kw_z  = unsafe { g_indi_kw_z };
+    // ctrl_mode==0 (geometric) uses its own kr_geo/kw_geo pair, never the kr/kw pair tuned
+    // and locked for INDI (ctrl_mode!=0) -- retuning one must not silently move the other.
+    let (kr_xy, kw_xy, kr_z, kw_z) = if mode == 0 {
+        unsafe { (g_indi_kr_geo, g_indi_kw_geo, g_indi_kr_z_geo, g_indi_kw_z_geo) }
+    } else {
+        unsafe { (g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z) }
+    };
     let mass  = unsafe { g_indi_mass };
     let kt1   = unsafe { g_indi_kt1 };
     let kt2   = unsafe { g_indi_kt2 };
