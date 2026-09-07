@@ -1,0 +1,23 @@
+### host: flightcontrol1  time: 2026-09-07T17:43:00+02:00
+### cmd:  python3 debug/connect_probe.py --attempts 10 --pause 3
+###
+[connect_probe] 10 attempts, 3.0s apart, log -> connect_probe_20260907_174300.log
+[connect_probe] each attempt only builds Crazyswarm() -- no arm, no takeoff, safe to loop.
+
+Traceback (most recent call last):
+  File "/home/flyingrobots/georg/flying_robot_course/debug/connect_probe.py", line 84, in <module>
+    main()
+  File "/home/flyingrobots/georg/flying_robot_course/debug/connect_probe.py", line 64, in main
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/lib/python3.12/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/home/flyingrobots/venv/bin/python3', '-c', '\nimport sys, time\nt0 = time.monotonic()\ntry:\n    from crazyflie_py import Crazyswarm\n    swarm = Crazyswarm()\n    dt = time.monotonic() - t0\n    print(f"PASS dt={dt:.3f}s n_drones={len(swarm.allcfs.crazyflies)}")\n    sys.exit(0)\nexcept IndexError as e:\n    dt = time.monotonic() - t0\n    print(f"FAIL dt={dt:.3f}s IndexError: {e}")\n    sys.exit(1)\nexcept Exception as e:\n    dt = time.monotonic() - t0\n    print(f"FAIL dt={dt:.3f}s {type(e).__name__}: {e}")\n    sys.exit(1)\n']' timed out after 30 seconds
