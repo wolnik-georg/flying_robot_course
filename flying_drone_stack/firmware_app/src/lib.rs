@@ -1808,10 +1808,14 @@ fn controller_step(
         let gyro_comp = omega.cross(j_omega);
         // v2 improvement #2: attitude integral (same gate as geometric_step path)
         let ki_att = if ENABLE_ATTITUDE_INTEGRAL { 0.03_f32 } else { 0.0_f32 };
+        // kr_xy/kw_xy/kr_z/kw_z here are the mode==0 selection made earlier in this
+        // function (kr_geo/kw_geo) -- this branch only runs when mode==0, so this IS
+        // geometric using its own gains, not the compile-time KR_X/KW_X constants
+        // (those belong to `geometric_step_ref`, a separate, unused reference function).
         clamp_torque(Vec3::new(
-            -KR_X*er.x - KW_X*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
-            -KR_Y*er.y - KW_Y*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
-            -KR_Z*er.z - KW_Z*e_omega.z + gyro_comp.z - ki_att*s.i_error_att.z,
+            -kr_xy*er.x - kw_xy*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
+            -kr_xy*er.y - kw_xy*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
+            -kr_z *er.z - kw_z *e_omega.z + gyro_comp.z - ki_att*s.i_error_att.z,
         ))
     };
 
