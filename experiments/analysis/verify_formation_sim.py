@@ -66,7 +66,8 @@ def verify(meta_path: Path, csv_dir: Path, tol_z: float, tol_xy: float):
     sc = S.build(meta['scenario'], **meta['params'])
     names = meta['names']
     t0 = float(meta['t_start_sim'])
-    dur = float(meta['duration']) * float(meta.get('timescale', 1.0))
+    timescale = float(meta.get('timescale', 1.0))
+    dur = float(meta['duration']) * timescale
 
     data = load_states(csv_dir, names)
     t_end_file = min(d[-1, T] for d in data)
@@ -86,7 +87,12 @@ def verify(meta_path: Path, csv_dir: Path, tol_z: float, tol_xy: float):
     rows, ok = [], True
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
-            want = np.array([sc.relative(i, j, t - t0) for t in grid])
+            # Real elapsed time is `timescale` times slower than the curve's own internal
+            # parametrisation (the HLC stretches playback by timescale at upload time), so
+            # it must be divided out here to land on the right point of the curve. Missing
+            # this only ever showed up once a sweep first used timescale != 1 -- every
+            # earlier scenario always ran at the default 1.0, where the bug is invisible.
+            want = np.array([sc.relative(i, j, (t - t0) / timescale) for t in grid])
             got = pos[i] - pos[j]
             err = got - want
             e_z = np.abs(err[:, 2])
@@ -113,7 +119,7 @@ def verify(meta_path: Path, csv_dir: Path, tol_z: float, tol_xy: float):
     # assumed. Circular paths are paced by period and used to ignore --speed entirely
     # while still recording it, so a cell could be logged at 0.4 m/s and flown at 0.63.
     # Compare what the rebuilt scenario commands against what the vehicles actually did.
-    v_cmd = max(r.curve.peaks()[0] for r in sc.robots) / float(meta.get('timescale', 1.0))
+    v_cmd = max(r.curve.peaks()[0] for r in sc.robots) / timescale
     dt = grid[1] - grid[0]
     v_got = float(max(np.linalg.norm(np.gradient(p, dt, axis=0), axis=1).max() for p in pos))
     # Wide because it compares a commanded peak against a tracked one: the vehicle

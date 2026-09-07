@@ -104,9 +104,9 @@ Z_FLOOR_DEFAULT       = 0.30    # where we choose to fly formations
 Z_FLOOR_GROUND_EFFECT = 0.10    # only when ground effect is the measurement
 ```
 
-**The physical volume** is what the cameras track — z runs to the floor. Confirmed 2026-08-23 and
-consistent with an independent statement from 2026-07-27 (x and z identical, y then quoted as
-±2.1; the conservative ±2.0 is applied). Still not tape-measured.
+**The physical volume** is what the cameras track — z runs to the floor. **Tape-measured by the
+operator 2026-09-02** — matches the 2026-08-23 estimate and an independent statement from
+2026-07-27 (x and z identical, y then quoted as ±2.1; the conservative ±2.0 is applied).
 
 **The operational floor is a separate decision.** Near the ground a rotor's downwash reflects and
 pushes the vehicle up — ground effect, roughly the same magnitude as the inter-vehicle downwash

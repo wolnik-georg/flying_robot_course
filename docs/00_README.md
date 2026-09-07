@@ -41,6 +41,7 @@ else is detail hanging off it.
 | **Fly a formation** (2–3 robots) | [`10`](10_Formation_Library.md) |
 | **Run anything in simulation** | [`09`](09_Simulation.md) |
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
+| Know whether speed matters for the formations | [`21`](21_Formation_Speed_Sweep_Report.md) |
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Walk into the lab and fly C.0** | [`C0_FLIGHT_CARD.md`](C0_FLIGHT_CARD.md) — print it; `11` is the reasoning behind it |
@@ -95,6 +96,7 @@ else is detail hanging off it.
 |---|---|
 | [`11_Hardware_Readiness_Checklist.md`](11_Hardware_Readiness_Checklist.md) | Checklists A/B/C: inventory, C.0 acceptance, freeze-the-gains |
 | [`12_Sim_Formation_Validation_Report.md`](12_Sim_Formation_Validation_Report.md) | 34 sim cases, 33 pass — and the two flight-code bugs it found |
+| [`21_Formation_Speed_Sweep_Report.md`](21_Formation_Speed_Sweep_Report.md) | Does speed matter? 130 runs across every scenario with a speed axis, 111 clean — plus the exact commands per scenario and two tooling bugs it found |
 
 ### Orientation
 | | |
@@ -120,7 +122,8 @@ else is detail hanging off it.
 ## Conventions
 
 - **Numbering:** `01`–`06` planning, `07` status, `08`–`10` + `13` engineering reference,
-  `11`–`12` checklists and results, `14` orientation, `15`–`20` writing track. New documents
+  `11`–`12` + `21` checklists and results, `14` orientation, `15`–`20` writing track (reserved
+  even where not yet written — `21` skips ahead to avoid colliding with them). New documents
   get the next number.
 - **Update in the same change that alters state**, not afterwards. A doc that lags reality is
   worse than no doc, because it is trusted.

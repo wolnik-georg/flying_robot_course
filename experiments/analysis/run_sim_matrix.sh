@@ -48,7 +48,7 @@ one_run() {
   # pairing below selects this run's by age, not by being the only one present.
   mkdir -p "$STATE"
 
-  setsid timeout 420 ros2 launch crazyflie launch.py backend:=sim \
+  setsid timeout 760 ros2 launch crazyflie launch.py backend:=sim \
     crazyflies_yaml_file:=$CS2/crazyflie/config/$ROSTER \
     server_yaml_file:=$CS2/crazyflie/config/server_sim_$CTRL.yaml \
     gui:=false rviz:=false > "$OUT/run_$CTRL.log" 2>&1 &
@@ -57,7 +57,12 @@ one_run() {
 
   local MARKER=$(mktemp)
   sleep 1                       # so "newer than MARKER" cannot catch a same-second file
-  timeout 380 ros2 run crazyflie_examples run_formation "$@" --auto-center --yes \
+  # Bumped 380->700 (2026-09-06): several low-speed/long-period cases (A2/A5 speed=0.1's
+  # 94-111s trajectory; B1/B2/C2's fixed 3-drone startup overhead at low speed) were
+  # genuinely truncated under the old budget -- see docs/21_Formation_Speed_Sweep_Report.md
+  # sec.5. Server timeout raised in step (760 = 15s presleep + 700s client + margin) so it
+  # cannot expire out from under a still-running client.
+  timeout 700 ros2 run crazyflie_examples run_formation "$@" --auto-center --yes \
     --ros-args -p use_sim_time:=true > "$OUT/client_$CTRL.log" 2>&1
   local RC=$?
   sleep 2

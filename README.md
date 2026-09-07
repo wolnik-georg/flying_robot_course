@@ -41,6 +41,7 @@ is the map of every other document.
 | See what the 7 strategies do differently | `docs/18` |
 | Fly a single-robot trajectory | [`docs/08`](docs/08_Trajectory_Upload_Paths.md) |
 | Fly a formation (2–3 robots) | [`docs/10`](docs/10_Formation_Library.md) |
+| Know whether speed matters for a formation | [`docs/21`](docs/21_Formation_Speed_Sweep_Report.md) |
 | Run something in simulation | [`docs/09`](docs/09_Simulation.md) |
 | Work on the learned residual model | [`docs/13`](docs/13_Residual_Learning.md) |
 | Prepare for the first real flights | [`docs/11`](docs/11_Hardware_Readiness_Checklist.md) |

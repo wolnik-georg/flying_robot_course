@@ -177,7 +177,7 @@ C.4 Comparison      ░░░░░░░░░░░░░░░░░  the the
 
 | Type | Items |
 |---|---|
-| **Lab measurement** | Tape-measure the flight volume (scenarios sit within ~10 cm of walls); hardware inventory; measure uSD sync |
+| **Lab measurement** | ~~Tape-measure the flight volume~~ done 2026-09-02 (scenarios sit within ~10 cm of walls); hardware inventory; measure uSD sync |
 | **Bench** | Flash firmware; confirm `kv_xy` reads back **5.0**, not the sim's 8.0 |
 | **Flight** | Single-robot ladder (figure8 Mode D → Mode E → circle); validate the 3 unflown fixes; 2-robot at large separation (A1 Δz 0.75→0.50, then A3); confirm `a_res` non-zero and correctly signed |
 | **Decision** | **Freeze the gains** — re-tuning later would measure tuning effort, not the methods |
@@ -207,7 +207,7 @@ work · further simulator fidelity archaeology · results chapters.
 
 | Step | Action | Pass criterion |
 |---|---|---|
-| C.0.1 | Inventory + tape-measure volume + geofence | A/B scenarios fit with margin |
+| C.0.1 | Inventory + ~~tape-measure volume~~ (done 2026-09-02) + geofence | A/B scenarios fit with margin |
 | C.0.2 | Flash firmware; confirm `kv_xy` readback | **5.0**, not 8.0 |
 | C.0.3 | Single-robot hover, residual log live | `a_res` near 0, not stuck |
 | C.0.4 | Known small disturbance or 2-drone large-Δz hover | Residual **cancels**, does not amplify |

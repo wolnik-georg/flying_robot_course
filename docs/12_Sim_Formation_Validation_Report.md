@@ -229,12 +229,12 @@ simulator itself changes.
 
 ## 7. Flight volume — all sixteen scenarios fit
 
-**x −1.0 … 1.0 m, y −2.0 … 2.0 m, z 0.30 … 1.70 m.**
-⚠️ Operator estimate (23 August 2026), **not a tape-measure result** — though corroborated: it
-matches a figure stated independently a month earlier (z and x identical, y then ±2.1 against
-±2.0 now; the conservative value is applied). Confirm before flying: several scenarios sit
-within ~10 cm of these walls, and no margin is subtracted — the check runs on *commanded*
-positions, so real tracking error sits on top.
+**x −1.0 … 1.0 m, y −2.0 … 2.0 m, z 0.0 … 1.70 m.**
+✅ **Tape-measured by the operator 2026-09-02** — set in `FLIGHT_SPACE` in `formations/safety.py`,
+no longer a placeholder. Matches the 23 August operator estimate and an independent figure
+stated a month before that (z and x identical, y then quoted ±2.1 against ±2.0 now). Several
+scenarios still sit within ~10 cm of these walls, and no margin is subtracted — the check runs on
+*commanded* positions, so real tracking error sits on top of this number.
 
 The room is **long in y (4 m) and narrow in x (2 m)**, but every translating scenario was
 defined along x. Two options fix that:
@@ -274,7 +274,7 @@ ros2 run crazyflie_examples run_formation --scenario A3 --dz 0.30 --auto-center 
 
 | # | Item | Why it blocks |
 |---|---|---|
-| 1 | **Confirm the flight volume** with a tape measure | Most load-bearing unverified number in the project |
+| 1 | ~~Confirm the flight volume with a tape measure~~ | ✅ **Done 2026-09-02** |
 | 2 | Resolve the `crazyflie-firmware` bindings | ~110 uncommitted lines; the simulator does not build without them |
 | 3 | Hardware inventory | Working brushless drones, decks, batteries, SD decks |
 | 4 | **Fly the single-robot ladder** | Mode E has *never flown*. Flash → figure8 Mode D → figure8 Mode E → circle |
