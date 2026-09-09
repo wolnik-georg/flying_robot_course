@@ -220,10 +220,21 @@ float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]    */
  * torque law has no real-time RPM-based correction to compensate the way INDI's incremental
  * term does -- the same gains are not guaranteed stable for both. Retuning geometric must not
  * silently change INDI's already-validated gains, so it gets its own pair instead. */
-float g_indi_kr_geo   = 100.0f;  /* KR_GEO X/Y [1/s^2], used only when ctrl_mode==0 */
-float g_indi_kw_geo   = 30.0f;   /* KW_GEO X/Y [1/s]    */
-float g_indi_kr_z_geo = 100.0f;  /* KR_GEO Z   [1/s^2]  */
-float g_indi_kw_z_geo = 30.0f;   /* KW_GEO Z   [1/s]    */
+/* ⚠ UNITS ARE NOT THE SAME AS kr/kw ABOVE. Geometric computes torque = -kr_geo*eR
+ * - kw_geo*eOmega DIRECTLY in [Nm]; INDI's kr/kw produce an angular acceleration
+ * [1/s^2] that only becomes torque later, multiplied by J (~24e-6). A value from the
+ * kr/kw range used here commands roughly 1/J (~40000x) too much torque.
+ *
+ * These defaults were 100.0/30.0 until 2026-09-09 -- copied from the kr/kw block above
+ * with its units, i.e. 10000x too large. That was harmless while the geometric torque
+ * law still read the compile-time KR_X/KW_X constants, but once it started reading
+ * these params a failed/absent param write meant geometric flew at 10000x attitude
+ * gain. The defaults are now the flight-proven constants themselves, so a missing
+ * param degrades to known-good gains instead of a crash. */
+float g_indi_kr_geo   = 0.010f;   /* KR_GEO X/Y [Nm], used only when ctrl_mode==0 */
+float g_indi_kw_geo   = 0.00110f; /* KW_GEO X/Y [Nm*s] */
+float g_indi_kr_z_geo = 0.010f;   /* KR_GEO Z   [Nm]   */
+float g_indi_kw_z_geo = 0.00138f; /* KW_GEO Z   [Nm*s] */
 // float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
 // float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
 // float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
