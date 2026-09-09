@@ -40,11 +40,12 @@ installed you get a file per flight with no script changes.
 | `stateEstimate.{x,y,z,vx,vy,vz}` | own state — and, differenced across drones, the relative state that is the NN input |
 | **`indi.a_res_{x,y,z}`** | **the residual, f_res/m — the thesis measurement.** Zero unless an RPM source is present |
 | `indi.{tau,alp}_*` | INDI internals, for diagnosing the controller |
+| `indi.e_r_{x,y,z}`, `indi.e_r_norm` | Geometric attitude error `e_R` used in the torque law. Present under every `ctrl_mode` (0-3), not only INDI (added 2026-09-08) |
 | `stabilizer.{roll,pitch,yaw}`, `gyro.*`, `acc.*` | attitude and raw IMU |
 | `ctrltarget.*` | commanded position → tracking error |
 | `motor.m*` | control effort, one of the protocol's comparison metrics |
 
-35 variables at 500 Hz (`rnn.pred_*` and `rnn.clamped` added 2026-08-23 -- see docs/13_Residual_Learning.md; the limit is 40, raised from the stock 20 by a local `usddeck.c` change). If the card cannot keep up (check for gaps after the first flight), drop
+39 variables at 500 Hz (`rnn.pred_*` and `rnn.clamped` added 2026-08-23; `indi.e_r_*` added 2026-09-08 -- see docs/13_Residual_Learning.md; the limit is 40, raised from the stock 20 by a local `usddeck.c` change). One slot of headroom left. If the card cannot keep up (check for gaps after the first flight), drop
 `motor.m*` first, then `acc.*` — `indi.a_res_*` and `stateEstimate.*` are the ones the thesis
 cannot do without.
 

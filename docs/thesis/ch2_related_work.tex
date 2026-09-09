@@ -30,8 +30,10 @@
 
 Multirotors flying in close proximity disturb one another aerodynamically. The disturbance is
 large enough to destabilise a vehicle, and conventional practice avoids it by keeping the vehicles
-far apart: a safety distance of roughly \SI{60}{\centi\metre} has been used for a quadrotor only
-\SI{9}{\centi\metre} across~\cite{shi2020neuralswarm}. Removing that margin is what makes dense
+far apart: a Crazyflie~2.0 measures \SI{9}{\centi\metre} rotor-to-rotor, and when the interaction
+between vehicles is left unmodelled, planners have adopted conservative separations, Shi et
+al.~\cite{shi2020neuralswarm} cite \SI{60}{\centi\metre} from earlier planning work as one such
+example. Removing that margin is what makes dense
 formation flight possible, and doing so requires a controller that accounts for the interaction
 rather than avoiding it.
 
@@ -451,12 +453,18 @@ they were obtained.
     \toprule
     Work & Team size & Separation & Reported quantity \\
     \midrule
+    Tal and Karaman~\cite{tal2018indi}          & 1                  & n/a (no formation) & aggressive tracking \\
+    Smeur et al.~\cite{smeur2017cascadedindi}   & 1                  & n/a & jet / GNSS position error \\
     Shi et al.~\cite{shi2020neuralswarm}        & 2--4 train, 2--5 test & \SIrange{0.20}{0.25}{\metre} vert. & max.\ $|z|$ error \\
     Neural-Swarm2~\cite{shi2022neuralswarm2}    & 16, heterogeneous  & \SI{24}{\centi\metre} vert. & worst-case tracking error\textsuperscript{\dag} \\
     Smith et al.~\cite{smith2023so2equivariant} & 2                  & \SIrange{0.6}{0.8}{\metre} eval.\ (train.\ to $\approx$\SI{0.5}{\metre}) & 3D and vertical tracking \\
     Gielis et al.~\cite{gielis2023aggregate}    & up to 4 total (rig sufferer $+\leq3$ flyers) & test rig, sufferer not in free flight & force-prediction accuracy \\
+    Yang et al.~\cite{yang2025flatnessresiduals} & 1, planar (sim.\ only) & n/a & simulation only \\
     Hsieh et al.~\cite{hsieh2026flatness}       & 2                  & \makecell[l]{\SI{0.3}{\metre} and \SI{0.4}{\metre}\\ vert.\textsuperscript{\ddag}} & RMSE and max.\ $z$ error \\
+    Chee et al.~\cite{chee2024knodedwmpc}       & 2, Crazyflie~2.1   & \makecell[l]{commanded \SIrange{0.2}{0.4}{\metre};\\ tight case \(\approx\)\SI{0.08}{\metre}} & \makecell[l]{RMSE / max.\ $z$ vs.\\ nominal MPC; off-board} \\
+    Li et al.~\cite{li2023ndpnmpc}               & 2, custom          & neighbour-relative & \makecell[l]{NMPC with predicted\\ force sequence; Jetson + mocap} \\
     Hsieh et al.~\cite{hsieh2025onlineadaptation} & 3                & V-stack and I-stack; pairwise \SI{0.2}{\metre} & tracking vs.\ MPC family \\
+    Shankar et al.~\cite{shankar2023docking}    & 2, custom (\(\approx\)\SI{0.27}{\metre}) & dock \(\approx\)\SI{0.36}{\metre} & \makecell[l]{terminal vert.\ error /\\ dock success; onboard Pi, mocap} \\
     Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} & 1 (+ payload) & n/a                 & position tracking error \\
     Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \makecell[l]{\SI{0.50}{\metre} vert.\ hover/circle;\\ dock to \SI{0.10}{\metre}, release at \SI{0.05}{\metre}} & position and attitude error \\
     \bottomrule

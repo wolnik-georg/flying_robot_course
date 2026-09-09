@@ -30,8 +30,11 @@ states *fact*. **Confirm on the vehicle** — cfclient → Parameters tab → `p
 |---|---|---|
 | `pos_gains.kv_xy` **on the drone** | **5.0** | **STOP.** 8.0 is the simulator's value (`crazyflies_sim*.yaml`). Hardware crashed 2/2 at 4 and flies at 5 — do not take off on a sim gain |
 | `pos_gains.kp_xy` | 64.0 | stop, gains did not apply |
+| `indi_gains.clamp_en` | **11** | 2026-09-07: confirmed the ONE value that differs from the frozen/parked, flight-proven state. 15 (tilt clamp on) produced a real, growing attitude oscillation on both controllers that 11 does not — do not fly at 15 for level formation flight |
+| `indi_gains.kr_geo` / `kw_geo` | reads a real number, not `0` | geometric's own attitude gain pair (added 2026-09-07) — a missing param silently behaves like `kr_geo=0`, not a safe fallback. Untuned starting point is `0.010`/`0.00110` |
 | Launched with `crazyflies.yaml` | not `crazyflies_sim*.yaml` | the sim roster carries the sim gain |
 | uSD card in each drone | present, empty | no card = no dataset |
+| `indi.e_r_x/y/z/norm` present in the uSD file | confirm on the first hover | added 2026-09-08; `experiments/analysis/README.md` has the column dictionary |
 
 ### ☐ The three unflown residual changes are on the bird
 
@@ -106,6 +109,15 @@ python3 experiments/analysis/analyze_formation.py 2026-09-02_14-15-10
 
 > **Not `probe_residual_sign.py`** — that is a *simulation* probe. It injects a force into the SIL
 > controller and needs `cffirmware` on `PYTHONPATH`; it cannot read a hardware log.
+>
+> **For the full picture (RMSE, sag, e_R, plots), not just this rung's quick check:** once uSD logs
+> are off the card, `merge_usd_logs.py` → `experiments/analysis/run_analysis.py` (numbers) and
+> `plot_flight.py` (the dashboard PNG) are the ready pipeline — see
+> `experiments/analysis/README.md`. `analyze_formation.py` above stays the fast live check;
+> `run_analysis.py`/`plot_flight.py` are the ones that actually produce the dataset-quality numbers
+> this thesis reports. Use system `python3` for `run_analysis.py`; use
+> `~/.pyenv/versions/flying_robots/bin/python` for `plot_flight.py` (system `matplotlib` is broken
+> on this machine — numpy ABI mismatch).
 >
 > **Radio saturates with two drones** (~600 pkt/s per drone against a ~1000 pkt/s dongle limit), so
 > the live stream will look thin here. That is expected, not a fault: `run_formation` turns uSD

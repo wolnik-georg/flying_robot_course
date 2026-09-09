@@ -1,5 +1,5 @@
 diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
-index d4ae77ca..ce8d435d 100755
+index d4ae77ca..ec075d35 100755
 --- a/bindings/cffirmware.i
 +++ b/bindings/cffirmware.i
 @@ -1,3 +1,7 @@
@@ -10,7 +10,7 @@ index d4ae77ca..ce8d435d 100755
  %module cffirmware
  %include <stdint.i>
  
-@@ -41,6 +45,85 @@
+@@ -41,6 +45,91 @@
  %include "controller_mellinger.h"
  %include "controller_brescianini.h"
  %include "controller_lee.h"
@@ -33,10 +33,13 @@ index d4ae77ca..ce8d435d 100755
 +                                const uint32_t tick);
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
++extern float oot_get_e_r(int i);
++extern float oot_get_e_r_norm(void);
 +void oot_select_drone(int idx);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
 +void oot_set_peer_count(int n);
++void oot_rnn_service(void);
 +extern uint16_t g_rnn_wi, g_rnn_n;
 +extern float g_rnn_wv;
 +extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
@@ -67,10 +70,13 @@ index d4ae77ca..ce8d435d 100755
 +                                const uint32_t tick);
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
++extern float oot_get_e_r(int i);
++extern float oot_get_e_r_norm(void);
 +void oot_select_drone(int idx);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
 +void oot_set_peer_count(int n);
++void oot_rnn_service(void);
 +extern uint16_t g_rnn_wi, g_rnn_n;
 +extern float g_rnn_wv;
 +extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
@@ -97,7 +103,7 @@ index d4ae77ca..ce8d435d 100755
  %include "axis3fSubSampler.h"
  %include "outlierFilterTdoa.h"
 diff --git a/bindings/setup.py b/bindings/setup.py
-index 5f650752..370e6bb3 100644
+index 5f650752..73d69da1 100644
 --- a/bindings/setup.py
 +++ b/bindings/setup.py
 @@ -2,8 +2,30 @@
@@ -150,7 +156,7 @@ index 5f650752..370e6bb3 100644
 +    # replacements the simulator can drive and read.
 +    oot_defines = ["-D%s=%s_fw_unused" % (n, n) for n in (
 +        "rpm_get_all", "indi_log_write", "indi_tau_write",
-+        "indi_notch_log_write", "indi_a_res_write", "peer_get_all")]
++        "indi_notch_log_write", "indi_a_res_write", "indi_e_r_write", "peer_get_all")]
 +    print("[setup] out-of-tree controller: linking", OOT_LIB)
 +else:
 +    print("[setup] out-of-tree controller: not built, skipping (sim will lack 'oot')")

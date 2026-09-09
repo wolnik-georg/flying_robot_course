@@ -850,6 +850,7 @@ extern "C" {
     fn indi_tau_write(tx: f32, ty: f32, tz: f32);
     fn indi_notch_log_write(anx: f32, any: f32, anz: f32);
     fn indi_a_res_write(ax: f32, ay: f32, az: f32);
+    fn indi_e_r_write(ex: f32, ey: f32, ez: f32, norm: f32);
 }
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
@@ -1597,6 +1598,11 @@ fn controller_step(
     // -- Attitude error eR = 0.5*(Rd^T R - R^T Rd)^vee ------------------------
     let er = vee_half(&matsub(&mat_at_b(rd, r), &mat_at_b(r, rd)));
     s.i_error_att = s.i_error_att.add(er.scale(dt));
+    // Logged unconditionally, before the geometric/INDI branch split below, so e_R is
+    // present under every ctrl_mode (0-3) -- not just where it happens to be used for
+    // an attitude integral. The comparison campaign needs it under all fair-set modes.
+    let er_norm = libm::sqrtf(er.x * er.x + er.y * er.y + er.z * er.z);
+    unsafe { indi_e_r_write(er.x, er.y, er.z, er_norm); }
 
     // -- Passive filter: runs in ALL modes for filter characterisation logging --
     // alpha_raw and alpha_meas are always computed and logged; in geometric mode

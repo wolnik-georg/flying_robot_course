@@ -42,6 +42,7 @@ else is detail hanging off it.
 | **Run anything in simulation** | [`09`](09_Simulation.md) |
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
 | Know whether speed matters for the formations | [`21`](21_Formation_Speed_Sweep_Report.md) |
+| See what happened in a specific lab session | [`lab_sessions/`](lab_sessions/) — one dated file per day, findings/fixes/to-do |
 | Work on the learned residual model | [`13`](13_Residual_Learning.md) |
 | Prepare for the first real flights | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Walk into the lab and fly C.0** | [`C0_FLIGHT_CARD.md`](C0_FLIGHT_CARD.md) — print it; `11` is the reasoning behind it |

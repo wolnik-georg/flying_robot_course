@@ -80,3 +80,29 @@ measurement remain separate.
 | 2026-09-01 | ch4 | none | "Finally, each implementation is a representative of its family and not a reproduction…" | deleted | duplicated the new families-on-one-substrate paragraph |
 | 2026-09-01 | ch1 | none | "the two- and multi-robot results chapters report… the discussion chapter…" | sentence-initial capitals | typography |
 | 2026-09-01 | ch4 | none | "All of them track… through the same attitude allocation." | "The fair set, Strategies 1, 2, 3 and 5, tracks… Strategies 4, 6 and 7 do not share that allocator." | the claim was too broad after the renumber |
+
+---
+
+## 2026-09-09 Related-Work polish
+
+- ch2 60 cm sentence aligned with locked Shi wording (matches ch1's "planners have adopted
+  conservative separations, Shi et al. cite 60 cm from earlier planning work as one such example"
+  clause; did not restore "commonly flown").
+- Table 2.1 rows added, all facts drawn from prose already in §2.3–§2.5 (no new numbers, no new
+  sources): Tal and Karaman~\cite{tal2018indi}, Smeur et al.~\cite{smeur2017cascadedindi},
+  Yang et al.~\cite{yang2025flatnessresiduals}, Chee et al.~\cite{chee2024knodedwmpc},
+  Li et al.~\cite{li2023ndpnmpc}, Shankar et al.~\cite{shankar2023docking}. Rows inserted in the
+  chapter's own discussion order (reactive family first, then the predictive/injection
+  subsections in the order they appear); Bauersfeld and Kiran deliberately excluded (they are
+  characterisation, not closed-loop compensation).
+- No locked number changed (NS 2.4/2.7/9.4 cm, NS2 16 vs 3×, Smith 36% = 3D, Cobo 40%
+  no-payload, Hsieh 31% abstract-only / body 24%+29%, 20× is simulation, off-board qualifiers).
+  No residual sign, Strategy 5 form, or fairness set (1/2/3/5) touched. No paper added to
+  `references.bib`.
+- `CITATION_BASELINE.md`'s `sha256sum` for `ch2_related_work.tex` will now differ from the
+  27 Aug 2026 baseline table. This is an allowed post-baseline wording/table fix under an
+  already-audited source set, not a new literature sweep — the baseline table is **not**
+  retagged or regenerated in this pass.
+- Build verified clean: `latexmk -pdf ch2_standalone.tex` compiles with no new errors and no
+  overfull boxes (the only warnings are pre-existing cross-chapter refs that resolve only in
+  the full thesis build).

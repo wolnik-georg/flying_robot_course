@@ -431,6 +431,7 @@ static float log_alp_x,     log_alp_y,     log_alp_z;
 static float log_tau_x,     log_tau_y,     log_tau_z;
 static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
 static float log_a_res_x, log_a_res_y, log_a_res_z;
+static float log_e_r_x, log_e_r_y, log_e_r_z, log_e_r_norm;
 
 void indi_log_write(float arx, float ary, float arz,
                     float ax,  float ay,  float az)
@@ -464,6 +465,17 @@ void indi_a_res_write(float ax, float ay, float az)
     log_a_res_x = ax; log_a_res_y = ay; log_a_res_z = az;
 }
 
+/* Geometric attitude error e_R = 0.5*vee(R_des^T R - R^T R_des) [rad, roughly], the same
+ * vector already used in the torque law (Lee et al. 2010; see firmware_app/CLAUDE.md's
+ * gyro_feedback/torque comment). Written unconditionally once per controller_step call in
+ * lib.rs, BEFORE the geometric/INDI branch split, so it is present under every ctrl_mode
+ * (0-3) -- the comparison campaign needs it under all fair-set modes, not just INDI.
+ * Norm is computed in Rust (libm::sqrtf) and passed through rather than recomputed here. */
+void indi_e_r_write(float ex, float ey, float ez, float norm)
+{
+    log_e_r_x = ex; log_e_r_y = ey; log_e_r_z = ez; log_e_r_norm = norm;
+}
+
 LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
   LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
@@ -480,4 +492,8 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, a_res_x,   &log_a_res_x)
   LOG_ADD(LOG_FLOAT, a_res_y,   &log_a_res_y)
   LOG_ADD(LOG_FLOAT, a_res_z,   &log_a_res_z)
+  LOG_ADD(LOG_FLOAT, e_r_x,     &log_e_r_x)
+  LOG_ADD(LOG_FLOAT, e_r_y,     &log_e_r_y)
+  LOG_ADD(LOG_FLOAT, e_r_z,     &log_e_r_z)
+  LOG_ADD(LOG_FLOAT, e_r_norm,  &log_e_r_norm)
 LOG_GROUP_STOP(indi)

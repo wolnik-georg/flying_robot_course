@@ -135,6 +135,7 @@ tr:last-child td{border-bottom:1.5px solid var(--ink)}
   border:1px solid var(--rule); border-radius:50%;
 }
 .ladder li.key::before{background:var(--warn); color:#fff; border-color:var(--warn)}
+.ladder li.done::before{content:"✓"; background:var(--ok); color:#fff; border-color:var(--ok)}
 .ladder h3{margin-bottom:.15em}
 .ladder .why{font-size:.9rem; color:var(--ink-2); margin:0; max-width:60ch}
 
@@ -168,16 +169,16 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 26 August 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 8 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Comparison of control strategies for interaction-force aware multirotor teams —
     Crazyflie&nbsp;2.1 brushless, Crazyswarm2, an out-of-tree controller in Rust.
   </p>
   <div class="statusline">
-    <span class="pill"><span class="dot"></span>Writing · unblocked</span>
-    <span class="pill blocked"><span class="dot"></span>Lab · waiting on access</span>
-    <span style="color:var(--muted)">Preparation complete — no software on the critical path</span>
+    <span class="pill"><span class="dot"></span>Writing · unblocked, idle by design</span>
+    <span class="pill blocked"><span class="dot"></span>Lab · Hardware Gate in progress</span>
+    <span style="color:var(--muted)">First real lab session done — decisive flight still ahead</span>
   </div>
 </header>
 
@@ -185,7 +186,7 @@ footer{
   <div class="stat"><span class="n">38</span><span class="t">pages drafted, Ch.&nbsp;1–5</span></div>
   <div class="stat"><span class="n">20</span><span class="t">sources, 18 read in full</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
-  <div class="stat"><span class="n">50</span><span class="t">sim cases passed, 0 defects</span></div>
+  <div class="stat"><span class="n">1</span><span class="t">real lab session flown</span></div>
   <div class="stat"><span class="n">987</span><span class="t">weights running onboard</span></div>
 </div>
 
@@ -209,23 +210,24 @@ footer{
         <li>Claim ledger: every citable number in the source's own words</li>
         <li>Chapters 1–5 drafted, revised and accuracy-audited</li>
         <li>Seven strategies described, implementation separated from reference method</li>
+        <li class="pending">Idle on purpose: nothing left here doesn't need flight data</li>
       </ul>
     </div>
 
     <div class="lane lab">
       <div class="lane-head">
         <h2>Code, sim &amp; flight</h2>
-        <span class="lbl" style="color:var(--warn)">Needs a drone</span>
+        <span class="lbl" style="color:var(--warn)">Hardware Gate (C.0)</span>
       </div>
       <ul>
-        <li>Geometric + INDI controllers flying; one Rust source runs on hardware <em>and</em> in sim</li>
-        <li>Formation library — 16 scenarios, spec-checked and safety-gated</li>
-        <li>Validated in simulation on both controllers <em>34/34 geometry, 16/16 speed</em></li>
-        <li>Separation and speed are real, discrete experimental variables</li>
-        <li>Residual measurement <code>a_res</code> logged in every controller mode</li>
-        <li>Deep-sets network onboard + offline training pipeline + end-to-end dry run</li>
-        <li>uSD logging at 500&nbsp;Hz per drone — the dataset path, independent of radio</li>
-        <li class="pending">Nothing has flown since the trajectory-upload migration</li>
+        <li>First real lab session flown, 2026-09-07 <em>hover, both controllers</em></li>
+        <li>Found and fixed a real regression: a growing attitude oscillation traced to one config flag (<code>clamp_en</code>), reverted to the flight-proven value</li>
+        <li>Geometric was silently running hardcoded gains for a different airframe the whole project — given its own tunable pair, needs its own retune</li>
+        <li>Formation library re-validated in sim against three fixed bugs (landing-collision path, missing sim pose telemetry, cross-run state carryover)</li>
+        <li>All 9 two-drone scenarios confirmed in sim, both controllers</li>
+        <li>Desk work while lab-blocked: analysis pipeline (<code>experiments/analysis/run_analysis.py</code>) and onboard <code>e_R</code> logging both DONE — Ch.5's promised metrics and its one open logging gap, closed without a drone</li>
+        <li class="pending">Clean hover not yet re-confirmed since the <code>clamp_en</code> revert</li>
+        <li class="pending">The decisive residual-sign flight (A1, two drones) has not happened on hardware — C.0 remains NOT started</li>
       </ul>
     </div>
   </div>
@@ -249,8 +251,8 @@ footer{
   </table>
   </div>
   <p class="note">
-    Chapter 5 is written in future tense on purpose: nothing has been flown, and no result is
-    claimed anywhere in the draft.
+    Chapter 5 is written in future tense on purpose: nothing has been flown as a controlled
+    experiment yet, and no result is claimed anywhere in the draft.
   </p>
 </section>
 
@@ -268,21 +270,25 @@ footer{
     Three misattributions were caught and logged, all from the same cause: trusting our own
     earlier summary as if it were the source. The gap claim has been narrowed twice under
     evidence, and now reads as what survives scrutiny rather than what would sound strongest.
+    The citation audit closed 27 August — this track is not looking for more papers.
   </p>
 </section>
 
 <div class="risk">
-  <h2>The one thing that gates everything</h2>
+  <h2>The one thing that still gates everything</h2>
   <p>
     A sign error meant the controller <strong>added</strong> the interaction force it was supposed
     to cancel — reinforcing every disturbance instead of removing it. It measured at exactly
-    <strong>2.00×</strong> on a known input. It is fixed in code and <strong>has never flown</strong>.
+    <strong>2.00×</strong> on a known input. It is fixed in code and <strong>has still never
+    flown</strong>.
   </p>
   <p>
     It cannot be seen with one drone: <code>a_res</code> is essentially zero when there is nothing
-    to interact with. So the first lab objective is not tracking quality — it is proving the
-    residual <strong>cancels rather than amplifies</strong>. Every downstream number depends on
-    that single flight coming out right.
+    to interact with. The first real lab session (2026-09-07) flew single-drone hover on both
+    controllers and surfaced a different, real bug first — a growing attitude oscillation, now
+    root-caused and reverted. That means the sign-check flight itself is still ahead, not behind:
+    two drones stacked, compensation on versus off, and enabling it must make separation error
+    <strong>shrink</strong>. Every downstream number depends on that one flight coming out right.
   </p>
 </div>
 
@@ -292,20 +298,21 @@ footer{
     Strictly ordered. Each rung exists so that a failure has exactly one explanation.
   </p>
   <ol class="ladder">
-    <li>
+    <li class="done">
       <h3>Bench check</h3>
       <p class="why">Confirm the position gain on the drone is the flight-proven value, not the
       simulator's. Tape-measure the flight volume — scenarios sit within ~10&nbsp;cm of the walls.</p>
     </li>
-    <li>
+    <li class="done">
       <h3>Single-drone hover</h3>
-      <p class="why">The residual signal must be small but <em>not</em> identically zero. Exactly
-      zero means no rotor-speed source, and therefore no thesis data at all.</p>
+      <p class="why">Flown 2026-09-07. Found a real regression (growing attitude oscillation) —
+      root-caused to one config flag and reverted. Re-confirmation of clean hover is the very
+      next thing to check, before trusting anything past this rung.</p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
       <p class="why">Two drones stacked, compensation on versus off. Enabling it must
-      <em>shrink</em> the separation error. This is the decisive flight.</p>
+      <em>shrink</em> the separation error. This is the decisive flight — still ahead.</p>
     </li>
     <li>
       <h3>Trajectory ladder</h3>
@@ -347,6 +354,8 @@ footer{
 
 <footer>
   Detail: docs/07 (status) · docs/C0_FLIGHT_CARD.md (the ladder above, with commands) ·
+  docs/lab_sessions/2026-09-07.md (the first real session) ·
+  docs/lab_sessions/sim_scenario_commands_2026-09-08.md (formation-library sim commands) ·
   docs/10 (formations) · docs/13 (residual learning) · docs/12 &amp; SPEED_MATRIX.md (sim validation)
 </footer>
 

@@ -31,6 +31,8 @@ RENAME = {
     "indi.alp_raw_x": "alp_raw_x", "indi.alp_raw_y": "alp_raw_y", "indi.alp_raw_z": "alp_raw_z",
     "indi.alp_notch_x": "alp_notch_x", "indi.alp_notch_y": "alp_notch_y",
     "indi.alp_notch_z": "alp_notch_z",
+    "indi.e_r_x": "e_r_x", "indi.e_r_y": "e_r_y", "indi.e_r_z": "e_r_z",
+    "indi.e_r_norm": "e_r_norm",
     "rnn.pred_x": "rnn_pred_x", "rnn.pred_y": "rnn_pred_y", "rnn.pred_z": "rnn_pred_z",
     "rnn.clamped": "rnn_clamped",
     "ctrltarget.x": "ctrltarget_x", "ctrltarget.y": "ctrltarget_y",

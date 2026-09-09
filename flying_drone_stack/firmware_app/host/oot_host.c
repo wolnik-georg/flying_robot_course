@@ -26,6 +26,7 @@
 #undef indi_tau_write
 #undef indi_notch_log_write
 #undef indi_a_res_write
+#undef indi_e_r_write
 #undef peer_get_all
 
 #include <stdint.h>
@@ -69,6 +70,7 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 
 /* ── log sinks: latch the values the controller publishes ─────────────────── */
 static float l_alp_raw[3], l_alp[3], l_tau[3], l_alp_notch[3], l_a_res[3];
+static float l_e_r[3], l_e_r_norm;
 
 void indi_log_write(float arx, float ary, float arz, float ax, float ay, float az)
 {
@@ -78,6 +80,10 @@ void indi_log_write(float arx, float ary, float arz, float ax, float ay, float a
 void indi_tau_write(float tx, float ty, float tz)      { l_tau[0]=tx; l_tau[1]=ty; l_tau[2]=tz; }
 void indi_notch_log_write(float x, float y, float z)   { l_alp_notch[0]=x; l_alp_notch[1]=y; l_alp_notch[2]=z; }
 void indi_a_res_write(float x, float y, float z)       { l_a_res[0]=x; l_a_res[1]=y; l_a_res[2]=z; }
+void indi_e_r_write(float ex, float ey, float ez, float norm)
+{
+    l_e_r[0]=ex; l_e_r[1]=ey; l_e_r[2]=ez; l_e_r_norm=norm;
+}
 
 /* Readers for Python. a_res is f_res/m -- the residual the thesis measures. */
 float oot_get_a_res(int i)     { return (i>=0 && i<3) ? l_a_res[i]     : 0.0f; }
@@ -85,6 +91,8 @@ float oot_get_tau(int i)       { return (i>=0 && i<3) ? l_tau[i]       : 0.0f; }
 float oot_get_alp(int i)       { return (i>=0 && i<3) ? l_alp[i]       : 0.0f; }
 float oot_get_alp_raw(int i)   { return (i>=0 && i<3) ? l_alp_raw[i]   : 0.0f; }
 float oot_get_alp_notch(int i) { return (i>=0 && i<3) ? l_alp_notch[i] : 0.0f; }
+float oot_get_e_r(int i)       { return (i>=0 && i<3) ? l_e_r[i]       : 0.0f; }
+float oot_get_e_r_norm(void)   { return l_e_r_norm; }
 
 /* Airframe constants the firmware was COMPILED with. The simulator needs these to
    invert powerDistribution exactly: it turns force into PWM as
