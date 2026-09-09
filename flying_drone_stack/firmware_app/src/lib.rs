@@ -1467,7 +1467,17 @@ fn controller_step(
     // A motor reading implausibly low while a sibling is clearly airborne is a deck glitch;
     // substitute the last valid reading for that motor. Armed only when clearly airborne
     // (max > RPM_GUARD_HI) so it never fires pre-takeoff or during the spin-up ramp.
-    if ENABLE_RPM_GUARD && rpms_active {
+    //
+    // The guard (and its rpm_prev memory) stays gated on `mode != 0`, exactly as on the
+    // frozen branch. Reading RPM in geometric is safe -- a_indi is zero there, so nothing
+    // reaches the control law -- but LETTING THE GUARD RUN in geometric would not be: it
+    // advances s.rpm_prev during the ramp phase, so INDI would inherit a warm rpm_prev at
+    // the ctrl_mode 0->3 handover where the frozen build handed it a cold one. That is a
+    // real difference in INDI's entry state at exactly the transition the 2026-09-09 hover
+    // divergence appeared at, and there is no flight evidence for the warm version. Keep
+    // the frozen state evolution; a_res still logs in every mode because it is computed
+    // from the raw m1..m4 above, which the gate does not touch.
+    if ENABLE_RPM_GUARD && rpms_active && mode != 0 {
         let mx = m1.max(m2).max(m3).max(m4);
         if mx > RPM_GUARD_HI {
             if m1 < RPM_GUARD_LO { m1 = s.rpm_prev[0]; }
@@ -1478,10 +1488,23 @@ fn controller_step(
         s.rpm_prev = [m1, m2, m3, m4];
     }
 
-    // Evaluate the learned residual. Always computed and logged, whatever rnn.en says --
-    // comparing predicted against measured a_res IS the evaluation of every learned method
-    // here, and that needs the prediction recorded on flights where it is not used.
-    let rnn_pred = unsafe { rnn_predict(s, pos, vel) };
+    // Evaluate the learned residual -- ONLY when a complete weight set is loaded AND rnn.en
+    // is set. It used to run unconditionally on every tick so the prediction could be logged
+    // on flights where it is not used (comparing predicted against measured a_res IS the
+    // evaluation of every learned method here). Gated 2026-09-09: that put a deep-sets
+    // forward pass and a peer_localization scan into the 500 Hz control tick of every flight,
+    // including flights that never touch the network -- CPU the frozen/flight-proven build
+    // never spent. It short-circuits with no peers, but "cheap" is not "free" and this
+    // restores the frozen tick cost exactly.
+    //
+    // Re-enable unconditional evaluation deliberately (set rnn.en=1 with weights loaded)
+    // when the predicted-vs-measured comparison is actually being collected, which is C.2/C.3,
+    // not now. Until then this returns zero and a_nn below is zero.
+    let rnn_pred = if unsafe { g_rnn_en } != 0 && unsafe { g_rnn_ready } != 0 {
+        unsafe { rnn_predict(s, pos, vel) }
+    } else {
+        Vec3::zero()
+    };
 
     // -- Position loop --------------------------------------------------------
     let ep = pd.sub(pos);
