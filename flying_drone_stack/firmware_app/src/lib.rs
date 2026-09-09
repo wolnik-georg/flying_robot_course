@@ -1488,19 +1488,25 @@ fn controller_step(
         s.rpm_prev = [m1, m2, m3, m4];
     }
 
-    // Evaluate the learned residual -- ONLY when a complete weight set is loaded AND rnn.en
-    // is set. It used to run unconditionally on every tick so the prediction could be logged
-    // on flights where it is not used (comparing predicted against measured a_res IS the
-    // evaluation of every learned method here). Gated 2026-09-09: that put a deep-sets
-    // forward pass and a peer_localization scan into the 500 Hz control tick of every flight,
-    // including flights that never touch the network -- CPU the frozen/flight-proven build
-    // never spent. It short-circuits with no peers, but "cheap" is not "free" and this
-    // restores the frozen tick cost exactly.
+    // Evaluate the learned residual -- gated on `rnn.ready` ALONE (audit finding N3,
+    // 2026-09-09). Two separate questions, two separate gates:
     //
-    // Re-enable unconditional evaluation deliberately (set rnn.en=1 with weights loaded)
-    // when the predicted-vs-measured comparison is actually being collected, which is C.2/C.3,
-    // not now. Until then this returns zero and a_nn below is zero.
-    let rnn_pred = if unsafe { g_rnn_en } != 0 && unsafe { g_rnn_ready } != 0 {
+    //   ready (a complete weight set was deliberately uploaded) gates the COMPUTATION.
+    //     Every flight without an upload keeps the frozen tick cost exactly -- no deep-sets
+    //     pass, no peer scan. A flight WITH weights loaded computes and logs the prediction
+    //     on every tick, whatever `en` says, because comparing predicted against measured
+    //     a_res IS the evaluation of every learned method here, and that comparison needs
+    //     predictions recorded on flights where they are NOT used (e.g. geometric-only
+    //     Geometric+NN training/eval flights).
+    //
+    //   en gates the CONTROL USE only (a_nn below).
+    //
+    // An earlier revert gated the computation on `en && ready`, which silently eliminated
+    // the predict-and-log-only state -- there was no configuration left that logs the
+    // prediction without also feeding it into the position loop. That is the thesis's core
+    // instrument; this restores it while keeping the frozen tick cost for every normal
+    // flight (ready=0).
+    let rnn_pred = if unsafe { g_rnn_ready } != 0 {
         unsafe { rnn_predict(s, pos, vel) }
     } else {
         Vec3::zero()
@@ -1741,11 +1747,23 @@ fn controller_step(
     // (alpha_meas, alpha_ref, tau_current) warmed up in lockstep the whole flight.
 
     // alpha_ref = alpha_des - KR*eR - KW*e_omega  (Tal & Karaman Eq. 28)
+    //
+    // ALWAYS the INDI kr/kw pair, never the mode-selected kr_geo/kw_geo (2026-09-09 audit
+    // finding N1). alpha_ref is INDI's angular-acceleration reference; kr_geo is a
+    // DIFFERENT unit system ([Nm] torque gain) and does not belong in this formula in any
+    // mode. On the frozen branch kr_xy was g_indi_kr in every mode, so the passive
+    // alpha_ref/bw_ref chains carried 2400-scale history through the geometric ramp into a
+    // 0->3 handover; briefly using the selected pair here warmed those filters with
+    // ~0.010-scale values instead, changing both the logged alp_* filter-char signals in
+    // geometric mode and INDI's filter warm-up at the switch. Pinning to g_indi_kr
+    // restores frozen behaviour exactly.
     let e_omega = omega_fb.sub(omega_d);
+    let (aref_kr, aref_kw, aref_kr_z, aref_kw_z) =
+        unsafe { (g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z) };
     let alpha_ref = Vec3::new(
-        alpha_des.x - kr_xy*er.x - kw_xy*e_omega.x,
-        alpha_des.y - kr_xy*er.y - kw_xy*e_omega.y,
-        alpha_des.z - kr_z *er.z - kw_z *e_omega.z,
+        alpha_des.x - aref_kr*er.x - aref_kw*e_omega.x,
+        alpha_des.y - aref_kr*er.y - aref_kw*e_omega.y,
+        alpha_des.z - aref_kr_z*er.z - aref_kw_z*e_omega.z,
     );
 
     // Same BW on alpha_ref -> alpha_ref_filt (phase alignment with alpha_meas)
