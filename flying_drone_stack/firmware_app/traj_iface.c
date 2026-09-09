@@ -341,7 +341,25 @@ uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness fro
  * SCOPE: this applies to the passthrough branch (Mode E / HLC) ONLY. Mode D (onboard
  * trajectory eval) is pinned to Faessler in lib.rs via FRAME_CONV_MODE_D and ignores this
  * parameter, so the completed INDI project's flight results stay reproducible. */
-uint8_t g_indi_frame_conv = 1;  /* 1 = Mellinger (default), 0 = Faessler (legacy) */
+/* REVERTED TO 0 (Faessler) 2026-09-09, to match finalized-version-for-INDI-project exactly.
+ * The frozen branch computed omega_desired/alpha_desired with the Faessler construction
+ * unconditionally -- that is what flew the whole July campaign. Defaulting to 1 (Mellinger)
+ * silently changed alpha_des on the Mode E passthrough path for every trajectory flight.
+ * Inert in hover (jerk/snap are zero there, so alpha_des is zero either way), so it is NOT
+ * the hover divergence -- but it is a real unflown change on circle/figure-8, and the point
+ * of this revert is to leave exactly zero unflown deltas against the frozen branch.
+ * Mellinger (=1) is still believed the more correct convention (it matches controller_lee.c,
+ * controller_mellinger.c and pptraj.c); re-enable it deliberately, with a trajectory flight
+ * to back it, not as a default. */
+uint8_t g_indi_frame_conv = 0;  /* 0 = Faessler (frozen/flight-proven), 1 = Mellinger */
+
+/* res_sign -- sign of the residual feedforward in the position loop. See the long note at
+ * the f_d assembly in lib.rs. +1 (DEFAULT) reproduces the frozen branch's `.add(a_indi)`,
+ * the configuration that actually flew; -1 is the derivation-correct sign, which has never
+ * flown and is the prime suspect for the 2026-09-09 full-INDI hover divergence. Runtime
+ * param specifically so the A/B needs no reflash -- set to -1 for one flight, compare, and
+ * do NOT leave it there until a hardware flight backs it up. */
+int8_t  g_indi_res_sign   = 1;
 
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
@@ -376,6 +394,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
   PARAM_ADD(PARAM_UINT8, omega_src,    &g_indi_omega_src)
   PARAM_ADD(PARAM_UINT8, frame_conv,   &g_indi_frame_conv)
+  PARAM_ADD(PARAM_INT8,  res_sign,     &g_indi_res_sign)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)

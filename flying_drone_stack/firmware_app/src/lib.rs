@@ -893,6 +893,7 @@ extern "C" {
     // byte-identical to today), 1=on. f0/bw are runtime-tunable [Hz] (Q = f0/bw).
     static mut g_indi_omega_src: u8;
     static mut g_indi_frame_conv: u8;
+    static mut g_indi_res_sign: i8;
     static mut g_indi_notch_en: u8;
     static mut g_indi_notch_f0: f32;
     static mut g_indi_notch_bw: f32;
@@ -1541,6 +1542,12 @@ fn controller_step(
         Vec3::zero()
     };
 
+    // Residual sign selector -- see the long note at the f_d assembly below. +1 (default)
+    // is the frozen/flight-proven behaviour; -1 selects the derivation-correct sign, which
+    // has never flown. Read as a float so the two paths differ only by a multiply, never by
+    // a branch that could drift apart.
+    let res_sign: f32 = if unsafe { g_indi_res_sign } >= 0 { 1.0 } else { -1.0 };
+
     let (kp_xy, kp_z, kv_xy, kv_z) = unsafe { (g_kp_xy, g_kp_z, g_kv_xy, g_kv_z) };
     // v2 improvement #1: position integral (zero term when disabled)
     let ki_term = if ENABLE_POSITION_INTEGRAL {
@@ -1559,15 +1566,45 @@ fn controller_step(
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(ki_term)
         .add(Vec3::new(0.0, 0.0, gz_comp))
-        // MINUS the residual, not plus. From m*a = f_thrust + f_res + m*g, the thrust
-        // needed to hold a_des is m*a_des - m*g_vec - f_res, so the desired-acceleration
-        // vector carries -a_res. Adding it instead made the controller reinforce every
-        // unmodelled force rather than reject it: measured at exactly 2.00x the
-        // geometric sag under a known 20 mN disturbance, and 1.89-2.10x across every
-        // formation scenario in simulation. Invisible in single-drone flight, where
+        // ── RESIDUAL SIGN: PARKED AT THE FROZEN (finalized-version-for-INDI-project)
+        //    BEHAVIOUR, 2026-09-09. Selected at runtime by `indi_gains.res_sign`.
+        //
+        // res_sign = +1 (DEFAULT) reproduces the frozen branch's `.add(a_indi)` exactly --
+        // the configuration that actually flew the whole July campaign on this airframe.
+        // res_sign = -1 is the derivation-correct sign (see below), which has NEVER FLOWN.
+        //
+        // Why parked: on 2026-09-09 full INDI (ctrl_mode=3) diverged in hover, and the
+        // handover that first looked responsible was ruled out -- flight.py is byte-identical
+        // to the frozen branch, and the brushless flew the SAME ctrl_mode 0->3 handover with
+        // the SAME 40/8 -> 64/5 pos-gain change through late July without trouble. The sign
+        // flip is the one control-law change between "flew for weeks" and "diverges", and it
+        // is not merely a thrust-magnitude term: f_d feeds thrust_vec -> desired_rot() -> Rd
+        // -> eR, so it moves the COMMANDED ATTITUDE, which is where the divergence appeared
+        // (roll, not altitude). a_res is RPM-derived and therefore lags by the measured
+        // 44-71 ms actuator tau, so subtracting a lagged image of the vehicle's own response
+        // is a plausible oscillation mechanism -- plausible, not yet proven.
+        //
+        // The derivation behind res_sign = -1, kept because it is still believed correct and
+        // is needed for the thesis: from m*a = f_thrust + f_res + m*g, the thrust needed to
+        // hold a_des is m*a_des - m*g_vec - f_res, so the desired-acceleration vector should
+        // carry -a_res. Adding it makes the controller reinforce every unmodelled force
+        // rather than reject it: measured at exactly 2.00x the geometric sag under a known
+        // 20 mN disturbance, and 1.89-2.10x across every formation scenario in simulation.
+        //
+        // Both facts can be true at once: -1 may be right for steady disturbance rejection
+        // (what the simulation measured) and still destabilise the loop dynamically through
+        // the lagged Rd path (what hardware showed). Resolve with the H0 partition on
+        // hardware -- ctrl_mode=2 makes a_indi identically zero, so it isolates this term --
+        // before trusting -1 for the C.1 campaign. Runtime param, so the A/B needs no reflash.
+        // Invisible in single-drone flight, where
         // a_res ~ 0 -- it only appears once another vehicle's downwash is present.
-        .sub(a_indi)
-        .sub(a_nn);
+        //
+        // a_nn carries the SAME sign as a_indi: it is an estimate of the same quantity,
+        // differing only in where the number comes from (INDI measures the disturbance after
+        // the fact, the network predicts it before it arrives). It is zero unless rnn.en=1,
+        // which is off by default, so it contributes nothing to the frozen-equivalent path.
+        .add(a_indi.scale(res_sign))
+        .add(a_nn.scale(res_sign));
     let mut thrust_vec = f_d.scale(mass);
 
     // Tilt clamp (clamp_en bit2): limit the desired-thrust-vector angle from vertical, mirroring
