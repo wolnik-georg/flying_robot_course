@@ -1430,9 +1430,17 @@ fn controller_step(
     dt: f32, s: &mut State,
 ) -> (f32, Vec3) {
     // -- Runtime params -------------------------------------------------------
-    // ctrl_mode==0 (geometric) uses its own kr_geo/kw_geo pair, never the kr/kw pair tuned
-    // and locked for INDI (ctrl_mode!=0) -- retuning one must not silently move the other.
-    let (kr_xy, kw_xy, kr_z, kw_z) = if mode == 0 {
+    // The GEOMETRIC attitude law uses its own kr_geo/kw_geo pair, never the kr/kw pair tuned
+    // and locked for INDI -- retuning one must not silently move the other.
+    //
+    // The condition MUST match the attitude-law branch that consumes these gains
+    // (`mode & 2 != 0` further down), not `mode == 0`. The geometric torque path runs for
+    // BOTH mode 0 (geometric) and mode 1 (position INDI -- outer loop only, attitude stays
+    // geometric). Selecting on `mode == 0` handed mode 1 the INDI gain kr=2400 and fed it to
+    // a law that produces torque DIRECTLY in Nm, i.e. ~240000x too much torque -- an instant
+    // violent crash the moment ctrl_mode=1 is selected. Fixed 2026-09-09, never flown at
+    // mode 1 with the broken selection.
+    let (kr_xy, kw_xy, kr_z, kw_z) = if mode & 2 == 0 {
         unsafe { (g_indi_kr_geo, g_indi_kw_geo, g_indi_kr_z_geo, g_indi_kw_z_geo) }
     } else {
         unsafe { (g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z) }
@@ -1814,10 +1822,11 @@ fn controller_step(
         let gyro_comp = omega.cross(j_omega);
         // v2 improvement #2: attitude integral (same gate as geometric_step path)
         let ki_att = if ENABLE_ATTITUDE_INTEGRAL { 0.03_f32 } else { 0.0_f32 };
-        // kr_xy/kw_xy/kr_z/kw_z here are the mode==0 selection made earlier in this
-        // function (kr_geo/kw_geo) -- this branch only runs when mode==0, so this IS
-        // geometric using its own gains, not the compile-time KR_X/KW_X constants
-        // (those belong to `geometric_step_ref`, a separate, unused reference function).
+        // kr_xy/kw_xy/kr_z/kw_z here are the `mode & 2 == 0` selection made earlier in
+        // this function (kr_geo/kw_geo) -- the SAME condition as this branch, so modes 0
+        // and 1 both get geometric's own Nm-unit gains, not the compile-time KR_X/KW_X
+        // constants (those belong to `geometric_step_ref`, a separate, unused reference
+        // function) and not INDI's kr/kw, which are in a different unit system entirely.
         clamp_torque(Vec3::new(
             -kr_xy*er.x - kw_xy*e_omega.x + gyro_comp.x - ki_att*s.i_error_att.x,
             -kr_xy*er.y - kw_xy*e_omega.y + gyro_comp.y - ki_att*s.i_error_att.y,
