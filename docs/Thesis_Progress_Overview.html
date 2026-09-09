@@ -176,7 +176,7 @@ footer{
     Crazyflie&nbsp;2.1 brushless, Crazyswarm2, an out-of-tree controller in Rust.
   </p>
   <div class="statusline">
-    <span class="pill"><span class="dot"></span>Writing · unblocked, idle by design</span>
+    <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
     <span class="pill blocked"><span class="dot"></span>Lab · controller re-validation</span>
     <span style="color:var(--muted)">Two sessions flown · three root causes fixed · six validation flights next</span>
   </div>
@@ -193,14 +193,14 @@ footer{
 <section>
   <div class="sec-head"><h2>The two tracks</h2></div>
   <p class="note" style="margin-bottom:20px">
-    They run in parallel and do not block each other. Work on one is never progress on the other.
+    They ran in parallel for most of the project and did not block each other. That has now ended: the writing track has been carried as far as it can go without measurements, so <strong>both tracks now wait on the same flights</strong>. Work on one is still never progress on the other — there is simply only one of them left to do.
   </p>
 
   <div class="lanes">
     <div class="lane">
       <div class="lane-head">
         <h2>Literature &amp; writing</h2>
-        <span class="lbl" style="color:var(--ok)">Unblocked</span>
+        <span class="lbl" style="color:var(--warn)">Waiting on data</span>
       </div>
       <ul>
         <li>Problem statement + 4 research questions, each with a falsifiable hypothesis</li>
@@ -210,7 +210,7 @@ footer{
         <li>Claim ledger: every citable number in the source's own words</li>
         <li>Chapters 1–5 drafted, revised and accuracy-audited</li>
         <li>Seven strategies described, implementation separated from reference method</li>
-        <li class="pending">Idle on purpose: nothing left here doesn't need flight data</li>
+        <li class="pending"><strong>Blocked on flight data</strong> — Ch. 6–9 are results, discussion and conclusion; they cannot be written before the campaign exists</li>
       </ul>
     </div>
 
@@ -354,10 +354,12 @@ footer{
 <section>
   <div class="sec-head"><h2>Next — on paper</h2></div>
   <p>
-    Nothing blocks the writing track, and nothing is left in it that does not need data. Chapters
-    6–9 need the comparison campaign. Chapter 5 turns to past tense once it has been run. One
-    paper remains abstract-only behind a paywall — the closest published work to this setting, and
-    the single verification gap that cannot be closed by reading harder.
+    The writing track is <strong>blocked on flight data</strong>, not idle by choice. Everything
+    that could be written without measurements has been: Chapters 1–5 are drafted, revised and
+    accuracy-audited, and frozen. Chapters 6–9 are the results, discussion and conclusion — they
+    need the comparison campaign to exist. Chapter 5 turns to past tense once it has been run.
+    One paper remains abstract-only behind a paywall — the closest published work to this
+    setting, and the single verification gap that cannot be closed by reading harder.
   </p>
   <p>
     Three of the seven strategies are deliberately not implemented: one waits on code from its
