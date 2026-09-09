@@ -1,0 +1,72 @@
+{
+  "controller_meta": {
+    "landing": [
+      6,
+      0
+    ],
+    "takeoff": [
+      6,
+      0
+    ],
+    "trajectory": [
+      6,
+      0
+    ],
+    "yaml": [
+      6,
+      0
+    ]
+  },
+  "firmware_params": {
+    "commander": {
+      "enHighLevel": 1
+    },
+    "deck": {
+      "bcRpm": 1
+    },
+    "indi_gains": {
+      "clamp_en": 0,
+      "ctrl_mode": 0,
+      "fc_bw": 60.0,
+      "ff_free": 0,
+      "filt_order": 1,
+      "filt_tau": 1,
+      "j_scale": 1.0,
+      "kr": 2400.0,
+      "kr_geo": 0.01,
+      "kr_z": 2400.0,
+      "kr_z_geo": 0.01,
+      "kt1": 4.1623e-10,
+      "kt2": 4.0592e-10,
+      "kt3": 4.1116e-10,
+      "kt4": 4.0631e-10,
+      "kw": 170.0,
+      "kw_geo": 0.0011,
+      "kw_z": 170.0,
+      "kw_z_geo": 0.00138,
+      "mass": 0.041,
+      "notch_bw": 3.0,
+      "notch_en": 0,
+      "notch_f0": 6.9,
+      "tau_xy_max": 0.045,
+      "tau_z_max": 0.0025,
+      "thrust_max": 0.8,
+      "tilt_max_deg": 30.0
+    },
+    "locSrv": {
+      "extPosStdDev": "1e-3",
+      "extQuatStdDev": 0.05
+    },
+    "pos_gains": {
+      "kp_xy": 64.0,
+      "kp_z": 48.0,
+      "kv_xy": 5.0,
+      "kv_z": 7.0
+    },
+    "stabilizer": {
+      "controller": 6,
+      "estimator": 2
+    }
+  },
+  "source": "/home/flyingrobots/georg/ros2_ws/install/crazyflie/share/crazyflie/config/crazyflies.yaml at connect (intent, NOT read back from the drone)"
+}
