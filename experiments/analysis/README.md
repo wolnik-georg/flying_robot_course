@@ -1,5 +1,30 @@
 # Flight-metrics analysis
 
+## Quick verdict first — `check_flight.py`
+
+```bash
+python3 experiments/analysis/check_flight.py            # newest log in Controls/logs
+python3 experiments/analysis/check_flight.py <path.csv>
+```
+
+Added 2026-09-09. Answers the one question that gates everything else: **did the attitude
+loop stay bounded?** Prints the config the flight actually used (out of the CSV's own meta
+block), per-axis std/peak, a first-half-vs-second-half growth check, plus flags for a log
+ending above 0.20 m (the landing bug) and in-flight zero RPM. Stdlib only, system `python3`,
+so it runs on the flight machine without the pyenv env.
+
+Validated against both known outcomes: the 09-09 geometric crash → `FAIL` with `GROWING` on
+both axes; the stock-Lee clean hover → `PASS`. Prefers `# meta:full_selected_pos_*` (what
+`simple_flight` pushed) over `# meta:full_pos_gains_*` (what the yaml said) when they
+disagree — see audit finding N2 in `docs/REVIEW_FINDINGS_2026-09-09.md`.
+
+Use it after **every** flight during the controller-validation sequence
+(`docs/C0_FLIGHT_CARD.md` rung −1). `run_analysis.py`/`plot_flight.py` below stay the
+dataset-quality tools for the actual campaign.
+
+---
+
+
 `run_analysis.py` turns a set of logs plus a scenario id into the numbers Chapter 5
 already promised (RMSE, sag, residual, e_R), so the first real flight campaign does not
 wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see

@@ -12,6 +12,50 @@ interaction broke something" are indistinguishable. **No data collected before C
 
 ---
 
+## ⛔ RUNG −1 · CONTROLLER VALIDATION — added 2026-09-09, do this FIRST
+
+**On 2026-09-09 six hover flights crashed under both controllers.** Three root causes were
+found and fixed; **none has been re-flown**. Everything below this block is blocked until
+both controllers fly clean again. Full account:
+[`lab_sessions/2026-09-09.md`](lab_sessions/2026-09-09.md) · audit:
+[`REVIEW_FINDINGS_2026-09-09.md`](REVIEW_FINDINGS_2026-09-09.md).
+
+**Before flying: pull the uSD cards from the 09-07/09-09 flights.** If that data exists,
+`a_res` at the divergence may resolve which of three simultaneous unflown changes actually
+crashed INDI — for free, at the desk. It is lost once overwritten.
+
+Then reflash (`make cload` — two of the fixes are firmware), rebuild `crazyflie` +
+`crazyflie_examples`, and confirm on the vehicle:
+
+| Param | Must read |
+|---|---|
+| `indi_gains.res_sign` | **1** (frozen `.add`; `-1` is the never-validated fix) |
+| `indi_gains.frame_conv` | **0** (Faessler, as frozen) |
+| `indi_gains.kr_geo` | **0.010** |
+| `indi_gains.clamp_en` | **11** |
+| `stabilizer.controller` | **6** |
+
+Six flights. `python3 experiments/analysis/check_flight.py` after **every one**. Stop on the
+first FAIL.
+
+| # | `ctrl_mode` | Command |
+|---|---|---|
+| 1 | 0 | `simple_flight -- --trajectory hover --duration 15` |
+| 2 | 0 | `simple_flight -- --trajectory circle --kt 0.1` |
+| 3 | 0 | `simple_flight -- --trajectory figure8 --kt 0.008` |
+| 4 | 3 | `simple_flight -- --trajectory hover --duration 15` |
+| 5 | 3 | `simple_flight -- --trajectory circle --kt 0.1` |
+| 6 | 3 | `simple_flight -- --trajectory figure8 --kt 0.008` |
+
+Geometric should print `<- GEOMETRIC_POS_GAINS` at takeoff (40/8); INDI should show 64/5.
+**If INDI fails but geometric passes**, the cause pre-dates every 2026-09-09 fix → run the
+H0 partition (`ctrl_mode=2`, then `1`). `ctrl_mode=2` is a clean instrument for this: the
+residual is provably unreachable there (0/100 samples on a `res_sign` toggle).
+
+**Only after all six PASS** do gain retuning, the rungs below, and multi-drone resume.
+
+---
+
 ## 0 · Bench, before any propeller turns
 
 ```bash
