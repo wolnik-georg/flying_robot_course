@@ -383,6 +383,83 @@ not a repair kit to apply wholesale.
 
 ---
 
+## 2f. Investigation results, 2026-09-10 — what was applied and what was found
+
+Acting on §2e. **Everything is behind runtime params defaulting to today's behaviour**, and
+that was verified, not assumed: against the compiled SIL controller, the new build is
+**0/100 samples different** from the previous one in all four `ctrl_mode`s. The
+controller-validation flights are unaffected.
+
+### ✅ #1 applied — `a_res` conditioning (default OFF)
+
+| Param | Default | Effect |
+|---|---|---|
+| `indi_gains.res_fc` | `0` = off | Butterworth cutoff [Hz] on `a_meas` and `a_model` **separately, before the subtraction** |
+| `indi_gains.res_clamp` | `0` = off | direction-preserving norm clamp [m/s²] on each side before differencing |
+
+Filtering each side with identical coefficients means the filter lag **cancels in the
+difference** — which a filter applied *after* the subtraction cannot do. Verified active when
+set; `res_clamp` engages progressively as the bound drops past the residual magnitude
+(inert at 10, 42/100 samples at 0.5, all samples at 0.1). Both correctly inert at
+`ctrl_mode=0`, where `a_res` is unreachable.
+
+### 🔴 #2 — a real bug found: the filters are designed for the wrong sample rate
+
+`controllerOutOfTree` is called from `stabilizer.c`'s main loop **unconditionally at
+`RATE_MAIN_LOOP` = 1000 Hz** ("the sensor should unlock at 1kHz"). There is **no**
+`RATE_DO_EXECUTE(ATTITUDE_RATE)` gate — contrary to `firmware_app/CLAUDE.md`, which states
+500 Hz. Our `dt` computation is correct (`(tick − last_tick) × 0.001` = 0.001), but every
+Butterworth and notch was initialised with a hard-coded `DT = 0.002`.
+
+| Asked for | Actually gets |
+|---|---|
+| `fc_bw = 60` Hz | **−3 dB at ~206 Hz** — ~3.4× less filtering than the parameter claims |
+| `notch_f0 = 6.9` Hz | **centred at 13.8 Hz** — exactly 2× |
+
+The notch result is the striking one: **the stage-2 notch aimed at the measured 6.9 Hz peak
+was notching 13.8 Hz and never touched it.** That is a concrete explanation for "notch filter
+tested + failed", and it plausibly explains why the `fc_bw` sweeps read as flat — the swept
+range never reached the shake band.
+
+This has been true for *every* flight including the successful July campaign, so **it is not
+the crash cause** — the gains were tuned empirically around it. But `fc_bw` and `notch_f0` do
+not mean what they say, which matters for all future filter work.
+
+**New param `indi_gains.filt_dt_us`** — default `2000` (the flown 500 Hz assumption); set
+`1000` to make the parameters honest; `0` = derive from the measured loop dt.
+
+**New log var `indi.dt_us`** — the measured loop dt, so the 500-vs-1000 Hz question can be
+settled from a real flight rather than from reading `stabilizer.c`.
+
+> ⚠️ **Correcting this ADDS phase lag — do not treat it as a free fix.** A real 60 Hz filter
+> lags more than a 206 Hz one: **−4.66° vs −2.33° at 6.9 Hz** (and −13.7° vs −6.8° at 20 Hz).
+> Since the shake is a phase problem, correcting `filt_dt_us` could plausibly make it *worse*.
+> Change it as a deliberate single-variable A/B, and expect to retune `fc_bw` afterwards —
+> `fc_bw ≈ 17.5` reproduces today's effective filtering at the corrected rate.
+
+### ⚪ #3 investigated — gyro source is NOT significant
+
+They take raw `gyroNoLpf`; we take `sensors->gyro`, which the firmware has already passed
+through a **2nd-order 80 Hz LPF** (`GYRO_LPF_CUTOFF_FREQ 80`, `lpf2pInit(..., 1000, 80)`), so
+ours has two filters in series. Quantified at the shake frequencies:
+
+| f | stock 80 Hz LPF | our BW (as shipped) | total |
+|---|---|---|---|
+| 5.0 Hz | −2.53° | −1.69° | −4.22° |
+| **6.9 Hz** | −3.50° | −2.33° | **−5.83°** |
+| 10.0 Hz | −5.07° | −3.38° | −8.45° |
+
+**~6° of total phase lag at 6.9 Hz is too small to drive the oscillation.** Recorded as a
+negative result — the series-filter hypothesis is not promising, and #2's *effective cutoff*
+error is the far larger effect on the same path.
+
+### Not done — #4 (per-axis yaw filtering)
+
+Deferred. Our shake is roll/pitch, and #2 changes the whole filter picture; revisit only after
+the sample-rate question is settled on hardware.
+
+---
+
 ## 3. The residual they learn — identical formalism to ours
 
 `LMCE/residual_calculation.py`:
