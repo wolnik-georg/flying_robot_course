@@ -170,6 +170,18 @@ tr.useful td{background:var(--theirs-soft)}
 .rec p:last-child{margin-bottom:0}
 .rec .why{color:var(--ink-2)}
 
+/* status */
+.st{display:inline-block;font-family:var(--mono);font-size:.64rem;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:2px;white-space:nowrap}
+.st-done{background:var(--theirs-soft);color:var(--theirs)}
+.st-found{background:var(--hot-soft);color:var(--hot)}
+.st-neg{background:var(--sunk);color:var(--muted);border:1px solid var(--rule)}
+.bigfind{background:var(--hot-soft);border:1px solid var(--hot);border-left-width:5px;
+  padding:20px 22px;margin:0 0 22px}
+.bigfind h3{color:var(--hot);margin:0 0 10px;font-size:1.1rem}
+.bigfind p:last-child{margin-bottom:0}
+.numtab td.big{font-family:var(--mono);font-weight:600;color:var(--hot);white-space:nowrap}
+
 .note{font-size:.88rem;color:var(--muted);max-width:66ch}
 footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   font-family:var(--mono);font-size:.73rem;color:var(--muted);line-height:1.8}
@@ -182,8 +194,8 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   <h1>Two Ways to Build INDI</h1>
   <p class="lede">
     Their INDI and ours turn out to be <strong>the same control law, written two different
-    ways</strong>. What actually separates them is conditioning — and that is what bears on the
-    two problems currently blocking the lab track.
+    ways</strong>. What separates them is conditioning. Chasing that difference turned up
+    <strong>a real bug in our own filters</strong> — see §08.
   </p>
 </header>
 
@@ -592,7 +604,86 @@ u     = u_geo − τ_res
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">08</span><h2>Recommendations</h2>
+  <div class="sec-head"><span class="sec-n">08</span><h2>What the investigation found</h2>
+    <span class="tagline tag-crash">10 September</span></div>
+  <p>
+    Acting on §06. Everything below is behind runtime parameters that <strong>default to
+    today's behaviour</strong> — verified, not assumed: the new build is <strong>0/100 samples
+    different</strong> from the previous one across all four <code>ctrl_mode</code>s. The
+    validation flights are unaffected.
+  </p>
+
+  <div class="bigfind">
+    <h3>🔴 Our filters have been designed for the wrong sample rate — all along</h3>
+    <p>
+      <code>controllerOutOfTree</code> is called from <code>stabilizer.c</code>'s main loop
+      <strong>unconditionally at <code>RATE_MAIN_LOOP</code> = 1000 Hz</strong> — <em>“the sensor
+      should unlock at 1kHz”</em>. There is <strong>no</strong>
+      <code>RATE_DO_EXECUTE(ATTITUDE_RATE)</code> gate, contrary to what
+      <code>firmware_app/CLAUDE.md</code> claimed. Our <code>dt</code> computation is correct
+      (0.001). Only the filter <em>coefficients</em> were hard-coded to <code>DT = 0.002</code>.
+    </p>
+    <div class="scroll">
+    <table class="numtab">
+      <thead><tr><th>The parameter says</th><th>What you actually get</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">fc_bw = 60 Hz</td><td class="big">−3 dB at ~206 Hz — 3.4× less filtering</td></tr>
+        <tr><td class="mono">notch_f0 = 6.9 Hz</td><td class="big">centred at 13.8 Hz — exactly 2×</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      The notch result is the striking one. <strong>The stage-2 notch aimed at the measured
+      6.9 Hz peak was notching 13.8 Hz and never touched it.</strong> That is a concrete
+      explanation for “notch filter tested + failed”, and it plausibly explains why the
+      <code>fc_bw</code> sweeps read as flat — the swept range never reached the shake band.
+    </p>
+    <p>
+      This has been true for <em>every</em> flight, including the successful July campaign, so
+      <strong>it is not the crash cause</strong> — the gains were tuned empirically around it.
+      But <code>fc_bw</code> and <code>notch_f0</code> do not mean what they say, which matters
+      for every future filter decision.
+    </p>
+  </div>
+
+  <div class="call osc">
+    <h3>⚠️ Correcting it is not a free fix</h3>
+    <p>
+      A real 60 Hz filter lags <em>more</em> than a 206 Hz one. Extra phase lag if
+      <code>filt_dt_us</code> is corrected to 1000:
+    </p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>f</th><th>shipped (~206 Hz)</th><th>corrected (60 Hz)</th><th>extra lag</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">5.0 Hz</td><td class="mono">−1.69°</td><td class="mono">−3.38°</td><td class="mono">−1.69°</td></tr>
+        <tr><td class="mono"><strong>6.9 Hz</strong></td><td class="mono">−2.33°</td><td class="mono">−4.66°</td><td class="mono"><strong>−2.33°</strong></td></tr>
+        <tr><td class="mono">20 Hz</td><td class="mono">−6.78°</td><td class="mono">−13.65°</td><td class="mono">−6.87°</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin-bottom:0">
+      The shake is a <em>phase</em> problem, so correcting the sample rate could plausibly make
+      it <strong>worse</strong>. Treat it as a deliberate single-variable A/B — and note that
+      <code>fc_bw ≈ 17.5</code> reproduces today's effective filtering at the corrected rate, if
+      you want the parameter honest without changing the behaviour.
+    </p>
+  </div>
+
+  <div class="call note">
+    <h3>⚪ Negative result — the gyro-source hypothesis is not promising</h3>
+    <p style="margin-bottom:0">
+      Our <code>sensors->gyro</code> does carry a stock 2nd-order <strong>80 Hz</strong> LPF
+      (<code>GYRO_LPF_CUTOFF_FREQ 80</code>) in series with our own, where they take raw
+      <code>gyroNoLpf</code>. But the total phase lag at 6.9 Hz is only <strong>−5.83°</strong>
+      (−3.50° stock, −2.33° ours) — too small to drive the oscillation. Recorded as ruled out;
+      the <em>effective cutoff</em> error above is the far larger effect on the same path.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-n">09</span><h2>Recommendations</h2>
     <span class="tagline tag-crash">my view — decide for yourself</span></div>
   <p>
     Ordered by value-per-risk. Nothing here should be done before the six validation flights —
@@ -603,7 +694,11 @@ u     = u_geo − τ_res
 
     <div class="rec yes">
       <div class="rec-head"><h3>1 · Condition <code>a_res</code> before it enters the loop</h3>
-        <span class="verdict v-yes">adopt</span></div>
+        <span class="st st-done">✓ implemented — default off</span></div>
+      <p><code>indi_gains.res_fc</code> (Butterworth cutoff, Hz) and
+      <code>indi_gains.res_clamp</code> (norm clamp, m/s²), both <strong>0 = off</strong>. Verified
+      active when set, and correctly inert at <code>ctrl_mode=0</code> where <code>a_res</code>
+      is unreachable. <strong>Ready as a one-param A/B after the validation flights.</strong></p>
       <p class="why">
         <code>a_res</code> is a difference of two noisy estimates — accelerometer (noisy) minus
         RPM² model (quantised, actuator-lagged). Differencing amplifies both. Unfiltered, that
@@ -621,8 +716,12 @@ u     = u_geo − τ_res
     </div>
 
     <div class="rec maybe">
-      <div class="rec-head"><h3>2 · Investigate <code>dt</code> resolution</h3>
-        <span class="verdict v-maybe">investigate</span></div>
+      <div class="rec-head"><h3>2 · <code>dt</code> resolution</h3>
+        <span class="st st-found">⚑ investigated — found a bug</span></div>
+      <p><strong>Not the quantisation I expected — something bigger.</strong> The loop runs at
+      1000 Hz and our <code>dt</code> is correct; the <em>filter coefficients</em> were wrong.
+      See §08. <code>indi_gains.filt_dt_us</code> (default 2000 = flown behaviour) and log var
+      <code>indi.dt_us</code> added. <strong>Correcting it adds phase lag — not a free fix.</strong></p>
       <p class="why">
         <code>α_raw = Δω / dt</code>, so <strong>any error in <code>dt</code> scales
         <code>α_meas</code> directly</strong>. Ours is <code>(tick − last_tick) × 0.001</code> —
@@ -637,7 +736,9 @@ u     = u_geo − τ_res
 
     <div class="rec maybe">
       <div class="rec-head"><h3>3 · Reconsider the gyro source</h3>
-        <span class="verdict v-maybe">investigate</span></div>
+        <span class="st st-neg">○ investigated — ruled out</span></div>
+      <p>The stock 80 Hz LPF <em>is</em> in series with ours, but total phase lag at 6.9 Hz is
+      only <strong>−5.83°</strong> — too small to drive the oscillation. See §08.</p>
       <p class="why">
         They take the <strong>raw</strong> gyro and filter downstream, after converting to
         torque. We take the stock-<strong>LPF'd</strong> gyro and filter again — an unknown
@@ -650,7 +751,7 @@ u     = u_geo − τ_res
 
     <div class="rec maybe">
       <div class="rec-head"><h3>4 · Per-axis filtering for yaw</h3>
-        <span class="verdict v-maybe">consider</span></div>
+        <span class="st st-neg">⏸ deferred</span></div>
       <p class="why">
         Yaw torque comes from motor drag-torque differences (<code>t2t ≈ 0.006</code>) — an order
         of magnitude smaller than roll/pitch arm torque, and correspondingly noisier. They filter
@@ -677,9 +778,20 @@ u     = u_geo − τ_res
   <div class="call note">
     <h3>Sequencing, and one honest caveat</h3>
     <p>
-      <strong>Nothing before the validation flights.</strong> Tomorrow's six flights exist to
-      establish whether the restored configuration flies. Changing the controller first destroys
-      that. Then: pull the uSD cards, apply #1, re-test, and only then consider #2–#4 one at a time.
+      <strong>Nothing before the validation flights.</strong> The six flights exist to establish
+      whether the restored configuration flies; changing the controller first destroys that. All
+      of the above is already in the firmware but <strong>switched off</strong> — the new build
+      is <strong>0/100 samples different</strong> from the previous one at defaults, across all
+      four <code>ctrl_mode</code>s.
+    </p>
+    <p>
+      Order afterwards, <strong>one variable at a time</strong>:
+      <strong>(a)</strong> pull the uSD cards;
+      <strong>(b)</strong> <code>res_fc</code> + <code>res_clamp</code> on, re-fly;
+      <strong>(c)</strong> separately, <code>filt_dt_us = 1000</code> — expecting to retune
+      <code>fc_bw</code>, since <code>fc_bw ≈ 17.5</code> reproduces today's filtering at the
+      corrected rate;
+      <strong>(d)</strong> only then reconsider yaw.
     </p>
     <p style="margin-bottom:0">
       <strong>The caveat:</strong> everything above is reasoning from their code, not from a
