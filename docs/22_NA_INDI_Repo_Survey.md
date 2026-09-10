@@ -200,12 +200,11 @@ Enabling their INDI does **not** change the attitude gains or the control struct
 it only subtracts an estimated unmodelled torque. There is no `tau_prev`, no actuator-lag
 model, no increment.
 
-**Why this matters for our 5–8 Hz brushless shake:** an incremental law with actuator memory
-(`tau_prev`, `tau_act`, `act_tau`) has internal dynamics that can limit-cycle when the assumed
-actuator lag mismatches the real one — which is exactly the standing hypothesis in
-`investigation_indi_oscillation_2026-07-21.md`. Their form has no such state and structurally
-cannot do that. **It is a strictly more conservative way to get INDI-style residual rejection,
-and it is published and flying.**
+**⚠️ Qualified by §2d below — read that before acting on this.** The two forms turn out to be
+*algebraically equivalent*, and at our shipped defaults (`act_tau = 0`, RPM present) our
+`tau_current` comes straight from RPM just as their `tau_rpm` does, so the `tau_prev`/`tau_act`
+memory is a **fallback path, not the normal one**. The genuine differences are filter
+placement, per-axis yaw filtering, and clamping — not the presence or absence of state.
 
 Their signal conditioning, for reference:
 
@@ -221,6 +220,79 @@ Angular acceleration is differenced from **`sensors->gyroNoLpf`** (raw gyro), th
 loop a bug. It is **not** — index 2 (yaw) is initialised immediately afterwards on its own,
 at a deliberately much lower **`cutoff_z = 10 Hz`** against 40 Hz for roll/pitch. Yaw torque
 is filtered ~4× harder on purpose. That is a design choice worth noting, not a defect.
+
+---
+
+## 2d. Are the two INDIs both correct? — an equivalence analysis
+
+Worth settling, because the instinct is "theirs is published with a PhD student and a
+supervisor, so if they differ, ours must be wrong." **The algebra says both are correct.**
+They are the same control law in two arrangements.
+
+**Rigid body:** `J*omega_dot = tau_motors + tau_dist - omega x J*omega`
+
+**Ours (incremental, Tal & Karaman):**
+
+```
+tau_cmd = tau_current + J*(alpha_ref - alpha_meas)
+```
+
+With `tau_current = tau_motors` (from RPM) and
+`alpha_meas = J^-1 (tau_motors + tau_dist - omega x J*omega)`:
+
+```
+tau_cmd = tau_motors + J*alpha_ref - (tau_motors + tau_dist - omega x J*omega)
+        = J*alpha_ref + omega x J*omega - tau_dist
+```
+
+**Theirs (subtractive / disturbance-observer):**
+
+`tau_imu = J*alpha - (J*omega x omega) = J*alpha + omega x J*omega`, which by the rigid-body
+equation **is** the total torque `tau_motors + tau_dist`. So `tau_res = tau_imu - tau_rpm =
+tau_dist`, and with the Lee geometric law already containing its own gyroscopic term:
+
+```
+u = u_geo - tau_res = (J*alpha_ref + omega x J*omega) - tau_dist
+```
+
+**Identical.** `tau_cmd = J*alpha_ref + omega x J*omega - tau_dist` in both cases. Ours cancels
+the gyroscopic term *implicitly* (alpha_meas already contains it); theirs handles it
+*explicitly* on both sides. Neither is a different method — they are algebraic rearrangements
+of one law.
+
+This is the known INDI <-> disturbance-observer correspondence. Ours is faithful to Tal &
+Karaman's `u = u_0 + G^-1 (nu - alpha_meas)`; theirs is the DOB arrangement of the same thing.
+
+### Where they genuinely differ: filter placement, not formulation
+
+The equivalence is exact only for *unfiltered* signals. Once filters are inserted the two
+arrangements are no longer identical, and the difference is in **which quantities get matched
+phase**:
+
+| | Ours | Theirs |
+|---|---|---|
+| Difference taken between | `alpha_ref` and `alpha_meas` (angular accelerations) | `tau_imu` and `tau_rpm` (torques) |
+| Both sides same filter? | yes — `fc_bw=60 Hz` on `alpha_ref`, `alpha_meas` **and** `tau_current` (`filt_tau=1`) | yes — same Butterworth, same cutoff, both sides |
+| Yaw treated differently? | no | **yes — 10 Hz on yaw vs 40 Hz on roll/pitch** |
+| Extra state | `tau_prev` / `tau_act`, used **only as fallback** when RPM is unavailable or `act_tau>0` | none |
+
+So an earlier framing in this document — "ours has memory, theirs does not" — **overstated
+it**. At the shipped defaults (`act_tau = 0`, RPM present) our `tau_current` comes straight
+from RPM, exactly like their `tau_rpm`. The memory path is a fallback, not the normal path.
+The honest remaining differences are:
+
+1. **Where the subtraction happens** — in angular-acceleration space (ours) vs torque space
+   (theirs). Equivalent on paper; differently sensitive to J errors, since ours multiplies the
+   *difference* by J while theirs multiplies each side by J before differencing.
+2. **Yaw filtering** — they deliberately filter yaw torque 4x harder. We do not distinguish
+   axes at all. Our shake is a roll/pitch phenomenon so this is not the cause, but it is a
+   considered choice we have not made.
+3. **Clamping** — they bound every residual (`10 m/s^2` force, `0.006 Nm` torque) before it
+   enters the law. We clamp only the final output.
+
+**Conclusion: most likely both correct.** Ours is not wrong for being different — it is the
+textbook incremental form, which is the method under study. Theirs is the same law in DOB form
+with more conservative conditioning. The gap to close is **conditioning**, not formulation.
 
 ---
 
