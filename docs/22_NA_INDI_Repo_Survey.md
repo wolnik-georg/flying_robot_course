@@ -101,6 +101,7 @@ Brescianini / Lee / Oot`). Everything lives **inside `controller_lee.c`**, selec
 | | `&4` | NN supplies **torque** residual → `u_nn` (`nn_output[3..5]`) |
 | `ctrlLee.indi` | `&1` | **force/position INDI** → `a_indi` |
 | | `&2` | **moment/attitude INDI** → `tau_rpm` |
+| | `&4` | **actuator force from PWM instead of RPM** — inverts a linear calibration, `rpm = (pwm_norm − rpm2pwmA)/rpm2pwmB`, then the usual `κ_f·rpm²`. An explicit no-RPM-deck path for INDI itself |
 
 So the notebook's `using_nn` / `using_indi` booleans are a *simplification* for labelling
 recorded flights — on the drone these are **finer-grained bitmasks**, and force vs torque and
@@ -112,6 +113,24 @@ commanded PWM instead of measured RPM.
 Files added on this branch: `src/modules/src/controller/nn.c` (generated weights) and
 `nn_utils.c`. Also present, unrelated to this paper: `controller_lee_payload.c`,
 `controller_rl.c`.
+
+### Does their INDI need the RPM deck? Not necessarily — ours does
+
+`indi & 4` computes the per-motor force from **commanded PWM** instead of measured RPM, by
+inverting a linear `rpm ↔ pwm` calibration (`rpm2pwmA`, `rpm2pwmB`) and then applying the same
+`κ_f · rpm²`. So their INDI has a documented fallback that does not require the deck.
+
+Their **network** never uses RPM at all — `input_vec[15..18]` are `motorsGetRatio()`, i.e. PWM.
+That is the paper's actual selling point: IL-NDI gives INDI-like residual rejection with no
+RPM hardware in flight.
+
+**Ours has no such path.** `rpm_get_all()` is the only source; without it `a_res` is exactly
+zero and INDI silently degrades to geometric. Worth knowing as a contingency if the RPM deck
+ever fails mid-campaign.
+
+⚠️ Oddity: their PWM branch still sits inside `if (self->indi && rpm_deck_available)`, so it
+is gated behind the very deck it is meant to replace. Either an oversight, or they always fly
+with the deck fitted and use PWM mode only for like-for-like comparison.
 
 ### ⚠️ Their residual sign is the sign that crashed us
 
@@ -198,9 +217,10 @@ Their signal conditioning, for reference:
 Angular acceleration is differenced from **`sensors->gyroNoLpf`** (raw gyro), then the
 *torque* is filtered — i.e. they filter after converting to torque, not before differentiating.
 
-⚠️ **Apparent bug in their code:** the `tau` filters are initialised with `for (int8_t i = 0;
-i < 2; i++)` while the `acc` filters use `i < 3`. The **z-axis torque filter is never
-initialised**. Either a typo or deliberate (yaw INDI unused); do not copy it uncritically.
+**Correction (2026-09-10):** an earlier draft of this survey called the `i < 2` tau-filter
+loop a bug. It is **not** — index 2 (yaw) is initialised immediately afterwards on its own,
+at a deliberately much lower **`cutoff_z = 10 Hz`** against 40 Hz for roll/pitch. Yaw torque
+is filtered ~4× harder on purpose. That is a design choice worth noting, not a defect.
 
 ---
 

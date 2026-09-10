@@ -174,8 +174,9 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
       <tr><td class="mono" rowspan="3"><strong>ctrlLee.use_nn</strong></td><td class="bit">&amp;1</td><td>Network supplies the <strong>lateral</strong> force residual → <code>a_nn.x</code>, <code>a_nn.y</code></td></tr>
       <tr><td class="bit">&amp;2</td><td>Network supplies the <strong>vertical</strong> force residual → <code>a_nn.z</code></td></tr>
       <tr><td class="bit">&amp;4</td><td>Network supplies the <strong>torque</strong> residual → <code>u_nn</code> (outputs 3–5)</td></tr>
-      <tr><td class="mono" rowspan="2"><strong>ctrlLee.indi</strong></td><td class="bit">&amp;1</td><td><strong>Force</strong> INDI → <code>a_indi</code></td></tr>
+      <tr><td class="mono" rowspan="3"><strong>ctrlLee.indi</strong></td><td class="bit">&amp;1</td><td><strong>Force</strong> INDI → <code>a_indi</code></td></tr>
       <tr><td class="bit">&amp;2</td><td><strong>Moment</strong> INDI → <code>tau_rpm</code></td></tr>
+      <tr><td class="bit">&amp;4</td><td>Take the actuator force from <strong>PWM instead of RPM</strong> — an explicit no-deck path</td></tr>
     </tbody>
   </table>
   </div>
@@ -203,7 +204,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 
   <h3 style="font-size:1.02rem;margin:30px 0 8px">What else the bitmasks reach</h3>
   <p class="note" style="margin-bottom:14px">
-    Two bits on <code>indi</code> and three on <code>use_nn</code> give <strong>32
+    Three bits on <code>indi</code> and three on <code>use_nn</code> give <strong>64
     combinations</strong>. Most are degenerate. These are the ones that mean something — and
     the paper reports only the first four.
   </p>
@@ -219,6 +220,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
       <tr class="useful"><td class="mono">2</td><td class="mono">0</td><td>moment / attitude INDI <strong>only</strong> — <em>their H0 partition</em></td><td><span class="pill pill-extra">useful to us</span></td></tr>
       <tr class="useful"><td class="mono">0</td><td class="mono">2</td><td>network on the <strong>vertical force only</strong> — <em>essentially the downwash axis</em></td><td><span class="pill pill-extra">useful to us</span></td></tr>
       <tr><td class="mono">0</td><td class="mono">4</td><td>network on <strong>torque only</strong></td><td><span class="pill pill-extra">extra</span></td></tr>
+      <tr class="useful"><td class="mono">7</td><td class="mono">0</td><td>full INDI driven from <strong>PWM, no RPM deck</strong></td><td><span class="pill pill-extra">useful to us</span></td></tr>
     </tbody>
   </table>
   </div>
@@ -488,7 +490,44 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">06</span><h2>What it suggests</h2></div>
+  <div class="sec-head"><span class="sec-n">06</span><h2>Do both need the RPM deck?</h2></div>
+  <p>
+    By default, yes — both compute the modelled force from measured RPM. But the two are not
+    equally dependent on it.
+  </p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Path</th><th>Force source</th><th>Needs RPM deck?</th></tr></thead>
+    <tbody>
+      <tr><td class="t"><strong>Their INDI</strong>, default</td><td class="mono">measured RPM → κ<sub>f</sub>·rpm²</td><td><strong>yes</strong></td></tr>
+      <tr><td class="t"><strong>Their INDI</strong>, <code>indi&amp;4</code></td><td class="mono">PWM → inverted calibration → κ<sub>f</sub>·rpm²</td><td><strong>no</strong> — synthetic RPM</td></tr>
+      <tr><td class="t"><strong>Their network</strong> (IL-NDI)</td><td class="mono">motorsGetRatio() — PWM only</td><td><strong>never</strong></td></tr>
+      <tr><td class="o"><strong>Ours</strong>, all INDI modes</td><td class="mono">rpm_get_all() only</td><td><strong>yes — no fallback</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="call note">
+    <p><strong>The asymmetry that matters.</strong> Their INDI can fall back to commanded PWM
+    by inverting a linear <code>rpm ↔ pwm</code> calibration. Ours cannot: <code>rpm_get_all()</code>
+    is the only source, and without it <code>a_res</code> reads <strong>exactly zero</strong> and
+    INDI silently degrades to geometric. That is already flagged as an abort condition on our
+    flight card — but it is worth knowing a published contingency exists if the deck ever fails
+    mid-campaign.</p>
+    <p style="margin-bottom:0">And the whole point of <strong>IL-NDI</strong> is that the network
+    never touches RPM at all. It substitutes <em>commanded PWM</em> for <em>measured RPM</em> —
+    not nothing. That is a weaker claim than “no actuator information”, and worth stating
+    precisely if we cite it.</p>
+  </div>
+  <p class="note">
+    ⚠️ Oddity: their PWM branch still sits inside <code>if (self-&gt;indi &amp;&amp;
+    rpm_deck_available)</code> — gated behind the very deck it is meant to replace. Either an
+    oversight, or they always fly with the deck fitted and use PWM mode only for like-for-like
+    comparison.
+  </p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-n">07</span><h2>What it suggests</h2></div>
 
   <div class="call crash">
     <h3>For the crash — the sign was probably never the problem</h3>
@@ -525,9 +564,10 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
     <p>
       Their platform is a <strong>standard CF2.1</strong> (J ≈ 16.6·10⁻⁶ kg·m², ~30 g), not our
       41 g brushless, so gains and lag constants do not transfer. Their disturbance is a slung
-      payload, not downwash. And their <code>tau</code> filter init loop runs <code>i&lt;2</code>
-      where the <code>acc</code> loop runs <code>i&lt;3</code> — <strong>their z-axis torque
-      filter is never initialised.</strong> Looks like a typo; do not copy it uncritically.
+      payload, not downwash. One correction to an earlier draft of this page: the
+      <code>i&lt;2</code> tau-filter loop is <strong>not</strong> a bug — yaw is initialised
+      separately at a deliberately lower <code>cutoff_z = 10 Hz</code> against 40 Hz for
+      roll/pitch. Yaw torque is filtered ~4× harder on purpose.
     </p>
   </div>
 </section>
