@@ -142,6 +142,34 @@ tr.useful td{background:var(--theirs-soft)}
 .follows h4{font-family:var(--cond);font-size:1rem;font-weight:700;margin:3px 0 4px}
 .follows p{margin:0;font-size:.93rem;color:var(--ink-2);max-width:64ch}
 
+/* derivation */
+.derive{background:var(--surface);border:1px solid var(--rule);padding:18px 20px;margin:0 0 20px}
+.derive .step{font-family:var(--mono);font-size:.88rem;background:var(--sunk);padding:11px 14px;
+  border-radius:3px;margin:0 0 10px;overflow-x:auto;white-space:pre}
+.derive .lbl{font-family:var(--cond);font-size:.8rem;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.derive .lbl:first-child{margin-top:0}
+.same{background:var(--theirs-soft);border:1px solid var(--theirs);padding:14px 16px;
+  margin:14px 0 0;text-align:center;font-family:var(--mono);font-size:.95rem;
+  color:var(--theirs);font-weight:600;overflow-x:auto}
+
+/* recommendation cards */
+.recs{display:flex;flex-direction:column;gap:14px;margin:0 0 22px}
+.rec{border:1px solid var(--rule);border-left:5px solid;background:var(--surface);padding:16px 20px}
+.rec.yes{border-left-color:var(--theirs)}
+.rec.maybe{border-left-color:var(--ours)}
+.rec.no{border-left-color:var(--muted)}
+.rec-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.rec-head h3{margin:0;font-size:1.04rem;flex:1}
+.verdict{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;padding:3px 9px;border-radius:2px;white-space:nowrap}
+.v-yes{background:var(--theirs-soft);color:var(--theirs)}
+.v-maybe{background:var(--ours-soft);color:var(--ours)}
+.v-no{background:var(--sunk);color:var(--muted);border:1px solid var(--rule)}
+.rec p{margin:0 0 .6em;font-size:.94rem}
+.rec p:last-child{margin-bottom:0}
+.rec .why{color:var(--ink-2)}
+
 .note{font-size:.88rem;color:var(--muted);max-width:66ch}
 footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   font-family:var(--mono);font-size:.73rem;color:var(--muted);line-height:1.8}
@@ -296,10 +324,11 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   <h3 style="font-size:1.05rem;margin:26px 0 14px">Three things follow from that</h3>
   <ol class="follows">
     <li>
-      <h4>Memory</h4>
-      <p>Ours carries internal state, so it has its own dynamics and can limit-cycle when the
-      assumed actuator lag mismatches reality — τ = 44 ms measured against 71 ms in our own
-      investigation, never resolved. Theirs has no such state and structurally cannot.</p>
+      <h4>Where the subtraction happens</h4>
+      <p>Ours differences <em>angular accelerations</em> and multiplies the result by J. Theirs
+      differences <em>torques</em>, having multiplied each side by J first. Algebraically the
+      same — but ours puts all of the J error onto the residual. Our J is a simulator default
+      for a 45 g drone, running on a 41 g brushless, so that is not academic.</p>
     </li>
     <li>
       <h4>What “turning INDI on” actually does</h4>
@@ -318,10 +347,10 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 
   <div class="call note">
     <p style="margin:0"><strong>The bottom line.</strong> Theirs is the <em>conservative</em>
-    version: keep the working controller, subtract a measured error. Ours is the
-    <em>aggressive</em> version: rebuild the torque command from the actuator state every cycle.
-    Ours is what the Tal &amp; Karaman method <em>is</em> — that is the method under study, not
-    an accident. It is also why ours can misbehave in ways theirs cannot.</p>
+    arrangement: keep the working controller, subtract a measured error. Ours is the
+    <em>incremental</em> one: rebuild the torque command from the actuator state each cycle. But
+    as the next section shows, <strong>these are the same law written two ways</strong> — the
+    real differences are in conditioning, not in the method.</p>
   </div>
 </section>
 
@@ -374,7 +403,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
       <text x="666" y="55" class="dtext" text-anchor="middle">τ</text>
       <path d="M106 51 H140 M236 51 H270 M340 51 H374 M486 51 H520 M600 51 H634" class="dline" marker-end="url(#ar)"/>
       <path d="M666 68 V96 H430 V68" class="dline-hot" marker-end="url(#arh)"/>
-      <text x="548" y="112" class="dlabel" text-anchor="middle" fill="var(--ours)">τ_prev — internal state, can limit-cycle</text>
+      <text x="548" y="112" class="dlabel" text-anchor="middle" fill="var(--ours)">τ_prev — fallback only; at act_tau=0 with RPM, τ_current comes from RPM</text>
 
       <line x1="10" y1="140" x2="810" y2="140" stroke="var(--rule)" stroke-width="1"/>
 
@@ -397,8 +426,8 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
           <path d="M0 0 L8 4 L0 8 z" fill="var(--ours)"/></marker>
       </defs>
     </svg>
-    <p class="dcap">The difference in one picture: ours closes a loop through its own previous
-      output; theirs does not.</p>
+    <p class="dcap">Ours <em>can</em> close a loop through its own previous output — but only
+      as a fallback. At the shipped defaults it reads τ_current from RPM, exactly as theirs does.</p>
   </div>
 
   <div class="call osc">
@@ -420,77 +449,107 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">05</span><h2>The difference matrix</h2></div>
-  <div class="scroll">
-  <table>
-    <thead><tr>
-      <th style="min-width:150px">Aspect</th>
-      <th class="o" style="min-width:170px">Ours</th>
-      <th class="t" style="min-width:190px">Theirs</th>
-      <th style="min-width:120px">Bears on</th>
-    </tr></thead>
-    <tbody>
-      <tr>
-        <td><strong>Attitude INDI form</strong></td>
-        <td class="mono">τ = τ<sub>cur</sub> + J(α<sub>ref</sub>−α<sub>meas</sub>)</td>
-        <td class="mono">u = u<sub>geo</sub> − (τ<sub>imu</sub>−τ<sub>rpm</sub>)</td>
-        <td><span class="tagline tag-osc">oscillation</span></td>
-      </tr>
-      <tr>
-        <td><strong>Internal state</strong></td>
-        <td class="mono">tau_prev, tau_act, lag model</td>
-        <td class="mono"><strong>none</strong></td>
-        <td><span class="tagline tag-osc">oscillation</span></td>
-      </tr>
-      <tr>
-        <td><strong>Attitude gains under INDI</strong></td>
-        <td class="mono">switches to kr=2400 / kw=170 [1/s²]</td>
-        <td class="mono"><strong>unchanged</strong> KR=0.007 / Kω=0.002 [Nm]</td>
-        <td><span class="tagline tag-osc">oscillation</span></td>
-      </tr>
-      <tr>
-        <td><strong>Force residual — clamp</strong></td>
-        <td class="mono">none</td>
-        <td class="mono">‖·‖ ≤ 10 m/s², <strong>both sides</strong></td>
-        <td><span class="tagline tag-crash">the crash</span></td>
-      </tr>
-      <tr>
-        <td><strong>Force residual — filter</strong></td>
-        <td class="mono">none — raw difference</td>
-        <td class="mono">Butterworth-2 @ <strong>80 Hz</strong>, both sides</td>
-        <td><span class="tagline tag-crash">the crash</span></td>
-      </tr>
-      <tr>
-        <td><strong>Moment residual</strong></td>
-        <td class="mono">output clamp only (0.045 Nm)</td>
-        <td class="mono">‖·‖ ≤ 0.006 Nm + BW-2 @ 40 Hz</td>
-        <td><span class="tagline tag-crash">the crash</span> <span class="tagline tag-osc">oscillation</span></td>
-      </tr>
-      <tr>
-        <td><strong>Residual sign</strong></td>
-        <td class="mono">.sub — <em>parked at .add</em></td>
-        <td class="mono"><strong>.sub</strong> — same as our “fixed” sign</td>
-        <td><span class="tagline tag-crash">the crash</span></td>
-      </tr>
-      <tr>
-        <td><strong>NN + INDI together</strong></td>
-        <td class="mono">both applied — double-counts</td>
-        <td class="mono">a<sub>nn</sub> folded <em>into the model</em></td>
-        <td><span class="tagline tag-des">C.3 design</span></td>
-      </tr>
-      <tr>
-        <td><strong>α from gyro</strong></td>
-        <td class="mono">filtered ω, order toggle</td>
-        <td class="mono">raw gyroNoLpf → diff → <em>then</em> filter τ</td>
-        <td><span class="tagline tag-crash">the crash</span> <span class="tagline tag-osc">oscillation</span></td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="sec-head"><span class="sec-n">05</span><h2>They are the same law</h2>
+    <span class="tagline tag-des">worked, not assumed</span></div>
+  <p>
+    The instinct is: <em>“theirs is published with a supervisor and a PhD student, so if ours
+    differs, ours must be wrong.”</em> The algebra says otherwise. Start from the rigid body and
+    reduce both.
+  </p>
+
+  <div class="derive">
+    <p class="lbl">Rigid body</p>
+    <div class="step">J·ω̇ = τ_motors + τ_dist − ω×Jω</div>
+
+    <p class="lbl">Ours — substitute τ_current = τ_motors (from RPM) and α_meas = J⁻¹(τ_motors + τ_dist − ω×Jω)</p>
+    <div class="step">τ_cmd = τ_current + J·(α_ref − α_meas)
+      = τ_motors + J·α_ref − (τ_motors + τ_dist − ω×Jω)
+      = J·α_ref + ω×Jω − τ_dist</div>
+
+    <p class="lbl">Theirs — note τ_imu = J·α − (Jω×ω) = J·α + ω×Jω, which <em>is</em> τ_motors + τ_dist</p>
+    <div class="step">τ_res = τ_imu − τ_rpm = τ_dist
+u     = u_geo − τ_res
+      = J·α_ref + ω×Jω − τ_dist</div>
+
+    <div class="same">τ_cmd = J·α_ref + ω×Jω − τ_dist &nbsp;&nbsp;— identical</div>
+  </div>
+
+  <p>
+    Ours cancels the gyroscopic term <strong>implicitly</strong> (it is already inside
+    <code>α_meas</code>); theirs handles it <strong>explicitly</strong> on both sides. This is the
+    known <strong>INDI ↔ disturbance-observer correspondence</strong>. Ours is faithful to Tal &amp;
+    Karaman's <code>u = u₀ + G⁻¹(ν − α_meas)</code>; theirs is the DOB arrangement of the same law.
+  </p>
+
+  <div class="call note">
+    <p style="margin:0"><strong>So neither is wrong.</strong> The equivalence is exact for
+    <em>unfiltered</em> signals. Everything that actually separates them appears once filters,
+    clamps and finite sample rates are introduced — which is what the next section enumerates.</p>
   </div>
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">06</span><h2>Do both need the RPM deck?</h2></div>
+  <div class="sec-head"><span class="sec-n">06</span><h2>Every difference, enumerated</h2></div>
+  <p>
+    Seven, not three. Sorted by whether they are worth adopting. <strong>The first one
+    reframes everything else.</strong>
+  </p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th style="min-width:34px">#</th><th style="min-width:150px">Difference</th>
+      <th class="o" style="min-width:150px">Ours</th><th class="t" style="min-width:160px">Theirs</th>
+      <th style="min-width:90px">Verdict</th></tr></thead>
+    <tbody>
+      <tr class="useful"><td class="mono">1</td><td><strong>Force residual conditioning</strong></td>
+        <td class="mono"><strong>nothing at all</strong></td><td class="mono">clamp 10 m/s² + 80 Hz BW, both sides</td>
+        <td><span class="verdict v-yes">adopt</span></td></tr>
+      <tr><td class="mono">2</td><td><strong>Torque residual conditioning</strong></td>
+        <td class="mono">60 Hz BW both sides ✓</td><td class="mono">40 Hz BW + clamp 0.006 Nm</td>
+        <td><span class="verdict v-maybe">consider</span></td></tr>
+      <tr><td class="mono">3</td><td><strong>Per-axis yaw filtering</strong></td>
+        <td class="mono">uniform 60 Hz</td><td class="mono">10 Hz yaw vs 40 Hz roll/pitch</td>
+        <td><span class="verdict v-maybe">consider</span></td></tr>
+      <tr><td class="mono">4</td><td><strong>Gyro source</strong></td>
+        <td class="mono">sensors→gyro (stock LPF already applied)</td><td class="mono">gyroNoLpf (raw), filter downstream</td>
+        <td><span class="verdict v-maybe">investigate</span></td></tr>
+      <tr><td class="mono">5</td><td><strong>dt resolution</strong></td>
+        <td class="mono">tick counter — <strong>1 ms quantised</strong></td><td class="mono">usecTimestamp() — µs</td>
+        <td><span class="verdict v-maybe">investigate</span></td></tr>
+      <tr><td class="mono">6</td><td><strong>Subtraction space</strong></td>
+        <td class="mono">angular acceleration</td><td class="mono">torque</td>
+        <td><span class="verdict v-no">keep ours</span></td></tr>
+      <tr><td class="mono">7</td><td><strong>Gyroscopic term</strong></td>
+        <td class="mono">implicit in α_meas</td><td class="mono">explicit, both sides</td>
+        <td><span class="verdict v-no">keep ours</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="call crash">
+    <h3>The observation that reframes the rest</h3>
+    <p>
+      “Conditioning” is not one thing. <strong>Our attitude INDI is carefully conditioned; our
+      position INDI is not conditioned at all.</strong>
+    </p>
+    <p>
+      <strong>Torque side (ours):</strong> <code>α_ref</code>, <code>α_meas</code> <em>and</em>
+      <code>τ_current</code> are all Butterworth-filtered at 60 Hz and phase-matched via
+      <code>filt_tau=1</code>. Genuinely careful work.
+    </p>
+    <p>
+      <strong>Force side (ours):</strong> <code>a_res = a_meas − a_model</code>, <strong>raw</strong>.
+      No filter, no clamp, straight into <code>f_d → thrust_vec → desired_rot() → R_d →</code> the
+      commanded attitude.
+    </p>
+    <p style="margin-bottom:0">
+      The 09-09 crash was at <code>ctrl_mode=3</code>, which enables the <strong>position</strong>
+      loop. The unconditioned path is exactly the one that was live when it diverged.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-n">07</span><h2>Do both need the RPM deck?</h2></div>
   <p>
     By default, yes — both compute the modelled force from measured RPM. But the two are not
     equally dependent on it.
@@ -527,47 +586,100 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">07</span><h2>What it suggests</h2></div>
+  <div class="sec-head"><span class="sec-n">08</span><h2>Recommendations</h2>
+    <span class="tagline tag-crash">my view — decide for yourself</span></div>
+  <p>
+    Ordered by value-per-risk. Nothing here should be done before the six validation flights —
+    changing the controller now would make tomorrow's result uninterpretable.
+  </p>
 
-  <div class="call crash">
-    <h3>For the crash — the sign was probably never the problem</h3>
-    <p>
-      Their published, flying law uses <strong>the same sign that crashed us</strong>
-      (<code>F<sub>d</sub> = a<sub>d</sub> − a<sub>indi</sub> − a<sub>nn</sub></code>). What
-      differs is <em>conditioning</em>: they clamp and 80 Hz-filter <strong>both sides before
-      differencing</strong>. Ours is a raw instantaneous difference that goes straight into
-      <code>f_d → R<sub>d</sub> →</code> the commanded attitude.
-    </p>
-    <p>
-      So the fix is likely <strong>filter and clamp <code>a_res</code></strong>, not abandon
-      the sign. That becomes the leading candidate once the validation flights pass — it is not
-      a reason to change anything before them.
-    </p>
-  </div>
+  <div class="recs">
 
-  <div class="call osc">
-    <h3>For the oscillation — a published alternative exists</h3>
-    <p>
-      Adopting their subtractive form would remove the actuator-memory dynamics entirely.
-      But this is a <strong>thesis decision, not just an implementation one</strong>: it changes
-      what “INDI” denotes in our comparison, and our INDI is deliberately Tal &amp; Karaman
-      because that is the method under study.
-    </p>
-    <p>
-      The honest framing: their form is a legitimate second INDI variant that could be
-      <em>added</em> to the comparison, not a drop-in repair for ours.
-    </p>
+    <div class="rec yes">
+      <div class="rec-head"><h3>1 · Condition <code>a_res</code> before it enters the loop</h3>
+        <span class="verdict v-yes">adopt</span></div>
+      <p class="why">
+        <code>a_res</code> is a difference of two noisy estimates — accelerometer (noisy) minus
+        RPM² model (quantised, actuator-lagged). Differencing amplifies both. Unfiltered, that
+        noise becomes a <em>commanded attitude</em> every tick.
+      </p>
+      <p class="why">
+        <strong>Filter both sides identically, then subtract</strong> — that way the filter lag
+        cancels in the difference, which filtering <em>after</em> the subtraction cannot achieve.
+        Add a norm clamp so one bad sample cannot reach the law at all. Their numbers
+        (10 m/s², 80 Hz) are a starting point, not gospel — our airframe differs.
+      </p>
+      <p><strong>Why first:</strong> it is the one place where they do something and we do
+      literally nothing, on exactly the path that was live during the crash. Contained change,
+      no effect on the method's identity.</p>
+    </div>
+
+    <div class="rec maybe">
+      <div class="rec-head"><h3>2 · Investigate <code>dt</code> resolution</h3>
+        <span class="verdict v-maybe">investigate</span></div>
+      <p class="why">
+        <code>α_raw = Δω / dt</code>, so <strong>any error in <code>dt</code> scales
+        <code>α_meas</code> directly</strong>. Ours is <code>(tick − last_tick) × 0.001</code> —
+        millisecond resolution. If the scheduler is exact (tick always +2) this is fine. Any
+        jitter quantises to 1 ms steps, i.e. <strong>up to 50 % error</strong> in that sample's
+        angular acceleration. Theirs uses <code>usecTimestamp()</code> and cannot do this.
+      </p>
+      <p><strong>Cheap first step:</strong> log <code>dt</code> for one flight and look at its
+      distribution. If it is always exactly 0.002, close the question permanently. Note the
+      precedent — <em>“2 kHz call with ms tick”</em> was one of the five sim-fidelity bugs.</p>
+    </div>
+
+    <div class="rec maybe">
+      <div class="rec-head"><h3>3 · Reconsider the gyro source</h3>
+        <span class="verdict v-maybe">investigate</span></div>
+      <p class="why">
+        They take the <strong>raw</strong> gyro and filter downstream, after converting to
+        torque. We take the stock-<strong>LPF'd</strong> gyro and filter again — an unknown
+        filter in series with ours, so the true phase response is hard to reason about.
+      </p>
+      <p><strong>Why it matters here:</strong> the 5–8 Hz shake is a <em>phase</em> problem, and
+      four investigations have not closed it. Having two filters in series where one was intended
+      is exactly the kind of thing that survives four investigations.</p>
+    </div>
+
+    <div class="rec maybe">
+      <div class="rec-head"><h3>4 · Per-axis filtering for yaw</h3>
+        <span class="verdict v-maybe">consider</span></div>
+      <p class="why">
+        Yaw torque comes from motor drag-torque differences (<code>t2t ≈ 0.006</code>) — an order
+        of magnitude smaller than roll/pitch arm torque, and correspondingly noisier. They filter
+        it 4× harder on purpose. We treat all three axes identically.
+      </p>
+      <p><strong>Lower priority:</strong> our shake is roll/pitch, so this is not the cause. It is
+      a considered choice we have simply not made.</p>
+    </div>
+
+    <div class="rec no">
+      <div class="rec-head"><h3>5 · Do <em>not</em> switch to their subtractive form</h3>
+        <span class="verdict v-no">keep ours</span></div>
+      <p class="why">
+        It is algebraically the same law, so it would buy no correctness — and it would change
+        what “INDI” denotes in the comparison. Tal &amp; Karaman incremental INDI <em>is</em> the
+        method under study.
+      </p>
+      <p><strong>If it is ever wanted:</strong> add it as a <em>second</em> INDI variant to the
+      comparison, honestly labelled, rather than replacing ours.</p>
+    </div>
+
   </div>
 
   <div class="call note">
-    <h3>Caveats — read before acting</h3>
+    <h3>Sequencing, and one honest caveat</h3>
     <p>
-      Their platform is a <strong>standard CF2.1</strong> (J ≈ 16.6·10⁻⁶ kg·m², ~30 g), not our
-      41 g brushless, so gains and lag constants do not transfer. Their disturbance is a slung
-      payload, not downwash. One correction to an earlier draft of this page: the
-      <code>i&lt;2</code> tau-filter loop is <strong>not</strong> a bug — yaw is initialised
-      separately at a deliberately lower <code>cutoff_z = 10 Hz</code> against 40 Hz for
-      roll/pitch. Yaw torque is filtered ~4× harder on purpose.
+      <strong>Nothing before the validation flights.</strong> Tomorrow's six flights exist to
+      establish whether the restored configuration flies. Changing the controller first destroys
+      that. Then: pull the uSD cards, apply #1, re-test, and only then consider #2–#4 one at a time.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>The caveat:</strong> everything above is reasoning from their code, not from a
+      controlled experiment on our airframe. Their platform is a standard CF2.1 (J ≈ 16.6·10⁻⁶,
+      ~30 g), their disturbance is a slung payload, and their gains do not transfer. These are
+      well-motivated hypotheses to test one at a time — not a repair kit to apply wholesale.
     </p>
   </div>
 </section>
