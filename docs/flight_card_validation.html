@@ -160,9 +160,10 @@ footer{
   <span class="eyebrow">Crazyflie 2.1 brushless · 10 September 2026</span>
   <h1>Controller Validation Card</h1>
   <p class="lede">
-    Six flights, one check after each, <strong>stop on the first failure</strong>. On 09-09 six
-    hover flights crashed under both controllers; three root causes were found and fixed and
-    <strong>none has been re-flown</strong>. Nothing past this card runs until all six pass.
+    <strong>Stage 1 first: three geometric flights, then one INDI flight.</strong> Check after
+    every single one and <strong>stop on the first failure</strong>. On 09-09 six hover flights
+    crashed under both controllers; three root causes were found and fixed and <strong>none has
+    been re-flown</strong>. Stage 2 (the new fixes) only begins once stage 1 passes.
   </p>
 </header>
 
@@ -184,7 +185,9 @@ source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install --packages-select crazyflie crazyflie_examples
 . install/local_setup.bash</div>
 
-  <p class="note" style="margin-bottom:12px">cfclient → Parameters. Every row must match before a propeller turns.</p>
+  <p class="note" style="margin-bottom:12px">cfclient → Parameters. Every row must match before a
+  propeller turns. The last four are the new switches — <strong>all must read their defaults for
+  stage 1</strong>; they are what stage 2 turns on, one at a time.</p>
   <div class="scroll">
   <table>
     <thead><tr><th>Parameter</th><th>Must read</th></tr></thead>
@@ -194,17 +197,28 @@ colcon build --symlink-install --packages-select crazyflie crazyflie_examples
       <tr><td class="k">indi_gains.kr_geo</td><td class="val">0.010</td></tr>
       <tr><td class="k">indi_gains.clamp_en</td><td class="val">11</td></tr>
       <tr><td class="k">stabilizer.controller</td><td class="val">6</td></tr>
+      <tr><td class="k">indi_gains.res_fc</td><td class="val">0</td></tr>
+      <tr><td class="k">indi_gains.res_clamp</td><td class="val">0</td></tr>
+      <tr><td class="k">indi_gains.filt_dt_us</td><td class="val">2000</td></tr>
+      <tr><td class="k">indi_gains.filt_prewarp</td><td class="val">0</td></tr>
     </tbody>
   </table>
   </div>
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">1</span><h2>Geometric</h2><span class="tag">ctrl_mode: 0</span></div>
+  <div class="stage-head"><span class="num">1</span><h2>Geometric — three flights</h2><span class="tag">ctrl_mode: 0</span></div>
+
+  <div class="flag" style="background:var(--accent-soft);border-left-color:var(--accent)">
+    <p style="margin:0"><strong>Unaffected by every new parameter.</strong> At
+    <code>ctrl_mode=0</code> the residual is unreachable and the INDI filters do not feed
+    geometric's torque — so these three fly exactly the config the fixes were designed around,
+    whatever the new switches are set to.</p>
+  </div>
 
   <p class="note" style="margin-bottom:14px">
     Set <code>all.firmware_params.indi_gains.ctrl_mode: 0</code> in
-    <code>~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml</code>, then rebuild and launch.
+    <code>~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml</code>, rebuild, launch.
   </p>
 
   <div class="term"><button class="copy" aria-label="Copy">⧉</button>cd ~/Desktop/crazyswarm2
@@ -218,29 +232,69 @@ ros2 launch crazyflie launch.py</div>
     <code>position gains: {'kp_xy': 40.0, ...} &lt;- GEOMETRIC_POS_GAINS</code>
   </p>
 
-  <div class="term"><button class="copy" aria-label="Copy">⧉</button><span class="c"># terminal 2 — one at a time</span>
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button><span class="c"># terminal 2 — one at a time, check_flight.py after each</span>
 ros2 run crazyflie_examples simple_flight -- --trajectory hover   --duration 15
 ros2 run crazyflie_examples simple_flight -- --trajectory circle  --kt 0.1
 ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</div>
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">2</span><h2>Full INDI</h2><span class="tag">ctrl_mode: 3</span></div>
+  <div class="stage-head"><span class="num">2</span><h2>INDI — ONE flight, restored config only</h2><span class="tag">ctrl_mode: 3</span></div>
+
+  <div class="flag">
+    <p><strong>Change nothing else for this flight.</strong> INDI crashed 5 times out of 5.
+    The restored configuration is the July one that flew for weeks. This single flight answers
+    whether the restoration worked — and it only answers that if it is the only variable.</p>
+    <p style="margin-bottom:0">Fly it with the new switches at their defaults
+    (<code>res_fc=0</code>, <code>res_clamp=0</code>, <code>filt_dt_us=2000</code>,
+    <code>filt_prewarp=0</code>). Those defaults are verified byte-identical to the previous
+    firmware across all four <code>ctrl_mode</code>s.</p>
+  </div>
 
   <p class="note" style="margin-bottom:14px">
-    Same edit with <code>ctrl_mode: 3</code>, rebuild <code>crazyflie</code>,
-    <strong>Ctrl-C and relaunch the server</strong> (params push at connect), confirm
-    <code>ctrl_mode</code> reads 3. Expect <code>pos_gains 64/5</code> here — correct, that is
-    INDI's locked block.
+    Set <code>ctrl_mode: 3</code>, rebuild <code>crazyflie</code>, <strong>Ctrl-C and relaunch
+    the server</strong> (params push at connect), confirm <code>ctrl_mode</code> reads 3.
+    Expect <code>pos_gains 64/5</code> — correct, that is INDI's locked block.
   </p>
 
-  <div class="term"><button class="copy" aria-label="Copy">⧉</button>ros2 run crazyflie_examples simple_flight -- --trajectory hover   --duration 15
-ros2 run crazyflie_examples simple_flight -- --trajectory circle  --kt 0.1
-ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</div>
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button>ros2 run crazyflie_examples simple_flight -- --trajectory hover --duration 15</div>
+
+  <div class="verdict">
+    <div class="v pass"><b>PASS</b>restoration confirmed → go to stage 3</div>
+    <div class="v fail"><b>FAIL</b>stop. The cause pre-dates every fix → H0 partition: <code>ctrl_mode=2</code>, then <code>1</code></div>
+  </div>
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">3</span><h2>Check — after every single flight</h2><span class="tag">no exceptions</span></div>
+  <div class="stage-head"><span class="num">3</span><h2>Stage 2 — only if stage 1 passed</h2><span class="tag">one at a time</span></div>
+  <p class="note" style="margin-bottom:14px">
+    Each row is <strong>one flight, one variable</strong>. All are runtime params — no reflash
+    between them. Stop and think at any regression rather than stacking the next change on top.
+  </p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>Set</th><th>What it tests</th></tr></thead>
+    <tbody>
+      <tr><td class="val">a</td><td class="k">res_fc = 80<br>res_clamp = 10</td>
+        <td>Conditioning the residual before it reaches the attitude command. The one thing NA-INDI does that we never did.</td></tr>
+      <tr><td class="val">b</td><td class="k">filt_prewarp = 1<br>filt_dt_us = 1000<br>fc_bw = 206</td>
+        <td><strong>A deliberate no-op.</strong> Same filtering as today, but now <code>fc_bw</code> means what it says. Confirms nothing changed before any real tuning starts.</td></tr>
+      <tr><td class="val">c</td><td class="k">fc_bw &lt; 206</td>
+        <td>Only after (b). Now the number is honest, so tuning it is meaningful for the first time.</td></tr>
+      <tr><td class="val">d</td><td class="k">notch_en = 1<br>notch_f0 = 6.9</td>
+        <td>Only after (b). The notch previously sat at 13.8 Hz — <strong>it has never actually been tested against the 6.9 Hz peak.</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="flag" style="background:var(--accent-soft);border-left-color:var(--accent)">
+    <p style="margin:0"><strong>Do not copy NA-INDI's numbers directly.</strong> Their filters
+    carry the same 2× sample-rate error <em>and</em> use a different discretisation, so their
+    "80 Hz" is neither our 80 nor their own. Copy the <em>ratios</em>, not the labels.</p>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">4</span><h2>Check — after every single flight</h2><span class="tag">no exceptions</span></div>
 
   <div class="term"><button class="copy" aria-label="Copy">⧉</button>cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py</div>
 
@@ -270,16 +324,17 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   <table class="ticks">
     <thead><tr><th colspan="2">Flight</th></tr></thead>
     <tbody>
-      <tr><td><label><input type="checkbox" data-k="f1"><span class="mode">mode 0</span><span class="traj">hover</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f2"><span class="mode">mode 0</span><span class="traj">circle &nbsp;kt 0.1</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f3"><span class="mode">mode 0</span><span class="traj">figure8 kt 0.008</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">mode 3</span><span class="traj">hover</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">mode 3</span><span class="traj">circle &nbsp;kt 0.1</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">mode 3</span><span class="traj">figure8 kt 0.008</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f1"><span class="mode">stage 1</span><span class="traj">geo · hover</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f2"><span class="mode">stage 1</span><span class="traj">geo · circle kt 0.1</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f3"><span class="mode">stage 1</span><span class="traj">geo · figure8 kt 0.008</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">stage 1</span><span class="traj">INDI · hover — restored config only</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">stage 2a</span><span class="traj">res_fc 80 + res_clamp 10</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">stage 2b</span><span class="traj">prewarp 1 · dt 1000 · fc_bw 206 (no-op)</span></label></td></tr>
     </tbody>
   </table>
   <p class="note" style="margin-top:14px">
-    All six pass → gain retuning, then multi-drone. Not before. Push the logs when done:
+    Stage 1 clean → stage 2, one variable per flight. Retuning and multi-drone come after
+    that. Push the logs when done:
     <code>git add Controls/logs && git commit && git push</code>
   </p>
 </section>
