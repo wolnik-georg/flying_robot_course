@@ -686,7 +686,7 @@ u     = u_geo − τ_res
   <div class="sec-head"><span class="sec-n">09</span><h2>Recommendations</h2>
     <span class="tagline tag-crash">my view — decide for yourself</span></div>
   <p>
-    Ordered by value-per-risk. Nothing here should be done before the six validation flights —
+    Ordered by value-per-risk. Nothing here should be done before stage 1 of the validation flights —
     changing the controller now would make tomorrow's result uninterpretable.
   </p>
 
@@ -778,8 +778,8 @@ u     = u_geo − τ_res
   <div class="call note">
     <h3>Sequencing, and one honest caveat</h3>
     <p>
-      <strong>Nothing before the validation flights.</strong> The six flights exist to establish
-      whether the restored configuration flies; changing the controller first destroys that. All
+      <strong>Nothing before the validation flights.</strong> Stage 1 exists to establish whether the
+      restored configuration flies; changing the controller first destroys that. All
       of the above is already in the firmware but <strong>switched off</strong> — the new build
       is <strong>0/100 samples different</strong> from the previous one at defaults, across all
       four <code>ctrl_mode</code>s.
@@ -791,7 +791,10 @@ u     = u_geo − τ_res
       <strong>(c)</strong> separately, <code>filt_dt_us = 1000</code> — expecting to retune
       <code>fc_bw</code>, since <code>fc_bw = 120</code> reproduces today's filtering at the
       corrected rate;
-      <strong>(d)</strong> only then reconsider yaw.
+      <strong>(d)</strong> reconsider yaw;
+      <strong>(e)</strong> the shake-band test — our attitude loop's ω<sub>n</sub> is
+      <strong>7.80 Hz</strong> and the shake is 6.3–7.9 Hz, so drop <code>kr</code> 2400→987→632
+      (ω<sub>n</sub> 5.0→4.0 Hz, ζ held at 1.74) and see whether the shake follows.
     </p>
     <p style="margin-bottom:0">
       <strong>The caveat:</strong> everything above is reasoning from their code, not from a

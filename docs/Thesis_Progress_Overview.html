@@ -169,7 +169,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 9 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 10 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Comparison of control strategies for interaction-force aware multirotor teams —
@@ -178,7 +178,7 @@ footer{
   <div class="statusline">
     <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
     <span class="pill blocked"><span class="dot"></span>Lab · controller re-validation</span>
-    <span style="color:var(--muted)">Two sessions flown · three root causes fixed · six validation flights next</span>
+    <span style="color:var(--muted)">Two sessions flown · three root causes fixed · staged re-validation next</span>
   </div>
 </header>
 
@@ -298,9 +298,17 @@ footer{
     Attribution is not settled either. Three changes went to the drone together and the radio logs
     cannot separate them; all three are reverted, so the fix is complete regardless, but
     <em>which one</em> caused the crashes is still unknown. Before anything else, the next session
-    is six validation flights — both controllers, hover then circle then figure-8, stopping at the
-    first failure. Only then does the two-drone sign-check flight, on which every downstream
+    is a staged re-validation — three geometric flights, then one INDI hover on the restored
+    configuration alone, stopping at the first failure, before any new fix is switched on. Only then does the two-drone sign-check flight, on which every downstream
     number depends, come back into view.
+  </p>
+  <p>
+    A parallel line opened on 10 September: the authors of one of the cited papers shared their
+    code, and comparing it against ours showed the two INDI implementations are the
+    <em>same law written two ways</em> — but turned up a real filter bug on our side, and the
+    observation that our attitude loop's natural frequency sits exactly on the oscillation band
+    that four investigations have failed to explain. Both are queued behind the validation
+    flights, one variable at a time.
   </p>
 </div>
 
@@ -318,10 +326,11 @@ footer{
     <li class="key">
       <h3>Re-validate both controllers — six flights</h3>
       <p class="why">Flown twice (09-07, 09-09); six hover flights crashed and three separate
-      root causes were fixed. Nothing has flown since. Hover, circle and figure-8 under each
-      controller, checked after every single flight, stopping at the first failure. No retuning
-      and no second drone until all six pass. <strong>This is where the project actually
-      is.</strong></p>
+      root causes were fixed. Nothing has flown since. <strong>Stage 1:</strong> three geometric
+      flights, then one INDI hover on the restored configuration alone — checked after every
+      single flight, stopping at the first failure. <strong>Stage 2</strong> then introduces the
+      new fixes one variable per flight. No retuning and no second drone until stage 1 is clean.
+      <strong>This is where the project actually is.</strong></p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
