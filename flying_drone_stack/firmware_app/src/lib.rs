@@ -662,6 +662,11 @@ struct State {
     tau_act: Vec3,      // act_dyn base state (first-order model of clamped commands)
     indi_init: bool,
     fc_bw_last: f32,
+    filt_dt_us_last: u16,
+    dt_meas: f32,
+    bw_res_m: [Butterworth2; 3],
+    bw_res_d: [Butterworth2; 3],
+    bw_res_init: bool,
     /// Previous peer sample (x, y, z, timestamp_ms), for differencing a relative velocity the
     /// peer API does not provide. Per-vehicle, hence in State rather than a global: the host
     /// simulator swaps this block per drone, and shared peer history would corrupt both.
@@ -693,6 +698,11 @@ impl State {
             tau_act: Vec3::zero(),
             indi_init: false,
             fc_bw_last: 0.0,
+            filt_dt_us_last: 0xFFFF,
+            dt_meas: 0.001,
+            bw_res_m: [Butterworth2::zero(); 3],
+            bw_res_d: [Butterworth2::zero(); 3],
+            bw_res_init: false,
             peer_prev: [(0.0, 0.0, 0.0, 0); residual_nn::MAX_NEIGHBOURS],
         }
     }
@@ -851,6 +861,7 @@ extern "C" {
     fn indi_notch_log_write(anx: f32, any: f32, anz: f32);
     fn indi_a_res_write(ax: f32, ay: f32, az: f32);
     fn indi_e_r_write(ex: f32, ey: f32, ez: f32, norm: f32);
+    fn indi_dt_write(dt_us: f32);
 }
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
@@ -894,6 +905,9 @@ extern "C" {
     static mut g_indi_omega_src: u8;
     static mut g_indi_frame_conv: u8;
     static mut g_indi_res_sign: i8;
+    static mut g_indi_filt_dt_us: u16;
+    static mut g_indi_res_fc: f32;
+    static mut g_indi_res_clamp: f32;
     static mut g_indi_notch_en: u8;
     static mut g_indi_notch_f0: f32;
     static mut g_indi_notch_bw: f32;
@@ -1405,6 +1419,15 @@ fn geometric_step_ref(
 // bound_control_input. Values sized from per-motor thrust headroom (see traj_iface.c). Applied to
 // BOTH controller branches; in INDI it must run BEFORE tau_prev is stored so the increment memory
 // only ever contains torques that were actually sent (stock propagates post-clamp too).
+/// Scale a vector down so its norm does not exceed `max`. Direction preserved --
+/// this is NA-INDI's `vclampnorm`, not a per-axis clamp, so it cannot distort the
+/// direction of a residual the way independent axis clamps would.
+#[inline]
+fn clamp_norm(v: Vec3, max: f32) -> Vec3 {
+    let n = libm::sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+    if n > max && n > 1e-9 { v.scale(max / n) } else { v }
+}
+
 fn clamp_torque(t: Vec3) -> Vec3 {
     let en = unsafe { g_indi_clamp_en };
     let mut out = t;
@@ -1544,6 +1567,45 @@ fn controller_step(
         let a_model = body_z_w.scale(f_total / mass).add(Vec3::new(0.0, 0.0, -GRAVITY));
         // a_meas: rotate body specific force to world, add gravity
         let a_meas  = mat_mul_vec(r, acc_body.scale(GRAVITY)).add(Vec3::new(0.0, 0.0, -GRAVITY));
+
+        // Optional conditioning, both default OFF (res_fc = res_clamp = 0) so this is
+        // byte-identical to the raw difference until deliberately enabled.
+        //
+        // Clamp and filter EACH SIDE SEPARATELY, then subtract -- the order matters. A
+        // filter applied after the subtraction cannot cancel its own lag; filtering both
+        // inputs with identical coefficients does, because the same phase shift appears on
+        // both terms. This is what NA-INDI's controller_lee.c does (vclampnorm to 10 m/s^2
+        // and an 80 Hz Butterworth on a_rpm and a_imu alike) and what our position-INDI
+        // path has never done. See docs/22 section 2e.
+        let res_clamp = unsafe { g_indi_res_clamp };
+        let (a_meas, a_model) = if res_clamp > 0.0 {
+            (clamp_norm(a_meas, res_clamp), clamp_norm(a_model, res_clamp))
+        } else {
+            (a_meas, a_model)
+        };
+
+        let res_fc = unsafe { g_indi_res_fc };
+        let (a_meas, a_model) = if res_fc > 0.0 {
+            let fdt = if dt > 1e-6 { dt } else { 0.001_f32 };
+            if !s.bw_res_init {
+                for i in 0..3 {
+                    s.bw_res_m[i].init(res_fc, fdt);
+                    s.bw_res_d[i].init(res_fc, fdt);
+                }
+                s.bw_res_m[0].seed(a_meas.x);  s.bw_res_m[1].seed(a_meas.y);  s.bw_res_m[2].seed(a_meas.z);
+                s.bw_res_d[0].seed(a_model.x); s.bw_res_d[1].seed(a_model.y); s.bw_res_d[2].seed(a_model.z);
+                s.bw_res_init = true;
+            }
+            (Vec3::new(s.bw_res_m[0].update(a_meas.x),
+                       s.bw_res_m[1].update(a_meas.y),
+                       s.bw_res_m[2].update(a_meas.z)),
+             Vec3::new(s.bw_res_d[0].update(a_model.x),
+                       s.bw_res_d[1].update(a_model.y),
+                       s.bw_res_d[2].update(a_model.z)))
+        } else {
+            (a_meas, a_model)
+        };
+
         a_meas.sub(a_model)
     } else {
         Vec3::zero()
@@ -1921,9 +1983,14 @@ pub extern "C" fn controllerOutOfTreeInit() {
     unsafe {
         let s = &mut *core::ptr::addr_of_mut!(CTRL);
         s.reset();
-        // Pre-compute INDI filter coefficients for 500 Hz nominal rate using
-        // current C globals (may already be set via param before init runs).
-        const DT: f32 = 0.002_f32;
+        // Pre-compute INDI filter coefficients. The dt used here is filt_dt_us
+        // (see traj_iface.c): default 2000 us = the 500 Hz assumption every flight
+        // to date has used. The loop actually runs at 1000 Hz, so at the default the
+        // real cutoffs sit ~3.4x higher than fc_bw claims -- deliberate, so the
+        // shipped behaviour stays flight-proven until this is changed on purpose.
+        // At init the measured dt is not known yet, so 0 ("auto") falls back to 1000 us.
+        let dt_us = g_indi_filt_dt_us;
+        let DT: f32 = if dt_us == 0 { 0.001_f32 } else { dt_us as f32 * 1e-6 };
         let fc_bw = g_indi_fc_bw;
         s.bw_x.init(fc_bw, DT);     s.bw_y.init(fc_bw, DT);     s.bw_z.init(fc_bw, DT);
         s.bw_pre_x.init(fc_bw, DT); s.bw_pre_y.init(fc_bw, DT); s.bw_pre_z.init(fc_bw, DT);
@@ -1956,10 +2023,23 @@ pub unsafe extern "C" fn controllerOutOfTree(
 ) {
     let s = &mut *core::ptr::addr_of_mut!(CTRL);
 
-    // Reinit BW filters when fc_bw changes at runtime (at most once per param write)
-    const DT_NOM: f32 = 0.002_f32;
+    // Reinit BW/notch filters when their params change at runtime. The design dt is
+    // filt_dt_us; 0 means "use the dt this loop is actually measuring". Changing
+    // filt_dt_us alone also triggers a reinit, so an operator can correct the sample
+    // rate live without touching fc_bw.
+    let filt_dt_us = g_indi_filt_dt_us;
+    // Auto mode uses the PREVIOUS tick's measured dt: this reinit block runs before dt
+    // is computed for the current tick, and a filter reinit only happens on a param
+    // change, so one tick of staleness is irrelevant.
+    let DT_NOM: f32 = if filt_dt_us == 0 {
+        if s.dt_meas > 1e-6 { s.dt_meas } else { 0.001_f32 }
+    } else {
+        filt_dt_us as f32 * 1e-6
+    };
+    let dt_changed = filt_dt_us != s.filt_dt_us_last;
+    if dt_changed { s.filt_dt_us_last = filt_dt_us; }
     let fc_bw = g_indi_fc_bw;
-    if (fc_bw - s.fc_bw_last).abs() > 0.1 {
+    if (fc_bw - s.fc_bw_last).abs() > 0.1 || dt_changed {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
         s.bw_pre_x.init(fc_bw, DT_NOM); s.bw_pre_y.init(fc_bw, DT_NOM); s.bw_pre_z.init(fc_bw, DT_NOM);
         s.bw_tau_x.init(fc_bw, DT_NOM); s.bw_tau_y.init(fc_bw, DT_NOM); s.bw_tau_z.init(fc_bw, DT_NOM);
@@ -1972,7 +2052,8 @@ pub unsafe extern "C" fn controllerOutOfTree(
     // (independent of fc_bw above -- separate params, separate change-detection).
     let notch_f0 = g_indi_notch_f0;
     let notch_bw = g_indi_notch_bw;
-    if (notch_f0 - s.notch_f0_last).abs() > 0.05 || (notch_bw - s.notch_bw_last).abs() > 0.05 {
+    if (notch_f0 - s.notch_f0_last).abs() > 0.05 || (notch_bw - s.notch_bw_last).abs() > 0.05
+        || dt_changed {
         s.notch_x.init(notch_f0, notch_bw, DT_NOM);     s.notch_y.init(notch_f0, notch_bw, DT_NOM);     s.notch_z.init(notch_f0, notch_bw, DT_NOM);
         s.notch_ref_x.init(notch_f0, notch_bw, DT_NOM); s.notch_ref_y.init(notch_f0, notch_bw, DT_NOM); s.notch_ref_z.init(notch_f0, notch_bw, DT_NOM);
         s.notch_tau_x.init(notch_f0, notch_bw, DT_NOM); s.notch_tau_y.init(notch_f0, notch_bw, DT_NOM); s.notch_tau_z.init(notch_f0, notch_bw, DT_NOM);
@@ -1983,6 +2064,8 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let dt = if s.last_tick == 0 { 0.002_f32 }
              else { (tick.wrapping_sub(s.last_tick)) as f32 * 0.001_f32 };
     s.last_tick = tick;
+    s.dt_meas = dt;
+    unsafe { indi_dt_write(dt * 1.0e6); }
 
     // Current state
     let st = &*state;

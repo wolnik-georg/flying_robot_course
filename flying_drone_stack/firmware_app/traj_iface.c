@@ -361,6 +361,47 @@ uint8_t g_indi_frame_conv = 0;  /* 0 = Faessler (frozen/flight-proven), 1 = Mell
  * do NOT leave it there until a hardware flight backs it up. */
 int8_t  g_indi_res_sign   = 1;
 
+/* ── Filter-design sample rate ──────────────────────────────────────────────
+ * filt_dt_us — the dt, in MICROSECONDS, used to compute Butterworth/notch
+ * coefficients. DEFAULT 2000 (i.e. 500 Hz), which is what every flight to date
+ * has used and is therefore the flight-proven value. IT IS ALSO WRONG.
+ *
+ * controllerOutOfTree is called from stabilizer.c's main loop, which is
+ * UNCONDITIONAL at RATE_MAIN_LOOP = 1000 Hz ("the sensor should unlock at 1kHz").
+ * There is no RATE_DO_EXECUTE(ATTITUDE_RATE) gate. So the true dt is 1000 us, and
+ * our own dt computation ((tick - last_tick) * 0.001) correctly reports 0.001 --
+ * only the filter COEFFICIENTS were hard-coded to a 500 Hz assumption.
+ *
+ * Consequences, measured 2026-09-10:
+ *   - a Butterworth asked for fc_bw = 60 Hz actually has its -3 dB point at ~206 Hz,
+ *     i.e. it filters ~3.4x less than intended;
+ *   - the stage-2 notch asked for 6.9 Hz actually sits at 13.8 Hz -- exactly 2x --
+ *     which explains why the notch aimed at the measured 6.9 Hz peak never touched it.
+ *
+ * Set 1000 to make fc_bw and notch_f0 mean what they say. Set 0 to derive it from
+ * the measured loop dt each time the filters are (re)initialised.
+ *
+ * DEFAULT LEFT AT 2000 DELIBERATELY: correcting it changes the effective filtering
+ * by ~3.4x, which is a real change in flight behaviour and must not be introduced
+ * silently before the controller-validation flights. */
+uint16_t g_indi_filt_dt_us = 2000;
+
+/* ── Residual (a_res) conditioning — force/position INDI ────────────────────
+ * NA-INDI clamps and low-pass filters BOTH sides before differencing; we take a
+ * raw instantaneous difference and feed it into f_d -> thrust_vec -> desired_rot()
+ * -> Rd, i.e. straight into the commanded attitude. See docs/22 section 2e.
+ *
+ * res_fc    — Butterworth cutoff [Hz] applied to a_meas and a_model SEPARATELY,
+ *             before the subtraction, so the filter lag cancels in the difference.
+ *             0 = off (default, today's behaviour).
+ * res_clamp — norm clamp [m/s^2] applied to each side before differencing, so one
+ *             bad sample can never reach the control law. 0 = off (default).
+ *             NA-INDI uses 10.0.
+ * Both default OFF so the shipped behaviour is byte-identical until deliberately
+ * enabled for an A/B. */
+float g_indi_res_fc    = 0.0f;
+float g_indi_res_clamp = 0.0f;
+
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
@@ -395,6 +436,9 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, omega_src,    &g_indi_omega_src)
   PARAM_ADD(PARAM_UINT8, frame_conv,   &g_indi_frame_conv)
   PARAM_ADD(PARAM_INT8,  res_sign,     &g_indi_res_sign)
+  PARAM_ADD(PARAM_UINT16, filt_dt_us,  &g_indi_filt_dt_us)
+  PARAM_ADD(PARAM_FLOAT, res_fc,       &g_indi_res_fc)
+  PARAM_ADD(PARAM_FLOAT, res_clamp,    &g_indi_res_clamp)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)
@@ -462,6 +506,10 @@ static float log_tau_x,     log_tau_y,     log_tau_z;
 static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
 static float log_a_res_x, log_a_res_y, log_a_res_z;
 static float log_e_r_x, log_e_r_y, log_e_r_z, log_e_r_norm;
+/* Loop dt in microseconds, as MEASURED by the controller each tick. Logged so the
+ * 500-vs-1000 Hz question (see filt_dt_us above) can be settled from a real flight
+ * rather than from reading stabilizer.c. Expect a flat 1000 if the loop is clean. */
+static float log_dt_us;
 
 void indi_log_write(float arx, float ary, float arz,
                     float ax,  float ay,  float az)
@@ -501,6 +549,8 @@ void indi_a_res_write(float ax, float ay, float az)
  * lib.rs, BEFORE the geometric/INDI branch split, so it is present under every ctrl_mode
  * (0-3) -- the comparison campaign needs it under all fair-set modes, not just INDI.
  * Norm is computed in Rust (libm::sqrtf) and passed through rather than recomputed here. */
+void indi_dt_write(float dt_us) { log_dt_us = dt_us; }
+
 void indi_e_r_write(float ex, float ey, float ez, float norm)
 {
     log_e_r_x = ex; log_e_r_y = ey; log_e_r_z = ez; log_e_r_norm = norm;
