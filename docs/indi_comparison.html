@@ -665,7 +665,7 @@ u     = u_geo − τ_res
     <p style="margin-bottom:0">
       The shake is a <em>phase</em> problem, so correcting the sample rate could plausibly make
       it <strong>worse</strong>. Treat it as a deliberate single-variable A/B — and note that
-      <code>fc_bw ≈ 17.5</code> reproduces today's effective filtering at the corrected rate, if
+      <code>fc_bw = 120</code> reproduces today's coefficients <em>exactly</em> at the corrected rate, if
       you want the parameter honest without changing the behaviour.
     </p>
   </div>
@@ -789,7 +789,7 @@ u     = u_geo − τ_res
       <strong>(a)</strong> pull the uSD cards;
       <strong>(b)</strong> <code>res_fc</code> + <code>res_clamp</code> on, re-fly;
       <strong>(c)</strong> separately, <code>filt_dt_us = 1000</code> — expecting to retune
-      <code>fc_bw</code>, since <code>fc_bw ≈ 17.5</code> reproduces today's filtering at the
+      <code>fc_bw</code>, since <code>fc_bw = 120</code> reproduces today's filtering at the
       corrected rate;
       <strong>(d)</strong> only then reconsider yaw.
     </p>

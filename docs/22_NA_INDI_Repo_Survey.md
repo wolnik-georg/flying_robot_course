@@ -435,7 +435,7 @@ settled from a real flight rather than from reading `stabilizer.c`.
 > lags more than a 206 Hz one: **−4.66° vs −2.33° at 6.9 Hz** (and −13.7° vs −6.8° at 20 Hz).
 > Since the shake is a phase problem, correcting `filt_dt_us` could plausibly make it *worse*.
 > Change it as a deliberate single-variable A/B, and expect to retune `fc_bw` afterwards —
-> `fc_bw ≈ 17.5` reproduces today's effective filtering at the corrected rate.
+> `fc_bw = 120` reproduces today's coefficients EXACTLY at the corrected rate.
 
 ### ⚪ #3 investigated — gyro source is NOT significant
 
