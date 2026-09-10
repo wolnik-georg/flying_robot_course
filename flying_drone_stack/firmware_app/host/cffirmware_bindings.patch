@@ -1,5 +1,5 @@
 diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
-index d4ae77ca..ec94169c 100755
+index d4ae77ca..c9d35c73 100755
 --- a/bindings/cffirmware.i
 +++ b/bindings/cffirmware.i
 @@ -1,3 +1,7 @@
@@ -10,7 +10,7 @@ index d4ae77ca..ec94169c 100755
  %module cffirmware
  %include <stdint.i>
  
-@@ -41,6 +45,97 @@
+@@ -41,6 +45,99 @@
  %include "controller_mellinger.h"
  %include "controller_brescianini.h"
  %include "controller_lee.h"
@@ -60,6 +60,7 @@ index d4ae77ca..ec94169c 100755
 +extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
 +extern int8_t g_indi_res_sign;
 +extern uint16_t g_indi_filt_dt_us;
++extern uint8_t g_indi_filt_prewarp;
 +extern float g_indi_res_fc, g_indi_res_clamp;
 +extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en;
 +extern float g_indi_j_scale, g_indi_act_tau;
@@ -100,6 +101,7 @@ index d4ae77ca..ec94169c 100755
 +extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
 +extern int8_t g_indi_res_sign;
 +extern uint16_t g_indi_filt_dt_us;
++extern uint8_t g_indi_filt_prewarp;
 +extern float g_indi_res_fc, g_indi_res_clamp;
 +extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en;
 +extern float g_indi_j_scale, g_indi_act_tau;

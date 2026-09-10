@@ -60,11 +60,28 @@ impl Butterworth2 {
     }
     fn init(&mut self, fc: f32, dt: f32) {
         const SQRT2: f32 = 1.414_213_6_f32;
-        let tau   = 1.0 / (2.0 * core::f32::consts::PI * fc);
-        let denom = tau*tau + SQRT2*tau*dt + dt*dt;
-        self.b  = dt*dt / denom;
-        self.a1 = 2.0 * (dt*dt - tau*tau) / denom;
-        self.a2 = (tau*tau - SQRT2*tau*dt + dt*dt) / denom;
+        let tau = 1.0 / (2.0 * core::f32::consts::PI * fc);
+        if unsafe { g_indi_filt_prewarp } != 0 {
+            // Pre-warped bilinear transform, K = tan(dt / 2*tau) -- the standard
+            // discretisation, and the one the rest of the Crazyflie firmware uses
+            // (utils/interface/filter.h: init_second_order_low_pass) and that NA-INDI
+            // therefore inherits. Its -3 dB point lands ON the requested fc.
+            let q = 0.7071_f32;
+            let k = libm::tanf(dt / (2.0 * tau));
+            let poly = k*k + k/q + 1.0;
+            self.b  = k*k / poly;
+            self.a1 = 2.0 * (k*k - 1.0) / poly;
+            self.a2 = (k*k - k/q + 1.0) / poly;
+        } else {
+            // Legacy, NOT pre-warped. Every flight to date used this. Its actual -3 dB
+            // sits ~1.9x above the requested fc (measured 2026-09-10: fc=60 -> 115 Hz at
+            // 1 kHz), so fc_bw has never meant what it says. Kept as the default so the
+            // shipped behaviour stays flight-proven; see indi_gains.filt_prewarp.
+            let denom = tau*tau + SQRT2*tau*dt + dt*dt;
+            self.b  = dt*dt / denom;
+            self.a1 = 2.0 * (dt*dt - tau*tau) / denom;
+            self.a2 = (tau*tau - SQRT2*tau*dt + dt*dt) / denom;
+        }
     }
     fn update(&mut self, x: f32) -> f32 {
         let y = self.b*x + 2.0*self.b*self.x1 + self.b*self.x2
@@ -663,6 +680,7 @@ struct State {
     indi_init: bool,
     fc_bw_last: f32,
     filt_dt_us_last: u16,
+    filt_prewarp_last: u8,
     dt_meas: f32,
     bw_res_m: [Butterworth2; 3],
     bw_res_d: [Butterworth2; 3],
@@ -699,6 +717,7 @@ impl State {
             indi_init: false,
             fc_bw_last: 0.0,
             filt_dt_us_last: 0xFFFF,
+            filt_prewarp_last: 0xFF,
             dt_meas: 0.001,
             bw_res_m: [Butterworth2::zero(); 3],
             bw_res_d: [Butterworth2::zero(); 3],
@@ -906,6 +925,7 @@ extern "C" {
     static mut g_indi_frame_conv: u8;
     static mut g_indi_res_sign: i8;
     static mut g_indi_filt_dt_us: u16;
+    static mut g_indi_filt_prewarp: u8;
     static mut g_indi_res_fc: f32;
     static mut g_indi_res_clamp: f32;
     static mut g_indi_notch_en: u8;
@@ -2036,8 +2056,9 @@ pub unsafe extern "C" fn controllerOutOfTree(
     } else {
         filt_dt_us as f32 * 1e-6
     };
-    let dt_changed = filt_dt_us != s.filt_dt_us_last;
-    if dt_changed { s.filt_dt_us_last = filt_dt_us; }
+    let prewarp = g_indi_filt_prewarp;
+    let dt_changed = filt_dt_us != s.filt_dt_us_last || prewarp != s.filt_prewarp_last;
+    if dt_changed { s.filt_dt_us_last = filt_dt_us; s.filt_prewarp_last = prewarp; }
     let fc_bw = g_indi_fc_bw;
     if (fc_bw - s.fc_bw_last).abs() > 0.1 || dt_changed {
         s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);

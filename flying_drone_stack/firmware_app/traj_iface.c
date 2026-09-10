@@ -386,6 +386,17 @@ int8_t  g_indi_res_sign   = 1;
  * silently before the controller-validation flights. */
 uint16_t g_indi_filt_dt_us = 2000;
 
+/* filt_prewarp — 0 (DEFAULT) = the legacy, NOT pre-warped discretisation every flight to
+ * date has used; its actual -3 dB sits ~1.9x above the requested fc (measured: fc_bw=60
+ * gives 115 Hz at 1 kHz). 1 = pre-warped bilinear, K = tan(dt/2*tau), which is the standard
+ * form, is what the rest of the Crazyflie firmware uses (utils/interface/filter.h) and what
+ * NA-INDI inherits, and whose -3 dB lands exactly on the requested fc.
+ *
+ * With filt_prewarp=1 AND filt_dt_us=1000, fc_bw finally means what it says. fc_bw = 206
+ * then reproduces today's actual filtering, so that triple is a behavioural no-op and the
+ * right place to start tuning from. Default 0 to keep the shipped behaviour flight-proven. */
+uint8_t g_indi_filt_prewarp = 0;
+
 /* ── Residual (a_res) conditioning — force/position INDI ────────────────────
  * NA-INDI clamps and low-pass filters BOTH sides before differencing; we take a
  * raw instantaneous difference and feed it into f_d -> thrust_vec -> desired_rot()
@@ -437,6 +448,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, frame_conv,   &g_indi_frame_conv)
   PARAM_ADD(PARAM_INT8,  res_sign,     &g_indi_res_sign)
   PARAM_ADD(PARAM_UINT16, filt_dt_us,  &g_indi_filt_dt_us)
+  PARAM_ADD(PARAM_UINT8, filt_prewarp, &g_indi_filt_prewarp)
   PARAM_ADD(PARAM_FLOAT, res_fc,       &g_indi_res_fc)
   PARAM_ADD(PARAM_FLOAT, res_clamp,    &g_indi_res_clamp)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
