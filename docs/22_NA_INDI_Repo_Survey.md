@@ -173,7 +173,10 @@ comparison". Their design is the alternative worth measuring against ours in C.3
 
 ---
 
-## 2c. Their INDI is a DIFFERENT FORMULATION from ours — the key to the oscillation
+## 2c. Their INDI is arranged differently from ours
+
+> **Superseded in part by §2d.** The framing below ("theirs has no state") was written before
+> the equivalence analysis and overstates the difference. Read §2d for the corrected account.
 
 Ours is **Tal & Karaman incremental**: the torque command is built *on top of the previous
 actuator state*, with memory.
@@ -293,6 +296,77 @@ The honest remaining differences are:
 **Conclusion: most likely both correct.** Ours is not wrong for being different — it is the
 textbook incremental form, which is the method under study. Theirs is the same law in DOB form
 with more conservative conditioning. The gap to close is **conditioning**, not formulation.
+
+---
+
+## 2e. Every difference, enumerated — and what to do about each
+
+Seven, not three. Established by reading both signal chains end to end (2026-09-10).
+
+| # | Difference | Ours | Theirs | Verdict |
+|---|---|---|---|---|
+| 1 | **Force residual conditioning** | **nothing at all** | clamp 10 m/s² + 80 Hz BW, both sides | **adopt** |
+| 2 | Torque residual conditioning | 60 Hz BW both sides ✓ | 40 Hz BW + clamp 0.006 Nm | consider |
+| 3 | Per-axis yaw filtering | uniform 60 Hz | 10 Hz yaw vs 40 Hz roll/pitch | consider |
+| 4 | Gyro source | `sensors->gyro` (stock LPF applied) | `gyroNoLpf` (raw), filter downstream | investigate |
+| 5 | `dt` resolution | tick counter — **1 ms quantised** | `usecTimestamp()` — µs | investigate |
+| 6 | Subtraction space | angular acceleration | torque | **keep ours** |
+| 7 | Gyroscopic term | implicit in `alpha_meas` | explicit both sides | **keep ours** |
+
+### The observation that reframes the rest
+
+**"Conditioning" is not one thing. Our ATTITUDE INDI is carefully conditioned; our POSITION
+INDI is not conditioned at all.**
+
+- **Torque side (ours):** `alpha_ref`, `alpha_meas` *and* `tau_current` all Butterworth-filtered
+  at 60 Hz, phase-matched via `filt_tau=1`. Careful work.
+- **Force side (ours):** `a_res = a_meas - a_model`, **raw**. No filter, no clamp, straight into
+  `f_d -> thrust_vec -> desired_rot() -> Rd ->` the commanded attitude.
+
+The 2026-09-09 crash was at `ctrl_mode=3`, which enables the **position** loop. The
+unconditioned path is exactly the one that was live when it diverged.
+
+### Recommendations, by value-per-risk
+
+**1 — Condition `a_res`. ADOPT.** It is a difference of two noisy estimates (accelerometer;
+RPM² model, quantised and actuator-lagged), and differencing amplifies both. Filter *both sides
+identically then subtract*, so the filter lag cancels in the difference — filtering after the
+subtraction cannot do that. Add a norm clamp so one bad sample never reaches the law. Their
+constants (10 m/s², 80 Hz) are a starting point; our airframe differs.
+
+**2 — `dt` resolution. INVESTIGATE.** `alpha_raw = d_omega/dt`, so `dt` error scales `alpha_meas`
+directly. Ours is `(tick - last_tick) * 0.001`. If the scheduler is exact (tick always +2) this
+is fine; any jitter quantises to 1 ms steps, i.e. **up to 50 % error** on that sample. Cheap
+first step: log `dt` for one flight and look at the distribution. Precedent: *"2 kHz call with
+ms tick"* was one of the five sim-fidelity bugs.
+
+**3 — Gyro source. INVESTIGATE.** They take raw gyro and filter downstream; we take the
+stock-LPF'd gyro and filter again, putting an unknown filter in series with ours. The 5–8 Hz
+shake is a *phase* problem that four investigations have not closed, and a hidden series filter
+is the kind of thing that survives four investigations.
+
+**4 — Per-axis yaw filtering. CONSIDER.** Yaw torque comes from motor drag-torque differences
+(`t2t ≈ 0.006`), an order of magnitude below roll/pitch arm torque and correspondingly noisier.
+Lower priority — our shake is roll/pitch, so this is not the cause.
+
+**5 — Their subtractive form. DO NOT ADOPT.** Algebraically identical (§2d), so it buys no
+correctness, and it would change what "INDI" denotes in the comparison. Tal & Karaman
+incremental INDI *is* the method under study. If ever wanted, add it as a **second** INDI
+variant, honestly labelled — never as a replacement.
+
+### Sequencing
+
+**Nothing before the six controller-validation flights** (`C0_FLIGHT_CARD.md` rung −1) —
+changing the controller first makes that result uninterpretable. Then: pull the uSD cards,
+apply #1, re-test, and only then #2–#4 **one at a time**.
+
+⚠️ **Caveat.** All of the above is reasoning from their code, not a controlled experiment on our
+airframe. Their platform is a standard CF2.1 (J ≈ 16.6e-6, ~30 g), their disturbance is a slung
+payload, their gains do not transfer. These are well-motivated hypotheses to test individually,
+not a repair kit to apply wholesale.
+
+**Visual companion:** `docs/indi_comparison.html` — published at
+<https://claude.ai/code/artifact/45a5f215-c23a-4a5b-8d66-45855c403fe0>
 
 ---
 
