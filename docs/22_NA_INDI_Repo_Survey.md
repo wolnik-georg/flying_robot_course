@@ -8,6 +8,12 @@ Incremental Nonlinear Dynamic Inversion for Quadrotors with and without Slung Pa
 **Location:** `~/Desktop/NA-INDI` · `github.com/Tupryk/NA-INDI` · HEAD `00302a2`
 ("updated data analysis scripts and added online learning") · 691 MB, 864 files.
 
+**Visual companion:** `docs/indi_comparison.html` →
+<https://claude.ai/code/artifact/45a5f215-c23a-4a5b-8d66-45855c403fe0>
+
+**Headline:** their INDI and ours are **the same control law written two ways** (§2d). What
+actually separates them is *conditioning* (§2e) — and our position-INDI path has none at all.
+
 **Status of this survey:** read-only reconnaissance, 2026-09-10. Nothing in their repo was
 modified. Their firmware branch was cloned separately, read-only, to `~/Desktop/NA-INDI-firmware`
 — see §2b. **`~/Desktop/NA-INDI-firmware` is THEIRS; `~/Desktop/crazyflie-firmware` is the one
@@ -173,23 +179,24 @@ comparison". Their design is the alternative worth measuring against ours in C.3
 
 ---
 
-## 2c. Their INDI is arranged differently from ours
+## 2c. How the two INDIs are written
 
-> **Superseded in part by §2d.** The framing below ("theirs has no state") was written before
-> the equivalence analysis and overstates the difference. Read §2d for the corrected account.
+> **Read §2d first if you have not.** The two forms are *algebraically equivalent* — this
+> section is about how each is written, not about a difference in method.
 
-Ours is **Tal & Karaman incremental**: the torque command is built *on top of the previous
-actuator state*, with memory.
+Ours is **Tal & Karaman incremental** — it differences *angular accelerations* and multiplies
+the result by J:
 
 ```rust
 // ours, lib.rs
 let alpha_err = alpha_ref_filt.sub(alpha_meas);        // kr=2400, kw=170  [1/s^2]
 let delta_tau = J * alpha_err;
 let tau = clamp_torque(tau_current.add(delta_tau));    // increment on tau_current
-s.tau_prev = tau;                                      // <-- MEMORY
+s.tau_prev = tau;                                      // fallback source only, see below
 ```
 
-Theirs is **memoryless residual subtraction** bolted onto an unchanged geometric law:
+Theirs is the **disturbance-observer arrangement** — it differences *torques*, having applied
+J to each side first, and subtracts the result from an unchanged geometric law:
 
 ```c
 // theirs, controller_lee.c
@@ -197,17 +204,21 @@ indi_moments = vsub(tau_imu_filtered, tau_rpm_filtered);   // measured - model t
 self->u = vsub2(self->u, indi_moments, u_nn);              // geometric torque - residual
 ```
 
-`self->u` is the *ordinary Lee geometric torque* computed from `KR = {0.007,0.007,0.01}` and
+`self->u` is the *ordinary Lee geometric torque* from `KR = {0.007,0.007,0.01}` and
 `Komega = {0.002,0.002,0.002}` — **in Nm, the same unit system as our `kr_geo`/`kw_geo`**.
-Enabling their INDI does **not** change the attitude gains or the control structure at all;
-it only subtracts an estimated unmodelled torque. There is no `tau_prev`, no actuator-lag
-model, no increment.
+Enabling their INDI does not change any attitude gain; it only subtracts an estimated
+unmodelled torque.
 
-**⚠️ Qualified by §2d below — read that before acting on this.** The two forms turn out to be
-*algebraically equivalent*, and at our shipped defaults (`act_tau = 0`, RPM present) our
-`tau_current` comes straight from RPM just as their `tau_rpm` does, so the `tau_prev`/`tau_act`
-memory is a **fallback path, not the normal one**. The genuine differences are filter
-placement, per-axis yaw filtering, and clamping — not the presence or absence of state.
+**⚠️ Retracted claim.** An earlier draft of this section argued that ours "carries actuator
+memory (`tau_prev`, `tau_act`) which can limit-cycle, while theirs has none", and offered that
+as the explanation for the 5–8 Hz brushless shake. **That was wrong.** At our shipped defaults
+— `act_tau = 0` with RPM present — `tau_current` comes **straight from RPM**, exactly as their
+`tau_rpm` does. The `tau_prev`/`tau_act` path is a *fallback*, used only when RPM is
+unavailable. We also already phase-match via `filt_tau = 1`. The actuator-memory story does
+not explain the shake, and should not be repeated.
+
+What genuinely differs is enumerated in §2e: where the subtraction happens, how each side is
+filtered and clamped, and the gyro and `dt` sources.
 
 Their signal conditioning, for reference:
 
@@ -226,7 +237,9 @@ is filtered ~4× harder on purpose. That is a design choice worth noting, not a 
 
 ---
 
-## 2d. Are the two INDIs both correct? — an equivalence analysis
+## 2d. They are the same law — an equivalence analysis
+
+> **This is the load-bearing section.** Everything in §2c and §2e is downstream of it.
 
 Worth settling, because the instinct is "theirs is published with a PhD student and a
 supervisor, so if they differ, ours must be wrong." **The algebra says both are correct.**
@@ -431,10 +444,10 @@ the repo matches the published method exactly.
 
 ## 5. What this repo is useful for, concretely
 
-1. **A published counter-design for the exact bug we are stuck on.** Their working law uses
-   our "fixed" sign, but conditions the residual first (clamp + 80 Hz Butterworth on both
-   sides) and folds the NN into the model so INDI sees only the leftover. That is a concrete,
-   flight-proven alternative to test — see §2b.
+1. **A flight-proven reference for conditioning the residual.** Their law uses our "fixed"
+   sign, but clamps and filters the residual on both sides before differencing, and folds the
+   NN into the model so INDI sees only the leftover. Since the two laws are *identical* (§2d),
+   their conditioning is directly transferable without adopting their arrangement — see §2e.
 2. **Their 2×2 is a template for our comparison table.** Same ablation structure, already
    validated in a published paper. Worth aligning our reporting to it where honest.
 3. **`model_to_c_conversion.py`'s numerical C-vs-PyTorch check** — independent confirmation
