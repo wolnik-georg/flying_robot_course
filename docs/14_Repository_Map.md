@@ -23,6 +23,7 @@ be committed where, and which file to open for a given task. Status lives in
 | `~/Desktop/flying_robot_course` | **This repo.** Rust stack, onboard controller, training pipeline, thesis docs, experiments | **Yes** |
 | `~/Desktop/crazyswarm2` | ROS 2 flight layer: flight scripts, formation library, simulator, robot configs | **Yes** |
 | `~/Desktop/crazyflie-firmware` | Bitcraze upstream firmware | **No — deliberately not forked.** Local edits stay local and are recorded in [`LOCAL_MODIFICATIONS.md`](../flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md) |
+| `~/Desktop/NA-INDI` | **Third-party reference, added 2026-09-10.** The authors' own code for Cobo-Briesewitz et al. (2026), received from the first author. Python training/analysis side only — the onboard controller is in an unfetched submodule. Survey: [`22`](22_NA_INDI_Repo_Survey.md) | **No — read-only.** Never modify, never push. Same rule as `crazyflie-firmware`: anything we need to run it belongs in *our* repo as a script or patch |
 
 All work is on **`main`** in the two repos we own. Everything was merged there on 2026-08-22 and
 thirteen stale branches were deleted — notes pointing at `brushless-port` or
@@ -152,6 +153,9 @@ wrong produces a `ModuleNotFoundError`, which is at least loud.
 - **Commit and push only when asked.** Never add a `Co-Authored-By:` or AI-attribution trailer.
 - **Never delete files** — move them (`archive/` exists for this).
 - **Do not fork `crazyflie-firmware`.**
+- **Do not modify or push `NA-INDI`.** It is a third party's published code, and its value to
+  us is that it is *theirs*, unaltered. Read it, cite it, compare against it; if running it
+  needs changes, those live in our repo. See [`22`](22_NA_INDI_Repo_Survey.md).
 - **Brushless attitude gains (KR/KW): changeable ONLY inside C.0, then frozen.** The original
   rule was a blanket "do not change"; it was scoped on 2026-08-23 — an attitude retune to remove
   the remaining oscillation is explicitly allowed during the Hardware Gate. **After the freeze
