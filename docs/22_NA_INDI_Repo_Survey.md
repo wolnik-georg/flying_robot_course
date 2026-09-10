@@ -154,6 +154,56 @@ comparison". Their design is the alternative worth measuring against ours in C.3
 
 ---
 
+## 2c. Their INDI is a DIFFERENT FORMULATION from ours — the key to the oscillation
+
+Ours is **Tal & Karaman incremental**: the torque command is built *on top of the previous
+actuator state*, with memory.
+
+```rust
+// ours, lib.rs
+let alpha_err = alpha_ref_filt.sub(alpha_meas);        // kr=2400, kw=170  [1/s^2]
+let delta_tau = J * alpha_err;
+let tau = clamp_torque(tau_current.add(delta_tau));    // increment on tau_current
+s.tau_prev = tau;                                      // <-- MEMORY
+```
+
+Theirs is **memoryless residual subtraction** bolted onto an unchanged geometric law:
+
+```c
+// theirs, controller_lee.c
+indi_moments = vsub(tau_imu_filtered, tau_rpm_filtered);   // measured - model torque
+self->u = vsub2(self->u, indi_moments, u_nn);              // geometric torque - residual
+```
+
+`self->u` is the *ordinary Lee geometric torque* computed from `KR = {0.007,0.007,0.01}` and
+`Komega = {0.002,0.002,0.002}` — **in Nm, the same unit system as our `kr_geo`/`kw_geo`**.
+Enabling their INDI does **not** change the attitude gains or the control structure at all;
+it only subtracts an estimated unmodelled torque. There is no `tau_prev`, no actuator-lag
+model, no increment.
+
+**Why this matters for our 5–8 Hz brushless shake:** an incremental law with actuator memory
+(`tau_prev`, `tau_act`, `act_tau`) has internal dynamics that can limit-cycle when the assumed
+actuator lag mismatches the real one — which is exactly the standing hypothesis in
+`investigation_indi_oscillation_2026-07-21.md`. Their form has no such state and structurally
+cannot do that. **It is a strictly more conservative way to get INDI-style residual rejection,
+and it is published and flying.**
+
+Their signal conditioning, for reference:
+
+| Stage | Clamp | Filter |
+|---|---|---|
+| `a_rpm`, `a_imu` (force) | `vclampnorm(·, 10)` m/s² | Butterworth-2 @ **80 Hz** |
+| `tau_rpm`, `tau_imu` (moment) | `vclampnorm(·, 0.006)` Nm | Butterworth-2 @ **40 Hz** |
+
+Angular acceleration is differenced from **`sensors->gyroNoLpf`** (raw gyro), then the
+*torque* is filtered — i.e. they filter after converting to torque, not before differentiating.
+
+⚠️ **Apparent bug in their code:** the `tau` filters are initialised with `for (int8_t i = 0;
+i < 2; i++)` while the `acc` filters use `i < 3`. The **z-axis torque filter is never
+initialised**. Either a typo or deliberate (yaw INDI unused); do not copy it uncritically.
+
+---
+
 ## 3. The residual they learn — identical formalism to ours
 
 `LMCE/residual_calculation.py`:
