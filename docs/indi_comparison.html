@@ -181,8 +181,9 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   <span class="eyebrow">Master's thesis · controller comparison · 10 September 2026</span>
   <h1>Two Ways to Build INDI</h1>
   <p class="lede">
-    What the NA-INDI authors actually implemented, how it differs from ours, and why those
-    differences bear directly on the two problems currently blocking the lab track.
+    Their INDI and ours turn out to be <strong>the same control law, written two different
+    ways</strong>. What actually separates them is conditioning — and that is what bears on the
+    two problems currently blocking the lab track.
   </p>
 </header>
 
@@ -285,9 +286,53 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">03</span><h2>The difference in plain terms</h2>
-    <span class="tagline tag-osc">read this first</span></div>
-  <p>Before the equations — the two controllers ask genuinely different questions.</p>
+  <div class="sec-head"><span class="sec-n">03</span><h2>They are the same law</h2>
+    <span class="tagline tag-des">worked, not assumed</span></div>
+  <p>
+    The instinct is: <em>“theirs is published with a supervisor and a PhD student, so if ours
+    differs, ours must be wrong.”</em> The algebra says otherwise. Start from the rigid body and
+    reduce both.
+  </p>
+
+  <div class="derive">
+    <p class="lbl">Rigid body</p>
+    <div class="step">J·ω̇ = τ_motors + τ_dist − ω×Jω</div>
+
+    <p class="lbl">Ours — substitute τ_current = τ_motors (from RPM) and α_meas = J⁻¹(τ_motors + τ_dist − ω×Jω)</p>
+    <div class="step">τ_cmd = τ_current + J·(α_ref − α_meas)
+      = τ_motors + J·α_ref − (τ_motors + τ_dist − ω×Jω)
+      = J·α_ref + ω×Jω − τ_dist</div>
+
+    <p class="lbl">Theirs — note τ_imu = J·α − (Jω×ω) = J·α + ω×Jω, which <em>is</em> τ_motors + τ_dist</p>
+    <div class="step">τ_res = τ_imu − τ_rpm = τ_dist
+u     = u_geo − τ_res
+      = J·α_ref + ω×Jω − τ_dist</div>
+
+    <div class="same">τ_cmd = J·α_ref + ω×Jω − τ_dist &nbsp;&nbsp;— identical</div>
+  </div>
+
+  <p>
+    Ours cancels the gyroscopic term <strong>implicitly</strong> (it is already inside
+    <code>α_meas</code>); theirs handles it <strong>explicitly</strong> on both sides. This is the
+    known <strong>INDI ↔ disturbance-observer correspondence</strong>. Ours is faithful to Tal &amp;
+    Karaman's <code>u = u₀ + G⁻¹(ν − α_meas)</code>; theirs is the DOB arrangement of the same law.
+  </p>
+
+  <div class="call note">
+    <p style="margin:0"><strong>So neither is wrong.</strong> The equivalence is exact for
+    <em>unfiltered</em> signals. Everything that actually separates them appears once filters,
+    clamps and finite sample rates are introduced — which is what the next section enumerates.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-n">04</span><h2>The two arrangements, in plain terms</h2>
+    <span class="tagline tag-des">same law, two framings</span></div>
+  <p>
+    Having established they reduce to the same expression, here is why they nonetheless
+    <em>look</em> like different algorithms — each is written as if answering a different
+    question.
+  </p>
 
   <div class="plain">
     <div class="pcard o">
@@ -296,8 +341,8 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
       <div class="formula">τ<sub>new</sub> = τ<sub>current</sub> + J·(α<sub>wanted</sub> − α<sub>measured</sub>)</div>
       <p style="font-size:.93rem;margin:0">
         It reads the torque it is currently producing, from RPM, then <strong>adds a correction
-        on top</strong>. Next cycle it starts from that new value. A <strong>running total</strong>,
-        carrying <code>tau_prev</code>, <code>tau_act</code> and an assumed actuator lag.
+        on top</strong>. Because <code>α_meas</code> already contains the disturbance, that
+        correction implicitly cancels it — which is why this reduces to the same expression.
       </p>
       <p class="analogy">
         Like steering by <strong>“turn the wheel a bit more than it is now.”</strong> You must
@@ -355,32 +400,33 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">04</span><h2>The same difference, formally</h2>
-    <span class="tagline tag-osc">bears on the oscillation</span></div>
+  <div class="sec-head"><span class="sec-n">05</span><h2>The two arrangements, formally</h2>
+    <span class="tagline tag-des">two arrangements</span></div>
   <p>
-    This is the structural heart of it. Both reject an unmodelled torque, but they are not the
-    same algorithm.
+    The same two framings as equations. Both compute
+    <code>J·α_ref + ω×Jω − τ_dist</code> — they differ in <em>which quantities are named and
+    filtered on the way there</em>, not in what they produce.
   </p>
 
   <div class="eqrow">
     <div class="eqbox o">
       <h3><span class="who o">Ours</span> Incremental</h3>
-      <p class="sub">Tal &amp; Karaman. Builds on the previous actuator state.</p>
+      <p class="sub">Tal &amp; Karaman. Differences angular accelerations.</p>
       <div class="eq">α<sub>ref</sub> = α<sub>des</sub> − k<sub>R</sub>·e<sub>R</sub> − k<sub>ω</sub>·e<sub>ω</sub>
 <br>Δτ &nbsp;&nbsp;= J·(α<sub>ref,f</sub> − α<sub>meas</sub>)
 <br>τ &nbsp;&nbsp;&nbsp;= <span class="hl-o">τ<sub>current</sub></span> + Δτ
-<br>τ<sub>prev</sub> ← τ &nbsp;&nbsp;<em>← memory</em></div>
+<br><em>τ<sub>current</sub> from RPM</em></div>
       <p class="eqnote">Gains <code>kr=2400</code>, <code>kw=170</code> in <strong>[1/s²]</strong>
       — an <em>angular acceleration</em>, only becoming torque via J.</p>
     </div>
 
     <div class="eqbox t">
       <h3><span class="who t">Theirs</span> Subtractive</h3>
-      <p class="sub">A residual term bolted onto an unchanged geometric law.</p>
+      <p class="sub">Disturbance-observer form. Differences torques.</p>
       <div class="eq">τ<sub>res</sub> = τ<sub>imu,f</sub> − τ<sub>rpm,f</sub>
 <br>u &nbsp;&nbsp;&nbsp;= <span class="hl-t">u<sub>geo</sub></span> − τ<sub>res</sub> − u<sub>nn</sub>
 <br>
-<br><em>no memory, no increment</em></div>
+<br><em>τ<sub>rpm</sub> from RPM</em></div>
       <p class="eqnote">Gains <code>KR={0.007,0.007,0.01}</code>, <code>Kω={0.002,…}</code> in
       <strong>[Nm]</strong> — the same unit system as our <code>kr_geo</code>/<code>kw_geo</code>.</p>
     </div>
@@ -430,61 +476,21 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
       as a fallback. At the shipped defaults it reads τ_current from RPM, exactly as theirs does.</p>
   </div>
 
-  <div class="call osc">
-    <h3>Why this bears on the 5–8 Hz brushless shake</h3>
-    <p>
-      An incremental law carries internal state — <code>tau_prev</code>, <code>tau_act</code>,
-      and an <em>assumed</em> actuator lag. When that assumed lag mismatches the real one, the
-      loop has its own dynamics and can limit-cycle. That is precisely the standing hypothesis
-      in <code>investigation_indi_oscillation_2026-07-21.md</code>, where τ = 44 ms was measured
-      against 71 ms and never resolved.
-    </p>
-    <p>
-      <strong>Their formulation has no such state and structurally cannot do it.</strong>
-      Enabling their INDI does not change a single attitude gain — the geometric law runs
-      untouched and a residual is subtracted from its output. It is a strictly more
-      conservative route to the same goal, and it is published and flying.
-    </p>
-  </div>
-</section>
-
-<section>
-  <div class="sec-head"><span class="sec-n">05</span><h2>They are the same law</h2>
-    <span class="tagline tag-des">worked, not assumed</span></div>
-  <p>
-    The instinct is: <em>“theirs is published with a supervisor and a PhD student, so if ours
-    differs, ours must be wrong.”</em> The algebra says otherwise. Start from the rigid body and
-    reduce both.
-  </p>
-
-  <div class="derive">
-    <p class="lbl">Rigid body</p>
-    <div class="step">J·ω̇ = τ_motors + τ_dist − ω×Jω</div>
-
-    <p class="lbl">Ours — substitute τ_current = τ_motors (from RPM) and α_meas = J⁻¹(τ_motors + τ_dist − ω×Jω)</p>
-    <div class="step">τ_cmd = τ_current + J·(α_ref − α_meas)
-      = τ_motors + J·α_ref − (τ_motors + τ_dist − ω×Jω)
-      = J·α_ref + ω×Jω − τ_dist</div>
-
-    <p class="lbl">Theirs — note τ_imu = J·α − (Jω×ω) = J·α + ω×Jω, which <em>is</em> τ_motors + τ_dist</p>
-    <div class="step">τ_res = τ_imu − τ_rpm = τ_dist
-u     = u_geo − τ_res
-      = J·α_ref + ω×Jω − τ_dist</div>
-
-    <div class="same">τ_cmd = J·α_ref + ω×Jω − τ_dist &nbsp;&nbsp;— identical</div>
-  </div>
-
-  <p>
-    Ours cancels the gyroscopic term <strong>implicitly</strong> (it is already inside
-    <code>α_meas</code>); theirs handles it <strong>explicitly</strong> on both sides. This is the
-    known <strong>INDI ↔ disturbance-observer correspondence</strong>. Ours is faithful to Tal &amp;
-    Karaman's <code>u = u₀ + G⁻¹(ν − α_meas)</code>; theirs is the DOB arrangement of the same law.
-  </p>
-
   <div class="call note">
-    <p style="margin:0"><strong>So neither is wrong.</strong> The equivalence is exact for
-    <em>unfiltered</em> signals. Everything that actually separates them appears once filters,
-    clamps and finite sample rates are introduced — which is what the next section enumerates.</p>
+    <h3>A correction worth stating plainly</h3>
+    <p>
+      An earlier version of this page argued that ours carries actuator memory
+      (<code>tau_prev</code>, <code>tau_act</code>) which can limit-cycle, while theirs has none.
+      <strong>That was overstated.</strong> At our shipped defaults — <code>act_tau = 0</code>
+      with RPM present — <code>τ_current</code> comes straight from RPM, exactly as their
+      <code>τ_rpm</code> does. The memory path is a <em>fallback</em>, used only when RPM is
+      unavailable. We also already phase-match via <code>filt_tau = 1</code>.
+    </p>
+    <p>
+      So the actuator-memory story is <strong>not</strong> the explanation for the 5–8 Hz shake.
+      What remains genuinely different is where the subtraction happens, how each side is
+      filtered and clamped, and the gyro and <code>dt</code> sources — all enumerated next.
+    </p>
   </div>
 </section>
 
