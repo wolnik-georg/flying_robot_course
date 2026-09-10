@@ -114,6 +114,34 @@ td.mono,th.mono{font-family:var(--mono);font-size:.85rem}
 .tag-osc{background:var(--ours-soft);color:var(--ours)}
 .tag-des{background:var(--theirs-soft);color:var(--theirs)}
 
+/* reachable-combination table */
+.pill{display:inline-block;font-family:var(--mono);font-size:.64rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:2px;white-space:nowrap}
+.pill-paper{background:var(--sunk);color:var(--ink-2);border:1px solid var(--rule)}
+.pill-extra{background:var(--theirs-soft);color:var(--theirs)}
+tr.useful td{background:var(--theirs-soft)}
+
+/* plain-language two-up */
+.plain{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:0 0 22px}
+@media(max-width:720px){.plain{grid-template-columns:1fr}}
+.pcard{border:1px solid var(--rule);border-top:3px solid;background:var(--surface);padding:18px 20px}
+.pcard.o{border-top-color:var(--ours)} .pcard.t{border-top-color:var(--theirs)}
+.pcard .ask{font-family:var(--cond);font-size:1.06rem;font-weight:700;margin:10px 0 12px;
+  line-height:1.35;text-wrap:balance}
+.pcard.o .ask{color:var(--ours)} .pcard.t .ask{color:var(--theirs)}
+.pcard .formula{font-family:var(--mono);font-size:.9rem;background:var(--sunk);
+  padding:11px 13px;border-radius:3px;margin:0 0 14px;overflow-x:auto;white-space:nowrap}
+.analogy{border-left:3px solid var(--rule);padding:2px 0 2px 14px;margin:14px 0 0;
+  font-size:.9rem;color:var(--ink-2);font-style:italic}
+.analogy strong{font-style:normal;color:var(--ink)}
+.follows{counter-reset:fl;list-style:none;padding:0;margin:0 0 20px}
+.follows li{counter-increment:fl;position:relative;padding:0 0 16px 46px;margin:0}
+.follows li::before{content:counter(fl);position:absolute;left:0;top:0;width:28px;height:28px;
+  display:grid;place-items:center;font-family:var(--mono);font-size:.8rem;font-weight:600;
+  background:var(--sunk);color:var(--ink-2);border:1px solid var(--rule);border-radius:50%}
+.follows h4{font-family:var(--cond);font-size:1rem;font-weight:700;margin:3px 0 4px}
+.follows p{margin:0;font-size:.93rem;color:var(--ink-2);max-width:64ch}
+
 .note{font-size:.88rem;color:var(--muted);max-width:66ch}
 footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
   font-family:var(--mono);font-size:.73rem;color:var(--muted);line-height:1.8}
@@ -172,6 +200,34 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
     <strong>6 outputs</strong> (3 force, 3 torque) and ~19 inputs including motor PWM ratios —
     so it substitutes <em>commanded PWM</em> for <em>measured RPM</em>, not nothing at all.</p>
   </div>
+
+  <h3 style="font-size:1.02rem;margin:30px 0 8px">What else the bitmasks reach</h3>
+  <p class="note" style="margin-bottom:14px">
+    Two bits on <code>indi</code> and three on <code>use_nn</code> give <strong>32
+    combinations</strong>. Most are degenerate. These are the ones that mean something — and
+    the paper reports only the first four.
+  </p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th class="mono">indi</th><th class="mono">use_nn</th><th>What you get</th><th></th></tr></thead>
+    <tbody>
+      <tr><td class="mono">0</td><td class="mono">0</td><td><strong>Lee</strong> — plain geometric</td><td><span class="pill pill-paper">paper</span></td></tr>
+      <tr><td class="mono">3</td><td class="mono">0</td><td><strong>INDI</strong> — full RPM-based residual rejection</td><td><span class="pill pill-paper">paper</span></td></tr>
+      <tr><td class="mono">0</td><td class="mono">3 · 7</td><td><strong>IL-NDI</strong> — learned residual, no RPM at runtime</td><td><span class="pill pill-paper">paper</span></td></tr>
+      <tr><td class="mono">3</td><td class="mono">3 · 7</td><td><strong>NA-INDI</strong> — network predicts, INDI cleans the leftover</td><td><span class="pill pill-paper">paper</span></td></tr>
+      <tr class="useful"><td class="mono">1</td><td class="mono">0</td><td>force / position INDI <strong>only</strong> — <em>their H0 partition</em></td><td><span class="pill pill-extra">useful to us</span></td></tr>
+      <tr class="useful"><td class="mono">2</td><td class="mono">0</td><td>moment / attitude INDI <strong>only</strong> — <em>their H0 partition</em></td><td><span class="pill pill-extra">useful to us</span></td></tr>
+      <tr class="useful"><td class="mono">0</td><td class="mono">2</td><td>network on the <strong>vertical force only</strong> — <em>essentially the downwash axis</em></td><td><span class="pill pill-extra">useful to us</span></td></tr>
+      <tr><td class="mono">0</td><td class="mono">4</td><td>network on <strong>torque only</strong></td><td><span class="pill pill-extra">extra</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">
+    <code>indi=1</code> versus <code>indi=2</code> is <strong>exactly our H0 partition</strong>
+    (<code>ctrl_mode=1</code> vs <code>2</code>) — they built the same diagnostic split
+    independently. And <code>use_nn=2</code> isolates the vertical axis, which is where
+    downwash lives. Both are reachable on their firmware without touching a line of code.
+  </p>
 </section>
 
 <section>
@@ -199,7 +255,76 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">03</span><h2>Two different formulations</h2>
+  <div class="sec-head"><span class="sec-n">03</span><h2>The difference in plain terms</h2>
+    <span class="tagline tag-osc">read this first</span></div>
+  <p>Before the equations — the two controllers ask genuinely different questions.</p>
+
+  <div class="plain">
+    <div class="pcard o">
+      <span class="who o">Ours</span>
+      <p class="ask">“What torque am I producing right now? Adjust from there.”</p>
+      <div class="formula">τ<sub>new</sub> = τ<sub>current</sub> + J·(α<sub>wanted</sub> − α<sub>measured</sub>)</div>
+      <p style="font-size:.93rem;margin:0">
+        It reads the torque it is currently producing, from RPM, then <strong>adds a correction
+        on top</strong>. Next cycle it starts from that new value. A <strong>running total</strong>,
+        carrying <code>tau_prev</code>, <code>tau_act</code> and an assumed actuator lag.
+      </p>
+      <p class="analogy">
+        Like steering by <strong>“turn the wheel a bit more than it is now.”</strong> You must
+        know where the wheel actually is — and if that belief is wrong or late, the error
+        accumulates.
+      </p>
+    </div>
+
+    <div class="pcard t">
+      <span class="who t">Theirs</span>
+      <p class="ask">“What should the torque be? Then subtract what I can't explain.”</p>
+      <div class="formula">u = u<sub>geometric</sub> − (τ<sub>measured</sub> − τ<sub>predicted</sub>)</div>
+      <p style="font-size:.93rem;margin:0">
+        It computes the ordinary geometric torque, then <strong>subtracts the mismatch</strong>
+        between measured and modelled torque. <strong>Fresh every cycle, nothing remembered.</strong>
+      </p>
+      <p class="analogy">
+        Like <strong>“point the wheel at the target, then correct for the crosswind you just
+        measured.”</strong> A bad estimate gives a bad correction once — it cannot pile up.
+      </p>
+    </div>
+  </div>
+
+  <h3 style="font-size:1.05rem;margin:26px 0 14px">Three things follow from that</h3>
+  <ol class="follows">
+    <li>
+      <h4>Memory</h4>
+      <p>Ours carries internal state, so it has its own dynamics and can limit-cycle when the
+      assumed actuator lag mismatches reality — τ = 44 ms measured against 71 ms in our own
+      investigation, never resolved. Theirs has no such state and structurally cannot.</p>
+    </li>
+    <li>
+      <h4>What “turning INDI on” actually does</h4>
+      <p>Ours <strong>replaces the entire inner loop</strong> and switches to different gains in
+      <em>different units</em> — <code>kr=2400</code> [1/s²] instead of <code>kr_geo=0.010</code>
+      [Nm]. Theirs <strong>changes nothing</strong>: the geometric law runs untouched with the
+      same <code>KR=0.007</code>, and one correction term is subtracted from its output.</p>
+    </li>
+    <li>
+      <h4>Conditioning</h4>
+      <p>Ours differences raw signals. Theirs clamps <em>and</em> low-pass filters <strong>both
+      sides before subtracting</strong> — 80 Hz on force, 40 Hz on torque. Our residual reaches
+      the commanded attitude unfiltered.</p>
+    </li>
+  </ol>
+
+  <div class="call note">
+    <p style="margin:0"><strong>The bottom line.</strong> Theirs is the <em>conservative</em>
+    version: keep the working controller, subtract a measured error. Ours is the
+    <em>aggressive</em> version: rebuild the torque command from the actuator state every cycle.
+    Ours is what the Tal &amp; Karaman method <em>is</em> — that is the method under study, not
+    an accident. It is also why ours can misbehave in ways theirs cannot.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-n">04</span><h2>The same difference, formally</h2>
     <span class="tagline tag-osc">bears on the oscillation</span></div>
   <p>
     This is the structural heart of it. Both reject an unmodelled torque, but they are not the
@@ -293,7 +418,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">04</span><h2>The difference matrix</h2></div>
+  <div class="sec-head"><span class="sec-n">05</span><h2>The difference matrix</h2></div>
   <div class="scroll">
   <table>
     <thead><tr>
@@ -363,7 +488,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-n">05</span><h2>What it suggests</h2></div>
+  <div class="sec-head"><span class="sec-n">06</span><h2>What it suggests</h2></div>
 
   <div class="call crash">
     <h3>For the crash — the sign was probably never the problem</h3>
