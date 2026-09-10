@@ -1,0 +1,312 @@
+<title>Controller Validation Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F4F5F3; --surface:#FFFFFF; --sunk:#ECEEEA;
+  --ink:#16191A; --ink-2:#414947; --muted:#6E7773; --rule:#D8DBD6;
+  --accent:#1F5C4D; --accent-soft:#E3EDE9;
+  --stop:#B4341C; --stop-soft:#FAE7E2;
+  --term-bg:#1B211F; --term-ink:#E6EDE9; --term-dim:#8FA096;
+  --cond:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+    --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+    --accent:#4FB39A; --accent-soft:#13302A;
+    --stop:#E4694C; --stop-soft:#33201B;
+    --term-bg:#0A0E0D; --term-ink:#E6EDE9; --term-dim:#7C8C83;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+  --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+  --accent:#4FB39A; --accent-soft:#13302A;
+  --stop:#E4694C; --stop-soft:#33201B;
+  --term-bg:#0A0E0D; --term-ink:#E6EDE9; --term-dim:#7C8C83;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:780px; margin:0 auto; padding:clamp(22px,4vw,48px) clamp(16px,4vw,32px) 72px}
+h1,h2,h3{font-family:var(--cond); letter-spacing:-.01em; text-wrap:balance}
+p{margin:0 0 .8em}
+code{font-family:var(--mono); font-size:.88em}
+
+/* header */
+header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:30px}
+.eyebrow{
+  font-family:var(--mono); font-size:.68rem; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+h1{font-size:clamp(1.9rem,5.5vw,2.7rem); font-weight:700; margin:.15em 0 .3em; line-height:1.05}
+.lede{color:var(--ink-2); font-size:1.02rem; max-width:56ch; margin:0}
+.lede strong{color:var(--ink)}
+
+/* stage */
+.stage{margin:0 0 34px}
+.stage-head{
+  display:flex; align-items:center; gap:12px; margin-bottom:14px;
+  padding-bottom:9px; border-bottom:1px solid var(--rule);
+}
+.num{
+  flex:none; width:30px; height:30px; display:grid; place-items:center;
+  background:var(--accent); color:var(--ground); border-radius:50%;
+  font-family:var(--mono); font-size:.85rem; font-weight:600;
+}
+.stage-head h2{font-size:1.18rem; font-weight:700; margin:0; flex:1}
+.tag{
+  font-family:var(--mono); font-size:.7rem; font-weight:500; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--accent); background:var(--accent-soft);
+  padding:4px 9px; border-radius:2px; white-space:nowrap;
+}
+
+/* callout */
+.flag{
+  background:var(--stop-soft); border-left:4px solid var(--stop);
+  padding:14px 16px; margin:0 0 18px; font-size:.95rem;
+}
+.flag strong{color:var(--stop)}
+.flag p:last-child{margin-bottom:0}
+
+/* terminal */
+.term{
+  position:relative; background:var(--term-bg); color:var(--term-ink);
+  border-radius:4px; padding:14px 46px 14px 16px; margin:0 0 16px;
+  font-family:var(--mono); font-size:.83rem; line-height:1.75;
+  overflow-x:auto; white-space:pre;
+}
+.term .c{color:var(--term-dim)}
+.copy{
+  position:absolute; top:8px; right:8px; width:28px; height:28px;
+  display:grid; place-items:center; cursor:pointer;
+  background:transparent; border:1px solid var(--term-dim); border-radius:3px;
+  color:var(--term-dim); font-family:var(--mono); font-size:.7rem; line-height:1;
+  transition:color .15s,border-color .15s;
+}
+.copy:hover,.copy:focus-visible{color:var(--term-ink); border-color:var(--term-ink)}
+.copy.ok{color:#5FCFA8; border-color:#5FCFA8}
+
+/* tables */
+.scroll{overflow-x:auto; margin:0 0 18px}
+table{border-collapse:collapse; width:100%; font-size:.92rem; min-width:min(100%,420px)}
+th{
+  font-family:var(--cond); text-align:left; font-size:.72rem; font-weight:700;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+  padding:0 12px 7px 0; border-bottom:1.5px solid var(--ink);
+}
+td{padding:9px 12px 9px 0; border-bottom:1px solid var(--rule); vertical-align:top}
+tr:last-child td{border-bottom:1.5px solid var(--ink)}
+td.val{font-family:var(--mono); font-weight:600; color:var(--accent); white-space:nowrap}
+td.k{font-family:var(--mono); font-size:.86rem}
+
+/* abort */
+.abort{border:1px solid var(--stop); border-left-width:4px; background:var(--surface); padding:18px 20px; margin:0 0 34px}
+.abort h2{color:var(--stop); font-size:1.1rem; margin:0 0 12px}
+.abort table{font-size:.9rem}
+.abort th{border-bottom-color:var(--stop)}
+.abort tr:last-child td{border-bottom:none}
+.abort td:first-child{font-weight:600; white-space:nowrap; padding-right:18px}
+
+/* verdict */
+.verdict{display:flex; gap:10px; flex-wrap:wrap; margin:0 0 16px}
+.v{
+  flex:1 1 200px; padding:12px 14px; border-radius:3px;
+  font-size:.92rem; border:1px solid;
+}
+.v.pass{background:var(--accent-soft); border-color:var(--accent); color:var(--accent)}
+.v.fail{background:var(--stop-soft); border-color:var(--stop); color:var(--stop)}
+.v b{font-family:var(--mono); font-size:.85rem; display:block; margin-bottom:2px}
+
+/* tick sheet */
+.ticks{width:100%; border-collapse:collapse; font-size:.92rem}
+.ticks th{padding-bottom:7px}
+.ticks td{padding:0; border-bottom:1px solid var(--rule)}
+.ticks label{
+  display:flex; align-items:center; gap:12px; padding:13px 8px 13px 0;
+  cursor:pointer; user-select:none;
+}
+.ticks input{
+  flex:none; width:19px; height:19px; accent-color:var(--accent); cursor:pointer; margin:0;
+}
+.ticks .mode{
+  font-family:var(--mono); font-size:.76rem; padding:2px 7px; border-radius:2px;
+  background:var(--sunk); color:var(--ink-2); white-space:nowrap;
+}
+.ticks .traj{font-family:var(--mono); font-size:.88rem}
+.ticks input:checked ~ .traj,
+.ticks input:checked ~ .mode{opacity:.45; text-decoration:line-through}
+
+.note{font-size:.87rem; color:var(--muted); max-width:62ch}
+footer{
+  border-top:1px solid var(--rule); padding-top:16px; margin-top:36px;
+  font-family:var(--mono); font-size:.73rem; color:var(--muted); line-height:1.7;
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Crazyflie 2.1 brushless · 10 September 2026</span>
+  <h1>Controller Validation Card</h1>
+  <p class="lede">
+    Six flights, one check after each, <strong>stop on the first failure</strong>. On 09-09 six
+    hover flights crashed under both controllers; three root causes were found and fixed and
+    <strong>none has been re-flown</strong>. Nothing past this card runs until all six pass.
+  </p>
+</header>
+
+<div class="flag">
+  <p><strong>Before you fly anything — pull the uSD cards</strong> from the 09-07 and 09-09
+  flights. If <code>a_res</code> is on them it may settle which of three simultaneous changes
+  actually crashed INDI, at the desk, for free. <strong>It is lost the moment the cards are
+  reused.</strong></p>
+</div>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">0</span><h2>Flash, build, bench-check</h2><span class="tag">once</span></div>
+
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button>cd ~/Desktop/flying_robot_course && git pull
+cd flying_drone_stack/firmware_app && make cload
+
+cd ~/Desktop/crazyswarm2 && git pull
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install --packages-select crazyflie crazyflie_examples
+. install/local_setup.bash</div>
+
+  <p class="note" style="margin-bottom:12px">cfclient → Parameters. Every row must match before a propeller turns.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Parameter</th><th>Must read</th></tr></thead>
+    <tbody>
+      <tr><td class="k">indi_gains.res_sign</td><td class="val">1</td></tr>
+      <tr><td class="k">indi_gains.frame_conv</td><td class="val">0</td></tr>
+      <tr><td class="k">indi_gains.kr_geo</td><td class="val">0.010</td></tr>
+      <tr><td class="k">indi_gains.clamp_en</td><td class="val">11</td></tr>
+      <tr><td class="k">stabilizer.controller</td><td class="val">6</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">1</span><h2>Geometric</h2><span class="tag">ctrl_mode: 0</span></div>
+
+  <p class="note" style="margin-bottom:14px">
+    Set <code>all.firmware_params.indi_gains.ctrl_mode: 0</code> in
+    <code>~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml</code>, then rebuild and launch.
+  </p>
+
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button>cd ~/Desktop/crazyswarm2
+colcon build --symlink-install --packages-select crazyflie && . install/local_setup.bash
+
+<span class="c"># terminal 1 — leave running</span>
+ros2 launch crazyflie launch.py</div>
+
+  <p class="note" style="margin-bottom:14px">
+    Confirm at takeoff:
+    <code>position gains: {'kp_xy': 40.0, ...} &lt;- GEOMETRIC_POS_GAINS</code>
+  </p>
+
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button><span class="c"># terminal 2 — one at a time</span>
+ros2 run crazyflie_examples simple_flight -- --trajectory hover   --duration 15
+ros2 run crazyflie_examples simple_flight -- --trajectory circle  --kt 0.1
+ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</div>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">2</span><h2>Full INDI</h2><span class="tag">ctrl_mode: 3</span></div>
+
+  <p class="note" style="margin-bottom:14px">
+    Same edit with <code>ctrl_mode: 3</code>, rebuild <code>crazyflie</code>,
+    <strong>Ctrl-C and relaunch the server</strong> (params push at connect), confirm
+    <code>ctrl_mode</code> reads 3. Expect <code>pos_gains 64/5</code> here — correct, that is
+    INDI's locked block.
+  </p>
+
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button>ros2 run crazyflie_examples simple_flight -- --trajectory hover   --duration 15
+ros2 run crazyflie_examples simple_flight -- --trajectory circle  --kt 0.1
+ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</div>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">3</span><h2>Check — after every single flight</h2><span class="tag">no exceptions</span></div>
+
+  <div class="term"><button class="copy" aria-label="Copy">⧉</button>cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py</div>
+
+  <div class="verdict">
+    <div class="v pass"><b>PASS</b>bounded, std single digits → next flight</div>
+    <div class="v fail"><b>FAIL</b>GROWING, or std &gt; 10 → stop, do not fly the next one</div>
+  </div>
+</section>
+
+<div class="abort">
+  <h2>Abort rules</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Symptom</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Amplitude visibly growing</td><td>Kill it — that is the failure mode under test</td></tr>
+      <tr><td>Geometric hover fails</td><td>Diagnosis is wrong; stop the session</td></tr>
+      <tr><td>INDI fails, geometric passed</td><td>Cause pre-dates every fix → H0 partition: <code>ctrl_mode=2</code>, then <code>1</code></td></tr>
+      <tr><td>Log ends above 0.20 m</td><td>Landing fix did not take</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">✓</span><h2>Tick sheet</h2><span class="tag">saved locally</span></div>
+  <table class="ticks">
+    <thead><tr><th colspan="2">Flight</th></tr></thead>
+    <tbody>
+      <tr><td><label><input type="checkbox" data-k="f1"><span class="mode">mode 0</span><span class="traj">hover</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f2"><span class="mode">mode 0</span><span class="traj">circle &nbsp;kt 0.1</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f3"><span class="mode">mode 0</span><span class="traj">figure8 kt 0.008</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">mode 3</span><span class="traj">hover</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">mode 3</span><span class="traj">circle &nbsp;kt 0.1</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">mode 3</span><span class="traj">figure8 kt 0.008</span></label></td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:14px">
+    All six pass → gain retuning, then multi-drone. Not before. Push the logs when done:
+    <code>git add Controls/logs && git commit && git push</code>
+  </p>
+</section>
+
+<footer>
+  docs/FLIGHT_CARD_VALIDATION.md (this card) · docs/lab_sessions/2026-09-09.md (why) ·<br>
+  docs/REVIEW_FINDINGS_2026-09-09.md (audit) · docs/C0_FLIGHT_CARD.md (rung −1, then the rest)
+</footer>
+
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var t = btn.parentNode.cloneNode(true);
+    t.querySelector('.copy').remove();
+    navigator.clipboard.writeText(t.textContent.trim()).then(function(){
+      btn.textContent = '✓'; btn.classList.add('ok');
+      setTimeout(function(){ btn.textContent = '⧉'; btn.classList.remove('ok'); }, 1400);
+    });
+  });
+});
+document.querySelectorAll('.ticks input').forEach(function(box){
+  var k = 'cvc-' + box.dataset.k;
+  try { box.checked = localStorage.getItem(k) === '1'; } catch(e){}
+  box.addEventListener('change', function(){
+    try { localStorage.setItem(k, box.checked ? '1' : '0'); } catch(e){}
+  });
+});
+</script>
