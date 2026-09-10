@@ -91,10 +91,16 @@ All runtime params; no reflash between them.
 | b | `filt_prewarp=1`, `filt_dt_us=1000`, `fc_bw=206` | **deliberate no-op** — same filtering, but `fc_bw` now means what it says |
 | c | `fc_bw < 206` | only after (b); tuning is meaningful for the first time |
 | d | `notch_en=1`, `notch_f0=6.9` | only after (b). The notch sat at 13.8 Hz — **it has never actually been tested** |
+| e | `kr=987`, `kw=109` → then `632`/`87` | **the shake-band test.** Our ω_n is **7.80 Hz**, the shake is 6.3–7.9 Hz. Moves ω_n to 5.0 then 4.0 Hz at the same ζ=1.74. Shake follows → it's the attitude loop. Shake stays → `kr` exonerated. Expect worse RMSE — that's the trade |
 
 ⚠️ **Do not copy NA-INDI's frequency numbers.** Their filters carry the same 2× sample-rate
 error *and* a different discretisation, so their "80 Hz" is neither our 80 nor their own.
 Copy the *ratios*, not the labels.
+
+⚠️ **Same for gains.** Converted to a common basis ours is **8.2× stiffer** than theirs
+(0.0575 vs 0.0070 Nm/rad), ω_n **7.80 Hz** vs their 3.28 Hz. A different airframe justifies
+some of that, not 8×. Ours were tuned for figure-8 tracking against the hover limit; theirs to
+be comfortable. See `docs/22` §2h.
 
 ## 3 · After every single flight
 
@@ -129,5 +135,7 @@ cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py
 | 4 | stage 1 | INDI · hover, restored only | | | | |
 | 5 | stage 2a | res_fc 80 + res_clamp 10 | | | | |
 | 6 | stage 2b | prewarp/dt/fc_bw=206 (no-op) | | | | |
+| 7 | stage 2e | kr=987 kw=109 (ω_n 5 Hz) | | | | |
+| 8 | stage 2e | kr=632 kw=87 (ω_n 4 Hz) | | | | |
 
 Push the logs when done — `git add Controls/logs && git commit && git push`.

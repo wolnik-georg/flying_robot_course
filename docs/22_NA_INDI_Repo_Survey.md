@@ -494,6 +494,76 @@ does (see §2f), not by matching labels.
 
 ---
 
+## 2h. Gain comparison — our attitude loop sits ON the shake band
+
+The two gain sets are in **different unit systems**, so the raw numbers are not comparable:
+ours (`kr`, `kw`) produce an *angular acceleration* `[1/s²]`, theirs (`KR`, `Komega`) produce
+*torque* `[Nm]` directly. Converted to a common basis:
+
+| | Ours (`kr=2400`, `kw=170`, J=23.951e-6) | Theirs (`KR=0.007`, `Kω=0.002`, J=16.572e-6) | Ratio |
+|---|---|---|---|
+| Torque stiffness [Nm/rad] | 0.05748 | 0.00700 | **8.2×** |
+| Torque damping [Nm·s/rad] | 0.00407 | 0.00200 | **2.0×** |
+| Ang-accel stiffness [1/s²] | 2400.0 | 422.4 | 5.7× |
+| Ang-accel damping [1/s] | 170.0 | 120.7 | 1.4× |
+
+As a second-order attitude loop:
+
+| | ω_n | ζ |
+|---|---|---|
+| **Ours** | **7.80 Hz** | 1.74 |
+| Theirs | 3.28 Hz | 2.94 |
+
+### ⚠️ The observation
+
+**Our attitude-loop natural frequency is 7.80 Hz. The documented shake is 6.3–7.9 Hz, with
+logged peaks at 6.9 Hz and 7.22 Hz.**
+
+And the whole tuning ladder lived inside that band:
+
+| `kr` | ω_n | What the notes recorded |
+|---|---|---|
+| 1500 | 6.16 Hz | RMSE 4.2 cm |
+| 1800 | 6.75 Hz | RMSE 3.8 |
+| 2000 | 7.12 Hz | RMSE 3.3 |
+| 2200 | 7.47 Hz | RMSE 3.1 |
+| **2400** | **7.80 Hz** | RMSE 2.9 — **locked** |
+| 2600 | 8.12 Hz | *"hover confirmed worse"* |
+| 2800 | 8.42 Hz | *"hover ceiling, climb halted"* |
+
+The ladder was tuned by raising `kr` until hover degraded — the behaviour of walking into a
+resonance. It is also consistent with the standing puzzle that **the shake persists regardless
+of `kw`** (`kw` barely moves ω_n; `kr` sets it).
+
+### Should the gains match? No — but not by 8×
+
+A different airframe (41 g brushless, J=23.95e-6 vs their ~30 g CF2.1, J=16.57e-6) justifies
+*some* difference. It does not justify 8×. The honest reading: **ours were tuned for figure-8
+tracking right up against the hover stability limit; theirs were tuned to be comfortable.**
+Different objectives — and ours landed ω_n on top of the shake band.
+
+### The test — stage 2 item (e)
+
+**Strong coincidence, not proof.** ζ=1.74 is overdamped, so a linear loop would not self-
+oscillate; it needs the actuator/filter/EKF phase lag to tip it. But ω_n in the observed band
+is where that margin is thinnest.
+
+Lower `kr` and see whether the shake **moves with it**:
+
+| Target ω_n | `kr` | `kw` for ζ≈1.74 |
+|---|---|---|
+| 5.0 Hz | 987 | 109 |
+| 4.0 Hz | 632 | 87 |
+| 3.5 Hz | 484 | 77 |
+
+- Shake frequency **tracks `kr`** → it is the attitude loop, and the gains are the cause.
+- Shake **stays at ~6.9 Hz** → structural/actuator, and `kr` is exonerated. Either outcome
+  closes a question four investigations have left open.
+
+Expect tracking RMSE to worsen — that is the trade being measured, not a regression.
+
+---
+
 ## 3. The residual they learn — identical formalism to ours
 
 `LMCE/residual_calculation.py`:

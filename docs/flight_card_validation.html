@@ -283,13 +283,19 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
         <td>Only after (b). Now the number is honest, so tuning it is meaningful for the first time.</td></tr>
       <tr><td class="val">d</td><td class="k">notch_en = 1<br>notch_f0 = 6.9</td>
         <td>Only after (b). The notch previously sat at 13.8 Hz — <strong>it has never actually been tested against the 6.9 Hz peak.</strong></td></tr>
+      <tr><td class="val">e</td><td class="k">kr = 987, kw = 109<br><span style="color:var(--muted)">then 632/87</span></td>
+        <td><strong>The shake-band test.</strong> Our attitude loop's ω<sub>n</sub> is <strong>7.80 Hz</strong> and the shake is 6.3–7.9 Hz. Lowering <code>kr</code> moves ω<sub>n</sub> to 5.0 then 4.0 Hz at the same ζ=1.74. If the shake <em>follows</em>, it is the attitude loop. If it stays at ~6.9 Hz, <code>kr</code> is exonerated. Expect worse tracking RMSE — that is the trade being measured.</td></tr>
     </tbody>
   </table>
   </div>
   <div class="flag" style="background:var(--accent-soft);border-left-color:var(--accent)">
-    <p style="margin:0"><strong>Do not copy NA-INDI's numbers directly.</strong> Their filters
-    carry the same 2× sample-rate error <em>and</em> use a different discretisation, so their
-    "80 Hz" is neither our 80 nor their own. Copy the <em>ratios</em>, not the labels.</p>
+    <p><strong>Do not copy NA-INDI's numbers directly.</strong> Their filters carry the same
+    2× sample-rate error <em>and</em> use a different discretisation, so their "80 Hz" is
+    neither our 80 nor their own. Copy the <em>ratios</em>, not the labels.</p>
+    <p style="margin-bottom:0"><strong>Same for the gains.</strong> Converted to a common basis
+    ours is <strong>8.2× stiffer</strong> than theirs (0.0575 vs 0.0070 Nm/rad) — ω<sub>n</sub>
+    7.80 Hz against their 3.28 Hz. A different airframe justifies some of that, not 8×. Ours
+    were tuned for figure-8 tracking against the hover limit; theirs to be comfortable.</p>
   </div>
 </section>
 
@@ -330,6 +336,8 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
       <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">stage 1</span><span class="traj">INDI · hover — restored config only</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">stage 2a</span><span class="traj">res_fc 80 + res_clamp 10</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">stage 2b</span><span class="traj">prewarp 1 · dt 1000 · fc_bw 206 (no-op)</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f7"><span class="mode">stage 2e</span><span class="traj">kr 987 · kw 109 — ω_n 5.0 Hz</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f8"><span class="mode">stage 2e</span><span class="traj">kr 632 · kw 87 — ω_n 4.0 Hz</span></label></td></tr>
     </tbody>
   </table>
   <p class="note" style="margin-top:14px">
