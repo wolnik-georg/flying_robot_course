@@ -460,6 +460,40 @@ the sample-rate question is settled on hardware.
 
 ---
 
+## 2g. ⚠️ NA-INDI has the SAME sample-rate bug — do not copy their numbers
+
+Checked 2026-09-10 while considering "just use their filter frequencies".
+
+Their `controller()` is called from *their* `stabilizer.c` **ungated at 1000 Hz** (line 504,
+no `RATE_DO_EXECUTE`), exactly like ours — while `controller_lee.c` initialises every filter
+with `1.0 / ATTITUDE_RATE` = **1/500 = 0.002**. **They have the identical dt mismatch.**
+
+| Their stage | Nominal | Actual −3 dB |
+|---|---|---|
+| force (`a_rpm`, `a_imu`) | 80 Hz | **160 Hz** |
+| torque roll/pitch | 40 Hz | **80 Hz** |
+| torque yaw | 10 Hz | **20 Hz** |
+
+Everything published in the paper was flown at **2× the stated cutoffs**.
+
+### And their filter is not the same implementation as ours
+
+| | Ours | Theirs |
+|---|---|---|
+| Form | direct algebraic, **no pre-warping** | `K = tan(dt/2τ)` — **pre-warped bilinear** |
+| Accuracy at design rate | warps ~1.9× high | accurate |
+| Total error at 1 kHz | **2× (dt) × ~1.9× (warp)** | **2× (dt) only** |
+
+**Consequence: setting our `fc_bw = 80` does NOT reproduce their force filter.** Two different
+discretisations plus two different error stacks. Their numbers describe *their* filter, not a
+target for ours.
+
+**What to copy instead is the ratio, not the number** — force filtered ~2× looser than torque,
+yaw ~4× tighter than roll/pitch — and set our own values by measuring what our filter actually
+does (see §2f), not by matching labels.
+
+---
+
 ## 3. The residual they learn — identical formalism to ours
 
 `LMCE/residual_calculation.py`:
