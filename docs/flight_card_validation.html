@@ -158,7 +158,8 @@ footer{
     went 88°→7° through the stage-2e ladder, a real crash (stage 2d, notch) was found and
     reverted, and a genuine trajectory-export bug was caught and fixed along the way — but no
     configuration reached a clean pass on both attitude and position hold together. Results
-    below; next-session plan at the bottom of the page.
+    below. <strong>Tomorrow: H0 partition to isolate the shake, then the first-ever 2-drone
+    flight</strong> — plan with exact commands near the bottom of the page.
   </p>
 </header>
 
@@ -348,22 +349,77 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">→</span><h2>Next session</h2><span class="tag">not attempted yet</span></div>
-  <p>Three things queued, in priority order:</p>
-  <ol style="padding-left:1.2em;margin:0 0 .8em">
-    <li><strong>Root-cause the stage 2d notch crash offline</strong> before any further live
-      test — a 2026-07-29 fix was believed to have resolved the only known cause, and it did
-      not. <code>notch_en</code> must stay 0 until this is understood.</li>
-    <li><strong>Run the card's own H0 partition</strong> (<code>ctrl_mode=2</code>, then
-      <code>1</code>) — never actually run this session. Four straight coordinated gain
-      attempts on full INDI (<code>ctrl_mode=3</code>) all converged on the same
-      trajectory-tracking shake without a clean pass; isolating position-INDI-only vs
-      attitude-INDI-only is the natural next diagnostic, not another gain guess on full INDI.</li>
-    <li><strong>Second brushless drone</strong> — being prepped in parallel for the first
-      2-drone flight. Gains are NOT frozen yet, so this should wait for a real stage-2e
-      conclusion (or a deliberate decision to proceed with the current locked config's known
-      trajectory-tracking limitation).</li>
+  <div class="stage-head"><span class="num">1</span><h2>Tomorrow, part 1 — H0 partition</h2><span class="tag">not attempted yet</span></div>
+  <p>The card's own diagnostic for exactly this situation, never actually run this session.
+  Four straight coordinated gain attempts on full INDI (<code>ctrl_mode=3</code>) all converged
+  on the same trajectory-tracking shake without a clean pass — isolating which sub-loop carries
+  it is the next real diagnostic, not another gain guess on full INDI. Root-cause the stage 2d
+  notch crash offline in parallel, whenever — separate, doesn't block this.</p>
+  <table>
+    <tr><td class="k">config at start</td><td class="val">confirmed-clean locked point: <code>kr=2400</code>/<code>kw=170</code>, <code>pos_gains</code> 64/5/48/7, <code>notch_en=0</code></td></tr>
+  </table>
+  <ol style="padding-left:1.2em;margin:14px 0 .8em">
+    <li>Edit <code>crazyflies.yaml</code> → <code>indi_gains.ctrl_mode: 2</code> (attitude INDI
+      only, position loop is geometric). Rebuild <code>crazyflie</code>, relaunch the server,
+      confirm in cfclient.</li>
+    <li>Fly hover → <code>check_flight.py</code> → if clean, fly circle and figure8 at kt=0.05,
+      same as stage 1. Compare peak roll/pitch against the full-INDI baseline (27.5°/18.1°
+      circle, 17.7°/14.1° figure8) — a clean or meaningfully better result here means the shake
+      lives in the <strong>position</strong>-INDI sub-loop, not attitude.</li>
+    <li>Repeat with <code>ctrl_mode: 1</code> (position INDI only, attitude is geometric). Same
+      three flights, same comparison — a clean result here instead means the shake lives in the
+      <strong>attitude</strong>-INDI sub-loop.</li>
+    <li>Abort rules are the same as every other flight today: kill on visible growth,
+      <code>check_flight.py</code> after every single one, don't fly the next config on a FAIL.</li>
   </ol>
+  <p class="note">If neither partition is clean, the shake needs both sub-loops together and
+  the H0 test itself becomes the useful negative result — proceed to part 2 either way, on
+  whichever controller (geometric, or INDI if a partition turned out clean) is confirmed-good.</p>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">2</span><h2>Tomorrow, part 2 — first 2-drone flight</h2><span class="tag">not attempted yet</span></div>
+  <p><strong>uSD logging — do this first, both drones, before anything else.</strong> Radio
+  cannot carry two drones' worth of data without dropping packets, and dropped packets in a
+  residual-force dataset are silently corrupt. uSD is the actual dataset; radio is only for
+  live monitoring.</p>
+  <ol style="padding-left:1.2em;margin:14px 0 .8em">
+    <li>Confirm the uSD deck is physically installed on <strong>both</strong> drones.</li>
+    <li>Copy the config to <strong>both</strong> cards, named exactly <code>config.txt</code>:
+      <code>cp flying_drone_stack/tools/usd_thesis_config.txt /media/&lt;sd&gt;/config.txt</code></li>
+    <li>Power-cycle each drone, then confirm on each:
+      <code>python3 flying_drone_stack/tools/check_usd_deck.py</code></li>
+    <li>This logs 39/40 variables at 500Hz per drone — position/velocity, attitude, gyro/accel,
+      <strong><code>indi.a_res_*</code></strong> (the thesis signal), INDI internals, tracking
+      error, motor effort. Already deliberately chosen and documented in
+      <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code> — no changes needed,
+      just make sure both cards actually have it installed before flying.</li>
+  </ol>
+  <p><strong>Second drone setup in <code>crazyflies.yaml</code></strong> — still placeholder as
+  of today, must be filled in before this works:</p>
+  <table>
+    <tr><td class="k">cf_second.enabled</td><td class="val">false → true</td></tr>
+    <tr><td class="k">cf_second.uri</td><td class="val">placeholder <code>...E7E8</code> → the second drone's real radio address</td></tr>
+    <tr><td class="k">cf_second.initial_position</td><td class="val">placeholder → its real physical takeoff spot</td></tr>
+  </table>
+  <p style="margin-top:14px"><strong>First flight — safety-first, rigid formation, geometric
+  controller</strong> (fully validated all session; INDI multi-drone waits for part 1's
+  result):</p>
+  <div class="term"><span class="copy">⧉</span>ros2 run crazyflie_examples formation_flight -- --formation vertical --trajectory hover --brushless --dry-run</div>
+  <p class="note">Run with <code>--dry-run</code> first — prints the plan without flying,
+  confirms both drones/positions/formation geometry look right. Drop the flag to actually fly.
+  <code>vertical</code> is the downwash-coupled case (one drone in the other's wash) — exactly
+  what tomorrow's data collection needs. <code>usd.logging</code> is toggled automatically for
+  every drone in the formation by the script, no extra flags needed.</p>
+  <p>Once hover is confirmed safe: progress to a real trajectory (matches the thesis's C.1
+  data-collection requirement — needs a scenario that excites <em>lateral</em> relative motion,
+  not just vertical, so plan for the formation library's A4/A7 scenarios once this rigid-offset
+  check is solid, not only the vertical hover here).</p>
+  <p class="note">After each flight: pull both uSD cards,
+  <code>python3 flying_drone_stack/tools/decode_usd_log.py &lt;file&gt;</code> per drone, then
+  <code>python3 experiments/analysis/run_analysis.py</code> for the RMSE/a_res numbers and
+  <code>~/.pyenv/versions/flying_robots/bin/python experiments/analysis/plot_flight.py</code>
+  for the dashboard PNG (needs the pyenv, not system Python).</p>
 </section>
 
 <section class="stage">

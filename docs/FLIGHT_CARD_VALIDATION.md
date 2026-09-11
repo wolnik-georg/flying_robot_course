@@ -155,6 +155,66 @@ Push the logs when done — `git add Controls/logs && git commit && git push`.
 
 ---
 
+## Tomorrow, part 1 — H0 partition
+
+Never actually run this session. Config at start: the confirmed-clean locked point
+(`kr=2400`/`kw=170`, `pos_gains` 64/5/48/7, `notch_en=0`). Root-cause the stage 2d notch crash
+offline in parallel, whenever — separate, doesn't block this.
+
+1. `crazyflies.yaml` → `indi_gains.ctrl_mode: 2` (attitude INDI only, position loop geometric).
+   Rebuild `crazyflie`, relaunch server, confirm in cfclient.
+2. Fly hover → `check_flight.py` → if clean, circle + figure8 at kt=0.05. Compare peak
+   roll/pitch against the full-INDI baseline (27.5°/18.1° circle, 17.7°/14.1° figure8) — clean
+   or meaningfully better here means the shake is in **position**-INDI.
+3. Repeat with `ctrl_mode: 1` (position INDI only, attitude geometric). Clean here instead
+   means the shake is in **attitude**-INDI.
+4. Same abort rules as every flight this session: kill on visible growth, `check_flight.py`
+   after every single one, don't fly the next config on a FAIL.
+
+If neither partition is clean, that's itself a useful negative result — proceed to part 2 on
+whichever controller (geometric, or INDI if a partition came back clean) is confirmed-good.
+
+## Tomorrow, part 2 — first 2-drone flight
+
+**uSD logging first, both drones, before anything else.** Radio can't carry two drones' worth
+of data without dropping packets, and dropped packets in a residual-force dataset are silently
+corrupt training data. uSD is the actual dataset; radio is only for live monitoring.
+
+1. Confirm the uSD deck is physically installed on **both** drones.
+2. Copy the config to **both** cards, named exactly `config.txt`:
+   `cp flying_drone_stack/tools/usd_thesis_config.txt /media/<sd>/config.txt`
+3. Power-cycle each drone, confirm on each: `python3 flying_drone_stack/tools/check_usd_deck.py`
+4. Logs 39/40 vars at 500Hz per drone — position/velocity, attitude, gyro/accel, **`indi.a_res_*`**
+   (the thesis signal), INDI internals, tracking error, motor effort. Already deliberately
+   chosen and documented (`flying_drone_stack/tools/README_usd_thesis_logging.md`) — no config
+   changes needed, just confirm both cards actually have it installed.
+
+**Second drone setup in `crazyflies.yaml`** — still placeholder as of today:
+`cf_second.enabled: false→true`, `cf_second.uri` (real radio address), `cf_second.initial_position`
+(real physical takeoff spot).
+
+**First flight — safety-first, rigid formation, geometric controller** (fully validated all
+session; INDI multi-drone waits for part 1's result):
+
+```bash
+ros2 run crazyflie_examples formation_flight -- --formation vertical --trajectory hover --brushless --dry-run
+```
+
+Run with `--dry-run` first (prints the plan, doesn't fly), drop the flag once it looks right.
+`vertical` is the downwash-coupled case — one drone in the other's wash, exactly what tomorrow's
+data collection needs. `usd.logging` is toggled automatically for every drone in the formation.
+
+Once hover is confirmed safe, progress toward the thesis's actual C.1 data-collection
+requirement — a scenario that excites **lateral** relative motion, not just vertical (formation
+library's A4/A7), not only this rigid-offset vertical check.
+
+After each flight: pull both uSD cards, `python3 flying_drone_stack/tools/decode_usd_log.py <file>`
+per drone, then `python3 experiments/analysis/run_analysis.py` for RMSE/a_res numbers and
+`~/.pyenv/versions/flying_robots/bin/python experiments/analysis/plot_flight.py` for the
+dashboard PNG (needs the pyenv, not system Python).
+
+---
+
 ## DShot RPM — NOT today
 
 `indi_gains.rpm_source` stays at **0 (deck)** through both stage 1 and stage 2. DShot is a
