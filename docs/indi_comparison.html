@@ -190,7 +190,7 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Master's thesis · controller comparison · 10 September 2026</span>
+  <span class="eyebrow">Master's thesis · controller comparison · 10 September 2026 · results updated 11 September</span>
   <h1>Two Ways to Build INDI</h1>
   <p class="lede">
     Their INDI and ours turn out to be <strong>the same control law, written two different
@@ -670,6 +670,24 @@ u     = u_geo − τ_res
     </p>
   </div>
 
+  <div class="call crash">
+    <h3>🔴 Result, 11 September: correcting the sample rate is confirmed a real no-op — and then
+    corrected <code>fc_bw</code> down made things worse</h3>
+    <p>
+      The predicted no-op point was actually <strong>206 Hz</strong>, not 120 — flown and
+      confirmed byte-identical to the shipped behaviour (hover std 1.13° vs 2a's 1.12°, shake
+      on circle/figure8 unchanged in magnitude). Good validation that the corrected-rate math
+      here was right.
+    </p>
+    <p style="margin-bottom:0">
+      Lowering it from there (<code>fc_bw=100</code>) is exactly the "not a free fix" this
+      call-out warned about, and it played out that way: hover regressed from clean to a
+      growing 17.3° peak, and circle's peak roll nearly tripled (27.5°→69.2°). Reverted.
+      <strong>This system's real operating point needs looser filtering, not tighter</strong> —
+      consistent with the extra-phase-lag table above, not a contradiction of it.
+    </p>
+  </div>
+
   <div class="call note">
     <h3>⚪ Negative result — the gyro-source hypothesis is not promising</h3>
     <p style="margin-bottom:0">
@@ -694,11 +712,11 @@ u     = u_geo − τ_res
 
     <div class="rec yes">
       <div class="rec-head"><h3>1 · Condition <code>a_res</code> before it enters the loop</h3>
-        <span class="st st-done">✓ implemented — default off</span></div>
-      <p><code>indi_gains.res_fc</code> (Butterworth cutoff, Hz) and
-      <code>indi_gains.res_clamp</code> (norm clamp, m/s²), both <strong>0 = off</strong>. Verified
-      active when set, and correctly inert at <code>ctrl_mode=0</code> where <code>a_res</code>
-      is unreachable. <strong>Ready as a one-param A/B after the validation flights.</strong></p>
+        <span class="st st-done">✓ flown 11 September — clean, no regression</span></div>
+      <p><code>indi_gains.res_fc=80</code>, <code>indi_gains.res_clamp=10</code> flown for the
+      first time: INDI hover PASS, matching the stage-1 baseline exactly. No effect either way
+      on the trajectory-tracking shake (expected — this conditions the residual feed, not the
+      attitude loop). Left enabled through the rest of the session.</p>
       <p class="why">
         <code>a_res</code> is a difference of two noisy estimates — accelerometer (noisy) minus
         RPM² model (quantised, actuator-lagged). Differencing amplifies both. Unfiltered, that
@@ -717,11 +735,13 @@ u     = u_geo − τ_res
 
     <div class="rec maybe">
       <div class="rec-head"><h3>2 · <code>dt</code> resolution</h3>
-        <span class="st st-found">⚑ investigated — found a bug</span></div>
+        <span class="st st-done">✓ flown 11 September — confirmed genuine no-op at fc_bw=206</span></div>
       <p><strong>Not the quantisation I expected — something bigger.</strong> The loop runs at
       1000 Hz and our <code>dt</code> is correct; the <em>filter coefficients</em> were wrong.
-      See §08. <code>indi_gains.filt_dt_us</code> (default 2000 = flown behaviour) and log var
-      <code>indi.dt_us</code> added. <strong>Correcting it adds phase lag — not a free fix.</strong></p>
+      See §08. <code>filt_dt_us=1000</code> + <code>filt_prewarp=1</code> + <code>fc_bw=206</code>
+      flown and confirmed byte-identical in behaviour to the old 60 Hz/legacy-timing config
+      (hover 1.13° vs 1.12° std). Tuning <code>fc_bw</code> down from there made things worse,
+      not better — see the call-out above.</p>
       <p class="why">
         <code>α_raw = Δω / dt</code>, so <strong>any error in <code>dt</code> scales
         <code>α_meas</code> directly</strong>. Ours is <code>(tick − last_tick) × 0.001</code> —
@@ -785,22 +805,46 @@ u     = u_geo − τ_res
       four <code>ctrl_mode</code>s.
     </p>
     <p>
-      Order afterwards, <strong>one variable at a time</strong>:
-      <strong>(a)</strong> pull the uSD cards;
-      <strong>(b)</strong> <code>res_fc</code> + <code>res_clamp</code> on, re-fly;
-      <strong>(c)</strong> separately, <code>filt_dt_us = 1000</code> — expecting to retune
-      <code>fc_bw</code>, since <code>fc_bw = 120</code> reproduces today's filtering at the
-      corrected rate;
-      <strong>(d)</strong> reconsider yaw;
-      <strong>(e)</strong> the shake-band test — our attitude loop's ω<sub>n</sub> is
-      <strong>7.80 Hz</strong> and the shake is 6.3–7.9 Hz, so drop <code>kr</code> 2400→987→632
-      (ω<sub>n</sub> 5.0→4.0 Hz, ζ held at 1.74) and see whether the shake follows.
+      Order run on 11 September, one variable at a time: uSD cards pulled; <code>res_fc</code> +
+      <code>res_clamp</code> on, flown clean; <code>filt_dt_us=1000</code> +
+      <code>fc_bw=206</code>, confirmed genuine no-op; <code>fc_bw</code> tuned down, made
+      things worse, reverted; the notch (<code>notch_f0=6.9</code>, the actual corrected
+      frequency) flown for the very first time — <strong>and it crashed</strong> (stable to
+      6.4s, then 88.7°/66.6° divergence within 0.7s, altitude collapse, real impact). Root
+      cause not understood; parked, disabled pending offline analysis.
+    </p>
+    <p>
+      Then <strong>the shake-band test</strong> — our attitude loop's ω<sub>n</sub> is 7.80 Hz
+      and the shake is 6.3–7.9 Hz, so <code>kr</code> was dropped 2400→987 (ω<sub>n</sub> 5.0 Hz,
+      ζ 1.74). Alone, with <code>pos_gains</code> unchanged, it diverged — a real, distinct
+      finding: <code>pos_gains</code> were tuned assuming the original 7.8 Hz attitude
+      bandwidth, so slowing the attitude loop alone breaks the cascade's timescale separation.
+      Re-tried with <code>pos_gains</code> scaled to match: hover passed cleanly (best of the
+      session), but the trajectory-tracking shake was <strong>unchanged</strong> — still 17.6°
+      peak vs the stiff baseline's 17.7°. Bisecting further to <code>kr=483</code> (ω<sub>n</sub>
+      3.5 Hz) dropped the peak to 11.4° but broke position holding; switching to geometric's own
+      <code>pos_gains</code> alongside it fixed position holding and dropped the peak further to
+      6.7°, but introduced a small new hover growing trend. <strong>No configuration reached a
+      clean pass on both axes together</strong> across four attempts — real, substantial
+      progress (88°→7° peak), not a resolution. Ended reverted to the confirmed-clean locked
+      point. Full account: <code>docs/lab_sessions/2026-09-11.md</code>.
+    </p>
+    <p>
+      A sim attempt to de-risk the <code>kr</code>/<code>pos_gains</code> coupling before flying
+      it live failed to produce a usable answer: the sim's idealized actuators and near-perfect
+      position estimate didn't reproduce the hardware divergence at all, even at the exact
+      failed gains. Not trustworthy for this specific question without a higher-fidelity plant.
     </p>
     <p style="margin-bottom:0">
-      <strong>The caveat:</strong> everything above is reasoning from their code, not from a
-      controlled experiment on our airframe. Their platform is a standard CF2.1 (J ≈ 16.6·10⁻⁶,
-      ~30 g), their disturbance is a slung payload, and their gains do not transfer. These are
-      well-motivated hypotheses to test one at a time — not a repair kit to apply wholesale.
+      <strong>The caveat stands, sharpened by results</strong>: everything in §08–09 was
+      reasoning from their code, not a controlled experiment on our airframe, and that's exactly
+      what showed up — the no-op prediction held, but the "tune fc_bw down" and "notch will
+      finally work" predictions didn't survive contact with this airframe. Their platform is a
+      standard CF2.1 (J ≈ 16.6·10⁻⁶, ~30 g), their disturbance is a slung payload, their gains
+      don't transfer. Next: the card's own H0 partition (<code>ctrl_mode=2</code> then
+      <code>1</code>) to isolate which INDI sub-loop actually carries the shake — never run
+      yet, and the natural next step after four gain attempts on full INDI converged on the
+      same result.
     </p>
   </div>
 </section>
