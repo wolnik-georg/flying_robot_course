@@ -417,6 +417,10 @@ uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
 
+/* rpm_source declared here (used by PARAM_ADD below); full doc comment is at
+ * rpm_get_all()'s definition near the RPM bridge, further down this file. */
+uint8_t g_indi_rpm_source = 0;   /* 0 = optical deck (default, flight-proven), 1 = DShot */
+
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
   PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
@@ -454,6 +458,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)
+  PARAM_ADD(PARAM_UINT8, rpm_source,   &g_indi_rpm_source)
 PARAM_GROUP_STOP(indi_gains)
 
 /* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
@@ -470,30 +475,55 @@ PARAM_GROUP_START(pos_gains)
 PARAM_GROUP_STOP(pos_gains)
 
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
-/* Exposes per-motor RPM via the Crazyflie log system.                       */
-/* m1rpm–m4rpm are file-static in rpm.c; this bridge uses logGetVarId() to  */
-/* locate them at runtime (lazy init) and logGetUint() to read them.         */
-/* Returns 0 for each motor when the RPM deck is absent or not yet registered.*/
+/* Exposes per-motor RPM via the Crazyflie log system. Two possible sources,
+ * selected at RUNTIME by indi_gains.rpm_source (added 2026-09-11):
+ *
+ *   0 (DEFAULT) = optical RPM deck, log group "rpm" (m1..m4). What every flight to
+ *       date has used, ever since the 2026-07-16 switch away from DShot fixed a
+ *       catastrophic attitude-INDI divergence (see flying_drone_stack/docs/
+ *       results_2026-07-15_brushless.md and dshot_rpm_source_plan.md). Requires the
+ *       deck to be physically fitted (deck.bcRpm=1 force-enables its driver, since it
+ *       has vid/pid=0x00 and never auto-detects).
+ *   1 = DShot bidirectional ESC telemetry, log group "motor" (m1_rpm..m4_rpm). Always
+ *       running on this platform regardless of this switch (CONFIG_MOTORS_ESC_PROTOCOL_
+ *       DSHOT_BIDIRECTIONAL=y is unconditional in app-config-bl -- it is how the ESCs
+ *       are driven at all) -- this only changes which readout INDI's tau_current uses.
+ *       No deck, no reflective markers, no extra hardware.
+ *
+ * WHY THIS IS A RUNTIME SWITCH NOW, NOT A COMPILE-TIME ONE: the 2026-07-16 fix was
+ * real -- switching sources ended a divergence that reflashing gains alone never had.
+ * But the mechanism explanation attached to it was never re-checked against DShot: the
+ * 2026-07-18 H1a test (indi_gains.ff_free) that found the REMAINING bounded 5-8 Hz
+ * oscillation was gain amplification, not an RPM-source or hardware effect, was run
+ * entirely on the deck. DShot was never re-tried at the gains that test's own
+ * conclusion produced. That is a genuinely open question, not a settled one -- see
+ * flying_drone_stack/docs/dshot_rpm_source_plan.md for the full reasoning and the
+ * planned re-test procedure. A runtime switch lets both sources be A/B'd in one
+ * session without reflashing between them, the same reasoning already applied to
+ * ff_free/filt_dt_us/res_sign.
+ *
+ * DShot telemetry uses UINT16_MAX as its own "invalid / no value" sentinel; the
+ * optical deck never reaches that value, so treating it as "absent, fall back" is a
+ * no-op for the deck and a real guard for DShot.
+ *
+ * Two independently-cached logVarId arrays (not one, re-pointed) so switching
+ * rpm_source at runtime needs no cache-invalidation logic -- whichever array wasn't
+ * used yet simply resolves lazily on first read, same as today's single-source path. */
 
 void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
-    static logVarId_t ids[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
-#ifdef CONFIG_PLATFORM_CF21BL
-    /* EXPERIMENT (2026-07-16): read the optical RPM deck (group "rpm", m1..m4) on the
-       brushless too — exactly like the brushed drones — to test whether the DShot
-       telemetry delay is what makes attitude INDI limit-cycle at ~7 Hz. Both the deck
-       and DShot report *mechanical* RPM, so kt stays the same scale (re-ID as a check).
-       To revert to bidirectional-DShot ESC telemetry, swap the two lines below back. */
-    static const char *group    = "rpm";
-    static const char *names[4] = {"m1", "m2", "m3", "m4"};
-    /* DShot (default brushless source — restore to switch back):
-    static const char *group    = "motor";
-    static const char *names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"}; */
-#else
-    /* CF2.1 brushed: optical RPM deck (log group "rpm", vars m1..m4). */
-    static const char *group    = "rpm";
-    static const char *names[4] = {"m1", "m2", "m3", "m4"};
-#endif
+    static logVarId_t ids_deck[4]  = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+    static logVarId_t ids_dshot[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+    static const char *deck_names[4]  = {"m1", "m2", "m3", "m4"};
+    static const char *dshot_names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"};
+
+    logVarId_t *ids;
+    const char *group, **names;
+    if (g_indi_rpm_source != 0) {
+        ids = ids_dshot; group = "motor"; names = dshot_names;
+    } else {
+        ids = ids_deck;  group = "rpm";   names = deck_names;
+    }
 
     for (int i = 0; i < 4; i++) {
         if (!logVarIdIsValid(ids[i]))

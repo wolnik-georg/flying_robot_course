@@ -233,6 +233,11 @@ effort, not the methods. Stage 2 of C.0 is the only place a retune is allowed.
 
 ☐ `pos_gains.*` and `indi_gains.*` recorded, dated, committed.
 
+**Optional, here and only here — before C.1, after the freeze:** if there's a spare session, this
+is the slot for the DShot-vs-deck RPM re-test (`docs/23_DShot_RPM_Investigation.md`) — gains are
+frozen, so it's the one point where trying an alternate RPM source doesn't confound the
+comparison campaign that follows. Not required to proceed to C.1.
+
 Then → **C.1 collection: A1 + A3 + A4.** A4 is **required** — A3 never excites relative *y*, and
 without it the model trains on zero lateral variance and RQ3 becomes unanswerable.
 

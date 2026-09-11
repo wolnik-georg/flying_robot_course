@@ -39,10 +39,13 @@ RENAME = {
     "ctrltarget.z": "ctrltarget_z",
     "motor.m1": "motor_m1", "motor.m2": "motor_m2",
     "motor.m3": "motor_m3", "motor.m4": "motor_m4",
-    "motor.m1_rpm": "motor_m1_rpm",
+    "motor.m1_rpm": "motor_m1_rpm", "motor.m2_rpm": "motor_m2_rpm",
+    "motor.m3_rpm": "motor_m3_rpm", "motor.m4_rpm": "motor_m4_rpm",
     "rpm.m1": "rpm_m1", "rpm.m2": "rpm_m2", "rpm.m3": "rpm_m3", "rpm.m4": "rpm_m4",
     "stabilizer.roll": "roll_deg", "stabilizer.pitch": "pitch_deg",
     "stabilizer.yaw": "yaw_deg",
+    "indi.dt_us": "dt_us",
+    "pm.vbat": "vbat",
 }
 
 
