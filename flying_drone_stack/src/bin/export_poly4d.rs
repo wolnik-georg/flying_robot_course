@@ -1186,7 +1186,13 @@ fn wrap_rest_to_rest(traj: &SplineTrajectory) -> (SplineTrajectory, f32) {
     let mut t_e_final = t_e;
     let (mut entry, mut exit, _) = build(t_e);
     let mut found = false;
-    let mut probe = 0.65_f32;
+    // Raised from 0.65s (2026-09-11): 0.65s was feasible on thrust/omega but let the
+    // degree-7 Hermite ramp ring -- accel swings through zero and back, peaking ~7 m/s²,
+    // because matching jerk at both ends over too short a span overshoots in the interior.
+    // ramp_ok() only bounds peak thrust/omega, not interior smoothness, so it passed
+    // silently. Starting the search higher gives the ramp more time per unit velocity
+    // change, which directly damps that ringing.
+    let mut probe = 1.2_f32;
     while probe <= t_e {
         let (e, x, w) = build(probe);
         if w <= EXCURSION_BUDGET && ramp_ok(&e, &x) {
