@@ -169,7 +169,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 10 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 11 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Comparison of control strategies for interaction-force aware multirotor teams —
@@ -177,8 +177,8 @@ footer{
   </p>
   <div class="statusline">
     <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
-    <span class="pill blocked"><span class="dot"></span>Lab · controller re-validation</span>
-    <span style="color:var(--muted)">Two sessions flown · three root causes fixed · staged re-validation next</span>
+    <span class="pill blocked"><span class="dot"></span>Lab · stage 1 closed, stage 2 open</span>
+    <span style="color:var(--muted)">Controller card run 09-11 · 88°→7° oscillation via bisection, no clean pass yet · H0 partition + first 2-drone flight next</span>
   </div>
 </header>
 
@@ -220,19 +220,18 @@ footer{
         <span class="lbl" style="color:var(--warn)">Hardware Gate (C.0)</span>
       </div>
       <ul>
-        <li>Two lab sessions flown, 2026-09-07 and 09-09 <em>single-drone hover, both controllers</em></li>
-        <li><strong>2026-09-09: six hover flights crashed. Three separate root causes found and fixed</strong> — the session became a debugging session, not a data session</li>
-        <li><strong>The vehicle is provably healthy</strong> — stock Lee controller hovered 25 s at roll std 0.74°, so airframe, motors, mocap, EKF and RPM deck are all ruled out</li>
-        <li>Cause 1 — geometric was running INDI's position gains (damping ratio 0.31 instead of 0.63); now selects the gains it was actually tuned with</li>
-        <li>Cause 2 — a residual-sign change that had never flown; parked behind a runtime switch at the flight-proven value, preserved for a one-flight A/B</li>
-        <li>Cause 3 — the landing path could not work by construction (streamed low-level setpoints, then issued a high-level land command); now the plain proven sequence</li>
-        <li>Two further latent bugs caught by inspection before they ever flew: a firmware gain default 10,000× too large, and a mode-selection mismatch that would have commanded ~240,000× torque</li>
-        <li><strong>Findings independently audited</strong> — 6 of 7 conclusions confirmed, one downgraded to unproven, three more defects found and fixed</li>
-        <li>Every flight now records its complete firmware configuration into the log itself — the metadata gap is what made this session slow to diagnose</li>
+        <li>Three lab sessions flown, 2026-09-07/09/11 <em>single-drone, both controllers</em></li>
+        <li><strong>2026-09-09: six hover flights crashed, three root causes found and fixed. 2026-09-11: those fixes flown for the first time.</strong> Stage 1 of the validation card (geometric hover/circle/figure8 + restored-config INDI hover) closed <strong>clean</strong></li>
+        <li>Along the way: found and fixed a real trajectory-export bug (a wind-up ramp that rang, causing a ±53° start-of-trajectory oscillation mistaken at first for a controller fault) — confirmed fixed in flight</li>
+        <li>Stage 2 (the new fixes, one variable per flight): residual conditioning and a sample-rate/filter bug both confirmed fixed and safe. Lowering the filter cutoff made things worse (reverted). The notch filter's first-ever flight test <strong>crashed</strong> — stable to 6.4s, then diverged to 88°/66° within 0.7s; root cause not yet understood, disabled pending offline analysis</li>
+        <li>The attitude-gain shake-band test: four bisection attempts brought peak trajectory-tracking oscillation from 88° down to 7°, including a real finding that position gains and attitude gains are coupled (lowering one alone can destabilize) — but <strong>no configuration reached a clean pass</strong> on both attitude and position hold together. Session ended reverted to the confirmed-clean locked gains</li>
+        <li><strong>The vehicle is provably healthy</strong> — stock Lee controller hovered clean at roll std 0.74°, and geometric now flies cleanly on every trajectory tested — the open question is specifically INDI's residual oscillation under trajectory tracking, not the airframe</li>
+        <li><strong>Findings independently audited</strong> (09-09 crash session) — 6 of 7 conclusions confirmed, one downgraded to unproven, three more defects found and fixed</li>
+        <li>Every flight records its complete firmware configuration into the log itself</li>
         <li>Formation library re-validated in sim against three fixed bugs; all 9 two-drone scenarios confirmed, both controllers</li>
         <li>Analysis pipeline and onboard <code>e_R</code> logging DONE, plus a one-command per-flight pass/fail check</li>
-        <li class="pending">Nothing has been re-flown since the last crash — the next session is pure validation: six flights, stop on the first failure</li>
-        <li class="pending">The decisive residual-sign flight (A1, two drones) has not happened on hardware — C.0 remains NOT started</li>
+        <li class="pending">Next: the H0 partition (attitude-INDI-only vs position-INDI-only) to isolate which sub-loop carries the shake — never actually run yet</li>
+        <li class="pending">The decisive residual-sign flight (A1, two drones) and the first-ever 2-drone flight are both still ahead — second brushless drone being prepped</li>
       </ul>
     </div>
   </div>
@@ -295,20 +294,23 @@ footer{
     at a time rather than assumed.
   </p>
   <p>
-    Attribution is not settled either. Three changes went to the drone together and the radio logs
-    cannot separate them; all three are reverted, so the fix is complete regardless, but
-    <em>which one</em> caused the crashes is still unknown. Before anything else, the next session
-    is a staged re-validation — three geometric flights, then one INDI hover on the restored
-    configuration alone, stopping at the first failure, before any new fix is switched on. Only then does the two-drone sign-check flight, on which every downstream
-    number depends, come back into view.
+    <strong>Update, 11 September:</strong> the staged re-validation happened. Stage 1 (the
+    restored configuration, unchanged) flew clean on both controllers — so the restoration
+    itself is confirmed good, and attribution among the three original root causes no longer
+    matters, since all three are reverted and the result is clean either way. What's still open
+    is different: a residual, trajectory-tracking-only attitude oscillation on full INDI that
+    survived four separate gain-tuning attempts (88°→7° peak, never a clean pass). The two-drone
+    residual-sign A/B (<code>res_sign=-1</code>) — the decisive flight every downstream number
+    depends on — has still not happened on hardware; it's queued behind isolating this
+    oscillation via the H0 partition (attitude-INDI-only vs position-INDI-only), planned next.
   </p>
   <p>
-    A parallel line opened on 10 September: the authors of one of the cited papers shared their
-    code, and comparing it against ours showed the two INDI implementations are the
-    <em>same law written two ways</em> — but turned up a real filter bug on our side, and the
-    observation that our attitude loop's natural frequency sits exactly on the oscillation band
-    that four investigations have failed to explain. Both are queued behind the validation
-    flights, one variable at a time.
+    The comparison against the cited paper's own code (10 September) held up: the two INDI
+    implementations are confirmed the <em>same law written two ways</em>, not a bug on our
+    side. The filter bug it surfaced is fixed and flight-confirmed safe. The gain-magnitude
+    lead it raised (our attitude loop's natural frequency inside the observed oscillation band)
+    is the hypothesis the 09-11 bisection was actually testing — real progress, not yet a
+    resolution.
   </p>
 </div>
 
@@ -323,14 +325,18 @@ footer{
       <p class="why">Confirm the position gain on the drone is the flight-proven value, not the
       simulator's. Tape-measure the flight volume — scenarios sit within ~10&nbsp;cm of the walls.</p>
     </li>
+    <li class="done">
+      <h3>Re-validate both controllers, stage 1</h3>
+      <p class="why">Run 09-11: three geometric flights + one restored-config INDI hover, all
+      clean. The restoration is confirmed good on hardware.</p>
+    </li>
     <li class="key">
-      <h3>Re-validate both controllers — six flights</h3>
-      <p class="why">Flown twice (09-07, 09-09); six hover flights crashed and three separate
-      root causes were fixed. Nothing has flown since. <strong>Stage 1:</strong> three geometric
-      flights, then one INDI hover on the restored configuration alone — checked after every
-      single flight, stopping at the first failure. <strong>Stage 2</strong> then introduces the
-      new fixes one variable per flight. No retuning and no second drone until stage 1 is clean.
-      <strong>This is where the project actually is.</strong></p>
+      <h3>Stage 2 — isolate the residual oscillation</h3>
+      <p class="why">Four gain-bisection attempts (09-11) brought peak trajectory-tracking
+      oscillation from 88° to 7° but never reached a clean pass; a notch-filter attempt crashed
+      and is parked pending offline root-cause. <strong>Next: the H0 partition</strong>
+      (attitude-INDI-only vs position-INDI-only) to find which sub-loop carries it — never
+      actually run yet. <strong>This is where the project actually is.</strong></p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
@@ -340,17 +346,21 @@ footer{
     <li>
       <h3>Trajectory ladder</h3>
       <p class="why">Figure-8 on the old upload path, then the new one, then a circle. The new
-      path has 180 hover flights but only one trajectory flight — this buys the right to trust it.</p>
+      path has 180+ hover flights and multiple trajectory flights now (09-11) — this buys the
+      right to trust it.</p>
     </li>
     <li>
       <h3>Two drones, wide first</h3>
-      <p class="why">Widest separation, then tighter. Confirm the residual grows as the gap closes —
-      that is what shows it measures the interaction rather than noise.</p>
+      <p class="why">Widest separation, then tighter. First 2-drone flight planned for the next
+      session (rigid vertical formation, geometric, uSD logging on both drones) — confirm the
+      residual grows as the gap closes, that is what shows it measures the interaction rather
+      than noise.</p>
     </li>
     <li>
       <h3>Freeze the gains</h3>
       <p class="why">Written down and unchanged from here. Re-tuning later would measure tuning
-      effort rather than the methods being compared.</p>
+      effort rather than the methods being compared. Not yet reached — stage 2's oscillation
+      question comes first.</p>
     </li>
   </ol>
   <p>
@@ -378,7 +388,9 @@ footer{
 </section>
 
 <footer>
-  Detail: docs/07 (status) · docs/C0_FLIGHT_CARD.md (the ladder above, with commands) ·
+  Detail: docs/07 (status) · docs/FLIGHT_CARD_VALIDATION.md (the ladder above, with commands and
+  09-11 results, plus tomorrow's H0-partition + first-2-drone-flight plan) ·
+  docs/lab_sessions/2026-09-11.md (this session, full account) ·
   docs/lab_sessions/2026-09-09.md (the crash session + fixes) · docs/REVIEW_FINDINGS_2026-09-09.md (independent audit) ·
   docs/lab_sessions/sim_scenario_commands_2026-09-08.md (formation-library sim commands) ·
   docs/10 (formations) · docs/13 (residual learning) · docs/12 &amp; SPEED_MATRIX.md (sim validation)
