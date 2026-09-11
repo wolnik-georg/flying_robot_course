@@ -135,6 +135,8 @@ cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py
 | 4 | stage 1 | INDI · hover, restored only | | | | |
 | 5 | stage 2a | res_fc 80 + res_clamp 10 | | | | |
 | 6 | stage 2b | prewarp/dt/fc_bw=206 (no-op) | | | | |
+| – | stage 2c | fc_bw < 206 — tune down | | | | |
+| – | stage 2d | notch_en=1, notch_f0=6.9 | | | | |
 | 7 | stage 2e | kr=987 kw=109 (ω_n 5 Hz) | | | | |
 | 8 | stage 2e | kr=632 kw=87 (ω_n 4 Hz) | | | | |
 

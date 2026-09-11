@@ -157,7 +157,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Crazyflie 2.1 brushless · 10 September 2026</span>
+  <span class="eyebrow">Crazyflie 2.1 brushless · 11 September 2026</span>
   <h1>Controller Validation Card</h1>
   <p class="lede">
     <strong>Stage 1 first: three geometric flights, then one INDI flight.</strong> Check after
@@ -260,7 +260,7 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   <div class="term"><button class="copy" aria-label="Copy">⧉</button>ros2 run crazyflie_examples simple_flight -- --trajectory hover --duration 15</div>
 
   <div class="verdict">
-    <div class="v pass"><b>PASS</b>restoration confirmed → go to stage 3</div>
+    <div class="v pass"><b>PASS</b>restoration confirmed → stage 1 complete, go to stage 2</div>
     <div class="v fail"><b>FAIL</b>stop. The cause pre-dates every fix → H0 partition: <code>ctrl_mode=2</code>, then <code>1</code></div>
   </div>
 </section>
@@ -336,6 +336,8 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
       <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">stage 1</span><span class="traj">INDI · hover — restored config only</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">stage 2a</span><span class="traj">res_fc 80 + res_clamp 10</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">stage 2b</span><span class="traj">prewarp 1 · dt 1000 · fc_bw 206 (no-op)</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f6c"><span class="mode">stage 2c</span><span class="traj">fc_bw &lt; 206 — tune down</span></label></td></tr>
+      <tr><td><label><input type="checkbox" data-k="f6d"><span class="mode">stage 2d</span><span class="traj">notch_en 1 · notch_f0 6.9 — never truly tested</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f7"><span class="mode">stage 2e</span><span class="traj">kr 987 · kw 109 — ω_n 5.0 Hz</span></label></td></tr>
       <tr><td><label><input type="checkbox" data-k="f8"><span class="mode">stage 2e</span><span class="traj">kr 632 · kw 87 — ω_n 4.0 Hz</span></label></td></tr>
     </tbody>
