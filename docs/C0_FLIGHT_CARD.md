@@ -24,35 +24,31 @@ both controllers fly clean again. Full account:
 `a_res` at the divergence may resolve which of three simultaneous unflown changes actually
 crashed INDI — for free, at the desk. It is lost once overwritten.
 
-Then reflash (`make cload` — two of the fixes are firmware), rebuild `crazyflie` +
-`crazyflie_examples`, and confirm on the vehicle:
+**Full card, kept in one place to avoid drift — [`flight_card_validation.html`](https://claude.ai/code/artifact/c3deffc6-a90e-43ac-8a1c-f21f086106df)
+/ [`FLIGHT_CARD_VALIDATION.md`](FLIGHT_CARD_VALIDATION.md).** Summary: reflash (`make cload` —
+several fixes are firmware), rebuild `crazyflie` + `crazyflie_examples`, bench-check nine
+params including five new switches that must all read their defaults (`res_sign=1`,
+`frame_conv=0`, `kr_geo=0.010`, `clamp_en=11`, `controller=6`, `res_fc=0`, `res_clamp=0`,
+`filt_dt_us=2000`, `filt_prewarp=0`, `rpm_source=0`).
 
-| Param | Must read |
-|---|---|
-| `indi_gains.res_sign` | **1** (frozen `.add`; `-1` is the never-validated fix) |
-| `indi_gains.frame_conv` | **0** (Faessler, as frozen) |
-| `indi_gains.kr_geo` | **0.010** |
-| `indi_gains.clamp_en` | **11** |
-| `stabilizer.controller` | **6** |
+**Stage 1** (establishes the restoration flies): 3 geometric flights (hover/circle/figure8 —
+unaffected by every new switch) → **ONE** INDI hover on the restored config alone (INDI
+crashed 5/5 before; this only answers the question if it's the only variable). `check_flight.py`
+after every single flight, stop on the first FAIL.
 
-Six flights. `python3 experiments/analysis/check_flight.py` after **every one**. Stop on the
-first FAIL.
+**Stage 2**, only if stage 1 passes, one variable per flight: (a) `res_fc`/`res_clamp`; (b)
+`filt_prewarp`+`filt_dt_us`+`fc_bw=206` (a deliberate no-op); (c) tune `fc_bw` down; (d)
+re-test the notch; (e) the shake-band test (`kr`/`kw` toward ω_n 5.0 then 4.0 Hz).
 
-| # | `ctrl_mode` | Command |
-|---|---|---|
-| 1 | 0 | `simple_flight -- --trajectory hover --duration 15` |
-| 2 | 0 | `simple_flight -- --trajectory circle --kt 0.1` |
-| 3 | 0 | `simple_flight -- --trajectory figure8 --kt 0.008` |
-| 4 | 3 | `simple_flight -- --trajectory hover --duration 15` |
-| 5 | 3 | `simple_flight -- --trajectory circle --kt 0.1` |
-| 6 | 3 | `simple_flight -- --trajectory figure8 --kt 0.008` |
+`rpm_source` stays at **0 (deck)** throughout both stages — DShot is a separate investigation,
+see §5 below.
 
-Geometric should print `<- GEOMETRIC_POS_GAINS` at takeoff (40/8); INDI should show 64/5.
 **If INDI fails but geometric passes**, the cause pre-dates every 2026-09-09 fix → run the
 H0 partition (`ctrl_mode=2`, then `1`). `ctrl_mode=2` is a clean instrument for this: the
 residual is provably unreachable there (0/100 samples on a `res_sign` toggle).
 
-**Only after all six PASS** do gain retuning, the rungs below, and multi-drone resume.
+**Only after stage 1 is clean** do stage 2, gain retuning, the rungs below, and multi-drone
+resume.
 
 ---
 
@@ -233,10 +229,12 @@ effort, not the methods. Stage 2 of C.0 is the only place a retune is allowed.
 
 ☐ `pos_gains.*` and `indi_gains.*` recorded, dated, committed.
 
-**Optional, here and only here — before C.1, after the freeze:** if there's a spare session, this
-is the slot for the DShot-vs-deck RPM re-test (`docs/23_DShot_RPM_Investigation.md`) — gains are
-frozen, so it's the one point where trying an alternate RPM source doesn't confound the
-comparison campaign that follows. Not required to proceed to C.1.
+**Optional, here and only here — before C.1, after the freeze:** `indi_gains.rpm_source` stays
+at **0 (deck)** through the entire controller-validation card by design — see
+`docs/flight_card_validation.html`'s closing note. If there's a spare session after the freeze,
+this is the slot for the DShot-vs-deck RPM re-test (`docs/23_DShot_RPM_Investigation.md`) —
+gains are frozen, so it's the one point where trying an alternate RPM source doesn't confound
+the comparison campaign that follows. Not required to proceed to C.1.
 
 Then → **C.1 collection: A1 + A3 + A4.** A4 is **required** — A3 never excites relative *y*, and
 without it the model trains on zero lateral variance and RQ3 becomes unanswerable.

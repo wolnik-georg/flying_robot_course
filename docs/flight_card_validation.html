@@ -186,8 +186,10 @@ colcon build --symlink-install --packages-select crazyflie crazyflie_examples
 . install/local_setup.bash</div>
 
   <p class="note" style="margin-bottom:12px">cfclient → Parameters. Every row must match before a
-  propeller turns. The last four are the new switches — <strong>all must read their defaults for
-  stage 1</strong>; they are what stage 2 turns on, one at a time.</p>
+  propeller turns. The last five are new switches — <strong>all must read their defaults for
+  stage 1</strong>. <code>rpm_source</code> in particular: leave it at <strong>0 (deck)</strong>
+  for this entire session — DShot is a separate investigation, not part of today, see the closing
+  note below.</p>
   <div class="scroll">
   <table>
     <thead><tr><th>Parameter</th><th>Must read</th></tr></thead>
@@ -201,6 +203,7 @@ colcon build --symlink-install --packages-select crazyflie crazyflie_examples
       <tr><td class="k">indi_gains.res_clamp</td><td class="val">0</td></tr>
       <tr><td class="k">indi_gains.filt_dt_us</td><td class="val">2000</td></tr>
       <tr><td class="k">indi_gains.filt_prewarp</td><td class="val">0</td></tr>
+      <tr><td class="k">indi_gains.rpm_source</td><td class="val">0</td></tr>
     </tbody>
   </table>
   </div>
@@ -347,6 +350,21 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
     that. Push the logs when done:
     <code>git add Controls/logs && git commit && git push</code>
   </p>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">?</span><h2>DShot RPM — NOT today</h2><span class="tag">disabled all session</span></div>
+  <div class="flag" style="background:var(--sunk);border-left-color:var(--muted)">
+    <p><strong><code>indi_gains.rpm_source</code> stays at <code>0</code> (deck) for the entire
+    validation session — stage 1 and stage 2 both.</strong> DShot is a separate investigation
+    with its own doc (<code>docs/23_DShot_RPM_Investigation.md</code>) and its own tooling, queued
+    <strong>after</strong> this card is fully clean and gains are frozen — the one point where
+    trying an alternate RPM source can't confound anything else being tested today.</p>
+    <p style="margin-bottom:0">If there is time left at the very end of the session, and only
+    then: switch to the uSD config in <code>usd_dshot_investigation_config.txt</code>, and follow
+    <code>docs/23</code> §4 (H0 partition on DShot at the frozen gains, then an A/B against the
+    deck). Not required to close out today.</p>
+  </div>
 </section>
 
 <footer>

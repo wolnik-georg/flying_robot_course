@@ -229,7 +229,7 @@ identified.
 | Sim needs ~2× hardware's position damping | Time-boxed and paused. Motor lag closed ~40%; `KI_P`, rotor drag, inertia, airframe all refuted |
 | Library coverage gaps | Yaw fixed at zero; no vertical relative motion except A7/C4; nothing above 3 robots |
 | External review | Brief sent for independent check of scenario-set completeness |
-| **DShot RPM as a deck alternative** | **Prep done 2026-09-11**, runtime switch + logging + analysis tooling ready ([`23`](23_DShot_RPM_Investigation.md)). **Queued for after the controller-validation card + gain freeze, before two-drone flights** — not yet re-tested |
+| **DShot RPM as a deck alternative** | **Prep done 2026-09-11**, runtime switch + logging + analysis tooling ready ([`23`](23_DShot_RPM_Investigation.md)). `rpm_source` defaults to **0 (deck)** and stays there through the whole validation card — **explicitly disabled until after the card is clean and gains are frozen**, tried only at the very end if there's time |
 
 **Then the core begins** — see ★ CORE THESIS WORKFLOW above: C.0 Hardware Gate → C.1 Residual Data
 Collection → C.2 Train the Residual Model → C.3 Integrate the Strategies → C.4 Systematic

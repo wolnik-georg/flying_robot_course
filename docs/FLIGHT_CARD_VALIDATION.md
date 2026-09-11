@@ -39,9 +39,11 @@ colcon build --symlink-install --packages-select crazyflie crazyflie_examples
 | `indi_gains.res_clamp` | **0** |
 | `indi_gains.filt_dt_us` | **2000** |
 | `indi_gains.filt_prewarp` | **0** |
+| `indi_gains.rpm_source` | **0** |
 
-The last four are the new switches — **all must read their defaults for stage 1.** They are
-what stage 2 turns on, one at a time.
+The last five are new switches — **all must read their defaults for stage 1.**
+`rpm_source` stays at **0 (deck)** for this entire session — DShot is a separate
+investigation, see the closing note at the bottom of this card.
 
 ---
 
@@ -141,3 +143,14 @@ cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py
 | 8 | stage 2e | kr=632 kw=87 (ω_n 4 Hz) | | | | |
 
 Push the logs when done — `git add Controls/logs && git commit && git push`.
+
+---
+
+## DShot RPM — NOT today
+
+`indi_gains.rpm_source` stays at **0 (deck)** through both stage 1 and stage 2. DShot is a
+separate investigation (`docs/23_DShot_RPM_Investigation.md`, own tooling), queued **after**
+this card is fully clean and gains are frozen — the one point where trying an alternate RPM
+source can't confound anything being tested today. If there's time left at the very end:
+switch the uSD config to `usd_dshot_investigation_config.txt` and follow `docs/23` §4. Not
+required to close out this session.
