@@ -129,22 +129,15 @@ td.k{font-family:var(--mono); font-size:.86rem}
 
 /* tick sheet */
 .ticks{width:100%; border-collapse:collapse; font-size:.92rem}
-.ticks th{padding-bottom:7px}
-.ticks td{padding:0; border-bottom:1px solid var(--rule)}
-.ticks label{
-  display:flex; align-items:center; gap:12px; padding:13px 8px 13px 0;
-  cursor:pointer; user-select:none;
-}
-.ticks input{
-  flex:none; width:19px; height:19px; accent-color:var(--accent); cursor:pointer; margin:0;
-}
+.ticks th{padding-bottom:7px; text-align:left}
+.ticks th:last-child{text-align:right}
+.ticks td{padding:13px 8px 13px 0; border-bottom:1px solid var(--rule); vertical-align:middle}
+.ticks td:last-child{text-align:right; white-space:nowrap; padding-right:4px}
 .ticks .mode{
   font-family:var(--mono); font-size:.76rem; padding:2px 7px; border-radius:2px;
-  background:var(--sunk); color:var(--ink-2); white-space:nowrap;
+  background:var(--sunk); color:var(--ink-2); white-space:nowrap; margin-right:12px;
 }
 .ticks .traj{font-family:var(--mono); font-size:.88rem}
-.ticks input:checked ~ .traj,
-.ticks input:checked ~ .mode{opacity:.45; text-decoration:line-through}
 
 .note{font-size:.87rem; color:var(--muted); max-width:62ch}
 footer{
@@ -160,19 +153,14 @@ footer{
   <span class="eyebrow">Crazyflie 2.1 brushless · 11 September 2026</span>
   <h1>Controller Validation Card</h1>
   <p class="lede">
-    <strong>Stage 1 first: three geometric flights, then one INDI flight.</strong> Check after
-    every single one and <strong>stop on the first failure</strong>. On 09-09 six hover flights
-    crashed under both controllers; three root causes were found and fixed and <strong>none has
-    been re-flown</strong>. Stage 2 (the new fixes) only begins once stage 1 passes.
+    <strong>Session run 2026-09-11 — stage 1 closed clean, stage 2 no clean pass yet.</strong>
+    Full account in <code>docs/lab_sessions/2026-09-11.md</code>. Peak attitude oscillation
+    went 88°→7° through the stage-2e ladder, a real crash (stage 2d, notch) was found and
+    reverted, and a genuine trajectory-export bug was caught and fixed along the way — but no
+    configuration reached a clean pass on both attitude and position hold together. Results
+    below; next-session plan at the bottom of the page.
   </p>
 </header>
-
-<div class="flag">
-  <p><strong>Before you fly anything — pull the uSD cards</strong> from the 09-07 and 09-09
-  flights. If <code>a_res</code> is on them it may settle which of three simultaneous changes
-  actually crashed INDI, at the desk, for free. <strong>It is lost the moment the cards are
-  reused.</strong></p>
-</div>
 
 <section class="stage">
   <div class="stage-head"><span class="num">0</span><h2>Flash, build, bench-check</h2><span class="tag">once</span></div>
@@ -329,27 +317,53 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
 </div>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">✓</span><h2>Tick sheet</h2><span class="tag">saved locally</span></div>
+  <div class="stage-head"><span class="num">✓</span><h2>Tick sheet — run 2026-09-11</h2><span class="tag">session closed</span></div>
   <table class="ticks">
-    <thead><tr><th colspan="2">Flight</th></tr></thead>
+    <thead><tr><th colspan="2">Flight</th><th>Result</th></tr></thead>
     <tbody>
-      <tr><td><label><input type="checkbox" data-k="f1"><span class="mode">stage 1</span><span class="traj">geo · hover</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f2"><span class="mode">stage 1</span><span class="traj">geo · circle kt 0.1</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f3"><span class="mode">stage 1</span><span class="traj">geo · figure8 kt 0.008</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f4"><span class="mode">stage 1</span><span class="traj">INDI · hover — restored config only</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f5"><span class="mode">stage 2a</span><span class="traj">res_fc 80 + res_clamp 10</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f6"><span class="mode">stage 2b</span><span class="traj">prewarp 1 · dt 1000 · fc_bw 206 (no-op)</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f6c"><span class="mode">stage 2c</span><span class="traj">fc_bw &lt; 206 — tune down</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f6d"><span class="mode">stage 2d</span><span class="traj">notch_en 1 · notch_f0 6.9 — never truly tested</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f7"><span class="mode">stage 2e</span><span class="traj">kr 987 · kw 109 — ω_n 5.0 Hz</span></label></td></tr>
-      <tr><td><label><input type="checkbox" data-k="f8"><span class="mode">stage 2e</span><span class="traj">kr 632 · kw 87 — ω_n 4.0 Hz</span></label></td></tr>
+      <tr><td><span class="mode">stage 1</span><span class="traj">geo · hover</span></td><td style="color:var(--accent);font-weight:600">PASS</td></tr>
+      <tr><td><span class="mode">stage 1</span><span class="traj">geo · circle kt 0.05</span></td><td style="color:var(--accent);font-weight:600">PASS*</td></tr>
+      <tr><td><span class="mode">stage 1</span><span class="traj">geo · figure8 kt 0.05</span></td><td style="color:var(--accent);font-weight:600">PASS*</td></tr>
+      <tr><td><span class="mode">stage 1</span><span class="traj">INDI · hover — restored config only</span></td><td style="color:var(--accent);font-weight:600">PASS</td></tr>
+      <tr><td><span class="mode">stage 2a</span><span class="traj">res_fc 80 + res_clamp 10</span></td><td style="color:var(--accent);font-weight:600">PASS</td></tr>
+      <tr><td><span class="mode">stage 2b</span><span class="traj">prewarp 1 · dt 1000 · fc_bw 206 (no-op)</span></td><td style="color:var(--accent);font-weight:600">PASS</td></tr>
+      <tr><td><span class="mode">stage 2c</span><span class="traj">fc_bw 100 — tune down</span></td><td style="color:var(--stop);font-weight:600">FAIL</td></tr>
+      <tr><td><span class="mode">stage 2d</span><span class="traj">notch_en 1 · notch_f0 6.9</span></td><td style="color:var(--stop);font-weight:700">CRASHED</td></tr>
+      <tr><td><span class="mode">stage 2e·1</span><span class="traj">kr 987 · kw 109, pos_gains unchanged</span></td><td style="color:var(--stop);font-weight:600">aborted</td></tr>
+      <tr><td><span class="mode">stage 2e·2</span><span class="traj">kr 987 · kw 109 + matched pos_gains</span></td><td style="color:var(--accent);font-weight:600">PASS (hover)</td></tr>
+      <tr><td><span class="mode">stage 2e·3</span><span class="traj">kr 483 · kw 76 + matched pos_gains</span></td><td style="color:var(--stop);font-weight:600">FAIL</td></tr>
+      <tr><td><span class="mode">stage 2e·4</span><span class="traj">kr 483 · kw 76 + geometric pos_gains</span></td><td style="color:var(--stop);font-weight:600">FAIL</td></tr>
     </tbody>
   </table>
   <p class="note" style="margin-top:14px">
-    Stage 1 clean → stage 2, one variable per flight. Retuning and multi-drone come after
-    that. Push the logs when done:
-    <code>git add Controls/logs && git commit && git push</code>
+    *circle/figure8's first attempt hit a real trajectory-export ringing bug (±53°), fixed
+    same session (<code>export_poly4d.rs</code>, ramp floor 0.65s→1.2s) — clean after the fix,
+    unrelated to the controller. Ramp on the 4 stage-2e attempts (see the closing section
+    below): peak attitude oscillation went 88°→7° through principled bisection, but no
+    configuration reached a clean pass on both attitude and position hold together — ended
+    reverted to the confirmed-clean locked point (<code>kr=2400</code>/<code>kw=170</code>,
+    <code>pos_gains</code> 64/5/48/7). Full account:
+    <code>docs/lab_sessions/2026-09-11.md</code>.
   </p>
+</section>
+
+<section class="stage">
+  <div class="stage-head"><span class="num">→</span><h2>Next session</h2><span class="tag">not attempted yet</span></div>
+  <p>Three things queued, in priority order:</p>
+  <ol style="padding-left:1.2em;margin:0 0 .8em">
+    <li><strong>Root-cause the stage 2d notch crash offline</strong> before any further live
+      test — a 2026-07-29 fix was believed to have resolved the only known cause, and it did
+      not. <code>notch_en</code> must stay 0 until this is understood.</li>
+    <li><strong>Run the card's own H0 partition</strong> (<code>ctrl_mode=2</code>, then
+      <code>1</code>) — never actually run this session. Four straight coordinated gain
+      attempts on full INDI (<code>ctrl_mode=3</code>) all converged on the same
+      trajectory-tracking shake without a clean pass; isolating position-INDI-only vs
+      attitude-INDI-only is the natural next diagnostic, not another gain guess on full INDI.</li>
+    <li><strong>Second brushless drone</strong> — being prepped in parallel for the first
+      2-drone flight. Gains are NOT frozen yet, so this should wait for a real stage-2e
+      conclusion (or a deliberate decision to proceed with the current locked config's known
+      trajectory-tracking limitation).</li>
+  </ol>
 </section>
 
 <section class="stage">
@@ -383,13 +397,6 @@ document.querySelectorAll('.copy').forEach(function(btn){
       btn.textContent = '✓'; btn.classList.add('ok');
       setTimeout(function(){ btn.textContent = '⧉'; btn.classList.remove('ok'); }, 1400);
     });
-  });
-});
-document.querySelectorAll('.ticks input').forEach(function(box){
-  var k = 'cvc-' + box.dataset.k;
-  try { box.checked = localStorage.getItem(k) === '1'; } catch(e){}
-  box.addEventListener('change', function(){
-    try { localStorage.setItem(k, box.checked ? '1' : '0'); } catch(e){}
   });
 });
 </script>

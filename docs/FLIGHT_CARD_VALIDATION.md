@@ -127,20 +127,29 @@ cd ~/Desktop/flying_robot_course && python3 experiments/analysis/check_flight.py
 
 ---
 
-## Tick sheet
+## Tick sheet — RUN 2026-09-11, results filled in
+
+Full account: [`lab_sessions/2026-09-11.md`](lab_sessions/2026-09-11.md).
 
 | # | Mode | Trajectory | PASS / FAIL | roll std | peak | Notes |
 |---|---|---|---|---|---|---|
-| 1 | stage 1 | geo · hover | | | | |
-| 2 | stage 1 | geo · circle | | | | |
-| 3 | stage 1 | geo · figure8 | | | | |
-| 4 | stage 1 | INDI · hover, restored only | | | | |
-| 5 | stage 2a | res_fc 80 + res_clamp 10 | | | | |
-| 6 | stage 2b | prewarp/dt/fc_bw=206 (no-op) | | | | |
-| – | stage 2c | fc_bw < 206 — tune down | | | | |
-| – | stage 2d | notch_en=1, notch_f0=6.9 | | | | |
-| 7 | stage 2e | kr=987 kw=109 (ω_n 5 Hz) | | | | |
-| 8 | stage 2e | kr=632 kw=87 (ω_n 4 Hz) | | | | |
+| 1 | stage 1 | geo · hover | PASS | ~1.1° | — | clean |
+| 2 | stage 1 | geo · circle | PASS* | — | — | *first attempt hit the ramp-ringing bug (±53°, fixed same session, see history 21); clean after the fix |
+| 3 | stage 1 | geo · figure8 | PASS* | — | — | same ramp fix applied |
+| 4 | stage 1 | INDI · hover, restored only | PASS | ~1.1-1.3° | — | clean |
+| 5 | stage 2a | res_fc 80 + res_clamp 10 | PASS | — | — | clean, matches stage-1 baseline |
+| 6 | stage 2b | prewarp/dt/fc_bw=206 (no-op) | PASS | 1.13° | — | confirmed genuine no-op |
+| – | stage 2c | fc_bw=100 — tune down | **FAIL** | 6.82° | 17.3° | hover regressed PASS→FAIL; circle peak 27.5°→69.2°; reverted to 206 |
+| – | stage 2d | notch_en=1, notch_f0=6.9 | **CRASHED** | — | 88.7°/66.6° | real impact within 0.7s of a stable hover; root cause unknown; `notch_en` reverted to 0 |
+| 7 | stage 2e attempt 1 | kr=987 kw=109 (ω_n 5 Hz), pos_gains unchanged | aborted | — | — | manual kill ~2s in, diverging; cascade/pos_gains mismatch |
+| 7b | stage 2e attempt 2 | kr=987 kw=109 + matched pos_gains (26/3.2) | PASS (hover) | 0.99° | — | best hover of the day; figure8 unchanged (17.6° vs 17.7° baseline) |
+| 7c | stage 2e attempt 3 | kr=483 kw=76 + matched pos_gains (13/2.2) | FAIL | 1.67° | 11.4° | attitude peak improved; position holding broke (z overshoot/drift) |
+| 7d | stage 2e attempt 4 | kr=483 kw=76 + geometric pos_gains (40/8/30/10) | FAIL | 2.33° | 6.7° | position holding fixed; small new hover growing trend |
+| — | session close | reverted to kr=2400/kw=170, pos_gains 64/5/48/7 | — | — | — | last confirmed-clean, flight-proven config |
+
+**Not reached**: `kr=632`/`kw=87` (ω_n 4 Hz) rung, and the card's own H0 partition
+(`ctrl_mode=2` then `1`) — recommended as the next diagnostic given 4 straight gain attempts
+converged on the same trajectory-tracking shake without a clean pass.
 
 Push the logs when done — `git add Controls/logs && git commit && git push`.
 
