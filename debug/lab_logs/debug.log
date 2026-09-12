@@ -1,0 +1,118 @@
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples formation_flight -- --formation vertical --trajectory hover
+[formation] target controller=5 is not our OOT controller (6) -- ramping on the SAME config throughout, no mid-air controller switch
+
+[formation] hover  dur=15.00s  laps=1 (continuous)  reps=1 (separate runs)
+[formation] vertical formation, 0.40 m separation, 2 drone(s)
+[formation] anchored on cf231_active at [0.  0.3 1. ]
+[formation] controller=5 ctrl_mode=0 (ramp: 5/0)
+    cf231_active start [0.  0.3 0. ]  ->  formation [0.  0.3 1. ]   (XY transit 0.00 m)
+    cf_second    start [ 0.  -0.3  0. ]  ->  formation [0.  0.3 1.4]   (XY transit 0.60 m)
+[formation] closest pair at rest: 0.40 m
+[formation] approach: climb to individual heights first, then converge in XY (drones are vertically separated before any XY motion)
+
+Proceed? [y/N] y
+[log] subscribed to 2 drone(s)
+[formation] takeoff: controller=5 ctrl_mode=0
+[formation] stage 1: climbing to individual formation heights...
+[formation] stage 2: converging to formation slots...
+[formation] achieved cf231_active<->cf_second: 0.594 m (target 0.400)
+[formation] trajectory: controller=5 ctrl_mode=0
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course/experiments/logs'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course/experiments'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/formation_flight.py", line 447, in main
+    sidecar.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  [Previous line repeated 1 more time]
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+PermissionError: [Errno 13] Permission denied: '/home/georg'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course/experiments/logs'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course/experiments'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop/flying_robot_course'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/georg/Desktop'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/crazyflie_examples/formation_flight", line 33, in <module>
+    sys.exit(load_entry_point('crazyflie-examples==1.0.3', 'console_scripts', 'formation_flight')())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/formation_flight.py", line 503, in main
+    lg.save(LOG_DIR / f"{label}_{lg.name}_{stamp}.csv", meta)
+  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/formation_flight.py", line 196, in save
+    path.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  File "/usr/lib/python3.12/pathlib.py", line 1317, in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+  [Previous line repeated 1 more time]
+  File "/usr/lib/python3.12/pathlib.py", line 1313, in mkdir
+    os.mkdir(self, mode)
+PermissionError: [Errno 13] Permission denied: '/home/georg'
+[ros2run]: Process exited with failure 1
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
