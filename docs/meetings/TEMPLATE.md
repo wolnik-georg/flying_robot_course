@@ -26,14 +26,8 @@ to lab session docs / commits instead of re-explaining detail already written do
 
 <Short, direct questions — not status, an actual ask.>
 
-## 6. Plan until next meeting
+## 6. Plan / action items
 
-<Short numbered steps, priority order.>
+<Priority order, as checkboxes — carried over / ticked off week to week.>
 
-## 7. Notes from the meeting (filled in during/after)
-
-<Supervisor feedback, decisions made, anything that changes the plan above.>
-
-## 8. Action items
-
-- [ ] <carried over / ticked off week to week>
+- [ ] <step 1>
