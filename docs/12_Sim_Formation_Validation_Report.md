@@ -272,12 +272,18 @@ ros2 run crazyflie_examples run_formation --scenario A3 --dz 0.30 --auto-center 
 
 ### Left before the core thesis work
 
+> **This table is a 2026-08-24 snapshot and is now superseded by `docs/07`'s "Left before data
+> collection" table, which is kept current.** Rows 1 and 4 are ticked below because they are
+> unambiguously done; rows 5–8 have all seen partial progress since (INDI re-validated 09-11,
+> a first 2-robot flight flown 09-12) but not yet to the point this table's wording implies —
+> check `docs/07` rather than updating this snapshot further.
+
 | # | Item | Why it blocks |
 |---|---|---|
 | 1 | ~~Confirm the flight volume with a tape measure~~ | ✅ **Done 2026-09-02** |
 | 2 | Resolve the `crazyflie-firmware` bindings | ~110 uncommitted lines; the simulator does not build without them |
 | 3 | Hardware inventory | Working brushless drones, decks, batteries, SD decks |
-| 4 | **Fly the single-robot ladder** | Mode E has *never flown*. Flash → figure8 Mode D → figure8 Mode E → circle |
+| 4 | ~~**Fly the single-robot ladder**~~ | **Done.** Mode E has since flown extensively (180+ hover flights, multiple trajectory flights) — see `docs/07` and `docs/FLIGHT_CARD_VALIDATION.md` for current status |
 | 5 | Re-validate INDI after the sign fix | It changes a control term; hover before anything else |
 | 6 | First 2-robot flights at large separation | A1 at Δz 0.75 → 0.50, then A3 |
 | 7 | Confirm `a_res` is non-zero in flight | Needs an RPM source; zero means no thesis data |

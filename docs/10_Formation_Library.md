@@ -260,11 +260,10 @@ wind-up ramps they carry.
 
 ## Open items
 
-**The geofence is a placeholder.** `FLIGHT_SPACE` in `safety.py` is set to a box smaller
-than any plausible lab, deliberately, because the real flight volume is recorded nowhere in
-the repo and guessing a number that decides where a vehicle may fly is not a guess worth
-making silently. The failure mode is a refused scenario rather than a vehicle in the
-netting. **Measure the volume and set it**, or pass `--geofence`.
+~~**The geofence is a placeholder.**~~ **Done 2026-09-02** — `FLIGHT_SPACE` in `safety.py` is
+now the tape-measured real flight volume (x ±1, y ±2, z 0–1.70), not the deliberately-small
+placeholder box this section originally described. See `docs/07` and `docs/11` §"Tape-measure
+the flight volume".
 
 **Coverage gaps, in rough order of how much they would add:**
 

@@ -12,11 +12,14 @@ interaction broke something" are indistinguishable. **No data collected before C
 
 ---
 
-## ⛔ RUNG −1 · CONTROLLER VALIDATION — added 2026-09-09, do this FIRST
+## ⛔ RUNG −1 · CONTROLLER VALIDATION — added 2026-09-09
 
 **On 2026-09-09 six hover flights crashed under both controllers.** Three root causes were
-found and fixed; **none has been re-flown**. Everything below this block is blocked until
-both controllers fly clean again. Full account:
+found and fixed, then re-flown clean 2026-09-11 (stage 1 of the card below). Stage 2
+(isolating a residual trajectory-tracking oscillation) and the H0 partition ran 09-11/09-12 —
+inconclusive so far, gains not yet frozen. **Everything below this block is still blocked
+until stage 2 reaches a clean pass and the gains are frozen** — see `docs/07` for current
+status. Full account:
 [`lab_sessions/2026-09-09.md`](lab_sessions/2026-09-09.md) · audit:
 [`REVIEW_FINDINGS_2026-09-09.md`](REVIEW_FINDINGS_2026-09-09.md).
 
