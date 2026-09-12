@@ -177,8 +177,8 @@ footer{
   </p>
   <div class="statusline">
     <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
-    <span class="pill blocked"><span class="dot"></span>Lab · stage 1 closed, stage 2 open</span>
-    <span style="color:var(--muted)">Controller card run 09-11 · 88°→7° oscillation via bisection, no clean pass yet · H0 partition + first 2-drone flight next</span>
+    <span class="pill blocked"><span class="dot"></span>Lab · H0 partition inconclusive, first 2-drone flight done</span>
+    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, notch crash root-caused (unflown fix), first 2-drone flight flown after 6 bug fixes · next: cf_second → brushless, validate uSD on both cards</span>
   </div>
 </header>
 
@@ -220,7 +220,7 @@ footer{
         <span class="lbl" style="color:var(--warn)">Hardware Gate (C.0)</span>
       </div>
       <ul>
-        <li>Three lab sessions flown, 2026-09-07/09/11 <em>single-drone, both controllers</em></li>
+        <li>Four lab sessions flown, 2026-09-07/09/11/12 — the first three single-drone, 09-12 the first multi-drone session</li>
         <li><strong>2026-09-09: six hover flights crashed, three root causes found and fixed. 2026-09-11: those fixes flown for the first time.</strong> Stage 1 of the validation card (geometric hover/circle/figure8 + restored-config INDI hover) closed <strong>clean</strong></li>
         <li>Along the way: found and fixed a real trajectory-export bug (a wind-up ramp that rang, causing a ±53° start-of-trajectory oscillation mistaken at first for a controller fault) — confirmed fixed in flight</li>
         <li>Stage 2 (the new fixes, one variable per flight): residual conditioning and a sample-rate/filter bug both confirmed fixed and safe. Lowering the filter cutoff made things worse (reverted). The notch filter's first-ever flight test <strong>crashed</strong> — stable to 6.4s, then diverged to 88°/66° within 0.7s; root cause not yet understood, disabled pending offline analysis</li>
@@ -230,8 +230,11 @@ footer{
         <li>Every flight records its complete firmware configuration into the log itself</li>
         <li>Formation library re-validated in sim against three fixed bugs; all 9 two-drone scenarios confirmed, both controllers</li>
         <li>Analysis pipeline and onboard <code>e_R</code> logging DONE, plus a one-command per-flight pass/fail check</li>
-        <li class="pending">Next: the H0 partition (attitude-INDI-only vs position-INDI-only) to isolate which sub-loop carries the shake — never actually run yet</li>
-        <li class="pending">The decisive residual-sign flight (A1, two drones) and the first-ever 2-drone flight are both still ahead — second brushless drone being prepped</li>
+        <li><strong>2026-09-12: the H0 partition was run</strong> (attitude-INDI-only vs position-INDI-only) — both sub-loops crashed, each worse alone than the combined system, so the partition did not cleanly localize the shake; itself a real negative result. Full INDI re-flown afterward as a sanity check and passed as expected</li>
+        <li>The 09-11 notch crash was <strong>root-caused offline the same day</strong>: a third filter chain (<code>tau_current</code>'s Butterworth pre-filter) missed the 2026-07-29 fix's cold-start-warmup treatment. Fixed in firmware, verified compiling clean on both platforms — <strong>not yet reflashed/flown</strong></li>
+        <li><strong>First-ever 2-drone flight achieved</strong> — a standard CF2.1 enabled as <code>cf_second</code> (not brushless yet, to validate the infrastructure cheaply). Found and fixed six real, durable bugs in <code>formation_flight.py</code> (missing pos_gains selection, a mid-air controller-identity-switch risk, no hover support, arming gated behind a removed flag, a hardcoded dev-machine log path, and a landing collision for stacked formations). Clean flight on stock Lee confirmed the downwash signal (lower drone roll std 17.9° vs upper 0.75°)</li>
+        <li>A follow-up flight of our OOT geometric controller on both drones <strong>crashed both</strong>. Root cause, corrected twice via git-verified checks rather than assumed: not the attitude gains (bit-identical to a 2026-07-02 clean flight on standard) but shared firmware config drifted brushless-only for two months, compounded by a bigger bug — the per-robot mass/<code>kt</code> override was being silently wiped every <code>apply()</code> call, so <code>cf_second</code> likely flew on brushless's thrust model the whole time. Generalized the per-robot override mechanism to fix this for good</li>
+        <li class="pending">Next: reflash <code>cf_second</code> to brushless (removes the mixed-platform failure mode entirely), validate uSD logging on both cards in a real 2-drone flight (never yet exercised — 09-12's dataset was radio only), then begin real C.1 data collection</li>
       </ul>
     </div>
   </div>
@@ -389,8 +392,9 @@ footer{
 
 <footer>
   Detail: docs/07 (status) · docs/FLIGHT_CARD_VALIDATION.md (the ladder above, with commands and
-  09-11 results, plus tomorrow's H0-partition + first-2-drone-flight plan) ·
-  docs/lab_sessions/2026-09-11.md (this session, full account) ·
+  09-11/09-12 results) ·
+  docs/lab_sessions/2026-09-12.md (H0 partition + first 2-drone flight, full account) ·
+  docs/lab_sessions/2026-09-11.md (stage 1/2 session, full account) ·
   docs/lab_sessions/2026-09-09.md (the crash session + fixes) · docs/REVIEW_FINDINGS_2026-09-09.md (independent audit) ·
   docs/lab_sessions/sim_scenario_commands_2026-09-08.md (formation-library sim commands) ·
   docs/10 (formations) · docs/13 (residual learning) · docs/12 &amp; SPEED_MATRIX.md (sim validation)

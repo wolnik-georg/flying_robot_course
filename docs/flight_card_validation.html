@@ -150,16 +150,23 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="eyebrow">Crazyflie 2.1 brushless · 11 September 2026</span>
+  <span class="eyebrow">Crazyflie 2.1 brushless · 12 September 2026</span>
   <h1>Controller Validation Card</h1>
   <p class="lede">
-    <strong>Session run 2026-09-11 — stage 1 closed clean, stage 2 no clean pass yet.</strong>
-    Full account in <code>docs/lab_sessions/2026-09-11.md</code>. Peak attitude oscillation
-    went 88°→7° through the stage-2e ladder, a real crash (stage 2d, notch) was found and
-    reverted, and a genuine trajectory-export bug was caught and fixed along the way — but no
-    configuration reached a clean pass on both attitude and position hold together. Results
-    below. <strong>Tomorrow: H0 partition to isolate the shake, then the first-ever 2-drone
-    flight</strong> — plan with exact commands near the bottom of the page.
+    <strong>Session run 2026-09-11 — stage 1 closed clean, stage 2 no clean pass yet.
+    2026-09-12 — H0 partition inconclusive (real finding), first-ever 2-drone flight achieved
+    after fixing 6 real bugs.</strong> Full accounts in <code>docs/lab_sessions/2026-09-11.md</code>
+    and <code>docs/lab_sessions/2026-09-12.md</code>. On the 11th: peak attitude oscillation went
+    88°→7° through the stage-2e ladder, a real crash (stage 2d, notch) was found and reverted, and
+    a genuine trajectory-export bug was caught and fixed — but no configuration reached a clean
+    pass on both attitude and position hold together. On the 12th: neither INDI sub-loop alone was
+    clean (both worse than the combined system — itself the useful result), the notch crash was
+    root-caused and fixed offline (unflown), and the first 2-drone flight ran end to end on stock
+    Lee after fixing six <code>formation_flight.py</code> bugs — a follow-up geometric attempt on
+    both drones crashed, root-caused to shared-config drift plus a per-robot mass/kt override that
+    was being silently wiped every flight (now fixed for good). Results below.
+    <strong>Next session: swap <code>cf_second</code> to brushless, validate uSD logging on both
+    cards, then begin real C.1 data collection.</strong>
   </p>
 </header>
 
@@ -349,77 +356,99 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">1</span><h2>Tomorrow, part 1 — H0 partition</h2><span class="tag">not attempted yet</span></div>
-  <p>The card's own diagnostic for exactly this situation, never actually run this session.
-  Four straight coordinated gain attempts on full INDI (<code>ctrl_mode=3</code>) all converged
-  on the same trajectory-tracking shake without a clean pass — isolating which sub-loop carries
-  it is the next real diagnostic, not another gain guess on full INDI. Root-cause the stage 2d
-  notch crash offline in parallel, whenever — separate, doesn't block this.</p>
-  <table>
-    <tr><td class="k">config at start</td><td class="val">confirmed-clean locked point: <code>kr=2400</code>/<code>kw=170</code>, <code>pos_gains</code> 64/5/48/7, <code>notch_en=0</code></td></tr>
-  </table>
-  <ol style="padding-left:1.2em;margin:14px 0 .8em">
-    <li>Edit <code>crazyflies.yaml</code> → <code>indi_gains.ctrl_mode: 2</code> (attitude INDI
-      only, position loop is geometric). Rebuild <code>crazyflie</code>, relaunch the server,
-      confirm in cfclient.</li>
-    <li>Fly hover → <code>check_flight.py</code> → if clean, fly circle and figure8 at kt=0.05,
-      same as stage 1. Compare peak roll/pitch against the full-INDI baseline (27.5°/18.1°
-      circle, 17.7°/14.1° figure8) — a clean or meaningfully better result here means the shake
-      lives in the <strong>position</strong>-INDI sub-loop, not attitude.</li>
-    <li>Repeat with <code>ctrl_mode: 1</code> (position INDI only, attitude is geometric). Same
-      three flights, same comparison — a clean result here instead means the shake lives in the
-      <strong>attitude</strong>-INDI sub-loop.</li>
-    <li>Abort rules are the same as every other flight today: kill on visible growth,
-      <code>check_flight.py</code> after every single one, don't fly the next config on a FAIL.</li>
-  </ol>
-  <p class="note">If neither partition is clean, the shake needs both sub-loops together and
-  the H0 test itself becomes the useful negative result — proceed to part 2 either way, on
-  whichever controller (geometric, or INDI if a partition turned out clean) is confirmed-good.</p>
+  <div class="stage-head"><span class="num">1</span><h2>2026-09-12, part 1 — H0 partition</h2><span class="tag">done — inconclusive, real finding</span></div>
+  <p><code>ctrl_mode=2</code> (attitude INDI alone) crashed sharply: peak roll <strong>119.7°</strong>,
+  z dropped 0.017m, onset timed exactly to the geometric→INDI handover tick (t=6.58s). For
+  completeness, <code>ctrl_mode=1</code> (position INDI alone) was flown too and crashed
+  differently: peak roll <strong>179.3°</strong>, z to <strong>-1.457m</strong> (real impact),
+  onset gradual, starting ~t=11.2s — the position-loop/attitude-bandwidth cascade mismatch
+  already on file, not a new mechanism. An <code>rpm_m1</code> dropout at t=19.2s in that flight
+  is a symptom of the tumble, not its cause (well after the t=11.2s divergence onset) — flagged
+  so it isn't chased as a red herring.</p>
+  <p>Full INDI (<code>ctrl_mode=3</code>) was then re-flown as a sanity check and passed as
+  expected — stable hover/figure8, just the already-known attitude oscillation, no new issue.</p>
+  <p class="note"><strong>Conclusion: the H0 partition does not cleanly localize the shake</strong> —
+  both sub-loops are individually worse alone than the combined system, which is itself the
+  useful negative result. The <code>ctrl_mode=1</code> gradual divergence has an explanation on
+  file; the <code>ctrl_mode=2</code> sharp, handover-timed divergence does not yet have a second
+  concrete root cause the way the stage-2d notch crash does — left open rather than overclaimed.</p>
+  <p>The stage 2d notch crash <em>was</em> root-caused offline the same day, separately: the
+  2026-07-29 fix that hoisted <code>alpha_meas</code>/<code>alpha_ref</code> notch-filter warm-up
+  out of the mode-gated branch missed a third chain, <code>tau_current</code>'s own Butterworth
+  pre-filter (<code>bw_tau_x/y/z</code>), which only started updating at the same tick as the
+  controller handover — a cold-start transient, same class as the original bug. Fixed in
+  <code>firmware_app/src/lib.rs</code> (commit <code>bc7190c</code>), verified compiling clean and
+  behavior-preserving at defaults on both platforms — <strong>not yet reflashed/flown</strong>,
+  needs a real <code>notch_en=1</code> test next session.</p>
 </section>
 
 <section class="stage">
-  <div class="stage-head"><span class="num">2</span><h2>Tomorrow, part 2 — first 2-drone flight</h2><span class="tag">not attempted yet</span></div>
-  <p><strong>uSD logging — do this first, both drones, before anything else.</strong> Radio
-  cannot carry two drones' worth of data without dropping packets, and dropped packets in a
-  residual-force dataset are silently corrupt. uSD is the actual dataset; radio is only for
-  live monitoring.</p>
+  <div class="stage-head"><span class="num">2</span><h2>2026-09-12, part 2 — first 2-drone flight</h2><span class="tag">done — clean flight achieved, 6 bugs fixed</span></div>
+  <p><code>cf_second</code> enabled for the first time — a standard CF2.1 (RPM deck + mocap
+  marker + uSD deck), not brushless yet, to validate the multi-drone infrastructure cheaply
+  before committing to a reflash. Layout runs Y-axis separation (checked for no code dependency,
+  more geofence margin than X). Running <code>formation_flight.py</code> for real surfaced six
+  genuine, durable bugs — all fixed, none flight-specific workarounds:</p>
   <ol style="padding-left:1.2em;margin:14px 0 .8em">
-    <li>Confirm the uSD deck is physically installed on <strong>both</strong> drones.</li>
-    <li>Copy the config to <strong>both</strong> cards, named exactly <code>config.txt</code>:
-      <code>cp flying_drone_stack/tools/usd_thesis_config.txt /media/&lt;sd&gt;/config.txt</code></li>
-    <li>Power-cycle each drone, then confirm on each:
-      <code>python3 flying_drone_stack/tools/check_usd_deck.py</code></li>
-    <li>This logs 39/40 variables at 500Hz per drone — position/velocity, attitude, gyro/accel,
-      <strong><code>indi.a_res_*</code></strong> (the thesis signal), INDI internals, tracking
-      error, motor effort. Already deliberately chosen and documented in
-      <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code> — no changes needed,
-      just make sure both cards actually have it installed before flying.</li>
+    <li><strong>Missing <code>pos_gains</code> selection for <code>ctrl_mode=0</code></strong> —
+      the exact 2026-09-09 root cause, fixed in <code>simple_flight.py</code> back then, never
+      ported here. Ported the same <code>GEOMETRIC_POS_GAINS</code> override.</li>
+    <li><strong>Mid-air controller-identity-switch risk</strong> — the ramp config assumed the
+      target was always our own OOT controller; switching controller <em>identity</em> itself
+      (e.g. to stock Lee) mid-air is the exact mechanism behind the worst 2026-09-09 crashes.
+      Fixed: when the target isn't OOT, ramp and fly the whole flight on that config, no switch.</li>
+    <li><strong>No hover support</strong> — the script always called
+      <code>uploadTrajectory()</code> unconditionally; added a <code>hover_mode</code> branch
+      mirroring <code>simple_flight.py</code>.</li>
+    <li><strong>Arming gated behind a <code>--brushless</code> flag</strong>, not passed on the
+      mixed-fleet flight — CF21BL silently never armed. Arming is a generic safety gate, not
+      brushless-specific (confirmed in <code>supervisor.c</code>); fixed by arming
+      unconditionally and removing the flag.</li>
+    <li><strong><code>LOG_DIR</code> hardcoded to a dev-machine path</strong> — crashed the
+      entire flight with an uncaught exception on flightcontrol1 (different machine), leaving
+      both drones hovering with no autonomous recovery. Fixed by importing <code>flight.py</code>
+      and reusing its already-correct <code>LOGS_DIR</code>, and wrapping all log writes in
+      <code>try/except</code> so logging can never again block landing/disarming.</li>
+    <li><strong>Landing collision for vertical (stacked) formations</strong> — a broadcast land
+      gives every drone the same duration regardless of height, so two drones sharing XY
+      collapsed to near-zero separation on descent (confirmed: one drone at 166.6° roll, a real
+      tumble). Fixed by porting <code>run_formation.py</code>'s existing pattern: spread onto a
+      0.35m circle in XY, then land each drone individually at a matched descent <em>rate</em>
+      scaled to its own live height.</li>
   </ol>
-  <p><strong>Second drone setup in <code>crazyflies.yaml</code></strong> — still placeholder as
-  of today, must be filled in before this works:</p>
-  <table>
-    <tr><td class="k">cf_second.enabled</td><td class="val">false → true</td></tr>
-    <tr><td class="k">cf_second.uri</td><td class="val">placeholder <code>...E7E8</code> → the second drone's real radio address</td></tr>
-    <tr><td class="k">cf_second.initial_position</td><td class="val">placeholder → its real physical takeoff spot</td></tr>
-  </table>
-  <p style="margin-top:14px"><strong>First flight — safety-first, rigid formation, geometric
-  controller</strong> (fully validated all session; INDI multi-drone waits for part 1's
-  result):</p>
-  <div class="term"><span class="copy">⧉</span>ros2 run crazyflie_examples formation_flight -- --formation vertical --trajectory hover --brushless --dry-run</div>
-  <p class="note">Run with <code>--dry-run</code> first — prints the plan without flying,
-  confirms both drones/positions/formation geometry look right. Drop the flag to actually fly.
-  <code>vertical</code> is the downwash-coupled case (one drone in the other's wash) — exactly
-  what tomorrow's data collection needs. <code>usd.logging</code> is toggled automatically for
-  every drone in the formation by the script, no extra flags needed.</p>
-  <p>Once hover is confirmed safe: progress to a real trajectory (matches the thesis's C.1
-  data-collection requirement — needs a scenario that excites <em>lateral</em> relative motion,
-  not just vertical, so plan for the formation library's A4/A7 scenarios once this rigid-offset
-  check is solid, not only the vertical hover here).</p>
-  <p class="note">After each flight: pull both uSD cards,
-  <code>python3 flying_drone_stack/tools/decode_usd_log.py &lt;file&gt;</code> per drone, then
-  <code>python3 experiments/analysis/run_analysis.py</code> for the RMSE/a_res numbers and
-  <code>~/.pyenv/versions/flying_robots/bin/python experiments/analysis/plot_flight.py</code>
-  for the dashboard PNG (needs the pyenv, not system Python).</p>
+  <p><strong>First fully clean flight</strong> (stock Lee, both drones, all fixes applied):
+  landed correctly, logged correctly, no exceptions. <code>cf231_active</code> (lower, in the
+  downwash) showed roll std <strong>17.9°</strong>/peak 38.2° vs <code>cf_second</code> (upper)
+  at <strong>0.75°</strong>/peak 5.8° — stock Lee has zero interaction-force awareness, so it
+  just reacts reactively. <code>a_res</code> was exactly 0 for both, as expected (that
+  computation lives inside our own controller, which never ran).</p>
+  <p><strong>Then tried our OOT geometric controller on both drones — both crashed.</strong>
+  <code>cf_second</code> oscillated almost the entire flight (roll to 179.5°); <code>cf231_active</code>
+  crashed within ~2s of leaving the ground, coinciding with a real <code>a_res_z</code> spike of
+  8.1 m/s² — consistent with being hit by the drone thrashing overhead. Both drones inspected,
+  no damage.</p>
+  <p class="note"><strong>Root cause, corrected twice on the way to the real answer.</strong>
+  First suspected <code>kr_geo</code>/<code>kw_geo</code> as brushless-only and untested on
+  standard — <strong>wrong, checked via git</strong>: those values are bit-identical to the
+  compile-time constant flying clean on standard back on 2026-07-02. The real, larger bug: the
+  <em>shared</em> <code>all:</code> firmware config (<code>fc_bw</code>, <code>clamp_en</code>,
+  <code>res_fc</code>/<code>res_clamp</code>, notch settings) has drifted brushless-only for two
+  months, and standard silently inherited all of it the moment it was re-enabled. Bigger still,
+  found later the same day: <code>apply()</code>'s broadcast also carries
+  <code>indi_gains.mass</code>/<code>kt1-4</code> from the shared block, which was silently
+  wiping <code>cf_second</code>'s per-robot mass/<code>kt</code> override on every single
+  <code>apply()</code> call, including the very first one before takeoff — so it almost
+  certainly flew on brushless's thrust model (~2.8× off on <code>kt</code>), not its own.
+  Generalized <code>load_per_robot_overrides()</code> to re-push <em>any</em> per-robot
+  <code>stabilizer</code>/<code>indi_gains</code>/<code>pos_gains</code> key after every
+  broadcast (commit <code>fdfc640</code>) — fixes both the controller/ctrl_mode case and this
+  bigger mass/<code>kt</code> case for good.</p>
+  <p><strong>Decision, session closed on this:</strong> next session switches <code>cf_second</code>
+  to brushless (removes this whole failure mode rather than re-tuning standard from scratch —
+  yaml's per-robot override block is already marked TEMPORARY with a delete-me note), then
+  validates uSD logging on both cards (never yet exercised in a real 2-drone flight — today's
+  dataset was radio only). Only then does real C.1 data collection begin. Full account:
+  <code>docs/lab_sessions/2026-09-12.md</code>.</p>
 </section>
 
 <section class="stage">
