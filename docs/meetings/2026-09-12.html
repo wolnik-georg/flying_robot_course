@@ -240,6 +240,19 @@ section.block{
 .tl-item li{margin:5px 0}
 .tl-item li::marker{color:var(--accent-2)}
 
+.papercols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:640px){.papercols{grid-template-columns:1fr}}
+.papercols ul{margin:6px 0 0;padding-left:1.15em;font-size:.9rem}
+.papercols li{margin:6px 0}
+.paper-group-label{
+  font-family:var(--font-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--accent-2);font-weight:600;
+}
+.paper-tag{
+  display:inline-block;margin-left:6px;font-family:var(--font-mono);font-size:.68rem;
+  color:var(--muted);background:var(--surface-2);padding:1px 7px;border-radius:999px;
+}
+
 /* ---- status matrix table ---- */
 .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
 table.matrix{width:100%;border-collapse:collapse;background:var(--surface);font-size:.94rem}
@@ -410,10 +423,63 @@ code{
   <div class="timeline">
     <div class="tl-item">
       <h3>Literature <span class="when">ongoing</span></h3>
-      <ul>
-        <li>Read the core papers multiple times, plus several additional supporting papers,
-          and wrote a summary of each for re-reading purposes.</li>
-      </ul>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Read multiple times, with a
+        written summary of each for re-reading.</p>
+      <div class="papercols">
+        <div>
+          <div class="paper-group-label">Core papers</div>
+          <ul>
+            <li>Cobo-Briesewitz et al. — Learned INDI for Quadrotors <span class="paper-tag">Neural-Augmented INDI</span></li>
+            <li>Gielis et al. — Modeling Aggregate Downwash Forces for Dense Multirotor Flight</li>
+            <li>Hsieh et al. — Flatness-Preserving Residual Learning for Tight Formation Flight</li>
+            <li>Shi, Hönig et al. — Neural-Swarm2: Planning &amp; Control of Heterogeneous Swarms</li>
+            <li>Smith et al. — SO(2)-Equivariant Downwash Models for Close Proximity Flight</li>
+          </ul>
+        </div>
+        <div>
+          <div class="paper-group-label">Additional papers</div>
+          <ul>
+            <li>Shi et al. — Neural-Swarm (original, single-type predecessor)</li>
+            <li>Zhang et al. — ProxFly: Residual RL for Close Proximity Flight</li>
+            <li>Smeur et al. — Cascaded INDI Control for MAV Disturbance Rejection</li>
+            <li>Tal &amp; Karaman — Aggressive Trajectory Tracking via INDI &amp; Flatness</li>
+            <li>Kiran et al. — Static &amp; Dynamic Downwash Interactions on Multi-Quadrotor Systems</li>
+            <li>Chee, Hsieh, Pappas, Hsieh — Tight Formations via Learning-based MPC <span class="paper-tag">KNODE-DW</span></li>
+            <li>Hsieh, Chee, Hsieh — Online Adaptation for Flying Quadrotors in Tight Formations</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <h3>Formation library <span class="when">16 scenarios, sim-validated</span></h3>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Prepared and validated in
+        simulation for 2- and 3-drone flights (full spec in <code>docs/10</code>).</p>
+      <div class="tablewrap" style="box-shadow:none">
+        <table class="matrix">
+          <thead>
+            <tr><th style="width:12%">ID</th><th style="width:24%">Scenario</th><th style="width:12%">Robots</th><th>What it's for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>A1</code></td><td>Vertical stack hover</td><td>2</td><td>Baseline — nothing moves, so any displacement is interaction</td></tr>
+            <tr><td><code>A2</code></td><td>Vertical stack tracking</td><td>2</td><td>Constant separation while both move</td></tr>
+            <tr><td><code>A3</code></td><td>Static-top</td><td>2</td><td>Cleanest excitation — fixed wash source, lower vehicle sweeps through</td></tr>
+            <tr><td><code>A4</code></td><td>Offset stack</td><td>2</td><td>Partial overlap — asymmetric, hardest to model</td></tr>
+            <tr><td><code>A5</code></td><td>Reverse-circle stack</td><td>2</td><td>Counter-rotation sweeps lateral offset</td></tr>
+            <tr><td><code>A6</code></td><td>Extreme stack ⚠</td><td>2</td><td>Strongest interaction, smallest error budget</td></tr>
+            <tr><td><code>A7</code></td><td>Dynamic merge ⚠</td><td>2</td><td>Continuous sweep of the whole separation range</td></tr>
+            <tr><td><code>A8</code></td><td>Vertical swap</td><td>2</td><td>Wash arrives as a transient, known arrival time</td></tr>
+            <tr><td><code>B1</code></td><td>I-stack</td><td>3</td><td>Tests whether pairwise superposition holds</td></tr>
+            <tr><td><code>B2</code></td><td>V-stack</td><td>3</td><td>Asymmetric superposition</td></tr>
+            <tr><td><code>B3</code></td><td>Vertical swap (3)</td><td>3</td><td>Three crossings at three height differences</td></tr>
+            <tr><td><code>C1</code></td><td>Side-by-side coplanar</td><td>2</td><td>Control case — a residual here is not downwash</td></tr>
+            <tr><td><code>C2</code></td><td>Leader-follower line</td><td>2</td><td>Wake rather than wash</td></tr>
+            <tr><td><code>C3</code></td><td>Equilateral triangle</td><td>3</td><td>Coplanar three-body control case</td></tr>
+            <tr><td><code>C4</code></td><td>Docking approach ⚠</td><td>2</td><td>Simultaneous lateral and vertical closure</td></tr>
+            <tr><td><code>C5</code></td><td>Near-ground pass</td><td>1</td><td>Ground effect alone, separable from downwash</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="tl-item">
@@ -435,8 +501,6 @@ code{
           (987 weights), a training pipeline, and a full
           collect→train→upload→enable→measure dry run — proven in simulation, not yet
           exercised on real data.</li>
-        <li>16-scenario formation library, fully validated in simulation on both controllers
-          (34/34 cases).</li>
       </ul>
     </div>
 
@@ -463,18 +527,15 @@ code{
     <div class="tl-item">
       <h3>First-ever 2-drone flight <span class="when">2026-09-12</span></h3>
       <ul>
-        <li>Found and fixed six real, durable bugs in the multi-drone flight script (missing
-          gain selection, a mid-air controller-identity-switch risk, no hover support, arming
-          gated behind a flag, a hardcoded log path that crashed flights on a different lab
-          machine, a landing collision for stacked formations).</li>
-        <li>First fully clean 2-drone flight (stock controller) showed a real physical
-          downwash signature: the lower drone's roll std was <strong>17.9°</strong> vs. the
-          upper drone's <strong>0.75°</strong>.</li>
-        <li>A follow-up attempt on our own controller crashed both drones. Root-caused
-          carefully (not assumed) to two compounding issues: a shared firmware config that had
-          silently drifted toward one platform's tuning over two months, and a deeper bug
-          where a drone's per-robot override was being silently overwritten every flight — now
-          fixed generally.</li>
+        <li>Six real infrastructure bugs found and fixed along the way (gain selection, a
+          controller hand-off risk, hover support, arming, logging, a landing collision — all
+          resolved).</li>
+        <li>No uSD (on-board) logging or proper plots yet, so no quantitative claim — but the
+          <strong>obvious observation stands: the lower drone was visibly disturbed by the
+          upper drone's downwash</strong> while the upper drone stayed steady, exactly the
+          interaction effect the thesis is built to measure.</li>
+        <li>A follow-up attempt on our own controller crashed both drones — root-caused and
+          fixed (a shared config drift plus a per-robot override bug), not yet re-flown.</li>
       </ul>
     </div>
   </div>
