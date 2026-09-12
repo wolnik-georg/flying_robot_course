@@ -483,6 +483,18 @@ code{
     </div>
 
     <div class="tl-item">
+      <h3>NA-INDI reference repo <span class="when">initial look</span></h3>
+      <ul>
+        <li>Took an initial look at the paper authors' own code and firmware. Identified the
+          three distinct control-law variants it implements — <strong>INDI</strong>,
+          <strong>IL-NDI</strong>, <strong>NA-INDI</strong> — and confirmed our own INDI is
+          algebraically equivalent to theirs.</li>
+        <li>Not yet integrated into our controller list or run on hardware/sim — a possible
+          next step, sequenced after data collection starts (see <a href="#plan">§6</a>).</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
       <h3>Controller &amp; platform commissioning <span class="when">ongoing, many weeks</span></h3>
       <ul>
         <li>Geometric SE(3) and all 4 INDI modes (geometric / position-INDI / attitude-INDI /
@@ -658,8 +670,16 @@ code{
     <li>Validate uSD logging on both drones in a real 2-drone flight.</li>
     <li>Fly a real notch-filter test to confirm the offline fix.</li>
     <li>Reach a decision on the residual-oscillation question and freeze the gains.</li>
-    <li>Begin real C.1 data collection (A1 → A3 → A4, per the minimum-viable-dataset requirement).</li>
+    <li>Begin real C.1 data collection (A1 → A3 → A4, per the minimum-viable-dataset
+      requirement) — with the controllers already in hand (geometric, INDI) across all
+      prepared 2-drone scenarios.</li>
   </ol>
+  <div class="qcard" style="margin-top:16px;border-left-color:var(--warn)">
+    <span class="qmark" style="color:var(--warn)">→</span><strong>Later, not yet
+    scheduled:</strong> IL-NDI and NA-INDI both need real interaction-force data to run at
+    all, so adding them to the controller list comes <em>after</em> data collection is
+    underway with what we already have — not before.
+  </div>
 </section>
 
 <section class="block" id="notes">
