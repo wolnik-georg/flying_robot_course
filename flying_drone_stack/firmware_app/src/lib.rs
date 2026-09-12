@@ -1898,22 +1898,28 @@ fn controller_step(
     // phase-mismatch class filt_tau exists to prevent. This makes notch_en self-contained:
     // enabling it alone always gives tau_current the same BW-then-notch depth as the other
     // two chains, independent of what filt_tau happens to be set to.
+    // 2026-09-12 fix: bw_tau_x/y/z used to only run once tau_bw_needed went true, so it sat
+    // completely idle through the geometric ramp and got seeded for the first time at
+    // whatever tick notch_en (or filt_tau) first flipped on -- which, in every flight script,
+    // is bundled into the SAME settings push as the ctrl_mode handover to INDI. That is
+    // exactly the cold-start-transient class the 2026-07-29 fix hoisted alpha_meas_notch/
+    // alpha_ref_notch out of the mode-gated branch to avoid -- this third chain was missed.
+    // Matches the timing of both the 2026-09-11 notch crash (stable to the handover tick,
+    // then diverges) and the 2026-09-12 ctrl_mode=2 crash (diverges exactly at the handover).
+    // Same "always run, gate only the selection" pattern as the other two chains now.
+    if !s.bw_tau_init {
+        s.bw_tau_x.seed(tau_current_raw.x);
+        s.bw_tau_y.seed(tau_current_raw.y);
+        s.bw_tau_z.seed(tau_current_raw.z);
+        s.bw_tau_init = true;
+    }
+    let tau_current_bw = Vec3::new(
+        s.bw_tau_x.update(tau_current_raw.x),
+        s.bw_tau_y.update(tau_current_raw.y),
+        s.bw_tau_z.update(tau_current_raw.z),
+    );
     let tau_bw_needed = unsafe { g_indi_filt_tau != 0 || g_indi_notch_en != 0 };
-    let tau_current = if tau_bw_needed {
-        if !s.bw_tau_init {
-            s.bw_tau_x.seed(tau_current_raw.x);
-            s.bw_tau_y.seed(tau_current_raw.y);
-            s.bw_tau_z.seed(tau_current_raw.z);
-            s.bw_tau_init = true;
-        }
-        Vec3::new(
-            s.bw_tau_x.update(tau_current_raw.x),
-            s.bw_tau_y.update(tau_current_raw.y),
-            s.bw_tau_z.update(tau_current_raw.z),
-        )
-    } else {
-        tau_current_raw
-    };
+    let tau_current = if tau_bw_needed { tau_current_bw } else { tau_current_raw };
 
     // Stage-2 notch on tau_current (indi_gains.notch_en) -- tau_current is now
     // guaranteed BW-filtered first whenever notch_en=1 (tau_bw_needed above), so this
