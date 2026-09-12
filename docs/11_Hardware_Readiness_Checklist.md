@@ -61,11 +61,16 @@ C.3 Integrate the Strategies → C.4 Systematic Comparison.
 
 ## Why the order matters
 
-Nothing in this project has flown since the Mode E migration. The simulator has caught
+**Updated 2026-09-12** — Mode E has since flown extensively (180+ hover flights, multiple
+trajectory flights, and a first 2-drone infrastructure-validation flight on 2026-09-12, see
+`docs/lab_sessions/2026-09-12.md`), so the line below no longer describes the project's flight
+history. It still describes why the ladder is ordered the way it is: the simulator has caught
 several things that would have been discovered the hard way, but it is **not** a substitute
 for a flight, and it currently runs at different position gains than hardware (see
-[`09_Simulation.md`](09_Simulation.md)). So the ladder starts with the least risky flight
-that can still fail informatively, and each rung must pass before the next.
+[`09_Simulation.md`](09_Simulation.md)). C.0 itself has not yet passed in full — stage 2's
+oscillation question is still open and the gains are not frozen (`docs/07`) — so the ladder
+starts with the least risky flight that can still fail informatively, and each rung must pass
+before the next.
 
 **Three flight-code changes have never flown and are cleared here.** All three alter control
 behaviour and **none is detectable in single-drone flight**, because `a_res ≈ 0` with no
