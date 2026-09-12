@@ -202,7 +202,7 @@ section.block{
 
 .lede{
   font-size:1.12rem;
-  line-height:1.65;
+  line-height:1.55;
   background:var(--surface);
   border:1px solid var(--border);
   border-left:3px solid var(--accent);
@@ -210,6 +210,9 @@ section.block{
   padding:20px 22px;
   box-shadow:var(--shadow);
 }
+.lede-list{margin:0;padding-left:1.2em}
+.lede-list li{margin:7px 0}
+.lede-list li::marker{color:var(--accent)}
 
 /* ---- timeline / grouped list ---- */
 .timeline{display:flex;flex-direction:column;gap:22px}
@@ -403,18 +406,16 @@ code{
 
 <section class="block" id="summary">
   <div class="sec-head"><span class="sec-num">1</span><h2>Summary</h2></div>
-  <p class="lede">
-    Software preparation is finished: geometric SE(3) and INDI controllers are implemented,
-    tuned, and commissioned on Crazyflie 2.1 hardware (standard, thrust-upgraded, and
-    brushless); the 16-scenario formation library, the simulator, and the residual-learning
-    pipeline are all built and validated in simulation. Alongside the practical work, I've
-    read the core papers multiple times plus several supporting ones, and written summaries
-    of each for re-reading. <strong>The project now blocks on one thing: real multi-drone
-    flight data.</strong> The lab has just cleared a major milestone — the first-ever 2-drone
-    flight — but a controller-validation question (a residual oscillation under INDI
-    trajectory tracking) is still open, and the gains aren't frozen yet, which is what stands
-    between here and starting the actual data-collection campaign (C.1).
-  </p>
+  <div class="lede">
+    <ul class="lede-list">
+      <li>Software preparation is finished: controllers, formation library, simulator,
+        residual pipeline.</li>
+      <li>First-ever 2-drone flight achieved this week.</li>
+      <li><strong>Both blocked on the same thing now:</strong> a controller-validation
+        question (residual oscillation), gains not frozen yet.</li>
+      <li>Once resolved: real data collection (C.1) starts.</li>
+    </ul>
+  </div>
 </section>
 
 <section class="block" id="did">
@@ -423,8 +424,8 @@ code{
   <div class="timeline">
     <div class="tl-item">
       <h3>Literature <span class="when">ongoing</span></h3>
-      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Read multiple times, with a
-        written summary of each for re-reading.</p>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Read multiple times, summary
+        written per paper.</p>
       <div class="papercols">
         <div>
           <div class="paper-group-label">Core papers</div>
@@ -453,8 +454,8 @@ code{
 
     <div class="tl-item">
       <h3>Formation library <span class="when">16 scenarios, sim-validated</span></h3>
-      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Prepared and validated in
-        simulation for 2- and 3-drone flights (full spec in <code>docs/10</code>).</p>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem">Prepared + sim-validated,
+        2- and 3-drone (<code>docs/10</code>).</p>
       <div class="tablewrap" style="box-shadow:none">
         <table class="matrix">
           <thead>
@@ -485,69 +486,51 @@ code{
     <div class="tl-item">
       <h3>NA-INDI reference repo <span class="when">initial look</span></h3>
       <ul>
-        <li>Took an initial look at the paper authors' own code and firmware. Identified the
-          three distinct control-law variants it implements — <strong>INDI</strong>,
-          <strong>IL-NDI</strong>, <strong>NA-INDI</strong> — and confirmed our own INDI is
-          algebraically equivalent to theirs.</li>
-        <li>Not yet integrated into our controller list or run on hardware/sim — a possible
-          next step, sequenced after data collection starts (see <a href="#plan">§6</a>).</li>
+        <li>Initial look at the authors' own code + firmware.</li>
+        <li>3 variants identified: <strong>INDI</strong>, <strong>IL-NDI</strong>,
+          <strong>NA-INDI</strong>.</li>
+        <li>Our INDI confirmed algebraically equivalent to theirs.</li>
+        <li>Not integrated or run yet — possible next step, see <a href="#plan">§6</a>.</li>
       </ul>
     </div>
 
     <div class="tl-item">
       <h3>Controller &amp; platform commissioning <span class="when">ongoing, many weeks</span></h3>
       <ul>
-        <li>Geometric SE(3) and all 4 INDI modes (geometric / position-INDI / attitude-INDI /
-          full INDI) implemented as one Rust out-of-tree controller — the <em>same source</em>
-          runs on hardware and in the Crazyswarm2 simulator via SIL bindings.</li>
-        <li>Three physical platforms supported from one switchable config: standard CF2.1,
-          thrust-upgraded CF2.1, brushless CF21BL (currently the primary flown platform).</li>
-        <li>Residual force measurement — <code>indi.a_res_* = a_meas − a_model</code>, the
-          thesis's core signal — logged in <strong>every</strong> controller mode, not just
-          INDI.</li>
-        <li>Two real flight-code bugs found and fixed: position INDI was reinforcing
-          disturbances instead of cancelling them (exactly <strong>2.00×</strong> on a known
-          test force), and <code>a_res</code> was dead under the geometric controller, which
-          would have silently blocked half the planned dataset.</li>
-        <li>Learned-residual infrastructure built end to end: an onboard deep-sets network
-          (987 weights), a training pipeline, and a full
-          collect→train→upload→enable→measure dry run — proven in simulation, not yet
-          exercised on real data.</li>
+        <li>Geometric SE(3) + all 4 INDI modes, one Rust controller — same source on hardware
+          and in sim.</li>
+        <li>3 platforms from one switchable config: standard / thrust-upgraded / brushless
+          CF2.1.</li>
+        <li>Residual force measurement (<code>indi.a_res_*</code>) logged in every controller
+          mode.</li>
+        <li>2 real flight-code bugs found + fixed: residual sign was reinforcing disturbances
+          (<strong>2.00×</strong>); <code>a_res</code> was dead under geometric.</li>
+        <li>Residual-learning infra built end to end (onboard net, training pipeline, sim dry
+          run) — sim-proven only.</li>
       </ul>
     </div>
 
     <div class="tl-item">
       <h3>Controller validation <span class="when">2026-09-09 → 09-12</span></h3>
       <ul>
-        <li><strong>09-09:</strong> six hover flights crashed under both controllers; three
-          real root causes found and fixed (a residual sign flip that turned out to
-          destabilize hardware and was parked behind a runtime flag; a sample-rate bug in the
-          attitude filters; geometric silently flying with the wrong position gains).</li>
-        <li><strong>09-11:</strong> re-flew clean (stage 1). Stage 2 — isolating a residual
-          oscillation under trajectory tracking — made real progress (bisecting the attitude
-          gains brought peak oscillation from <strong>88° → 7°</strong>) but never reached a
-          fully clean pass. A notch-filter attempt crashed outright.</li>
-        <li><strong>09-12:</strong> ran the card's own H0 diagnostic (attitude-INDI-only vs.
-          position-INDI-only) — <strong>inconclusive</strong>: both sub-loops were
-          individually worse than the combined system, so the two loops are too coupled to
-          isolate this way. The notch-filter crash was root-caused offline the same day (a
-          missed filter warm-up at the controller handover) and fixed in firmware — not yet
-          flown.</li>
+        <li><strong>09-09:</strong> six crashes, three root causes found + fixed.</li>
+        <li><strong>09-11:</strong> re-flew clean (stage 1). Stage 2: oscillation reduced
+          <strong>88° → 7°</strong>, still no clean pass. Notch filter crashed.</li>
+        <li><strong>09-12:</strong> H0 test (attitude-INDI vs. position-INDI alone) —
+          <strong>inconclusive</strong>, both worse alone. Notch crash root-caused + fixed
+          offline — not yet flown.</li>
       </ul>
     </div>
 
     <div class="tl-item">
       <h3>First-ever 2-drone flight <span class="when">2026-09-12</span></h3>
       <ul>
-        <li>Six real infrastructure bugs found and fixed along the way (gain selection, a
-          controller hand-off risk, hover support, arming, logging, a landing collision — all
-          resolved).</li>
-        <li>No uSD (on-board) logging or proper plots yet, so no quantitative claim — but the
-          <strong>obvious observation stands: the lower drone was visibly disturbed by the
-          upper drone's downwash</strong> while the upper drone stayed steady, exactly the
-          interaction effect the thesis is built to measure.</li>
-        <li>A follow-up attempt on our own controller crashed both drones — root-caused and
-          fixed (a shared config drift plus a per-robot override bug), not yet re-flown.</li>
+        <li>Six infrastructure bugs found + fixed (gains, hand-off, hover, arming, logging,
+          landing).</li>
+        <li>No uSD logging / plots yet — but the obvious observation:
+          <strong>lower drone visibly disturbed by downwash, upper drone steady</strong>.</li>
+        <li>Follow-up on our own controller crashed both drones — root-caused + fixed, not
+          re-flown.</li>
       </ul>
     </div>
   </div>
@@ -564,47 +547,47 @@ code{
         <tr>
           <td>Software preparation</td>
           <td><span class="status-chip done">● done</span></td>
-          <td>Controllers, formation library, simulation, residual measurement path — all built and verified.</td>
+          <td>Controllers, formation library, simulation, residual measurement.</td>
         </tr>
         <tr>
           <td>Residual-learning infra</td>
           <td><span class="status-chip done">● done</span></td>
-          <td>Onboard network, training pipeline, full dry run — proven in simulation only.</td>
+          <td>Onboard net, training pipeline, dry run — sim-proven only.</td>
         </tr>
         <tr>
           <td>First 2-drone flight</td>
           <td><span class="status-chip done">● done</span></td>
-          <td>Infrastructure validated; six real bugs found and fixed along the way.</td>
+          <td>Infra validated; six bugs found + fixed.</td>
         </tr>
         <tr>
           <td>Residual oscillation (stage 2)</td>
           <td><span class="status-chip open">● open</span></td>
-          <td>Real progress (88°→7°) but no clean pass yet; the H0 partition didn't localize it.</td>
+          <td>88°→7°, still no clean pass. H0 test didn't localize it.</td>
         </tr>
         <tr>
           <td>Gains frozen</td>
           <td><span class="status-chip open">● open</span></td>
-          <td>Blocked on the oscillation question above being resolved or explicitly accepted.</td>
+          <td>Blocked on the oscillation question above.</td>
         </tr>
         <tr>
           <td>Notch-filter fix</td>
           <td><span class="status-chip open">● open</span></td>
-          <td>Root-caused and fixed offline; not yet flight-tested.</td>
+          <td>Root-caused + fixed offline, not flight-tested.</td>
         </tr>
         <tr>
           <td>Second drone → brushless</td>
           <td><span class="status-chip next">→ next</span></td>
-          <td>Removes a whole class of cross-platform config-drift risk found this week.</td>
+          <td>Removes the config-drift risk found this week.</td>
         </tr>
         <tr>
-          <td>uSD (on-board) logging, 2 drones</td>
+          <td>uSD logging, 2 drones</td>
           <td><span class="status-chip next">→ next</span></td>
-          <td>Never exercised in an actual 2-drone flight — this week's data was radio-only.</td>
+          <td>Never tested in a real 2-drone flight yet.</td>
         </tr>
         <tr>
           <td>C.1 residual data collection</td>
           <td><span class="status-chip blocked">■ not started</span></td>
-          <td>Waiting on the two rows above and the gain freeze.</td>
+          <td>Waiting on the two rows above + gain freeze.</td>
         </tr>
       </tbody>
     </table>
@@ -649,16 +632,12 @@ code{
   <div class="sec-head"><span class="sec-num">5</span><h2>Questions / decisions needed</h2></div>
   <div class="qlist">
     <div class="qcard">
-      <span class="qmark">?</span>The H0 partition (isolating position-INDI vs. attitude-INDI)
-      came back inconclusive — both sub-loops are individually <em>worse</em> than running both
-      together. Is it worth more lab time isolating this further, or should I accept the
-      current oscillation, freeze the gains, and move on to data collection with that known
-      limitation documented as a threat to validity?
+      <span class="qmark">?</span>H0 partition inconclusive. Keep isolating, or freeze gains
+      now with the oscillation documented as a known limitation?
     </div>
     <div class="qcard">
-      <span class="qmark">?</span>Is a standard (non-brushless) second drone acceptable at all
-      for any part of the campaign, or does the protocol require both drones brushless from
-      the very first real dataset?
+      <span class="qmark">?</span>Is a standard (non-brushless) second drone acceptable at
+      all, or brushless-only from the first real dataset?
     </div>
   </div>
 </section>
@@ -666,19 +645,17 @@ code{
 <section class="block" id="plan">
   <div class="sec-head"><span class="sec-num">6</span><h2>Plan until next meeting</h2></div>
   <ol class="steps">
-    <li>Swap the second drone to brushless.</li>
-    <li>Validate uSD logging on both drones in a real 2-drone flight.</li>
-    <li>Fly a real notch-filter test to confirm the offline fix.</li>
-    <li>Reach a decision on the residual-oscillation question and freeze the gains.</li>
-    <li>Begin real C.1 data collection (A1 → A3 → A4, per the minimum-viable-dataset
-      requirement) — with the controllers already in hand (geometric, INDI) across all
-      prepared 2-drone scenarios.</li>
+    <li>Second drone → brushless.</li>
+    <li>Validate uSD logging, both drones.</li>
+    <li>Fly notch-filter test to confirm the fix.</li>
+    <li>Decide on the oscillation question, freeze gains.</li>
+    <li>Begin C.1 data collection (A1 → A3 → A4) with existing controllers, all 2-drone
+      scenarios.</li>
   </ol>
   <div class="qcard" style="margin-top:16px;border-left-color:var(--warn)">
-    <span class="qmark" style="color:var(--warn)">→</span><strong>Later, not yet
-    scheduled:</strong> IL-NDI and NA-INDI both need real interaction-force data to run at
-    all, so adding them to the controller list comes <em>after</em> data collection is
-    underway with what we already have — not before.
+    <span class="qmark" style="color:var(--warn)">→</span><strong>Later, not
+    scheduled:</strong> IL-NDI / NA-INDI need real data to run at all — added after
+    collection starts, not before.
   </div>
 </section>
 
