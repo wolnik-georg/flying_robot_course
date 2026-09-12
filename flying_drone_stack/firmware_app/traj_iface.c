@@ -346,8 +346,10 @@ uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness fro
  * unconditionally -- that is what flew the whole July campaign. Defaulting to 1 (Mellinger)
  * silently changed alpha_des on the Mode E passthrough path for every trajectory flight.
  * Inert in hover (jerk/snap are zero there, so alpha_des is zero either way), so it is NOT
- * the hover divergence -- but it is a real unflown change on circle/figure-8, and the point
- * of this revert is to leave exactly zero unflown deltas against the frozen branch.
+ * the hover divergence -- and the point of this revert is to leave exactly zero unflown
+ * deltas against the frozen branch. UPDATE: at this default (0), circle/figure-8 have since
+ * flown repeatedly (2026-09-11 stage 1/2) without incident -- it is Mellinger (=1) on
+ * circle/figure-8 that remains untried, not this value.
  * Mellinger (=1) is still believed the more correct convention (it matches controller_lee.c,
  * controller_mellinger.c and pptraj.c); re-enable it deliberately, with a trajectory flight
  * to back it, not as a default. */
@@ -356,9 +358,14 @@ uint8_t g_indi_frame_conv = 0;  /* 0 = Faessler (frozen/flight-proven), 1 = Mell
 /* res_sign -- sign of the residual feedforward in the position loop. See the long note at
  * the f_d assembly in lib.rs. +1 (DEFAULT) reproduces the frozen branch's `.add(a_indi)`,
  * the configuration that actually flew; -1 is the derivation-correct sign, which has never
- * flown and is the prime suspect for the 2026-09-09 full-INDI hover divergence. Runtime
- * param specifically so the A/B needs no reflash -- set to -1 for one flight, compare, and
- * do NOT leave it there until a hardware flight backs it up. */
+ * flown. Runtime param specifically so the A/B needs no reflash -- set to -1 for one flight,
+ * compare, and do NOT leave it there until a hardware flight backs it up.
+ *
+ * UPDATE 2026-09-12: no longer "the prime suspect" without qualification -- the H0 partition
+ * (ctrl_mode=2, which forces a_indi to zero regardless of this value) crashed on hover ALONE
+ * just as sharply as full INDI's original divergence, so this term cannot be the sole cause.
+ * res_sign=-1 is still untried and still worth testing, but on a weaker footing than before;
+ * see the matching note in lib.rs and `docs/lab_sessions/2026-09-12.md`. */
 int8_t  g_indi_res_sign   = 1;
 
 /* ── Filter-design sample rate ──────────────────────────────────────────────

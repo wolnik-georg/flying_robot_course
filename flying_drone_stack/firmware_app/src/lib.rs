@@ -1704,9 +1704,20 @@ fn controller_step(
         //
         // Both facts can be true at once: -1 may be right for steady disturbance rejection
         // (what the simulation measured) and still destabilise the loop dynamically through
-        // the lagged Rd path (what hardware showed). Resolve with the H0 partition on
-        // hardware -- ctrl_mode=2 makes a_indi identically zero, so it isolates this term --
-        // before trusting -1 for the C.1 campaign. Runtime param, so the A/B needs no reflash.
+        // the lagged Rd path (what hardware showed).
+        //
+        // UPDATE 2026-09-12: the H0 partition this note called for was flown --
+        // ctrl_mode=2 (a_indi forced to zero here regardless of res_sign) crashed sharply on
+        // hover ALONE (roll peak 119.7 deg, onset at the ramp->target handover tick), worse
+        // than full INDI. Since a_indi is identically zero in that mode, res_sign cannot be
+        // the cause of THAT crash by construction -- so ctrl_mode=2 has its own, still
+        // unexplained failure mode independent of this term. ctrl_mode=1 (a_indi active,
+        // attitude geometric) also crashed, more gradually, with an explanation already on
+        // file (pos_gains/attitude-bandwidth cascade mismatch). Net result: the test did not
+        // come back clean either way, so res_sign=-1 remains untried and unresolved -- do not
+        // read the above as "the H0 partition cleared this path", it did not. See
+        // `docs/lab_sessions/2026-09-12.md` and the controller-validation memory for the full
+        // account. Runtime param, so the A/B still needs no reflash whenever it is tried.
         // Invisible in single-drone flight, where
         // a_res ~ 0 -- it only appears once another vehicle's downwash is present.
         //
