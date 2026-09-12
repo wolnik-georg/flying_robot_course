@@ -150,10 +150,13 @@ nav.quicknav{
 
 /* ---- stat scoreboard ---- */
 .stats{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  display:grid;grid-template-columns:repeat(5,1fr);gap:12px;
   margin:28px 0 8px;
 }
+@media (max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat.countdown{border-color:var(--accent);background:linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--surface)), var(--surface))}
+.stat.countdown .v{color:var(--accent)}
 .stat{
   background:var(--surface);
   border:1px solid var(--border);
@@ -378,9 +381,14 @@ code{
   <div class="meta">
     <div><b>Since last meeting:</b> first meeting using this format</div>
     <div><b>Attendees:</b> <span style="color:var(--muted)">—</span></div>
+    <div><b>Weeks to deadline:</b> 24</div>
   </div>
 
   <div class="stats">
+    <div class="stat countdown">
+      <div class="k">Weeks to deadline</div>
+      <div class="v">24</div>
+    </div>
     <div class="stat">
       <div class="k">Software prep</div>
       <div class="v"><span class="pill-dot good"></span>Done</div>

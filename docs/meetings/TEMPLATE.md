@@ -2,6 +2,7 @@
 
 **Since last meeting:** <date of previous meeting, or "first meeting">
 **Attendees:**
+**Weeks to deadline:** <N>
 
 ---
 
