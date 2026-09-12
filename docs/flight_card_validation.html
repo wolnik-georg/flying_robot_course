@@ -439,7 +439,12 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   wiping <code>cf_second</code>'s per-robot mass/<code>kt</code> override on every single
   <code>apply()</code> call, including the very first one before takeoff — so it almost
   certainly flew on brushless's thrust model (~2.8× off on <code>kt</code>), not its own.
-  Generalized <code>load_per_robot_overrides()</code> to re-push <em>any</em> per-robot
+  <strong>This explains <code>cf_second</code> (standard)'s own instability, not
+  <code>cf231_active</code> (brushless)'s crash directly</strong> — brushless's config was never
+  touched by this bug, since it's the platform the shared config is tuned against; its crash
+  reads as collateral damage from the standard drone thrashing directly above it in the stacked
+  formation, not a separate fault of its own. Generalized <code>load_per_robot_overrides()</code>
+  to re-push <em>any</em> per-robot
   <code>stabilizer</code>/<code>indi_gains</code>/<code>pos_gains</code> key after every
   broadcast (commit <code>fdfc640</code>) — fixes both the controller/ctrl_mode case and this
   bigger mass/<code>kt</code> case for good.</p>
