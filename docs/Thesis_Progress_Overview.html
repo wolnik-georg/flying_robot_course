@@ -333,18 +333,31 @@ footer{
       <p class="why">Run 09-11: three geometric flights + one restored-config INDI hover, all
       clean. The restoration is confirmed good on hardware.</p>
     </li>
-    <li class="key">
+    <li class="done">
       <h3>Stage 2 — isolate the residual oscillation</h3>
       <p class="why">Four gain-bisection attempts (09-11) brought peak trajectory-tracking
-      oscillation from 88° to 7° but never reached a clean pass; a notch-filter attempt crashed
-      and is parked pending offline root-cause. <strong>Next: the H0 partition</strong>
-      (attitude-INDI-only vs position-INDI-only) to find which sub-loop carries it — never
-      actually run yet. <strong>This is where the project actually is.</strong></p>
+      oscillation from 88° to 7° but never reached a clean pass. <strong>The H0 partition
+      (09-12) ran and was inconclusive</strong> — both isolated sub-loops crashed on hover
+      alone, worse than full INDI, so the two loops are too coupled to isolate this way; a real
+      negative result, not a dead end. The notch-filter crash was root-caused and fixed offline
+      the same day (a third filter chain missed an earlier cold-start fix) — <strong>not yet
+      flown</strong>.</p>
+    </li>
+    <li class="key">
+      <h3>Two drones, first flight — DONE 09-12</h3>
+      <p class="why">First-ever 2-drone flight ran end to end on stock Lee after fixing six real
+      <code>formation_flight.py</code> bugs, confirming a real downwash signature. A follow-up
+      geometric attempt on both drones crashed both — root-caused to shared firmware config
+      drift plus a per-robot mass/kt override being silently wiped every flight (now fixed for
+      good). <strong>Next: swap the second drone to brushless</strong> (removes this whole
+      failure mode) and validate uSD logging on both cards — never yet exercised in a real
+      2-drone flight.</p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
       <p class="why">Two drones stacked, compensation on versus off. Enabling it must
-      <em>shrink</em> the separation error. This is the decisive flight — still ahead.</p>
+      <em>shrink</em> the separation error. This is the decisive flight — still ahead, now
+      blocked only on the brushless swap above.</p>
     </li>
     <li>
       <h3>Trajectory ladder</h3>
@@ -353,17 +366,10 @@ footer{
       right to trust it.</p>
     </li>
     <li>
-      <h3>Two drones, wide first</h3>
-      <p class="why">Widest separation, then tighter. First 2-drone flight planned for the next
-      session (rigid vertical formation, geometric, uSD logging on both drones) — confirm the
-      residual grows as the gap closes, that is what shows it measures the interaction rather
-      than noise.</p>
-    </li>
-    <li>
       <h3>Freeze the gains</h3>
       <p class="why">Written down and unchanged from here. Re-tuning later would measure tuning
-      effort rather than the methods being compared. Not yet reached — stage 2's oscillation
-      question comes first.</p>
+      effort rather than the methods being compared. Not yet reached — the notch fix needs a
+      real flight test first, and stage 2's oscillation question is still open.</p>
     </li>
   </ol>
   <p>
