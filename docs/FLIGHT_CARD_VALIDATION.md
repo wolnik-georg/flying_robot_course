@@ -229,11 +229,24 @@ airframe), compounded by a diagnostic command that accidentally forced it into b
 mode. Resolved with an explicit `make DRONE=bl` reflash. Full account:
 `docs/lab_sessions/2026-09-13.md`.
 
+## 2026-09-13 — offline notch analysis, CONCLUSIVE: abandon the notch approach
+
+`experiments/analysis/notch_filter_bode.py` computes the real discrete frequency response of
+the `Butterworth2`→`NotchFilter` chain at the true 1 kHz tick rate. **The attitude loop's own
+natural frequency (`ωₙ = √kr = 7.80 Hz` at `kr=2400`) sits almost exactly inside the notch's
+rejection band** (`f0=6.9`, `bw=3.0`, ~5.4–8.4 Hz) — phase swings from −89° to +85° in under
+0.1 Hz right through that band, and even at 7.80 Hz the notch still applies +58° phase and
+halves the signal. **The "shake" is likely the loop's own dynamics, not an external
+resonance** — notching it corrupts the loop's own feedback at its operating point, which is a
+structural problem no `notch_f0`/`notch_bw` retune can fix while `kr`/`kw` keep `ωₙ` at 7.8 Hz.
+**Decision: the notch-filter approach is abandoned.** Continue the `kr`/`kw` + `pos_gains`
+coordinated retuning line instead (best so far: 2026-09-11 attempt 4, `483/76` + geometric
+`pos_gains`, peak 6.7°).
+
 ## Next steps
 
-1. **Offline analysis of the notch filter before any further live attempt** — flagged as
-   needed back on 2026-09-11, still not done. A live flight is not how to find this out.
-2. **Re-enable `cf_second`** (`enabled: false` currently, from today's single-drone debugging).
+1. **Re-enable `cf_second`** (`enabled: false` currently, from 09-13's single-drone debugging).
+2. **Continue the `kr`/`kw` + `pos_gains` coordinated retuning line** — not the notch.
 3. **Validate uSD logging on both cards** — never yet exercised in a real 2-drone flight.
 4. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
    A1 → A3 → A4, per `docs/11`'s minimum-viable-dataset gate.
