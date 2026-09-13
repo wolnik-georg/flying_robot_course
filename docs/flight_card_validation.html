@@ -477,10 +477,15 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   only <code>cf231_active</code> is ever the controller under study. This removes the
   cross-platform gain-sharing risk by construction (stock Lee never reads
   <code>indi_gains</code>/<code>pos_gains</code>), so the swap is no longer needed for this
-  reason; <code>cf_second</code> can stay standard CF2.1 indefinitely. Next: fly a real
-  <code>notch_en=1</code> test, then validate uSD logging on both cards (never yet exercised in
-  a real 2-drone flight — 09-12's dataset was radio only). Only then does real C.1 data
-  collection begin. Full account: <code>docs/lab_sessions/2026-09-12.md</code>.</p>
+  reason; <code>cf_second</code> can stay standard CF2.1 indefinitely.</p>
+  <p class="note"><strong>2026-09-14 plan — neither our own geometric nor INDI has actually
+  worked in a 2-drone scenario yet</strong>: the only clean 2-drone flight remains stock Lee
+  (<code>a_res=0</code>, no real data); the one attempt at our own geometric on both drones is
+  what crashed. Next: (1) geometric, 2 drones, A1 hover — closes C.0 flight 5 and is the first
+  real C.1 data point; (2) full INDI, 2 drones, A1 hover — deliberately ahead of C.0's strict
+  order since A1 doesn't exercise the open trajectory-tracking shake; (3) uSD logging + sync
+  validation on both drones; (4) if clean, move to A3. Full account:
+  <code>docs/lab_sessions/2026-09-14.md</code>.</p>
 </section>
 
 <section class="stage">

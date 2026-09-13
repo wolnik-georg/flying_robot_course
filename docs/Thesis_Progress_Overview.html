@@ -178,7 +178,7 @@ footer{
   <div class="statusline">
     <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
     <span class="pill blocked"><span class="dot"></span>Lab · H0 partition inconclusive, first 2-drone flight done</span>
-    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, notch crash root-caused (unflown fix), first 2-drone flight flown after 6 bug fixes · 09-13: cf_second pinned to stock Lee, notch fix flown and CRASHED (worse, zero log data) — offline analysis found the notch approach structurally flawed, abandoned · next: kr/kw retuning, validate uSD on both cards</span>
+    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, first 2-drone flight flown after 6 bug fixes (stock Lee only) · 09-13: cf_second pinned to stock Lee, notch fix flown and CRASHED, offline analysis found it structurally flawed, abandoned · 09-14 plan: geometric+INDI A1 hover (neither has worked in 2-drone yet), then uSD sync</span>
   </div>
 </header>
 
@@ -237,7 +237,8 @@ footer{
         <li><strong>Architecture decision 09-13:</strong> rather than brushless-swap <code>cf_second</code>, it's permanently pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the controller under study, removing the cross-platform gain-sharing risk by construction (stock Lee never reads <code>indi_gains</code>/<code>pos_gains</code>)</li>
         <li><strong>09-13, notch test flown — CRASHED.</strong> Worse than the original 09-11 crash, zero log data saved (the crash was violent enough the radio/log pipeline never completed). The <code>bc7190c</code> fix does not resolve the problem; reverted. Most of the session before this was lost to an unrelated hardware/tooling problem: the drone had been flashed with the wrong firmware platform (standard onto brushless), compounded by a diagnostic that accidentally forced it into bootloader mode — resolved with an explicit <code>DRONE=bl</code> reflash. Drone inspected, no damage.</li>
         <li><strong>09-13 desk-time, CONCLUSIVE:</strong> offline bode/phase analysis (<code>experiments/analysis/notch_filter_bode.py</code>) found the attitude loop's own natural frequency (<code>ωₙ = √kr = 7.80 Hz</code> at <code>kr=2400</code>) sits almost exactly inside the notch's rejection band (<code>f0=6.9</code>, <code>bw=3.0</code>) — phase swings ~175° across it, and even at <code>ωₙ</code> the notch applies +58° phase and halves the signal. The "shake" is likely the loop's own dynamics, not an external resonance — <strong>the notch-filter approach is abandoned</strong>, no retuning of <code>notch_f0</code>/<code>notch_bw</code> can fix a filter sitting on top of the loop's own bandwidth. Full account: <code>docs/lab_sessions/2026-09-13.md</code></li>
-        <li class="pending">Next: continue the <code>kr</code>/<code>kw</code> + <code>pos_gains</code> coordinated retuning line (09-11 attempt 4, peak 6.7°) instead of the notch, validate uSD logging on both cards in a real 2-drone flight, then begin real C.1 data collection</li>
+        <li><strong>Neither our own geometric nor INDI has actually worked in a 2-drone scenario yet</strong> — the only clean 2-drone flight remains stock Lee (<code>a_res=0</code>, no real data); the one attempt at our own geometric on both drones is what crashed on 09-12.</li>
+        <li class="pending"><strong>09-14 plan:</strong> (1) geometric, 2 drones, A1 hover — closes C.0 flight 5, is the first real C.1 data point; (2) full INDI, 2 drones, A1 hover — deliberately ahead of C.0's strict order since A1 doesn't exercise the open trajectory-tracking shake; (3) uSD logging + sync validation; (4) if clean, move to A3. The <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line (09-11 attempt 4, peak 6.7°) continues separately. Brushless swap deferred to its own session</li>
       </ul>
     </div>
   </div>
@@ -353,16 +354,18 @@ footer{
       line instead (09-11 attempt 4, peak 6.7°).</p>
     </li>
     <li class="key">
-      <h3>Two drones, first flight — DONE 09-12</h3>
+      <h3>Two drones, first flight — DONE 09-12 (stock Lee only)</h3>
       <p class="why">First-ever 2-drone flight ran end to end on stock Lee after fixing six real
-      <code>formation_flight.py</code> bugs, confirming a real downwash signature. A follow-up
+      <code>formation_flight.py</code> bugs, confirming a real downwash signature — but stock
+      Lee gives <code>a_res=0</code>, so this is not yet real thesis data. A follow-up
       geometric attempt on both drones crashed both — root-caused to shared firmware config
       drift plus a per-robot mass/kt override being silently wiped every flight (now fixed for
       good). <strong>Architecture decision 09-13</strong>: <code>cf_second</code> permanently
       pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the
-      controller under study, removing this failure mode by construction. No brushless swap
-      needed for that reason. Next: validate uSD logging on both cards — never yet exercised
-      in a real 2-drone flight.</p>
+      controller under study, removing this failure mode by construction. <strong>Neither our
+      own geometric nor INDI has actually worked in 2-drone yet</strong> — that's the 09-14
+      plan: geometric A1 hover, then full INDI A1 hover (ahead of the strict C.0 order since A1
+      doesn't exercise the open trajectory shake), then uSD logging + sync validation.</p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
