@@ -169,11 +169,13 @@ footer{
     Lee regardless of platform — only <code>cf231_active</code> is ever the controller under
     study, removing the cross-platform gain-sharing risk by construction and the need to
     brushless-swap <code>cf_second</code>.</strong> <strong>The notch test was then flown for
-    the first time and CRASHED — worse than the original 09-11 crash, zero log data. The
-    <code>bc7190c</code> fix does not resolve the problem; <code>notch_en</code> reverted to 0,
-    real offline analysis needed before trying again.</strong> Most of the session was lost to
-    an unrelated hardware/tooling problem first (wrong firmware platform flashed, then an
-    accidental bootloader-mode command) — see the tick sheet below.
+    the first time and CRASHED — worse than the original 09-11 crash, zero log data.</strong>
+    Most of the session was lost to an unrelated hardware/tooling problem first (wrong firmware
+    platform flashed, then an accidental bootloader-mode command). <strong>Desk-time follow-up
+    the same day found out why, conclusively: the notch's rejection band sits almost exactly on
+    the attitude loop's own natural frequency — a structural problem, not a timing bug. The
+    notch-filter approach is abandoned; the kr/kw retuning line is the path forward
+    instead.</strong> See the tick sheet below.
   </p>
 </header>
 
@@ -388,9 +390,20 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   behavior-preserving at defaults on both platforms.</p>
   <p class="note"><strong>UPDATE 09-13: flown for real — CRASHED, worse than this original
   crash, zero log data saved.</strong> The fix does not resolve the problem. Reverted
-  (<code>notch_en=0</code>); do not retry without real offline analysis (bode/phase response of
-  the notch stacked with the rest of the filter chain — still never done, despite being flagged
-  here since 09-11). See <code>docs/lab_sessions/2026-09-13.md</code>.</p>
+  (<code>notch_en=0</code>).</p>
+  <p class="note"><strong>Desk-time follow-up, same day — CONCLUSIVE, the notch approach is
+  abandoned.</strong> <code>experiments/analysis/notch_filter_bode.py</code> computes the real
+  discrete frequency response of the filter chain at the true 1&nbsp;kHz tick rate: the
+  attitude loop's own natural frequency (<code>ωₙ = √kr = 7.80&nbsp;Hz</code> at
+  <code>kr=2400</code>) sits almost exactly inside the notch's rejection band
+  (<code>f0=6.9</code>, <code>bw=3.0</code>, ~5.4–8.4&nbsp;Hz) — phase swings from −89° to +85°
+  between 6.88 and 6.98&nbsp;Hz, and even at 7.80&nbsp;Hz the notch still applies +58° phase and
+  halves the signal. The "shake" is likely the loop's own dynamics, not an external resonance —
+  notching it corrupts the loop's own feedback at its operating point, a structural problem no
+  <code>notch_f0</code>/<code>notch_bw</code> retune fixes while <code>kr</code>/<code>kw</code>
+  keep <code>ωₙ</code> at 7.8&nbsp;Hz. The coordinated <code>kr</code>/<code>kw</code> +
+  <code>pos_gains</code> retuning line (09-11 attempt 4, peak 6.7°) is the path forward instead.
+  See <code>docs/lab_sessions/2026-09-13.md</code>.</p>
 </section>
 
 <section class="stage">
