@@ -643,17 +643,21 @@ code{
 
 <section class="block" id="plan">
   <div class="sec-head"><span class="sec-num">6</span><h2>Plan / action items</h2></div>
+  <p style="margin:0 0 12px;color:var(--muted);font-size:.92rem"><strong>Neither our own
+    geometric nor INDI has actually worked in a 2-drone scenario yet</strong> — only stock Lee
+    has (<code>a_res=0</code>, no real data). 09-14 plan:</p>
   <div class="checklist">
-    <div class="check-row"><span class="box"></span>Re-enable cf_second (disabled for 09-13's single-drone debugging)</div>
-    <div class="check-row"><span class="box"></span>Continue the kr/kw + pos_gains coordinated retuning line</div>
-    <div class="check-row"><span class="box"></span>Validate uSD logging, both drones</div>
+    <div class="check-row"><span class="box"></span>Geometric, 2 drones, A1 hover — closes C.0 flight 5, first real C.1 data point</div>
+    <div class="check-row"><span class="box"></span>Full INDI, 2 drones, A1 hover — ahead of C.0's strict order, A1 doesn't hit the open shake</div>
+    <div class="check-row"><span class="box"></span>Validate uSD logging + sync, both drones</div>
+    <div class="check-row"><span class="box"></span>If clean: move to A3</div>
+    <div class="check-row"><span class="box"></span>Continue the kr/kw + pos_gains coordinated retuning line (separately, not blocking)</div>
     <div class="check-row"><span class="box"></span>Decide on the oscillation question, freeze gains</div>
-    <div class="check-row"><span class="box"></span>Begin C.1 data collection (A1 → A3 → A4) with existing controllers, all 2-drone scenarios</div>
   </div>
   <div class="qcard" style="margin-top:16px;border-left-color:var(--warn)">
     <span class="qmark" style="color:var(--warn)">→</span><strong>Later, not
-    scheduled:</strong> IL-NDI / NA-INDI need real data to run at all — added after
-    collection starts, not before.
+    scheduled:</strong> IL-NDI / NA-INDI need real data to run at all. Brushless swap for
+    cf_second — its own session, not required for correctness any more.
   </div>
 </section>
 
