@@ -243,13 +243,24 @@ structural problem no `notch_f0`/`notch_bw` retune can fix while `kr`/`kw` keep 
 coordinated retuning line instead (best so far: 2026-09-11 attempt 4, `483/76` + geometric
 `pos_gains`, peak 6.7°).
 
-## Next steps
+## Next steps — 2026-09-14 plan
 
-1. **Re-enable `cf_second`** (`enabled: false` currently, from 09-13's single-drone debugging).
-2. **Continue the `kr`/`kw` + `pos_gains` coordinated retuning line** — not the notch.
-3. **Validate uSD logging on both cards** — never yet exercised in a real 2-drone flight.
-4. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
-   A1 → A3 → A4, per `docs/11`'s minimum-viable-dataset gate.
+**Neither our own geometric nor INDI has actually worked in a 2-drone scenario yet** — the
+only clean 2-drone flight remains stock Lee (`a_res=0`, no real data); the one attempt at our
+own geometric on both drones is what crashed on 2026-09-12.
+
+1. **Geometric, 2 drones, A1 hover** (`cf231_active`=our geometric, `cf_second`=stock Lee) —
+   closes C.0 flight 5 and *is* the first real C.1 data point (A1 under geometric).
+2. **Full INDI, 2 drones, A1 hover** — deliberately ahead of C.0's strict required order
+   (figure-8 under corrected INDI hasn't reached a clean pass) since A1 is pure hover and
+   doesn't exercise the open trajectory-tracking shake — an informed decision, not an
+   oversight.
+3. **Validate uSD logging + sync on both drones**, exercised during (1)/(2).
+4. **If clean: move to A3.**
+
+The `kr`/`kw` + `pos_gains` coordinated retuning line (the actual fix for the trajectory-
+tracking shake, not the notch) continues separately and does not block this plan. Brushless
+swap for `cf_second` explicitly deferred to its own session.
 
 ---
 
