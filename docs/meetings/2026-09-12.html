@@ -537,6 +537,10 @@ code{
           <strong>lower drone visibly disturbed by downwash, upper drone steady</strong>.</li>
         <li>Follow-up on our own controller crashed both drones — root-caused + fixed, not
           re-flown.</li>
+        <li><strong>Architecture decision, 09-13:</strong> <code>cf_second</code> permanently
+          pinned to stock Lee, regardless of platform. Only <code>cf231_active</code> is ever
+          the controller under study — removes the cross-platform gain-sharing risk by
+          construction, no brushless swap needed for <code>cf_second</code> any more.</li>
       </ul>
     </div>
   </div>
@@ -581,9 +585,9 @@ code{
           <td>Root-caused + fixed offline, not flight-tested.</td>
         </tr>
         <tr>
-          <td>Second drone → brushless</td>
-          <td><span class="status-chip next">→ next</span></td>
-          <td>Removes the config-drift risk found this week.</td>
+          <td>cf_second → stock Lee, permanent</td>
+          <td><span class="status-chip done">● done</span></td>
+          <td>Removes the config-drift risk by construction — no brushless swap needed.</td>
         </tr>
         <tr>
           <td>uSD logging, 2 drones</td>
@@ -611,9 +615,8 @@ code{
 <section class="block" id="plan">
   <div class="sec-head"><span class="sec-num">6</span><h2>Plan / action items</h2></div>
   <div class="checklist">
-    <div class="check-row"><span class="box"></span>Second drone → brushless</div>
-    <div class="check-row"><span class="box"></span>Validate uSD logging, both drones</div>
     <div class="check-row"><span class="box"></span>Fly notch-filter test to confirm the fix</div>
+    <div class="check-row"><span class="box"></span>Validate uSD logging, both drones</div>
     <div class="check-row"><span class="box"></span>Decide on the oscillation question, freeze gains</div>
     <div class="check-row"><span class="box"></span>Begin C.1 data collection (A1 → A3 → A4) with existing controllers, all 2-drone scenarios</div>
   </div>

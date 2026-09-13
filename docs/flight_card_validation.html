@@ -165,8 +165,12 @@ footer{
     Lee after fixing six <code>formation_flight.py</code> bugs — a follow-up geometric attempt on
     both drones crashed, root-caused to shared-config drift plus a per-robot mass/kt override that
     was being silently wiped every flight (now fixed for good). Results below.
-    <strong>Next session: swap <code>cf_second</code> to brushless, validate uSD logging on both
-    cards, then begin real C.1 data collection.</strong>
+    <strong>Architecture decision, 09-13: <code>cf_second</code> permanently pinned to stock
+    Lee regardless of platform — only <code>cf231_active</code> is ever the controller under
+    study, removing the cross-platform gain-sharing risk by construction and the need to
+    brushless-swap <code>cf_second</code>.</strong> <strong>Next session: fly a real
+    <code>notch_en=1</code> test, validate uSD logging on both cards, then begin real C.1
+    data collection.</strong>
   </p>
 </header>
 
@@ -448,12 +452,15 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   <code>stabilizer</code>/<code>indi_gains</code>/<code>pos_gains</code> key after every
   broadcast (commit <code>fdfc640</code>) — fixes both the controller/ctrl_mode case and this
   bigger mass/<code>kt</code> case for good.</p>
-  <p><strong>Decision, session closed on this:</strong> next session switches <code>cf_second</code>
-  to brushless (removes this whole failure mode rather than re-tuning standard from scratch —
-  yaml's per-robot override block is already marked TEMPORARY with a delete-me note), then
-  validates uSD logging on both cards (never yet exercised in a real 2-drone flight — today's
-  dataset was radio only). Only then does real C.1 data collection begin. Full account:
-  <code>docs/lab_sessions/2026-09-12.md</code>.</p>
+  <p><strong>Superseded 2026-09-13:</strong> rather than brushless-swap <code>cf_second</code>,
+  the architecture decision was to permanently pin it to stock Lee regardless of platform —
+  only <code>cf231_active</code> is ever the controller under study. This removes the
+  cross-platform gain-sharing risk by construction (stock Lee never reads
+  <code>indi_gains</code>/<code>pos_gains</code>), so the swap is no longer needed for this
+  reason; <code>cf_second</code> can stay standard CF2.1 indefinitely. Next: fly a real
+  <code>notch_en=1</code> test, then validate uSD logging on both cards (never yet exercised in
+  a real 2-drone flight — 09-12's dataset was radio only). Only then does real C.1 data
+  collection begin. Full account: <code>docs/lab_sessions/2026-09-12.md</code>.</p>
 </section>
 
 <section class="stage">

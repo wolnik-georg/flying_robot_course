@@ -208,15 +208,21 @@ drone thrashing directly above it, not a fault of its own. Fixed generally:
 `load_per_robot_overrides()` now re-pushes any per-robot key after every broadcast
 (`crazyswarm2` `fdfc640`).
 
+## Architecture decision, 2026-09-13
+
+`cf_second` is now **permanently pinned to stock Lee** (`crazyswarm2` `bb88e73`), regardless of
+platform — only `cf231_active` is ever the controller under study. This removes the whole
+cross-platform gain-sharing risk by construction (stock Lee never reads
+`indi_gains`/`pos_gains`), and means **the brushless swap for `cf_second` is no longer needed**
+for that reason — it can stay standard CF2.1 indefinitely.
+
 ## Next steps
 
-1. **Switch `cf_second` to brushless** (reflash + physical swap) — removes the whole
-   shared-config-drift failure mode, matches this project's "2x identical brushless" protocol.
+1. **Fly a real `notch_en=1` test** to confirm the offline fix above actually resolves the
+   2026-09-11 crash — the build check alone doesn't count as validated.
 2. **Validate uSD logging on both cards** — never yet exercised in a real 2-drone flight
    (today's dataset was radio only).
-3. **Fly a real `notch_en=1` test** to confirm the offline fix above actually resolves the
-   2026-09-11 crash — the build check alone doesn't count as validated.
-4. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
+3. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
    A1 → A3 → A4, per `docs/11`'s minimum-viable-dataset gate.
 
 ---
