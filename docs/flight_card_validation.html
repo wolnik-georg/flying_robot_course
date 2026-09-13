@@ -168,9 +168,12 @@ footer{
     <strong>Architecture decision, 09-13: <code>cf_second</code> permanently pinned to stock
     Lee regardless of platform — only <code>cf231_active</code> is ever the controller under
     study, removing the cross-platform gain-sharing risk by construction and the need to
-    brushless-swap <code>cf_second</code>.</strong> <strong>Next session: fly a real
-    <code>notch_en=1</code> test, validate uSD logging on both cards, then begin real C.1
-    data collection.</strong>
+    brushless-swap <code>cf_second</code>.</strong> <strong>The notch test was then flown for
+    the first time and CRASHED — worse than the original 09-11 crash, zero log data. The
+    <code>bc7190c</code> fix does not resolve the problem; <code>notch_en</code> reverted to 0,
+    real offline analysis needed before trying again.</strong> Most of the session was lost to
+    an unrelated hardware/tooling problem first (wrong firmware platform flashed, then an
+    accidental bootloader-mode command) — see the tick sheet below.
   </p>
 </header>
 
@@ -382,8 +385,12 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   pre-filter (<code>bw_tau_x/y/z</code>), which only started updating at the same tick as the
   controller handover — a cold-start transient, same class as the original bug. Fixed in
   <code>firmware_app/src/lib.rs</code> (commit <code>bc7190c</code>), verified compiling clean and
-  behavior-preserving at defaults on both platforms — <strong>not yet reflashed/flown</strong>,
-  needs a real <code>notch_en=1</code> test next session.</p>
+  behavior-preserving at defaults on both platforms.</p>
+  <p class="note"><strong>UPDATE 09-13: flown for real — CRASHED, worse than this original
+  crash, zero log data saved.</strong> The fix does not resolve the problem. Reverted
+  (<code>notch_en=0</code>); do not retry without real offline analysis (bode/phase response of
+  the notch stacked with the rest of the filter chain — still never done, despite being flagged
+  here since 09-11). See <code>docs/lab_sessions/2026-09-13.md</code>.</p>
 </section>
 
 <section class="stage">

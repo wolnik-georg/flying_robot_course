@@ -178,7 +178,7 @@ footer{
   <div class="statusline">
     <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
     <span class="pill blocked"><span class="dot"></span>Lab · H0 partition inconclusive, first 2-drone flight done</span>
-    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, notch crash root-caused (unflown fix), first 2-drone flight flown after 6 bug fixes · 09-13: cf_second permanently pinned to stock Lee (brushless swap no longer needed) · next: fly notch test, validate uSD on both cards</span>
+    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, notch crash root-caused (unflown fix), first 2-drone flight flown after 6 bug fixes · 09-13: cf_second pinned to stock Lee, notch fix flown and CRASHED (worse, zero log data) · next: offline notch analysis, validate uSD on both cards</span>
   </div>
 </header>
 
@@ -235,7 +235,8 @@ footer{
         <li><strong>First-ever 2-drone flight achieved</strong> — a standard CF2.1 enabled as <code>cf_second</code> (not brushless yet, to validate the infrastructure cheaply). Found and fixed six real, durable bugs in <code>formation_flight.py</code> (missing pos_gains selection, a mid-air controller-identity-switch risk, no hover support, arming gated behind a removed flag, a hardcoded dev-machine log path, and a landing collision for stacked formations). Clean flight on stock Lee confirmed the downwash signal (lower drone roll std 17.9° vs upper 0.75°)</li>
         <li>A follow-up flight of our OOT geometric controller on both drones <strong>crashed both</strong>. Root cause, corrected twice via git-verified checks rather than assumed: not the attitude gains (bit-identical to a 2026-07-02 clean flight on standard) but shared firmware config drifted brushless-only for two months, compounded by a bigger bug — the per-robot mass/<code>kt</code> override was being silently wiped every <code>apply()</code> call, so <code>cf_second</code> (standard) likely flew on brushless's thrust model the whole time. Generalized the per-robot override mechanism to fix this for good. This explains standard's own instability, not brushless's crash directly — brushless's config was never touched by the bug; its crash reads as collateral damage from the standard drone thrashing directly above it, not a fault of its own</li>
         <li><strong>Architecture decision 09-13:</strong> rather than brushless-swap <code>cf_second</code>, it's permanently pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the controller under study, removing the cross-platform gain-sharing risk by construction (stock Lee never reads <code>indi_gains</code>/<code>pos_gains</code>)</li>
-        <li class="pending">Next: fly a real <code>notch_en=1</code> test to confirm the offline fix, validate uSD logging on both cards in a real 2-drone flight (never yet exercised — 09-12's dataset was radio only), then begin real C.1 data collection</li>
+        <li><strong>09-13, notch test flown — CRASHED.</strong> Worse than the original 09-11 crash, zero log data saved (the crash was violent enough the radio/log pipeline never completed). The <code>bc7190c</code> fix does not resolve the problem; reverted, do not retry without real offline analysis. Most of the session before this was lost to an unrelated hardware/tooling problem: the drone had been flashed with the wrong firmware platform (standard onto brushless), compounded by a diagnostic that accidentally forced it into bootloader mode — resolved with an explicit <code>DRONE=bl</code> reflash. Drone inspected, no damage. Full account: <code>docs/lab_sessions/2026-09-13.md</code></li>
+        <li class="pending">Next: real offline analysis of the notch filter (flagged since 09-11, still not done), validate uSD logging on both cards in a real 2-drone flight, then begin real C.1 data collection</li>
       </ul>
     </div>
   </div>
@@ -341,8 +342,10 @@ footer{
       (09-12) ran and was inconclusive</strong> — both isolated sub-loops crashed on hover
       alone, worse than full INDI, so the two loops are too coupled to isolate this way; a real
       negative result, not a dead end. The notch-filter crash was root-caused and fixed offline
-      the same day (a third filter chain missed an earlier cold-start fix) — <strong>not yet
-      flown</strong>.</p>
+      the same day (a third filter chain missed an earlier cold-start fix). <strong>UPDATE
+      09-13: flown for real — CRASHED, worse than the original crash, zero log data. The fix
+      does not resolve the problem</strong>; reverted, real offline analysis needed before any
+      further attempt.</p>
     </li>
     <li class="key">
       <h3>Two drones, first flight — DONE 09-12</h3>
@@ -353,8 +356,8 @@ footer{
       good). <strong>Architecture decision 09-13</strong>: <code>cf_second</code> permanently
       pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the
       controller under study, removing this failure mode by construction. No brushless swap
-      needed for that reason. Next: fly a real <code>notch_en=1</code> test, then validate uSD
-      logging on both cards — never yet exercised in a real 2-drone flight.</p>
+      needed for that reason. Next: validate uSD logging on both cards — never yet exercised
+      in a real 2-drone flight.</p>
     </li>
     <li class="key">
       <h3>Prove the residual sign</h3>
