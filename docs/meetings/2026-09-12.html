@@ -550,12 +550,26 @@ code{
         <li>Worse than the original 09-11 crash. <strong>Zero log data saved</strong> — first
           crash this project with no telemetry at all.</li>
         <li>The <code>bc7190c</code> fix does <strong>not</strong> resolve the problem.
-          Reverted; real offline analysis needed before any further attempt (flagged since
-          09-11, still not done).</li>
+          Reverted.</li>
         <li>Most of the session before this was lost to an unrelated problem: wrong firmware
           platform flashed (standard onto brushless), compounded by a diagnostic that
           accidentally forced the drone into bootloader mode. Resolved with an explicit
           <code>DRONE=bl</code> reflash. Drone inspected after — no damage.</li>
+      </ul>
+    </div>
+
+    <div class="tl-item">
+      <h3>Offline notch analysis <span class="when">2026-09-13 — CONCLUSIVE</span></h3>
+      <ul>
+        <li><code>experiments/analysis/notch_filter_bode.py</code> — attitude loop's natural
+          frequency (<code>ωₙ=√kr=7.80 Hz</code> at <code>kr=2400</code>) sits almost exactly
+          inside the notch's rejection band (<code>f0=6.9</code>, <code>bw=3.0</code>) — phase
+          swings ~175° across it.</li>
+        <li>The "shake" is likely the loop's own dynamics, not an external resonance. Notching
+          it corrupts the loop's own feedback at its operating point.</li>
+        <li><strong>Notch-filter approach abandoned.</strong> Continuing the
+          <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line instead
+          (09-11 attempt 4, peak 6.7°).</li>
       </ul>
     </div>
   </div>
@@ -595,9 +609,9 @@ code{
           <td>Blocked on the oscillation question above.</td>
         </tr>
         <tr>
-          <td>Notch-filter fix</td>
-          <td><span class="status-chip blocked">■ disproven</span></td>
-          <td>Flown 09-13 — crashed worse than the original, zero log data. Fix doesn't work.</td>
+          <td>Notch-filter approach</td>
+          <td><span class="status-chip blocked">■ abandoned</span></td>
+          <td>Flown 09-13, crashed worse. Offline analysis: structurally flawed, not fixable by retuning.</td>
         </tr>
         <tr>
           <td>cf_second → stock Lee, permanent</td>
@@ -630,8 +644,8 @@ code{
 <section class="block" id="plan">
   <div class="sec-head"><span class="sec-num">6</span><h2>Plan / action items</h2></div>
   <div class="checklist">
-    <div class="check-row"><span class="box"></span>Offline analysis of the notch filter before any further live attempt</div>
     <div class="check-row"><span class="box"></span>Re-enable cf_second (disabled for 09-13's single-drone debugging)</div>
+    <div class="check-row"><span class="box"></span>Continue the kr/kw + pos_gains coordinated retuning line</div>
     <div class="check-row"><span class="box"></span>Validate uSD logging, both drones</div>
     <div class="check-row"><span class="box"></span>Decide on the oscillation question, freeze gains</div>
     <div class="check-row"><span class="box"></span>Begin C.1 data collection (A1 → A3 → A4) with existing controllers, all 2-drone scenarios</div>
