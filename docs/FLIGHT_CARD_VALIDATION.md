@@ -216,13 +216,26 @@ cross-platform gain-sharing risk by construction (stock Lee never reads
 `indi_gains`/`pos_gains`), and means **the brushless swap for `cf_second` is no longer needed**
 for that reason — it can stay standard CF2.1 indefinitely.
 
+## 2026-09-13 — notch test flown, CRASHED
+
+The `notch_en=1` test was flown for real (`stabilizer.controller=6`, `ctrl_mode=3` full INDI,
+matching the config the original crash happened under). **It crashed — worse than the
+2026-09-11 crash — with zero log data saved.** The `bc7190c` fix does **not** resolve the
+problem. `notch_en` reverted to 0 (`crazyswarm2` `3958a4e`). Drone inspected, no damage.
+
+Most of the session before this was lost to a separate, genuine hardware/tooling problem: the
+drone had been flashed with the wrong firmware platform (standard onto the brushless
+airframe), compounded by a diagnostic command that accidentally forced it into bootloader
+mode. Resolved with an explicit `make DRONE=bl` reflash. Full account:
+`docs/lab_sessions/2026-09-13.md`.
+
 ## Next steps
 
-1. **Fly a real `notch_en=1` test** to confirm the offline fix above actually resolves the
-   2026-09-11 crash — the build check alone doesn't count as validated.
-2. **Validate uSD logging on both cards** — never yet exercised in a real 2-drone flight
-   (today's dataset was radio only).
-3. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
+1. **Offline analysis of the notch filter before any further live attempt** — flagged as
+   needed back on 2026-09-11, still not done. A live flight is not how to find this out.
+2. **Re-enable `cf_second`** (`enabled: false` currently, from today's single-drone debugging).
+3. **Validate uSD logging on both cards** — never yet exercised in a real 2-drone flight.
+4. **Then begin real C.1 data collection** (pure geometric first, per the thesis workflow) —
    A1 → A3 → A4, per `docs/11`'s minimum-viable-dataset gate.
 
 ---
