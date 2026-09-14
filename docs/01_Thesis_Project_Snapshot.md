@@ -43,7 +43,7 @@ own strategy; it is the NN used inside Strategy 2 (Geometric + NN).
 **Target levels (two-tier, current):**
 - **Minimum:** Methods 1–4 — the thesis's baseline claim; every strategy here either flies today
   or has a numerically-verified, unflown implementation
-- **Advanced:** Methods 5–7 — reinforcement-learning-based strategies, pursued only once Minimum
+- **Advanced:** Methods 5–7 — the residual-RL and learning-based-MPC strategies, pursued only once Minimum
   is complete and data collection (C.1–C.4) is underway
 
 Strategy 3 (FBL + NN) is Minimum-tier but its controller code is still with the FBL authors

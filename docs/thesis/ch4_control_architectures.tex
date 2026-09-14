@@ -68,9 +68,10 @@ loop). Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter take
 \end{table}
 
 \ifadvancedtier\else
-\emph{This is the Minimum-tier draft: Strategies 5--7 (the reinforcement-learning-based
-strategies) are out of scope here and are covered in the companion Advanced-tier draft. Nothing
-below this point depends on them.}
+\emph{This is the Minimum-tier draft: Strategies 5--7 (residual reinforcement learning on a
+cascaded baseline, learning-based model predictive control, and residual reinforcement learning on
+the geometric baseline) are out of scope here and are covered in the companion Advanced-tier
+draft. Nothing below this point depends on them.}
 
 \fi
 The chapter treats each strategy as its own controller. Two of them, pure INDI and the hybrid,
@@ -526,8 +527,9 @@ when they know it, and where that knowledge enters. Two of them, pure INDI and t
 share an attitude law and differ only in which residual term is active — a useful point of
 comparison, not a privileged evidentiary category. All four are compared under the same
 experimental conditions: identical trajectories, formations, hardware and frozen gains, not
-identical control structure. The Advanced tier (Strategies 5--7, the reinforcement-learning-based
-strategies) is covered in the companion Advanced-tier draft.
+identical control structure. The Advanced tier (Strategies 5--7: residual reinforcement learning,
+learning-based model predictive control, and residual reinforcement learning on the geometric
+baseline) is covered in the companion Advanced-tier draft.
 \fi
 
 At the time of writing, \ifadvancedtier two strategies fly, one is implemented and unflown, one

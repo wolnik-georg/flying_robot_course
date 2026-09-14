@@ -19,7 +19,7 @@ Fair comparison of:
 - FBL + NN
 - Hybrid (Neural-Augmented INDI / NA-INDI)
 
-on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: **Minimum = Methods 1–4** (Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI), **Advanced = Methods 5–7** (the reinforcement-learning-based strategies)).
+on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: **Minimum = Methods 1–4** (Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI), **Advanced = Methods 5–7** (the residual-RL and learning-based-MPC strategies)).
 
 **Phasing:** The first data-collection campaign uses **Pure INDI only** — it needs no learned
 residual model and no FBL code, so it can start immediately. Later campaigns add
