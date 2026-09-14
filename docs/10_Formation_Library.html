@@ -45,16 +45,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body)
 a{color:var(--accent-2)}
 a:focus-visible,.navlink:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
 
-.wrap{max-width:1080px;margin:0 auto;padding:0 20px 100px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 100px}
 
-header.top{padding:56px 20px 28px;max-width:1080px;margin:0 auto}
+header.top{padding:56px 20px 28px;max-width:1180px;margin:0 auto}
 .eyebrow{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-2);display:flex;align-items:center;gap:8px}
 .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
 h1.title{font-family:var(--font-display);font-weight:800;font-size:clamp(2.2rem,5.5vw,3.4rem);line-height:1.02;letter-spacing:.01em;margin:10px 0 6px;text-wrap:balance}
-.subtitle{color:var(--muted);font-size:1.05rem;max-width:68ch;margin:0 0 20px}
+.subtitle{color:var(--muted);font-size:1.05rem;max-width:70ch;margin:0 0 20px}
 
 nav.quicknav{position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 88%, transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-soft)}
-.navrow{max-width:1080px;margin:0 auto;padding:10px 20px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.navrow{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .navrow::-webkit-scrollbar{display:none}
 .navlink{flex:none;font-family:var(--font-mono);font-size:12px;text-decoration:none;color:var(--muted);padding:6px 11px;border-radius:999px;border:1px solid var(--border);white-space:nowrap;transition:color .15s,border-color .15s,background .15s}
 .navlink:hover{color:var(--ink);border-color:var(--accent-2);background:var(--surface)}
@@ -63,7 +63,7 @@ section.block{margin:52px 0;scroll-margin-top:66px}
 .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:12px}
 .sec-eyebrow{font-family:var(--font-mono);color:var(--accent);font-size:.85rem;font-weight:600;letter-spacing:.04em}
 .sec-head h2{font-family:var(--font-display);font-weight:700;font-size:1.7rem;margin:0;letter-spacing:.01em}
-.sec-note{color:var(--muted);font-size:.96rem;max-width:74ch;margin:12px 0 22px}
+.sec-note{color:var(--muted);font-size:.96rem;max-width:76ch;margin:12px 0 22px}
 
 .isolates-table{overflow-x:auto;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);margin:18px 0}
 table.iso{width:100%;border-collapse:collapse;background:var(--surface);font-size:.9rem}
@@ -72,54 +72,83 @@ table.iso thead th{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.
 table.iso tbody tr:last-child td{border-bottom:none}
 table.iso td.ids{font-family:var(--font-mono);color:var(--accent-2);white-space:nowrap}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.grid{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:900px){.grid{grid-template-columns:1fr 1fr}}
 
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
-.card .diagram{background:var(--surface-2);display:flex;align-items:center;justify-content:center;padding:10px 6px;position:relative}
-.card .diagram svg{width:100%;height:130px;overflow:visible}
-.card .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.card .diagram{background:var(--surface-2);display:flex;align-items:center;justify-content:center;padding:14px;position:relative;min-height:260px}
+.card .diagram svg{width:100%;height:260px;overflow:visible}
+.card .viewtag{position:absolute;top:10px;left:14px;font-family:var(--font-mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+.card .body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:7px}
 .card .idrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.card .id{font-family:var(--font-mono);font-weight:700;color:var(--accent);font-size:.95rem}
-.badge{font-family:var(--font-mono);font-size:.65rem;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.card .id{font-family:var(--font-mono);font-weight:700;color:var(--accent);font-size:1.05rem}
+.badge{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.03em;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .badge.extreme{background:var(--warn-bg);color:var(--warn)}
 .badge.control{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
-.card h3{font-family:var(--font-body);font-size:1rem;font-weight:700;margin:0}
-.card .param{font-family:var(--font-mono);font-size:.78rem;color:var(--accent-2)}
-.card .why{color:var(--muted);font-size:.85rem;line-height:1.5;margin:0}
+.card h3{font-family:var(--font-body);font-size:1.15rem;font-weight:700;margin:0}
+.card .param{font-family:var(--font-mono);font-size:.82rem;color:var(--accent-2)}
+.card .why{color:var(--muted);font-size:.92rem;line-height:1.55;margin:0}
 
-/* SVG drone glyph parts, themed via currentColor */
+/* drone glyph */
 .drone-body{fill:var(--ink)}
 .drone-rotor{fill:var(--accent)}
-.drone-ghost .drone-body{fill:var(--muted);opacity:.55}
-.drone-ghost .drone-rotor{fill:var(--muted);opacity:.55}
-.dim-line{stroke:var(--muted);stroke-width:1.4;fill:none}
-.dim-dash{stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 3;fill:none}
-.path-arrow{stroke:var(--accent-2);stroke-width:1.6;fill:none;stroke-dasharray:4 3}
-.ground{stroke:var(--border);stroke-width:1.4;stroke-dasharray:2 3}
-.dim-label{font-family:var(--font-mono);font-size:9px;fill:var(--muted)}
-.tag-label{font-family:var(--font-mono);font-size:8.5px;fill:var(--muted);letter-spacing:.02em}
+.drone-ghost .drone-body{fill:var(--muted);opacity:.5}
+.drone-ghost .drone-rotor{fill:var(--muted);opacity:.5}
+.dim-line{stroke:var(--muted);stroke-width:1.6;fill:none}
+.dim-dash{stroke:var(--muted);stroke-width:1.3;stroke-dasharray:4 4;fill:none}
+.path-trace{stroke:var(--accent-2);stroke-width:2;fill:none;stroke-dasharray:5 4;opacity:.85}
+.ground{stroke:var(--border);stroke-width:1.6;stroke-dasharray:2 4}
+.dim-label{font-family:var(--font-mono);font-size:12px;fill:var(--muted)}
+.tag-label{font-family:var(--font-mono);font-size:11px;fill:var(--muted);letter-spacing:.02em}
+.warn-fill{fill:var(--warn)}
+.warn-stroke{stroke:var(--warn)}
 
-.legend{display:flex;flex-wrap:wrap;gap:18px;align-items:center;color:var(--muted);font-size:.82rem;margin:14px 0 24px}
+/* motion */
+@keyframes anim-tx{0%{transform:translateX(0)}100%{transform:translateX(70px)}}
+.anim-tx{animation:anim-tx 3.4s ease-in-out infinite alternate}
+@keyframes anim-ty-up{0%{transform:translateY(0)}100%{transform:translateY(-70px)}}
+.anim-ty-up{animation:anim-ty-up 2.8s ease-in-out infinite alternate}
+@keyframes anim-ty-down{0%{transform:translateY(0)}100%{transform:translateY(70px)}}
+.anim-ty-down{animation:anim-ty-down 2.8s ease-in-out infinite alternate}
+@keyframes anim-sweep{0%{transform:translateY(0)}100%{transform:translateY(-64px)}}
+.anim-sweep{animation:anim-sweep 3s ease-in-out infinite alternate}
+@keyframes anim-merge{0%{transform:translateY(0)}100%{transform:translateY(58px)}}
+.anim-merge{animation:anim-merge 3.1s ease-in-out infinite alternate}
+@keyframes anim-approach{0%{transform:translate(0,0)}100%{transform:translate(72px,-54px)}}
+.anim-approach{animation:anim-approach 3.2s ease-in-out infinite alternate}
+@keyframes anim-spin-cw{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.anim-spin-cw{animation:anim-spin-cw 6s linear infinite}
+@keyframes anim-spin-ccw{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+.anim-spin-ccw{animation:anim-spin-ccw 6s linear infinite}
+@keyframes anim-orbit3{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.anim-orbit3{animation:anim-orbit3 7s linear infinite}
+@media (prefers-reduced-motion: reduce){[class*="anim-"]{animation:none !important}}
+
+.legend{display:flex;flex-wrap:wrap;gap:18px;align-items:center;color:var(--muted);font-size:.85rem;margin:14px 0 24px}
 .legend .item{display:flex;align-items:center;gap:7px}
-.legend svg{width:22px;height:22px;flex:none}
+.legend svg{width:24px;height:24px;flex:none}
 
-footer.foot{max-width:1080px;margin:60px auto 0;padding:20px;border-top:1px solid var(--border-soft);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer.foot{max-width:1180px;margin:60px auto 0;padding:20px;border-top:1px solid var(--border-soft);color:var(--muted);font-size:.85rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);padding:1px 6px;border-radius:4px}
 
 .runbox{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);font-family:var(--font-mono);font-size:.82rem;overflow-x:auto;white-space:pre;color:var(--ink)}
 </style>
 
-<!-- reusable drone glyph -->
 <svg width="0" height="0" style="position:absolute">
   <symbol id="drone" viewBox="-14 -14 28 28">
-    <line x1="-10" y1="-10" x2="10" y2="10" stroke-width="2.6" stroke-linecap="round" class="drone-arm" stroke="var(--ink)"/>
-    <line x1="10" y1="-10" x2="-10" y2="10" stroke-width="2.6" stroke-linecap="round" class="drone-arm" stroke="var(--ink)"/>
-    <circle cx="-10" cy="-10" r="3.4" class="drone-rotor"/>
-    <circle cx="10" cy="-10" r="3.4" class="drone-rotor"/>
-    <circle cx="-10" cy="10" r="3.4" class="drone-rotor"/>
-    <circle cx="10" cy="10" r="3.4" class="drone-rotor"/>
-    <circle cx="0" cy="0" r="4.2" class="drone-body"/>
+    <line x1="-10" y1="-10" x2="10" y2="10" stroke-width="2.8" stroke-linecap="round" stroke="var(--ink)"/>
+    <line x1="10" y1="-10" x2="-10" y2="10" stroke-width="2.8" stroke-linecap="round" stroke="var(--ink)"/>
+    <circle cx="-10" cy="-10" r="3.6" class="drone-rotor"/>
+    <circle cx="10" cy="-10" r="3.6" class="drone-rotor"/>
+    <circle cx="-10" cy="10" r="3.6" class="drone-rotor"/>
+    <circle cx="10" cy="10" r="3.6" class="drone-rotor"/>
+    <circle cx="0" cy="0" r="4.6" class="drone-body"/>
   </symbol>
+  <defs>
+    <marker id="arrend" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--muted)"/></marker>
+    <marker id="arrstart" markerWidth="7" markerHeight="7" refX="1.5" refY="3.5" orient="auto"><path d="M7,0 L0,3.5 L7,7 Z" fill="var(--muted)"/></marker>
+    <marker id="arracc" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="var(--accent-2)"/></marker>
+  </defs>
 </svg>
 
 <nav class="quicknav">
@@ -136,23 +165,17 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   <div class="eyebrow"><span class="dot"></span> FORMATION SCENARIO LIBRARY</div>
   <h1 class="title">Formation Geometries</h1>
   <p class="subtitle">16 multi-robot geometries used to excite inter-vehicle aerodynamic
-  interaction — the experimental input side of the thesis. Full detail, commands, and
-  verification status: <code>docs/10_Formation_Library.md</code>.</p>
+  interaction — the experimental input side of the thesis. Diagrams below animate the actual
+  motion; static scenarios (hover, control cases) are shown still on purpose. Full detail,
+  commands, and verification status: <code>docs/10_Formation_Library.md</code>.</p>
   <div class="legend">
-    <div class="item"><svg viewBox="-14 -14 28 28"><use href="#drone"/></svg> drone position shown</div>
-    <div class="item"><svg viewBox="-14 -14 28 28" class="drone-ghost"><use href="#drone"/></svg> alternate / ghost position</div>
+    <div class="item"><svg viewBox="-14 -14 28 28"><use href="#drone"/></svg> drone</div>
+    <div class="item"><svg viewBox="-14 -14 28 28" class="drone-ghost"><use href="#drone"/></svg> fixed / reference</div>
     <div class="item"><svg viewBox="0 0 22 22"><line x1="2" y1="11" x2="20" y2="11" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/></svg> measured separation</div>
-    <div class="item"><svg viewBox="0 0 22 22"><path d="M2 18 Q11 2 20 18" class="path-arrow"/></svg> motion path</div>
+    <div class="item"><svg viewBox="0 0 22 22"><path d="M2 18 Q11 2 20 18" class="path-trace"/></svg> commanded path</div>
+    <div class="item">▶ animated = the vehicle actually moves in this scenario</div>
   </div>
 </header>
-
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <marker id="arrend" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--muted)"/></marker>
-    <marker id="arrstart" markerWidth="6" markerHeight="6" refX="1" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6 Z" fill="var(--muted)"/></marker>
-    <marker id="arracc" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent-2)"/></marker>
-  </defs>
-</svg>
 
 <div class="wrap">
 
@@ -190,12 +213,12 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   <div class="grid">
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="95"/>
-        <use href="#drone" x="100" y="45"/>
-        <line x1="140" y1="45" x2="140" y2="95" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="146" y="73" class="dim-label">Δz</text>
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="125"/>
+        <use href="#drone" x="130" y="55"/>
+        <line x1="180" y1="55" x2="180" y2="125" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="188" y="94" class="dim-label">Δz</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A1</span></div>
@@ -206,15 +229,17 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="80" y="95"/>
-        <use href="#drone" x="80" y="45"/>
-        <line x1="120" y1="45" x2="120" y2="95" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="126" y="73" class="dim-label">Δz</text>
-        <path d="M85 45 H150" class="path-arrow" marker-end="url(#arracc)"/>
-        <path d="M85 95 H150" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="95" y="30" class="tag-label">line / circle</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="20" y1="168" x2="240" y2="168" class="ground"/>
+        <path d="M60 120 H200" class="path-trace"/>
+        <path d="M60 55 H200" class="path-trace"/>
+        <g class="anim-tx">
+          <use href="#drone" x="65" y="120"/>
+          <use href="#drone" x="65" y="55"/>
+          <line x1="105" y1="55" x2="105" y2="120" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        </g>
+        <text x="188" y="94" class="dim-label">Δz</text>
+        <text x="120" y="35" class="tag-label">shared path: line / circle</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A2</span></div>
@@ -225,14 +250,15 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="35"/>
-        <text x="112" y="30" class="tag-label">fixed</text>
-        <use href="#drone" x="100" y="70" class="drone-ghost"/>
-        <use href="#drone" x="100" y="105"/>
-        <line x1="100" y1="60" x2="100" y2="112" class="dim-dash" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="60" y="90" class="dim-label">sweeps ↕</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="40"/>
+        <text x="146" y="36" class="tag-label">fixed</text>
+        <line x1="130" y1="55" x2="130" y2="155" class="path-trace"/>
+        <g class="anim-sweep">
+          <use href="#drone" x="130" y="145"/>
+        </g>
+        <text x="66" y="110" class="dim-label">sweeps ↕ through wash</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A3</span></div>
@@ -243,15 +269,15 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="80" y="40"/>
-        <path d="M80 52 L60 118 L100 118 Z" class="dim-dash" fill="var(--muted)" fill-opacity="0.08"/>
-        <use href="#drone" x="128" y="100"/>
-        <line x1="80" y1="40" x2="128" y2="40" class="dim-line" marker-end="url(#arrend)"/>
-        <line x1="128" y1="40" x2="128" y2="100" class="dim-dash"/>
-        <text x="88" y="34" class="dim-label">offset</text>
-        <text x="134" y="72" class="dim-label">Δz</text>
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="100" y="50"/>
+        <path d="M100 65 L72 160 L128 160 Z" fill="var(--muted)" fill-opacity="0.1" stroke="none"/>
+        <use href="#drone" x="168" y="130"/>
+        <line x1="100" y1="50" x2="168" y2="50" class="dim-line" marker-end="url(#arrend)"/>
+        <line x1="168" y1="50" x2="168" y2="130" class="dim-dash"/>
+        <text x="112" y="42" class="dim-label">offset</text>
+        <text x="176" y="93" class="dim-label">Δz</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A4</span></div>
@@ -262,14 +288,16 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <ellipse cx="100" cy="70" rx="70" ry="24" class="dim-dash"/>
-        <ellipse cx="100" cy="70" rx="30" ry="10" class="dim-dash"/>
-        <use href="#drone" x="170" y="70"/>
-        <use href="#drone" x="70" y="70"/>
-        <path d="M150 55 A 55 20 0 0 1 150 85" class="path-arrow" marker-end="url(#arracc)"/>
-        <path d="M90 62 A 22 8 0 0 0 90 78" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="90" y="112" class="tag-label">counter-rotating, same Δz</text>
+      <div class="diagram"><span class="viewtag">top view · animated</span><svg viewBox="0 0 260 190">
+        <ellipse cx="130" cy="95" rx="95" ry="34" class="dim-dash"/>
+        <ellipse cx="130" cy="95" rx="40" ry="14" class="dim-dash"/>
+        <g class="anim-spin-cw" style="transform-origin:130px 95px">
+          <use href="#drone" x="225" y="95"/>
+        </g>
+        <g class="anim-spin-ccw" style="transform-origin:130px 95px">
+          <use href="#drone" x="170" y="95"/>
+        </g>
+        <text x="60" y="150" class="tag-label">counter-rotating, same Δz</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A5</span></div>
@@ -280,12 +308,12 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="88"/>
-        <use href="#drone" x="100" y="60"/>
-        <line x1="140" y1="60" x2="140" y2="88" class="dim-line" stroke="var(--warn)" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="146" y="77" class="dim-label" fill="var(--warn)">Δz</text>
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="115"/>
+        <use href="#drone" x="130" y="80"/>
+        <line x1="170" y1="80" x2="170" y2="115" class="dim-line warn-stroke" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="178" y="101" class="dim-label warn-fill">Δz</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A6</span><span class="badge extreme">⚠ extreme</span></div>
@@ -296,13 +324,15 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="105" class="drone-ghost"/>
-        <use href="#drone" x="100" y="40"/>
-        <use href="#drone" x="100" y="70"/>
-        <line x1="130" y1="42" x2="130" y2="103" class="dim-dash" marker-end="url(#arrend)"/>
-        <text x="136" y="60" class="dim-label" fill="var(--warn)">1.10→0.10</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="140"/>
+        <line x1="130" y1="45" x2="130" y2="120" class="path-trace"/>
+        <g class="anim-merge">
+          <use href="#drone" x="130" y="50"/>
+          <line x1="170" y1="50" x2="170" y2="140" class="dim-line warn-stroke" marker-end="url(#arrend)"/>
+        </g>
+        <text x="178" y="95" class="dim-label warn-fill">1.10 → 0.10</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A7</span><span class="badge extreme">⚠ extreme</span></div>
@@ -313,13 +343,12 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="95"/>
-        <use href="#drone" x="100" y="45"/>
-        <path d="M85 50 C 60 70, 60 90, 85 90" class="path-arrow" marker-end="url(#arracc)"/>
-        <path d="M115 90 C 140 70, 140 50, 115 50" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="70" y="115" class="tag-label">swap slots</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <line x1="130" y1="50" x2="130" y2="140" class="path-trace"/>
+        <g class="anim-ty-up"><use href="#drone" x="130" y="140"/></g>
+        <g class="anim-ty-down"><use href="#drone" x="130" y="50"/></g>
+        <text x="150" y="30" class="tag-label">slots swap top ↔ bottom</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">A8</span></div>
@@ -337,15 +366,20 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   <div class="grid">
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="108"/>
-        <use href="#drone" x="100" y="68"/>
-        <use href="#drone" x="100" y="30"/>
-        <line x1="130" y1="68" x2="130" y2="108" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="136" y="90" class="dim-label">Δz2</text>
-        <line x1="70" y1="30" x2="70" y2="68" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="40" y="51" class="dim-label">Δz1</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <path d="M65 145 H195" class="path-trace"/>
+        <path d="M65 100 H195" class="path-trace"/>
+        <path d="M65 45 H195" class="path-trace"/>
+        <g class="anim-tx">
+          <use href="#drone" x="70" y="145"/>
+          <use href="#drone" x="70" y="100"/>
+          <use href="#drone" x="70" y="45"/>
+          <line x1="110" y1="100" x2="110" y2="145" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+          <line x1="45" y1="45" x2="45" y2="100" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        </g>
+        <text x="118" y="128" class="dim-label">Δz2</text>
+        <text x="18" y="76" class="dim-label">Δz1</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">B1</span></div>
@@ -356,15 +390,18 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="35"/>
-        <use href="#drone" x="70" y="100"/>
-        <use href="#drone" x="130" y="100"/>
-        <line x1="100" y1="45" x2="100" y2="100" class="dim-dash"/>
-        <line x1="70" y1="115" x2="130" y2="115" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="90" y="126" class="dim-label">r</text>
-        <text x="105" y="70" class="dim-label">Δz2</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <path d="M130 45 H160" class="path-trace" opacity="0"/>
+        <g class="anim-tx">
+          <use href="#drone" x="130" y="45"/>
+          <use href="#drone" x="90" y="135"/>
+          <use href="#drone" x="170" y="135"/>
+          <line x1="130" y1="55" x2="130" y2="135" class="dim-dash"/>
+          <line x1="90" y1="152" x2="170" y2="152" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        </g>
+        <text x="122" y="166" class="dim-label">r</text>
+        <text x="138" y="95" class="dim-label">Δz2</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">B2</span></div>
@@ -375,14 +412,14 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="128" x2="180" y2="128" class="ground"/>
-        <use href="#drone" x="100" y="108" class="drone-ghost"/>
-        <use href="#drone" x="100" y="68"/>
-        <use href="#drone" x="100" y="30"/>
-        <path d="M88 34 C 55 60, 55 100, 88 110" class="path-arrow" marker-end="url(#arracc)"/>
-        <path d="M112 110 C 145 100, 145 60, 112 34" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="55" y="122" class="tag-label">3-way rotate</text>
+      <div class="diagram"><span class="viewtag">top view · animated</span><svg viewBox="0 0 260 190">
+        <circle cx="130" cy="95" r="55" class="dim-dash"/>
+        <g class="anim-orbit3" style="transform-origin:130px 95px">
+          <use href="#drone" x="130" y="40"/>
+          <use href="#drone" x="177" y="123"/>
+          <use href="#drone" x="83" y="123"/>
+        </g>
+        <text x="65" y="165" class="tag-label">3-way rotate</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">B3</span></div>
@@ -402,11 +439,11 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   <div class="grid">
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <use href="#drone" x="70" y="70"/>
-        <use href="#drone" x="130" y="70"/>
-        <line x1="82" y1="70" x2="118" y2="70" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
-        <text x="88" y="60" class="dim-label">same altitude</text>
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="95" y="95"/>
+        <use href="#drone" x="165" y="95"/>
+        <line x1="109" y1="95" x2="151" y2="95" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="105" y="80" class="dim-label">same altitude</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">C1</span><span class="badge control">control case</span></div>
@@ -416,11 +453,13 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <use href="#drone" x="60" y="70"/>
-        <use href="#drone" x="130" y="70"/>
-        <path d="M75 70 H145" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="80" y="55" class="tag-label">shared path, gap held</text>
+      <div class="diagram"><span class="viewtag">top view · animated</span><svg viewBox="0 0 260 190">
+        <path d="M70 95 H210" class="path-trace"/>
+        <g class="anim-tx">
+          <use href="#drone" x="75" y="95"/>
+          <use href="#drone" x="145" y="95"/>
+        </g>
+        <text x="90" y="75" class="tag-label">shared path, gap held</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">C2</span></div>
@@ -430,11 +469,11 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <path d="M100 30 L150 105 L50 105 Z" class="dim-dash"/>
-        <use href="#drone" x="100" y="30"/>
-        <use href="#drone" x="150" y="105"/>
-        <use href="#drone" x="50" y="105"/>
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <path d="M130 45 L185 135 L75 135 Z" class="dim-dash"/>
+        <use href="#drone" x="130" y="45"/>
+        <use href="#drone" x="185" y="135"/>
+        <use href="#drone" x="75" y="135"/>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">C3</span><span class="badge control">control case</span></div>
@@ -444,12 +483,15 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="120" x2="180" y2="120" class="ground"/>
-        <use href="#drone" x="60" y="100" class="drone-ghost"/>
-        <use href="#drone" x="150" y="40"/>
-        <path d="M70 92 Q 110 60, 138 46" class="path-arrow" marker-end="url(#arracc)"/>
-        <text x="70" y="30" class="tag-label">lateral + vertical closure</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="160" x2="230" y2="160" class="ground"/>
+        <use href="#drone" x="75" y="135"/>
+        <path d="M85 122 Q 145 60, 195 45" class="path-trace"/>
+        <g class="anim-approach">
+          <use href="#drone" x="90" y="120"/>
+        </g>
+        <use href="#drone" x="195" y="45" class="drone-ghost"/>
+        <text x="90" y="35" class="tag-label">lateral + vertical closure</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">C4</span><span class="badge extreme">⚠ extreme</span></div>
@@ -459,12 +501,12 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     </div>
 
     <div class="card">
-      <div class="diagram"><svg viewBox="0 0 200 140">
-        <line x1="20" y1="115" x2="180" y2="115" class="ground"/>
-        <use href="#drone" x="70" y="100"/>
-        <path d="M85 100 H150" class="path-arrow" marker-end="url(#arracc)"/>
-        <line x1="70" y1="105" x2="70" y2="115" class="dim-line" marker-end="url(#arrend)"/>
-        <text x="76" y="112" class="dim-label" style="font-size:8px">low</text>
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="20" y1="145" x2="240" y2="145" class="ground"/>
+        <path d="M70 128 H210" class="path-trace"/>
+        <g class="anim-tx"><use href="#drone" x="75" y="128"/></g>
+        <line x1="75" y1="132" x2="75" y2="145" class="dim-line" marker-end="url(#arrend)"/>
+        <text x="82" y="142" class="dim-label" style="font-size:10px">low altitude</text>
       </svg></div>
       <div class="body">
         <div class="idrow"><span class="id">C5</span></div>
