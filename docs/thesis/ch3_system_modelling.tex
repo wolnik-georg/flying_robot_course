@@ -29,11 +29,11 @@ learn a corrective action with no force estimate at all. Those families are comp
 compute the same internal quantity.
 
 This chapter defines the residual acceleration $a_{\mathrm{res}}$ that \emph{this} stack measures
-and logs. Two things follow. Strategies~2, 3 and~5, and any other method that consumes a force
+and logs. Two things follow. Strategies~1, 2 and~4, and any other method that consumes a force
 residual, then refer to one number rather than to several differently-defined ones. And a predicted
 residual can be checked against a measured one on the same flight, which is how a learned model is
-evaluated here. Residual reinforcement learning (Strategy~7) never forms that number. That is a
-property of the method, not a reason to exclude it from a comparison of performance.
+evaluated here. Residual reinforcement learning (Strategies~5 and~7) never forms that number. That
+is a property of the method, not a reason to exclude it from a comparison of performance.
 
 The chapter also states the assumptions the formulation rests on, and where each one is expected
 to fail. Several are known to be imperfect, the summation in
@@ -362,7 +362,7 @@ the circular trajectory to its being out of distribution relative to the trainin
 \label{sec:model-summary}
 
 The residual of \eqref{eq:model-trans}--\eqref{eq:model-rot} is what this stack measures and logs.
-Strategies~2, 3 and~5 consume it. Strategy~7 never forms it, which is a property of residual
+Strategies~1, 2 and~4 consume it. Strategies~5 and~7 never form it, which is a property of residual
 reinforcement learning rather than a reason to exclude it from a comparison of performance. The
 residual can be recovered online from
 \eqref{eq:model-ares}, which needs no model of the interaction but requires rotor-speed sensing and
