@@ -7,6 +7,17 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
+[features]
+# The Neural-Swarm2 architecture port (residual_nn.rs) is byte-faithful to the reference and
+# is NOT to be modified to save RAM (operator's explicit, standing instruction). Its static
+# weight array is ~77 KB (19297 f32) and overflows real firmware RAM on its own. This feature
+# is the build-time lever instead: off by default so `make DRONE=bl/std/upgrade` (which never
+# passes --features) links, on for host/test builds that have RAM to spare. The module and its
+# architecture are completely untouched either way -- this only decides whether `static mut RNN`
+# is allocated in THIS build's .bss.
+default = []
+residual_nn = []
+
 [dependencies]
 # Panic handler for bare-metal: halts CPU on panic (required for no_std).
 panic-halt = "1"
