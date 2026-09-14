@@ -1,93 +1,140 @@
 //! Learned residual-force model, evaluated onboard.
 //!
-//! Predicts the interaction acceleration `f_res / m` a vehicle is about to experience from the
-//! relative states of its neighbours, so a controller can cancel it before it shows up in the
-//! tracking error. That is what separates a *learned* compensation method from INDI, which can
-//! only react once the disturbance has already been measured.
+//! **2026-09-14: replaced with a faithful port of Neural-Swarm2's own architecture**, per
+//! operator instruction ("100% exactly the same code and architecture and everything as
+//! neuralswarm2, as it's the same from the corresponding paper"). Ported directly from the
+//! vendored reference implementation —
+//! `crazyswarm2/crazyflie_sim/crazyflie_sim/backend/neuralswarm.py` (`phi_Net`, `rho_Net`,
+//! `NeuralSwarm.compute_Fa`) — not re-derived from the paper or from the earlier, smaller,
+//! differently-shaped network this file used to contain (φ 6→16→16→8, ρ 8→16→16→3, 987
+//! weights; that network is gone, not kept as an option).
 //!
-//! # Why deep sets rather than a plain MLP
+//! # Architecture (exact, from the reference source)
 //!
-//! A fixed-input MLP has to be retrained for every neighbour count, and its answer depends on
-//! the order the neighbours happen to be listed in — neither of which is true of the physics.
-//! The deep-sets form used by Neural-Swarm2 avoids both:
+//! Two building blocks, reused across three/two instantiations:
 //!
 //! ```text
-//!     a_res  =  rho( sum_j phi(relative_state_j) )
+//! phi_Net(input_dim):  input_dim -> 25 -> 40 -> 40 -> H=20   (ReLU, ReLU, ReLU, LINEAR)
+//! rho_Net:             H=20      -> 40 -> 40 -> 40 -> 1      (ReLU, ReLU, ReLU, LINEAR)
 //! ```
 //!
-//! `phi` is applied to each neighbour separately and the results are summed, so the output is
-//! permutation-invariant by construction and the same weights serve two drones or three. That
-//! matters here directly: the thesis flies both 2- and 3-robot formations, and B1/B2 exist
-//! precisely to test whether interactions superpose.
+//! Five weight sets, not one:
+//! - `phi_S`, `rho_S` — interaction with/response as a "small" vehicle (`phi_Net(6)`: relative
+//!   position + relative velocity of a neighbour).
+//! - `phi_L`, `rho_L` — same, for a "large" vehicle. This project's fleet is Crazyflies only
+//!   (always "small"), so `rho_L`/`phi_L` are never exercised in practice — kept anyway because
+//!   the instruction is architectural fidelity to the reference, not fidelity-for-our-use-case.
+//! - `phi_G` — ground-effect interaction, `phi_Net(4)`: `[0 - own_z, -own_vx, -own_vy, -own_vz]`.
+//!   Always evaluated, unconditionally, for every drone every tick — there is no neighbour to
+//!   gate this on.
 //!
-//! # Sizing
+//! `compute_Fa`'s exact algorithm (`neuralswarm.py:73-100`):
+//! ```text
+//! rho_input = phi_G(ground_term)
+//! for each neighbour j:
+//!     x_12 = state_j - state_self   // 6-dim: dx,dy,dz,dvx,dvy,dvz
+//!     if |x_12.x| < 0.2 and |x_12.y| < 0.2 and |x_12.dvx| < 1.5:   // NOT a distance cutoff —
+//!         rho_input += phi_S_or_L(x_12)                            // this exact 3-term gate,
+//! Fa = (0, 0, rho_S_or_L(rho_input))   // Z-ONLY force -- x,y components are always exactly 0.
+//! ```
+//! The proximity gate is on `dx`, `dy` and `dvx` specifically (not `dz` or `dvy`/`dvz`) — an
+//! asymmetric, slightly odd-looking condition in the reference itself, replicated literally
+//! rather than "fixed" to something more symmetric. Likewise the near-field rescaling and
+//! distance-based skip this file used to do are gone: the reference has no such mechanism: the
+//! gate above IS its cutoff.
 //!
-//! phi: 6 -> 16 -> 16 -> 8, rho: 8 -> 16 -> 16 -> 3. Around a thousand weights and roughly
-//! 1400 multiply-accumulates for two neighbours, which is comfortable inside a 500 Hz control
-//! loop on an M4F and small enough that a full weight upload over CRTP parameters takes
-//! seconds rather than minutes. The dimensions are compile-time constants; grow them once the
-//! measured accuracy justifies the cost, not before.
+//! # Unavoidable deviations (physical units, not architecture)
 //!
-//! # Normalisation
+//! - **Force → acceleration.** The reference's `compute_Fa` returns a force in an
+//!   equivalent-grams unit (`Fa`, then `f_a = f_a/1000*9.81` to Newtons in `Backend.step`,
+//!   applied directly to `Quadrotor.step`'s force accumulator). This project's whole residual
+//!   convention is an *acceleration* — `a_res = a_meas - a_model`, `a_nn` subtracted the same
+//!   way in the position loop — so the network's raw output is converted grams -> Newtons ->
+//!   `/ mass` here, once, at the very end. The network itself is untouched by this; it is a
+//!   unit conversion at the boundary, the same kind of necessary deviation as using this
+//!   project's own mass in the NA-INDI port.
+//! - **Own/neighbour vehicle type hardcoded to "small".** The reference dispatches on a
+//!   `cftype` string per vehicle; this project has no notion of vehicle size/type anywhere
+//!   (peer localization carries position only) and every vehicle actually flown is a
+//!   Crazyflie. Hardcoding "small" is not an architectural simplification — the `phi_L`/`rho_L`
+//!   weights and code path are still fully present and byte-identical in shape, simply never
+//!   selected because there is no signal in this project that could select them.
 //!
-//! Deliberately not implemented here. Input scaling and mean-subtraction are folded into the
-//! first layer's weights and biases at export time, which is exactly equivalent and keeps the
-//! firmware free of a second set of constants that could drift out of step with the model.
+//! # Known open cost — not resolved here
+//!
+//! **19297 weights**, not 987 (`phi_S`+`phi_L`: 3675 each, `phi_G`: 3625, `rho_S`+`rho_L`: 4161
+//! each). ~20x the previous network. This has two consequences neither addressed nor silently
+//! ignored:
+//! 1. The CRTP upload protocol (`rnn.wi`/`wv`/`wc`, one float per packet) would take roughly 20x
+//!    longer to upload a full weight set — worth revisiting before this is actually used.
+//! 2. RAM: `[f32; 19297]` is ~77 KB, versus the previous ~4 KB. Free RAM at last build was
+//!    ~33-34 KB (see `firmware_app/CLAUDE.md` build output) — **this will not fit as-is** and
+//!    must be resolved (e.g. dropping the unused `phi_L`/`rho_L` weights for this project's
+//!    homogeneous fleet, or moving the array to CCM/flash-backed storage) before this compiles
+//!    for the actual target, let alone flies. Flagged here rather than worked around, since the
+//!    resolution changes what "the exact architecture" means for an unused sub-network.
 
 #![allow(dead_code)]
 
-use crate::Vec3;
+use crate::{g_indi_mass, Vec3};
 
-// ── Architecture ────────────────────────────────────────────────────────────
-pub const PHI_IN: usize = 6; // neighbour relative position (3) and velocity (3)
-pub const PHI_H1: usize = 16;
-pub const PHI_H2: usize = 16;
-pub const LATENT: usize = 8;
-pub const RHO_H1: usize = 16;
-pub const RHO_H2: usize = 16;
-pub const RHO_OUT: usize = 3; // residual acceleration, world frame [m/s^2]
+// ── Architecture — exact layer sizes from phi_Net / rho_Net ────────────────────────────────
+const PHI_IN_SL: usize = 6; // neighbour relative [dx,dy,dz,dvx,dvy,dvz]
+const PHI_IN_G: usize = 4; // ground-effect [0-z, -vx,-vy,-vz]
+const PHI_L1: usize = 25;
+const PHI_L2: usize = 40;
+const PHI_L3: usize = 40;
+const HIDDEN: usize = 20; // "H" in the reference
+const RHO_L1: usize = 40;
+const RHO_L2: usize = 40;
+const RHO_L3: usize = 40;
+const RHO_OUT: usize = 1; // scalar -- only ever feeds the Z component of Fa
 
-/// Weights plus biases, laid out layer by layer, row-major within a layer.
-pub const N_WEIGHTS: usize = (PHI_IN * PHI_H1 + PHI_H1)
-    + (PHI_H1 * PHI_H2 + PHI_H2)
-    + (PHI_H2 * LATENT + LATENT)
-    + (LATENT * RHO_H1 + RHO_H1)
-    + (RHO_H1 * RHO_H2 + RHO_H2)
-    + (RHO_H2 * RHO_OUT + RHO_OUT);
+const fn phi_weights(input_dim: usize) -> usize {
+    (input_dim * PHI_L1 + PHI_L1)
+        + (PHI_L1 * PHI_L2 + PHI_L2)
+        + (PHI_L2 * PHI_L3 + PHI_L3)
+        + (PHI_L3 * HIDDEN + HIDDEN)
+}
+const fn rho_weights() -> usize {
+    (HIDDEN * RHO_L1 + RHO_L1)
+        + (RHO_L1 * RHO_L2 + RHO_L2)
+        + (RHO_L2 * RHO_L3 + RHO_L3)
+        + (RHO_L3 * RHO_OUT + RHO_OUT)
+}
 
-/// Neighbours considered per evaluation. Three is enough for the planned formations; a
-/// vehicle in a 4-robot team would use the three nearest, which is where the interaction is.
+const N_PHI_SL: usize = phi_weights(PHI_IN_SL); // 3675
+const N_PHI_G: usize = phi_weights(PHI_IN_G); // 3625
+const N_RHO: usize = rho_weights(); // 4161
+
+// Contiguous layout: phi_S | phi_L | phi_G | rho_S | rho_L
+const OFF_PHI_S: usize = 0;
+const OFF_PHI_L: usize = OFF_PHI_S + N_PHI_SL;
+const OFF_PHI_G: usize = OFF_PHI_L + N_PHI_SL;
+const OFF_RHO_S: usize = OFF_PHI_G + N_PHI_G;
+const OFF_RHO_L: usize = OFF_RHO_S + N_RHO;
+pub const N_WEIGHTS: usize = OFF_RHO_L + N_RHO; // 19297
+
+/// Neighbours considered per evaluation -- a systems buffer-size constraint (peer localization
+/// slot count), not part of the reference architecture, which loops over an unbounded list.
 pub const MAX_NEIGHBOURS: usize = 3;
 
-/// Hard ceiling on the predicted acceleration, in m/s^2.
-///
-/// A network that is untrained, half-uploaded or numerically broken must not be able to
-/// command an arbitrary acceleration. Downwash between Crazyflies is on the order of
-/// 0.1-3 m/s^2; anything past this is not a prediction, it is a fault, and the output is
-/// clamped rather than trusted. Being clamped is visible in the logs, which is the point.
+/// Hard ceiling on the predicted acceleration, in m/s^2 -- this project's own safety net
+/// (see the original file history), not part of the reference: an untrained, half-uploaded or
+/// numerically broken network must not be able to command an arbitrary acceleration.
 pub const OUT_CLAMP: f32 = 8.0;
 
-/// Below this distance the model is extrapolating past anything it can have been trained on,
-/// and a learned function is at its least trustworthy exactly where the physics is strongest.
-/// Neighbours closer than this are evaluated at this distance instead of being trusted.
-const MIN_DIST: f32 = 0.04;
+const GRAMS_TO_NEWTONS: f32 = 9.81 / 1000.0; // neuralswarm.py: f_a / 1000 * 9.81
 
-/// Beyond this a neighbour contributes nothing measurable, so it is skipped — this also keeps
-/// the cost proportional to the neighbours that matter rather than the ones in the room.
-const MAX_DIST: f32 = 2.0;
-
-// ── State ───────────────────────────────────────────────────────────────────
+// Proximity gate exactly as neuralswarm.py:79 -- dx, dy, dvx specifically, not dz/dvy/dvz.
+const GATE_DXY: f32 = 0.2;
+const GATE_DVX: f32 = 1.5;
 
 pub struct ResidualNet {
     w: [f32; N_WEIGHTS],
-    /// Weights present and self-consistent. Inference returns zero until this is true.
     pub loaded: bool,
-    /// How many weights the host said it would send.
     pub expected: u16,
-    /// How many distinct indices have actually been written.
     pub written: u16,
-    /// Set when the last evaluation hit OUT_CLAMP. Surfaced as a log variable, because a
-    /// silently clamped network looks exactly like a well-behaved one from the outside.
     pub clamped: bool,
 }
 
@@ -96,7 +143,6 @@ impl ResidualNet {
         Self { w: [0.0; N_WEIGHTS], loaded: false, expected: 0, written: 0, clamped: false }
     }
 
-    /// Write one weight. Returns false for an out-of-range index rather than corrupting memory.
     pub fn set_weight(&mut self, idx: usize, value: f32) -> bool {
         if idx >= N_WEIGHTS || !value.is_finite() {
             return false;
@@ -113,12 +159,6 @@ impl ResidualNet {
         self.w = [0.0; N_WEIGHTS];
     }
 
-    /// Accept the uploaded set only if the count matches and every weight is finite.
-    ///
-    /// A partially-arrived network is the dangerous case: it produces plausible-looking
-    /// numbers rather than an obvious failure, and would be indistinguishable from a badly
-    /// trained model. Refusing here means a dropped parameter packet shows up as
-    /// "compensation off", which is diagnosable.
     pub fn finish_upload(&mut self) -> bool {
         self.loaded = self.expected as usize == N_WEIGHTS
             && self.written >= N_WEIGHTS as u16
@@ -126,69 +166,52 @@ impl ResidualNet {
         self.loaded
     }
 
-    /// Residual acceleration from up to `MAX_NEIGHBOURS` relative states.
-    ///
-    /// `rel[k] = (position_of_neighbour - own_position, velocity_of_neighbour - own_velocity)`
-    /// in the world frame. Returns zero when no weights are loaded, so an un-uploaded network
-    /// is inert rather than harmful.
-    pub fn eval(&mut self, rel: &[(Vec3, Vec3)], n: usize) -> Vec3 {
+    /// Residual acceleration, world frame, from up to `MAX_NEIGHBOURS` relative states plus the
+    /// always-on ground-effect term. `rel[k] = (position_of_neighbour - own_position,
+    /// velocity_of_neighbour - own_velocity)`. `own_z`/`own_vel` feed the ground term exactly
+    /// like `x_12` does in `compute_Fa` for the ground interaction. Returns zero when no
+    /// weights are loaded, so an un-uploaded network is inert rather than harmful.
+    pub fn eval(&mut self, rel: &[(Vec3, Vec3)], n: usize, own_z: f32, own_vel: Vec3) -> Vec3 {
         self.clamped = false;
-        if !self.loaded || n == 0 {
+        if !self.loaded {
             return Vec3::zero();
         }
 
-        let mut latent = [0.0f32; LATENT];
-        let mut any = false;
+        let mut rho_input = [0.0f32; HIDDEN];
 
+        // Ground interaction -- unconditional, every tick, regardless of neighbours.
+        let ground_x = [0.0 - own_z, -own_vel.x, -own_vel.y, -own_vel.z];
+        let phi_g = phi_forward(&self.w, OFF_PHI_G, &ground_x);
+        for (acc, v) in rho_input.iter_mut().zip(phi_g.iter()) {
+            *acc += *v;
+        }
+
+        // Neighbours -- every vehicle in this project is "small", so always phi_S/rho_S.
         for item in rel.iter().take(n.min(MAX_NEIGHBOURS)) {
             let (dp, dv) = *item;
-            let d2 = dp.x * dp.x + dp.y * dp.y + dp.z * dp.z;
-            if d2 > MAX_DIST * MAX_DIST {
-                continue; // too far to matter
+            let gated = libm::fabsf(dp.x) < GATE_DXY
+                && libm::fabsf(dp.y) < GATE_DXY
+                && libm::fabsf(dv.x) < GATE_DVX;
+            if !gated {
+                continue;
             }
-            // Clamp the radial distance without changing the direction: the model should not
-            // be asked to extrapolate below the closest separation it was trained on.
-            let d = libm::sqrtf(d2);
-            let scale = if d < MIN_DIST && d > 1e-6 { MIN_DIST / d } else { 1.0 };
-
-            let x = [dp.x * scale, dp.y * scale, dp.z * scale, dv.x, dv.y, dv.z];
-            let mut h1 = [0.0f32; PHI_H1];
-            let mut h2 = [0.0f32; PHI_H2];
-            let mut out = [0.0f32; LATENT];
-
-            let mut o = 0;
-            o = layer_relu(&self.w, o, &x, &mut h1);
-            o = layer_relu(&self.w, o, &h1, &mut h2);
-            let _ = layer_relu(&self.w, o, &h2, &mut out);
-
-            for (acc, v) in latent.iter_mut().zip(out.iter()) {
+            let x = [dp.x, dp.y, dp.z, dv.x, dv.y, dv.z];
+            let phi_s = phi_forward(&self.w, OFF_PHI_S, &x);
+            for (acc, v) in rho_input.iter_mut().zip(phi_s.iter()) {
                 *acc += *v;
             }
-            any = true;
         }
 
-        if !any {
-            return Vec3::zero();
-        }
+        let faz_grams = rho_forward(&self.w, OFF_RHO_S, &rho_input);
+        let mass = unsafe { g_indi_mass };
+        let faz_accel = (faz_grams * GRAMS_TO_NEWTONS) / mass;
 
-        // rho starts after the whole of phi.
-        let rho0 = (PHI_IN * PHI_H1 + PHI_H1) + (PHI_H1 * PHI_H2 + PHI_H2)
-            + (PHI_H2 * LATENT + LATENT);
-        let mut g1 = [0.0f32; RHO_H1];
-        let mut g2 = [0.0f32; RHO_H2];
-        let mut y = [0.0f32; RHO_OUT];
-
-        let mut o = rho0;
-        o = layer_relu(&self.w, o, &latent, &mut g1);
-        o = layer_relu(&self.w, o, &g1, &mut g2);
-        let _ = layer_linear(&self.w, o, &g2, &mut y); // linear output: a force can be negative
-
-        let mut v = Vec3::new(y[0], y[1], y[2]);
-        let mag = libm::sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-        if !mag.is_finite() {
+        if !faz_accel.is_finite() {
             self.clamped = true;
             return Vec3::zero();
         }
+        let mut v = Vec3::new(0.0, 0.0, faz_accel);
+        let mag = libm::fabsf(faz_accel);
         if mag > OUT_CLAMP {
             self.clamped = true;
             v = v.scale(OUT_CLAMP / mag);
@@ -197,13 +220,48 @@ impl ResidualNet {
     }
 }
 
+/// `phi_Net.forward`: three ReLU layers then a LINEAR fourth (`x = self.fc4(x); return x` --
+/// no activation on the last layer). Fixed at H=20 output regardless of `x`'s input length
+/// (6 for S/L, 4 for G).
+#[inline]
+fn phi_forward(w: &[f32], off: usize, x: &[f32]) -> [f32; HIDDEN] {
+    let mut h1 = [0.0f32; PHI_L1];
+    let mut h2 = [0.0f32; PHI_L2];
+    let mut h3 = [0.0f32; PHI_L3];
+    let mut out = [0.0f32; HIDDEN];
+    let mut o = off;
+    o = layer_relu(w, o, x, &mut h1);
+    o = layer_relu(w, o, &h1, &mut h2);
+    o = layer_relu(w, o, &h2, &mut h3);
+    let _ = layer_linear(w, o, &h3, &mut out);
+    out
+}
+
+/// `rho_Net.forward`: same pattern, three ReLU layers then a linear fourth, collapsing to the
+/// single scalar the reference calls `faz`.
+#[inline]
+fn rho_forward(w: &[f32], off: usize, x: &[f32; HIDDEN]) -> f32 {
+    let mut h1 = [0.0f32; RHO_L1];
+    let mut h2 = [0.0f32; RHO_L2];
+    let mut h3 = [0.0f32; RHO_L3];
+    let mut out = [0.0f32; RHO_OUT];
+    let mut o = off;
+    o = layer_relu(w, o, x, &mut h1);
+    o = layer_relu(w, o, &h1, &mut h2);
+    o = layer_relu(w, o, &h2, &mut h3);
+    let _ = layer_linear(w, o, &h3, &mut out);
+    out[0]
+}
+
 /// One fully-connected layer with ReLU. Returns the offset just past the weights it consumed.
+/// Weight layout: `n_out` rows of `n_in` weights, then the `n_out` biases (PyTorch `nn.Linear`
+/// convention: `y = W @ x + b`, `W` is `[n_out, n_in]`).
 #[inline]
 fn layer_relu(w: &[f32], off: usize, x: &[f32], y: &mut [f32]) -> usize {
     let n_in = x.len();
     let n_out = y.len();
     for (j, out) in y.iter_mut().enumerate() {
-        let mut acc = w[off + n_out * n_in + j]; // bias block follows the weight block
+        let mut acc = w[off + n_out * n_in + j];
         let row = off + j * n_in;
         for (i, xi) in x.iter().enumerate() {
             acc += w[row + i] * *xi;
@@ -213,7 +271,7 @@ fn layer_relu(w: &[f32], off: usize, x: &[f32], y: &mut [f32]) -> usize {
     off + n_out * n_in + n_out
 }
 
-/// Same, without the activation.
+/// Same, without the activation (the fourth layer of both `phi_Net` and `rho_Net`).
 #[inline]
 fn layer_linear(w: &[f32], off: usize, x: &[f32], y: &mut [f32]) -> usize {
     let n_in = x.len();

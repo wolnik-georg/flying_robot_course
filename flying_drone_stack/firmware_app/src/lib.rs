@@ -795,7 +795,7 @@ unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
         rel[k] = (p.sub(own_pos), v.sub(own_vel));
     }
 
-    let pred = RNN.eval(&rel, n);
+    let pred = RNN.eval(&rel, n, own_pos.z, own_vel);
     rnn_pred_write(pred.x, pred.y, pred.z, RNN.clamped as u8);
     pred
 }
