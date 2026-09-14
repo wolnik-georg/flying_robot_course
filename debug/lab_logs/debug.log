@@ -1,51 +1,26 @@
-# Lab PC setup + flight commands — 2026-09-14
+# Lab PC (flightcontrol1) setup + flight commands — 2026-09-14
 #
-# Sourcing order fixed: base ROS distro (underlay) FIRST, then the venv, THEN build,
-# THEN the workspace overlay (install/local_setup.bash) LAST. The previous order in this
-# file sourced the overlay before the underlay, which is backwards from the standard ROS 2
-# convention and can shadow the workspace's own packages with a stale/system one.
+# RESOLVED PATHS (confirmed via `find`, not guessed — three earlier guesses were wrong):
+#   user:            flyingrobots, HOME=/home/flyingrobots
+#   colcon workspace: /home/flyingrobots/georg/ros2_ws
+#   crazyswarm2:      /home/flyingrobots/georg/ros2_ws/src/crazyswarm2   (colcon package, NOT standalone)
+#   crazyflies.yaml:  /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml
+#   flying_robot_course (logs land here, matches flight.py's own LOGS_DIR):
+#                     /home/flyingrobots/georg/flying_robot_course
 #
-# ── 0. PATH CHECK — run this FIRST, before anything else, and share the output ──────────
-# Working directory turns out to be /home/georg/ros2_ws (a colcon workspace), not
-# ~/Desktop/crazyswarm2 as earlier steps in this file assumed -- need the real locations
-# of both repos before step 1's `cd` or step 4's grep can be trusted.
-find /home/georg/ros2_ws -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
-find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
-echo "HOME=$HOME"
-whoami
-pwd
-
-/home/flyingrobots/georg/ros2_ws
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg/ros2_ws -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ echo "HOME=$HOME"
-HOME=/home/flyingrobots
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ whoami
-flyingrobots
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ pwd
-/home/flyingrobots/georg/ros2_ws
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$
-
-# Both earlier find commands searched /home/georg, which doesn't exist on this machine
-# (flightcontrol1) -- that's a different machine (personal ThinkPad). Real home here is
-# /home/flyingrobots, with a "georg" subfolder containing ros2_ws. Correct anchor below.
-find /home/flyingrobots/georg -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
-
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/flyingrobots/georg -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
-/home/flyingrobots/georg/ros2_ws/src/crazyswarm2
-/home/flyingrobots/georg/ros2_ws/src/flying_robot_course
-/home/flyingrobots/georg/flying_robot_course
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
-
-
+# NOTE: /home/flyingrobots/georg/ros2_ws/src/flying_robot_course also exists (a second
+# checkout inside the workspace, likely there to satisfy some package dependency) --
+# don't confuse it with the one above. `git pull` for docs/config edits from this session
+# should go to /home/flyingrobots/georg/flying_robot_course specifically.
+#
+# Sourcing order: base ROS distro (underlay) FIRST, then the venv, THEN build,
+# THEN the workspace overlay (install/local_setup.bash) LAST -- standard ROS 2 convention.
+# Colcon build happens from the WORKSPACE ROOT (ros2_ws), not from inside src/crazyswarm2.
 
 # ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
-# NOTE: the cd below is UNVERIFIED for your actual working setup (ros2_ws) -- update it
-# once step 0's output is in, before relying on the rest of this file.
 source /opt/ros/jazzy/setup.bash
 source /home/flyingrobots/venv/bin/activate
-cd ~/Desktop/crazyswarm2
+cd /home/flyingrobots/georg/ros2_ws
 colcon build --symlink-install --packages-select crazyflie_examples
 . install/local_setup.bash
 
@@ -61,7 +36,7 @@ ros2 run crazyflie_examples flight -- --trajectory hover --duration 20
 # ── 4. Verify the crazyflies.yaml override actually took effect before flying A8 ────────
 # Should print cf231_active's temporary ctrl_mode: 0 override -- if this is missing, the
 # crazyswarm2 pull didn't take and nothing below will behave as expected.
-grep -A2 "indi_gains:" ~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml | grep -B1 "ctrl_mode: 0"
+grep -A2 "indi_gains:" /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml | grep -B1 "ctrl_mode: 0"
 
 # ── 5. A8 formation flight (terminal 2, after step 1's sourcing there too) ──────────────
 # Dry run first -- always, before any live flight:
@@ -78,3 +53,11 @@ ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.25 --passes 2 --y
 # Clean -> continue with INDI as normal.
 # Oscillation/crash -> stop, switch to controller=7 (NA-INDI port) starting from its own
 # single-drone hover check -- not straight into A8, not 2-drone, not on a trajectory yet.
+
+# ── Path-check history (resolved, kept for the record) ───────────────────────────────────
+# Two earlier guesses were wrong: ~/Desktop/crazyswarm2 (doesn't exist here -- that's the
+# personal ThinkPad) and /home/georg/ros2_ws (wrong home entirely). Real values confirmed
+# 2026-09-14 via `find /home/flyingrobots/georg -maxdepth 3 ...`:
+#   /home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+#   /home/flyingrobots/georg/ros2_ws/src/flying_robot_course
+#   /home/flyingrobots/georg/flying_robot_course
