@@ -1,42 +1,55 @@
-mples [0.49s]
+# cf_second height-sweep isolation test — 2026-09-14
+#
+# Why: cf_second showed a consistent ~0.35-0.4m height SHORTFALL (commanded vs achieved),
+# seen twice independently -- isolated flight.py hover (1.4m commanded -> 1.03m achieved)
+# and tonight's A8 run (1.25m commanded -> 0.86m achieved, self-reported |ez|=244mm by
+# run_formation.py's own realised-geometry check). Mocap ceiling ruled out (1.5-1.7m
+# clearance). Battery voltage ruled out (cf_second's vbat was comparable to cf231_active's,
+# if anything higher on average). This test isolates cf_second alone across 3 heights to see
+# whether the shortfall is a FIXED offset (mass/thrust miscalibration in stock Lee) or GROWS
+# with height (PID/integrator saturation).
+#
+# crazyflies.yaml already pushed with cf231_active disabled again for this test --
+# `git pull` picks that up. Restart terminal 1's `ros2 launch crazyflie launch.py` after
+# pulling so it re-reads the yaml.
 
-Summary: 1 package finished [0.60s]
-  1 package had stderr output: crazyflie_examples
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation --scenario A8 --passes 2 --yes
+# ── 1. Environment (same as before) ──────────────────────────────────────────────────────
+source /opt/ros/jazzy/setup.bash
+source /home/flyingrobots/venv/bin/activate
+cd /home/flyingrobots/georg/ros2_ws
+git -C src/crazyswarm2 pull
+git -C src/flying_robot_course pull  # picks up this debug.log, harmless if unused here
+colcon build --symlink-install --packages-select crazyflie_examples crazyflie
+. install/local_setup.bash
 
-[formation] A8  Vertical swap (2 robots), dz=0.25 m at crossing, span=1.00 m, passes=2
-[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
-[formation] 2 robot(s), 14.0 s, tags: swap, data_collection
-[formation] anchor [0. 0. 1.]
-    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    robot 1 [    top] slot [0.   0.5  0.25]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    closest commanded approach: 0.250 m between robots 0 and 1 at t=5.0s
-    robot 0 trajectory:  3 pieces, 14.00 s
-    robot 1 trajectory:  3 pieces, 14.00 s
-[formation] commanded relative geometry:
-     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.25.. -0.25  |d| 0.250..1.031 m
-[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r0_bottom.csv
-[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r1_top.csv
+# ── 2. Restart terminal 1 (crazyflie launch) so it re-reads crazyflies.yaml ──────────────
+# Ctrl+C the running `ros2 launch crazyflie launch.py`, then:
+ros2 launch crazyflie launch.py
 
-[formation] checks passed.
+# ── 3. Sanity check cf_second is the only one enabled ────────────────────────────────────
+grep -A2 "cf231_active:" /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml | grep "enabled: false"
+# should print a match -- if empty, the pull/restart didn't take, stop and re-check.
 
-[formation] anchored on cf231_active at [0.  0.3 1. ]
-    cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.2  1. ]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.25]
-[formation] takeoff: controller=6 ctrl_mode=0
-[formation] stage 1: climbing to slot heights...
-[formation] stage 2: converging to slots...
-[formation] uploading per-robot trajectories...
-[formation] scenario: controller=6 ctrl_mode=3
-[formation] uSD logging started (broadcast) at t=10.896s
-[formation] t_start(sim) = 1789405856.527s -> A8_2026-09-14_19-10-47.meta.json
-[formation] running A8 (14.0 s)...
-[formation] done, landing...
-[formation] landing: controller=6 ctrl_mode=0
-[log] cf231_active: 562 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-14_19-10-47.csv
-[log] cf_second: 562 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-14_19-10-47.csv
+# ── 4. Three-point height sweep, terminal 2 (source step 1 there too) ────────────────────
+# Run all three back to back, same session, same battery -- don't swap batteries mid-sweep,
+# that would reintroduce the voltage variable we're trying to rule out.
+ros2 run crazyflie_examples flight -- --trajectory hover --duration 15 --height 0.6
+ros2 run crazyflie_examples flight -- --trajectory hover --duration 15 --height 0.9
+ros2 run crazyflie_examples flight -- --trajectory hover --duration 15 --height 1.25
 
-[formation] realised relative geometry (last settled sample):
-    cf231_active - cf_second: got [-0.01  -0.981 -0.006]  want [ 0.   -1.   -0.25]  err [-0.01   0.019  0.244] m  |ez| 244 mm
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
+# ── 5. What to look for in each log's steady-state z (last ~5s before landing starts) ────
+# Compare achieved vs commanded for each of the 3 runs:
+#   ~0.35-0.4m short at ALL three heights  -> fixed offset (mass/thrust calibration in the
+#                                             stock Lee firmware doesn't match this drone's
+#                                             actual physical mass/prop thrust)
+#   shortfall grows with commanded height  -> PID/integrator saturation, not a flat offset
+#   shortfall ~0 at low heights, appears only near 1.2-1.25m -> possible thrust-saturation
+#                                             ceiling specific to this airframe/battery combo
+#
+# Logs land in Controls/logs/hover_mode0_<timestamp>.csv (flight.py's own LOGS_DIR) in the
+# flying_robot_course checkout -- git add/commit/push those 3 CSVs from there so I can
+# analyze them, same as before.
 
+# ── After the sweep: re-enable cf231_active before any further 2-drone flight ────────────
+# (crazyflies.yaml robots.cf231_active.enabled: false -> true, on the DEV machine, then
+# git push + you git pull on the lab PC again -- same loop as before.)
