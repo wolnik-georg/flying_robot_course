@@ -1,63 +1,42 @@
-# Lab PC (flightcontrol1) setup + flight commands — 2026-09-14
-#
-# RESOLVED PATHS (confirmed via `find`, not guessed — three earlier guesses were wrong):
-#   user:            flyingrobots, HOME=/home/flyingrobots
-#   colcon workspace: /home/flyingrobots/georg/ros2_ws
-#   crazyswarm2:      /home/flyingrobots/georg/ros2_ws/src/crazyswarm2   (colcon package, NOT standalone)
-#   crazyflies.yaml:  /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml
-#   flying_robot_course (logs land here, matches flight.py's own LOGS_DIR):
-#                     /home/flyingrobots/georg/flying_robot_course
-#
-# NOTE: /home/flyingrobots/georg/ros2_ws/src/flying_robot_course also exists (a second
-# checkout inside the workspace, likely there to satisfy some package dependency) --
-# don't confuse it with the one above. `git pull` for docs/config edits from this session
-# should go to /home/flyingrobots/georg/flying_robot_course specifically.
-#
-# Sourcing order: base ROS distro (underlay) FIRST, then the venv, THEN build,
-# THEN the workspace overlay (install/local_setup.bash) LAST -- standard ROS 2 convention.
-# Colcon build happens from the WORKSPACE ROOT (ros2_ws), not from inside src/crazyswarm2.
+mples [0.49s]
 
-# ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
-source /opt/ros/jazzy/setup.bash
-source /home/flyingrobots/venv/bin/activate
-cd /home/flyingrobots/georg/ros2_ws
-colcon build --symlink-install --packages-select crazyflie_examples
-. install/local_setup.bash
+Summary: 1 package finished [0.60s]
+  1 package had stderr output: crazyflie_examples
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation --scenario A8 --passes 2 --yes
 
-# ── 2. Launch (terminal 1 — leave running) ──────────────────────────────────────────────
-ros2 launch motion_capture_tracking launch.py
-# in a separate terminal (repeat step 1's sourcing there too):
-ros2 launch crazyflie launch.py
+[formation] A8  Vertical swap (2 robots), dz=0.25 m at crossing, span=1.00 m, passes=2
+[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
+[formation] 2 robot(s), 14.0 s, tags: swap, data_collection
+[formation] anchor [0. 0. 1.]
+    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
+    robot 1 [    top] slot [0.   0.5  0.25]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
+    closest commanded approach: 0.250 m between robots 0 and 1 at t=5.0s
+    robot 0 trajectory:  3 pieces, 14.00 s
+    robot 1 trajectory:  3 pieces, 14.00 s
+[formation] commanded relative geometry:
+     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.25.. -0.25  |d| 0.250..1.031 m
+[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r0_bottom.csv
+[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r1_top.csv
 
-# ── 3. Sanity checks ─────────────────────────────────────────────────────────────────────
-ros2 topic echo /poses
-ros2 run crazyflie_examples flight -- --trajectory hover --duration 20
+[formation] checks passed.
 
-# ── 4. Verify the crazyflies.yaml override actually took effect before flying A8 ────────
-# Should print cf231_active's temporary ctrl_mode: 0 override -- if this is missing, the
-# crazyswarm2 pull didn't take and nothing below will behave as expected.
-grep -A2 "indi_gains:" /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml | grep -B1 "ctrl_mode: 0"
+[formation] anchored on cf231_active at [0.  0.3 1. ]
+    cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.2  1. ]
+    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.25]
+[formation] takeoff: controller=6 ctrl_mode=0
+[formation] stage 1: climbing to slot heights...
+[formation] stage 2: converging to slots...
+[formation] uploading per-robot trajectories...
+[formation] scenario: controller=6 ctrl_mode=3
+[formation] uSD logging started (broadcast) at t=10.896s
+[formation] t_start(sim) = 1789405856.527s -> A8_2026-09-14_19-10-47.meta.json
+[formation] running A8 (14.0 s)...
+[formation] done, landing...
+[formation] landing: controller=6 ctrl_mode=0
+[log] cf231_active: 562 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-14_19-10-47.csv
+[log] cf_second: 562 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-14_19-10-47.csv
 
-# ── 5. A8 formation flight (terminal 2, after step 1's sourcing there too) ──────────────
-# Dry run first -- always, before any live flight:
-ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.25 --passes 2 --dry-run --check
+[formation] realised relative geometry (last settled sample):
+    cf231_active - cf_second: got [-0.01  -0.981 -0.006]  want [ 0.   -1.   -0.25]  err [-0.01   0.019  0.244] m  |ez| 244 mm
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
 
-# Step A: geometric, live (current yaml has cf231_active overridden to ctrl_mode=0):
-ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.25 --passes 2 --yes
-
-# Step B (the gate): remove the temporary ctrl_mode:0 override under cf231_active in
-# crazyflies.yaml (marked with a "2026-09-14: temporary override" comment), save, restart
-# terminal 1's `ros2 launch crazyflie launch.py`, then repeat the exact same command above
-# -- now under full INDI (the shared default, ctrl_mode=3).
-#
-# Clean -> continue with INDI as normal.
-# Oscillation/crash -> stop, switch to controller=7 (NA-INDI port) starting from its own
-# single-drone hover check -- not straight into A8, not 2-drone, not on a trajectory yet.
-
-# ── Path-check history (resolved, kept for the record) ───────────────────────────────────
-# Two earlier guesses were wrong: ~/Desktop/crazyswarm2 (doesn't exist here -- that's the
-# personal ThinkPad) and /home/georg/ros2_ws (wrong home entirely). Real values confirmed
-# 2026-09-14 via `find /home/flyingrobots/georg -maxdepth 3 ...`:
-#   /home/flyingrobots/georg/ros2_ws/src/crazyswarm2
-#   /home/flyingrobots/georg/ros2_ws/src/flying_robot_course
-#   /home/flyingrobots/georg/flying_robot_course
