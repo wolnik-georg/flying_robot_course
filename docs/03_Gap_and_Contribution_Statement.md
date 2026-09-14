@@ -28,8 +28,8 @@ There is no systematic experimental study that:
 This thesis provides the first systematic multi-robot comparison of reactive, predictive, and hybrid control strategies for interaction-force compensation during tight formation flight.
 
 Concretely it will:
-- Implement and fairly compare at least three controllers (Pure INDI, Geometric+NN, FBL+NN) on Crazyflie brushless platforms;
+- Implement and fairly compare at least four controllers (Pure INDI, Geometric+NN, FBL+NN, Hybrid/Neural-Augmented INDI) on Crazyflie brushless platforms — this is now the Minimum target level, see `01` §2 (2026-09-14: the hybrid moved from optional into this guaranteed set on the strength of its numerically-verified Rust port);
 - Extend the evaluation from 2 to ≥3 robots;
-- Optionally implement a multi-robot hybrid (neural-augmented INDI) and a residual RL controller;
+- Optionally implement residual-RL-based strategies (Advanced tier: Residual RL, Light Learning-based MPC, Geometric+Residual RL) if time allows;
 - Quantify the trade-offs using consistent real-flight experiments;
 - Derive clear engineering recommendations on when each method is preferable.
