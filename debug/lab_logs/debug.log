@@ -45,3 +45,54 @@ python3 /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/tools/ch
 # timestamp or index depending on firmware log-writer naming) and I'll write the
 # uSD-vs-radio sync comparison once we have both files -- tools/merge_usd_logs.py and
 # tools/decode_usd_log.py already exist for this, just never run on real 2-drone data yet.
+
+# ══════════════════════════════════════════════════════════════════════════════════════════
+# controller=7 (NA-INDI) single-drone hover test -- ONLY IF the full-INDI A8 gate fails
+# tomorrow. Do NOT run any of this unless our own INDI genuinely fails its 2-drone A8 check.
+# Written out in full now, NOT applied to the live yaml, so it's a fast copy-paste once the
+# gate result is known -- not something to work out live under time pressure.
+#
+# Why this is safe by construction, not just "should be fine":
+#   - flight.py's ramp phases (takeoff/landing) are HARDCODED to stabilizer.controller=6
+#     (_RAMP_CONTROLLER, flight.py line ~274) regardless of what the yaml says. Only the
+#     TRAJECTORY/hover phase reads the yaml's controller value. So cf231_active always takes
+#     off and lands under the well-flown geometric controller; it only runs controller=7
+#     during the level hover itself, after it's already stably airborne.
+#   - This is the EXACT same mechanism already proven tonight for switching ctrl_mode between
+#     phases (takeoff=0, trajectory=yaml value, landing=0) -- controller=7 just rides the same
+#     "yaml_controller != _RAMP_CONTROLLER" check that already triggers the phase-switch apply()
+#     call. No flight.py code changes needed; this was checked line by line (2026-09-14).
+#   - Per-robot overrides are NOT used for this test (unlike cf_second's permanent pin) --
+#     instead the *shared* `all:` controller value is changed, because this is a genuinely
+#     single-drone, isolated test (cf_second disabled), so there's no other robot to protect
+#     from the change. A per-robot override would ALSO apply during takeoff/landing (wrong --
+#     you'd want controller=7 in the air, not on the ramp), so don't use one here.
+#
+# ── Step 0 (prerequisite, part of testing full INDI anyway, not controller=7-specific) ──────
+# Remove cf231_active's temporary ctrl_mode:0 / pos_gains override in crazyflies.yaml (the one
+# marked "REMOVE this override before flying step 2") so it falls back to the shared full-INDI
+# default -- this has to happen before the full-INDI A8 attempt regardless of whether it passes.
+#
+# ── Step 1: flash controller=7 onto cf231_active (skip if already done) ─────────────────────
+cd /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl cload
+# Confirm the build banner says "Build for the cf21bl platform!" before flashing (2026-09-13
+# lesson -- wrong platform flashed once before). Confirmed buildable from a clean checkout on
+# 2026-09-14 (dev machine): 38.5KB RAM free, no code changes needed.
+
+# ── Step 2: isolate cf231_active alone (mirror of the cf_second isolation done earlier today) ─
+# In crazyswarm2/crazyflie/config/crazyflies.yaml:
+#   cf_second: enabled: true -> false
+#   all: firmware_params: stabilizer: controller: 6 -> 7
+# Restart terminal 1's `ros2 launch crazyflie launch.py` after saving.
+
+# ── Step 3: single-drone hover, tethered if available ────────────────────────────────────────
+ros2 run crazyflie_examples flight -- --trajectory hover --duration 15 --height 0.6
+# Start LOW (0.6m) and short -- this is a first flight of a brand-new, numerically-verified-only
+# controller. Do not go straight to 1.4m or a long duration. If clean, a second run at a more
+# normal height is reasonable; still hover-only, still not A8, still not 2-drone.
+
+# ── Step 4: revert afterwards, whatever the outcome ──────────────────────────────────────────
+#   all: firmware_params: stabilizer: controller: 7 -> 6
+#   cf_second: enabled: false -> true
+# Restart terminal 1's launch again before any further flight.
