@@ -18,6 +18,9 @@ use bindings::{control_s, setpoint_s, sensorData_s, state_s};
 mod residual_nn;
 use residual_nn::ResidualNet;
 
+// controller=7 (ControllerTypeOot2): faithful NA-INDI port, see naindi.rs module doc.
+mod naindi;
+
 // ── Vector3 helpers ────────────────────────────────────────────────────────
 #[derive(Copy, Clone)]
 struct Vec3 {

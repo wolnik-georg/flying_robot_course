@@ -6,6 +6,9 @@
 #                           the SE(3) controller uses several 3×3 matrices
 CONFIG_APP_ENABLE=n
 CONFIG_CONTROLLER_OOT=y
+# 2026-09-14: second OOT slot -- stabilizer.controller=7, the faithful NA-INDI port,
+# implemented in a separate Rust module (src/naindi.rs) so it never touches the code above.
+CONFIG_CONTROLLER_OOT2=y
 CONFIG_DECK_FORCE="bcRpm"
 # Drone has the Bitcraze thrust upgrade kit (upgraded motors + props).
 # Selects the matching mixer thrust model: THRUST_MAX 0.18 N (was 0.12),

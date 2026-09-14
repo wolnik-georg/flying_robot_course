@@ -14,7 +14,7 @@ checkout or an upstream pull.
 
 ---
 
-## The four modifications
+## The five modifications
 
 | File | What it changes | Consequence if lost |
 |---|---|---|
@@ -22,6 +22,7 @@ checkout or an upstream pull.
 | `bindings/cffirmware.i` | Exposes `controllerOutOfTree*`, the RPM/log helpers, the airframe constants, the gain globals and the `rnn.*` residual-network globals + peer injection | Simulator cannot select or configure our controller |
 | `src/deck/drivers/src/usddeck.c` | `MAX_USD_LOG_VARIABLES_PER_EVENT` 20 → 40 | **⚠️ The most dangerous one to lose.** The thesis logging config records **34** variables including `indi.a_res_*`. At the stock limit of 20 the log is **silently truncated** — no error, no warning, just missing columns. A flight campaign could be lost before anyone noticed |
 | `src/modules/interface/controller/controller_indi.h` | Filter cutoff and `g1`/`g2` re-derived for the CF21BL airframe through stock INDI's legacy output path (July 2026 investigation) | The stock-INDI comparison is no longer on equal terms with ours |
+| `src/modules/interface/controller/controller.h`, `src/modules/src/controller/controller.c`, `src/modules/src/Kconfig` (2026-09-14) | Adds `ControllerTypeOot2` / `CONFIG_CONTROLLER_OOT2` — a **second, independent** out-of-tree controller slot (`stabilizer.controller=7`) alongside the existing `ControllerTypeOot` (`=6`, our geometric/INDI, `ctrl_mode` 0-3). Exists so a byte-faithful Rust port of Cobo-Briesewitz's NA-INDI (`firmware_app/src/naindi.rs`) can fly without any risk of interfering with our own controller — separate enum value, separate dispatch row, separate Rust module, no shared state | Controller 7 does not exist / does not build; falls back silently to whatever `ControllerType_COUNT`-indexed garbage or a build error, depending on how it's lost |
 
 ---
 
@@ -44,16 +45,32 @@ cd ~/Desktop/crazyflie-firmware
 git diff bindings/ > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/cffirmware_bindings.patch
 ```
 
+The `ControllerTypeOot2` slot (controller.h/controller.c/Kconfig) has its own patch:
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git apply ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_controller_slot.patch
+```
+
+Regenerate it after editing those three files with:
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git diff src/modules/interface/controller/controller.h src/modules/src/controller/controller.c src/modules/src/Kconfig \
+  > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_controller_slot.patch
+```
+
 ## Checking they are still in place
 
 ```bash
 cd ~/Desktop/crazyflie-firmware && git status --short
 ```
 
-Expect exactly these four files modified. **If that list is empty, the modifications have been
+Expect exactly these five files modified. **If that list is empty, the modifications have been
 wiped** — re-apply before building or flying. A quick functional check:
 
 ```bash
 grep MAX_USD_LOG_VARIABLES_PER_EVENT src/deck/drivers/src/usddeck.c   # must read 40
 python3 -c "import cffirmware as f; print(f.oot_thrust_max())"        # must print 0.2
+grep ControllerTypeOot2 src/modules/interface/controller/controller.h # must be present
 ```

@@ -1,0 +1,67 @@
+diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
+index 4854009b..c0a702d3 100644
+--- a/src/modules/interface/controller/controller.h
++++ b/src/modules/interface/controller/controller.h
+@@ -37,6 +37,14 @@ typedef enum {
+   ControllerTypeLee,
+ #ifdef CONFIG_CONTROLLER_OOT
+   ControllerTypeOot,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT2
++  // 2026-09-14: second, independent out-of-tree controller slot -- a 100% faithful Rust
++  // port of Cobo-Briesewitz's controller_lee.c (NA-INDI), kept entirely separate from
++  // ControllerTypeOot (our own geometric/INDI with its ctrl_mode 0-3 scheme) so there is
++  // never ambiguity between "our controller" and "the faithful port". See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md.
++  ControllerTypeOot2,
+ #endif
+   ControllerType_COUNT,
+ } ControllerType;
+@@ -57,4 +65,11 @@ bool controllerOutOfTreeTest(void);
+ void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
+ #endif
+ 
++#ifdef CONFIG_CONTROLLER_OOT2
++// second OOT slot -- see ControllerTypeOot2 above
++void controllerOutOfTree2Init(void);
++bool controllerOutOfTree2Test(void);
++void controllerOutOfTree2(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
+ #endif //__CONTROLLER_H__
+diff --git a/src/modules/src/Kconfig b/src/modules/src/Kconfig
+index 0a5b4a9e..8794f736 100644
+--- a/src/modules/src/Kconfig
++++ b/src/modules/src/Kconfig
+@@ -53,6 +53,16 @@ config CONTROLLER_OOT
+     bool "Out-of-tree controller"
+     default n
+ 
++config CONTROLLER_OOT2
++    bool "Second out-of-tree controller (2026-09-14: NA-INDI faithful port)"
++    default n
++    help
++        A second, independent out-of-tree controller slot, kept separate from
++        CONTROLLER_OOT so a faithful port of a reference implementation (Cobo-Briesewitz's
++        controller_lee.c) can coexist with our own geometric/INDI controller without any
++        risk of the two interfering. Selects ControllerTypeOot2 (stabilizer.controller=7,
++        assuming CONTROLLER_OOT is also enabled).
++
+ config ESTIMATOR_KALMAN_ENABLE
+     bool "Enable Kalman Estimator"
+     default y
+diff --git a/src/modules/src/controller/controller.c b/src/modules/src/controller/controller.c
+index e260ae8f..7fe604a6 100644
+--- a/src/modules/src/controller/controller.c
++++ b/src/modules/src/controller/controller.c
+@@ -33,6 +33,10 @@ static ControllerFcns controllerFunctions[] = {
+   #ifdef CONFIG_CONTROLLER_OOT
+   {.init = controllerOutOfTreeInit, .test = controllerOutOfTreeTest, .update = controllerOutOfTree, .name = "OutOfTree"},
+   #endif
++  #ifdef CONFIG_CONTROLLER_OOT2
++  // 2026-09-14: second OOT slot, see ControllerTypeOot2 in controller.h
++  {.init = controllerOutOfTree2Init, .test = controllerOutOfTree2Test, .update = controllerOutOfTree2, .name = "OutOfTree2"},
++  #endif
+ };
+ 
+ 

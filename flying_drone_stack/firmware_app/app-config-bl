@@ -11,5 +11,7 @@
 # To return to DShot telemetry: delete CONFIG_DECK_FORCE below (keep DSHOT_BIDIRECTIONAL).
 CONFIG_APP_ENABLE=n
 CONFIG_CONTROLLER_OOT=y
+# 2026-09-14: second OOT slot -- stabilizer.controller=7, the faithful NA-INDI port.
+CONFIG_CONTROLLER_OOT2=y
 CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y
 CONFIG_DECK_FORCE="bcRpm"
