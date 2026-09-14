@@ -34,7 +34,7 @@ bottom.
 | Formation library | **Complete and frozen** — 16 scenarios (A1–A8, B1–B3, C1–C5) — [`10`](10_Formation_Library.md) |
 | Sim validation of the library | **34/34 cases, 33 pass, 1 EXPECTED, 0 defects** — [`12`](12_Sim_Formation_Validation_Report.md). Found two flight-code bugs single-drone flight could not catch |
 | Residual measurement path | **Complete** — `indi.a_res_*` = f_res/m, logged in every controller mode |
-| `no_std` residual MLP + weight upload | **Complete and verified** — 987 weights, 10/10 checks against an independent reference — [`13`](13_Residual_Learning.md) |
+| `no_std` residual network + weight upload | **Neural-Swarm2 port, verified** — 19297 weights, 19 checks vs an independent reference *and* the compiled firmware (~1e-6 m/s²). RAM-gated behind the `residual_nn` Cargo feature (default off). Training from logs still blocked, see History (35) — [`13`](13_Residual_Learning.md) |
 | Training pipeline | **Complete and verified** — 12/12 checks end to end against the *compiled* controller |
 | End-to-end simulation dry run | **Complete** — collect → train → upload → enable → measure. The plumbing works |
 | Simulation of all 4 control modes | **Complete** — same Rust source that flies — [`09`](09_Simulation.md) |
@@ -197,7 +197,7 @@ everything in **Left** stands between here and collecting the first real dataset
 | 15 | **C.0 acceptance criteria — PREPARED** | 6 required flights, log checks, explicit pass/fail for the two unflown fixes | [`11` Checklist B](11_Hardware_Readiness_Checklist.md) |
 | 16 | **Freeze-the-gains criteria — PREPARED** | Required flights, acceptance metrics, what is frozen, the one legitimate exception | [`11` Checklist C](11_Hardware_Readiness_Checklist.md) |
 | 17 | **Residual collection order — DECIDED** | A1 (0.75→0.50) → A3 (0.40→0.30) → A4 (0.60, offset 0.10), under geometric | [`11`](11_Hardware_Readiness_Checklist.md) |
-| 18 | **Residual network onboard — BUILT & TESTED** | Deep-sets MLP (987 weights) in `no_std` Rust, `rnn.*` upload protocol, prediction logged every tick regardless of `rnn.en`. 10/10 numerical checks against an independent reference | [`13`](13_Residual_Learning.md) |
+| 18 | **Residual network onboard — BUILT & TESTED** | Neural-Swarm2 port (19297 weights) in `no_std` Rust, `rnn.*` upload protocol, prediction logged every tick regardless of `rnn.en`. **Rewritten 2026-09-14**: 19 checks vs an independent reference and the compiled firmware. *(Was a 987-weight custom deep-sets MLP with 10/10 checks; that network no longer exists.)* | [`13`](13_Residual_Learning.md) |
 | 19 | **Residual training pipeline — BUILT & TESTED** | uSD loader, PyTorch model, training with provenance, normalisation folded at export, ROS uploader. 12/12 checks end-to-end against the *compiled* controller. Found two silent-data-loss bugs in the uSD log path | [`13` §6](13_Residual_Learning.md) |
 | 20 | **Residual dry run in simulation — DONE** — *this closed the software preparation phase* | Collect → train → upload → enable → measure, through the lab's code paths. Simulator grew peer injection, a residual log in the merged-uSD schema, and commanded-position logging | [`13` §7](13_Residual_Learning.md), [report](../experiments/sim_validation/RESIDUAL_DRYRUN.md) |
 
