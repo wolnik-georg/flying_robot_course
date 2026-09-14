@@ -19,6 +19,15 @@
 //!     (`indi & 4` branch) we don't have wired the same way. We reuse this project's own
 //!     `g_indi_kt1..4` (t_i = kt_i * rpm_i^2) and `rpm_get_all()`, already the correct per-motor
 //!     thrust constants for this hardware.
+//!   - `desiredYaw` mode dispatch: the reference selects between three yaw sources depending
+//!     on `setpoint->mode.yaw` (`modeAbs` -> `setpoint->attitude.yaw`, `modeVelocity` ->
+//!     integrate from `state->attitude.yaw`, else -> `self->rpy_des.z`). This project's Mode E
+//!     / HLC setpoints are always absolute (see `firmware_app/CLAUDE.md`), so only the
+//!     `modeAbs` branch is ported; the other two are unreachable in this project's flight path
+//!     and were never exercised. Confirmed by `host/test_naindi_reference.py`: forcing
+//!     `setpoint->mode.yaw = modeAbs` on the reference side is required for the two test
+//!     vectors with non-zero yaw to match ours bit-for-bit — without it the reference takes a
+//!     different branch entirely.
 //!
 //! Everything else — Kpos_P/D/I + limits, KR/Komega/KI, the 80/40/10 Hz Butterworth cutoffs,
 //! the position-side fixed dt vs. the attitude-INDI's wall-clock-measured dt, the `vclampnorm`
@@ -47,6 +56,13 @@
 //! A synthetic hover test (`sensors` RPM set to a physically consistent hover thrust,
 //! `state.acc=0`) confirms `thrustSi` converges to `mass*g` and responds correctly to a
 //! position perturbation after these two fixes.
+//!
+//! **Numerically verified against the reference's own compiled C** (`host/
+//! test_naindi_reference.py`, build notes in `host/naindi_reference_build_notes.md`): 5
+//! hand-picked non-trivial states (hover, position error, combined roll+velocity error, 90°
+//! yaw + asymmetric RPM, a fully aggressive multi-axis case) match thrust and torque to
+//! ~1e-9 with mass/J/kt pinned identically on both sides (this file's `naindi_test_set_j`,
+//! test-only, defaults to the real per-platform inertia when never called).
 
 use crate::bindings::{control_s, setpoint_s, sensorData_s, state_s};
 use crate::{quat_to_rot, mat_at_b, matsub, vee_half, mat_mul_vec, clamp_norm, Vec3, Mat3, GRAVITY};
@@ -149,6 +165,19 @@ impl State {
 }
 
 static mut ST: State = State::zero();
+
+// Test-only inertia override for host-level numerical-vector validation against the
+// reference's own compiled C (see host/test_naindi_reference.py): J is a compile-time
+// per-platform constant in real flight (physically necessary, see module doc) and this
+// hook exists solely so a test can pin both sides to the SAME inertia to isolate "is the
+// algorithm ported correctly" from "do the two projects fly different hardware". Never
+// called outside that test; defaults to the real per-platform JXX/JYY/JZZ untouched.
+static mut J_TEST_OVERRIDE: Option<Vec3> = None;
+
+#[no_mangle]
+pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
+    unsafe { J_TEST_OVERRIDE = Some(Vec3::new(x, y, z)); }
+}
 
 fn vclampscl(v: Vec3, limit: f32) -> Vec3 {
     Vec3::new(v.x.clamp(-limit, limit), v.y.clamp(-limit, limit), v.z.clamp(-limit, limit))
@@ -314,7 +343,7 @@ pub unsafe extern "C" fn controllerOutOfTree2(
     let omega_error = omega.sub(omega_r);
     s.i_error_att = s.i_error_att.add(e_r.scale(dt));
 
-    let j = Vec3::new(JXX, JYY, JZZ);
+    let j = unsafe { J_TEST_OVERRIDE }.unwrap_or(Vec3::new(JXX, JYY, JZZ));
     let j_omega = Vec3::new(j.x * omega.x, j.y * omega.y, j.z * omega.z);
     let gyro_term = omega.cross(j_omega);
 

@@ -183,12 +183,16 @@ uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
 
 /* controller=7 (naindi.rs) calls the firmware's usecTimestamp() for its attitude-INDI
  * wall-clock dt, exactly like the reference controller_lee.c does. usec_time.c is firmware-
- * only (STM32 TIM7), so provide the host equivalent -- real wall-clock microseconds is a
- * reasonable stand-in since this only feeds the host test/sim-dry-run path, not a flight. */
-#include <time.h>
+ * only (STM32 TIM7), so provide the host equivalent. A fixed 2000 us (500 Hz, matching
+ * ATTITUDE_RATE) increment per call is used rather than real wall-clock time: a host test
+ * loop can call this fast enough that two consecutive calls return the SAME microsecond,
+ * making dt=0 and the reference's un-guarded `(omega-omega_prev)/dt` divide-by-zero into
+ * NaN -- a host-timing artifact, not a real discrepancy between the two implementations
+ * (real hardware never sees dt=0 at a 2 ms tick period). A fixed increment is deterministic
+ * and reproducible for tests, which real wall-clock time is not. */
+static uint64_t g_fake_usec = 0;
 uint64_t usecTimestamp(void)
 {
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000);
+  g_fake_usec += 2000;
+  return g_fake_usec;
 }
