@@ -32,6 +32,13 @@ flyingrobots
 # /home/flyingrobots, with a "georg" subfolder containing ros2_ws. Correct anchor below.
 find /home/flyingrobots/georg -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
 
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/flyingrobots/georg -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
+/home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+/home/flyingrobots/georg/ros2_ws/src/flying_robot_course
+/home/flyingrobots/georg/flying_robot_course
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
+
+
 
 # ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
 # NOTE: the cd below is UNVERIFIED for your actual working setup (ros2_ws) -- update it
