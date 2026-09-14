@@ -486,6 +486,20 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   order since A1 doesn't exercise the open trajectory-tracking shake; (3) uSD logging + sync
   validation on both drones; (4) if clean, move to A3. Full account:
   <code>docs/lab_sessions/2026-09-14.md</code>.</p>
+  <p class="note"><strong>2026-09-14 desk-time, before lab — a new candidate fix for the
+  residual oscillation exists: <code>stabilizer.controller=7</code>, a faithful NA-INDI port.</strong>
+  Rather than continue iterating on our own INDI, ported Cobo &amp; Briesewitz's
+  <code>controller_lee.c</code> bit-for-bit into a brand-new, fully independent controller slot
+  that never touches the existing geometric/INDI controller (<code>=6</code>) at all. Numerically
+  verified against the reference's own compiled C: 5 hand-picked non-trivial states (hover,
+  position error, roll+velocity error, 90° yaw with asymmetric RPM, a fully aggressive
+  multi-axis case) match thrust and torque to ~1e-9. Exactly 4 documented,
+  physically/architecturally necessary deviations (mass/J, an unused NN block, RPM→thrust
+  source, yaw-mode dispatch); everything else — gains, filters, the rate gate, the mixed-dt-source
+  design — is identical. Switchable via a plain <code>controller: 7</code> in the yaml, same as
+  any other controller. <strong>Never flown</strong> — needs its own hover-first hardware
+  validation, on a tether if available, before it is anything more than a numerically-verified
+  candidate.</p>
 </section>
 
 <section class="stage">

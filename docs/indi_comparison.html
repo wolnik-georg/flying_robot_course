@@ -849,6 +849,22 @@ u     = u_geo − τ_res
   </div>
 </section>
 
+<section>
+  <div class="card" style="border-left-color:var(--ours)">
+    <p style="margin-top:0"><strong>UPDATE 2026-09-14 — this comparison is now a faithful port,
+    not just an algebraic reading.</strong> The H0 partition mentioned above as "next" was run
+    on 2026-09-12 and came back inconclusive (both sub-loops crashed worse alone). Rather than
+    keep isolating our own INDI's shake, the operator decided to port their
+    <code>controller_lee.c</code> bit-for-bit into a new, fully independent controller slot
+    (<code>stabilizer.controller=7</code>) — everything this page analysed from their code is
+    now literally running (on the host, numerically verified; not yet flown) rather than just
+    compared against. <strong>Verified against the reference's own compiled C to ~1e-9</strong>
+    on 5 hand-picked states, with exactly 4 documented, physically necessary deviations (mass/J,
+    an unused NN block, RPM→thrust source, yaw-mode dispatch). Full record:
+    <code>firmware_app/src/naindi.rs</code>, <code>firmware_app/host/test_naindi_reference.py</code>.</p>
+  </div>
+</section>
+
 <footer>
   Source: <span style="color:var(--theirs)">Tupryk/crazyflie-firmware @ dev-leePayload</span>, HEAD ef2858fd ·
   cloned read-only to ~/Desktop/NA-INDI-firmware<br>
