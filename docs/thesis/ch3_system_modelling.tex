@@ -32,9 +32,7 @@ This chapter defines the residual acceleration $a_{\mathrm{res}}$ that \emph{thi
 and logs. Two things follow. Strategies~1, 2 and~4, and any other method that consumes a force
 residual, then refer to one number rather than to several differently-defined ones. And a predicted
 residual can be checked against a measured one on the same flight, which is how a learned model is
-evaluated here.\ifadvancedtier{} Residual reinforcement learning (Strategies~5 and~7) never forms
-that number. That is a property of the method, not a reason to exclude it from a comparison of
-performance.\fi
+evaluated here.
 
 The chapter also states the assumptions the formulation rests on, and where each one is expected
 to fail. Several are known to be imperfect, the summation in
@@ -363,9 +361,7 @@ the circular trajectory to its being out of distribution relative to the trainin
 \label{sec:model-summary}
 
 The residual of \eqref{eq:model-trans}--\eqref{eq:model-rot} is what this stack measures and logs.
-Strategies~1, 2 and~4 consume it.\ifadvancedtier{} Strategies~5 and~7 never form it, which is a
-property of residual reinforcement learning rather than a reason to exclude it from a comparison of
-performance.\fi{} The
+Strategies~1, 2 and~4 consume it. The
 residual can be recovered online from
 \eqref{eq:model-ares}, which needs no model of the interaction but requires rotor-speed sensing and
 is available only after the disturbance acts; or predicted from \eqref{eq:model-deepsets}, which

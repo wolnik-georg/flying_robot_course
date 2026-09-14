@@ -30,7 +30,6 @@
 %  structurally-different strategies.
 % =====================================================================================
 
-% Draft-scope flag \ifadvancedtier is declared in preamble_draft.tex; see the comment there.
 \chapter{Control Architectures}
 \label{ch:control}
 
@@ -38,9 +37,9 @@ Chapter~\ref{ch:model} defined the residual wrench and the two ways of obtaining
 chapter describes the control strategies compared in this thesis, and in each case the point
 at which knowledge of the interaction enters the control law.
 
-Strategies~0--7 (eight controllers: an uncompensated baseline plus the seven families of
-Section~\ref{ch:control}, with residual reinforcement learning split into two variants by inner
-loop). Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter takes them in order.
+Five controllers: an uncompensated baseline (Strategy~0), flown in every scenario as the
+reference condition, and the four strategies compared against it (Strategies~1--4).
+Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter takes them in order.
 
 \begin{table}[t]
   \centering
@@ -58,30 +57,18 @@ loop). Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter take
     2 & Geometric + NN               & predicted  & $a_{\mathrm{des}}$         & no  & implemented, unflown \\
     3 & FBL + NN                     & predicted  & linearising law            & no  & not implemented \\
     4 & Hybrid NA-INDI                & both       & $a_{\mathrm{des}}$, torque & yes & form fixed, not wired \\
-    \ifadvancedtier
-    5 & Residual RL, cascaded        & neither    & actuation                  & no  & deferred \\
-    6 & Learning-based MPC           & predicted  & MPC prediction model       & no  & not implemented \\
-    7 & Residual RL, geometric       & neither    & actuation                  & no  & deferred \\
-    \fi
     \bottomrule
   \end{tabular}
 \end{table}
 
-\ifadvancedtier\else
-\emph{This is the Minimum-tier draft: Strategies 5--7 (residual reinforcement learning on a
-cascaded baseline, learning-based model predictive control, and residual reinforcement learning on
-the geometric baseline) are out of scope here and are covered in the companion Advanced-tier
-draft. Nothing below this point depends on them.}
-
-\fi
 The chapter treats each strategy as its own controller. Two of them, pure INDI and the hybrid,
 happen to build their attitude law the same way and differ only in which residual term is active
 in the shared desired-acceleration vector \eqref{eq:ctrl-ades}; that is a genuine similarity worth
 stating where it clarifies the comparison, but it is not treated here as a formal category that
-some strategies belong to and others do not. What makes the comparison fair across all seven is not
-a claimed shared implementation, but the experimental conditions held constant for every one of
-them — the same airframe, trajectories, formations, residual definition and frozen gains, stated
-precisely in Section~\ref{sec:ctrl-fairness}.
+some strategies belong to and others do not. What makes the comparison fair is not a claimed shared
+implementation, but the experimental conditions held constant for every one of them — the same
+airframe, trajectories, formations, residual definition and frozen gains, stated precisely in
+Section~\ref{sec:ctrl-fairness}.
 
 Each strategy is described in two parts, kept deliberately separate: what is implemented here, and
 the published method it follows. They follow published \emph{families}, and the deviations from
@@ -92,16 +79,13 @@ Strategies whose author code has not yet arrived stay unimplemented rather than 
 \section{The position and attitude loop}
 \label{sec:ctrl-common}
 
-Strategies~0, 1, 2, 4 and~7 (the geometric baseline, pure INDI, geometric+NN, the hybrid, and
-residual RL on the geometric baseline) each use a geometric position loop and an attitude law
-realising the corresponding thrust direction; INDI and the hybrid replace the attitude law's inner
-term with an incremental one, and Strategy~7 instead adds a learned corrective action after the
-position loop rather than a term inside it. This is stated once here, in its own section, purely
-to avoid repeating the same equation five times — it is a description of what each of those five
-controllers does, not a claim that they form a privileged group for the purposes of the comparison.
-Strategies~3, 5 and~6 use different published structures entirely — feedback linearisation, a
-cascaded residual-reinforcement-learning baseline, and receding-horizon optimisation — described in
-their own sections instead.
+Strategies~0, 1, 2 and~4 (the geometric baseline, pure INDI, geometric+NN and the hybrid) each use
+a geometric position loop and an attitude law realising the corresponding thrust direction; INDI
+and the hybrid replace the attitude law's inner term with an incremental one. This is stated once
+here, in its own section, purely to avoid repeating the same equation four times — it is a
+description of what each of those four controllers does, not a claim that they form a privileged
+group for the purposes of the comparison. Strategy~3 uses a different published structure entirely,
+feedback linearisation, described in its own section instead.
 
 \subsection{Position loop}
 
@@ -392,80 +376,6 @@ campaign is not worth its cost.
 training data, the union of Strategies~1 and~2, which is itself a result for the cost accounting
 of the discussion chapter.
 
-\ifadvancedtier
-% -------------------------------------------------------------------------------------
-\section{Strategy 5: residual reinforcement learning on a cascaded baseline}
-\label{sec:ctrl-s5}
-
-\paragraph{Implemented.} \textbf{Not implemented, and deliberately scheduled last.}
-
-\paragraph{Reference.} Zhang et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning
-module on top of a \emph{cascaded} controller, not a geometric one. It produces corrections that
-compensate the disturbance and thrust loss caused by downwash, and uses domain randomisation to
-reduce the dependence on accurate system identification. Their residual and high-level controller
-run off-board at \SI{50}{\hertz} above an onboard low-level loop at \SI{500}{\hertz}, on
-regular-sized quadcopters. Strategy~5 follows that arrangement.
-
-% -------------------------------------------------------------------------------------
-\section{Strategy 6: learning-based model predictive control}
-\label{sec:ctrl-s6}
-
-\paragraph{Implemented.} \textbf{Not implemented.} Whether it can run within the control period on
-this platform is an open engineering question, and one that is itself relevant. This is the only
-strategy in the comparison whose computational cost may exclude it from the target hardware. Nothing
-in the literature settles it either way for our vehicle: Chee et al.\ and Hsieh et al.\ both run
-their optimisation off-board, and Li et al.\ run theirs on a Jetson companion computer, not on an
-STM32.
-
-\paragraph{Reference.} Chee et al.~\cite{chee2024knodedwmpc} embed a mixed-expert KNODE-DW model
---- first principles plus a lightweight neural ODE component --- inside the prediction constraint
-of a nonlinear MPC, and evaluate it in simulation and on hardware with two Crazyflie~2.1 vehicles
-in stacked formation at average separations below \num{1.5} body lengths, with the controller
-running off-board. Hsieh et
-al.~\cite{hsieh2025onlineadaptation} extend this by inserting an $\mathcal{L}_1$
-residual-acceleration estimate into the same prediction model, evaluated on hardware with
-\emph{three} Crazyflie~2.1 vehicles in V-stack and I-stack formations at pairwise separations down
-to \SI{0.2}{\metre}, and report that the adaptive module is most effective when paired with an
-accurate dynamics model. Only the $\mathcal{L}_1$ estimate adapts online.
-
-\paragraph{Where the prediction enters.} Not at an instant, as in Strategies~2 and~4, but inside
-the prediction model over which the optimiser reasons. The controller therefore plans against a
-disturbance it expects to meet rather than cancelling the one present now, the most distinct
-injection point in the comparison, and the reason the strategy is retained in the set even though
-it may prove infeasible onboard.
-
-% -------------------------------------------------------------------------------------
-\section{Strategy 7: residual reinforcement learning on the geometric baseline}
-\label{sec:ctrl-s7}
-
-\paragraph{Implemented.} \textbf{Not implemented.} This pairing is ours, not any paper's.
-
-\paragraph{What it shares with Strategy 5.} The stance is identical. A policy outputs a corrective
-action, and no explicit force estimate is formed at any point. Both are therefore evaluated on
-tracking performance alone, and neither can be checked by comparing a predicted residual against a
-measured one.
-
-\paragraph{What differs.} The inner loop. Strategy~5 sits on the cascaded controller of
-\cite{zhang2024proxfly}; Strategy~7 sits on the geometric position and attitude loop used by
-Strategies~0, 1, 2 and~4 in this thesis. Separating them matters because a residual policy is
-trained against whatever the baseline leaves uncorrected, so the same learning stance on a
-different inner loop is a different experiment, not a re-run.
-
-\paragraph{Why they are scheduled last, stated plainly.} They answer a different question.
-Strategies~1, 2, 3, 4 and~6 all reason about an explicit force: each produces, or consumes, an
-estimate of $f_{\mathrm{res}}$ that can be compared against the measurement of
-\eqref{eq:model-ares}. A residual policy produces a corrective action and never forms such an
-estimate, so the predicted-versus-measured comparison that underpins the evaluation of every other
-learned strategy is unavailable, and failures are correspondingly harder to attribute.
-
-One property nonetheless makes them worth retaining. The policy of Zhang et al.\ observes only the
-tracking error, the baseline controller's command and its own previous residual action, no
-neighbour state, and no communication between
-vehicles~\cite{zhang2024proxfly}. Every other predictive strategy here depends on knowing where the
-neighbours are. Removing that dependency removes a bandwidth requirement and a failure mode, at the
-cost of being unable to anticipate a neighbour the vehicle cannot perceive, a trade-off that
-belongs in the cost accounting even if the strategies are not flown.
-\fi
 
 % -------------------------------------------------------------------------------------
 \section{What makes the comparison fair, and what it does not guarantee}
@@ -512,28 +422,15 @@ disadvantaged a strategy.
 \section{Summary}
 \label{sec:ctrl-summary}
 
-\ifadvancedtier
-Seven strategies, each its own controller, distinguished by what they know about the interaction
-force, when they know it, and where that knowledge enters. Two of them, pure INDI and the hybrid,
-happen to share an attitude law and differ only in which residual term is active — a useful point
-of comparison, not a privileged evidentiary category. All seven are compared under the same
-experimental conditions: identical trajectories, formations, hardware and frozen gains, not
-identical control structure.
-\else
-Four Minimum-tier strategies (1--4: pure INDI, geometric+NN, FBL+NN and the hybrid), plus the
-uncompensated baseline (Strategy 0) flown as the reference condition under all of them, each its
-own controller, distinguished by what they know about the interaction force,
-when they know it, and where that knowledge enters. Two of them, pure INDI and the hybrid, happen to
-share an attitude law and differ only in which residual term is active — a useful point of
-comparison, not a privileged evidentiary category. All four are compared under the same
-experimental conditions: identical trajectories, formations, hardware and frozen gains, not
-identical control structure. The Advanced tier (Strategies 5--7: residual reinforcement learning,
-learning-based model predictive control, and residual reinforcement learning on the geometric
-baseline) is covered in the companion Advanced-tier draft.
-\fi
+Four strategies (1--4: pure INDI, geometric+NN, FBL+NN and the hybrid), plus the uncompensated
+baseline (Strategy~0) flown as the reference condition under all of them, each its own controller,
+distinguished by what they know about the interaction force, when they know it, and where that
+knowledge enters. Two of them, pure INDI and the hybrid, happen to share an attitude law and differ
+only in which residual term is active — a useful point of comparison, not a privileged evidentiary
+category. All four are compared under the same experimental conditions: identical trajectories,
+formations, hardware and frozen gains, not identical control structure.
 
-At the time of writing, \ifadvancedtier two strategies fly, one is implemented and unflown, one
-exists as separable components, and three are not implemented\else two strategies fly (the
-baseline and pure INDI), one is implemented and unflown (geometric+NN), one exists as separable
-components (the hybrid), and one is not implemented (FBL)\fi. Chapter~\ref{ch:setup} describes the experimental
+At the time of writing, two strategies fly (the baseline and pure INDI), one is implemented and
+unflown (geometric+NN), one exists as separable components (the hybrid), and one is not implemented
+(FBL). Chapter~\ref{ch:setup} describes the experimental
 design; the two- and multi-robot results chapters report what was flown.
