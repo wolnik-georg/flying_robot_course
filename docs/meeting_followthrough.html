@@ -114,8 +114,8 @@ footer{
 </header>
 
 <div class="scoreboard">
-  <div class="score go"><div class="n">4</div><div class="lbl">Done</div></div>
-  <div class="score hold"><div class="n">3</div><div class="lbl">Partial</div></div>
+  <div class="score go"><div class="n">5</div><div class="lbl">Done</div></div>
+  <div class="score hold"><div class="n">2</div><div class="lbl">Partial</div></div>
   <div class="score stop"><div class="n">0</div><div class="lbl">Not started</div></div>
 </div>
 
@@ -180,15 +180,14 @@ footer{
     <div class="ask"><strong>Needs:</strong> nothing further on this specific sweep — was scoped to the strategy/tier framing, not a full line-by-line audit of every chapter.</div>
   </div>
 
-  <div class="card hold">
-    <div class="card-head"><span class="num">7</span><h3>Core vs. ambitious split — two thesis drafts</h3><span class="pill hold">groundwork done, drafts not built</span></div>
-    <p>Split simplified to two tiers (see #6): Minimum = Pure INDI, Geometric+NN, FBL+NN,
-      Hybrid/NA-INDI; Advanced = Residual RL, Light Learning-MPC, Geometric+Residual RL. Every
-      strategy now has its own independent chapter section (no shared narrative to untangle), so
-      producing the two versions is now a mechanical include/exclude of Chapter 4's Advanced-tier
-      sections, not a rewrite — Chapters 1, 2, 3, 5 need no forking at all. That mechanical step
-      itself hasn't been done yet.</p>
-    <div class="ask"><strong>Needs:</strong> the actual fork-and-trim pass once lab work settles.</div>
+  <div class="card go">
+    <div class="card-head"><span class="num">7</span><h3>Core vs. ambitious split — two thesis drafts</h3><span class="pill go">both build clean</span></div>
+    <p>Minimum = Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI (43 pages). Advanced = adds
+      Residual RL, Light Learning-MPC, Geometric+Residual RL (44 pages, content-identical to the
+      original single draft). One LaTeX flag in Chapter 4 gates the three Advanced-only strategy
+      sections; Chapters 1, 2, 3, 5 are shared unmodified between both.
+      <code>thesis_draft_minimum.tex</code> / <code>thesis_draft_advanced.tex</code>, both build
+      clean with zero undefined citations or references.</p>
   </div>
 
 </div>
