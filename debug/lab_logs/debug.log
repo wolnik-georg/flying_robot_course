@@ -25,8 +25,12 @@ HOME=/home/flyingrobots
 flyingrobots
 (venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ pwd
 /home/flyingrobots/georg/ros2_ws
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$
 
+# Both earlier find commands searched /home/georg, which doesn't exist on this machine
+# (flightcontrol1) -- that's a different machine (personal ThinkPad). Real home here is
+# /home/flyingrobots, with a "georg" subfolder containing ros2_ws. Correct anchor below.
+find /home/flyingrobots/georg -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
 
 
 # ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
