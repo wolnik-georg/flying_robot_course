@@ -521,10 +521,9 @@ code{
       <ul>
         <li><strong>09-09:</strong> six crashes, three root causes found + fixed.</li>
         <li><strong>09-11:</strong> re-flew clean (stage 1). Stage 2: oscillation reduced
-          <strong>88° → 7°</strong>, still no clean pass. Notch filter crashed.</li>
+          <strong>88° → 7°</strong>, still no clean pass.</li>
         <li><strong>09-12:</strong> H0 test (attitude-INDI vs. position-INDI alone) —
-          <strong>inconclusive</strong>, both worse alone. Notch crash root-caused + fixed
-          offline — not yet flown.</li>
+          <strong>inconclusive</strong>, both worse alone.</li>
       </ul>
     </div>
 
@@ -544,34 +543,6 @@ code{
       </ul>
     </div>
 
-    <div class="tl-item">
-      <h3>Notch test flown <span class="when">2026-09-13 — CRASHED</span></h3>
-      <ul>
-        <li>Worse than the original 09-11 crash. <strong>Zero log data saved</strong> — first
-          crash this project with no telemetry at all.</li>
-        <li>The <code>bc7190c</code> fix does <strong>not</strong> resolve the problem.
-          Reverted.</li>
-        <li>Most of the session before this was lost to an unrelated problem: wrong firmware
-          platform flashed (standard onto brushless), compounded by a diagnostic that
-          accidentally forced the drone into bootloader mode. Resolved with an explicit
-          <code>DRONE=bl</code> reflash. Drone inspected after — no damage.</li>
-      </ul>
-    </div>
-
-    <div class="tl-item">
-      <h3>Offline notch analysis <span class="when">2026-09-13 — CONCLUSIVE</span></h3>
-      <ul>
-        <li><code>experiments/analysis/notch_filter_bode.py</code> — attitude loop's natural
-          frequency (<code>ωₙ=√kr=7.80 Hz</code> at <code>kr=2400</code>) sits almost exactly
-          inside the notch's rejection band (<code>f0=6.9</code>, <code>bw=3.0</code>) — phase
-          swings ~175° across it.</li>
-        <li>The "shake" is likely the loop's own dynamics, not an external resonance. Notching
-          it corrupts the loop's own feedback at its operating point.</li>
-        <li><strong>Notch-filter approach abandoned.</strong> Continuing the
-          <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line instead
-          (09-11 attempt 4, peak 6.7°).</li>
-      </ul>
-    </div>
   </div>
 </section>
 
@@ -607,11 +578,6 @@ code{
           <td>Gains frozen</td>
           <td><span class="status-chip open">● open</span></td>
           <td>Blocked on the oscillation question above.</td>
-        </tr>
-        <tr>
-          <td>Notch-filter approach</td>
-          <td><span class="status-chip blocked">■ abandoned</span></td>
-          <td>Flown 09-13, crashed worse. Offline analysis: structurally flawed, not fixable by retuning.</td>
         </tr>
         <tr>
           <td>cf_second → stock Lee, permanent</td>
