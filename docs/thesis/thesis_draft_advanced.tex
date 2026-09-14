@@ -1,0 +1,17 @@
+% Advanced-tier build: full seven-strategy comparison (Strategies 0-7). Combined build of every
+% drafted chapter, for cross-chapter references to resolve. Content-identical to thesis_draft.tex
+% -- this file exists so the Minimum and Advanced builds are two clearly-named, independently
+% buildable targets rather than one file whose scope has to be inferred.
+\newif\ifadvancedtier
+\advancedtiertrue
+\input{preamble_draft}
+\begin{document}
+\tableofcontents
+\input{ch1_introduction}
+\input{ch2_related_work}
+\input{ch3_system_modelling}
+\input{ch4_control_architectures}
+\input{ch5_experimental_setup}
+\bibliographystyle{plain}
+\bibliography{../references}
+\end{document}

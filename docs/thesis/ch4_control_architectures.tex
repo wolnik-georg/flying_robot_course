@@ -30,6 +30,15 @@
 %  structurally-different strategies.
 % =====================================================================================
 
+% Draft-scope flag: \ifadvancedtier true = full 7-strategy draft (Advanced tier included);
+% false = Minimum-tier draft (Strategies 0-4 only; 5-7 omitted). Set by the driver file
+% (thesis_draft_advanced.tex / thesis_draft_minimum.tex) before this file is \input; defaults to
+% true (full content) if undefined, so the original thesis_draft.tex and ch4_standalone.tex keep
+% their existing behaviour unchanged.
+\makeatletter
+\@ifundefined{ifadvancedtier}{\newif\ifadvancedtier \advancedtiertrue}{}
+\makeatother
+
 \chapter{Control Architectures}
 \label{ch:control}
 
@@ -57,13 +66,21 @@ loop). Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter take
     2 & Geometric + NN               & predicted  & $a_{\mathrm{des}}$         & no  & implemented, unflown \\
     3 & FBL + NN                     & predicted  & linearising law            & no  & not implemented \\
     4 & Hybrid NA-INDI                & both       & $a_{\mathrm{des}}$, torque & yes & form fixed, not wired \\
+    \ifadvancedtier
     5 & Residual RL, cascaded        & neither    & actuation                  & no  & deferred \\
     6 & Learning-based MPC           & predicted  & MPC prediction model       & no  & not implemented \\
     7 & Residual RL, geometric       & neither    & actuation                  & no  & deferred \\
+    \fi
     \bottomrule
   \end{tabular}
 \end{table}
 
+\ifadvancedtier\else
+\emph{This is the Minimum-tier draft: Strategies 5--7 (the reinforcement-learning-based
+strategies) are out of scope here and are covered in the companion Advanced-tier draft. Nothing
+below this point depends on them.}
+
+\fi
 The chapter treats each strategy as its own controller. Two of them, pure INDI and the hybrid,
 happen to build their attitude law the same way and differ only in which residual term is active
 in the shared desired-acceleration vector \eqref{eq:ctrl-ades}; that is a genuine similarity worth
@@ -382,6 +399,7 @@ campaign is not worth its cost.
 training data, the union of Strategies~1 and~2, which is itself a result for the cost accounting
 of the discussion chapter.
 
+\ifadvancedtier
 % -------------------------------------------------------------------------------------
 \section{Strategy 5: residual reinforcement learning on a cascaded baseline}
 \label{sec:ctrl-s5}
@@ -454,6 +472,7 @@ vehicles~\cite{zhang2024proxfly}. Every other predictive strategy here depends o
 neighbours are. Removing that dependency removes a bandwidth requirement and a failure mode, at the
 cost of being unable to anticipate a neighbour the vehicle cannot perceive, a trade-off that
 belongs in the cost accounting even if the strategies are not flown.
+\fi
 
 % -------------------------------------------------------------------------------------
 \section{What makes the comparison fair, and what it does not guarantee}
@@ -500,13 +519,27 @@ disadvantaged a strategy.
 \section{Summary}
 \label{sec:ctrl-summary}
 
+\ifadvancedtier
 Seven strategies, each its own controller, distinguished by what they know about the interaction
 force, when they know it, and where that knowledge enters. Two of them, pure INDI and the hybrid,
 happen to share an attitude law and differ only in which residual term is active — a useful point
 of comparison, not a privileged evidentiary category. All seven are compared under the same
 experimental conditions: identical trajectories, formations, hardware and frozen gains, not
 identical control structure.
+\else
+Four Minimum-tier strategies (1--4: pure INDI, geometric+NN, FBL+NN and the hybrid), plus the
+uncompensated baseline (Strategy 0) flown as the reference condition under all of them, each its
+own controller, distinguished by what they know about the interaction force,
+when they know it, and where that knowledge enters. Two of them, pure INDI and the hybrid, happen to
+share an attitude law and differ only in which residual term is active — a useful point of
+comparison, not a privileged evidentiary category. All four are compared under the same
+experimental conditions: identical trajectories, formations, hardware and frozen gains, not
+identical control structure. The Advanced tier (Strategies 5--7, the reinforcement-learning-based
+strategies) is covered in the companion Advanced-tier draft.
+\fi
 
-At the time of writing, two strategies fly, one is implemented and unflown, one exists as separable
-components, and three are not implemented. Chapter~\ref{ch:setup} describes the experimental
+At the time of writing, \ifadvancedtier two strategies fly, one is implemented and unflown, one
+exists as separable components, and three are not implemented\else two strategies fly (the
+baseline and pure INDI), one is implemented and unflown (geometric+NN), one exists as separable
+components (the hybrid), and one is not implemented (FBL)\fi. Chapter~\ref{ch:setup} describes the experimental
 design; the two- and multi-robot results chapters report what was flown.
