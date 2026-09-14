@@ -12,10 +12,6 @@
 //!     this project's own `g_indi_mass` / `JXX,JYY,JZZ` (per-platform, `lib.rs`) because flying
 //!     with the reference's fixed mass on a different, heavier airframe is a physical error, not
 //!     an implementation choice. The control LAW, gains, filters and dt handling are unchanged.
-//!   - `sensors->gyroNoLpf`: the reference's own firmware fork added an unfiltered-gyro field to
-//!     `stabilizer_types.h` that upstream bitcraze (and therefore our firmware) does not have.
-//!     We substitute the regular filtered `sensors.gyro` — confirmed absent via bindgen output,
-//!     not assumed.
 //!   - `use_nn` / the NN feedforward block: omitted. Every gain block we found upstream ships
 //!     with `use_nn=0`; the block is dead code in every flown NA-INDI config. Left out rather
 //!     than ported unused.
@@ -28,6 +24,29 @@
 //! the position-side fixed dt vs. the attitude-INDI's wall-clock-measured dt, the `vclampnorm`
 //! clamps, the rotation-error sign convention, the `RATE_DO_EXECUTE(ATTITUDE_RATE, tick)` gate —
 //! is copied as literally as the port allows.
+//!
+//! `sensors->gyroNoLpf` (2026-09-14 follow-up): ported into our own `crazyflie-firmware` fork
+//! verbatim from NA-INDI-firmware — a `gyroNoLpf` field added to `stabilizer_types.h` right
+//! after `gyro`, populated in `sensors_bmi088_bmp3xx.c` from the pre-LPF sample at the exact
+//! point their fork captures it (before `applyAxis3fLpf` overwrites `sensorData.gyro` in
+//! place). See `firmware_app/host/LOCAL_MODIFICATIONS.md` and
+//! `host/naindi_gyro_no_lpf.patch`. This is the real, unfiltered gyro signal now — not a
+//! substitute — so `self->omega` (the main `omega` below, used everywhere, not just the
+//! INDI finite difference) reads it directly, matching `controller_lee.c:395-398` exactly
+//! (that line builds `self->omega` from `gyroNoLpf`, not the regular `sensors->gyro` — easy
+//! to miss on a first pass, caught by re-checking the source directly).
+//!
+//! Two more fixes made during host-level verification (a synthetic hover test that converges
+//! to `thrustSi != mass*g` catches both):
+//!   - `a_imu` reads `state->acc` (the EKF's world-frame, gravity-compensated linear
+//!     acceleration — our own `state_t.acc`, "Gs, but acc.z without considering gravity"),
+//!     **not** `sensors->acc` (raw body-frame IMU) — confirmed against `controller_lee.c:329`.
+//!   - `a_d`'s feedforward term is `setpoint->acceleration` with `GRAVITY_MAGNITUDE` added to
+//!     z (`controller_lee.c:245`) — without it `F_d` never includes a gravity term anywhere
+//!     and commanded hover thrust is ~0 instead of ~mass·g.
+//! A synthetic hover test (`sensors` RPM set to a physically consistent hover thrust,
+//! `state.acc=0`) confirms `thrustSi` converges to `mass*g` and responds correctly to a
+//! position perturbation after these two fixes.
 
 use crate::bindings::{control_s, setpoint_s, sensorData_s, state_s};
 use crate::{quat_to_rot, mat_at_b, matsub, vee_half, mat_mul_vec, clamp_norm, Vec3, Mat3, GRAVITY};
@@ -200,15 +219,26 @@ pub unsafe extern "C" fn controllerOutOfTree2(
     let z_body = Vec3::new(r[0][2], r[1][2], r[2][2]);
 
     let deg2rad = core::f32::consts::PI / 180.0_f32;
-    let g = &(*sensors).gyro;
-    // Substitutes for gyroNoLpf -- see module doc.
+    // Reference builds self->omega from sensors->gyroNoLpf (controller_lee.c:395-398), NOT the
+    // regular LPF'd sensors->gyro -- used throughout (eR, omega_error, gyroscopic terms, and
+    // the INDI angular-acceleration finite difference below), so we do the same.
+    let g = &(*sensors).gyroNoLpf;
     let omega = Vec3::new(g.axis[0] * deg2rad, g.axis[1] * deg2rad, g.axis[2] * deg2rad);
-    let acc = &(*sensors).acc;
+    // NOT sensors->acc (raw body-frame IMU) -- the reference's a_imu deliberately reads
+    // state->acc, the EKF's world-frame, gravity-compensated linear acceleration estimate
+    // (controller_lee.c:329, confirmed against source: `state->acc`, not `sensors->acc`).
+    // Our own state_t.acc is exactly that field ("Gs, but acc.z without considering gravity").
+    let acc = &st.acc;
 
     let sp = &*setpoint;
     let pd = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
     let vd = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
     let acc_d = Vec3::new(sp.acceleration.x, sp.acceleration.y, sp.acceleration.z);
+    // Reference builds a_d from acc_d WITH GRAVITY_MAGNITUDE added to z (controller_lee.c:245)
+    // -- the position loop's a_d is a desired *specific force* direction, not a bare
+    // acceleration. `crate::omega_desired`/`alpha_desired` add gravity internally already
+    // (matching this project's own convention), so they still take the raw `acc_d` below.
+    let acc_d_g = Vec3::new(acc_d.x, acc_d.y, acc_d.z + GRAVITY);
     let jerk_d = Vec3::new(sp.jerk.x, sp.jerk.y, sp.jerk.z);
     let snap_d = Vec3::new(sp.snap.x, sp.snap.y, sp.snap.z);
     let yaw_d = sp.attitude.yaw * deg2rad;
@@ -222,7 +252,7 @@ pub unsafe extern "C" fn controllerOutOfTree2(
     let vel_e = vclampscl(vd.sub(vel), KPOS_D_LIMIT);
     s.i_error_pos = s.i_error_pos.add(pos_e.scale(dt));
     s.i_error_pos = vclampscl(s.i_error_pos, KPOS_I_LIMIT);
-    let a_d = acc_d
+    let a_d = acc_d_g
         .add(Vec3::new(KPOS_D.x * vel_e.x, KPOS_D.y * vel_e.y, KPOS_D.z * vel_e.z))
         .add(Vec3::new(KPOS_P.x * pos_e.x, KPOS_P.y * pos_e.y, KPOS_P.z * pos_e.z))
         .add(Vec3::new(KPOS_I.x * s.i_error_pos.x, KPOS_I.y * s.i_error_pos.y, KPOS_I.z * s.i_error_pos.z));
@@ -243,7 +273,7 @@ pub unsafe extern "C" fn controllerOutOfTree2(
             10.0,
         );
         let a_rpm_f = s.filter_acc_rpm.update(a_rpm);
-        let a_imu = clamp_norm(Vec3::new(acc.axis[0], acc.axis[1], acc.axis[2]).scale(GRAVITY), 10.0);
+        let a_imu = clamp_norm(Vec3::new(acc.x, acc.y, acc.z).scale(GRAVITY), 10.0);
         let a_imu_f = s.filter_acc_imu.update(a_imu);
         a_imu_f.sub(a_rpm_f)
     } else {

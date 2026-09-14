@@ -1,0 +1,37 @@
+diff --git a/src/hal/src/sensors_bmi088_bmp3xx.c b/src/hal/src/sensors_bmi088_bmp3xx.c
+index 35e54eeb..bff13f71 100644
+--- a/src/hal/src/sensors_bmi088_bmp3xx.c
++++ b/src/hal/src/sensors_bmi088_bmp3xx.c
+@@ -327,6 +327,15 @@ static void sensorsTask(void *param)
+       gyroScaledIMU.y =  (gyroRaw.y - gyroBias.y) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+       gyroScaledIMU.z =  (gyroRaw.z - gyroBias.z) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+       sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
++
++      // LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. See
++      // flying_robot_course/flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
++      // Capture the pre-LPF gyro exactly like NA-INDI-firmware does, before applyAxis3fLpf
++      // overwrites sensorData.gyro in place below.
++      sensorData.gyroNoLpf.x = sensorData.gyro.x;
++      sensorData.gyroNoLpf.y = sensorData.gyro.y;
++      sensorData.gyroNoLpf.z = sensorData.gyro.z;
++
+       applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
+ 
+       measurement.type = MeasurementTypeGyroscope;
+diff --git a/src/modules/interface/stabilizer_types.h b/src/modules/interface/stabilizer_types.h
+index 9751c300..99b7e769 100644
+--- a/src/modules/interface/stabilizer_types.h
++++ b/src/modules/interface/stabilizer_types.h
+@@ -165,6 +165,12 @@ typedef struct zDistance_s {
+ typedef struct sensorData_s {
+   Axis3f acc;               // Gs
+   Axis3f gyro;              // deg/s
++  // LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. See
++  // flying_robot_course/flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
++  // Ported verbatim from NA-INDI-firmware (Cobo-Briesewitz) so controller=7's INDI
++  // angular-acceleration term reads the same unfiltered gyro signal their reference does,
++  // instead of the LPF'd sensorData.gyro every other controller here uses.
++  Axis3f gyroNoLpf;         // deg/s, no software Lpf
+   Axis3f mag;               // gauss
+   baro_t baro;
+ #ifdef LOG_SEC_IMU

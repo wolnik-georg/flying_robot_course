@@ -5,7 +5,7 @@ clean them.** This question is closed — the file exists so it does not come up
 
 `~/Desktop/crazyflie-firmware` tracks **bitcraze upstream** and is deliberately not forked
 (see the reasoning in the project memory: a fork has to be kept in sync and adds a repository to
-reason about, which is not worth it for a small additive change). The consequence is that four
+reason about, which is not worth it for a small additive change). The consequence is that nine
 files carry uncommitted local changes. That is the intended steady state, not an untidy loose end.
 
 Each file now carries a `LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT` comment in place.
@@ -14,7 +14,7 @@ checkout or an upstream pull.
 
 ---
 
-## The five modifications
+## The six modifications
 
 | File | What it changes | Consequence if lost |
 |---|---|---|
@@ -23,6 +23,7 @@ checkout or an upstream pull.
 | `src/deck/drivers/src/usddeck.c` | `MAX_USD_LOG_VARIABLES_PER_EVENT` 20 → 40 | **⚠️ The most dangerous one to lose.** The thesis logging config records **34** variables including `indi.a_res_*`. At the stock limit of 20 the log is **silently truncated** — no error, no warning, just missing columns. A flight campaign could be lost before anyone noticed |
 | `src/modules/interface/controller/controller_indi.h` | Filter cutoff and `g1`/`g2` re-derived for the CF21BL airframe through stock INDI's legacy output path (July 2026 investigation) | The stock-INDI comparison is no longer on equal terms with ours |
 | `src/modules/interface/controller/controller.h`, `src/modules/src/controller/controller.c`, `src/modules/src/Kconfig` (2026-09-14) | Adds `ControllerTypeOot2` / `CONFIG_CONTROLLER_OOT2` — a **second, independent** out-of-tree controller slot (`stabilizer.controller=7`) alongside the existing `ControllerTypeOot` (`=6`, our geometric/INDI, `ctrl_mode` 0-3). Exists so a byte-faithful Rust port of Cobo-Briesewitz's NA-INDI (`firmware_app/src/naindi.rs`) can fly without any risk of interfering with our own controller — separate enum value, separate dispatch row, separate Rust module, no shared state | Controller 7 does not exist / does not build; falls back silently to whatever `ControllerType_COUNT`-indexed garbage or a build error, depending on how it's lost |
+| `src/modules/interface/stabilizer_types.h`, `src/hal/src/sensors_bmi088_bmp3xx.c` (2026-09-14) | Adds `sensorData_t.gyroNoLpf` (the pre-LPF gyro), populated right after `sensorsAlignToAirframe` and before `applyAxis3fLpf` overwrites `sensorData.gyro` in place — ported verbatim from NA-INDI-firmware, which added the same field for the same reason. Operator's explicit instruction (2026-09-14): controller=7 must read exactly the signal their reference does, not a filtered substitute, "no exceptions apart from mass/inertia/kt" | Controller 7's attitude-INDI angular-acceleration term silently falls back to the regular filtered gyro — no build error, just a quiet fidelity loss to the port. `bindings/cffirmware.i` also needs `%include "stabilizer_types.h"` to still see the new field (it already does, no separate change needed there beyond the controller=7 entry points) |
 
 ---
 
@@ -60,17 +61,48 @@ git diff src/modules/interface/controller/controller.h src/modules/src/controlle
   > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_controller_slot.patch
 ```
 
+The `gyroNoLpf` addition (stabilizer_types.h/sensors_bmi088_bmp3xx.c) has its own patch too:
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git apply ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_gyro_no_lpf.patch
+```
+
+Regenerate it after editing those two files with:
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git diff src/modules/interface/stabilizer_types.h src/hal/src/sensors_bmi088_bmp3xx.c \
+  > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_gyro_no_lpf.patch
+```
+
+After applying either patch, `bindings/cffirmware.i` must also carry the `controllerOutOfTree2*`
+declarations (already in `cffirmware_bindings.patch` above) before `make bindings_python` will
+expose `gyroNoLpf`/controller=7 to the host tests — it picks the new struct field up automatically
+via its existing `%include "stabilizer_types.h"`, no separate `.i` change needed for the field.
+
+Two host-only files complete the picture (already committed to the `flying_robot_course` repo,
+not local modifications to `crazyflie-firmware` itself, so no patch needed for them):
+- `firmware_app/host/oot_host.c` provides a `usecTimestamp()` stub (wall-clock microseconds) —
+  the real one is STM32-only (`usec_time.c`, TIM7) and controller=7's attitude-INDI dt needs it
+  even on the host.
+- `crazyswarm2/crazyflie_sim/crazyflie_sim/crazyflie_sil.py` sets `sensors.gyroNoLpf` alongside
+  the existing `sensors.gyro` (same ground-truth value — the sim applies no LPF to begin with).
+
 ## Checking they are still in place
 
 ```bash
 cd ~/Desktop/crazyflie-firmware && git status --short
 ```
 
-Expect exactly these five files modified. **If that list is empty, the modifications have been
-wiped** — re-apply before building or flying. A quick functional check:
+Expect exactly these nine files modified (setup.py, cffirmware.i, usddeck.c, controller_indi.h,
+controller.h, controller.c, Kconfig, stabilizer_types.h, sensors_bmi088_bmp3xx.c). **If that list
+is empty, the modifications have been wiped** — re-apply before building or flying. A quick
+functional check:
 
 ```bash
 grep MAX_USD_LOG_VARIABLES_PER_EVENT src/deck/drivers/src/usddeck.c   # must read 40
 python3 -c "import cffirmware as f; print(f.oot_thrust_max())"        # must print 0.2
 grep ControllerTypeOot2 src/modules/interface/controller/controller.h # must be present
+grep gyroNoLpf src/modules/interface/stabilizer_types.h               # must be present
 ```

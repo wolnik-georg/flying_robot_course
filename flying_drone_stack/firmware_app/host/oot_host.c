@@ -180,3 +180,15 @@ uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
   }
   return n;
 }
+
+/* controller=7 (naindi.rs) calls the firmware's usecTimestamp() for its attitude-INDI
+ * wall-clock dt, exactly like the reference controller_lee.c does. usec_time.c is firmware-
+ * only (STM32 TIM7), so provide the host equivalent -- real wall-clock microseconds is a
+ * reasonable stand-in since this only feeds the host test/sim-dry-run path, not a flight. */
+#include <time.h>
+uint64_t usecTimestamp(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)(ts.tv_nsec / 1000);
+}
