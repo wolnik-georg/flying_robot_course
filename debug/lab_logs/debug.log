@@ -15,6 +15,20 @@ echo "HOME=$HOME"
 whoami
 pwd
 
+/home/flyingrobots/georg/ros2_ws
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ find /home/georg/ros2_ws -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ echo "HOME=$HOME"
+HOME=/home/flyingrobots
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ whoami
+flyingrobots
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ pwd
+/home/flyingrobots/georg/ros2_ws
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
+
+
+
 # ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
 # NOTE: the cd below is UNVERIFIED for your actual working setup (ros2_ws) -- update it
 # once step 0's output is in, before relying on the rest of this file.
