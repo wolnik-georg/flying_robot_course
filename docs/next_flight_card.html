@@ -1,0 +1,197 @@
+<title>Next Flight Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F4F5F3; --surface:#FFFFFF; --sunk:#ECEEEA;
+  --ink:#16191A; --ink-2:#414947; --muted:#6E7773; --rule:#D8DBD6;
+  --accent:#1F5C4D; --accent-soft:#E3EDE9;
+  --warn:#9A6B12; --warn-soft:#F6EDDC;
+  --stop:#B4341C; --stop-soft:#FAE7E2;
+  --go:#1F5C4D; --go-soft:#E3EDE9;
+  --cond:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+    --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+    --accent:#4FB39A; --accent-soft:#13302A;
+    --warn:#D9A544; --warn-soft:#332A16;
+    --stop:#E4694C; --stop-soft:#33201B;
+    --go:#4FB39A; --go-soft:#13302A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+  --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+  --accent:#4FB39A; --accent-soft:#13302A;
+  --warn:#D9A544; --warn-soft:#332A16;
+  --stop:#E4694C; --stop-soft:#33201B;
+  --go:#4FB39A; --go-soft:#13302A;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto; padding:clamp(22px,4vw,48px) clamp(16px,4vw,32px) 72px}
+h1,h2,h3{font-family:var(--cond); letter-spacing:-.01em; text-wrap:balance}
+p{margin:0 0 .8em}
+code{font-family:var(--mono); font-size:.88em; background:var(--sunk); padding:.05em .35em; border-radius:4px}
+
+header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:30px}
+.eyebrow{
+  font-family:var(--mono); font-size:.68rem; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+h1{font-size:clamp(1.9rem,5.5vw,2.6rem); font-weight:700; margin:.15em 0 .3em; line-height:1.05}
+.lede{color:var(--ink-2); font-size:1.02rem; max-width:58ch; margin:0}
+.lede strong{color:var(--ink)}
+.superseded{
+  margin-top:14px; padding:10px 14px; background:var(--sunk); border-radius:8px;
+  font-size:.9rem; color:var(--ink-2);
+}
+.superseded a{color:var(--accent)}
+
+.stack{display:flex; flex-direction:column; gap:14px; margin:0 0 36px}
+.card{
+  background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+  padding:16px 18px; border-left:4px solid var(--rule);
+}
+.card.go{border-left-color:var(--go)}
+.card.hold{border-left-color:var(--warn)}
+.card.stop{border-left-color:var(--stop)}
+.card-head{display:flex; align-items:baseline; gap:10px; margin-bottom:6px; flex-wrap:wrap}
+.num{
+  font-family:var(--mono); font-weight:600; font-size:.8rem;
+  color:var(--muted); flex-shrink:0;
+}
+.card h3{margin:0; font-size:1.15rem; font-weight:700; flex:1}
+.pill{
+  font-family:var(--mono); font-size:.65rem; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; padding:.2em .6em; border-radius:999px; white-space:nowrap;
+}
+.pill.go{background:var(--go-soft); color:var(--go)}
+.pill.hold{background:var(--warn-soft); color:var(--warn)}
+.pill.stop{background:var(--stop-soft); color:var(--stop)}
+.card p{color:var(--ink-2); font-size:.95rem; margin:0}
+.card p + p{margin-top:.5em}
+.card code{font-size:.85em}
+
+section{margin-bottom:36px}
+h2{font-size:1.3rem; font-weight:700; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--rule)}
+ul.plain{margin:0; padding-left:1.2em; color:var(--ink-2)}
+ul.plain li{margin-bottom:.5em}
+ul.plain strong{color:var(--ink)}
+
+.not-this-week{
+  background:var(--sunk); border-radius:10px; padding:16px 18px;
+}
+.not-this-week ul{margin:0; padding-left:1.2em; color:var(--muted)}
+.not-this-week li{margin-bottom:.4em}
+
+footer{
+  margin-top:48px; padding-top:16px; border-top:1px solid var(--rule);
+  font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.7;
+}
+footer a{color:var(--muted)}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Flight readiness — 14 September 2026</div>
+  <h1>Next Flight Card</h1>
+  <p class="lede">What's flashable, what's flying, and what's next — starting fresh from
+    today, since <strong>this week's validation card is closed</strong> and its item list no
+    longer reflects what's in front of us.</p>
+  <div class="superseded">
+    The full history of how we got here — the notch-filter investigation, the H0 partition,
+    the first 2-drone flight and its bugs — lives in the Controller Validation Card
+    (<code>docs/flight_card_validation.html</code>) and <code>docs/lab_sessions/*.md</code>.
+    This page starts from today's state, not a repeat of it.
+  </div>
+</header>
+
+<section>
+  <h2>What's actually flashable right now</h2>
+  <div class="stack">
+    <div class="card go">
+      <div class="card-head"><span class="num">6</span><h3>Geometric / INDI (unchanged)</h3><span class="pill go">flying</span></div>
+      <p>Confirmed by diff, not just by reasoning: nothing about today's two ports touches
+        <code>controllerOutOfTree</code>, its state, or its dispatch. Whatever is already
+        flashed behaves exactly as it did yesterday.</p>
+    </div>
+    <div class="card go">
+      <div class="card-head"><span class="num">7</span><h3>NA-INDI faithful port</h3><span class="pill go">buildable, unflown</span></div>
+      <p>Now actually flashable — a RAM overflow from an unrelated change (below) was blocking
+        every build today; fixed without touching this controller at all. Verified against the
+        reference's own compiled C to ~1e-9 on 5 test cases. <strong>Has never touched a real
+        motor.</strong></p>
+    </div>
+    <div class="card hold">
+      <div class="card-head"><span class="num">↳</span><h3>Neural-Swarm2 residual (Strategy 2)</h3><span class="pill hold">ported, disabled</span></div>
+      <p>Exact architecture port done, but its 19297-weight array alone is ~77&nbsp;KB — too
+        big to carry by default. Gated behind a build flag (off for real hardware unless
+        explicitly requested); the network itself was not modified to make it fit. No trained
+        weights exist yet regardless, so this has no effect on any flight today either way.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Today, in order</h2>
+  <div class="stack">
+    <div class="card go">
+      <div class="card-head"><span class="num">1</span><h3>Geometric, 2 drones, A1 hover</h3><span class="pill go">no known blocker</span></div>
+      <p><code>cf231_active</code> = our geometric, <code>cf_second</code> = stock Lee. Closes
+        the last open C.0 flight and doubles as the first real C.1 data point.</p>
+    </div>
+    <div class="card go">
+      <div class="card-head"><span class="num">2</span><h3>Full INDI, 2 drones, A1 hover</h3><span class="pill go">deliberate, ahead of order</span></div>
+      <p>A1 is pure hover — doesn't touch the still-open trajectory-tracking shake, so this is
+        safe to try even though it's technically ahead of C.0's strict sequence.</p>
+    </div>
+    <div class="card go">
+      <div class="card-head"><span class="num">3</span><h3>uSD sync check</h3><span class="pill go">exercise during 1–2</span></div>
+      <p>Confirm the <code>usec.reset</code> broadcast fix actually tightens the cross-drone
+        timestamp offset, not just that it doesn't crash anything.</p>
+    </div>
+    <div class="card go">
+      <div class="card-head"><span class="num">4</span><h3>A3, if 1–3 are clean</h3><span class="pill go">stretch</span></div>
+      <p>Real C.1 progress under whichever controller(s) worked cleanly above.</p>
+    </div>
+    <div class="card hold">
+      <div class="card-head"><span class="num">5</span><h3>Controller=7, single-drone hover only</h3><span class="pill hold">only if time remains</span></div>
+      <p>Tethered if available. Numerically verified is not flight-verified — this is a first
+        flight of a new control law, treat it with the same caution as any other.
+        <strong>Not</strong> 2-drone, <strong>not</strong> on a trajectory, not today.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Explicitly not this week</h2>
+  <div class="not-this-week">
+    <ul>
+      <li>Rewriting the Neural-Swarm2 test suites / training pipeline against the new architecture</li>
+      <li>The <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line for the trajectory-tracking shake — continues separately, doesn't block anything above</li>
+      <li>Brushless swap for <code>cf_second</code> — deferred to its own session</li>
+      <li>The core/ambitious thesis-draft split — desk work, picked up after today</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Full account of today's desk-time work: <code>docs/lab_sessions/2026-09-14.md</code> ·
+  Progress tracker: <code>docs/07_Thesis_Progress_Checklist.md</code> ·
+  Prior state: Controller Validation Card, Two Tracks to the Thesis
+</footer>
+
+</div>
