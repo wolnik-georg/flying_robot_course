@@ -48,6 +48,16 @@ examines how these methods are evaluated, and argues that the field's reporting 
 the individual results impossible to compose into a comparison. That observation is the gap this
 thesis addresses.
 
+\ifadvancedtier\else
+The survey covers the field as a whole, including families this thesis does not itself implement.
+Where a family falls outside the strategies evaluated here --- learning the corrective action
+directly (Section~\ref{sec:rw-rl}) and embedding the residual in a predictive-control horizon
+(Section~\ref{sec:rw-inject}) --- it is described briefly rather than in depth, and the omission is
+one of scope, not of relevance: those families are part of the landscape the gap argument of
+Section~\ref{sec:rw-eval} rests on, and are developed in full in the companion Advanced-tier draft.
+
+\fi
+
 % -------------------------------------------------------------------------------------
 \section{Multirotor dynamics and baseline control}
 \label{sec:rw-baseline}
@@ -307,6 +317,7 @@ velocity, and delegating residual torques to the vehicle's own rate controller, 
 decision taken in Chapter~\ref{ch:model}. Their simulation study does still model residual torques.
 
 \paragraph{Inside a model predictive control horizon.}
+\ifadvancedtier
 The residual can instead form part of the prediction model that an optimiser reasons over, so that
 the controller plans against a disturbance it expects to meet rather than cancelling the one
 present now. Chee et al.~\cite{chee2024knodedwmpc} embed a mixed-expert KNODE-DW model --- first
@@ -339,9 +350,22 @@ from separate machines and commanded in thrust and body rates. They report that 
 $\mathcal{L}_1$ adaptive module compensates for unmodeled disturbances most effectively when paired
 with an accurate dynamics model''} --- in our reading, that online adaptation complements a good
 residual model rather than substituting for one.
+\else
+The residual can instead form part of the prediction model that an optimiser reasons over, so that
+the controller plans against a disturbance it expects to meet rather than cancelling the one
+present now. Chee et al.~\cite{chee2024knodedwmpc} embed a learned component inside the prediction
+constraint of a nonlinear MPC; Li et al.~\cite{li2023ndpnmpc} inject a predicted downwash-force
+sequence into the optimiser's prediction model; and Hsieh et al.~\cite{hsieh2025onlineadaptation}
+add an $\mathcal{L}_1$ online estimate to the same family. All three run the optimisation
+off-board or on a companion computer rather than on the vehicle. This injection point is not among
+the strategies evaluated here --- its onboard feasibility on a Crazyflie-class platform is itself
+open --- and it is developed in full in the companion Advanced-tier draft; it is retained in this
+survey because its evaluation conditions form part of the argument in
+Section~\ref{sec:rw-eval}.
+\fi
 
 \paragraph{Inside an optimal feedback controller for a docking task.}
-A fourth instance is worth separating because its task differs in kind. Shankar et
+A further instance is worth separating because its task differs in kind. Shankar et
 al.~\cite{shankar2023docking} embed a learned lumped downwash force online in an infinite-horizon
 LQR acting on a feedforward-linearised follower, beneath an inner attitude loop, and use it for
 vertical docking: a leader--follower manoeuvre in which the vehicles close to within one or two
@@ -365,6 +389,7 @@ compensation ceases to be an accuracy improvement and becomes a precondition for
 \section{Learning the compensation directly}
 \label{sec:rw-rl}
 
+\ifadvancedtier
 A third stance declines to model the force at all and learns the corrective action instead. Zhang
 et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning module on top of a cascaded
 controller, producing high-level commands that compensate the disturbance and thrust loss caused by
@@ -387,6 +412,24 @@ The approach also gives up the explicit force estimate that the other families p
 estimate is what makes a predicted residual comparable against a measured one, and its absence
 makes failures correspondingly harder to attribute, a consideration in experimental design as
 much as in deployment.
+\else
+A third stance declines to model the force at all and learns the corrective action instead. Zhang
+et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning module on top of a cascaded
+controller, compensating the disturbance and thrust loss caused by downwash without forming an
+explicit force estimate at any point. Two properties distinguish the stance sharply from
+Section~\ref{sec:rw-predictive}. The policy observes only tracking error, the baseline controller's
+command and its own previous action --- no neighbour state and no inter-vehicle communication ---
+which removes a bandwidth requirement and a failure mode, at the cost of being unable to anticipate
+a neighbour it cannot perceive. And giving up the explicit force estimate removes the
+predicted-against-measured comparison that every other learned method here is evaluated by, which
+makes failures correspondingly harder to attribute.
+
+This family is not among the strategies evaluated in this draft, for that second reason as much as
+for scope: the evaluation built in Chapter~\ref{ch:setup} rests on the residual being a measurable
+quantity, and a method that never forms one is assessed on tracking performance alone. It is
+developed in full, as two strategies distinguished by inner loop, in the companion Advanced-tier
+draft.
+\fi
 
 % -------------------------------------------------------------------------------------
 \section{Hybrid reactive and predictive compensation}

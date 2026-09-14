@@ -244,13 +244,15 @@ what the disturbance is, the two ways of obtaining information about it, why the
 into the control law matters, and why the individual results do not compose into a comparison.
 
 \textbf{Chapter~\ref{ch:model}} defines the residual this stack measures and logs. Strategies that
-consume a force residual use that number; Strategies~5 and~7 do not form it. It gives
+consume a force residual use that number\ifadvancedtier; Strategies~5 and~7 do not form
+it\fi. It gives
 both routes to it in one notation, and states the assumptions the formulation makes together with
 where each is expected to fail.
 
-\textbf{Chapter~\ref{ch:control}} describes Strategies~0--7 (eight controllers: an uncompensated
-baseline plus seven families, with residual reinforcement learning split into two variants by inner
-loop), and the point at which each
+\textbf{Chapter~\ref{ch:control}} describes \ifadvancedtier Strategies~0--7 (eight controllers: an
+uncompensated baseline plus seven families, with residual reinforcement learning split into two
+variants by inner loop)\else Strategies~0--4 (the uncompensated baseline, pure INDI,
+geometric+NN, FBL+NN and the hybrid)\fi, and the point at which each
 injects its knowledge of the interaction, separating in each case what is implemented here from the
 published method it follows.
 

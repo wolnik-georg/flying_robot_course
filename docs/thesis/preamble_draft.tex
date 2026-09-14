@@ -29,3 +29,18 @@
 % resolve; convert those to \ref once the chapters are written.
 % \chapref is retained only so that any stale usage fails loudly rather than silently.
 \newcommand{\chapref}[1]{\textbf{[UNRESOLVED: #1]}}
+
+% ── Draft scope: Minimum tier (Strategies 0-4) vs Advanced tier (Strategies 0-7) ────────────
+% Set by the driver file BEFORE it \inputs this preamble:
+%   thesis_draft_minimum.tex   -> \advancedtierfalse   (the MAIN draft, 2026-09-14 onward)
+%   thesis_draft_advanced.tex  -> \advancedtiertrue    (kept as an artifact for later reuse)
+% Defaults to TRUE when no driver sets it, so thesis_draft.tex and every chN_standalone.tex
+% keep their original full-content behaviour unchanged.
+%
+% The thesis STRUCTURE is identical in both builds -- same chapters, same sections, same order.
+% What the flag controls is DEPTH: the Minimum draft does not develop Strategies 5-7 (residual
+% RL, learning-based MPC) in detail, keeping only brief scoping references so the survey's gap
+% argument still stands and an examiner can see the omission is deliberate.
+\makeatletter
+\@ifundefined{ifadvancedtier}{\newif\ifadvancedtier\advancedtiertrue}{}
+\makeatother

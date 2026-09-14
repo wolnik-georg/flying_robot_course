@@ -30,15 +30,7 @@
 %  structurally-different strategies.
 % =====================================================================================
 
-% Draft-scope flag: \ifadvancedtier true = full 7-strategy draft (Advanced tier included);
-% false = Minimum-tier draft (Strategies 0-4 only; 5-7 omitted). Set by the driver file
-% (thesis_draft_advanced.tex / thesis_draft_minimum.tex) before this file is \input; defaults to
-% true (full content) if undefined, so the original thesis_draft.tex and ch4_standalone.tex keep
-% their existing behaviour unchanged.
-\makeatletter
-\@ifundefined{ifadvancedtier}{\newif\ifadvancedtier \advancedtiertrue}{}
-\makeatother
-
+% Draft-scope flag \ifadvancedtier is declared in preamble_draft.tex; see the comment there.
 \chapter{Control Architectures}
 \label{ch:control}
 
