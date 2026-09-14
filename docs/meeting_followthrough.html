@@ -156,13 +156,17 @@ footer{
   </div>
 
   <div class="card go">
-    <div class="card-head"><span class="num">5</span><h3>Neural-Swarm2 — add as a core comparison strategy</h3><span class="pill go">architecture ported, buildable</span></div>
+    <div class="card-head"><span class="num">5</span><h3>Neural-Swarm2 — add as a core comparison strategy</h3><span class="pill go">ported, verified, tests passing</span></div>
     <p>Wasn't actually missing — already Strategy 2, already Core priority. What changed: the
       network itself is now a byte-faithful port of Neural-Swarm2's own <code>phi_Net</code>/
       <code>rho_Net</code>, not an approximation. Its weight array initially overflowed
       firmware RAM by ~39&nbsp;KB; fixed with a build-time toggle that doesn't touch the
       network at all — every platform links clean again.</p>
-    <div class="ask"><strong>Needs:</strong> the test suites and training pipeline rewritten against the new shape before any real training happens.</div>
+    <p><strong>Same evening:</strong> both test suites and <code>model.py</code> rewritten for the
+      new architecture and passing — 19 + 13 checks, verified against the <em>compiled firmware</em>
+      (torch, the NumPy reference and the real controller agree to ~1e-6&nbsp;m/s²). Weights that
+      train will now behave on the drone exactly as they did in training.</p>
+    <div class="ask"><strong>Needs:</strong> <code>dataset.py</code> (logs → training tensors) is still blocked, on two decisions rather than effort — the architecture predicts <strong>vertical residual only</strong>, and <code>--z-floor</code> now contradicts a network that models ground effect explicitly. Blocks C.2, not C.1.</div>
   </div>
 
   <div class="card go">

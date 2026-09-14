@@ -153,11 +153,15 @@ footer a{color:var(--muted)}
         motor.</strong></p>
     </div>
     <div class="card hold">
-      <div class="card-head"><span class="num">↳</span><h3>Neural-Swarm2 residual (Strategy 2)</h3><span class="pill hold">ported, disabled</span></div>
-      <p>Exact architecture port done, but its 19297-weight array alone is ~77&nbsp;KB — too
-        big to carry by default. Gated behind a build flag (off for real hardware unless
-        explicitly requested); the network itself was not modified to make it fit. No trained
-        weights exist yet regardless, so this has no effect on any flight either way.</p>
+      <div class="card-head"><span class="num">↳</span><h3>Neural-Swarm2 residual (Strategy 2)</h3><span class="pill hold">verified, disabled, untrained</span></div>
+      <p>Exact architecture port done and now <strong>verified against the compiled firmware</strong>
+        — 19 + 13 checks passing, agreement to ~1e-6&nbsp;m/s². Its 19297-weight array is ~77&nbsp;KB,
+        too big to carry by default, so it sits behind a build flag (off for real hardware unless
+        explicitly requested); the network itself was not modified to make it fit.</p>
+      <p><strong>No trained weights exist and none can be produced yet</strong> — the log-to-tensor
+        step is still blocked on two decisions (the architecture predicts vertical residual only;
+        the low-altitude sample filter now fights the ground-effect network). So this has no effect
+        on any flight either way, and it blocks C.2 rather than anything in the lab.</p>
     </div>
     <div class="card hold">
       <div class="card-head"><span class="num">↳</span><h3>cf_second +0.40m height compensation</h3><span class="pill hold">temporary, code-side</span></div>
