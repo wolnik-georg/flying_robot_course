@@ -1,13 +1,43 @@
-colcon build --symlink-install --packages-select crazyflie_examples
-. install/local_setup.bash
-source  /opt/ros/jazzy/setup.bash
-source /home/flyingrobots/venv/bin/activate
-colcon build --symlink-install --packages-select crazyflie_examples
-. install/local_setup.bash
-source  /opt/ros/jazzy/setup.bash
-source /home/flyingrobots/venv/bin/activate
+# Lab PC setup + flight commands — 2026-09-14
+#
+# Sourcing order fixed: base ROS distro (underlay) FIRST, then the venv, THEN build,
+# THEN the workspace overlay (install/local_setup.bash) LAST. The previous order in this
+# file sourced the overlay before the underlay, which is backwards from the standard ROS 2
+# convention and can shadow the workspace's own packages with a stale/system one.
 
+# ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
+source /opt/ros/jazzy/setup.bash
+source /home/flyingrobots/venv/bin/activate
+cd ~/Desktop/crazyswarm2
+colcon build --symlink-install --packages-select crazyflie_examples
+. install/local_setup.bash
+
+# ── 2. Launch (terminal 1 — leave running) ──────────────────────────────────────────────
 ros2 launch motion_capture_tracking launch.py
-ros2 launch crazyflie launch.py 
+# in a separate terminal (repeat step 1's sourcing there too):
+ros2 launch crazyflie launch.py
+
+# ── 3. Sanity checks ─────────────────────────────────────────────────────────────────────
 ros2 topic echo /poses
 ros2 run crazyflie_examples flight -- --trajectory hover --duration 20
+
+# ── 4. Verify the crazyflies.yaml override actually took effect before flying A8 ────────
+# Should print cf231_active's temporary ctrl_mode: 0 override -- if this is missing, the
+# crazyswarm2 pull didn't take and nothing below will behave as expected.
+grep -A2 "indi_gains:" ~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml | grep -B1 "ctrl_mode: 0"
+
+# ── 5. A8 formation flight (terminal 2, after step 1's sourcing there too) ──────────────
+# Dry run first -- always, before any live flight:
+ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.25 --passes 2 --dry-run --check
+
+# Step A: geometric, live (current yaml has cf231_active overridden to ctrl_mode=0):
+ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.25 --passes 2 --yes
+
+# Step B (the gate): remove the temporary ctrl_mode:0 override under cf231_active in
+# crazyflies.yaml (marked with a "2026-09-14: temporary override" comment), save, restart
+# terminal 1's `ros2 launch crazyflie launch.py`, then repeat the exact same command above
+# -- now under full INDI (the shared default, ctrl_mode=3).
+#
+# Clean -> continue with INDI as normal.
+# Oscillation/crash -> stop, switch to controller=7 (NA-INDI port) starting from its own
+# single-drone hover check -- not straight into A8, not 2-drone, not on a trajectory yet.
