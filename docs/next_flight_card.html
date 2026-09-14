@@ -149,14 +149,27 @@ footer a{color:var(--muted)}
   <h2>Today, in order</h2>
   <div class="stack">
     <div class="card go">
-      <div class="card-head"><span class="num">1</span><h3>Geometric, 2 drones, A1 hover</h3><span class="pill go">no known blocker</span></div>
-      <p><code>cf231_active</code> = our geometric, <code>cf_second</code> = stock Lee. Closes
-        the last open C.0 flight and doubles as the first real C.1 data point.</p>
+      <div class="card-head"><span class="num">1</span><h3>Geometric, 2 drones, A8 (<code>--passes 2</code>)</h3><span class="pill go">no known blocker</span></div>
+      <p><code>cf231_active</code> = our geometric, <code>cf_second</code> = stock Lee. Bottom
+        drone crosses under the top and back, top crosses over and back, <code>dz</code> held
+        constant throughout — a real interaction crossing, not just a static hover. Closes the
+        last open C.0 flight and doubles as the first real C.1 data point.</p>
     </div>
     <div class="card go">
-      <div class="card-head"><span class="num">2</span><h3>Full INDI, 2 drones, A1 hover</h3><span class="pill go">deliberate, ahead of order</span></div>
-      <p>A1 is pure hover — doesn't touch the still-open trajectory-tracking shake, so this is
-        safe to try even though it's technically ahead of C.0's strict sequence.</p>
+      <div class="card-head"><span class="num">2</span><h3>Full INDI, 2 drones, A8 (<code>--passes 2</code>)</h3><span class="pill go">deliberate, ahead of order</span></div>
+      <p>Same crossing scenario, our own INDI (<code>ctrl_mode</code> 0–3). This is the
+        load-bearing step for everything after it today — see the gate below.</p>
+    </div>
+    <div class="card hold">
+      <div class="card-head"><span class="num">⚠</span><h3>Gate: does our own INDI actually work?</h3><span class="pill hold">decides steps 3+</span></div>
+      <p><strong>If step 2 comes back clean:</strong> continue with our own INDI for further
+        scenarios and data collection, same as always.</p>
+      <p><strong>If it doesn't</strong> — the residual oscillation shows up again, or it's
+        otherwise not usable — <strong>the fallback is <code>stabilizer.controller=7</code></strong>,
+        the new NA-INDI port that matches Cobo &amp; Briesewitz's own <code>controller_lee.c</code>
+        bit-for-bit (verified against their compiled C to ~1e-9). Don't keep pushing on our own
+        INDI past this point today if it isn't working — switch to validating controller=7
+        instead, starting single-drone hover only (below), not straight into A8.</p>
     </div>
     <div class="card go">
       <div class="card-head"><span class="num">3</span><h3>uSD sync check</h3><span class="pill go">exercise during 1–2</span></div>
@@ -165,13 +178,16 @@ footer a{color:var(--muted)}
     </div>
     <div class="card go">
       <div class="card-head"><span class="num">4</span><h3>A3, if 1–3 are clean</h3><span class="pill go">stretch</span></div>
-      <p>Real C.1 progress under whichever controller(s) worked cleanly above.</p>
+      <p>Real C.1 progress under whichever controller(s) worked cleanly above. Depends on the
+        gate above — if that sent you to controller=7 instead, this waits until it clears its
+        own single-drone hover check first.</p>
     </div>
     <div class="card hold">
-      <div class="card-head"><span class="num">5</span><h3>Controller=7, single-drone hover only</h3><span class="pill hold">only if time remains</span></div>
+      <div class="card-head"><span class="num">5</span><h3>Controller=7, single-drone hover only</h3><span class="pill hold">promoted if the gate above triggers, else only if time remains</span></div>
       <p>Tethered if available. Numerically verified is not flight-verified — this is a first
         flight of a new control law, treat it with the same caution as any other.
-        <strong>Not</strong> 2-drone, <strong>not</strong> on a trajectory, not today.</p>
+        <strong>Not</strong> 2-drone, <strong>not</strong> on a trajectory (A8 or otherwise) yet
+        — it has to clear its own hover check first, exactly like our INDI once did.</p>
     </div>
   </div>
 </section>
