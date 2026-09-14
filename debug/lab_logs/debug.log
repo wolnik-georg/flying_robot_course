@@ -4,8 +4,20 @@
 # THEN the workspace overlay (install/local_setup.bash) LAST. The previous order in this
 # file sourced the overlay before the underlay, which is backwards from the standard ROS 2
 # convention and can shadow the workspace's own packages with a stale/system one.
+#
+# ── 0. PATH CHECK — run this FIRST, before anything else, and share the output ──────────
+# Working directory turns out to be /home/georg/ros2_ws (a colcon workspace), not
+# ~/Desktop/crazyswarm2 as earlier steps in this file assumed -- need the real locations
+# of both repos before step 1's `cd` or step 4's grep can be trusted.
+find /home/georg/ros2_ws -maxdepth 3 \( -iname "crazyswarm2" -o -iname "flying_robot_course" \) 2>/dev/null
+find /home/georg -maxdepth 2 -iname "flying_robot_course" 2>/dev/null
+echo "HOME=$HOME"
+whoami
+pwd
 
 # ── 1. Environment setup (run once per new terminal) ────────────────────────────────────
+# NOTE: the cd below is UNVERIFIED for your actual working setup (ros2_ws) -- update it
+# once step 0's output is in, before relying on the rest of this file.
 source /opt/ros/jazzy/setup.bash
 source /home/flyingrobots/venv/bin/activate
 cd ~/Desktop/crazyswarm2
