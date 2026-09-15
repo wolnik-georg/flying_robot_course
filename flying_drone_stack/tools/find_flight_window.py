@@ -79,18 +79,35 @@ def commanded_trajectory(meta: dict, role: str):
     return ts, cmd
 
 
-def find_offset(t_meas, y_meas, t_cmd, y_cmd, search_lo, search_hi, dt=0.02):
+def find_offset(t_meas, y_meas, t_cmd, y_cmd, search_lo, search_hi, dt=0.02,
+                min_cover=0.8):
     """Slide the commanded curve across the WHOLE recording; return the best-fit lag and MSE,
-    plus the runner-up so the caller can judge how unambiguous the match is."""
+    plus the runner-up so the caller can judge how unambiguous the match is.
+
+    `min_cover` is the fraction of the scenario's duration that must actually be covered by
+    measured samples for a lag to be scored at all. 2026-09-15: this guard used to be a flat
+    `mask.sum() < 100`, which at 500 Hz is 0.2 s -- so a lag that overlapped only the last
+    fraction of a second of a recording was scored on ~100 samples and could win outright
+    with a near-zero MSE. That produced a confident "STRONG match" on a file that was not
+    the flight at all. Requiring real coverage is what makes the result trustworthy.
+    """
     lags = np.arange(search_lo, search_hi, dt)
     errs = np.full(len(lags), np.nan)
+    if len(lags) == 0:
+        return None, None, None
+    # samples needed to call the scenario actually covered, from this log's own sample rate
+    span = t_meas[-1] - t_meas[0]
+    rate = len(t_meas) / span if span > 0 else 0.0
+    need = int(min_cover * t_cmd[-1] * rate)
     for i, lag in enumerate(lags):
         tt = t_meas - lag
         mask = (tt >= 0) & (tt <= t_cmd[-1])
-        if mask.sum() < 100:
+        if mask.sum() < need:
             continue
         cmd_interp = np.interp(tt[mask], t_cmd, y_cmd)
         errs[i] = np.mean((y_meas[mask] - cmd_interp) ** 2)
+    if np.all(np.isnan(errs)):
+        return None, None, None
     order = np.argsort(errs)
     best = lags[order[0]]
     # runner-up: the next local minimum at least 3s away, so we're not just reporting two
@@ -125,10 +142,26 @@ def main():
           f"({t[-1]-t[0]:.1f}s total -- scenario itself is only {total:.1f}s, so a large gap "
           f"between these two numbers is normal and expected, not a problem)")
 
-    y = np.array(d["y"])
-    lag, mse, runner_up = find_offset(t, y, ts, cmd[:, 1], 0.0, t[-1] - total - 1.0)
+    if t[-1] - t[0] < total:
+        sys.exit(f"\n[find_flight_window] this recording is only {t[-1]-t[0]:.1f}s long but the "
+                 f"scenario runs {total:.1f}s -- it cannot contain the whole flight, so there "
+                 f"is nothing to locate. Either this is the wrong file for this scenario, or "
+                 f"logging stopped early (a crash landing cuts usd.logging off mid-flight).")
 
-    print(f"\nbest-fit scenario start: uSD t={lag:.2f}s   mse={mse:.5f}")
+    y = np.array(d["y"])
+    # Search lags across the recording's OWN time axis. 2026-09-15: this used to start the
+    # search at 0.0 regardless of t[0], which is wrong for any log whose clock does not start
+    # near zero (i.e. every pre-usec.reset-fix recording) -- the real lag sat outside the
+    # searched range entirely and the best "match" was whatever degenerate tail-overlap scored
+    # lowest.
+    lag, mse, runner_up = find_offset(t, y, ts, cmd[:, 1], t[0], t[-1] - total)
+    if lag is None:
+        sys.exit(f"\n[find_flight_window] no lag in [{t[0]:.1f}, {t[-1]-total:.1f}]s covers "
+                 f"enough of the {total:.1f}s scenario to score. This recording does not "
+                 f"contain a full run of this scenario.")
+
+    print(f"\nbest-fit scenario start: uSD t={lag:.2f}s   mse={mse:.5f}  "
+          f"(RMS {np.sqrt(mse)*100:.1f} cm)")
     if runner_up is None:
         print("  no other candidate found more than 3s away -- unambiguous.")
     else:
