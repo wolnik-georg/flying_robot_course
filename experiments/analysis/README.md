@@ -74,6 +74,42 @@ before 2026-09-08, or the predicted-residual panel when `rnn.en` was never touch
 says so explicitly instead of being blank by omission — same NaN-≠-0 discipline as
 the metrics script.
 
+**2026-09-15: a fourth log format, `usd_csv`**, is now accepted alongside ros/merged/usd —
+the single-vehicle CSV `flying_drone_stack/tools/find_flight_window.py --extract` writes.
+Pass it to `--logs` like any other file; the drone name is recovered automatically from its
+`<scenario>_<drone>_<date>_<time>_flight.csv` naming. It carries `ctrltarget_*` (the
+firmware's own logged setpoint) directly, so no `--sidecar` reconstruction is needed at all —
+just note that for a height-compensated drone (`Z_OFFSET_COMPENSATION`), `ctrltarget` is the
+*compensated* command, so `pos_rmse` against it answers "did you track what was sent", not
+"did you achieve the experiment's intended geometry" (use the formation row's `dz_mean` for
+that, or a `--meta`-driven reconstruction, which is deliberately uncompensated).
+
+Reconstructing the commanded trajectory for a `merged` log (no `--sidecar` needed either, as
+long as it was built with `merge_usd_logs.py --meta --roles`) now works correctly — it used to
+silently produce an all-NaN tracking-error panel, because `t0` was always assumed to be the
+sidecar's wall-clock `t_start_sim`, which is meaningless once a log has already been re-zeroed
+to its own scenario start. See `metrics.VehicleLog.t_zero` for the fix.
+
+## Interaction plots — `plot_interaction.py`
+
+`plot_flight.py` asks "did this drone track its own trajectory". For the actual thesis
+question — residual as a function of the *other* drone's position — use
+`plot_interaction.py` on a merged 2-drone CSV:
+
+```bash
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/plot_interaction.py \
+  path/to/merged.csv --bottom cf231_active --top cf_second --out interaction.png
+```
+
+Three panels: **residual vs separation** (`|a_res|` against `|d|` — the core physical
+relationship), **input-space coverage** (the (dy, dz) actually sampled, coloured by residual
+magnitude — this is how you tell whether a dataset is broad enough to train on, not just
+whether a flight was clean, and it is what would have visually caught A3 never exciting
+relative *y*), and a **crossing-aligned overlay** of every real close-approach event in the
+flight on one relative-time axis, to check repeatability across passes. Crossings are found
+by thresholding local minima of `|d|` against the flight's own median separation
+(`--window` controls how much time either side is shown).
+
 Superset of what `archive/Controls/analyze_flight.py` did for the old single-drone
 Mode-D/E trajectories (path vs planned, per-axis vs planned, tracking error), rebuilt
 for the current formation-scenario commanded-trajectory representation
