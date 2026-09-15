@@ -58,12 +58,28 @@ def find_latest_log(mount: Path) -> Path:
         sys.exit(f"[copy_usd_log] every '{LOG_STEM}*' file on {mount} is 0 bytes -- this card "
                   f"recorded nothing. Check usd.logging actually reached 1 during the flight "
                   f"(check_usd_deck.py can toggle it manually to confirm the deck works at all).")
-    # Largest file, not highest-numbered: the counter increments on every session, including
-    # ones that produced an empty file, so "latest number" and "the real flight" can differ.
-    best, best_sz = max(nonempty, key=lambda t: t[1])
+    # Highest-numbered non-empty file = the most recent session that actually recorded.
+    #
+    # 2026-09-15: this used to pick the LARGEST file instead, on the reasoning that the
+    # counter increments even for sessions that produced nothing. That is true, but picking
+    # by size is worse: a card accumulates sessions across a whole evening, and the largest
+    # is whichever ran longest -- not the newest. On this date the largest file on the card
+    # was a 14.9 MB corrupted recording (altitudes to 40 m) from hours earlier, while the
+    # flight just landed was a 1.18 MB file with a higher number. Empty sessions are already
+    # filtered out above, so "highest-numbered non-empty" is both correct and what a person
+    # means by "the log from the flight I just did".
+    #
+    # The counter is still not a timestamp: it does not reset on format and says nothing
+    # about WHICH DRONE produced the file (cards get moved between vehicles). Always confirm
+    # identity from the data itself -- find_flight_window.py against the scenario's meta.json
+    # is the check that actually proves which flight a file holds.
+    best, best_sz = max(nonempty, key=lambda t: t[0].name)
     if len(nonempty) > 1:
-        print(f"  -> multiple non-empty files; picking the largest ({best.name}, {best_sz:,} "
-              f"bytes). If that's wrong, copy the others by hand -- this script only takes one.")
+        others = ", ".join(f"{p.name} ({sz:,}B)" for p, sz in nonempty if p != best)
+        print(f"  -> multiple non-empty files; picking the highest-numbered ({best.name}, "
+              f"{best_sz:,} bytes) as the most recent session.")
+        print(f"     others present: {others}")
+        print(f"     if you need one of those instead, pass --file <name>.")
     return best
 
 
@@ -75,6 +91,12 @@ def main():
     ap.add_argument("--dest", default=None,
                     help="destination directory (default: experiments/logs/usd_raw next to "
                          "this repo checkout)")
+    ap.add_argument("--file", default=None, metavar="NAME",
+                    help="copy this exact file from the card (e.g. thesis06) instead of "
+                         "auto-picking the most recent non-empty one")
+    ap.add_argument("--tag", default=None,
+                    help="extra label for the filename, e.g. the scenario ('A8'). Recommended: "
+                         "it is the only scenario hint the filename will ever carry.")
     args = ap.parse_args()
 
     mount = Path(args.mount)
@@ -88,9 +110,18 @@ def main():
         dest_dir = Path(__file__).resolve().parents[2] / "experiments" / "logs" / "usd_raw"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    src = find_latest_log(mount)
+    if args.file:
+        src = mount / args.file
+        if not src.is_file():
+            sys.exit(f"[copy_usd_log] {src} does not exist on the card")
+        if src.stat().st_size == 0:
+            sys.exit(f"[copy_usd_log] {src} is 0 bytes -- that session recorded nothing")
+        print(f"  using explicitly requested file {src.name} ({src.stat().st_size:,} bytes)")
+    else:
+        src = find_latest_log(mount)
     stamp = time.strftime("%Y-%m-%d_%H-%M-%S")  # THIS machine's wall clock -- the only real one
-    dest = dest_dir / f"{args.drone}_{stamp}.bin"
+    tag = f"_{args.tag}" if args.tag else ""
+    dest = dest_dir / f"{args.drone}{tag}_{src.name}_{stamp}.bin"
     if dest.exists():
         sys.exit(f"[copy_usd_log] {dest} already exists -- refusing to overwrite. Wait a second "
                  f"and retry, or pass a more specific --dest.")
