@@ -29,9 +29,18 @@ python3 flying_drone_stack/tools/check_usd_deck.py radio://0/80/2M/<uri>
 
 `usd.logging` is toggled around the trajectory by `flight.py`, `formation_flight.py` and
 `run_formation.py` (`setParam("usd.logging", 1)` before, `0` after), so with the card installed
-you get data with no script changes. All three ALSO broadcast `usec.reset` immediately before
-that (added to `run_formation.py` 2026-09-15 — it never had it before, and every one of its
-flights until then had an uSD clock with no known relationship to anything).
+you get data with no script changes. All three ALSO broadcast `usec.reset` — but **on the
+ground, before takeoff**, not next to the logging start.
+
+> **Never move `usec.reset` back to just before `usd.logging=1`.** That is where it originally
+> sat (2026-09-14 → 2026-09-15) and it crashed *every* flight, including a pure A1 hover. The
+> high-level commander's whole time base is that same clock
+> (`crtp_commander_high_level.c`: `float t = usecTimestamp() / 1e6;`) and the planner stores
+> `t_begin` from it at takeoff. Zeroing it mid-flight makes `piecewise_eval` compute
+> `t - t_begin` ≈ *minus* several hundred seconds, evaluate a degree-7 polynomial far outside
+> its domain, and hand the controller a garbage setpoint — motors cut or the vehicle slams
+> over within one control tick. On the ground the planner is IDLE, so the reset is safe there.
+> The uSD logs still share an origin, which is the only thing that actually mattered.
 
 **`usddeck.c` does not start a new file per logging session.** Once the deck's first logging
 session opens a file in a power cycle, later `usd.logging` toggles append to the *same* file —
@@ -40,11 +49,11 @@ time in between. **A uSD file therefore usually contains far more than one fligh
 the flight you actually want inside it is a normal, expected step, not a sign something went
 wrong — see `find_flight_window.py` below.
 
-With the 2026-09-15 `usec.reset` fix now present in all three scripts, a flight recorded *after*
-this fix should sit very close to `t=0` of whatever logging session contains it (the reset zeros
-the clock right before logging starts, on every drone, from one broadcast). If
-`find_flight_window.py` finds the real flight far from `t=0`, don't assume that's normal —
-check the flight's own terminal output for a `usec.reset broadcast failed` warning first.
+Because the reset now fires pre-takeoff, the onboard clock already reads roughly
+takeoff + climb + converge + upload (**~10–12 s**) by the time the scenario itself starts. That
+is the expected `find_flight_window.py` lag for a healthy post-2026-09-15 flight — *not* zero.
+A lag of hundreds of seconds means the `usec.reset` broadcast never reached that drone (check
+the flight's terminal output for its `WARN`) or that the recording predates the fix.
 
 ## Copying off the card
 

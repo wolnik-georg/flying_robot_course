@@ -136,10 +136,22 @@ def main():
         note = "STRONG match" if ratio > 10 else "WEAK match -- verify by eye before trusting this"
         print(f"  next-best candidate: lag={runner_up[0]:.2f}s mse={runner_up[1]:.5f} "
               f"({ratio:.1f}x worse) -- {note}")
+    # NOTE (2026-09-15, second revision): do NOT expect lag ~= 0. usec.reset is broadcast
+    # on the GROUND, before takeoff -- it cannot be sent mid-flight, because the high-level
+    # commander shares that clock and zeroing it in the air crashes the vehicle (see the
+    # call site in run_formation.py). So the clock reads roughly takeoff+climb+converge+
+    # upload time (~10-12s) by the time the scenario actually starts. A lag in that range
+    # is the EXPECTED, correct result for a post-fix flight; a lag of hundreds of seconds
+    # means the reset never reached that drone (check the terminal for its WARN), and a lag
+    # near zero would be surprising enough to investigate.
     if lag < 2.0:
-        print("  lag is near zero: consistent with a flight recorded AFTER the 2026-09-15 "
-              "usec.reset fix landed in run_formation.py. If this is an older flight, that's "
-              "a coincidence, not the fix -- check which script/commit flew it.")
+        print("  NOTE: lag is near zero, which is NOT what a post-2026-09-15 flight should "
+              "look like (usec.reset now fires pre-takeoff, so expect ~10-12s). Check which "
+              "script/commit flew this.")
+    elif lag > 60.0:
+        print(f"  NOTE: lag of {lag:.0f}s is far larger than the ~10-12s a post-2026-09-15 "
+              f"flight should show -- suspect the usec.reset broadcast never reached this "
+              f"drone, or this is an older recording.")
 
     lo, hi = lag - args.margin, lag + total + args.margin
     mask = (t >= lo) & (t <= hi)
