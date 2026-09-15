@@ -788,15 +788,15 @@ All seven share one residual model, one weight format and one upload path, so th
 *how they use the prediction* rather than in how they obtain it. That is what makes the comparison
 a comparison.
 
-| # | Strategy | Uses the NN residual? | State |
-|---|---|---|---|
-| 1 | **Pure INDI** | No — reacts to the *measured* residual | ✅ Implemented, flying |
-| 2 | **Geometric + NN residual** | Yes, as feedforward | ✅ Implemented (`rnn.en`), **unflown** |
-| 3 | **FBL + NN residual** | Yes | ⬜ *FBL code still with the authors* |
-| 4 | **Hybrid Neural-Augmented INDI** | Yes, alongside the INDI measurement | ⬜ Not wired |
-| 5 | **Residual RL** | Separate policy network | ⬜ **Deliberately deferred** |
-| 6 | **Learning-based MPC** | Yes, as the prediction model in the horizon | ⬜ Not wired |
-| 7 | **Geometric + Residual RL** | Separate policy network | ⬜ **Deliberately deferred** |
+| # | Strategy | Uses the NN residual? | Controller(s) | State |
+|---|---|---|---|---|
+| 1 | **Pure INDI** | No — reacts to the *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) | `6`: ✅ flying single-drone, 2-drone gate next session. `7`: ✅ ported, verified ~1e-9, **never flown** |
+| 2 | **Geometric + NN residual** | Yes, as feedforward | `controller=6` + `rnn.en=1` | ✅ Implemented, **unflown** — no trained weights yet |
+| 3 | **FBL + NN residual** | Yes | not assigned | ⬜ *FBL code still with the authors* |
+| 4 | **Hybrid Neural-Augmented INDI** | Yes, alongside the INDI measurement | `controller=8` — **not built** | ⬜ Not wired. 2026-09-15: `controller=7` is NOT this strategy — its `use_nn` flag is dead code, so it runs as Strategy 1's alt implementation, not NA-INDI. True NA-INDI needs `use_nn` enabled + a trained model inside that same module, tracked as `controller=8`, unscoped |
+| 5 | **Residual RL** | Separate policy network | **open — not defined** | ⬜ **Deliberately deferred** |
+| 6 | **Learning-based MPC** | Yes, as the prediction model in the horizon | **open — not defined** | ⬜ Not wired |
+| 7 | **Geometric + Residual RL** | Separate policy network | **open — not defined** | ⬜ **Deliberately deferred** |
 
 - [ ] Wire strategies 4 and 6 to the existing prediction
 - [ ] Strategy 3 when the FBL code arrives — it does not block the others

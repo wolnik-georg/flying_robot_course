@@ -25,20 +25,30 @@ First systematic multi-robot head-to-head comparison of the controller families 
 ## 2. Control Strategies to Compare (7 methods)
 
 **2026-09-14: revised from a three-tier split (Minimum 1-3 / Ideal 1-5 / Super perfect 1-7) to
-two tiers.** Strategy 4 (Hybrid/NA-INDI) moved from "Ideal" into "Minimum" — it now has a
-faithful, numerically-verified Rust port (`stabilizer.controller=7`, unflown) and is a live
-candidate to replace or supplement our own INDI, not a stretch goal. Neural-Swarm2 is not its
-own strategy; it is the NN used inside Strategy 2 (Geometric + NN).
+two tiers.** Strategy 4 (Hybrid/NA-INDI) moved from "Ideal" into "Minimum". Neural-Swarm2 is not
+its own strategy; it is the NN used inside Strategy 2 (Geometric + NN).
 
-| # | Method | Family | Tier | Key Papers |
-|---|--------|--------|------|------------|
-| 1 | Pure INDI | Reactive | **Minimum** | Tal & Karaman, Smeur |
-| 2 | Geometric + NN (Neural-Swarm2) | Predictive | **Minimum** | Neural-Swarm2, SO(2)/Aggregate |
-| 3 | FBL + NN | Predictive | **Minimum** | Flatness-Preserving Residual (Hsieh et al.) |
-| 4 | Hybrid (Neural-Augmented INDI / NA-INDI) | Hybrid | **Minimum** | Cobo-Briesewitz et al. (core paper [1]) |
-| 5 | Residual RL (ProxFly-style) | Residual learning | **Advanced** | ProxFly |
-| 6 | Light Learning-based MPC (residual-MPC / simplified KNODE-style) | Predictive + Optimisation | **Advanced** | KNODE-DW MPC (Chee et al.), L1 KNODE-DW MPC (Hsieh et al.) |
-| 7 | Geometric + Residual RL | Residual learning | **Advanced** | ProxFly + Geometric literature |
+**2026-09-15: controller mapping corrected.** `stabilizer.controller=7` is a faithful,
+numerically-verified Rust port of Cobo-Briesewitz's `controller_lee.c` (~1e-9 vs their compiled
+C), but their file's `use_nn` flag is dead code in every config either project has flown — so
+`controller=7` as it exists TODAY runs their **plain INDI**, not NA-INDI. Their own paper's
+comparison table treats INDI as one of its four baseline methods (Lee / INDI / LINDI / NA-INDI),
+so this is a real, citable alternative *implementation of Strategy 1*, not a stretch or a
+mislabelling — Strategy 1 now has two controller options. Getting genuine NA-INDI behaviour
+(the network predicting the bulk of the residual, INDI correcting only the remainder) needs
+`use_nn` enabled and a trained residual model in their convention wired into that same module —
+unbuilt, tracked as a future `controller=8`, not started.
+
+| # | Method | Family | Tier | Key Papers | Controller(s) |
+|---|--------|--------|------|------------|----------------|
+| 0 | Geometric baseline | Reactive | **Minimum** | — | `controller=6`, `ctrl_mode=0` |
+| 1 | Pure INDI | Reactive | **Minimum** | Tal & Karaman, Smeur — *or* Cobo-Briesewitz et al. (their INDI baseline) | `controller=6` (ours, `ctrl_mode=3`) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) |
+| 2 | Geometric + NN (Neural-Swarm2) | Predictive | **Minimum** | Neural-Swarm2, SO(2)/Aggregate | `controller=6` + `rnn.en=1` |
+| 3 | FBL + NN | Predictive | **Minimum** | Flatness-Preserving Residual (Hsieh et al.) | not assigned — blocked on FBL code |
+| 4 | Hybrid (Neural-Augmented INDI / NA-INDI) | Hybrid | **Minimum** | Cobo-Briesewitz et al. (core paper [1]), `use_nn=1` | `controller=8` — **not built** (flag + trained NN inside the existing ported module) |
+| 5 | Residual RL (ProxFly-style) | Residual learning | **Advanced** | ProxFly | **open — not yet defined** |
+| 6 | Light Learning-based MPC (residual-MPC / simplified KNODE-style) | Predictive + Optimisation | **Advanced** | KNODE-DW MPC (Chee et al.), L1 KNODE-DW MPC (Hsieh et al.) | **open — not yet defined** |
+| 7 | Geometric + Residual RL | Residual learning | **Advanced** | ProxFly + Geometric literature | **open — not yet defined** |
 
 **Target levels (two-tier, current):**
 - **Minimum:** Methods 1–4 — the thesis's baseline claim; every strategy here either flies today

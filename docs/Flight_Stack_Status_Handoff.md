@@ -24,18 +24,19 @@ behaviour and have never flown**, and none of them is detectable in single-drone
 Strategy 0 is the uncompensated geometric reference and is *not* one of the seven — without it,
 "how much did compensation help" has no denominator.
 
-| # | Strategy | Uses NN residual | State |
-|---|---|---|---|
-| 0 | Geometric baseline | no | ✅ Flying (reference condition) |
-| 1 | Pure INDI | no — reacts to *measured* residual | ✅ Flying |
-| 2 | Geometric + NN residual | yes, feedforward (`rnn.en`) | ⚠️ Implemented, **never flown** |
-| 3 | FBL + NN residual | yes | ⬜ Blocked — FBL code still with the authors |
-| 4 | Hybrid neural-augmented INDI | yes, alongside INDI measurement | ⬜ Not wired |
-| 5 | Residual RL | separate policy net | ⬜ Deliberately deferred |
-| 6 | Learning-based MPC | yes, as horizon prediction model | ⬜ Not wired |
-| 7 | Geometric + residual RL | separate policy net | ⬜ Deliberately deferred |
+| # | Strategy | Uses NN residual | Controller(s) | State |
+|---|---|---|---|---|
+| 0 | Geometric baseline | no | `controller=6`, `ctrl_mode=0` | ✅ Flying (reference condition) |
+| 1 | Pure INDI | no — reacts to *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI) | `6` ✅ Flying; `7` ✅ ported/verified, **never flown** |
+| 2 | Geometric + NN residual | yes, feedforward (`rnn.en`) | `controller=6` + `rnn.en=1` | ⚠️ Implemented, **never flown**, no trained weights |
+| 3 | FBL + NN residual | yes | not assigned | ⬜ Blocked — FBL code still with the authors |
+| 4 | Hybrid neural-augmented INDI | yes, alongside INDI measurement | `controller=8` — **not built** | ⬜ Not wired. `controller=7`'s `use_nn` is dead code, so it is Strategy 1's alt controller, not this one |
+| 5 | Residual RL | separate policy net | open — not defined | ⬜ Deliberately deferred |
+| 6 | Learning-based MPC | yes, as horizon prediction model | open — not defined | ⬜ Not wired |
+| 7 | Geometric + residual RL | separate policy net | open — not defined | ⬜ Deliberately deferred |
 
-**Scoreboard:** 2 flying · 1 implemented-unflown · 2 not wired · 1 externally blocked · 2 deferred.
+**Scoreboard:** 2 flying · 2 ported-unflown (1, alt controller) · 1 implemented-unflown (2) · 2 not
+wired/unbuilt (4, 6) · 1 externally blocked (3) · 2 deferred (5, 7).
 
 **Why this is a fair comparison for 0/1/2/4:** these are not four controllers but four settings of
 one controller, differing only in which residual term is active in the desired-acceleration vector.
