@@ -381,7 +381,11 @@ def main():
             if t[-1] - t[0] < total:
                 sys.exit(f"[merge] {n}: recording is {t[-1]-t[0]:.1f}s but the scenario runs "
                          f"{total:.1f}s -- this log cannot contain the whole flight.")
-            lag, mse, _ = fw_offset(t, l["y"], ts, cmd[:, 1], t[0], t[-1] - total)
+            # 2026-09-15: find_offset now matches full 3D position, not a single named channel
+            # -- needed once commanded_trajectory stopped being A8-only (some scenarios move in
+            # x, some sweep z, not just y).
+            pos = np.stack([l["x"], l["y"], l["z"]], axis=1)
+            lag, mse, _ = fw_offset(t, pos, ts, cmd, t[0], t[-1] - total)
             if lag is None:
                 sys.exit(f"[merge] {n}: no lag covers enough of the scenario to align on. "
                          f"Wrong file for this scenario, or wrong role?")

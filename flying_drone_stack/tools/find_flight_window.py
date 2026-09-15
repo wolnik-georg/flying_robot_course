@@ -24,11 +24,13 @@ assuming another long contaminated recording.
 
 Usage
 -----
-    python3 find_flight_window.py <usd_log.bin> <role: bottom|top> <scenario.meta.json>
+    python3 find_flight_window.py <usd_log.bin> <role: bottom|top|...> <scenario.meta.json>
 
-`role` must match one of the roles in the scenario's own definition (`formations/scenarios.py`)
--- for A8 that's "bottom" or "top". Prints the found window and, with --extract, writes a
-trimmed CSV of just the flight (uSD sample rate, not resampled) for downstream analysis.
+The scenario is read from the meta.json's own `scenario`/`params` fields -- whichever of the
+16 formation-library scenarios (A1-A8, B1-B3, C1-C5) was actually flown is detected and rebuilt
+automatically; `role` just says which of that scenario's robots this particular log is. Prints
+the found window and, with --extract, writes a trimmed CSV of just the flight (uSD sample rate,
+not resampled) for downstream analysis.
 """
 
 import argparse
@@ -38,51 +40,66 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path("/home/georg/Desktop/crazyswarm2/crazyflie_examples/crazyflie_examples")))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# The OUTER directory, so `run_formation.py`'s own `from .formations import ...` resolves as
+# part of the `crazyflie_examples` package -- importing the inner directory directly (as an
+# earlier version of this file did) makes `run_formation` load as a top-level module, and its
+# relative import then fails immediately.
+sys.path.insert(0, str(Path("/home/georg/Desktop/crazyswarm2/crazyflie_examples")))
 
 from decode_usd_log import load  # noqa: E402
-from formations import curves as C  # noqa: E402
+from crazyflie_examples.formations import scenarios  # noqa: E402
 
 
 def commanded_trajectory(meta: dict, role: str):
-    """Recompute the exact commanded position(t) for one role of an A8 scenario.
+    """Recompute the exact commanded position(t) for one robot of WHATEVER scenario `meta`
+    says was flown, by rebuilding the real `Scenario` from `formations/scenarios.py` --
+    the same object `run_formation.py` compiled into the trajectory that actually flew --
+    rather than re-deriving each scenario's curve shape by hand here.
 
-    Only A8 is implemented (the Shuttle/Pause combination). Extending to other scenarios means
-    reading the actual RobotPlan for that scenario from formations/scenarios.py -- do not guess
-    a curve shape for a scenario this hasn't been verified against.
+    2026-09-15: this used to hardcode A8's own Shuttle/Pause construction and refuse every
+    other scenario outright. `Scenario.params` is recorded specifically so a flight can be
+    rebuilt exactly from its own sidecar (`scenarios.build`'s docstring: "a scenario has to
+    be exactly reconstructable from what was recorded") -- using that directly means every
+    scenario in the library is supported by construction, with no per-scenario curve code to
+    keep in sync, and a scenario added to the library later needs nothing here at all.
     """
-    if meta["scenario"] != "A8":
-        raise NotImplementedError(
-            f"find_flight_window.py only knows A8's curve shape (Shuttle+Pause); "
-            f"got scenario={meta['scenario']!r}. Read formations/scenarios.py's definition for "
-            f"this scenario and add it here before trusting a result -- do not assume A8's "
-            f"shape applies."
-        )
-    p = meta["params"]
+    sc = scenarios.build(meta["scenario"], **meta["params"])
+    try:
+        idx = next(i for i, r in enumerate(sc.robots) if r.role == role)
+    except StopIteration:
+        roles = [r.role for r in sc.robots]
+        raise ValueError(f"scenario {meta['scenario']!r} has roles {roles}, got role={role!r}")
+    robot = sc.robots[idx]
+
     anchor = np.array(meta["anchor"])
-    half = p["span"] / 2.0
-    settle, duration, passes = p["settle"], p["duration"], p["passes"]
-    total = meta["duration"]
-
-    if role == "bottom":
-        curve = C.Then(C.Pause(settle), C.Shuttle([0.0, p["span"], 0.0], duration, passes=passes))
-        slot = anchor + np.array([0.0, -half, 0.0])
-    elif role == "top":
-        curve = C.Then(C.Pause(settle), C.Shuttle([0.0, -p["span"], 0.0], duration, passes=passes))
-        slot = anchor + np.array([0.0, +half, p["dz"]])
-    else:
-        raise ValueError(f"role must be 'bottom' or 'top' for A8, got {role!r}")
-
+    slot = anchor + robot.slot
+    # Deliberately NOT applying Z_OFFSET_COMPENSATION here, even though it IS what
+    # run_formation.py adds to the command it sends to a compensated drone. That addition
+    # exists to cancel a hardware shortfall (cf_second achieves ~0.40m less than commanded),
+    # so its entire purpose is to make the ACHIEVED position equal the UNCOMPENSATED target --
+    # this is confirmed by the compensated drone's real measured z sitting close to the
+    # uncompensated slot, not the compensated one. Verification asks "did the drone reach what
+    # was intended", so it must compare against that same uncompensated target. Adding the
+    # compensation here as well double-counts it: an early version of this fix did exactly
+    # that and turned a 1.8 cm RMS match into a 47 cm "failure" on cf_second/top.
+    total = sc.duration
     ts = np.linspace(0, total, 4000)
-    cmd = np.array([slot + curve.at(t)[:3] for t in ts])
+    cmd = np.array([slot + np.asarray(robot.curve(t))[:3] for t in ts])
     return ts, cmd
 
 
-def find_offset(t_meas, y_meas, t_cmd, y_cmd, search_lo, search_hi, dt=0.02,
+def find_offset(t_meas, pos_meas, t_cmd, pos_cmd, search_lo, search_hi, dt=0.02,
                 min_cover=0.8):
     """Slide the commanded curve across the WHOLE recording; return the best-fit lag and MSE,
     plus the runner-up so the caller can judge how unambiguous the match is.
+
+    `pos_meas`/`pos_cmd` are (N, 3) position arrays, matched on full 3D Euclidean distance.
+    2026-09-15: this used to take a single named channel (`y`), which was fine for A8 (motion
+    is along y only, z constant) but wrong in general -- a circle moves in x AND y, A7 sweeps
+    z continuously, and picking one axis per scenario is exactly the per-scenario special
+    casing this tool is meant not to need. 3D distance works for every scenario's geometry
+    without knowing which axis carries the motion.
 
     `min_cover` is the fraction of the scenario's duration that must actually be covered by
     measured samples for a lag to be scored at all. 2026-09-15: this guard used to be a flat
@@ -104,8 +121,9 @@ def find_offset(t_meas, y_meas, t_cmd, y_cmd, search_lo, search_hi, dt=0.02,
         mask = (tt >= 0) & (tt <= t_cmd[-1])
         if mask.sum() < need:
             continue
-        cmd_interp = np.interp(tt[mask], t_cmd, y_cmd)
-        errs[i] = np.mean((y_meas[mask] - cmd_interp) ** 2)
+        cmd_interp = np.stack(
+            [np.interp(tt[mask], t_cmd, pos_cmd[:, ax]) for ax in range(3)], axis=1)
+        errs[i] = np.mean(np.sum((pos_meas[mask] - cmd_interp) ** 2, axis=1))
     if np.all(np.isnan(errs)):
         return None, None, None
     order = np.argsort(errs)
@@ -124,7 +142,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("usd_log")
-    ap.add_argument("role", choices=["bottom", "top"])
+    ap.add_argument("role", help="the role in THIS scenario the log belongs to, e.g. bottom/"
+                                  "top/leader/follower/center/solo -- see the scenario's own "
+                                  "definition in formations/scenarios.py")
     ap.add_argument("meta_json")
     ap.add_argument("--extract", metavar="OUT_CSV", default=None,
                     help="write the trimmed flight window (uSD rate) to this CSV")
@@ -148,13 +168,13 @@ def main():
                  f"is nothing to locate. Either this is the wrong file for this scenario, or "
                  f"logging stopped early (a crash landing cuts usd.logging off mid-flight).")
 
-    y = np.array(d["y"])
+    pos = np.stack([np.array(d["x"]), np.array(d["y"]), np.array(d["z"])], axis=1)
     # Search lags across the recording's OWN time axis. 2026-09-15: this used to start the
     # search at 0.0 regardless of t[0], which is wrong for any log whose clock does not start
     # near zero (i.e. every pre-usec.reset-fix recording) -- the real lag sat outside the
     # searched range entirely and the best "match" was whatever degenerate tail-overlap scored
     # lowest.
-    lag, mse, runner_up = find_offset(t, y, ts, cmd[:, 1], t[0], t[-1] - total)
+    lag, mse, runner_up = find_offset(t, pos, ts, cmd, t[0], t[-1] - total)
     if lag is None:
         sys.exit(f"\n[find_flight_window] no lag in [{t[0]:.1f}, {t[-1]-total:.1f}]s covers "
                  f"enough of the {total:.1f}s scenario to score. This recording does not "
