@@ -211,8 +211,6 @@ def main():
     names = meta["names"] if meta else list(vehicles.keys())
     names = [n for n in names if n in vehicles]
     anchor = np.array(meta["anchor"]) if meta else None
-    t0 = float(meta["t_start_sim"]) if meta else None
-    timescale = float(meta.get("timescale", 1.0)) if meta else 1.0
 
     des = {}
     rows = []
@@ -220,7 +218,22 @@ def main():
         v = vehicles[name]
         d = v.pos_des
         if d is None and sc is not None and v.pos is not None and v.pos.shape[0] > 0:
-            d = M.commanded_from_scenario(sc, i, anchor, t0, timescale, v.t)
+            # 2026-09-15: t0/timescale depend on what t=0 means in THIS vehicle's own log
+            # (VehicleLog.t_zero), not on the format alone. A --meta-aligned merged uSD file
+            # has t=0 AT scenario start already -- reconstructing with t0=meta['t_start_sim']
+            # (an absolute wall-clock value, ~1.7e9) against a clock already zeroed to ~0
+            # always gives tau<0 for every sample, i.e. a silent all-NaN reconstruction. This
+            # is exactly what produced an empty "Position tracking error" panel and
+            # pos_rmse=nan on a real, good A8 flight before this fix.
+            if v.t_zero == "scenario_start":
+                t0, timescale = 0.0, 1.0
+            elif v.t_zero == "sim_wall" and meta is not None:
+                t0 = float(meta["t_start_sim"])
+                timescale = float(meta.get("timescale", 1.0))
+            else:
+                t0 = None
+            if t0 is not None:
+                d = M.commanded_from_scenario(sc, i, anchor, t0, timescale, v.t)
         des[name] = d
         rows.append(M.vehicle_metrics(v, args.scenario, args.ctrl, len(names), d))
     rows.append(M.formation_row(args.scenario, args.ctrl,

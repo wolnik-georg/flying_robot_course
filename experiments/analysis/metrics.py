@@ -60,6 +60,14 @@ class VehicleLog:
     e_r: np.ndarray | None        # (N,3)
     n_raw: int                    # rows in the source before any windowing
     source: str
+    # 2026-09-15: what t=0 in THIS log actually means, for commanded_from_scenario callers.
+    #   'scenario_start' -- t=0 IS the scenario's own t=0 (a --meta-aligned merged uSD file).
+    #                        Reconstruct with t0=0, timescale=1 -- no meta.json needed at all.
+    #   'sim_wall'        -- t is on the same absolute clock as a sidecar's t_start_sim
+    #                        (ros-format radio logs). Reconstruct with t0=t_start_sim.
+    #   'unknown'         -- neither is known to hold (an unaligned uSD merge, a raw usd log
+    #                        with no sidecar context, sim). Do not attempt reconstruction.
+    t_zero: str = "unknown"
 
 
 def _read_text_header(path: Path) -> tuple[list[str], int]:
@@ -71,6 +79,25 @@ def _read_text_header(path: Path) -> tuple[list[str], int]:
                 continue
             return line.split(","), i
     raise ValueError(f"{path}: no header line found")
+
+
+def _read_meta_comments(path: Path) -> dict[str, str]:
+    """Parse leading '# meta:key=value' lines into a dict. Stops at the first non-comment,
+    non-blank line (the real header), same scan `_read_text_header` does."""
+    out = {}
+    with open(path) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("# meta:"):
+                k, _, v = line[len("# meta:"):].partition("=")
+                out[k.strip()] = v.strip()
+                continue
+            if line.startswith("#"):
+                continue
+            break
+    return out
 
 
 def detect_format(path: Path) -> str:
@@ -106,8 +133,11 @@ def load_ros_csv(path: Path, name: str | None = None) -> VehicleLog:
         t = data[:, 0]
         pos = data[:, 1:4]
         a_res = data[:, 24:27]
+    # Existing behaviour, unchanged: plot_flight.py already reconstructs the commanded
+    # trajectory for this format using t0=meta['t_start_sim']. Recorded here explicitly so
+    # that assumption is a stated fact this loader owns, not something the caller has to know.
     return VehicleLog(name or path.stem, "ros", t, pos, None, a_res, None, None,
-                       n_raw, str(path))
+                       n_raw, str(path), t_zero="sim_wall")
 
 
 def load_sim_states_csv(path: Path, name: str | None = None) -> VehicleLog:
@@ -125,6 +155,16 @@ def load_sim_states_csv(path: Path, name: str | None = None) -> VehicleLog:
 
 def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
     header, skiprows = _read_text_header(path)
+    # 2026-09-15: merge_usd_logs.py --meta writes `# meta:t_zero=scenario_start` when it
+    # re-zeroed every log at its own scenario start (each drone against ITS OWN commanded
+    # trajectory) -- see that flag's own docstring in write_csv(). Without reading it back,
+    # commanded_from_scenario() cannot tell this file's t=0 from an unaligned merge's t=0
+    # (wherever the first log's raw samples happened to start), and silently reconstructing
+    # against the wrong zero produced an all-NaN "Position tracking error" panel and
+    # pos_rmse=nan on a real, good flight (A8, 2026-09-15 19:56) -- not because the data was
+    # bad, but because t0 was off by ~1.7e9 seconds (a wall-clock t_start_sim applied to a
+    # clock that was already zeroed).
+    t_zero = _read_meta_comments(path).get("t_zero", "unknown")
     data = np.loadtxt(path, delimiter=",", skiprows=skiprows + 1, ndmin=2)
     n_raw = data.shape[0]
     cols = {c: i for i, c in enumerate(header)}
@@ -152,7 +192,7 @@ def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
         a_hat = vec3(name, "rnn_pred")
         e_r = vec3(name, "e_r")
         out[name] = VehicleLog(name, "merged", t_all, pos, pos_des, a_res, a_hat, e_r,
-                                n_raw, str(path))
+                                n_raw, str(path), t_zero=t_zero)
     return out
 
 

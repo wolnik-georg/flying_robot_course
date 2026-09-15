@@ -222,10 +222,21 @@ def merge(logs, names, rate, mass):
     return out
 
 
-def write_csv(path, data):
+def write_csv(path, data, t_zero=None):
+    """`t_zero`, if given, is written as a `# meta:` comment line (the convention the `ros`
+    format already uses, and `metrics._read_text_header` already skips). Downstream tools use
+    it to know what t=0 actually means in THIS file -- critical for `commanded_from_scenario`,
+    which needs to know whether `t` is already scenario-relative or needs t_start_sim/timescale
+    reconciliation. Without this, a --meta-aligned merge (t=0 IS scenario start) and an
+    unaligned one (t=0 is just wherever the first log's samples happened to begin) are
+    indistinguishable from the file alone, and guessing wrong silently reconstructs the wrong
+    commanded trajectory rather than failing loudly.
+    """
     keys = ["t"] + sorted(k for k in data if k != "t")
     n = len(data["t"])
     with open(path, "w") as f:
+        if t_zero:
+            f.write(f"# meta:t_zero={t_zero}\n")
         f.write(",".join(keys) + "\n")
         for i in range(n):
             f.write(",".join(f"{data[k][i]:.6f}" for k in keys) + "\n")
@@ -442,7 +453,7 @@ def main():
                     print(f"   {n}: uSD vs radio offset {off*1000:+.1f} ms (corr {pk:.2f})")
 
     data = merge(logs, names, a.rate, a.mass)
-    write_csv(a.out, data)
+    write_csv(a.out, data, t_zero="scenario_start" if a.meta else None)
     print(f"\n[merge] {len(data['t'])} rows x {len(data)} cols @ {a.rate:.0f} Hz -> {a.out}")
     rels = [k for k in data if k.startswith("rel.")]
     fres = [k for k in data if ".f_res_" in k]
