@@ -325,6 +325,12 @@ def main():
     ap.add_argument("--rate", type=float, default=DEFAULT_RATE)
     ap.add_argument("--mass", type=float, default=0.041)
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--meta", default=None,
+                    help="scenario .meta.json. With --roles, aligns each drone by correlating "
+                         "it against ITS OWN commanded trajectory instead of cross-correlating "
+                         "the drones against each other. Strongly preferred -- see below.")
+    ap.add_argument("--roles", nargs="*", default=[],
+                    help="role per log, in the same order as the logs (e.g. bottom top)")
     a = ap.parse_args()
 
     if a.self_test:
@@ -346,8 +352,61 @@ def main():
         print(f"   {n}: {len(l['t'])} samples, {l['t'][-1]:.2f} s, "
               f"{int(round(len(l['t'])/max(l['t'][-1],1e-9)))} Hz")
 
+    # ---- preferred alignment: each drone against its OWN commanded trajectory ----
+    #
+    # 2026-09-15: the cross-drone z-correlation below is unreliable for any scenario that
+    # holds each vehicle at a near-constant altitude -- A8 is exactly that, and it produced
+    # +282 ms at corr 0.39 on a flight whose true cross-drone offset was 30 ms. Correlating
+    # each drone against its own commanded trajectory instead is unambiguous (<2 cm RMS on
+    # that same flight) because the commanded curve is a known, strong, drone-specific
+    # signal. When --meta/--roles are given, THAT is what sets the time base; the z
+    # correlation is then only reported as a cross-check.
+    if a.meta:
+        if len(a.roles) != len(logs):
+            ap.error(f"--roles needs one role per log ({len(logs)} given logs, "
+                     f"{len(a.roles)} roles)")
+        try:
+            import json
+            from find_flight_window import commanded_trajectory, find_offset as fw_offset
+        except Exception as e:
+            sys.exit(f"[merge] cannot load find_flight_window for --meta alignment: {e}")
+        meta = json.load(open(a.meta))
+        total = meta["duration"]
+        print(f"\n[merge] aligning on commanded trajectory from {Path(a.meta).name} "
+              f"(scenario {meta['scenario']}, {total:.1f}s)")
+        lags = []
+        for n, role, l in zip(names, a.roles, logs):
+            ts, cmd = commanded_trajectory(meta, role)
+            t = l["t"]
+            if t[-1] - t[0] < total:
+                sys.exit(f"[merge] {n}: recording is {t[-1]-t[0]:.1f}s but the scenario runs "
+                         f"{total:.1f}s -- this log cannot contain the whole flight.")
+            lag, mse, _ = fw_offset(t, l["y"], ts, cmd[:, 1], t[0], t[-1] - total)
+            if lag is None:
+                sys.exit(f"[merge] {n}: no lag covers enough of the scenario to align on. "
+                         f"Wrong file for this scenario, or wrong role?")
+            rms = float(np.sqrt(mse)) * 100.0
+            flag = "" if rms < 15.0 else "   <-- BAD FIT: wrong role, or wrong file for this flight"
+            print(f"   {n:14s} role={role:7s} scenario starts at its t={lag:6.2f}s  "
+                  f"RMS {rms:5.1f} cm{flag}")
+            if rms >= 15.0:
+                sys.exit(f"[merge] refusing to merge on an alignment this poor -- fix the "
+                         f"role/file pairing first.")
+            lags.append(lag)
+        # Re-zero every log at ITS OWN scenario start -> one shared, scenario-relative clock.
+        for l, lag in zip(logs, lags):
+            l["t"] = l["t"] - lag
+        if len(lags) > 1:
+            spread = (max(lags) - min(lags)) * 1000.0
+            print(f"   -> cross-drone clock agreement: {spread:.0f} ms "
+                  f"(independent clocks, shared usec.reset origin)")
+
     # ---- alignment quality ----
-    print("\n[merge] alignment (logs zeroed at their own first sample = broadcast start)")
+    if a.meta:
+        print("\n[merge] cross-check: direct z-correlation between drones "
+              "(unreliable when altitudes are flat -- the alignment above is authoritative)")
+    else:
+        print("\n[merge] alignment (logs zeroed at their own first sample = broadcast start)")
     if len(logs) > 1 and CHECK_CHANNEL in logs[0]:
         for i in range(1, len(logs)):
             off, pk = estimate_offset(logs[0]["t"], logs[0][CHECK_CHANNEL],

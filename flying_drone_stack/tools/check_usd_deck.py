@@ -1,11 +1,25 @@
 """Confirm the uSD deck is detected and ready to log, WITHOUT touching usd.logging.
 
 2026-09-15: the previous version of this script toggled usd.logging 1 -> 0 to prove the deck
-would accept the command. That toggle writes into whatever file the deck currently has open --
-usddeck.c does not start a new file on each logging start, so every deck-check run before a
-flight becomes part of the SAME uSD log the flight itself will write, contaminating it with
-unrelated data. This cost real analysis time on 2026-09-15 (the actual ~18s A8 flight had to be
-found by correlation inside a ~200s recording that also contained several of these checks).
+would accept the command. Reading usddeck.c's usdWriteTask properly (later the same evening)
+shows what that actually did: every 0 -> 1 CREATES A NEW thesisNN file, and the 1 -> 0 closes
+it. So each deck-check burned a file-counter slot and left a short junk recording on the card,
+cluttering it with files that look like flights but are not. (An earlier note here claimed the
+toggle appended into the flight's own file -- that was wrong, but the conclusion to stop
+toggling was right.)
+
+usd.canLog and usd.bcUSD are read-only params (PARAM_RONLY, usddeck.c) that directly reflect
+whether the card mounted and the deck initialised successfully -- checking them creates no
+file and consumes no counter slot, so running this as many times as you like before a flight
+is safe.
+
+One real trade-off to know about: the old toggle had a side effect people relied on, because a
+clean 1 -> 0 is the ONLY thing that runs f_close and finalises a file. If a previous flight
+died without its stop command (crash, power loss, card pulled while logging), it leaves a
+0-byte file behind, and the toggle would "fix" that by forcing a clean open/close cycle. This
+version does not do that -- but it also is not needed: the next flight's own logging start
+simply creates the next file. A 0-byte file is a record of a session that never stopped
+cleanly, not a fault to be repaired.
 
 `usd.canLog` and `usd.bcUSD` are read-only params (`PARAM_RONLY`, usddeck.c) that directly
 reflect whether the card mounted and the deck initialised successfully -- checking them touches

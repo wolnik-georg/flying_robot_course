@@ -42,12 +42,28 @@ ground, before takeoff**, not next to the logging start.
 > over within one control tick. On the ground the planner is IDLE, so the reset is safe there.
 > The uSD logs still share an origin, which is the only thing that actually mattered.
 
-**`usddeck.c` does not start a new file per logging session.** Once the deck's first logging
-session opens a file in a power cycle, later `usd.logging` toggles append to the *same* file —
-including toggles from `check_usd_deck.py`'s deck-check, from a previous flight, or from idle
-time in between. **A uSD file therefore usually contains far more than one flight**, and finding
-the flight you actually want inside it is a normal, expected step, not a sign something went
-wrong — see `find_flight_window.py` below.
+**One file per logging session, and the file is only finished on a clean stop.** Verified in
+`usddeck.c`'s `usdWriteTask` (2026-09-15):
+
+- `usd.logging` 0 → 1: scan for the first `thesisNN` that does **not** exist, `f_open(...
+  FA_CREATE_ALWAYS)`, write the header. So every start makes a **new** file and the counter
+  never reuses a number.
+- `usd.logging` 1 → 0: drain the ring buffer, write the CRC, **`f_close`**. The file's size
+  only lands in the FAT directory entry at this point.
+
+Two consequences that matter in practice:
+
+1. **A 0-byte `thesisNN` is a session that started but never cleanly stopped** — the file was
+   created, then the drone lost power (or the card was pulled, or the flight crashed and the
+   script never reached `usd.logging = 0`) before `f_close` ran. It is not a card fault and not
+   a deck fault. 2026-09-15 produced several of these, all from crashed flights.
+2. **The counter is not a timeline.** It increments per session, including sessions that
+   produced nothing, and it does not reset on reformat. Higher number = later session *on that
+   card*, and nothing more — in particular it says nothing about which drone flew it, since
+   cards get moved between vehicles.
+
+An earlier version of this file claimed the opposite (that sessions append into one file per
+power cycle). That was wrong; the source says otherwise.
 
 Because the reset now fires pre-takeoff, the onboard clock already reads roughly
 takeoff + climb + converge + upload (**~10–12 s**) by the time the scenario itself starts. That

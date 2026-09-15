@@ -186,6 +186,23 @@ def main():
               f"flight should show -- suspect the usec.reset broadcast never reached this "
               f"drone, or this is an older recording.")
 
+    # 2026-09-15: what this tool proves, and what it does NOT.
+    #
+    # A match here proves the file contains A RUN OF THIS SCENARIO. It does NOT prove the file
+    # is THAT PARTICULAR FLIGHT. Two back-to-back flights of the same scenario with the same
+    # parameters have the same commanded trajectory, so they match every such meta.json equally
+    # well -- on 2026-09-15 two A8 runs 8 minutes apart scored 1.7 and 1.8 cm RMS against BOTH
+    # of their meta files, i.e. completely indistinguishable by correlation.
+    #
+    # The only ordering signal is the card's own file counter, which increments per logging
+    # session: for two files on one card, the higher number is the later flight. That is an
+    # assumption about session ordering, not a measurement, so it is worth stating out loud
+    # whenever a card holds more than one run of the same scenario.
+    print("\n  NOTE: this confirms the file contains a run of this scenario -- NOT that it is "
+          "this specific\n        flight. Repeated runs of the same scenario are "
+          "indistinguishable by correlation.\n        If the card held several, order them by "
+          "the thesisNN counter (higher = later).")
+
     lo, hi = lag - args.margin, lag + total + args.margin
     mask = (t >= lo) & (t <= hi)
     print(f"\nflight window: uSD t=[{t[mask][0]:.2f}, {t[mask][-1]:.2f}]s, {mask.sum()} samples")
