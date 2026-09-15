@@ -27,6 +27,33 @@ cp flying_drone_stack/tools/usd_thesis_config.txt /media/<sd>/config.txt
 `formation_flight.py` (`setParam("usd.logging", 1)` before, `0` after), so with the card
 installed you get a file per flight with no script changes.
 
+## Copying off the card
+
+```bash
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<mount> <drone_name>
+```
+
+**Never `cp` a uSD log by hand.** Two mistakes are easy to make and this script exists
+specifically to prevent them:
+
+1. **The card's own log-file name (`thesis00`, `thesis01`, ...) tells you nothing** — the
+   counter increments on every logging session, including ones that produced an empty file
+   (2026-09-15: both cards' `thesis00` was 0 bytes from an earlier session; the real flight was
+   `thesis01`). The script finds the largest *non-empty* file, not the highest-numbered one.
+2. **The drone's own log timestamp (`usecTimestamp()`) is µs since that drone's power-on, not a
+   calendar time** — it cannot name the file, and it cannot be used to match one drone's file to
+   another's or to a radio CSV. The only trustworthy real-world timestamp is the *copying
+   machine's* wall clock at the moment of copy, which is exactly what this script uses
+   (`{drone}_{YYYY-MM-DD_HH-MM-SS}.bin` in `experiments/logs/usd_raw/`, verified byte-identical
+   via sha256 after the copy).
+
+**Never assume a radio CSV that happens to arrive via `git pull` around the same time is the
+match for a uSD log.** 2026-09-15: exactly this assumption led to comparing a uSD log against a
+radio CSV from the *previous night's* session, purely because both landed in the same pull.
+uSD logs and radio CSVs are never merged automatically — matching one to the other is a
+deliberate step, done by scenario name and approximate flight time, confirmed with whoever was
+in the lab, never inferred from file arrival order.
+
 ## Decoding
 
 ```bash
