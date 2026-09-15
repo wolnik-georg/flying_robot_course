@@ -161,17 +161,15 @@ the two- and multi-robot results chapters.
   \item \textbf{A controlled comparison.} To the best of our knowledge the first evaluation of
     reactive, predictive and hybrid compensation on the same airframe, the same trajectories, the same formations and the same
     frozen gains, with a single definition of the residual and a measured noise floor. The
-    methodological content is in the word \emph{controlled}. For Strategies 1, 2, 3 and 5 it is
-    unusually strong: those four are not four controllers but four settings of one, differing only
-    in which residual term is active, so a difference between them cannot be attributed to
-    anything else. \emph{This does not extend to Strategies 4 and 6}, which are structurally
-    different controllers --- a feedback-linearising law and a receding-horizon optimiser --- and
-    for which ``identical conditions'' means identical trajectories, formations and hardware but
-    not identical structure. The design provides: a frozen scenario library so every strategy
-    meets identical excitation; gains fixed before data collection so a difference cannot
-    be a tuning artefact; one residual definition logged identically under every controller,
-    including those that do not use it; and null conditions in which no interaction is expected, so
-    that a positive result is separable from noise.
+    methodological content is in the word \emph{controlled}, and it applies uniformly to every
+    strategy: each is its own controller, and none is held to a stronger or weaker standard than
+    another. Two of them, pure INDI (Strategy~1) and the hybrid (Strategy~4), happen to share an
+    attitude law and differ only in which residual term is active, which is a useful point of
+    comparison but not a privileged category the others are excluded from. The design provides: a
+    frozen scenario library so every strategy meets identical excitation; gains fixed before data
+    collection so a difference cannot be a tuning artefact; one residual definition logged
+    identically under every controller, including those that do not use it; and null conditions in
+    which no interaction is expected, so that a positive result is separable from noise.
 
   \item \textbf{The first multi-robot evaluation of the reactive--predictive hybrid,} extending a
     result established for a single vehicle into the regime where its premise is strongest.
@@ -246,12 +244,12 @@ what the disturbance is, the two ways of obtaining information about it, why the
 into the control law matters, and why the individual results do not compose into a comparison.
 
 \textbf{Chapter~\ref{ch:model}} defines the residual this stack measures and logs. Strategies that
-consume a force residual use that number; Strategy~7 does not form it. It gives
+consume a force residual use that number. It gives
 both routes to it in one notation, and states the assumptions the formulation makes together with
 where each is expected to fail.
 
-\textbf{Chapter~\ref{ch:control}} describes Strategies~1--6 plus 7a and 7b (eight controllers; seven families, with residual
-reinforcement learning split by inner loop), and the point at which each
+\textbf{Chapter~\ref{ch:control}} describes Strategies~0--4 (the uncompensated baseline, pure INDI,
+geometric+NN, FBL+NN and the hybrid), and the point at which each
 injects its knowledge of the interaction, separating in each case what is implemented here from the
 published method it follows.
 

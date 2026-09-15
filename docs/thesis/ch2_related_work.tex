@@ -48,6 +48,14 @@ examines how these methods are evaluated, and argues that the field's reporting 
 the individual results impossible to compose into a comparison. That observation is the gap this
 thesis addresses.
 
+The survey covers the field as a whole, including families this thesis does not itself implement.
+Where a family falls outside the strategies evaluated here --- learning the corrective action
+directly (Section~\ref{sec:rw-rl}) and embedding the residual in a predictive-control horizon
+(Section~\ref{sec:rw-inject}) --- it is described briefly rather than in depth. The omission is one
+of scope, not of relevance: those families are part of the landscape the gap argument of
+Section~\ref{sec:rw-eval} rests on, and Chapter~\ref{ch:control} states where the boundary of this
+thesis's own comparison falls and why.
+
 % -------------------------------------------------------------------------------------
 \section{Multirotor dynamics and baseline control}
 \label{sec:rw-baseline}
@@ -309,39 +317,17 @@ decision taken in Chapter~\ref{ch:model}. Their simulation study does still mode
 \paragraph{Inside a model predictive control horizon.}
 The residual can instead form part of the prediction model that an optimiser reasons over, so that
 the controller plans against a disturbance it expects to meet rather than cancelling the one
-present now. Chee et al.~\cite{chee2024knodedwmpc} embed a mixed-expert KNODE-DW model --- first
-principles plus a deliberately lightweight neural ODE component --- inside the prediction
-constraint of a nonlinear MPC, rather than adding it as an instantaneous feedforward term, and
-evaluate it in both simulation and hardware. The hardware experiments use two Crazyflie~2.1
-vehicles in stacked formation, the lower one carrying a thrust-upgrade bundle, flown with average
-separations below \num{1.5} body lengths --- one case averaging \(\Delta z = \SI{0.12}{\metre}\),
-about \num{1.2} body lengths --- with commanded separations from \SIrange{0.2}{0.4}{\metre} down to
-a very tight \SI{0.08}{\metre}. Against a nominal MPC baseline they report average RMSE better by
-\SI{40.1}{\percent} and maximum \(z\)-error smaller by \SI{57.5}{\percent}, from \SI{46}{\second}
-of training data in total (\SI{18}{\second} simulated and \SI{28}{\second} on hardware). As with
-the flatness-based work above, the controller runs \emph{off-board} --- an Intel~i5 laptop
-commanding over Crazyradio at about \SI{400}{\hertz} with Vicon at about \SI{120}{\hertz}, the
-onboard firmware retaining PID control of thrust and body rates.
-Li et al.~\cite{li2023ndpnmpc} take a related route, training a multilayer perceptron --- spectrally
-normalised on its weight matrices each epoch --- to predict the downwash force from the neighbour's
-relative position and velocity, then injecting the predicted force sequence into the nonlinear MPC's
-discrete prediction model as optimiser parameters, so that the lower vehicle can prepare in advance
-from the neighbour's planned trajectory rather than from its current state alone. Their evaluation
-is on hardware with two similar custom quadrotors, the optimisation running onboard a Jetson~TX2~NX
-with pose from off-board motion capture. Hsieh et
-al.~\cite{hsieh2025onlineadaptation} extend the approach by inserting an $\mathcal{L}_1$
-residual-acceleration estimate into the KNODE-DW prediction model, and evaluate it on \emph{three}
-Crazyflie~2.1 vehicles in V-stack and I-stack formations --- including a vertically aligned stack
-with pairwise separations of \SI{0.2}{\metre}, about two body-lengths. Only the $\mathcal{L}_1$
-estimate adapts online; the neural component reuses the training data of the work above and is not
-retrained in flight. The evaluation is hardware-only, again off-board, with the vehicles driven
-from separate machines and commanded in thrust and body rates. They report that \emph{``the
-$\mathcal{L}_1$ adaptive module compensates for unmodeled disturbances most effectively when paired
-with an accurate dynamics model''} --- in our reading, that online adaptation complements a good
-residual model rather than substituting for one.
+present now. Chee et al.~\cite{chee2024knodedwmpc} embed a learned component inside the prediction
+constraint of a nonlinear MPC; Li et al.~\cite{li2023ndpnmpc} inject a predicted downwash-force
+sequence into the optimiser's prediction model; and Hsieh et al.~\cite{hsieh2025onlineadaptation}
+add an $\mathcal{L}_1$ online estimate to the same family. All three run the optimisation
+off-board or on a companion computer rather than on the vehicle. This injection point is not among
+the strategies evaluated here --- its onboard feasibility on a Crazyflie-class platform is itself
+open --- but it is retained in this survey because its evaluation conditions form part of the
+argument in Section~\ref{sec:rw-eval}.
 
 \paragraph{Inside an optimal feedback controller for a docking task.}
-A fourth instance is worth separating because its task differs in kind. Shankar et
+A further instance is worth separating because its task differs in kind. Shankar et
 al.~\cite{shankar2023docking} embed a learned lumped downwash force online in an infinite-horizon
 LQR acting on a feedforward-linearised follower, beneath an inner attitude loop, and use it for
 vertical docking: a leader--follower manoeuvre in which the vehicles close to within one or two
@@ -367,26 +353,19 @@ compensation ceases to be an accuracy improvement and becomes a precondition for
 
 A third stance declines to model the force at all and learns the corrective action instead. Zhang
 et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning module on top of a cascaded
-controller, producing high-level commands that compensate the disturbance and thrust loss caused by
-downwash, and use domain randomisation to relax the requirement for accurate system identification.
-They train in simulation and evaluate in both simulation and hardware, on a heterogeneous pair of
-regular-sized quadcopters rather than the Crazyflie class. The residual and the high-level
-controller run \emph{off-board} at \SI{50}{\hertz}, with the low-level loop onboard at
-\SI{500}{\hertz} and motion capture at \SI{200}{\hertz}, so this is not an end-to-end onboard
-residual controller.
+controller, compensating the disturbance and thrust loss caused by downwash without forming an
+explicit force estimate at any point. Two properties distinguish the stance sharply from
+Section~\ref{sec:rw-predictive}. The policy observes only tracking error, the baseline controller's
+command and its own previous action --- no neighbour state and no inter-vehicle communication ---
+which removes a bandwidth requirement and a failure mode, at the cost of being unable to anticipate
+a neighbour it cannot perceive. And giving up the explicit force estimate removes the
+predicted-against-measured comparison that every other learned method here is evaluated by, which
+makes failures correspondingly harder to attribute.
 
-One property distinguishes this approach sharply from everything in
-Section~\ref{sec:rw-predictive}: the policy's observation comprises the tracking error, the
-baseline cascaded controller's command and its own previous residual action, no neighbour state,
-and no communication between vehicles~\cite{zhang2024proxfly}. Every relative-state method depends on knowing where the
-neighbours are, whether by communication or by onboard sensing. Removing that dependency removes a
-bandwidth requirement and a failure mode, at the cost of the ability to anticipate a neighbour the
-vehicle cannot perceive.
-
-The approach also gives up the explicit force estimate that the other families produce. That
-estimate is what makes a predicted residual comparable against a measured one, and its absence
-makes failures correspondingly harder to attribute, a consideration in experimental design as
-much as in deployment.
+This family is not among the strategies evaluated here, for that second reason as much as for
+scope: the evaluation built in Chapter~\ref{ch:setup} rests on the residual being a measurable
+quantity, and a method that never forms one is assessed on tracking performance alone. It remains
+the most natural direction in which to extend the comparison.
 
 % -------------------------------------------------------------------------------------
 \section{Hybrid reactive and predictive compensation}

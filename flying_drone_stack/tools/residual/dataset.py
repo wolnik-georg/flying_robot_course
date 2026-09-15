@@ -20,13 +20,54 @@ here. Without that the model is trained on a distribution the firmware never pre
 measurement of "no interaction" -- it is the absence of a measurement. Those samples are dropped
 and counted, loudly, because a dataset of zeros trains a network that predicts nothing and looks
 like it converged beautifully.
+
+=======================================================================================
+STALE, 2026-09-14 -- DOES NOT RUN. Blocked on decisions, not on effort.
+=======================================================================================
+`model.py` was rewritten for the Neural-Swarm2 architecture port and no longer exports
+`MAX_DIST`, `MIN_DIST` or `PHI_IN`: the distance cutoff and near-field rescaling those named
+are gone, replaced by the reference's three-term gate (|dx|<0.2, |dy|<0.2, |dvx|<1.5).
+
+What this module must produce has also changed, and each change carries a question that is not
+the loader's to answer:
+
+1. **The target is now a scalar.** `compute_Fa` returns a Z-only force, so the network can
+   only ever predict the vertical residual. `y` must become `a_res_z` alone (in the reference's
+   grams unit -- see `model.accel_to_grams`). The x/y components of the measured residual
+   simply have no predictor in this architecture. That is a real scoping consequence for the
+   thesis comparison, not just a code change.
+
+2. **A ground-effect input is now required.** `phi_G` takes `[0 - own_z, -own_vx, -own_vy,
+   -own_vz]` every sample, with no neighbour to gate it on, so `build` must emit a `ground`
+   array alongside `rel`/`mask`.
+
+3. **`--z-floor` now contradicts the architecture.** It exists to drop low-altitude samples
+   because "ground effect is a different force". Neural-Swarm2 models ground effect explicitly,
+   so those are exactly the samples `phi_G` needs. Keeping the old default would starve it.
+
+4. **The gate replaces the guards.** `apply_input_guards` implements the removed scheme. The
+   replacement is `model.build_mask`, which combines presence with the reference's gate --
+   note an all-zero padding row PASSES the gate on its own, so the two must be combined.
+
+Everything below this line is the previous, working loader for the OLD architecture. It is kept
+because the CSV parsing, the peer-minus-own convention and the zero-`a_res` handling are all
+still correct and worth adapting rather than rewriting from nothing.
 """
 
 import sys
 
 import numpy as np
 
-from model import MAX_NEIGHBOURS, MAX_DIST, MIN_DIST, PHI_IN
+from model import MAX_NEIGHBOURS  # noqa: F401  (still current)
+
+raise ImportError(
+    "tools/residual/dataset.py has not been updated for the Neural-Swarm2 architecture "
+    "(see this module's docstring). It cannot produce a scalar target or the ground-effect "
+    "input that model.NeuralSwarm2 requires, so training from flight logs is blocked. "
+    "The model <-> firmware contract itself IS current and verified: run test_pipeline.py."
+)
+
+MAX_DIST, MIN_DIST, PHI_IN = 2.0, 0.04, 6  # removed from model.py; kept so the code below parses
 
 
 def load_merged(path):

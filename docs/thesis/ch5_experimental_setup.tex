@@ -18,10 +18,9 @@
 \chapter{Experimental Setup and Protocol}
 \label{ch:setup}
 
-Chapter~\ref{ch:control} described Strategies~1--6 plus 7a and 7b (eight controllers; seven families, with residual
-reinforcement learning split by inner loop), and argued that four of them differ only in
-which residual term is active. That argument is only worth as much as the experiment that exercises
-it. This chapter describes the platform, the scenarios, the measurement chain and the protocol, and
+Chapter~\ref{ch:control} described Strategies~0--4 (the uncompensated baseline, pure INDI,
+geometric+NN, FBL+NN and the hybrid), each treated as its own controller. This chapter describes the platform,
+the scenarios, the measurement chain and the protocol, and
 in each case the reasoning is the same: the design exists to remove alternative explanations for an
 observed difference.
 
@@ -45,7 +44,7 @@ Each vehicle carries two additions that are not optional for this work:
 
 \paragraph{A rotor-speed source}, optical RPM deck or DShot telemetry. Without it the applied
 thrust cannot be reconstructed, so $a_{\mathrm{res}}$ is unavailable and \emph{reads identically
-zero} rather than failing loudly. Strategies 2 and 5 additionally cannot run at all. This is the
+zero} rather than failing loudly. Strategies 1 and 4 additionally cannot run at all. This is the
 single most consequential hardware prerequisite in the setup.
 
 \paragraph{A micro SD deck}, the recording medium for the dataset, for the reasons in
@@ -243,7 +242,7 @@ rather than the first experiment.
 \label{sec:setup-collect}
 
 Collection flights are flown under the \emph{uncompensated} baseline of
-Section~\ref{sec:ctrl-s1}. This is not a convenience: a compensating controller partly cancels the
+Section~\ref{sec:ctrl-s0}. This is not a convenience: a compensating controller partly cancels the
 disturbance, so the residual it records is the one that survived compensation, which is not the
 quantity a predictive model should be fitted to.
 
@@ -263,11 +262,11 @@ Each strategy flies the frozen library. Because the control law is selected at r
 separate days, which pairs them against the same battery state, temperature and calibration.
 Each condition is repeated to allow a distribution rather than a single number to be reported.
 
-The comparison is tightest among Strategies 1, 2, 3 and 5, which share the entire position and
-attitude loop and differ only in which residual term is active; a shared gain set is meaningful for
-them in a way it is not across structurally different controllers. Strategies 4 and 6 are compared
-under identical trajectories, formations and hardware, but not under an identical control
-structure, and the discussion chapter must phrase their results accordingly.
+Each strategy is compared under identical trajectories, formations, hardware and frozen gains, not
+identical control structure — this holds uniformly across all of them, not just a subset.
+Pure INDI (1) and the hybrid (4) additionally share the entire position and attitude loop, differing
+only in which residual term is active, which the discussion chapter can point to when interpreting
+their results, without treating the other strategies' comparisons as weaker on that account.
 
 \subsection{Metrics}
 \label{sec:setup-metrics}

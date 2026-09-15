@@ -1,13 +1,27 @@
 # Residual Learning — Onboard Inference and Offline Training
 
-> ## ✅ The residual-learning **software foundation is COMPLETE**
+> ## ⚠️ Onboard network verified; **training pipeline half-rewritten**
 >
-> All three build steps are done and verified: the onboard network + weight upload, the training
-> pipeline, and an end-to-end dry run in simulation. **Nothing further is needed here before the
-> lab.**
+> **Revised 2026-09-14.** This banner previously read "software foundation is COMPLETE". That was
+> true of the *old* network. `residual_nn.rs` has since been replaced with a byte-faithful port of
+> Neural-Swarm2's own architecture (19297 weights, scalar Z-only output, an always-on
+> ground-effect term), and the Python side was rewritten to match — **partly**.
 >
-> **Nothing has been trained on a real flight** — no formation flight has happened, so every
-> number in this document is a simulation number.
+> | Piece | State |
+> |---|---|
+> | Onboard network + weight upload | ✅ current, 19 checks passing |
+> | `model.py` — the firmware contract | ✅ rewritten, agrees with the compiled firmware to ~1e-6 m/s² |
+> | `test_pipeline.py` | ✅ rewritten, 13 checks passing |
+> | `dataset.py` — logs → tensors | ⛔ **stale, raises on import** (four decisions needed, §6) |
+> | `train.py` | ⛔ blocked behind `dataset.py` |
+> | Simulation dry run (§7) | ⛔ predates the port, cannot run today |
+>
+> So: **weights that train will fly correctly — but nothing can be trained from flight logs yet.**
+> Not on the critical path until C.1 produces logs; blocks C.2.
+>
+> **Nothing has been trained on a real flight** — no formation flight has produced a dataset, so
+> every number in this document is a simulation number, and the ones in §6/§7 belong to the
+> superseded network.
 >
 > **Where this sits in the Core Thesis Workflow** ([`07`](07_Thesis_Progress_Checklist.md)):
 >
@@ -15,11 +29,11 @@
 > |---|---|
 > | **C.0 Hardware Gate** ⬅️ next | Must clear `rnn.en` — §7 "The control-law change". **Unflown** |
 > | **C.1 Residual Data Collection** | Produces the training set. §7 says why A4/A7 are mandatory |
-> | **C.2 Train the Residual Model** | Run §6's pipeline on real data. **Ready** |
+> | **C.2 Train the Residual Model** | Run §6's pipeline on real data. **Blocked — `dataset.py`** |
 > | **C.3 Integrate the Strategies** | 5 of 7 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
-**Last updated:** 23 August 2026
+**Last updated:** 14 September 2026
 
 Five of the seven control strategies being compared need the same thing underneath them: a model
 that predicts the interaction force one vehicle is about to feel from the others. This document
@@ -56,37 +70,70 @@ artefacts and would be indistinguishable from real differences between the contr
 `flying_drone_stack/firmware_app/src/residual_nn.rs` — `no_std` Rust, cross-compiled to the same
 Cortex-M4F binary that flies, and linked unchanged into the host simulator.
 
-### Architecture: deep sets
+### Architecture: Neural-Swarm2, ported exactly
+
+> **Rewritten 2026-09-14.** This section previously described a smaller custom deep-sets network
+> (φ 6→16→16→8, ρ 8→16→16→3, 987 weights, 3-vector output, a distance cutoff with near-field
+> rescaling). **That network no longer exists anywhere in the codebase.** `residual_nn.rs` is now
+> a byte-faithful port of Neural-Swarm2's own `phi_Net`/`rho_Net`, taken from the vendored
+> reference implementation rather than re-derived from the paper. Standing instruction: the
+> network is never to be modified — not to fit RAM, not to simplify, not to tidy.
 
 ```
-a_res  =  rho( sum_j phi(relative_state_j) )
+rho_input = phi_G(ground_term)
+for each neighbour j:
+    if |dx| < 0.2 and |dy| < 0.2 and |dvx| < 1.5:     # NOT a distance cutoff
+        rho_input += phi_S(x_12)
+Fa = (0, 0, rho_S(rho_input))                          # scalar — Z ONLY
 ```
 
-`phi` runs on each neighbour separately; the results are summed; `rho` maps the sum to a
-3-vector of acceleration in the world frame.
-
-A plain fixed-input MLP would have to be retrained for every neighbour count, and its answer would
-depend on the order the neighbours happened to be listed in. Neither is true of the physics. The
-deep-sets form (Neural-Swarm2) is permutation-invariant by construction and one weight set serves
-two drones or three — which matters directly here, since the campaign flies both, and B1/B2 exist
-precisely to test whether interactions superpose.
+`phi` runs on each neighbour separately and the results are summed, so the model is
+permutation-invariant by construction and one weight set serves two drones or three — which
+matters directly here, since the campaign flies both, and B1/B2 exist precisely to test whether
+interactions superpose.
 
 | | Dimensions |
 |---|---|
-| `phi` | 6 → 16 → 16 → 8, ReLU |
-| `rho` | 8 → 16 → 16 → 3, ReLU except the linear output |
-| Weights + biases | **987** floats |
-| Cost | ≈ 1400 MACs for two neighbours |
-| Neighbours | up to 3 |
+| `phi_Net(d)` | d → 25 → 40 → 40 → **H=20**, ReLU ×3 then linear |
+| `rho_Net` | 20 → 40 → 40 → 40 → **1**, ReLU ×3 then linear |
+| Weight sets | **five**: `phi_S`, `phi_L`, `phi_G`, `rho_S`, `rho_L` |
+| Weights + biases | **19297** floats (~77 KB) |
+| Neighbours | up to 3 (a firmware buffer limit, not the reference's) |
 
-Input per neighbour is the relative position and relative velocity in the world frame, 6 numbers.
-Output is `f_res / m` in m/s², the same quantity `indi.a_res_*` measures — so prediction and
-measurement are directly comparable without a conversion step that could be got wrong.
+Three differences from the old network carry real consequences, not just different numbers:
+
+- **The output is a scalar, Z only.** `compute_Fa` returns `(0, 0, faz)`. **This architecture can
+  only ever predict the vertical residual** — the x/y components of the measured `a_res` have no
+  predictor in Strategy 2. That is a property of the method being compared, and it must be stated
+  in the results rather than discovered there.
+- **Ground effect is part of the model.** `phi_G` takes `[0 − own_z, −own_vx, −own_vy, −own_vz]`
+  and is evaluated **unconditionally, every tick**, with no neighbour to gate it on. A lone drone
+  with weights loaded therefore does **not** predict zero.
+- **Neighbour inclusion is a three-term gate**, not a distance cutoff: `|dx| < 0.2`, `|dy| < 0.2`,
+  `|dvx| < 1.5`. Asymmetric — it ignores `dz`, `dvy`, `dvz` — and replicated literally from the
+  reference rather than regularised.
+
+`phi_L`/`rho_L` are the reference's "large vehicle" path. This fleet is Crazyflies only, so they
+are never evaluated; they still occupy their slots in the flat layout and are **exported as
+zeros**, which states plainly that nothing was trained there.
+
+**Unit conversion.** The network's output is a force in the reference's equivalent-grams unit.
+This project's residual convention is an acceleration, so the firmware converts
+grams → N → `/ mass` once, at the very end. The network is untouched by this; it is a boundary
+conversion, the same class of necessary deviation as using this project's own mass in the NA-INDI
+port.
 
 **Normalisation is deliberately absent from the firmware.** Input scaling and mean-subtraction are
 folded into the first layer's weights and biases at export time. That is exactly equivalent, and it
 keeps the firmware from carrying a second set of constants that could drift out of step with the
-trained model.
+trained model. There are now **two** first layers to fold into — `phi_S`'s (6 inputs) and
+`phi_G`'s (4 inputs) — and they need separate statistics, since a neighbour's relative state and a
+vehicle's own height are not the same distribution.
+
+**RAM.** The weight array alone overflows real firmware RAM, so it sits behind a `residual_nn`
+Cargo feature, **off by default**. This is a build-time toggle over the `static mut RNN`
+allocation only — `residual_nn.rs` is not touched by it. Any host build that needs to evaluate
+the network (both test suites do) must pass `--features residual_nn`.
 
 ### Where the neighbour states come from
 
@@ -106,10 +153,13 @@ leave the ground in simulation; see [`09_Simulation.md`](09_Simulation.md).)
 
 | Guard | Value | Why |
 |---|---|---|
-| Output clamp | 8 m/s² | Downwash between Crazyflies is 0.1–3 m/s². Past this it is a fault, not a prediction. Clamping is logged (`rnn.clamped`), because a silently clamped network looks exactly like a well-behaved one |
-| Minimum distance | 0.04 m | Below this the model extrapolates past anything it can have been trained on, and a learned function is least trustworthy exactly where the physics is strongest. The radial distance is clamped without changing direction |
-| Maximum distance | 2.0 m | Beyond this a neighbour contributes nothing measurable; skipping keeps the cost proportional to the neighbours that matter |
+| Output clamp | 8 m/s² | Downwash between Crazyflies is 0.1–3 m/s². Past this it is a fault, not a prediction. Clamping is logged (`rnn.clamped`), because a silently clamped network looks exactly like a well-behaved one. **Ours, not the reference's** |
+| Proximity gate | `\|dx\|<0.2`, `\|dy\|<0.2`, `\|dvx\|<1.5` | The reference's own cutoff, replicated literally. Asymmetric — it ignores `dz`, `dvy`, `dvz` — and deliberately not regularised |
 | Not-loaded | returns 0 | A drone that has never been given weights behaves exactly as it did before this existed |
+
+> **Removed 2026-09-14:** the minimum-distance clamp (0.04 m, radial rescaling) and the
+> maximum-distance skip (2.0 m). Neither exists in Neural-Swarm2 — the three-term gate above **is**
+> its cutoff — so both went with the architecture port rather than being kept alongside it.
 
 ---
 
@@ -172,24 +222,59 @@ cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
 python3 host/test_residual_nn.py
 ```
 
-Ten checks, all passing as of 2026-08-23:
+**Both suites rewritten 2026-09-14** for the ported architecture — the previous ten checks
+validated the old 987-weight network and several of their assertions are now actively wrong (most
+plainly "zero with no neighbours", which `phi_G` makes false by construction).
+
+**Note the build requirement:** the `residual_nn` feature is off by default, and without it
+`rnn_predict` returns zero and `rnn_service` is a no-op. Both suites detect that and fail loudly
+rather than reporting a green run on a network that was never there.
+
+```bash
+cd firmware_app && DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" \
+    cargo build --release --target x86_64-unknown-linux-gnu --features residual_nn
+cd ~/Desktop/crazyflie-firmware && make bindings_python
+```
+
+**`host/test_residual_nn.py` — 19 checks, all passing.** Firmware-facing.
 
 | Check | What it would catch |
 |---|---|
-| Inert before upload | A network that acts on zero weights |
-| Incomplete upload refused, and still inert | The dangerous half-loaded case |
-| Complete upload accepted | The protocol working at all |
-| Numerical agreement, first sample (zero peer velocity) | **Weight-layout drift** between PyTorch and the firmware's hand-indexing — an off-by-one in a bias block |
-| Numerical agreement, differenced peer velocity | The timestamp differencing |
+| `residual_nn` feature present | A green run on a network that does not exist |
+| Inert before upload (poisoned sentinel), incomplete upload refused, still inert | The dangerous half-loaded case |
+| `rnn.pred_*` stale while not ready | Documents a real behaviour, see below |
+| Ground effect only, and non-zero | `phi_G` running unconditionally — the single-drone case is **not** zero |
+| Prediction is z-only | A phantom x/y prediction the architecture cannot produce |
+| Numerical agreement, zero and differenced peer velocity | **Weight-layout drift** between PyTorch and the firmware's hand-indexing |
 | Permutation invariance | The property deep sets exist for |
-| Distant neighbour ignored | The `MAX_DIST` gate |
-| Output clamped | The safety ceiling engaging |
-| Zero with no neighbours | The single-drone case staying untouched |
+| Gate excludes `|dx|`, `|dy|`, `|dvx|` — one check each | Any "tidying" of the reference's asymmetric gate |
+| Neighbour inside the gate changes the prediction | The gate tests passing because the neighbour path is dead |
+| `dz` is **not** gated | The gate being made symmetric |
+| grams → N → /mass applied once | A dropped or doubled unit conversion |
+| Output clamped; respects `MAX_NEIGHBOURS` | The safety ceiling and the peer-buffer limit |
+
+**`tools/residual/test_pipeline.py` — 13 checks, all passing.** Train → normalise → fold →
+flatten → upload → compare against the compiled controller. Agreement is **~1e-6 m/s²** across
+gated-in, gated-out, zero-velocity and differenced-velocity cases.
 
 Random weights are used precisely so that any layout disagreement shows up immediately; trained
 weights are smooth enough that an index error can look like a slightly worse model.
 
-**Build cost:** 80 bytes of flash and ~3.9 kB of RAM (the weight buffer). Flash 35 %, RAM 73 %.
+### Two firmware behaviours the rewrite pinned down
+
+- **`RNN` is a process-global static that `controllerOutOfTreeInit()` does not reset.** Weights
+  uploaded by one test stay loaded for the rest of the process. Any test asserting inertness must
+  explicitly unload first, or it is asserting nothing.
+- **`rnn.pred_*` is written only from inside `rnn_predict`, which runs only while
+  `rnn.ready != 0`.** When the network is not ready the *control path* uses zero, but the *logged*
+  value keeps whatever it last held. From a cold boot that is 0.0, so it never shows up in a normal
+  flight — but it does if `ready` ever drops back to 0 mid-session, which starting a fresh weight
+  upload does. Worth knowing before reading `rnn.pred_*` from a flight where weights were
+  re-uploaded.
+
+**Build cost:** the weight array is ~77 kB and overflows real firmware RAM, hence the
+`residual_nn` feature gate (default off). With it off, all three platforms link with ~37–38 kB
+free.
 
 ---
 
@@ -204,13 +289,33 @@ neither.
 merge_usd_logs.py  ->  dataset.py  ->  train.py  ->  .npz  ->  upload_residual_weights  ->  drone
 ```
 
-| File | Role |
-|---|---|
-| `model.py` | The PyTorch model, the flat weight layout, and `fold_normalisation`. **The contract with `residual_nn.rs` lives here** |
-| `dataset.py` | Merged CSV → tensors. Owns the sign convention, the firmware's input guards, and the validity filters |
-| `train.py` | Training, validation, export with provenance |
-| `test_pipeline.py` | End-to-end verification against the compiled controller |
-| `crazyflie_examples/upload_residual_weights.py` | `ros2 run crazyflie_examples upload_residual_weights` |
+| File | Role | State (2026-09-14) |
+|---|---|---|
+| `model.py` | The PyTorch model, the flat weight layout, `fold_normalisation`, `build_mask`. **The contract with `residual_nn.rs` lives here** | ✅ rewritten for the port, verified against the compiled firmware |
+| `dataset.py` | Merged CSV → tensors. Owns the sign convention and the validity filters | ⛔ **stale, raises on import** — see below |
+| `train.py` | Training, validation, export with provenance | ⛔ blocked by `dataset.py` |
+| `test_pipeline.py` | End-to-end verification against the compiled controller | ✅ rewritten, 13 checks passing |
+| `crazyflie_examples/upload_residual_weights.py` | `ros2 run crazyflie_examples upload_residual_weights` | unchanged |
+
+> **The model ↔ firmware contract is verified end to end; training from flight logs is not
+> possible yet.** `dataset.py` needs four decisions, not just effort, and raises a message saying
+> so rather than failing cryptically:
+>
+> 1. **The target is now scalar.** The architecture predicts vertical residual only, so the x/y
+>    components of the measured `a_res` have no predictor in Strategy 2. A scoping consequence for
+>    the comparison, not only for the code.
+> 2. `build()` must also emit the **ground-effect input** `[0 − own_z, −own_vx, −own_vy, −own_vz]`.
+> 3. **`--z-floor` now contradicts the architecture** — it drops low-altitude samples because
+>    "ground effect is a different force", but `phi_G` models ground effect explicitly and needs
+>    exactly those samples.
+> 4. The distance guards are gone; `model.build_mask` replaces them. Note an all-zero padding row
+>    **passes** the gate on its own, so presence and gate must always be combined.
+>
+> The loader checks that used to live in `test_pipeline.py` (peer-minus-own convention, both
+> drones as ego, dropping `a_res == 0`) went with `dataset.py` and are **not covered anywhere
+> right now**. A real gap, recorded rather than glossed over.
+>
+> None of this is on the critical path until C.1 produces logs — but it blocks C.2.
 
 ### Decisions worth knowing
 
@@ -242,7 +347,12 @@ can defend in a thesis.
 passed. The first flights with a new model exist to compare predicted against measured residual,
 not to hand the model authority over the vehicle.
 
-### Verification — `test_pipeline.py`, 12 checks, all passing 2026-08-23
+### Verification — `test_pipeline.py`
+
+> **Superseded 2026-09-14.** The 12 checks recorded below were run against the OLD 987-weight
+> network. The file has since been rewritten for the Neural-Swarm2 port (13 checks, all passing;
+> see §5). The reasoning below is kept because it is still why the test exists; the specific
+> checks and numbers are not current.
 
 Step 1's test proved the firmware evaluates *a given* weight vector correctly. It said nothing
 about whether the pipeline produces *that* vector. This closes that gap by running a trained model
@@ -287,6 +397,12 @@ before a drone has flown. **No result may be quoted from it.** Files written thi
 ---
 
 ## 7. End-to-end dry run in simulation
+
+> **Historical, 2026-08-23 — run against the OLD 987-weight network.** The dry run has not been
+> repeated since the Neural-Swarm2 port, and `dataset.py`/`train.py` cannot currently run at all,
+> so phases 2–5 below would not execute today. Kept as the record of what the rehearsal proved
+> about the *plumbing* (which is architecture-independent); every number in it belongs to the
+> superseded network.
 
 `experiments/analysis/run_residual_dryrun.sh` rehearses the whole of thesis C.1 → C.2 → C.3 without a
 drone. It exists because every step of that sequence can fail, and finding out in the lab costs
@@ -399,6 +515,8 @@ preventing it here would remove the comparison.
 | **Strategies 3, 4, 6** | The prediction is available to them but none is wired up. Only strategy 2's feedforward exists |
 | **Training on real data** | The pipeline has only been run on synthetic data and a hand-built CSV fixture — no formation flight has happened yet, so nothing has been trained on a measurement |
 | **Strategies 5 and 7 (RL policies)** | Deliberately not started |
+| **Training from flight logs at all** | `dataset.py` is stale for the ported architecture and raises on import; `train.py` is blocked behind it. Four decisions needed first — see §6 |
+| **Re-running the simulation dry run** | §7's rehearsal predates the port and cannot execute until `dataset.py` is rewritten |
 
 ---
 
@@ -410,8 +528,9 @@ preventing it here would remove the comparison.
 | `firmware_app/src/lib.rs` | `rnn_service()` (upload, with the other upload handlers), `rnn_predict()` (per-tick evaluation), `State.peer_prev` |
 | `firmware_app/traj_iface.c` | `rnn` param and log groups, `peer_get_all()` |
 | `firmware_app/host/oot_host.c` | Peer injection for the simulator, which has no `peer_localization` module |
-| `firmware_app/host/test_residual_nn.py` | The numerical check for the onboard evaluation |
-| `tools/residual/` | The training pipeline: `model.py`, `dataset.py`, `train.py`, `test_pipeline.py` |
+| `firmware_app/host/test_residual_nn.py` | The numerical check for the onboard evaluation — 19 checks |
+| `firmware_app/Cargo.toml` | The `residual_nn` feature gate (default **off**; the weight array overflows real RAM) |
+| `tools/residual/` | The training pipeline: `model.py` ✅, `test_pipeline.py` ✅, `dataset.py` ⛔, `train.py` ⛔ |
 | `tools/merge_usd_logs.py`, `tools/decode_usd_log.py` | Per-drone uSD logs → one time-aligned CSV |
 | `crazyflie_examples/upload_residual_weights.py` | Weight upload over ROS/CRTP |
 | `tools/usd_thesis_config.txt` | 500 Hz onboard logging, now including `rnn.pred_*` |

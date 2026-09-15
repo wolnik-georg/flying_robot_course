@@ -148,7 +148,7 @@ the very first flight.
 
 | Step | What exists | Verification |
 |---|---|---|
-| Onboard inference | Deep-sets MLP, **987 weights**, `no_std` Rust; `rnn.*` upload protocol refusing partial uploads; prediction logged every tick regardless of `rnn.en` | 10/10 numerical checks vs an independent reference |
+| Onboard inference | **Neural-Swarm2 port, 19297 weights** (was a 987-weight custom MLP until 2026-09-14), `no_std` Rust; `rnn.*` upload protocol refusing partial uploads; prediction logged every tick regardless of `rnn.en` | **19 checks** vs an independent reference *and* the compiled firmware (~1e-6 m/s²) |
 | Training pipeline | uSD loader, PyTorch model, provenance, **normalisation folded into layer 1 at export**, ROS uploader | 12/12 checks end-to-end against the *compiled* controller |
 | Sim dry run | collect → train → upload → enable → measure, through the lab's real code paths | 90% / 76% of `a_res` predicted open-loop; held-z separation error **4.66 → 0.63 mm** |
 

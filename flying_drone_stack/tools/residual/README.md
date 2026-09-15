@@ -1,11 +1,49 @@
 # Residual model — training pipeline
 
-Trains the deep-sets residual model and exports weights the drone will accept. The onboard half
-lives in `firmware_app/src/residual_nn.rs`; the full design is in
+Trains the Neural-Swarm2 residual model and exports weights the drone will accept. The onboard
+half lives in `firmware_app/src/residual_nn.rs`; the full design is in
 [`docs/13_Residual_Learning.md`](../../../docs/13_Residual_Learning.md).
 
 **Use system `python3`** — it has torch and the SIL bindings. The pyenv `flying_robots`
 environment has neither.
+
+## ⚠️ State, 2026-09-14 — half of this pipeline runs, half does not
+
+`residual_nn.rs` was replaced with a faithful port of Neural-Swarm2's own architecture
+(`phi_Net`/`rho_Net`, 19297 weights, scalar Z-only output, an always-on ground-effect term, and
+the reference's three-term proximity gate). The Python side was rewritten to match — partly.
+
+| File | State |
+|---|---|
+| `model.py` | **Current.** Rewritten for the port; verified against the compiled firmware to ~1e-6 m/s². |
+| `test_pipeline.py` | **Current.** 13 checks, all passing, including upload into the real controller. |
+| `../../firmware_app/host/test_residual_nn.py` | **Current.** 19 checks, all passing. |
+| `dataset.py` | **Stale — raises on import.** Cannot produce the scalar target or the ground-effect input. |
+| `train.py` | **Blocked** by `dataset.py`. |
+
+So the **model ↔ firmware contract is verified end to end**, and **training from flight logs is
+not possible yet**. Nothing here is on the critical path until C.1 produces logs, but it must be
+finished before C.2.
+
+Four decisions are needed before `dataset.py` can be rewritten; all four are stated in full in
+that file's docstring:
+
+1. The target is now **scalar** — the architecture predicts vertical residual only, so the x/y
+   components of the measured `a_res` have no predictor. This is a scoping consequence for the
+   thesis comparison, not only for the code.
+2. `build()` must also emit the **ground-effect input** `[0 − own_z, −own_vx, −own_vy, −own_vz]`.
+3. **`--z-floor` now contradicts the architecture** — it drops low-altitude samples because
+   "ground effect is a different force", but Neural-Swarm2 models ground effect explicitly and
+   needs exactly those samples.
+4. The distance cutoff and near-field rescaling are gone; `model.build_mask` replaces them.
+
+The loader tests that used to live in `test_pipeline.py` (peer-minus-own convention, both drones
+as ego, dropping `a_res == 0` samples) went with `dataset.py` and are **not covered anywhere
+right now**. That is a real gap.
+
+`phi_L`/`rho_L` — the reference's "large vehicle" path — export as **zeros**: this fleet is
+Crazyflies only, there is no data to train them on, and zeros state that plainly rather than
+shipping an untrained copy of the small path that would look trained.
 
 ## The loop
 

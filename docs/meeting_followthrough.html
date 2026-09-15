@@ -105,17 +105,18 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Supervisor meeting follow-through — opened 14 September 2026</div>
+  <div class="eyebrow">Supervisor meeting follow-through — opened 14 September 2026, updated same evening</div>
   <h1>Meeting Follow-Through</h1>
   <p class="lede">The seven points from today's supervisor feedback, tracked to done or not
     done — no partial credit implied by tone, just what's actually finished versus what
-    still needs a hand.</p>
+    still needs a hand. Continues in parallel with lab work — see the Next Flight Card for
+    tonight's flight results.</p>
 </header>
 
 <div class="scoreboard">
-  <div class="score go"><div class="n">4</div><div class="lbl">Done</div></div>
+  <div class="score go"><div class="n">5</div><div class="lbl">Done</div></div>
   <div class="score hold"><div class="n">2</div><div class="lbl">Partial</div></div>
-  <div class="score stop"><div class="n">1</div><div class="lbl">Not started</div></div>
+  <div class="score stop"><div class="n">0</div><div class="lbl">Not started</div></div>
 </div>
 
 <div class="stack">
@@ -127,18 +128,22 @@ footer{
   </div>
 
   <div class="card hold">
-    <div class="card-head"><span class="num">2</span><h3>uSD logging — validate multi-drone sync</h3><span class="pill hold">fix ready, untested</span></div>
-    <p>This needs an actual flight, not desk work. The fix it depends on (below) is in place;
-      today's lab plan checks the actual sync quality from real logs.</p>
-    <div class="ask"><strong>Needs:</strong> a lab session with 2 drones logging on uSD.</div>
+    <div class="card-head"><span class="num">2</span><h3>uSD logging — validate multi-drone sync</h3><span class="pill hold">still not exercised</span></div>
+    <p>Tonight's lab session found the actual blocker: <strong>neither drone's uSD card has
+      ever been formatted with <code>config.txt</code></strong>. Card prep steps (format FAT32,
+      copy <code>usd_thesis_config.txt</code> to the card root as <code>config.txt</code>,
+      confirm with <code>check_usd_deck.py</code>) are written up and queued as tomorrow's
+      top priority.</p>
+    <div class="ask"><strong>Needs:</strong> the card-prep session, then a re-flown A8 with logging on to actually get data.</div>
   </div>
 
-  <div class="card go">
-    <div class="card-head"><span class="num">3</span><h3>uSD firmware timing bug</h3><span class="pill go">fixed, pending flight confirmation</span></div>
+  <div class="card hold">
+    <div class="card-head"><span class="num">3</span><h3>uSD firmware timing bug</h3><span class="pill hold">fixed, still unflown</span></div>
     <p>Each drone's clock free-ran from its own power-on with no shared reference. Stock
       firmware already had the fix as a broadcastable param (<code>usec.reset</code>) — we
-      just never called it. Now broadcast before every uSD-logging start.</p>
-    <div class="ask"><strong>Needs:</strong> today's flight logs to confirm the offset actually tightened.</div>
+      just never called it. Now broadcast before every uSD-logging start. Blocked on the same
+      thing as #2 above: can't confirm the offset tightened without real uSD logs to compare.</p>
+    <div class="ask"><strong>Needs:</strong> the same uSD session as #2 — <code>merge_usd_logs.py</code> on the resulting logs.</div>
   </div>
 
   <div class="card go">
@@ -147,32 +152,49 @@ footer{
       bit-for-bit from Cobo &amp; Briesewitz's own <code>controller_lee.c</code>. Verified
       against their compiled C to ~1e-9 on 5 test cases; exactly 4 deviations, all physically
       necessary. Never touches the existing geometric/INDI controller.</p>
-    <div class="ask"><strong>Needs:</strong> a real flight — numerically verified isn't flight-verified.</div>
+    <div class="ask"><strong>Needs:</strong> a real flight — numerically verified isn't flight-verified. Queued as the fallback if our own INDI doesn't pass its 2-drone A8 gate (see Next Flight Card) — single-drone hover first, not straight into a formation.</div>
   </div>
 
   <div class="card go">
-    <div class="card-head"><span class="num">5</span><h3>Neural-Swarm2 — add as a core comparison strategy</h3><span class="pill go">architecture ported, buildable</span></div>
+    <div class="card-head"><span class="num">5</span><h3>Neural-Swarm2 — add as a core comparison strategy</h3><span class="pill go">ported, verified, tests passing</span></div>
     <p>Wasn't actually missing — already Strategy 2, already Core priority. What changed: the
       network itself is now a byte-faithful port of Neural-Swarm2's own <code>phi_Net</code>/
       <code>rho_Net</code>, not an approximation. Its weight array initially overflowed
       firmware RAM by ~39&nbsp;KB; fixed with a build-time toggle that doesn't touch the
       network at all — every platform links clean again.</p>
-    <div class="ask"><strong>Needs:</strong> the test suites and training pipeline rewritten against the new shape before any real training happens.</div>
+    <p><strong>Same evening:</strong> both test suites and <code>model.py</code> rewritten for the
+      new architecture and passing — 19 + 13 checks, verified against the <em>compiled firmware</em>
+      (torch, the NumPy reference and the real controller agree to ~1e-6&nbsp;m/s²). Weights that
+      train will now behave on the drone exactly as they did in training.</p>
+    <div class="ask"><strong>Needs:</strong> <code>dataset.py</code> (logs → training tensors) is still blocked, on two decisions rather than effort — the architecture predicts <strong>vertical residual only</strong>, and <code>--z-floor</code> now contradicts a network that models ground effect explicitly. Blocks C.2, not C.1.</div>
   </div>
 
-  <div class="card hold">
-    <div class="card-head"><span class="num">6</span><h3>Docs audit — what needs updating, especially the thesis draft</h3><span class="pill hold">the trigger fixed, no broader sweep</span></div>
-    <p>The concrete stale item found (<code>docs/18</code>'s Neural-Swarm2 status) is fixed.
-      No exhaustive pass over the rest of the thesis draft has been done beyond that.</p>
-    <div class="ask"><strong>Needs:</strong> a deliberate sweep of the writing-track docs, not just reactive fixes.</div>
+  <div class="card go">
+    <div class="card-head"><span class="num">6</span><h3>Docs audit — what needs updating, especially the thesis draft</h3><span class="pill go">real sweep done tonight</span></div>
+    <p>Went beyond the original trigger fix. Simplified the strategy split from three tiers to
+      two (Minimum 1–4, Advanced 5–7 — the hybrid/NA-INDI promoted into Minimum), updated every
+      doc that stated the old split (<code>01</code>, <code>03</code>, <code>05</code>,
+      <code>15</code>, <code>19</code>), then found and removed a "shared control-law substrate"
+      fairness argument running through <code>ch4</code>/<code>19</code>/<code>ch1</code>/<code>ch5</code>
+      that treated some strategies as a stronger evidentiary class than others — every strategy
+      is now its own controller, compared under uniform conditions. Along the way, found and
+      fixed a real cross-document strategy-numbering inconsistency (<code>ch4</code> had its own
+      numbering, off by one from <code>01</code>/<code>18</code>/<code>19</code>). Thesis rebuilds
+      clean, 44 pages, zero undefined citations or references.</p>
+    <div class="ask"><strong>Needs:</strong> nothing further on this specific sweep — was scoped to the strategy/tier framing, not a full line-by-line audit of every chapter.</div>
   </div>
 
-  <div class="card stop">
-    <div class="card-head"><span class="num">7</span><h3>Core vs. ambitious split — two thesis drafts</h3><span class="pill stop">split confirmed, drafts not started</span></div>
-    <p>The Core/Ideal/Super split already existed in <code>docs/01</code> and is still
-      accurate — no rebuild needed there. The actual deliverable, producing two separate draft
-      versions, hasn't been started.</p>
-    <div class="ask"><strong>Needs:</strong> the actual fork-and-trim pass once lab work settles.</div>
+  <div class="card go">
+    <div class="card-head"><span class="num">7</span><h3>Core vs. ambitious split — scope fixed on one draft</h3><span class="pill go">resolved</span></div>
+    <p>Landed differently than first built. The two-draft conditional split was tried, then
+      deliberately reverted: <strong>one main draft</strong>, permanently scoped to the four
+      strategies the comparative study will include — Pure INDI, Geometric+NN, FBL+NN,
+      Hybrid/NA-INDI, plus the uncompensated baseline. 41 pages, builds clean.</p>
+    <p>Nothing was thrown away. The drafted prose for Residual RL, Learning-based MPC and
+      Geometric+Residual RL sits verbatim in
+      <code>docs/thesis/reserve/advanced_strategies_reserve.tex</code> — never built, six labelled
+      blocks recording where each piece came from and what re-inserting it would need, should the
+      scope ever widen.</p>
   </div>
 
 </div>

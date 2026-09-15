@@ -1,5 +1,5 @@
 # Thesis Project Snapshot
-**Last updated:** 23 August 2026
+**Last updated:** 14 September 2026
 
 > **Status:** software preparation is **finished**. The project now runs **two parallel tracks** —
 > a lab track and a writing track. The formal problem statement and research questions are in
@@ -24,20 +24,30 @@ First systematic multi-robot head-to-head comparison of the controller families 
 
 ## 2. Control Strategies to Compare (7 methods)
 
-| # | Method | Family | Priority | Key Papers |
-|---|--------|--------|----------|------------|
-| 1 | Pure INDI | Reactive | Core | Tal & Karaman, Smeur |
-| 2 | Geometric + NN | Predictive | Core | Neural-Swarm2, SO(2)/Aggregate |
-| 3 | FBL + NN | Predictive | Core | Flatness-Preserving Residual (Hsieh et al.) |
-| 4 | Hybrid (Neural-Augmented INDI) | Hybrid | Optional | Cobo-Briesewitz et al. (core paper [1]) |
-| 5 | Residual RL (ProxFly-style) | Residual learning | Optional | ProxFly |
-| 6 | Light Learning-based MPC (residual-MPC / simplified KNODE-style) | Predictive + Optimisation | Extra | KNODE-DW MPC (Chee et al.), L1 KNODE-DW MPC (Hsieh et al.) |
-| 7 | Geometric + Residual RL | Residual learning | Extra | ProxFly + Geometric literature |
+**2026-09-14: revised from a three-tier split (Minimum 1-3 / Ideal 1-5 / Super perfect 1-7) to
+two tiers.** Strategy 4 (Hybrid/NA-INDI) moved from "Ideal" into "Minimum" — it now has a
+faithful, numerically-verified Rust port (`stabilizer.controller=7`, unflown) and is a live
+candidate to replace or supplement our own INDI, not a stretch goal. Neural-Swarm2 is not its
+own strategy; it is the NN used inside Strategy 2 (Geometric + NN).
 
-**Target levels:**
-- Minimum: Methods 1–3
-- Ideal: Methods 1–5
-- Super perfect: All 7
+| # | Method | Family | Tier | Key Papers |
+|---|--------|--------|------|------------|
+| 1 | Pure INDI | Reactive | **Minimum** | Tal & Karaman, Smeur |
+| 2 | Geometric + NN (Neural-Swarm2) | Predictive | **Minimum** | Neural-Swarm2, SO(2)/Aggregate |
+| 3 | FBL + NN | Predictive | **Minimum** | Flatness-Preserving Residual (Hsieh et al.) |
+| 4 | Hybrid (Neural-Augmented INDI / NA-INDI) | Hybrid | **Minimum** | Cobo-Briesewitz et al. (core paper [1]) |
+| 5 | Residual RL (ProxFly-style) | Residual learning | **Advanced** | ProxFly |
+| 6 | Light Learning-based MPC (residual-MPC / simplified KNODE-style) | Predictive + Optimisation | **Advanced** | KNODE-DW MPC (Chee et al.), L1 KNODE-DW MPC (Hsieh et al.) |
+| 7 | Geometric + Residual RL | Residual learning | **Advanced** | ProxFly + Geometric literature |
+
+**Target levels (two-tier, current):**
+- **Minimum:** Methods 1–4 — the thesis's baseline claim; every strategy here either flies today
+  or has a numerically-verified, unflown implementation
+- **Advanced:** Methods 5–7 — the residual-RL and learning-based-MPC strategies, pursued only once Minimum
+  is complete and data collection (C.1–C.4) is underway
+
+Strategy 3 (FBL + NN) is Minimum-tier but its controller code is still with the FBL authors
+(requested via the professor) — not blocking the other three, just not implementable yet.
 
 ## 2a. Formations (keep all of them)
 
