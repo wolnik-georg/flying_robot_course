@@ -45,6 +45,12 @@ python3 /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/tools/ch
 # timestamp or index depending on firmware log-writer naming) and I'll write the
 # uSD-vs-radio sync comparison once we have both files -- tools/merge_usd_logs.py and
 # tools/decode_usd_log.py already exist for this, just never run on real 2-drone data yet.
+#
+# 2026-09-14 (desk): ran `python3 tools/merge_usd_logs.py --self-test` -- PASSED. It recovers
+# known clock offsets from synthetic logs to <0.3 ms (and 1.3 ms on a noisy 15 s window), and
+# estimates a +40 ppm drift as +32 ppm. So the merge tool itself is trustworthy going in; if
+# tomorrow's real 2-drone merge looks wrong, suspect the logs or the usec.reset broadcast,
+# not the aligner. (`decode_usd_log.py` has no --help and wants a real log path as argv[1].)
 
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # controller=7 (NA-INDI) single-drone hover test -- ONLY IF the full-INDI A8 gate fails
