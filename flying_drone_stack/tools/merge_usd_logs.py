@@ -31,6 +31,7 @@ Usage
     python merge_usd_logs.py --self-test
 """
 
+import re
 import argparse
 import sys
 from pathlib import Path
@@ -288,6 +289,32 @@ def self_test():
 
 # ── main ────────────────────────────────────────────────────────────────────
 
+def drone_name_from(p: Path) -> str:
+    """Drone name from a copy_usd_log.py filename, e.g.
+
+        cf231_active_A8_thesis06_2026-09-15_19-59-43.bin -> cf231_active
+        cf_second_A8_thesis08_2026-09-15_20-01-34.bin    -> cf_second
+        cf_second_thesis01_2026-09-15_17-47-07.bin       -> cf_second
+
+    2026-09-15: this used to be `p.stem.split("_")[0]`, which truncated every real drone
+    name we have -- `cf231_active` became `cf231` and `cf_second` became `cf`. Drone names
+    contain underscores, so splitting on the FIRST underscore can never work. The card-side
+    file name (`thesisNN`) is the reliable delimiter: everything before it is the drone
+    name plus any --tag, and the tag is stripped separately.
+    """
+    stem = p.stem
+    parts = stem.split("_")
+    for i, tok in enumerate(parts):
+        if tok.startswith("thesis"):
+            head = parts[:i]
+            # drop a trailing --tag (a scenario id like A8/A1/B2), if one was passed
+            if head and re.fullmatch(r"[A-Z]\d+", head[-1]):
+                head = head[:-1]
+            return "_".join(head) if head else stem
+    # Not a copy_usd_log.py name -- fall back to the whole stem rather than a wrong guess.
+    return stem
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -310,7 +337,7 @@ def main():
         p = Path(p)
         try:
             logs.append(load_usd(p))
-            names.append(p.stem.split("_")[0])
+            names.append(drone_name_from(p))
         except Exception as e:
             sys.exit(f"[merge] cannot read {p}: {e}")
 
