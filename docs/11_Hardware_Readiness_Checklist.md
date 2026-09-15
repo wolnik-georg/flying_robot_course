@@ -42,7 +42,7 @@ Analyse with `experiments/analysis/analyze_formation.py <timestamp>` (timestamp,
 > |---|---|---|
 > | **1** | Validate the controllers still behave — single robot, geometric then INDI | Cannot confirm the three unflown changes are *correct*, only that they are not catastrophic |
 > | **2** | Retune the brushless attitude loop **if needed**, then **FREEZE THE GAINS** | The retune is allowed **here and only here**. The freeze is the last moment any gain may change |
-> | **3** | Two robots at large separation; confirm `a_res` non-zero; check uSD sync | The first flights where the residual sign fix is observable at all |
+> | **3** | ~~Two robots at large separation; confirm `a_res` non-zero; check uSD sync~~ ✅ **cleared 2026-09-15** (A8 2-drone, `a_res` live, sync ~20–30 ms) | The first flights where the residual sign fix is observable at all |
 >
 > Tuning before validating means tuning against an unknown fault. Flying two robots before the
 > freeze means the gains move underneath the dataset.
@@ -174,7 +174,7 @@ power-on check, not from the shelf.
 
 - [ ] **uSD card per vehicle**, formatted, with `usd_thesis_config.txt` copied to the card root as `config.txt`
 - [ ] Card reader on the ground-station machine
-- [ ] `check_usd_deck.py` confirms each deck is detected
+- [ ] `check_usd_deck.py` confirms each deck is detected (read-only since 2026-09-15; safe to run repeatedly, and it no longer creates a junk file per run)
 - [ ] Crazyradio dongle(s). Two drones at full log rate exceed one dongle — either drop the rates or use a second dongle on another channel
 
 ### Environment
@@ -392,8 +392,8 @@ last, after the residual measurement is confirmed working and the tracking margi
 
 | | Why |
 |---|---|
-| `indi.a_res_*` non-zero on both | Zero means no RPM source — no thesis data |
-| Measured uSD sync from `merge_usd_logs.py` | The few-ms figure is predicted, never measured on real logs |
+| `indi.a_res_*` non-zero on both | Zero means no RPM source — no thesis data. ✅ **Confirmed live 2026-09-15** (`a_res_z` to −3.36 m/s² at closest approach) |
+| ~~Measured uSD sync~~ | ✅ **Done 2026-09-15: ~20–30 ms.** Measure it with `merge_usd_logs.py --meta --roles` (each drone vs its own commanded trajectory) — **not** cross-drone z-correlation, which was off by an order of magnitude on A8 |
 | Achieved vs commanded separation | `run_formation` prints it on landing |
 | Any ~1–1.5 Hz position oscillation | The margin question from Stage 3, now with downwash |
 

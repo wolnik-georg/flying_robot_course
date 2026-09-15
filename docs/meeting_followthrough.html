@@ -105,7 +105,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Supervisor meeting follow-through — opened 14 September 2026, updated same evening</div>
+  <div class="eyebrow">Supervisor meeting follow-through — opened 14 September 2026, updated 15 September</div>
   <h1>Meeting Follow-Through</h1>
   <p class="lede">The seven points from today's supervisor feedback, tracked to done or not
     done — no partial credit implied by tone, just what's actually finished versus what
@@ -127,23 +127,29 @@ footer{
       forward to <code>docs/meetings/*.md</code>.</p>
   </div>
 
-  <div class="card hold">
-    <div class="card-head"><span class="num">2</span><h3>uSD logging — validate multi-drone sync</h3><span class="pill hold">still not exercised</span></div>
-    <p>Tonight's lab session found the actual blocker: <strong>neither drone's uSD card has
-      ever been formatted with <code>config.txt</code></strong>. Card prep steps (format FAT32,
-      copy <code>usd_thesis_config.txt</code> to the card root as <code>config.txt</code>,
-      confirm with <code>check_usd_deck.py</code>) are written up and queued as tomorrow's
-      top priority.</p>
-    <div class="ask"><strong>Needs:</strong> the card-prep session, then a re-flown A8 with logging on to actually get data.</div>
+  <div class="card go">
+    <div class="card-head"><span class="num">2</span><h3>uSD logging — validate multi-drone sync</h3><span class="pill go">done 15 Sep</span></div>
+    <p>Both cards formatted and the chain validated end to end. A8, both drones: 500&nbsp;Hz with
+      a 2.3&nbsp;ms worst-case gap, both logs matching their commanded trajectory unambiguously at
+      <strong>1.9 / 1.8&nbsp;cm RMS</strong>, and <code>indi.a_res_*</code> live throughout —
+      <code>a_res_z</code> reaching −3.36&nbsp;m/s² at closest approach (0.198&nbsp;m). That is the
+      first usable two-drone dataset. Ordered workflow:
+      <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code>.</p>
+    <div class="ask"><strong>Result:</strong> logging is no longer a blocker for C.1 data collection.</div>
   </div>
 
-  <div class="card hold">
-    <div class="card-head"><span class="num">3</span><h3>uSD firmware timing bug</h3><span class="pill hold">fixed, still unflown</span></div>
-    <p>Each drone's clock free-ran from its own power-on with no shared reference. Stock
-      firmware already had the fix as a broadcastable param (<code>usec.reset</code>) — we
-      just never called it. Now broadcast before every uSD-logging start. Blocked on the same
-      thing as #2 above: can't confirm the offset tightened without real uSD logs to compare.</p>
-    <div class="ask"><strong>Needs:</strong> the same uSD session as #2 — <code>merge_usd_logs.py</code> on the resulting logs.</div>
+  <div class="card go">
+    <div class="card-head"><span class="num">3</span><h3>uSD firmware timing bug</h3><span class="pill go">fixed and measured</span></div>
+    <p>Each drone's clock free-ran from its own power-on with no shared reference; stock firmware
+      already had the fix as a broadcastable param (<code>usec.reset</code>). <strong>Measured
+      15 Sep: ~20–30&nbsp;ms cross-drone agreement.</strong></p>
+    <p><strong>One hard-won correction:</strong> this broadcast must go <em>on the ground before
+      takeoff</em>, never mid-flight. The high-level commander's entire time base is that same
+      clock, with <code>t_begin</code> stored from it at takeoff — zeroing it in the air makes the
+      trajectory evaluator run hundreds of seconds outside its domain and the vehicle drops or
+      tumbles within one control tick. Broadcasting it next to the logging start crashed
+      <em>every</em> flight on 15 Sep, including a pure hover, until it was moved.</p>
+    <div class="ask"><strong>Result:</strong> measured with <code>merge_usd_logs.py --meta --roles</code> — each drone against its own commanded trajectory, not cross-drone z-correlation.</div>
   </div>
 
   <div class="card go">

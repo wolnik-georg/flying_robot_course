@@ -134,13 +134,46 @@ above 3 robots.
 | **The thesis signal** | `indi.a_res_*` = `a_meas − a_model` = f_res/m — logged in **every** controller mode on purpose, since Geometric+NN needs non-INDI training data |
 | uSD | 500 Hz × ~35 variables per drone (incl. `rnn.pred_*`), **unaffected by drone count** — this is the dataset |
 | Radio | ~811 pkt/s per drone vs ~1000 pkt/s per dongle **total**, 6 floats/topic max → **saturates at 2 drones**. Monitoring only |
-| Sync | Broadcast start so per-drone logs share an origin; `merge_usd_logs.py` prints the measured offset |
+| Sync | `usec.reset` broadcast **on the ground before takeoff** zeroes every drone's clock to a shared origin. **Measured 2026-09-15: ~20–30 ms cross-drone agreement** |
 
 **Two silent-data-loss bugs were found and fixed** in the uSD path: `decode_usd_log.py` `RENAME` now
 maps all thesis channels, and `merge()` raises instead of skipping.
 
 **⚠️ `a_res` reads exactly 0.0 without an RPM source. Zero means no thesis data at all** — verify on
 the very first flight.
+
+### ✅ uSD chain VALIDATED end-to-end, 2026-09-15
+
+First usable two-drone dataset exists: A8, both drones, 500 Hz with a 2.3 ms worst-case gap, both
+matching their commanded trajectory unambiguously at **1.9 / 1.8 cm RMS**, `a_res` live. Realised
+geometry `dz` 0.193–0.283 m vs commanded 0.25, closest approach 0.198 m with `a_res_z` −3.36 m/s².
+Data in `experiments/logs/usd_raw/`; the ordered workflow is
+`flying_drone_stack/tools/README_usd_thesis_logging.md`.
+
+> **⚠️ NEVER broadcast `usec.reset` mid-flight.** The high-level commander's entire time base is
+> that same clock (`crtp_commander_high_level.c`: `float t = usecTimestamp() / 1e6;`), with
+> `t_begin` stored from it at takeoff. Zeroing it in the air makes `piecewise_eval` compute
+> `t - t_begin` ≈ *minus* several hundred seconds and hand the controller a garbage setpoint — the
+> vehicle drops or tumbles within one tick. This crashed every flight on 2026-09-15 until it was
+> moved pre-takeoff (`crazyswarm2` `e07342f`).
+
+Three more facts worth carrying (full detail in `docs/lab_sessions/2026-09-15.md`):
+
+- **A new `thesisNN` file is created on every `usd.logging` 0→1**; `f_close` runs only on 1→0. So a
+  **0-byte file is a session that never stopped cleanly** (crash / power loss / card pulled), and
+  the counter is neither a timeline nor a drone identity — cards move between vehicles.
+- **Cross-drone alignment must come from each drone's own commanded trajectory**
+  (`merge_usd_logs.py --meta --roles`), never from z-cross-correlation between drones: on a
+  flat-altitude scenario like A8 that reported +262 ms at corr 0.39 where the truth was ~20 ms.
+  The merge aborts if a log's fit to its claimed role exceeds 15 cm RMS, which is also what
+  verifies drone/role identity from the data rather than from a filename.
+- **Correlation proves a file holds *a run* of a scenario, not *which* run.** Repeated identical
+  flights are indistinguishable; ordering relies on the `thesisNN` counter.
+
+**Per-drone config is now logged correctly** (`crazyswarm2` `a7d5d0f`): each drone's log records its
+*own* resolved controller and gains, not the shared `all:` block, plus `config_source`,
+`shared_controller`/`shared_ctrl_mode`, and `gains_apply=0` for a drone on a stock controller that
+ignores `indi_gains`/`pos_gains`.
 
 ---
 
@@ -166,8 +199,8 @@ Inference onboard, training offline. Peer position is already available onboard 
 ```
 PREPARATION              ████████████████████ 100%  ✅ finished
 Speed/separation sim fix ████████████████████ 100%  ✅ closed 2026-08-24
-C.0 Hardware Gate  ░░░░░░░░░░░░░░░░░░  ⬅️ NEXT — blocked on lab access
-C.1 Data collection ░░░░░░░░░░░░░░░░░  blocked by C.0
+C.0 Hardware Gate  ████████████░░░░░░  mostly cleared; 2-drone A8 flies clean on our controller
+C.1 Data collection ██░░░░░░░░░░░░░░░  ⬅️ NEXT — uSD chain validated 2026-09-15, logging no longer a blocker
 C.2 Train model     ░░░░░░░░░░░░░░░░░  pipeline ready, needs real data
 C.3 Integrate 4 & 6 ░░░░░░░░░░░░░░░░░  ← the only remaining software
 C.4 Comparison      ░░░░░░░░░░░░░░░░░  the thesis result
@@ -177,7 +210,7 @@ C.4 Comparison      ░░░░░░░░░░░░░░░░░  the the
 
 | Type | Items |
 |---|---|
-| **Lab measurement** | ~~Tape-measure the flight volume~~ done 2026-09-02 (scenarios sit within ~10 cm of walls); hardware inventory; measure uSD sync |
+| **Lab measurement** | ~~Tape-measure the flight volume~~ done 2026-09-02 (scenarios sit within ~10 cm of walls); hardware inventory; ~~measure uSD sync~~ **done 2026-09-15: ~20–30 ms** |
 | **Bench** | Flash firmware; confirm `kv_xy` reads back **5.0**, not the sim's 8.0 |
 | **Flight** | Single-robot ladder (figure8 Mode D → Mode E → circle); validate the 3 unflown fixes; 2-robot at large separation (A1 Δz 0.75→0.50, then A3); confirm `a_res` non-zero and correctly signed |
 | **Decision** | **Freeze the gains** — re-tuning later would measure tuning effort, not the methods |

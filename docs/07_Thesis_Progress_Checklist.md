@@ -216,7 +216,7 @@ identified.
 | 5 | **C.0 — validate the two unflown fixes** | Flight | Checklist B. No data collected before this passes counts |
 | 6 | Two-robot at large separation | Flight | A1 at Δz 0.75 → 0.50, then A3 |
 | 7 | Confirm `a_res` non-zero and correctly signed | Flight | Zero means no thesis data at all |
-| 8 | Check measured uSD sync | Flight | The few-ms figure is predicted, never measured on real logs |
+| 8 | ~~Check measured uSD sync~~ ✅ **done 2026-09-15: ~20–30 ms** | Flight | Measured on real two-drone logs via each drone's own commanded trajectory |
 | 9 | **Freeze the gains** | Decision | Checklist C. Re-tuning later would measure tuning effort, not the methods |
 
 > **Ordering is a constraint, not a suggestion.** Items 5 onward must not be attempted until the
@@ -333,7 +333,7 @@ Comparison.
 - [ ] 12. First 2-drone flight — `--formation vertical --separation 0.6` *(start wide)*
 - [ ] 12b. Then walk the formation library: **A1 → A3 → A2 → A8 → A4 → A5**, wide separations first. B1–B3 need a third drone; A6/A7/C4 are `--allow-extreme` and come last
 - [ ] 13. Walk separation down — 0.6 → 0.4 → 0.3 → 0.25 → 0.2 m
-- [ ] 14. **Check the real uSD sync number** that `merge_usd_logs.py` prints — the few-ms figure is predicted from broadcast jitter and clock drift and has only been validated against synthetic data
+- [x] 14. ~~**Check the real uSD sync number**~~ ✅ **done 2026-09-15: ~20–30 ms**, measured on real two-drone logs. Note the method matters: use `merge_usd_logs.py --meta --roles` (each drone correlated against its *own* commanded trajectory). The tool's cross-drone z-correlation is untrustworthy on flat-altitude scenarios — it reported +262 ms at corr 0.39 on the same flight
 
 ### B.5 Verify, then FREEZE the gains
 

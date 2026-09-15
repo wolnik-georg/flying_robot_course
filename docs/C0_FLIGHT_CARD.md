@@ -220,7 +220,7 @@ the placeholder.
 | `indi.a_res_*` non-zero on **both** vehicles | zero = no RPM source = no data |
 | `a_res` grows as Δz tightens | confirms it is measuring the interaction, not noise |
 | Achieved vs commanded separation | `run_formation` prints it on landing |
-| Measured uSD sync — `merge_usd_logs.py` prints it | the few-ms figure is predicted, never measured |
+| ~~Measured uSD sync~~ | ✅ **done 2026-09-15: ~20–30 ms.** Use `merge_usd_logs.py --meta --roles` (each drone vs its own commanded trajectory), not cross-drone z-correlation |
 | Any ~1–1.5 Hz position oscillation | thin damping margin, now with downwash on the same loop |
 
 ---

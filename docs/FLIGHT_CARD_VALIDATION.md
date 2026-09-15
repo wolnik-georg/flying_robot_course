@@ -255,7 +255,7 @@ own geometric on both drones is what crashed on 2026-09-12.
    (figure-8 under corrected INDI hasn't reached a clean pass) since A1 is pure hover and
    doesn't exercise the open trajectory-tracking shake — an informed decision, not an
    oversight.
-3. **Validate uSD logging + sync on both drones**, exercised during (1)/(2).
+3. ~~**Validate uSD logging + sync on both drones**~~ ✅ **done 2026-09-15** — chain validated end to end, first usable two-drone dataset, sync ~20–30 ms. See `docs/lab_sessions/2026-09-15.md`.
 4. **If clean: move to A3.**
 
 The `kr`/`kw` + `pos_gains` coordinated retuning line (the actual fix for the trajectory-

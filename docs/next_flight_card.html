@@ -94,6 +94,13 @@ ul.plain strong{color:var(--ink)}
   background:var(--sunk); border-radius:10px; padding:16px 18px;
 }
 .not-this-week ul{margin:0; padding-left:1.2em; color:var(--muted)}
+.note{
+  background:var(--sunk); border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0; padding:10px 14px; margin-top:12px;
+  font-size:.92em; color:var(--muted);
+}
+.note strong{color:var(--ink)}
+
 .not-this-week li{margin-bottom:.4em}
 
 footer{
@@ -106,32 +113,60 @@ footer a{color:var(--muted)}
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 14 September 2026, evening</div>
+  <div class="eyebrow">Flight readiness — updated 15 September 2026, evening</div>
   <h1>Next Flight Card</h1>
   <p class="lede">What's flashable, what's flying, and what's next — updated after tonight's
-    session, which closed with <strong>the first clean 2-drone A8 flight on our own
-    controller</strong> and three real bugs fixed along the way.</p>
+    session, which ended with the <strong>uSD logging chain validated end to end</strong> and
+    the <strong>first usable two-drone dataset</strong>, after root-causing a
+    crash-every-flight bug we had introduced ourselves.</p>
   <div class="superseded">
-    The full history of how we got here — the notch-filter investigation, the H0 partition,
-    the first 2-drone flight and its bugs — lives in the Controller Validation Card
+    The full history — notch-filter investigation, H0 partition, the first 2-drone flight and
+    its bugs — lives in the Controller Validation Card
     (<code>docs/flight_card_validation.html</code>) and <code>docs/lab_sessions/*.md</code>.
     This page starts from tonight's state, not a repeat of it.
   </div>
-</header>
+  </header>
 
 <section>
-  <h2>Tonight's result, in one line</h2>
+  <h2>Tonight's result</h2>
   <div class="stack">
     <div class="card go">
-      <div class="card-head"><h3>A8 flew clean: cf231_active (geometric, bottom) + cf_second (stock Lee, top)</h3><span class="pill go">done</span></div>
-      <p>Correct height ordering for the first time, no crash, tame roll/pitch on both drones
-        the whole flight. Got there by fixing three real bugs live: <code>flight.py</code> was
-        silently wiping <code>cf_second</code>'s controller pin on every phase change (now
-        fixed everywhere); <code>cf_second</code> has a consistent ~0.40&nbsp;m height
-        shortfall at any commanded height (temporarily compensated in code, real fix is a
-        mocap rigid-body recalibration); one earlier attempt crashed hard before takeoff even
-        finished, cause not established. <strong>uSD logging was never exercised</strong> —
-        neither card has ever been formatted with <code>config.txt</code>.</p>
+      <div class="card-head"><h3>uSD chain validated — first usable two-drone dataset</h3><span class="pill go">done</span></div>
+      <p>A8, both drones, 500&nbsp;Hz with a 2.3&nbsp;ms worst-case gap. Both logs match their
+        commanded trajectory unambiguously at <strong>1.9 / 1.8&nbsp;cm RMS</strong>,
+        cross-drone clock agreement <strong>~20–30&nbsp;ms</strong>, and
+        <code>indi.a_res_*</code> is live throughout. Realised geometry: <code>dz</code>
+        0.193–0.283&nbsp;m against a commanded 0.25, closest approach 0.198&nbsp;m with
+        <code>a_res_z</code> reaching −3.36&nbsp;m/s² there — the downwash interaction A8
+        exists to measure, recorded correctly on both vehicles for the first time.
+        Data in <code>experiments/logs/usd_raw/</code>.</p>
+    </div>
+    <div class="card hold">
+      <div class="card-head"><h3>The bug that cost most of the session — ours</h3><span class="pill hold">fixed, worth remembering</span></div>
+      <p>Every flight crashed at a <em>fixed elapsed time</em> regardless of scenario length.
+        Two theories were investigated and were wrong: battery sag (a symptom — the violent
+        correction draws the current) and an <code>apply()</code> controller-identity race (a
+        genuine bug, fixed and kept, but not the cause). The decisive test was flying
+        <strong>A1, a pure hover with no trajectory motion</strong>, which failed identically
+        and eliminated trajectory content, crossing geometry, downwash, <code>dz</code>,
+        <code>passes</code>, controller and gains in one flight.</p>
+      <p><strong>Root cause:</strong> <code>usec.reset</code> was broadcast <em>mid-flight</em>,
+        and the high-level commander's entire time base is that same clock
+        (<code>float t = usecTimestamp() / 1e6;</code>) with <code>t_begin</code> stored from it
+        at takeoff. Zeroing it in the air makes <code>piecewise_eval</code> compute
+        <code>t − t_begin</code> ≈ <em>minus</em> several hundred seconds and hand the
+        controller a garbage setpoint — motors cut or the vehicle tumbles within one tick.
+        Fixed by broadcasting it once <strong>on the ground before takeoff</strong>. Post-fix
+        flights returned to the pre-bug baseline exactly.</p>
+    </div>
+    <div class="card go">
+      <div class="card-head"><h3>Per-drone config is now logged correctly</h3><span class="pill go">done</span></div>
+      <p>The shared <code>all:</code> block used to be written verbatim into every drone's log,
+        so every A8 since 09-14 recorded <code>ctrl_mode=3</code>/full INDI for
+        <code>cf231_active</code>, which actually flew <code>ctrl_mode=0</code>/geometric
+        (proof: <code>tau_x/y/z</code> exactly 0.0 across all 7637 uSD samples). Per-drone
+        controller assignment is <em>intended</em> — <code>cf_second</code> stays pinned to
+        stock Lee — so the override is kept and only the logging was fixed.</p>
     </div>
   </div>
 </section>
@@ -176,46 +211,33 @@ footer a{color:var(--muted)}
 <section>
   <h2>Next session, in order</h2>
   <div class="stack">
-    <div class="card hold">
-      <div class="card-head"><span class="num">1</span><h3>uSD logging, both drones</h3><span class="pill hold">biggest open item</span></div>
-      <p>Format both cards FAT32, copy <code>flying_drone_stack/tools/usd_thesis_config.txt</code>
-        to each card's root as <code>config.txt</code>, confirm detection with
-        <code>check_usd_deck.py</code> per drone. Exact steps in
-        <code>debug/lab_logs/debug.log</code>. Nothing below this depends on it directly, but
-        every flight after this point should have it running — every hour flown without it is
-        a flight whose data can't feed C.1.</p>
-    </div>
     <div class="card go">
-      <div class="card-head"><span class="num">2</span><h3>Re-confirm geometric, 2 drones, A8</h3><span class="pill go">already clean once</span></div>
-      <p><code>cf231_active</code> = our geometric (bottom), <code>cf_second</code> = stock Lee
-        (top). Flew clean tonight after the per-robot-override and height-offset fixes — re-fly
-        once with uSD logging actually on, to get the first real logged data point, not just a
-        clean flight.</p>
-    </div>
-    <div class="card go">
-      <div class="card-head"><span class="num">3</span><h3>Full INDI, 2 drones, A8</h3><span class="pill go">not yet attempted tonight</span></div>
-      <p>Same crossing scenario, our own INDI (<code>ctrl_mode</code> 0–3). This is the
-        load-bearing step for everything after it — see the gate below.</p>
+      <div class="card-head"><span class="num">1</span><h3>Full INDI, 2 drones, A8</h3><span class="pill hold">the load-bearing step</span></div>
+      <p>Our own INDI (<code>ctrl_mode=3</code>) on <code>cf231_active</code>,
+        <code>cf_second</code> on stock Lee as always. Everything after this depends on the
+        outcome — see the gate below. Geometric has now flown A8 clean repeatedly <em>and</em>
+        with validated uSD logging, so this is the only controller question left open.</p>
     </div>
     <div class="card hold">
       <div class="card-head"><span class="num">⚠</span><h3>Gate: does our own INDI actually work?</h3><span class="pill hold">decides everything after</span></div>
-      <p><strong>If step 3 comes back clean:</strong> our own INDI is the working controller —
-        move straight into data collection (below), no need to touch controller=7 at all.</p>
-      <p><strong>If it doesn't</strong> — the residual oscillation shows up again, or it's
-        otherwise not usable — <strong>try <code>stabilizer.controller=7</code></strong> next,
-        the NA-INDI port that matches Cobo &amp; Briesewitz's own <code>controller_lee.c</code>
-        bit-for-bit (verified against their compiled C to ~1e-9) — call it INDI v2. Start with
-        its own single-drone hover check (tethered if available), <strong>not</strong> straight
-        into A8 or 2-drone. If that clears and performs better than ours, it becomes the
-        working INDI going forward.</p>
+      <p><strong>If it comes back clean:</strong> our own INDI is the working controller — move
+        straight into C.1 data collection, no need to touch controller=7 at all.</p>
+      <p><strong>If it doesn't</strong> — the residual oscillation returns, or it's otherwise
+        unusable — <strong>try <code>stabilizer.controller=7</code></strong> next, the NA-INDI
+        port matching Cobo &amp; Briesewitz's own <code>controller_lee.c</code> bit-for-bit
+        (verified against their compiled C to ~1e-9) — call it INDI v2. Start with its own
+        single-drone hover check, <strong>not</strong> straight into A8 or 2-drone.</p>
     </div>
     <div class="card go">
-      <div class="card-head"><span class="num">4</span><h3>Once ONE INDI is confirmed working</h3><span class="pill go">the actual finish line for this phase</span></div>
-      <p>Whichever controller cleared the gate above (ours, or controller=7) becomes the
-        standing choice for data collection. Move into C.1: real scenario flights (A3, A4, A7,
-        …), with uSD logging on throughout, then plotting and analysis on the collected logs.
-        This is the point where the project stops being "get a controller to work" and starts
-        being "compare strategies."</p>
+      <div class="card-head"><span class="num">2</span><h3>C.1 data collection</h3><span class="pill go">unblocked</span></div>
+      <p>Whichever controller clears the gate becomes the standing choice. Real scenario
+        flights with uSD logging throughout. <strong>A4 is mandatory</strong>, not optional:
+        A3 never excites relative <em>y</em>, so without A4 the model trains on a degenerate
+        slice and RQ3 becomes unanswerable. A7 or a lateral translate strongly preferred.</p>
+      <p class="note"><strong>Before flying a new scenario:</strong>
+        <code>find_flight_window.py</code> currently only knows A8's curve shape — each new
+        scenario needs its <code>RobotPlan</code> added to <code>commanded_trajectory()</code>
+        first. It deliberately refuses to guess. Desk work, do it ahead of the session.</p>
     </div>
   </div>
 </section>
@@ -234,7 +256,7 @@ footer a{color:var(--muted)}
 </section>
 
 <footer>
-  Full account of today's desk-time work: <code>docs/lab_sessions/2026-09-14.md</code> ·
+  Full account of today's desk-time work: <code>docs/lab_sessions/2026-09-15.md</code> ·
   Progress tracker: <code>docs/07_Thesis_Progress_Checklist.md</code> ·
   Prior state: Controller Validation Card, Two Tracks to the Thesis
 </footer>

@@ -100,8 +100,12 @@ simulator, so simulation runs the controller that flies, not a re-implementation
 
 | Task | File |
 |---|---|
+| **Fly + collect uSD data (the whole ordered workflow)** | **`flying_drone_stack/tools/README_usd_thesis_logging.md`** — read this first |
+| Check a uSD deck before flying (read-only) | `flying_drone_stack/tools/check_usd_deck.py` |
+| Copy a log off a card, verified and named | `flying_drone_stack/tools/copy_usd_log.py` |
+| Find the real flight inside a recording | `flying_drone_stack/tools/find_flight_window.py` |
 | Decode a uSD log | `flying_drone_stack/tools/decode_usd_log.py` |
-| Merge per-drone uSD logs onto one clock | `flying_drone_stack/tools/merge_usd_logs.py` |
+| Merge per-drone uSD logs onto one clock | `flying_drone_stack/tools/merge_usd_logs.py --meta --roles` |
 | Train a residual model | `flying_drone_stack/tools/residual/train.py` |
 | Score a simulated formation run | `experiments/analysis/verify_formation_sim.py` |
 | Everything else | [`experiments/README.md`](../experiments/README.md) |
