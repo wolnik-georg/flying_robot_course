@@ -39,6 +39,8 @@ mislabelling — Strategy 1 now has two controller options. Getting genuine NA-I
 `use_nn` enabled and a trained residual model in their convention wired into that same module —
 unbuilt, tracked as a future `controller=8`, not started.
 
+**Full reference page** (kept in sync with this table): `docs/strategy_controller_map.html`.
+
 | # | Method | Family | Tier | Key Papers | Controller(s) |
 |---|--------|--------|------|------------|----------------|
 | 0 | Geometric baseline | Reactive | **Minimum** | — | `controller=6`, `ctrl_mode=0` |

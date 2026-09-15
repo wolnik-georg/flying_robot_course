@@ -1,0 +1,289 @@
+<title>Strategy → Controller Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root{
+  --ground:#F6F7F8; --surface:#FFFFFF; --sunk:#EDEFF1;
+  --ink:#14171A; --ink-2:#3E464D; --muted:#727C84; --rule:#DEE2E6;
+  --ours:#B4501C; --ours-soft:#FBEDE5; --ours-line:#D98B5E;
+  --theirs:#2F63AD; --theirs-soft:#E7EEF8; --theirs-line:#7BA3D8;
+  --open:#6B6470; --open-soft:#EFEDF1;
+  --go:#276B4E; --go-soft:#E5F1EB;
+  --hold:#A32D1E; --hold-soft:#FAE9E6;
+  --cond:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101315; --surface:#181C1F; --sunk:#1F2428;
+    --ink:#E8ECEF; --ink-2:#B6BFC6; --muted:#87919A; --rule:#2A3136;
+    --ours:#E5915C; --ours-soft:#33200F; --ours-line:#8A5A38;
+    --theirs:#7FADE8; --theirs-soft:#12233A; --theirs-line:#3F6390;
+    --open:#A79FAE; --open-soft:#242028;
+    --go:#7FCBA4; --go-soft:#122A20;
+    --hold:#E8735C; --hold-soft:#341B17;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101315; --surface:#181C1F; --sunk:#1F2428;
+  --ink:#E8ECEF; --ink-2:#B6BFC6; --muted:#87919A; --rule:#2A3136;
+  --ours:#E5915C; --ours-soft:#33200F; --ours-line:#8A5A38;
+  --theirs:#7FADE8; --theirs-soft:#12233A; --theirs-line:#3F6390;
+  --open:#A79FAE; --open-soft:#242028;
+  --go:#7FCBA4; --go-soft:#122A20;
+  --hold:#E8735C; --hold-soft:#341B17;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  line-height:1.55;-webkit-font-smoothing:antialiased}
+main{max-width:940px;margin:0 auto;padding:48px 24px 80px}
+h1,h2,h3{font-family:var(--cond);letter-spacing:-.012em;text-wrap:balance;color:var(--ink)}
+code{font-family:var(--mono);font-size:.87em;background:var(--sunk);padding:1px 5px;border-radius:2px}
+p{max-width:70ch}
+a{color:var(--theirs)}
+
+.eyebrow{font-family:var(--mono);font-size:.68rem;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:2.1rem;font-weight:700;margin:0 0 10px}
+.lede{color:var(--ink-2);font-size:1.02rem;margin:0 0 32px}
+
+section{margin:0 0 40px}
+h2{font-size:1.3rem;font-weight:700;margin:0 0 14px;padding-bottom:8px;border-bottom:2px solid var(--rule)}
+.sec-n{font-family:var(--mono);font-size:.78rem;color:var(--muted);font-weight:500;margin-right:8px}
+
+/* the confusion / resolution callout */
+.call{border-left:4px solid;padding:16px 20px;margin:0 0 14px;background:var(--surface);border-radius:0 4px 4px 0}
+.call.hold{border-color:var(--hold);background:var(--hold-soft)}
+.call.go{border-color:var(--go);background:var(--go-soft)}
+.call h3{margin:0 0 8px;font-size:1.02rem}
+.call.hold h3{color:var(--hold)} .call.go h3{color:var(--go)}
+.call p{margin:0 0 8px;max-width:none}
+.call p:last-child{margin-bottom:0}
+
+/* source-file diagram */
+.diagram{border:1px solid var(--rule);background:var(--surface);border-radius:6px;
+  padding:28px 24px 22px;margin:0 0 10px}
+.dfile{font-family:var(--mono);font-size:.82rem;color:var(--ink-2);text-align:center;
+  margin:0 0 20px}
+.dfile b{color:var(--ink)}
+.dbranches{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:680px){.dbranches{grid-template-columns:1fr}}
+.dnode{border:1.5px solid var(--rule);border-radius:6px;padding:14px 16px;background:var(--sunk)}
+.dnode .flags{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin:0 0 8px}
+.dnode .name{font-family:var(--cond);font-weight:700;font-size:1.05rem;margin:0 0 6px}
+.dnode .desc{font-size:.86rem;color:var(--ink-2);margin:0}
+.dnode.live{border-color:var(--theirs-line);background:var(--theirs-soft)}
+.dnode.live .name{color:var(--theirs)}
+.dnode.dead{opacity:.55}
+.dcap{font-size:.85rem;color:var(--muted);text-align:center;margin:16px 0 0;font-style:italic}
+.dcap b{color:var(--theirs);font-style:normal}
+
+/* strategy table */
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{font-family:var(--cond);text-align:left;font-size:.72rem;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted);padding:0 10px 10px;border-bottom:2px solid var(--rule)}
+td{padding:12px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+td.num{font-family:var(--mono);color:var(--muted);font-weight:600}
+td.mono{font-family:var(--mono);font-size:.85rem}
+tr.baseline td{color:var(--muted)}
+.strategy-name{font-weight:600;color:var(--ink)}
+.paper{font-size:.85rem;color:var(--ink-2)}
+
+.ctrl-tag{display:inline-block;font-family:var(--mono);font-size:.78rem;font-weight:600;
+  padding:2px 8px;border-radius:3px;white-space:nowrap;margin:2px 4px 2px 0}
+.ctrl-ours{background:var(--ours-soft);color:var(--ours);border:1px solid var(--ours-line)}
+.ctrl-theirs{background:var(--theirs-soft);color:var(--theirs);border:1px solid var(--theirs-line)}
+.ctrl-open{background:var(--open-soft);color:var(--open);border:1px dashed var(--muted)}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:.64rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;padding:2px 8px;border-radius:2px;white-space:nowrap}
+.pill-go{background:var(--go-soft);color:var(--go)}
+.pill-hold{background:var(--hold-soft);color:var(--hold)}
+.pill-open{background:var(--open-soft);color:var(--open)}
+
+/* definitions */
+.defs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:680px){.defs{grid-template-columns:1fr}}
+.def{border:1px solid var(--rule);border-top:3px solid;background:var(--surface);
+  padding:14px 16px;border-radius:0 0 4px 4px}
+.def h4{font-family:var(--cond);font-size:.98rem;font-weight:700;margin:0 0 6px}
+.def p{margin:0;font-size:.85rem;color:var(--ink-2)}
+.def.indi{border-top-color:var(--theirs)} .def.indi h4{color:var(--theirs)}
+.def.lindi{border-top-color:var(--open)} .def.lindi h4{color:var(--open)}
+.def.naindi{border-top-color:var(--ours)} .def.naindi h4{color:var(--ours)}
+
+footer{border-top:1px solid var(--rule);padding-top:20px;margin-top:8px;
+  font-size:.82rem;color:var(--muted);font-family:var(--mono)}
+footer code{background:none;padding:0}
+</style>
+
+<main>
+  <div class="eyebrow">Reference — corrected 15 September 2026</div>
+  <h1>Strategy → Controller Map</h1>
+  <p class="lede">Which firmware <code>stabilizer.controller</code> number implements which of
+    the thesis's seven comparison strategies — written down once, precisely, so the
+    <code>controller=7</code> ↔ NA-INDI mix-up doesn't happen again.</p>
+
+  <section>
+    <div class="call hold">
+      <h3>The confusion, stated plainly</h3>
+      <p><code>controller=7</code> is a faithful, numerically-verified port of
+        Cobo-Briesewitz's own <code>controller_lee.c</code> — and that file's algorithm is
+        called <b>NA-INDI</b>. It is tempting, and wrong, to conclude <code>controller=7</code>
+        therefore <em>is</em> NA-INDI.</p>
+      <p>Their file's <code>use_nn</code> flag — the part that makes it NA-INDI instead of plain
+        INDI — is dead code in every configuration either project has flown. There is no trained
+        network behind it. So <code>controller=7</code>, as it exists today, runs their
+        <b>plain INDI</b>.</p>
+    </div>
+    <div class="call go">
+      <h3>The resolution</h3>
+      <p><code>controller=7</code> is a second implementation of <b>Strategy 1 (Pure INDI)</b> —
+        legitimately citable, since the authors' own paper treats INDI as one of its four
+        baseline methods (Lee / INDI / LINDI / NA-INDI), not a mislabelling of Strategy 4.</p>
+      <p>Real NA-INDI (Strategy 4) needs <code>use_nn</code> enabled <em>and</em> a trained
+        residual model in their convention, wired into that <b>same</b> module — tracked as a
+        future <code>controller=8</code>. Unbuilt, unscoped, not started.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="sec-n">01</span>One source file, three algorithms</h2>
+    <div class="diagram">
+      <p class="dfile">Cobo-Briesewitz's <b>controller_lee.c</b> — one file, switched by two flags</p>
+      <div class="dbranches">
+        <div class="dnode">
+          <p class="flags">indi&nbsp;=&nbsp;true &nbsp;·&nbsp; use_nn&nbsp;=&nbsp;false</p>
+          <p class="name">INDI</p>
+          <p class="desc">RPM feedback only. No learned residual.</p>
+        </div>
+        <div class="dnode dead">
+          <p class="flags">indi&nbsp;=&nbsp;false &nbsp;·&nbsp; use_nn&nbsp;=&nbsp;true</p>
+          <p class="name">LINDI</p>
+          <p class="desc">Learned residual only. No RPM feedback at runtime.</p>
+        </div>
+        <div class="dnode dead">
+          <p class="flags">indi&nbsp;=&nbsp;true &nbsp;·&nbsp; use_nn&nbsp;=&nbsp;true</p>
+          <p class="name">NA-INDI</p>
+          <p class="desc">Network predicts the bulk; INDI corrects only the leftover.</p>
+        </div>
+      </div>
+      <p class="dcap">Our port (<code>controller=7</code>) carries all three code paths but
+        hardcodes <code>use_nn=0</code> — so only the <b>left branch</b> is live. Reaching the
+        right branch (real NA-INDI, Strategy 4 / future <code>controller=8</code>) means enabling
+        <code>use_nn</code> and supplying a trained model; the middle branch (LINDI) is not used
+        by any strategy in this comparison.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="sec-n">02</span>The full mapping</h2>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32px">#</th>
+          <th>Strategy</th>
+          <th>Key paper(s)</th>
+          <th>Controller(s)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="baseline">
+          <td class="num">0</td>
+          <td><span class="strategy-name">Geometric baseline</span></td>
+          <td class="paper">—</td>
+          <td class="mono"><span class="ctrl-tag ctrl-ours">controller=6</span><br><span class="mono" style="color:var(--muted);font-size:.78rem">ctrl_mode=0</span></td>
+          <td><span class="pill pill-go">flying</span></td>
+        </tr>
+        <tr>
+          <td class="num">1</td>
+          <td><span class="strategy-name">Pure INDI</span></td>
+          <td class="paper">Tal &amp; Karaman; Smeur — <em>or</em> Cobo-Briesewitz et al.
+            (their INDI baseline)</td>
+          <td class="mono">
+            <span class="ctrl-tag ctrl-ours">controller=6</span> ours, <code style="background:none">ctrl_mode=3</code><br>
+            <span class="ctrl-tag ctrl-theirs">controller=7</span> Cobo-Briesewitz, <code style="background:none">use_nn=0</code>
+          </td>
+          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-hold" style="margin-top:4px">7: verified, never flown</span></td>
+        </tr>
+        <tr>
+          <td class="num">2</td>
+          <td><span class="strategy-name">Geometric + NN residual</span></td>
+          <td class="paper">Neural-Swarm2; SO(2)/Aggregate</td>
+          <td class="mono"><span class="ctrl-tag ctrl-ours">controller=6</span> + <code style="background:none">rnn.en=1</code></td>
+          <td><span class="pill pill-hold">inference verified, no trained weights</span></td>
+        </tr>
+        <tr>
+          <td class="num">3</td>
+          <td><span class="strategy-name">FBL + NN residual</span></td>
+          <td class="paper">Flatness-Preserving Residual (Hsieh et al.)</td>
+          <td class="mono"><span class="ctrl-tag ctrl-open">not assigned</span></td>
+          <td><span class="pill pill-hold">blocked — FBL code with the authors</span></td>
+        </tr>
+        <tr>
+          <td class="num">4</td>
+          <td><span class="strategy-name">Hybrid — NA-INDI</span></td>
+          <td class="paper">Cobo-Briesewitz et al., <code style="background:none">use_nn=1</code></td>
+          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">not built</span></td>
+          <td><span class="pill pill-open">unscoped, not started</span></td>
+        </tr>
+        <tr>
+          <td class="num">5</td>
+          <td><span class="strategy-name">Residual RL</span></td>
+          <td class="paper">ProxFly</td>
+          <td class="mono"><span class="ctrl-tag ctrl-open">open — not defined</span></td>
+          <td><span class="pill pill-open">deliberately deferred</span></td>
+        </tr>
+        <tr>
+          <td class="num">6</td>
+          <td><span class="strategy-name">Light learning-based MPC</span></td>
+          <td class="paper">KNODE-DW MPC (Chee); L1 KNODE-DW MPC (Hsieh)</td>
+          <td class="mono"><span class="ctrl-tag ctrl-open">open — not defined</span></td>
+          <td><span class="pill pill-open">not started</span></td>
+        </tr>
+        <tr>
+          <td class="num">7</td>
+          <td><span class="strategy-name">Geometric + Residual RL</span></td>
+          <td class="paper">ProxFly + geometric literature</td>
+          <td class="mono"><span class="ctrl-tag ctrl-open">open — not defined</span></td>
+          <td><span class="pill pill-open">deliberately deferred</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="sec-n">03</span>Definitions, for whenever this reads unclear again</h2>
+    <div class="defs">
+      <div class="def indi">
+        <h4>INDI</h4>
+        <p>Incremental Nonlinear Dynamic Inversion. Reacts to a <b>measured</b> residual, via
+          rotor-speed (RPM) feedback. No learning, no prior model of the disturbance.</p>
+      </div>
+      <div class="def lindi">
+        <h4>LINDI</h4>
+        <p>A network <b>replaces</b> INDI's residual estimate entirely. No RPM measurement
+          needed at runtime — the paper's actual headline claim (sensor elimination). Not used
+          by any strategy in this comparison.</p>
+      </div>
+      <div class="def naindi">
+        <h4>NA-INDI</h4>
+        <p>Both together: the network <b>predicts</b> the bulk of the residual, and INDI's RPM
+          feedback corrects only what the network got wrong. This is Strategy 4 — and it needs a
+          trained network to mean anything.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Sources: docs/01_Thesis_Project_Snapshot.md · docs/18_Strategy_Descriptions.md (local) ·
+    docs/07_Thesis_Progress_Checklist.md · flying_drone_stack/firmware_app/src/naindi.rs ·
+    docs/22_NA_INDI_Repo_Survey.md<br>
+    Corrected 2026-09-15, same evening as the uSD logging chain validation.
+  </footer>
+</main>
