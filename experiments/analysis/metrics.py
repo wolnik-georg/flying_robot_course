@@ -32,10 +32,18 @@ path -- see experiments/analysis/README.md.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 import sys
 from pathlib import Path
 
 import numpy as np
+
+# find_flight_window.py --extract's documented naming (README_usd_thesis_logging.md):
+# <scenario>_<drone>_<date>_<time>_flight.csv. Recovering the plain drone name from it (rather
+# than defaulting to the whole stem) is what lets a --sidecar's meta['names'] match these files
+# without the caller having to rename anything.
+_FLIGHT_CSV_NAME_RE = re.compile(
+    r"^[A-Za-z]+\d+_(?P<drone>.+)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_flight$")
 
 ROS_HEADER = [
     "time_s", "pos_x", "pos_y", "pos_z", "vel_x", "vel_y", "vel_z",
@@ -101,7 +109,8 @@ def _read_meta_comments(path: Path) -> dict[str, str]:
 
 
 def detect_format(path: Path) -> str:
-    """ros / merged / sim by header; anything that fails to parse as text is 'usd'."""
+    """ros / merged / usd_csv / sim by header; anything that fails to parse as text is 'usd'
+    (the raw binary uSD log)."""
     try:
         header, _ = _read_text_header(path)
     except (UnicodeDecodeError, ValueError):
@@ -112,8 +121,15 @@ def detect_format(path: Path) -> str:
         return "sim"
     if header and header[0] == "t" and any("." in c for c in header[1:]):
         return "merged"
+    # 2026-09-15: find_flight_window.py --extract writes a single-vehicle CSV in the same
+    # short-name schema decode_usd_log.load() returns (t,x,y,z,...,a_res_x,...) but as text,
+    # not the binary uSD format -- distinguished from `merged` by having no dotted (per-
+    # vehicle-prefixed) column names. This used to fall through to the SystemExit below and
+    # reject every extracted flight CSV outright.
+    if header and header[0] == "t" and not any("." in c for c in header[1:]):
+        return "usd_csv"
     raise SystemExit(
-        f"{path}: header does not match any known format (ros/merged/sim), and it "
+        f"{path}: header does not match any known format (ros/merged/usd_csv/sim), and it "
         f"is valid text so it is not a uSD binary either. Got: {header[:6]}...")
 
 
@@ -196,6 +212,42 @@ def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
     return out
 
 
+def load_usd_csv(path: Path, name: str | None = None) -> VehicleLog:
+    """A single-vehicle CSV in decode_usd_log's short-name schema, as written by
+    find_flight_window.py --extract. Text, not the binary uSD format -- see load_usd() for
+    that. `t=0` in this file IS the scenario start (--extract sets `tt = t[mask] - lag`), so
+    t_zero='scenario_start' exactly like a --meta-aligned merge; commanded_from_scenario()
+    needs no meta.json wall-clock reconciliation for it. Unlike a merge, this format also
+    carries `ctrltarget_*` -- the firmware's OWN logged setpoint -- so pos_des is read
+    directly here rather than reconstructed at all, which is strictly more trustworthy.
+    """
+    header, skiprows = _read_text_header(path)
+    data = np.loadtxt(path, delimiter=",", skiprows=skiprows + 1, ndmin=2)
+    n_raw = data.shape[0]
+    cols = {c: i for i, c in enumerate(header)}
+    t = data[:, cols["t"]] if n_raw else np.zeros(0)
+
+    def vec3(prefix):
+        # 2026-09-15: `f"{prefix}_{ax}"` with prefix="" builds "_x", not "x" -- silently
+        # returning None for `pos` on every call. Found via real data: this loader's own
+        # extracted flight CSV has x/y/z columns and pos still came back None.
+        keys = [f"{prefix}_{ax}" if prefix else ax for ax in "xyz"]
+        if not all(k in cols for k in keys) or n_raw == 0:
+            return None
+        return np.stack([data[:, cols[k]] for k in keys], axis=1)
+
+    pos = vec3("") if all(ax in cols for ax in "xyz") else None
+    pos_des = vec3("ctrltarget")
+    a_res = vec3("a_res")
+    a_hat = vec3("rnn_pred")
+    e_r = vec3("e_r")
+    if name is None:
+        m = _FLIGHT_CSV_NAME_RE.match(path.stem)
+        name = m.group("drone") if m else path.stem
+    return VehicleLog(name, "usd_csv", t, pos, pos_des, a_res, a_hat, e_r,
+                       n_raw, str(path), t_zero="scenario_start")
+
+
 def load_usd(path: Path, name: str | None = None) -> VehicleLog:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] /
                            "flying_drone_stack" / "tools"))
@@ -204,14 +256,23 @@ def load_usd(path: Path, name: str | None = None) -> VehicleLog:
     n_raw = len(d.get("t", []))
 
     def vec3(prefix):
-        keys = [f"{prefix}_{ax}" for ax in "xyz"]
+        # 2026-09-15: same fix as load_usd_csv's vec3 -- prefix="" must give "x" not "_x", or
+        # `pos` below silently comes back None despite x/y/z both being present in `d`. The
+        # fallback branch that used to exist here (a second manual np.stack) was only ever
+        # papering over this; removed now that the real function is correct.
+        keys = [f"{prefix}_{ax}" if prefix else ax for ax in "xyz"]
         if not all(k in d for k in keys):
             return None
         return np.stack([d[k] for k in keys], axis=1)
 
-    pos = vec3("") if all(ax in d for ax in "xyz") else \
-        (np.stack([d["x"], d["y"], d["z"]], axis=1) if all(ax in d for ax in "xyz") else None)
+    pos = vec3("")
     pos_des = vec3("ctrltarget")
+    # NOTE: ctrltarget is the literal firmware setpoint, which for a height-compensated
+    # drone (Z_OFFSET_COMPENSATION) INCLUDES that compensation -- pos_rmse against it is "did
+    # you track what was commanded", not "did you achieve the experiment's intended geometry".
+    # For the latter use the formation row's dz_mean/sag (measured relative state), or
+    # reconstruct from scenarios.build() (which is deliberately uncompensated, see
+    # find_flight_window.commanded_trajectory).
     a_res = vec3("a_res")
     a_hat = vec3("rnn_pred")
     e_r = vec3("e_r")
@@ -233,6 +294,8 @@ def load_any(paths: list[str]) -> dict[str, VehicleLog]:
             v = load_sim_states_csv(p)
         elif fmt == "usd":
             v = load_usd(p)
+        elif fmt == "usd_csv":
+            v = load_usd_csv(p)
         else:
             raise SystemExit(f"{p}: merged format only supported alone, not mixed "
                               f"with other files -- pass it by itself")
