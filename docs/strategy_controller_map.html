@@ -122,7 +122,7 @@ footer code{background:none;padding:0}
 </style>
 
 <main>
-  <div class="eyebrow">Reference — corrected 15 September 2026</div>
+  <div class="eyebrow">Reference — corrected 15–16 September 2026</div>
   <h1>Strategy → Controller Map</h1>
   <p class="lede">Which firmware <code>stabilizer.controller</code> number implements which of
     the thesis's seven comparison strategies — written down once, precisely, so the
@@ -136,9 +136,14 @@ footer code{background:none;padding:0}
         called <b>NA-INDI</b>. It is tempting, and wrong, to conclude <code>controller=7</code>
         therefore <em>is</em> NA-INDI.</p>
       <p>Their file's <code>use_nn</code> flag — the part that makes it NA-INDI instead of plain
-        INDI — is dead code in every configuration either project has flown. There is no trained
-        network behind it. So <code>controller=7</code>, as it exists today, runs their
+        INDI — is off in every configuration either project has flown, and <code>controller=7</code>
+        was ported with it left out. So <code>controller=7</code>, as it exists today, runs their
         <b>plain INDI</b>.</p>
+      <p><b>Correction, 2026-09-16:</b> a real, trained network for this path DOES exist —
+        <code>nn.c</code> in their firmware repo, generated from a real <code>.pth</code> model,
+        with genuine calibration ranges (not placeholders). It solves a different problem than
+        this thesis compares (their own single-vehicle payload residual, not inter-vehicle
+        downwash) — see the <code>controller=8</code> row below.</p>
     </div>
     <div class="call go">
       <h3>The resolution</h3>
@@ -147,7 +152,11 @@ footer code{background:none;padding:0}
         baseline methods (Lee / INDI / LINDI / NA-INDI), not a mislabelling of Strategy 4.</p>
       <p>Real NA-INDI (Strategy 4) needs <code>use_nn</code> enabled <em>and</em> a trained
         residual model in their convention, wired into that <b>same</b> module — tracked as a
-        future <code>controller=8</code>. Unbuilt, unscoped, not started.</p>
+        future <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, and
+        compiles clean</b> -- their real trained weights (not a placeholder) extracted and
+        embedded, the full force+torque wiring ported line-for-line. <b>Not yet wired into a
+        firmware controller slot, and not yet numerically verified</b> against the reference's
+        own compiled C. Do not fly.</p>
     </div>
   </section>
 
@@ -229,8 +238,8 @@ footer code{background:none;padding:0}
           <td class="num">4</td>
           <td><span class="strategy-name">Hybrid — NA-INDI</span></td>
           <td class="paper">Cobo-Briesewitz et al., <code style="background:none">use_nn=1</code></td>
-          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">not built</span></td>
-          <td><span class="pill pill-open">unscoped, not started</span></td>
+          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">logic written, unverified</span></td>
+          <td><span class="pill pill-hold">compiles, needs verification + slot patch</span></td>
         </tr>
         <tr>
           <td class="num">5</td>
