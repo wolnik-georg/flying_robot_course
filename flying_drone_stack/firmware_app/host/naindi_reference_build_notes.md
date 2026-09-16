@@ -114,3 +114,81 @@ attitudeRate.yaw*dt`) than the one `naindi.rs` implements. This surfaced the dev
 documented in `naindi.rs`'s module doc: the port only implements the `modeAbs` yaw branch
 (consistent with this project's existing convention that Mode E/HLC setpoints are always
 absolute — see `firmware_app/CLAUDE.md`), not the reference's velocity/disable yaw modes.
+
+## NA-INDI hybrid (controller=8, `use_nn=1`) — addendum, 2026-09-16
+
+`test_naindi_hybrid_reference.py`/`_naindi_hybrid_case_runner.py` extend this exact setup to
+verify `naindi_hybrid.rs` (`controller=8`) against the SAME reference `controllerLee()`, this
+time with `ctrl.use_nn = 7` (all three bits) instead of `0` — exercising the real trained
+network in `nn.c`/`nn_utils.c`, not just linking it unused as the `controller=7` test did.
+
+Two changes to the scratch build beyond the recipe above:
+
+1. **`motorsGetRatio()` must become settable.** The NN's own input vector reads it directly
+   (`controller_lee.c` line ~293); the base recipe's stub always returns 0. Add, alongside the
+   existing `oot_test_set_rpm()`:
+   ```c
+   static uint16_t g_test_pwm_ratio[4] = {0, 0, 0, 0};
+   uint16_t motorsGetRatio(uint32_t id) { return (id < 4) ? g_test_pwm_ratio[id] : 0; }
+   void oot_test_set_pwm_ratio(uint32_t m1, uint32_t m2, uint32_t m3, uint32_t m4)
+   {
+     g_test_pwm_ratio[0] = m1; g_test_pwm_ratio[1] = m2;
+     g_test_pwm_ratio[2] = m3; g_test_pwm_ratio[3] = m4;
+   }
+   ```
+   and declare `oot_test_set_pwm_ratio` in the scratch `bindings/cffirmware.i` next to the
+   existing `oot_test_set_rpm`/`oot_test_set_kappa_f` declarations (both occurrences).
+
+2. **`usecTimestamp()`'s fixed-increment stub needs a real fix, not a cosmetic one.** With
+   `use_nn` enabled, `controller_lee.c` calls `usecTimestamp()` **three times per active
+   control tick**, not one: two extra calls (lines ~271/306) bracket the NN forward pass purely
+   to compute an unused `nn_inference_time` diagnostic local, *before* the one call that
+   actually feeds the control law (line 476, the attitude-INDI `dt` measurement).
+   `naindi_hybrid.rs` makes no equivalent profiling calls, so the original "+2000us every call"
+   stub advances the reference's clock **3x faster** than ours between real measurements,
+   inflating `(omega - omega_prev)/dt` and showing up as torque-only mismatches (thrust matched
+   to ~1e-8 throughout; the first, NN-blind attempt failed 3/6 cases, all on `tau`, all
+   correlated with nonzero gyro/RPM-asymmetry — never on the two all-zero-gyro cases, which
+   matched exactly). **Confirmed root cause before patching**: a direct ctypes-level call to
+   the reference's own exported `nn_forward()` against our `naindi_hybrid_test_nn_forward()` on
+   an identical input vector matched **bit-for-bit** — the network port itself was never the
+   problem, only the surrounding test harness's fake clock.
+
+   Fix: make the stub track a repeating 3-call cycle per active tick (profiling-start,
+   profiling-end, real) and only advance on the 3rd call, so elapsed time between successive
+   *real* measurements stays exactly 2000us regardless of the diagnostic calls in between. The
+   one-time `usecTimestamp()` call inside `controllerLeeInit()` (line 161) is excluded from the
+   cycle and always frozen:
+   ```c
+   static uint64_t g_fake_usec = 0;
+   static int g_usec_call_idx = -1;   /* -1 = init call not yet seen */
+   uint64_t usecTimestamp(void)
+   {
+     if (g_usec_call_idx < 0) { g_usec_call_idx = 0; return g_fake_usec; }
+     int sub = g_usec_call_idx % 3;
+     g_usec_call_idx++;
+     if (sub == 2) { g_fake_usec += 2000; }
+     return g_fake_usec;
+   }
+   ```
+
+On our side, `naindi_hybrid.rs` needed one small addition to make the comparison possible at
+all: its own `naindi_hybrid_test_set_j()` test-only inertia-override hook (mirroring, not
+sharing, `naindi.rs`'s `naindi_test_set_j()` — kept as this file's own static per the module's
+isolation requirement), since it had none before and the two sides' real per-platform `J` don't
+match (`REFERENCE_GAINS` uses `16.57e-6/16.66e-6/29.26e-6`; the active `bl` platform build uses
+`23.951e-6/23.951e-6/32.347e-6`).
+
+### Result (2026-09-16)
+
+After the clock fix, **all 6 hand-picked test vectors match to ~1e-9** on thrust and torque —
+including a case deliberately set with `gyro != gyro_reg` (different `gyroNoLpf` vs. `gyro`
+values) to catch a wiring swap between the two, which it would have caught had one existed.
+`controller=8` (`naindi_hybrid.rs`, `use_nn=7`) is now numerically verified against the
+reference's own compiled C, the same standard `controller=7` was held to. **Still never flown**
+— numerical verification is a precondition for flying, not a substitute for it.
+
+```bash
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+python3 host/test_naindi_hybrid_reference.py "$SCRATCH/build" ~/Desktop/crazyflie-firmware/build
+```

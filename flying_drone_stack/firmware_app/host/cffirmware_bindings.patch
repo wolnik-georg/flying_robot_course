@@ -1,5 +1,5 @@
 diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
-index d4ae77ca..4c7f3735 100755
+index d4ae77ca..5aabf0ab 100755
 --- a/bindings/cffirmware.i
 +++ b/bindings/cffirmware.i
 @@ -1,3 +1,7 @@
@@ -10,7 +10,7 @@ index d4ae77ca..4c7f3735 100755
  %module cffirmware
  %include <stdint.i>
  
-@@ -41,6 +45,135 @@
+@@ -41,6 +45,137 @@
  %include "controller_mellinger.h"
  %include "controller_brescianini.h"
  %include "controller_lee.h"
@@ -51,6 +51,7 @@ index d4ae77ca..4c7f3735 100755
 +                                const uint32_t tick);
 +/* Test-only: nn_forward alone, bypassing the whole control law -- see naindi_hybrid.rs. */
 +extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
++extern void naindi_hybrid_test_set_j(float x, float y, float z);
 +/* controller=8's NN reads commanded PWM ratio (motorsGetRatio), not RPM -- injected the same
 + * way oot_set_rpm() injects RPM for controller=6/7. See oot_host.c. */
 +extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
@@ -108,6 +109,7 @@ index d4ae77ca..4c7f3735 100755
 +                                const sensorData_t *sensors, const state_t *state,
 +                                const uint32_t tick);
 +extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
++extern void naindi_hybrid_test_set_j(float x, float y, float z);
 +extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
 +extern float oot_get_e_r(int i);

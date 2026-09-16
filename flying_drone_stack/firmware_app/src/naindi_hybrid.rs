@@ -2,16 +2,18 @@
 //! NA-INDI controller **with `use_nn` enabled**, `~/Desktop/NA-INDI-firmware/src/modules/src/
 //! controller/controller_lee.c` (MIT, Copyright (c) 2024 Khaled Wahba).
 //!
-//! **Status, 2026-09-16: control-law logic written and internally consistent; NOT YET wired
-//! into a firmware controller slot, NOT YET numerically verified against the reference's own
-//! compiled C, NEVER FLOWN.** Do not fly this. Do not cite it as verified. The next steps are:
-//! (1) a `naindi_controller_slot`-style patch adding `ControllerTypeOot3`/`controller=8` to
-//! `controller.c`'s dispatch and `Kconfig`, mirroring `controller=7`'s own patch exactly; (2) a
-//! host-level test harness analogous to `host/test_naindi_reference.py`, comparing this file's
-//! `nn_forward` against `nn_forward()` in their own compiled `nn.c`/`nn_utils.c` on hand-picked
-//! input vectors, and the full control law end to end the same way `controller=7` was verified.
-//! `controller=7` took real iteration to get right (see its own module doc's two host-level
-//! bugs caught by a synthetic hover test) — expect the same here, not a one-shot pass.
+//! **Status, 2026-09-16: wired into a firmware controller slot (`ControllerTypeOot3`) AND
+//! numerically verified against the reference's own compiled C — 6/6 hand-picked test vectors
+//! match to ~1e-9 on thrust and torque, see `host/test_naindi_hybrid_reference.py` and
+//! `host/naindi_reference_build_notes.md`'s "NA-INDI hybrid" addendum. STILL NEVER FLOWN** —
+//! numerical verification is a precondition for flying, not a substitute for it; do not fly
+//! without clearing the same hardware-validation gate every other controller change here does.
+//! One real bug was caught along the way, in the test harness rather than the port: the
+//! reference's `use_nn` path calls `usecTimestamp()` three times per tick (two of them
+//! unused profiling calls bracketing the NN forward pass), which inflated the scratch build's
+//! fake clock 3x relative to this port's single call and showed up as torque-only mismatches
+//! on the first attempt — confirmed NOT a port bug by comparing `nn_forward()` directly
+//! against the reference's own compiled version bit-for-bit on identical input first.
 //!
 //! ## Why this is a SEPARATE module from `naindi.rs` (controller=7), not an extension of it
 //!
@@ -189,6 +191,20 @@ impl State {
 }
 
 static mut ST: State = State::zero();
+
+// Test-only inertia override for host-level numerical-vector validation against the
+// reference's own compiled C (see host/test_naindi_hybrid_reference.py), mirroring
+// naindi.rs's own naindi_test_set_j() exactly (same rationale: J is a compile-time
+// per-platform constant in real flight; this hook only exists so a test can pin both
+// sides to the SAME inertia). Never called outside that test; defaults to the real
+// per-platform JXX/JYY/JZZ untouched. Kept as this file's own static, not shared with
+// naindi.rs's J_TEST_OVERRIDE, per this module's isolation requirement.
+static mut J_TEST_OVERRIDE: Option<Vec3> = None;
+
+#[no_mangle]
+pub extern "C" fn naindi_hybrid_test_set_j(x: f32, y: f32, z: f32) {
+    unsafe { J_TEST_OVERRIDE = Some(Vec3::new(x, y, z)); }
+}
 
 fn vclampscl(v: Vec3, limit: f32) -> Vec3 {
     Vec3::new(v.x.clamp(-limit, limit), v.y.clamp(-limit, limit), v.z.clamp(-limit, limit))
@@ -416,7 +432,7 @@ pub unsafe extern "C" fn controllerOutOfTree3(
     let omega_error = omega.sub(omega_r);
     s.i_error_att = s.i_error_att.add(e_r.scale(dt));
 
-    let j = Vec3::new(JXX, JYY, JZZ);
+    let j = unsafe { J_TEST_OVERRIDE }.unwrap_or(Vec3::new(JXX, JYY, JZZ));
     let j_omega = Vec3::new(j.x * omega.x, j.y * omega.y, j.z * omega.z);
     let gyro_term = omega.cross(j_omega);
 

@@ -155,10 +155,11 @@ footer code{background:none;padding:0}
         <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, and
         compiles clean</b> -- their real trained weights (not a placeholder) extracted and
         embedded, the full force+torque wiring ported line-for-line. <b>2026-09-16: the firmware
-        controller-slot patch is also built and smoke-tested</b> — links clean, Init/Test pass,
-        dispatch reachable, NN forward pass returns sane non-degenerate output on a zero-input
-        test. <b>Still not numerically verified</b> against the reference's own compiled C.
-        Do not fly.</p>
+        controller-slot patch is also built</b> — links clean, Init/Test pass, dispatch
+        reachable. <b>2026-09-16: numerically verified</b> against the reference's own compiled
+        C — 6/6 hand-picked test vectors match to ~1e-9 on thrust and torque (a test-harness
+        clock bug, not a port bug, was found and fixed along the way — confirmed by comparing
+        the NN forward pass alone bit-for-bit first). <b>Still never flown</b> — do not fly.</p>
     </div>
   </section>
 
@@ -240,7 +241,7 @@ footer code{background:none;padding:0}
           <td class="num">4</td>
           <td><span class="strategy-name">Hybrid — NA-INDI</span></td>
           <td class="paper">Cobo-Briesewitz et al., <code style="background:none">use_nn=1</code></td>
-          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">logic written, unverified</span></td>
+          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">verified ~1e-9, unflown</span></td>
           <td><span class="pill pill-hold">compiles, needs verification + slot patch</span></td>
         </tr>
         <tr>
