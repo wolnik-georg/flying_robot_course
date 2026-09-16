@@ -244,6 +244,12 @@ float g_indi_kt2    = 1.4815e-10f;
 float g_indi_kt3    = 1.5319e-10f;
 float g_indi_kt4    = 1.6119e-10f;
 float g_indi_fc_bw  = 60.0f;     /* Butterworth cutoff [Hz] — applied to alpha_raw and alpha_ref */
+/* Per-axis yaw filter cutoff (2026-09-16, NA-INDI comparison item #3, docs/22 sec 2e): their
+ * reference uses ~10 Hz for yaw vs ~40 Hz roll/pitch -- yaw torque (motor drag-torque
+ * differences) is noisier than roll/pitch arm torque. 0.0 (default) = yaw uses fc_bw too,
+ * byte-identical to today's uniform filtering. Only the angular-rate chains (bw_z/bw_pre_z/
+ * bw_tau_z/bw_ref_z) read this -- the position loop's accelerometer prefilter stays on fc_bw. */
+float g_indi_fc_bw_yaw = 0.0f;
 float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat with old yaml files) */
 float g_indi_mass   = 0.0364f;   /* all-up mass [kg] — CF2.1 + USD + RPM, measured 36.4g */
 /* H1a diagnostic (2026-07-18): force tau_current = tau_prev even when the RPM deck IS active,
@@ -475,6 +481,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, kt3,    &g_indi_kt3)
   PARAM_ADD(PARAM_FLOAT, kt4,    &g_indi_kt4)
   PARAM_ADD(PARAM_FLOAT, fc_bw,  &g_indi_fc_bw)
+  PARAM_ADD(PARAM_FLOAT, fc_bw_yaw, &g_indi_fc_bw_yaw)
   PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
   PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)

@@ -499,6 +499,27 @@ torque residual conditioning (#2 in the difference table — a *different* #2 th
 one above, easy to confuse; the "consider"-priority item, never built) and per-axis yaw
 filtering (also never built, low priority — the shake is roll/pitch, not yaw).
 
+### ⚪ Torque residual conditioning (item #2 in the difference table, isolated 2026-09-16) — no observable effect
+
+Built `indi_gains.tau_clamp` (default `0.0` = off, byte-identical): a norm clamp on
+`tau_current`, applied before `filt_tau`'s existing Butterworth filter, mirroring how
+`res_clamp` already bounds `a_res`. We already filter `tau_current` (`filt_tau=1`, 60Hz BW)
+but never clamped it; their reference does both (0.006 Nm on their airframe). Their number
+isn't ours to copy directly — scaled to this airframe's real headroom (`tau_xy_max=0.045`),
+tested at `tau_clamp=0.03`.
+
+**Result: `tau_clamp=0.03` flown through the same full-INDI hover — behaviour indistinguishable
+from `tau_clamp=0` (off).** Not the driver either. Left at default (`0.0`).
+
+**Every Briesewitz-comparison item with a runtime-testable path has now been tried: #1
+(applied), #2/filter (reverted), #2/torque-clamp (tried, no effect), #3 (ruled out), #5 (tried,
+no effect), N1 (tried, no effect). All null or neutral results.** The one item left
+(per-axis yaw filtering) is explicitly low priority per the original recommendation — the
+observed shake is roll/pitch, not yaw — and would need its own new firmware param to even
+test. At this point the comparison-driven approach has been exhausted without finding the
+cause; whatever is driving the attitude oscillation is very likely NOT explained by any single
+documented difference between this controller and the NA-INDI reference.
+
 ---
 
 ## 2g. ⚠️ NA-INDI has the SAME sample-rate bug — do not copy their numbers

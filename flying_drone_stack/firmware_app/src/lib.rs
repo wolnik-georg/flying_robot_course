@@ -685,6 +685,7 @@ struct State {
     tau_act: Vec3,      // act_dyn base state (first-order model of clamped commands)
     indi_init: bool,
     fc_bw_last: f32,
+    fc_bw_yaw_last: f32,
     filt_dt_us_last: u16,
     filt_prewarp_last: u8,
     dt_meas: f32,
@@ -722,6 +723,7 @@ impl State {
             tau_act: Vec3::zero(),
             indi_init: false,
             fc_bw_last: 0.0,
+            fc_bw_yaw_last: 0.0,
             filt_dt_us_last: 0xFFFF,
             filt_prewarp_last: 0xFF,
             dt_meas: 0.001,
@@ -948,6 +950,7 @@ extern "C" {
     static mut g_indi_kt3:    f32;
     static mut g_indi_kt4:    f32;
     static mut g_indi_fc_bw:  f32;
+    static mut g_indi_fc_bw_yaw: f32;
     static mut g_indi_mass:   f32;
     // Optional stage-2 notch filter (2026-07-28, shake investigation): 0=off (default,
     // byte-identical to today), 1=on. f0/bw are runtime-tunable [Hz] (Q = f0/bw).
@@ -2136,13 +2139,25 @@ pub unsafe extern "C" fn controllerOutOfTree(
     let dt_changed = filt_dt_us != s.filt_dt_us_last || prewarp != s.filt_prewarp_last;
     if dt_changed { s.filt_dt_us_last = filt_dt_us; s.filt_prewarp_last = prewarp; }
     let fc_bw = g_indi_fc_bw;
-    if (fc_bw - s.fc_bw_last).abs() > 0.1 || dt_changed {
-        s.bw_x.init(fc_bw, DT_NOM);     s.bw_y.init(fc_bw, DT_NOM);     s.bw_z.init(fc_bw, DT_NOM);
-        s.bw_pre_x.init(fc_bw, DT_NOM); s.bw_pre_y.init(fc_bw, DT_NOM); s.bw_pre_z.init(fc_bw, DT_NOM);
-        s.bw_tau_x.init(fc_bw, DT_NOM); s.bw_tau_y.init(fc_bw, DT_NOM); s.bw_tau_z.init(fc_bw, DT_NOM);
-        s.bw_ref_x.init(fc_bw, DT_NOM); s.bw_ref_y.init(fc_bw, DT_NOM); s.bw_ref_z.init(fc_bw, DT_NOM);
+    // Per-axis yaw filtering (indi_gains.fc_bw_yaw, 2026-09-16, NA-INDI comparison item #3,
+    // docs/22 sec 2e): their reference uses a much lower cutoff for yaw (~10 Hz) than
+    // roll/pitch (~40 Hz) -- yaw torque comes from motor drag-torque differences (t2t), an
+    // order of magnitude below roll/pitch arm torque and correspondingly noisier. We filter
+    // all three axes uniformly at fc_bw. 0.0 (default) = yaw uses fc_bw too, byte-identical.
+    // Applies only to the angular-rate filter chains (bw_z/bw_pre_z/bw_tau_z/bw_ref_z);
+    // bw_acc_z is the POSITION loop's world-frame accelerometer prefilter, unrelated to yaw
+    // torque, and intentionally left on fc_bw.
+    let fc_bw_yaw_raw = g_indi_fc_bw_yaw;
+    let fc_bw_yaw = if fc_bw_yaw_raw > 0.0 { fc_bw_yaw_raw } else { fc_bw };
+    if (fc_bw - s.fc_bw_last).abs() > 0.1 || (fc_bw_yaw_raw - s.fc_bw_yaw_last).abs() > 0.1
+        || dt_changed {
+        s.bw_x.init(fc_bw, DT_NOM);         s.bw_y.init(fc_bw, DT_NOM);         s.bw_z.init(fc_bw_yaw, DT_NOM);
+        s.bw_pre_x.init(fc_bw, DT_NOM);     s.bw_pre_y.init(fc_bw, DT_NOM);     s.bw_pre_z.init(fc_bw_yaw, DT_NOM);
+        s.bw_tau_x.init(fc_bw, DT_NOM);     s.bw_tau_y.init(fc_bw, DT_NOM);     s.bw_tau_z.init(fc_bw_yaw, DT_NOM);
+        s.bw_ref_x.init(fc_bw, DT_NOM);     s.bw_ref_y.init(fc_bw, DT_NOM);     s.bw_ref_z.init(fc_bw_yaw, DT_NOM);
         s.bw_acc_x.init(fc_bw, DT_NOM); s.bw_acc_y.init(fc_bw, DT_NOM); s.bw_acc_z.init(fc_bw, DT_NOM);
         s.fc_bw_last = fc_bw;
+        s.fc_bw_yaw_last = fc_bw_yaw_raw;
     }
 
     // Reinit the optional notch filter when its center/bandwidth change at runtime
