@@ -500,6 +500,12 @@ ros2 run crazyflie_examples simple_flight -- --trajectory figure8 --kt 0.008</di
   any other controller. <strong>Never flown</strong> — needs its own hover-first hardware
   validation, on a tether if available, before it is anything more than a numerically-verified
   candidate.</p>
+  <p class="note"><strong>2026-09-16 update: do not attempt that hardware validation.</strong>
+  A first closed-loop simulator run found controller=7 crashes a plain single-drone hover, and
+  the same bug affects the new controller=8 (NA-INDI hybrid, built the same day). One root cause
+  fixed (a hardcoded reference-airframe constant); a second, still open. See
+  <code>docs/next_flight_card.html</code> and <code>docs/strategy_controller_map.html</code> for
+  current status — this candidate is on hold, not ready for hardware.</p>
 </section>
 
 <section class="stage">
