@@ -637,6 +637,7 @@ struct State {
     i_ep: Vec3,
     i_error_att: Vec3,
     last_tick: u32,
+    timestamp_prev_us: u64,  // usecTimestamp() at the previous tick, for g_indi_dt_usec=1
     // INDI filter chain (legacy order, default): raw omega → diff → BW → α_meas
     bw_x: Butterworth2, bw_y: Butterworth2, bw_z: Butterworth2,
     // INDI filter chain (paper order, filt_order=1): raw omega → BW → diff → α_meas
@@ -699,7 +700,7 @@ struct State {
 impl State {
     const fn zero() -> Self {
         Self {
-            i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0,
+            i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0, timestamp_prev_us: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_pre_x: Butterworth2::zero(), bw_pre_y: Butterworth2::zero(), bw_pre_z: Butterworth2::zero(),
             omega_filt_prev: Vec3::zero(),
@@ -907,6 +908,9 @@ extern "C" {
     fn indi_a_res_write(ax: f32, ay: f32, az: f32);
     fn indi_e_r_write(ex: f32, ey: f32, ez: f32, norm: f32);
     fn indi_dt_write(dt_us: f32);
+    // Microsecond wall clock (usec_time.c on target, oot_host.c stub on host) -- same
+    // function naindi.rs (controller=7/8) uses for its own attitude-INDI dt.
+    fn usecTimestamp() -> u64;
 }
 
 // ── Onboard trajectory state ───────────────────────────────────────────────
@@ -962,6 +966,11 @@ extern "C" {
     // 1 (default) = 2026-09-09 audit fix N1 active (alpha_ref always uses g_indi_kr/kw).
     // 0 = revert to the pre-fix mode-selected kr_geo/kw_geo pair, for an isolated A/B test.
     static mut g_indi_n1_fix: u8;
+    // 0 = tick-counter dt (default, 1ms-quantised: (tick-last_tick)*0.001, up to ~50% error
+    // per sample under scheduler jitter). 1 = usecTimestamp()-based dt (microsecond
+    // resolution) for alpha_raw/alpha_meas's finite difference -- NA-INDI comparison item #5
+    // (docs/22_NA_INDI_Repo_Survey.md sec 2e), the one difference never actually tested.
+    static mut g_indi_dt_usec: u8;
     // 0 = legacy diff-then-filter order (default), 1 = paper order (filter-then-diff)
     static mut g_indi_filt_order: u8;
     // 0 = legacy unfiltered tau_current (default), 1 = filter μ_f to phase-match α_meas (paper Eq.29)
@@ -2137,8 +2146,20 @@ pub unsafe extern "C" fn controllerOutOfTree(
         s.notch_bw_last = notch_bw;
     }
 
-    let dt = if s.last_tick == 0 { 0.002_f32 }
-             else { (tick.wrapping_sub(s.last_tick)) as f32 * 0.001_f32 };
+    // dt_usec (default 0 = tick-counter, byte-identical to prior behaviour): the raw
+    // angular-acceleration finite difference (alpha_raw = d_omega/dt below) is the noisiest,
+    // most safety-critical signal in the whole INDI loop, and the 1ms tick quantisation can
+    // be up to ~50% error on a single sample under scheduler jitter -- NA-INDI comparison
+    // item #5, never tested before now. 1 = usecTimestamp()-based dt (microsecond
+    // resolution), same clock naindi.rs already uses for the same purpose.
+    let dt = if g_indi_dt_usec != 0 {
+        let ts = usecTimestamp();
+        let d = if s.timestamp_prev_us == 0 { 0.002_f32 }
+                else { ((ts - s.timestamp_prev_us) as f32) / 1.0e6 };
+        s.timestamp_prev_us = ts;
+        d
+    } else if s.last_tick == 0 { 0.002_f32 }
+      else { (tick.wrapping_sub(s.last_tick)) as f32 * 0.001_f32 };
     s.last_tick = tick;
     s.dt_meas = dt;
     unsafe { indi_dt_write(dt * 1.0e6); }

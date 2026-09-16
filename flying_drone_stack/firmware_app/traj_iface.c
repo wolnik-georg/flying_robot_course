@@ -265,6 +265,16 @@ uint8_t g_indi_ff_free = 0;
    an actual geometric-ramp -> full-INDI handover -- never independently isolated before. */
 uint8_t g_indi_n1_fix = 1;
 
+/* dt source for alpha_raw/alpha_meas's finite difference (2026-09-16, NA-INDI comparison
+   item #5, docs/22_NA_INDI_Repo_Survey.md sec 2e -- "dt resolution", never tested before now,
+   distinct from the filt_dt_us sample-rate-for-filter-DESIGN fix which only changes filter
+   coefficients, not this). 0 (default) = tick-counter dt, (tick-last_tick)*0.001, 1ms-quantised
+   -- up to ~50% error on a single sample under scheduler jitter, directly scaling alpha_raw,
+   the noisiest and most safety-critical signal in the INDI loop. 1 = usecTimestamp()-based dt,
+   microsecond resolution -- the same clock naindi.rs (controller=7/8) already uses for the
+   same purpose. Byte-identical to today at default. */
+uint8_t g_indi_dt_usec = 0;
+
 /* Filter order for the INDI angular-acceleration measurement chain (2026-07-18).
    0 = legacy: diff(raw omega) -> Butterworth -> alpha_meas. Today's exact behaviour,
        byte-identical -- standard/upgraded validated gains and results are unaffected.
@@ -461,6 +471,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
   PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
   PARAM_ADD(PARAM_UINT8, n1_fix, &g_indi_n1_fix)
+  PARAM_ADD(PARAM_UINT8, dt_usec, &g_indi_dt_usec)
   PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
   PARAM_ADD(PARAM_UINT8, filt_tau, &g_indi_filt_tau)
   PARAM_ADD(PARAM_FLOAT, j_scale, &g_indi_j_scale)
