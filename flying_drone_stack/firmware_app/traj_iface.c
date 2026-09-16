@@ -444,6 +444,14 @@ uint8_t g_indi_filt_prewarp = 0;
 float g_indi_res_fc    = 0.0f;
 float g_indi_res_clamp = 0.0f;
 
+/* ── Torque residual conditioning — attitude INDI ────────────────────────────
+ * NA-INDI comparison item #2 (docs/22 sec 2e): our tau_current is already
+ * Butterworth-filtered (indi_gains.filt_tau) but never clamped. Their reference clamps
+ * tau_current's magnitude (0.006 Nm on their airframe) before it feeds the increment.
+ * tau_clamp — norm clamp [Nm] on tau_current, applied before filt_tau's BW filter.
+ *             0 = off (default, today's behaviour, byte-identical). */
+float g_indi_tau_clamp = 0.0f;
+
 uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
 float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
@@ -488,6 +496,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, filt_prewarp, &g_indi_filt_prewarp)
   PARAM_ADD(PARAM_FLOAT, res_fc,       &g_indi_res_fc)
   PARAM_ADD(PARAM_FLOAT, res_clamp,    &g_indi_res_clamp)
+  PARAM_ADD(PARAM_FLOAT, tau_clamp,    &g_indi_tau_clamp)
   PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
   PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
   PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)
