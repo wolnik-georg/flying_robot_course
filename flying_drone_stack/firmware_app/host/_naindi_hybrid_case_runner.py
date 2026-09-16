@@ -65,6 +65,8 @@ def run_reference(fw, case, gains):
 
     control = fw.control_t()
     for tick in range(0, 40):
+        if hasattr(fw, 'oot_test_set_tick'):
+            fw.oot_test_set_tick(tick)
         fw.controllerLee(ctrl, control, sp, sensors, st, tick)
     return control.thrustSi, (control.torqueX, control.torqueY, control.torqueZ)
 
@@ -77,6 +79,7 @@ def run_ours(fw_ours, case, gains):
     fw_ours.cvar.g_indi_kt1, fw_ours.cvar.g_indi_kt2, \
         fw_ours.cvar.g_indi_kt3, fw_ours.cvar.g_indi_kt4 = gains["kt"]
     fw_ours.naindi_hybrid_test_set_j(*gains["J"])
+    fw_ours.naindi_hybrid_test_set_arm(gains["arm"], gains["t2t"])
 
     sp = fw_ours.setpoint_t()
     sp.position.x, sp.position.y, sp.position.z = case["sp_pos"]

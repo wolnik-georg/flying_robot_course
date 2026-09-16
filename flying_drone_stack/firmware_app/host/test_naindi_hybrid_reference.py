@@ -68,6 +68,12 @@ REFERENCE_GAINS = dict(
     Komega=(0.002, 0.002, 0.002),
     KI=(0.01, 0.01, 0.01),
     kt=(1.5e-10, 1.5e-10, 1.5e-10, 1.5e-10),
+    # 2026-09-16: arm/t2t now pinned explicitly too, not left as naindi_hybrid.rs's old
+    # hardcoded default -- see naindi_hybrid.rs's own comment on why that default became
+    # platform-conditional (CS2-sim-confirmed closed-loop instability on the real CF21BL
+    # airframe otherwise).
+    arm=0.707_106_78 * 0.046,
+    t2t=0.006,
 )
 
 

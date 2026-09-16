@@ -97,11 +97,45 @@ const CUTOFF_ACC: f32 = 80.0;  // Hz, position-INDI accel filters
 const CUTOFF_TAU: f32 = 40.0;  // Hz, attitude-INDI roll/pitch filters
 const CUTOFF_Z: f32 = 10.0;    // Hz, attitude-INDI yaw filter
 
-// arm = sqrt(2)/2 * 0.046, t2t = 0.006 — reference literals for a stock CF2.1, kept verbatim
-// (this is the RPM->torque mixer model, a property of the reference's own thrust/torque
-// identification, not this project's airframe constant `ARM_M`/`TORQUE_RATIO`).
-const ARM_REF: f32 = 0.707_106_78_f32 * 0.046;
-const T2T_REF: f32 = 0.006;
+// 2026-09-16 CORRECTED: this used to hardcode the reference's own stock-CF2.1 literals
+// (arm=sqrt(2)/2*0.046, t2t=0.006) unconditionally, reasoned as "the RPM->torque mixer
+// model, a property of the reference's own thrust/torque identification" -- i.e. treated
+// as a deliberate port-fidelity choice, the same way mass/J are kept as documented
+// deviations. That reasoning had a real gap: unlike mass/J/kt (which already correctly
+// track THIS project's real, per-platform airframe via g_indi_mass/JXX,JYY,JZZ/g_indi_kt1-4
+// -- see the `let j = ... Vec3::new(JXX, JYY, JZZ)` line below), a hardcoded arm/t2t makes
+// `tau_rpm` estimate the torque a DIFFERENT vehicle's motors would produce, not the one
+// actually being simulated/flown. Confirmed empirically 2026-09-16: running this port in
+// the closed-loop CS2 sim on the real CF21BL brushless airframe (arm=0.050m, i.e. an 8%
+// LARGER diagonal arm than the reference's own 0.046m CF2.1) produced a growing attitude
+// oscillation reaching a full tumble by ~t=14s on a plain single-drone hover -- while
+// controller=6 (lib.rs, which already reads the correct per-platform ARM_M/TORQUE_RATIO)
+// sailed through the identical scenario with zero disturbance. The static numerical test
+// vectors (test_naindi_reference.py) could never have caught this: they deliberately pin
+// mass/J to the reference's OWN values to isolate "is the algorithm ported correctly" from
+// "does it match our airframe" -- by construction they never simulate a real plant with its
+// own physical arm length at all. Now airframe-aware, same #[cfg(drone_bl)] switch lib.rs
+// uses, with a test-only override (naindi_test_set_arm) so the numerical-verification test
+// can still pin these to the reference's own literals for a valid apples-to-apples check.
+#[cfg(not(drone_bl))]
+const ARM_REF_DEFAULT: f32 = 0.032_526_9_f32;   // sqrt(2)/2 * 0.046 -- standard/upgraded CF2.1
+#[cfg(not(drone_bl))]
+const T2T_REF_DEFAULT: f32 = 0.005_964_552_f32;
+#[cfg(drone_bl)]
+const ARM_REF_DEFAULT: f32 = 0.035_355_3_f32;   // sqrt(2)/2 * 0.050 -- CF21BL brushless
+#[cfg(drone_bl)]
+const T2T_REF_DEFAULT: f32 = 0.005_692_788_4_f32;
+
+static mut ARM_T2T_TEST_OVERRIDE: Option<(f32, f32)> = None;
+
+/// Test-only override for host-level numerical-vector validation against the reference's
+/// own compiled C (see host/test_naindi_reference.py), mirroring naindi_test_set_j exactly.
+/// Never called outside that test; defaults to the real per-platform ARM_REF_DEFAULT/
+/// T2T_REF_DEFAULT untouched.
+#[no_mangle]
+pub extern "C" fn naindi_test_set_arm(arm: f32, t2t: f32) {
+    unsafe { ARM_T2T_TEST_OVERRIDE = Some((arm, t2t)); }
+}
 
 /// Second-order Butterworth low-pass, exact `filter.h`/`filter.c` discretisation:
 /// pre-warped bilinear, fixed Q = 0.7071, direct-form-II-ish two-tap history.
@@ -361,11 +395,13 @@ pub unsafe extern "C" fn controllerOutOfTree2(
 
     // -- Attitude/torque INDI (indi & 2) -------------------------------------------------------
     if INDI_MODE & 2 != 0 {
+        let (arm_ref, t2t_ref) = unsafe { ARM_T2T_TEST_OVERRIDE }
+            .unwrap_or((ARM_REF_DEFAULT, T2T_REF_DEFAULT));
         let tau_rpm = clamp_norm(
             Vec3::new(
-                -ARM_REF * t1 - ARM_REF * t2 + ARM_REF * t3 + ARM_REF * t4,
-                -ARM_REF * t1 + ARM_REF * t2 + ARM_REF * t3 - ARM_REF * t4,
-                -T2T_REF * t1 + T2T_REF * t2 - T2T_REF * t3 + T2T_REF * t4,
+                -arm_ref * t1 - arm_ref * t2 + arm_ref * t3 + arm_ref * t4,
+                -arm_ref * t1 + arm_ref * t2 + arm_ref * t3 - arm_ref * t4,
+                -t2t_ref * t1 + t2t_ref * t2 - t2t_ref * t3 + t2t_ref * t4,
             ),
             0.006,
         );

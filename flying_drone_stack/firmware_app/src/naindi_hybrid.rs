@@ -128,8 +128,34 @@ const CUTOFF_ACC: f32 = 80.0;
 const CUTOFF_TAU: f32 = 40.0;
 const CUTOFF_Z: f32 = 10.0;
 
-const ARM_REF: f32 = 0.707_106_78_f32 * 0.046;
-const T2T_REF: f32 = 0.006;
+// 2026-09-16 CORRECTED: was hardcoded to the reference's own stock-CF2.1 literals
+// unconditionally -- see naindi.rs's own (much longer) comment on the identical fix there
+// for the full story. Short version: unlike mass/J/kt (already airframe-aware via
+// g_indi_mass/JXX,JYY,JZZ/g_indi_kt1-4), a hardcoded arm/t2t made `tau_rpm` model a
+// DIFFERENT vehicle's motors than the one actually simulated/flown. Confirmed empirically
+// (2026-09-16 CS2 sim, single-drone hover, controller=8): a growing attitude oscillation to
+// a full tumble by ~t=14s, absent under controller=6 on the identical scenario, root-caused
+// to this same mismatch shared with naindi.rs (this file mirrors naindi.rs's INDI logic
+// line-for-line where they overlap, including this bug). Now airframe-aware with the same
+// #[cfg(drone_bl)] switch lib.rs uses, plus its own test-only override (kept separate from
+// naindi.rs's, per this module's isolation requirement) so test_naindi_hybrid_reference.py
+// can still pin the reference's own literals for the numerical-verification comparison.
+#[cfg(not(drone_bl))]
+const ARM_REF_DEFAULT: f32 = 0.032_526_9_f32;   // sqrt(2)/2 * 0.046 -- standard/upgraded CF2.1
+#[cfg(not(drone_bl))]
+const T2T_REF_DEFAULT: f32 = 0.005_964_552_f32;
+#[cfg(drone_bl)]
+const ARM_REF_DEFAULT: f32 = 0.035_355_3_f32;   // sqrt(2)/2 * 0.050 -- CF21BL brushless
+#[cfg(drone_bl)]
+const T2T_REF_DEFAULT: f32 = 0.005_692_788_4_f32;
+
+static mut ARM_T2T_TEST_OVERRIDE: Option<(f32, f32)> = None;
+
+/// Test-only override, mirroring naindi_hybrid_test_set_j exactly (see there for rationale).
+#[no_mangle]
+pub extern "C" fn naindi_hybrid_test_set_arm(arm: f32, t2t: f32) {
+    unsafe { ARM_T2T_TEST_OVERRIDE = Some((arm, t2t)); }
+}
 
 /// Second-order Butterworth low-pass -- identical to `naindi.rs`'s, duplicated rather than
 /// shared per this module's isolation requirement (see module doc).
@@ -449,11 +475,13 @@ pub unsafe extern "C" fn controllerOutOfTree3(
     // -- Attitude/torque INDI, with u_nn folded in symmetrically with the force side -----------
     // (controller_lee.c lines 451-497: tau_rpm += u_nn before filtering; u -= indi_moments; u -= u_nn)
     if INDI_MODE & 2 != 0 {
+        let (arm_ref, t2t_ref) = unsafe { ARM_T2T_TEST_OVERRIDE }
+            .unwrap_or((ARM_REF_DEFAULT, T2T_REF_DEFAULT));
         let tau_rpm = clamp_norm(
             Vec3::new(
-                -ARM_REF * t1 - ARM_REF * t2 + ARM_REF * t3 + ARM_REF * t4,
-                -ARM_REF * t1 + ARM_REF * t2 + ARM_REF * t3 - ARM_REF * t4,
-                -T2T_REF * t1 + T2T_REF * t2 - T2T_REF * t3 + T2T_REF * t4,
+                -arm_ref * t1 - arm_ref * t2 + arm_ref * t3 + arm_ref * t4,
+                -arm_ref * t1 + arm_ref * t2 + arm_ref * t3 - arm_ref * t4,
+                -t2t_ref * t1 + t2t_ref * t2 - t2t_ref * t3 + t2t_ref * t4,
             ).add(u_nn),
             0.006,
         );
