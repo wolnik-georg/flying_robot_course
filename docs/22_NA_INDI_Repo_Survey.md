@@ -478,6 +478,27 @@ behaviour indistinguishable from `n1_fix=1`.** N1 is not the (or not a significa
 whatever attitude behaviour is currently being chased. Left at its default (`1`) going forward;
 the toggle stays in the firmware for any future re-test but is not a live investigation.
 
+### ⚪ #5 (dt resolution, isolated 2026-09-16) — no observable effect
+
+Built a runtime toggle (`indi_gains.dt_usec`, default `0` = tick-counter dt, 1ms-quantised;
+`1` = `usecTimestamp()`-based dt, microsecond resolution — same clock `naindi.rs` uses)
+specifically to test this difference for the first time, distinct from the `filt_dt_us`
+sample-rate-for-filter-*design* fix (already tried and reverted, see #2 above) — `dt_usec`
+changes the actual `alpha_raw = d_omega/dt` finite difference itself.
+
+**Result: `dt_usec=1` flown through the same full-INDI hover — behaviour indistinguishable
+from `dt_usec=0`.** Tick-quantisation jitter on `dt` is not a significant driver of the
+attitude behaviour either. Left at default (`0`).
+
+**Status after N1 and #5: every Briesewitz-comparison item that could be tested with a
+runtime toggle (no new firmware structure needed) has now been tried — #1 (applied, neutral),
+#2 (tried, reverted), #3 (investigated, ruled out), #5 (tried, no effect), N1 (tried, no
+effect). Nothing on this list has moved the needle so far.** The two remaining items both
+require building genuinely new firmware structure before they're even testable:
+torque residual conditioning (#2 in the difference table — a *different* #2 than the filter
+one above, easy to confuse; the "consider"-priority item, never built) and per-axis yaw
+filtering (also never built, low priority — the shake is roll/pitch, not yaw).
+
 ---
 
 ## 2g. ⚠️ NA-INDI has the SAME sample-rate bug — do not copy their numbers
