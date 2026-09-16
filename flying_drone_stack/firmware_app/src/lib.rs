@@ -958,6 +958,7 @@ extern "C" {
     static mut g_indi_filt_prewarp: u8;
     static mut g_indi_res_fc: f32;
     static mut g_indi_res_clamp: f32;
+    static mut g_indi_tau_clamp: f32;
     static mut g_indi_notch_en: u8;
     static mut g_indi_notch_f0: f32;
     static mut g_indi_notch_bw: f32;
@@ -1944,6 +1945,17 @@ fn controller_step(
     } else {
         s.tau_prev
     };
+
+    // Torque residual conditioning (indi_gains.tau_clamp, 2026-09-16, default 0 = off,
+    // byte-identical): NA-INDI comparison item #2 (docs/22 sec 2e) -- their reference clamps
+    // tau_current's magnitude (0.006 Nm on their airframe) before it feeds the INDI increment,
+    // bounding one bad RPM-derived sample the way res_clamp already bounds a_res. We already
+    // Butterworth-filter tau_current (filt_tau=1) but never clamped it -- this adds the
+    // missing half. Clamp BEFORE filtering, same ordering rationale as res_clamp/res_fc above:
+    // filtering an already-clamped signal is well-defined; clamping a filtered signal would
+    // let one bad sample's energy leak into the filter state first.
+    let tau_clamp = unsafe { g_indi_tau_clamp };
+    let tau_current_raw = if tau_clamp > 0.0 { clamp_norm(tau_current_raw, tau_clamp) } else { tau_current_raw };
 
     // filt_tau (indi_gains.filt_tau, default 0): low-pass the increment base term (μ_f) with
     // the SAME Butterworth as α_meas, so τ = μ_f + J·(α_ref − α_meas) is phase-matched — Tal &
