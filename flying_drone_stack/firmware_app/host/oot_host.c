@@ -68,6 +68,29 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     *m3 = g_host_rpm[2]; *m4 = g_host_rpm[3];
 }
 
+/* 2026-09-16: controller=8 (naindi_hybrid.rs) calls motorsGetRatio() directly -- their NN's
+ * own input vector uses commanded PWM ratio, not measured RPM (see controller_lee.c's own
+ * comment: "not RPM-free... uses commanded PWM instead"). motors.c is not part of the SIL/host
+ * build (it is a real STM32 PWM/DSHOT driver with no host equivalent), so this symbol would
+ * otherwise be undefined at link time -- same reason rpm_get_all needed a host stub above.
+ * Same injection pattern: a test pushes values with oot_set_pwm_ratio() before stepping the
+ * controller, exactly like oot_set_rpm() does for RPM. */
+static uint16_t g_host_pwm_ratio[4] = {0, 0, 0, 0};
+
+void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4)
+{
+    g_host_pwm_ratio[0] = m1; g_host_pwm_ratio[1] = m2;
+    g_host_pwm_ratio[2] = m3; g_host_pwm_ratio[3] = m4;
+}
+
+uint16_t motorsGetRatio(uint32_t id)
+{
+    if (id < 4) {
+        return g_host_pwm_ratio[id];
+    }
+    return 0;
+}
+
 /* ── log sinks: latch the values the controller publishes ─────────────────── */
 static float l_alp_raw[3], l_alp[3], l_tau[3], l_alp_notch[3], l_a_res[3];
 static float l_e_r[3], l_e_r_norm;

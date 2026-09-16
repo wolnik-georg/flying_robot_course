@@ -9,6 +9,14 @@ CONFIG_CONTROLLER_OOT=y
 # 2026-09-14: second OOT slot -- stabilizer.controller=7, the faithful NA-INDI port,
 # implemented in a separate Rust module (src/naindi.rs) so it never touches the code above.
 CONFIG_CONTROLLER_OOT2=y
+# 2026-09-16: third OOT slot -- stabilizer.controller=8, the SAME reference file as OOT2 but
+# with use_nn enabled (true NA-INDI), implemented in src/naindi_hybrid.rs, no shared state with
+# either controller above. Enabling this flag only makes controller=8 a VALID, selectable enum
+# value -- it does not change what any existing flight runs, since that is still chosen at
+# runtime via stabilizer.controller (crazyflies.yaml), unaffected by this. NOT YET NUMERICALLY
+# VERIFIED against the reference's own compiled C -- do not select controller=8 in flight until
+# it is. See firmware_app/host/LOCAL_MODIFICATIONS.md.
+CONFIG_CONTROLLER_OOT3=y
 CONFIG_DECK_FORCE="bcRpm"
 # Drone has the Bitcraze thrust upgrade kit (upgraded motors + props).
 # Selects the matching mixer thrust model: THRUST_MAX 0.18 N (was 0.12),

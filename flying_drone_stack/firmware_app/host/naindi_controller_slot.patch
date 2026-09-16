@@ -1,8 +1,8 @@
 diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
-index 4854009b..c0a702d3 100644
+index 4854009b..4f5c07ba 100644
 --- a/src/modules/interface/controller/controller.h
 +++ b/src/modules/interface/controller/controller.h
-@@ -37,6 +37,14 @@ typedef enum {
+@@ -37,6 +37,26 @@ typedef enum {
    ControllerTypeLee,
  #ifdef CONFIG_CONTROLLER_OOT
    ControllerTypeOot,
@@ -14,10 +14,22 @@ index 4854009b..c0a702d3 100644
 +  // never ambiguity between "our controller" and "the faithful port". See
 +  // firmware_app/host/LOCAL_MODIFICATIONS.md.
 +  ControllerTypeOot2,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT3
++  // 2026-09-16: third, independent out-of-tree controller slot -- ControllerTypeOot2 (above)
++  // ports controller_lee.c with `use_nn` left OUT (their INDI, our Strategy 1's second
++  // implementation); this one ports the SAME file with `use_nn` ENABLED, their real trained
++  // network included (Strategy 4, true NA-INDI). Kept fully separate from BOTH ControllerTypeOot
++  // and ControllerTypeOot2 -- own enum value, own dispatch row, own Rust module
++  // (firmware_app/src/naindi_hybrid.rs), no shared state with either -- so none of the three can
++  // ever interfere with another. See firmware_app/host/LOCAL_MODIFICATIONS.md and
++  // docs/strategy_controller_map.html (flying_robot_course repo) for why this is a distinct
++  // strategy from ControllerTypeOot2, not a variant of it.
++  ControllerTypeOot3,
  #endif
    ControllerType_COUNT,
  } ControllerType;
-@@ -57,4 +65,11 @@ bool controllerOutOfTreeTest(void);
+@@ -57,4 +77,18 @@ bool controllerOutOfTreeTest(void);
  void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
  #endif
  
@@ -28,12 +40,19 @@ index 4854009b..c0a702d3 100644
 +void controllerOutOfTree2(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
 +#endif
 +
++#ifdef CONFIG_CONTROLLER_OOT3
++// third OOT slot -- see ControllerTypeOot3 above
++void controllerOutOfTree3Init(void);
++bool controllerOutOfTree3Test(void);
++void controllerOutOfTree3(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
  #endif //__CONTROLLER_H__
 diff --git a/src/modules/src/Kconfig b/src/modules/src/Kconfig
-index 0a5b4a9e..8794f736 100644
+index 0a5b4a9e..25ebc251 100644
 --- a/src/modules/src/Kconfig
 +++ b/src/modules/src/Kconfig
-@@ -53,6 +53,16 @@ config CONTROLLER_OOT
+@@ -53,6 +53,28 @@ config CONTROLLER_OOT
      bool "Out-of-tree controller"
      default n
  
@@ -47,20 +66,36 @@ index 0a5b4a9e..8794f736 100644
 +        risk of the two interfering. Selects ControllerTypeOot2 (stabilizer.controller=7,
 +        assuming CONTROLLER_OOT is also enabled).
 +
++config CONTROLLER_OOT3
++    bool "Third out-of-tree controller (2026-09-16: NA-INDI with use_nn, unverified)"
++    default n
++    help
++        A third, independent out-of-tree controller slot, kept separate from both
++        CONTROLLER_OOT and CONTROLLER_OOT2. Ports the SAME reference file as OOT2
++        (Cobo-Briesewitz's controller_lee.c) but with `use_nn` enabled and their real
++        trained network included -- true NA-INDI, not their plain INDI. Selects
++        ControllerTypeOot3 (stabilizer.controller=8, assuming CONTROLLER_OOT and
++        CONTROLLER_OOT2 are also enabled). NOT YET NUMERICALLY VERIFIED against the
++        reference's own compiled C -- do not fly. See firmware_app/host/LOCAL_MODIFICATIONS.md.
++
  config ESTIMATOR_KALMAN_ENABLE
      bool "Enable Kalman Estimator"
      default y
 diff --git a/src/modules/src/controller/controller.c b/src/modules/src/controller/controller.c
-index e260ae8f..7fe604a6 100644
+index e260ae8f..c05862f5 100644
 --- a/src/modules/src/controller/controller.c
 +++ b/src/modules/src/controller/controller.c
-@@ -33,6 +33,10 @@ static ControllerFcns controllerFunctions[] = {
+@@ -33,6 +33,14 @@ static ControllerFcns controllerFunctions[] = {
    #ifdef CONFIG_CONTROLLER_OOT
    {.init = controllerOutOfTreeInit, .test = controllerOutOfTreeTest, .update = controllerOutOfTree, .name = "OutOfTree"},
    #endif
 +  #ifdef CONFIG_CONTROLLER_OOT2
 +  // 2026-09-14: second OOT slot, see ControllerTypeOot2 in controller.h
 +  {.init = controllerOutOfTree2Init, .test = controllerOutOfTree2Test, .update = controllerOutOfTree2, .name = "OutOfTree2"},
++  #endif
++  #ifdef CONFIG_CONTROLLER_OOT3
++  // 2026-09-16: third OOT slot, see ControllerTypeOot3 in controller.h
++  {.init = controllerOutOfTree3Init, .test = controllerOutOfTree3Test, .update = controllerOutOfTree3, .name = "OutOfTree3"},
 +  #endif
  };
  
