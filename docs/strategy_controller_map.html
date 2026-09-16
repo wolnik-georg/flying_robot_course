@@ -152,14 +152,18 @@ footer code{background:none;padding:0}
         baseline methods (Lee / INDI / LINDI / NA-INDI), not a mislabelling of Strategy 4.</p>
       <p>Real NA-INDI (Strategy 4) needs <code>use_nn</code> enabled <em>and</em> a trained
         residual model in their convention, wired into that <b>same</b> module — tracked as
-        <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, and
-        compiles clean</b> -- their real trained weights (not a placeholder) extracted and
-        embedded, the full force+torque wiring ported line-for-line. <b>2026-09-16: the firmware
-        controller-slot patch is also built</b> — links clean, Init/Test pass, dispatch
-        reachable. <b>2026-09-16: numerically verified</b> against the reference's own compiled
-        C — 6/6 hand-picked test vectors match to ~1e-9 on thrust and torque (a test-harness
-        clock bug, not a port bug, was found and fixed along the way — confirmed by comparing
-        the NN forward pass alone bit-for-bit first). <b>Still never flown</b> — do not fly.</p>
+        <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, compiles
+        clean, firmware controller-slot patch built, and numerically verified</b> against the
+        reference's own compiled C — 6/6 hand-picked test vectors match to ~1e-9 on thrust and
+        torque. <b>Same day, first closed-loop CS2 sim run found both this and
+        <code>controller=7</code> diverge into a crash</b> on the simplest possible scenario
+        (single-drone hover) — the static tests above only ever check single ticks against
+        hand-picked states, never a real plant. One shared root cause found and fixed: both
+        files hardcoded the reference's own stock-CF2.1 arm/thrust-to-torque literals instead
+        of this project's real per-platform airframe. Fixed, static verification still 100%.
+        <b>The sim divergence is reduced but not eliminated</b> — a second, unconfirmed cause
+        (the reference's own attitude gains vs. this project's real, larger inertia) remains
+        open. <b>Do not fly either controller.</b></p>
     </div>
   </section>
 
@@ -221,7 +225,7 @@ footer code{background:none;padding:0}
             <span class="ctrl-tag ctrl-ours">controller=6</span> ours, <code style="background:none">ctrl_mode=3</code><br>
             <span class="ctrl-tag ctrl-theirs">controller=7</span> Cobo-Briesewitz, <code style="background:none">use_nn=0</code>
           </td>
-          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-hold" style="margin-top:4px">7: verified, never flown</span></td>
+          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-hold" style="margin-top:4px">7: verified vs C, unstable in sim</span></td>
         </tr>
         <tr>
           <td class="num">2</td>
@@ -241,8 +245,8 @@ footer code{background:none;padding:0}
           <td class="num">4</td>
           <td><span class="strategy-name">Hybrid — NA-INDI</span></td>
           <td class="paper">Cobo-Briesewitz et al., <code style="background:none">use_nn=1</code></td>
-          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">verified ~1e-9, unflown</span></td>
-          <td><span class="pill pill-hold">compiles, needs verification + slot patch</span></td>
+          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">verified ~1e-9, unstable in sim</span></td>
+          <td><span class="pill pill-hold">verified vs C, crashes in closed-loop sim</span></td>
         </tr>
         <tr>
           <td class="num">5</td>
