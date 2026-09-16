@@ -959,6 +959,9 @@ extern "C" {
     static mut g_indi_notch_bw: f32;
     // H1a diagnostic: force tau_current = tau_prev even when RPM deck is active (0=off, 1=on)
     static mut g_indi_ff_free: u8;
+    // 1 (default) = 2026-09-09 audit fix N1 active (alpha_ref always uses g_indi_kr/kw).
+    // 0 = revert to the pre-fix mode-selected kr_geo/kw_geo pair, for an isolated A/B test.
+    static mut g_indi_n1_fix: u8;
     // 0 = legacy diff-then-filter order (default), 1 = paper order (filter-then-diff)
     static mut g_indi_filt_order: u8;
     // 0 = legacy unfiltered tau_current (default), 1 = filter μ_f to phase-match α_meas (paper Eq.29)
@@ -1868,17 +1871,26 @@ fn controller_step(
     // alpha_ref = alpha_des - KR*eR - KW*e_omega  (Tal & Karaman Eq. 28)
     //
     // ALWAYS the INDI kr/kw pair, never the mode-selected kr_geo/kw_geo (2026-09-09 audit
-    // finding N1). alpha_ref is INDI's angular-acceleration reference; kr_geo is a
-    // DIFFERENT unit system ([Nm] torque gain) and does not belong in this formula in any
-    // mode. On the frozen branch kr_xy was g_indi_kr in every mode, so the passive
-    // alpha_ref/bw_ref chains carried 2400-scale history through the geometric ramp into a
-    // 0->3 handover; briefly using the selected pair here warmed those filters with
-    // ~0.010-scale values instead, changing both the logged alp_* filter-char signals in
-    // geometric mode and INDI's filter warm-up at the switch. Pinning to g_indi_kr
-    // restores frozen behaviour exactly.
+    // finding N1), UNLESS g_indi_n1_fix=0 for an isolated A/B test (2026-09-16 -- this fix
+    // was verified as a no-op at steady defaults and passed one single-drone hover, but
+    // was never independently tested against a real geometric-ramp -> full-INDI handover,
+    // which is exactly what's under investigation now). alpha_ref is INDI's angular-
+    // acceleration reference; kr_geo is a DIFFERENT unit system ([Nm] torque gain) and does
+    // not belong in this formula in any mode -- that is N1's own reasoning for why the fix
+    // is correct, not a reason to skip testing it. On the frozen branch kr_xy was
+    // g_indi_kr in every mode, so the passive alpha_ref/bw_ref chains carried 2400-scale
+    // history through the geometric ramp into a 0->3 handover; briefly using the selected
+    // pair here warmed those filters with ~0.010-scale values instead, changing both the
+    // logged alp_* filter-char signals in geometric mode and INDI's filter warm-up at the
+    // switch. Pinning to g_indi_kr (the default, g_indi_n1_fix=1) restores frozen
+    // behaviour exactly; g_indi_n1_fix=0 restores the PRE-fix mode-selected pair (kr_xy/
+    // kw_xy/kr_z/kw_z, already computed above for the geometric torque law itself).
     let e_omega = omega_fb.sub(omega_d);
-    let (aref_kr, aref_kw, aref_kr_z, aref_kw_z) =
-        unsafe { (g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z) };
+    let (aref_kr, aref_kw, aref_kr_z, aref_kw_z) = if unsafe { g_indi_n1_fix } != 0 {
+        unsafe { (g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z) }
+    } else {
+        (kr_xy, kw_xy, kr_z, kw_z)
+    };
     let alpha_ref = Vec3::new(
         alpha_des.x - aref_kr*er.x - aref_kw*e_omega.x,
         alpha_des.y - aref_kr*er.y - aref_kw*e_omega.y,

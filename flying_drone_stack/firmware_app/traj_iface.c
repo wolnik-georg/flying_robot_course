@@ -251,6 +251,20 @@ float g_indi_mass   = 0.0364f;   /* all-up mass [kg] — CF2.1 + USD + RPM, meas
    or from motor-mechanical lag (persists either way). 0 = normal (RPM feedback when available). */
 uint8_t g_indi_ff_free = 0;
 
+/* N1 fix toggle (2026-09-16, isolating the 2026-09-09 audit fix for its own A/B test).
+   1 (DEFAULT, current behaviour): alpha_ref = alpha_des - g_indi_kr*eR - g_indi_kw*e_omega
+   ALWAYS, regardless of ctrl_mode -- the 2026-09-09 fix (audit finding N1). Before that fix,
+   alpha_ref used the mode-selected kr_geo/kw_geo pair during modes 0/1 (the SAME pair the
+   geometric torque law itself uses), switching to g_indi_kr/kw only in modes 2/3. That meant
+   alpha_ref's own filter chain (bw_ref_x/y/z) carried ~0.01-scale history through the whole
+   geometric ramp, then jumped to 2400-scale the instant ctrl_mode switched to full INDI --
+   exactly the kind of cold-start-transient-at-the-handover class of bug already found and
+   fixed twice elsewhere in this file (alpha_meas_notch 2026-07-29, bw_tau_x/y/z 2026-09-12).
+   0 = revert to that PRE-FIX mode-selected behaviour, to test whether N1's fix (verified as a
+   no-op at STEADY defaults, single hover-tested once) is neutral, helpful, or harmful across
+   an actual geometric-ramp -> full-INDI handover -- never independently isolated before. */
+uint8_t g_indi_n1_fix = 1;
+
 /* Filter order for the INDI angular-acceleration measurement chain (2026-07-18).
    0 = legacy: diff(raw omega) -> Butterworth -> alpha_meas. Today's exact behaviour,
        byte-identical -- standard/upgraded validated gains and results are unaffected.
@@ -446,6 +460,7 @@ PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
   PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
   PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
+  PARAM_ADD(PARAM_UINT8, n1_fix, &g_indi_n1_fix)
   PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
   PARAM_ADD(PARAM_UINT8, filt_tau, &g_indi_filt_tau)
   PARAM_ADD(PARAM_FLOAT, j_scale, &g_indi_j_scale)
