@@ -151,12 +151,14 @@ footer code{background:none;padding:0}
         legitimately citable, since the authors' own paper treats INDI as one of its four
         baseline methods (Lee / INDI / LINDI / NA-INDI), not a mislabelling of Strategy 4.</p>
       <p>Real NA-INDI (Strategy 4) needs <code>use_nn</code> enabled <em>and</em> a trained
-        residual model in their convention, wired into that <b>same</b> module — tracked as a
-        future <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, and
+        residual model in their convention, wired into that <b>same</b> module — tracked as
+        <code>controller=8</code>. <b>2026-09-16: control-law logic written, isolated, and
         compiles clean</b> -- their real trained weights (not a placeholder) extracted and
-        embedded, the full force+torque wiring ported line-for-line. <b>Not yet wired into a
-        firmware controller slot, and not yet numerically verified</b> against the reference's
-        own compiled C. Do not fly.</p>
+        embedded, the full force+torque wiring ported line-for-line. <b>2026-09-16: the firmware
+        controller-slot patch is also built and smoke-tested</b> — links clean, Init/Test pass,
+        dispatch reachable, NN forward pass returns sane non-degenerate output on a zero-input
+        test. <b>Still not numerically verified</b> against the reference's own compiled C.
+        Do not fly.</p>
     </div>
   </section>
 
