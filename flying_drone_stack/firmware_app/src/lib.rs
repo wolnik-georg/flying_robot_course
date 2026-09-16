@@ -20,6 +20,8 @@ use residual_nn::ResidualNet;
 
 // controller=7 (ControllerTypeOot2): faithful NA-INDI port, see naindi.rs module doc.
 mod naindi;
+mod naindi_hybrid;
+mod naindi_hybrid_weights;
 
 // ── Vector3 helpers ────────────────────────────────────────────────────────
 #[derive(Copy, Clone)]
