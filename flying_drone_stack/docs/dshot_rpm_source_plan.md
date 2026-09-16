@@ -1,5 +1,45 @@
 # Revisiting DShot as an RPM source for brushless INDI — plan
 
+**RESOLVED 2026-09-16: DShot is now the standing RPM source, confirmed clean and sufficient.
+The optical deck is no longer the default — see "Result" below.** Original plan (2026-09-03,
+written while lab access was blocked) preserved beneath for the history and reasoning.
+
+## Result (2026-09-16)
+
+**Trigger**: a first full-INDI 2-drone A8 attempt crashed (`cf231_active` destabilizes, then
+`cf_second` ~0.3-0.4s later; separation only grows, ruling out a collision). Investigating,
+the optical RPM deck was found to report **exactly zero for 2 of 4 motors (`rpm_m2`/`rpm_m4`)
+throughout real flight** — reproducible, but invisible on a secured bench test (all 4 clean
+there). A real, in-flight-only hardware defect, not caught by any prior bench validation.
+
+Switched to DShot (`indi_gains.rpm_source=1`) per this plan's own staged approach (skipping
+the position-INDI-only intermediate step per the operator's own flight experience that
+sub-loop-only modes are never representative). Two single-drone hover/figure8 attempts on
+DShot initially *looked* clean but were misleading: `crazyflies.yaml`'s `rpm:` radio-log topic
+and `indi_gains.rpm_source` are two **completely independent switches** — the log kept
+streaming the optical deck's own variables regardless of which source fed the controller, so
+every CSV that day showed the deck's known-bad `rpm_m2`/`rpm_m4` zeros whether DShot was
+actually active or not. Fixed by pointing the log topic at DShot's own variables
+(`motor.m1_rpm..m4_rpm`) to match.
+
+With logging finally showing ground truth, **four consecutive flights (2 hover, 2 figure8)
+all confirmed clean**: zero dropouts across all 4 motors in every log (up to 530 samples each),
+roll/pitch bounded to the known baseline oscillation only, no divergence. **Final check**: flew
+hover and figure8 again with the optical deck's own reflective prop markers physically removed
+(the deck itself stays mounted — it doubles as a mocap fixture) — both flew clean, proving
+DShot's telemetry path has zero dependency on the optical sensor working at all.
+
+**Conclusion: DShot bidirectional telemetry is clean, complete, and sufficient for full INDI.
+It is now the standing RPM source for `cf231_active` (`crazyflies.yaml`,
+`indi_gains.rpm_source: 1`), not an experimental toggle.** This does NOT resolve the original
+2-drone A8 divergence that triggered this investigation — RPM source is now ruled out as its
+cause, not confirmed as the fix. That question, and the separate 2026-09-09 audit-fix (N1)
+question, remain open.
+
+---
+
+## Original plan (2026-09-03) — preserved for history
+
 **Status 2026-09-03: planning only, nothing implemented yet.** Written while lab access is
 blocked (until Monday); no firmware changes made. Goal: give DShot telemetry a fair,
 correctly-scoped re-test as an INDI RPM source, without disturbing the optical-deck path that
