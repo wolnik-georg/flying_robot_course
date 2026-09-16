@@ -516,9 +516,41 @@ from `tau_clamp=0` (off).** Not the driver either. Left at default (`0.0`).
 no effect), N1 (tried, no effect). All null or neutral results.** The one item left
 (per-axis yaw filtering) is explicitly low priority per the original recommendation — the
 observed shake is roll/pitch, not yaw — and would need its own new firmware param to even
-test. At this point the comparison-driven approach has been exhausted without finding the
-cause; whatever is driving the attitude oscillation is very likely NOT explained by any single
-documented difference between this controller and the NA-INDI reference.
+test.
+
+### 🔴 Per-axis yaw filtering (item #3, tested 2026-09-16) — MADE THINGS WORSE, reverted
+
+Built `indi_gains.fc_bw_yaw` (default `0.0` = yaw uses the shared `fc_bw`, byte-identical):
+lets yaw's angular-rate filter chains (`bw_z`/`bw_pre_z`/`bw_tau_z`/`bw_ref_z`) use a separate
+cutoff from roll/pitch. Tested at `fc_bw_yaw=10.0`, matching NA-INDI's own reference value.
+
+**Result: a real, quantified regression**, compared against the two immediately-preceding
+same-format baseline flights (`fc_bw_yaw=0`):
+
+| | Baseline | `fc_bw_yaw=10` |
+|---|---|---|
+| Roll std (in-flight) | 1.08–1.10° | **1.98°** (~1.8×) |
+| Pitch std (in-flight) | 0.64–0.72° | **1.86°** (~2.6×) |
+| Max in-flight excursion | ~4.0° | ~7.4° |
+
+A separate -18.5° roll spike at the very end of the log is a landing/ground-contact artifact
+(thrust was already `0.000000` ~250ms before it) and not part of this result.
+
+Notably, yaw's own signal (`alp_z`) was **less** noisy with the 10Hz filter (std 32.7 vs
+baseline 55.6) — the regression isn't noise leaking through, it's the opposite: the heavier
+filter adds enough phase lag to yaw's own INDI loop that yaw tracking itself degrades, and
+that couples into roll/pitch. Same underlying lesson as the `fc_bw` retune failure (item #2,
+2026-09-11): more filtering trades noise for phase lag, and this loop does not tolerate the
+added lag well. Copying NA-INDI's yaw cutoff verbatim does not transfer to this airframe/gain
+combination. Reverted to default (`0.0`) immediately after the test flight.
+
+**Final status: the Briesewitz-comparison list is now fully exhausted (7/7 items tested or
+addressed).** Six were null/neutral; this one was actively harmful and is reverted. None
+explains or fixes the attitude oscillation under investigation — if anything, the pattern
+across both filtering attempts (#2 and #3) suggests this controller's own loop dynamics are
+already close to a stability boundary that *any* added phase lag pushes past, which points
+back toward the native `kr`/`kw`/`pos_gains` tuning space as the more promising remaining
+lead, not further filter comparison work.
 
 ---
 
