@@ -125,6 +125,14 @@ footer a{color:var(--muted)}
     (<code>docs/flight_card_validation.html</code>) and <code>docs/lab_sessions/*.md</code>.
     This page starts from tonight's state, not a repeat of it.
   </div>
+  <div class="superseded">
+    <strong>2026-09-16 desk-only addendum (no lab session that day):</strong> controller=7 and
+    the new controller=8 (NA-INDI hybrid) were both run in closed-loop simulation for the first
+    time and both crash a plain single-drone hover. Neither is a usable fallback for the gate
+    below — see the corrected cards. Everything else on this page (the uSD chain, the per-drone
+    logging fix, the gate itself) is unaffected; full account in <code>docs/07</code> and
+    memory <code>project_controller8_naindi_hybrid_2026-09-16</code>.
+  </div>
   </header>
 
 <section>
@@ -180,12 +188,21 @@ footer a{color:var(--muted)}
         <code>controllerOutOfTree</code>, its state, or its dispatch. Whatever is already
         flashed behaves exactly as it did yesterday.</p>
     </div>
-    <div class="card go">
-      <div class="card-head"><span class="num">7</span><h3>NA-INDI faithful port</h3><span class="pill go">buildable, unflown</span></div>
-      <p>Now actually flashable — a RAM overflow from an unrelated change (below) was blocking
-        every build today; fixed without touching this controller at all. Verified against the
-        reference's own compiled C to ~1e-9 on 5 test cases. <strong>Has never touched a real
-        motor.</strong></p>
+    <div class="card stop">
+      <div class="card-head"><span class="num">7</span><h3>NA-INDI faithful port — DO NOT SELECT</h3><span class="pill stop">crashes in sim</span></div>
+      <p>Numerically verified against the reference's own compiled C to ~1e-9. <strong>2026-09-16:
+        the first-ever closed-loop simulator run found it crashes into a growing attitude
+        oscillation on a plain single-drone hover</strong> — no 2-drone content, no downwash,
+        nothing exotic. One root cause fixed (a hardcoded reference-airframe constant), a second
+        (its attitude gains vs our real, heavier airframe) still open and uninvestigated.
+        <strong>Do not select <code>stabilizer.controller=7</code> on hardware, and do not use it
+        as a fallback if our own INDI struggles below</strong> — see the gate card.</p>
+    </div>
+    <div class="card stop">
+      <div class="card-head"><span class="num">8</span><h3>NA-INDI hybrid (use_nn) — DO NOT SELECT</h3><span class="pill stop">crashes in sim</span></div>
+      <p>Same status as controller=7, same day, same root cause, same open question — the two
+        share the same underlying control-law code. <strong>Do not select
+        <code>stabilizer.controller=8</code> on hardware.</strong></p>
     </div>
     <div class="card hold">
       <div class="card-head"><span class="num">↳</span><h3>Neural-Swarm2 residual (Strategy 2)</h3><span class="pill hold">verified, disabled, untrained</span></div>
@@ -221,12 +238,13 @@ footer a{color:var(--muted)}
     <div class="card hold">
       <div class="card-head"><span class="num">⚠</span><h3>Gate: does our own INDI actually work?</h3><span class="pill hold">decides everything after</span></div>
       <p><strong>If it comes back clean:</strong> our own INDI is the working controller — move
-        straight into C.1 data collection, no need to touch controller=7 at all.</p>
+        straight into C.1 data collection.</p>
       <p><strong>If it doesn't</strong> — the residual oscillation returns, or it's otherwise
-        unusable — <strong>try <code>stabilizer.controller=7</code></strong> next, the NA-INDI
-        port matching Cobo &amp; Briesewitz's own <code>controller_lee.c</code> bit-for-bit
-        (verified against their compiled C to ~1e-9) — call it INDI v2. Start with its own
-        single-drone hover check, <strong>not</strong> straight into A8 or 2-drone.</p>
+        unusable — <strong>the fallback is our own geometric controller (<code>ctrl_mode=0</code>)
+        or retuning our own INDI gains, not <code>stabilizer.controller=7</code>.</strong>
+        2026-09-16: controller=7 (and =8) were sim-tested for the first time and both crash a
+        plain single-drone hover — see the cards above. They are not a usable fallback right now.
+        Do not select either on hardware.</p>
     </div>
     <div class="card go">
       <div class="card-head"><span class="num">2</span><h3>C.1 data collection</h3><span class="pill go">unblocked</span></div>
