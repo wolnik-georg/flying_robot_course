@@ -458,6 +458,26 @@ error is the far larger effect on the same path.
 Deferred. Our shake is roll/pitch, and #2 changes the whole filter picture; revisit only after
 the sample-rate question is settled on hardware.
 
+### ⚪ N1 (2026-09-09 audit fix, isolated 2026-09-16) — no observable effect
+
+Separate from the seven items above: a 2026-09-09 audit finding (not from the NA-INDI comparison
+itself) pins `alpha_ref`'s gain pair to `g_indi_kr`/`g_indi_kw` **unconditionally**, including
+during the geometric ramp — previously it used the mode-selected `kr_geo`/`kw_geo` pair
+whenever `ctrl_mode` lacked the INDI bit. Only diverges from pre-fix behaviour while the
+vehicle is actually in `ctrl_mode` 0/1; identical to pre-fix once in `ctrl_mode` 2/3.
+
+Built a runtime toggle (`indi_gains.n1_fix`, default `1` = current/fixed behaviour, `0` =
+revert) specifically so this could be A/B'd through a real geometric→full-INDI handover
+without a second firmware build (`firmware_app` commit `acf45f9`). `simple_flight.py`'s
+default (non-`--pin-controller`) hover already performs exactly that handover — ramps on
+OOT-geometric for the takeoff, switches to the yaml's `ctrl_mode` (3) at altitude — so no new
+flight pattern was needed.
+
+**Result: `n1_fix=0` flown through the same ramp→switch→hover sequence, on DShot, full INDI —
+behaviour indistinguishable from `n1_fix=1`.** N1 is not the (or not a significant) driver of
+whatever attitude behaviour is currently being chased. Left at its default (`1`) going forward;
+the toggle stays in the firmware for any future re-test but is not a live investigation.
+
 ---
 
 ## 2g. ⚠️ NA-INDI has the SAME sample-rate bug — do not copy their numbers
