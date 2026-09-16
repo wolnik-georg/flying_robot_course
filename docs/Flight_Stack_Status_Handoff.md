@@ -27,10 +27,19 @@ Strategy 0 is the uncompensated geometric reference and is *not* one of the seve
 | # | Strategy | Uses NN residual | Controller(s) | State |
 |---|---|---|---|---|
 | 0 | Geometric baseline | no | `controller=6`, `ctrl_mode=0` | ✅ Flying (reference condition) |
-| 1 | Pure INDI | no — reacts to *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI) | `6` ✅ Flying; `7` ✅ ported/verified, **never flown** |
+| 1 | Pure INDI | no — reacts to *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI) | `6` ✅ Flying; `7` ✅ ported/verified vs reference C, but **2026-09-16: crashes in CS2 closed-loop sim** (see note below) — do not fly, do not use as a fallback |
 | 2 | Geometric + NN residual | yes, feedforward (`rnn.en`) | `controller=6` + `rnn.en=1` | ⚠️ Implemented, **never flown**, no trained weights |
 | 3 | FBL + NN residual | yes | not assigned | ⬜ Blocked — FBL code still with the authors |
-| 4 | Hybrid neural-augmented INDI | yes, alongside INDI measurement | `controller=8` — **not built** | ⬜ Not wired. `controller=7`'s `use_nn` is dead code, so it is Strategy 1's alt controller, not this one |
+| 4 | Hybrid neural-augmented INDI | yes, alongside INDI measurement | `controller=8` | ⬜ Built + verified vs reference C, but **2026-09-16: crashes in CS2 closed-loop sim** identically to `7` (see note below) — do not fly |
+
+> **2026-09-16 update:** the first-ever closed-loop simulator run of `controller=7`/`8` (a plain
+> single-drone hover, nothing 2-drone or interaction-related) found both crash into a growing
+> attitude oscillation, while `controller=6` on the identical scenario is unaffected. One shared
+> root cause was found and fixed (hardcoded reference-airframe arm/thrust-to-torque constants);
+> a second suspected cause (reference attitude gains vs this project's real, larger CF21BL
+> inertia) remains open and uninvestigated. Both controllers are a fully isolated side track —
+> nothing in this table's `controller=6` row, or anything on the lab plan, is affected. Do not
+> select `controller=7`/`8` on hardware or treat either as a fallback until this is resolved.
 | 5 | Residual RL | separate policy net | open — not defined | ⬜ Deliberately deferred |
 | 6 | Learning-based MPC | yes, as horizon prediction model | open — not defined | ⬜ Not wired |
 | 7 | Geometric + residual RL | separate policy net | open — not defined | ⬜ Deliberately deferred |

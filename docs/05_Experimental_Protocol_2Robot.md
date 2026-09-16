@@ -21,11 +21,14 @@ Fair comparison of:
 
 on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: **Minimum = Methods 1–4** (Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI), **Advanced = Methods 5–7** (the residual-RL and learning-based-MPC strategies)).
 
-**Phasing:** The first data-collection campaign uses **Pure INDI only** — it needs no learned
-residual model and no FBL code, so it can start immediately. Later campaigns add
-**Geometric + NN**, **Hybrid/NA-INDI** (2026-09-14: numerically-verified Rust port exists,
-`stabilizer.controller=7`, unflown — ready as soon as it clears its own hardware gate), and
-**FBL + NN** once the respective residual models / controller code are ready.
+**Phasing:** The first data-collection campaign uses **Pure INDI only** (`controller=6`) — it
+needs no learned residual model and no FBL code, so it can start immediately. Later campaigns add
+**Geometric + NN**, **Hybrid/NA-INDI** (`stabilizer.controller=8`, not `7` — see
+`docs/strategy_controller_map.html` for the corrected mapping; numerically verified vs the
+reference's own compiled C, but **2026-09-16: crashes in CS2 closed-loop sim** on a plain
+single-drone hover, same as `controller=7` — not ready, not a near-term fallback, needs its own
+investigation before it can clear a hardware gate), and **FBL + NN** once the respective residual
+models / controller code are ready.
 
 ## Hardware
 - 2× Crazyflie brushless (identical configuration)

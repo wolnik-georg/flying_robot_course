@@ -37,17 +37,26 @@ so this is a real, citable alternative *implementation of Strategy 1*, not a str
 mislabelling — Strategy 1 now has two controller options. Getting genuine NA-INDI behaviour
 (the network predicting the bulk of the residual, INDI correcting only the remainder) needs
 `use_nn` enabled and a trained residual model in their convention wired into that same module —
-unbuilt, tracked as a future `controller=8`, not started.
+built and numerically verified 2026-09-16, tracked as `controller=8`.
+
+**2026-09-16: both `controller=7` and `controller=8` are numerically verified vs the reference's
+own compiled C to ~1e-9, but crash in CS2 closed-loop sim on a plain single-drone hover** — the
+static test vectors above never exercise a real plant. One shared root cause fixed (hardcoded
+reference-airframe arm/thrust-to-torque constants); a second suspected cause (reference attitude
+gains vs this project's real, larger CF21BL inertia) remains open. **Neither is flyable or a
+usable fallback for `controller=6` right now.** Both are a fully isolated side track — nothing on
+the lab plan (`controller=6`) is affected. Full account: memory
+`project_controller8_naindi_hybrid_2026-09-16`.
 
 **Full reference page** (kept in sync with this table): `docs/strategy_controller_map.html`.
 
 | # | Method | Family | Tier | Key Papers | Controller(s) |
 |---|--------|--------|------|------------|----------------|
 | 0 | Geometric baseline | Reactive | **Minimum** | — | `controller=6`, `ctrl_mode=0` |
-| 1 | Pure INDI | Reactive | **Minimum** | Tal & Karaman, Smeur — *or* Cobo-Briesewitz et al. (their INDI baseline) | `controller=6` (ours, `ctrl_mode=3`) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) |
+| 1 | Pure INDI | Reactive | **Minimum** | Tal & Karaman, Smeur — *or* Cobo-Briesewitz et al. (their INDI baseline) | `controller=6` (ours, `ctrl_mode=3`) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) — `7` verified vs reference C but crashes in sim, do not fly |
 | 2 | Geometric + NN (Neural-Swarm2) | Predictive | **Minimum** | Neural-Swarm2, SO(2)/Aggregate | `controller=6` + `rnn.en=1` |
 | 3 | FBL + NN | Predictive | **Minimum** | Flatness-Preserving Residual (Hsieh et al.) | not assigned — blocked on FBL code |
-| 4 | Hybrid (Neural-Augmented INDI / NA-INDI) | Hybrid | **Minimum** | Cobo-Briesewitz et al. (core paper [1]), `use_nn=1` | `controller=8` — **not built** (flag + trained NN inside the existing ported module) |
+| 4 | Hybrid (Neural-Augmented INDI / NA-INDI) | Hybrid | **Minimum** | Cobo-Briesewitz et al. (core paper [1]), `use_nn=1` | `controller=8` — verified vs reference C but crashes in sim, do not fly |
 | 5 | Residual RL (ProxFly-style) | Residual learning | **Advanced** | ProxFly | **open — not yet defined** |
 | 6 | Light Learning-based MPC (residual-MPC / simplified KNODE-style) | Predictive + Optimisation | **Advanced** | KNODE-DW MPC (Chee et al.), L1 KNODE-DW MPC (Hsieh et al.) | **open — not yet defined** |
 | 7 | Geometric + Residual RL | Residual learning | **Advanced** | ProxFly + Geometric literature | **open — not yet defined** |
