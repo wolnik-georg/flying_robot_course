@@ -1,8 +1,8 @@
 """Turn flight logs into training tensors for the residual model.
 
 Input is a merged multi-drone CSV from `tools/merge_usd_logs.py` (uSD logs, 500 Hz, time-aligned).
-Output is `(rel, mask, y)`: relative neighbour states, a presence mask, and the measured residual
-acceleration `indi.a_res_*` = f_res/m that the network has to predict.
+Output is `(rel, mask, ground, y, stats)`: relative neighbour states, a presence+gate mask, each
+sample's own ground-effect term, and the measured residual the network has to predict.
 
 Three things here are easy to get wrong and expensive to discover later:
 
@@ -12,87 +12,72 @@ therefore computes relative states from the absolute columns itself and never re
 there is one convention and it is the firmware's. A sign flip here trains a mirrored model that
 would push the drone *into* the disturbance.
 
-**The firmware's input guards.** Neighbours beyond `MAX_DIST` are dropped and separations below
-`MIN_DIST` are clamped, onboard, before the network sees anything. The same guards are applied
-here. Without that the model is trained on a distribution the firmware never presents.
+**The gate, not a distance guard.** The OLD architecture clamped/dropped neighbours by distance
+before the network ever saw them (`MAX_DIST`/`MIN_DIST`). Neural-Swarm2 has no such guard --
+`model.build_mask` (presence AND the reference's `|dx|<0.2, |dy|<0.2, |dvx|<1.5` gate) is the only
+filter, applied unconditionally every tick, onboard and here alike. A neighbour that fails the
+gate is not dropped from the dataset; the ROW is still a valid sample (phi_G's ground term is
+evaluated unconditionally, gate or no gate) -- only that neighbour's contribution is masked out,
+exactly as the firmware would.
 
 **`a_res` reading exactly zero.** That is what happens with no RPM source, and it is not a
 measurement of "no interaction" -- it is the absence of a measurement. Those samples are dropped
 and counted, loudly, because a dataset of zeros trains a network that predicts nothing and looks
-like it converged beautifully.
+like it converged beautifully. Checked on all three components together, since a real interaction
+event essentially never leaves all three exactly zero.
 
-=======================================================================================
-STALE, 2026-09-14 -- DOES NOT RUN. Blocked on decisions, not on effort.
-=======================================================================================
-`model.py` was rewritten for the Neural-Swarm2 architecture port and no longer exports
-`MAX_DIST`, `MIN_DIST` or `PHI_IN`: the distance cutoff and near-field rescaling those named
-are gone, replaced by the reference's three-term gate (|dx|<0.2, |dy|<0.2, |dvx|<1.5).
+2026-09-15 rewrite for the Neural-Swarm2 architecture, resolving the three items the previous
+(deliberately import-blocked) version of this file left open:
 
-What this module must produce has also changed, and each change carries a question that is not
-the loader's to answer:
+1. **The target is a scalar**, and this is a property of the already-verified network
+   (`model.NeuralSwarm2` only ever outputs a Z force), not a choice this loader makes. `y` is
+   `a_res_z` alone, still in **acceleration** units [m/s^2] -- the conversion to the reference's
+   grams unit (`model.accel_to_grams`) is left to the training step, which is where a per-flight
+   mass would actually be known, rather than guessing one here. The x/y components of the
+   measured residual are still read (for the zero-check) but have no predictor in this
+   architecture; that is a real scoping fact about Strategy 2, not a limitation of the data --
+   `a_res_x`/`a_res_y` remain fully logged and available for any other analysis.
+2. **`ground` is a new, required output** -- `[0 - own_z, -own_vx, -own_vy, -own_vz]` per sample,
+   evaluated for every row regardless of neighbours.
+3. **`z_floor` defaults to 0.0 (off).** Neural-Swarm2 models ground effect explicitly via
+   `phi_G`, so dropping low-altitude samples would starve exactly the input it needs. Left as a
+   parameter, not removed, so a *different* analysis that genuinely wants ground-effect samples
+   excluded still can.
 
-1. **The target is now a scalar.** `compute_Fa` returns a Z-only force, so the network can
-   only ever predict the vertical residual. `y` must become `a_res_z` alone (in the reference's
-   grams unit -- see `model.accel_to_grams`). The x/y components of the measured residual
-   simply have no predictor in this architecture. That is a real scoping consequence for the
-   thesis comparison, not just a code change.
-
-2. **A ground-effect input is now required.** `phi_G` takes `[0 - own_z, -own_vx, -own_vy,
-   -own_vz]` every sample, with no neighbour to gate it on, so `build` must emit a `ground`
-   array alongside `rel`/`mask`.
-
-3. **`--z-floor` now contradicts the architecture.** It exists to drop low-altitude samples
-   because "ground effect is a different force". Neural-Swarm2 models ground effect explicitly,
-   so those are exactly the samples `phi_G` needs. Keeping the old default would starve it.
-
-4. **The gate replaces the guards.** `apply_input_guards` implements the removed scheme. The
-   replacement is `model.build_mask`, which combines presence with the reference's gate --
-   note an all-zero padding row PASSES the gate on its own, so the two must be combined.
-
-Everything below this line is the previous, working loader for the OLD architecture. It is kept
-because the CSV parsing, the peer-minus-own convention and the zero-`a_res` handling are all
-still correct and worth adapting rather than rewriting from nothing.
+Still open, not fixed here: `train.py` imports `DeepSets` (no longer exported by `model.py`) and
+calls `dataset.normalisation(rel, mask)` as a single call; this file now exposes
+`normalisation_rel`/`normalisation_ground` (two separate statistics, per `model.fold_normalisation`'s
+own requirement) and returns a 5-tuple instead of 4. `train.py` needs its own pass to match -- a
+separate, larger task with its own decisions (loss unit, optimizer, export against the new
+weight layout), not attempted here.
 """
 
 import sys
 
 import numpy as np
 
-from model import MAX_NEIGHBOURS  # noqa: F401  (still current)
-
-raise ImportError(
-    "tools/residual/dataset.py has not been updated for the Neural-Swarm2 architecture "
-    "(see this module's docstring). It cannot produce a scalar target or the ground-effect "
-    "input that model.NeuralSwarm2 requires, so training from flight logs is blocked. "
-    "The model <-> firmware contract itself IS current and verified: run test_pipeline.py."
-)
-
-MAX_DIST, MIN_DIST, PHI_IN = 2.0, 0.04, 6  # removed from model.py; kept so the code below parses
+import model
 
 
 def load_merged(path):
-    """Read a merged CSV into {column: array}."""
-    with open(path) as f:
-        header = f.readline().rstrip("\n").split(",")
-    a = np.loadtxt(path, delimiter=",", skiprows=1, ndmin=2)
-    return {n: a[:, i] for i, n in enumerate(header)}
+    """Read a merged CSV into {column: array}.
 
-
-def apply_input_guards(dp):
-    """The firmware's distance guards, applied to an (N, 3) block of relative positions.
-
-    Onboard, a neighbour past MAX_DIST is skipped and a separation below MIN_DIST is clamped
-    radially without turning the direction. Training data must go through the same funnel: a
-    model fitted to inputs the firmware never presents is fitted to the wrong distribution, and
-    the disagreement is invisible until predicted and measured residuals are compared in flight.
-
-    Returns (dp_guarded, near, n_clamped).
+    Skips leading `# meta:...` comment lines (the convention `merge_usd_logs.py --meta` writes,
+    e.g. `t_zero=scenario_start`) before reading the real header -- without this, the comment
+    line is mistaken for the header and the real header row is fed to `np.loadtxt` as data,
+    which fails immediately (`could not convert string 't' to float64`) rather than silently
+    producing wrong columns. This loader does not need `t_zero` itself (it never reconstructs a
+    commanded trajectory), so the value is skipped, not parsed.
     """
-    d = np.linalg.norm(dp, axis=1)
-    near = d <= MAX_DIST
-    tiny = (d < MIN_DIST) & (d > 1e-6)
-    scale = np.where(tiny, MIN_DIST / np.maximum(d, 1e-6), 1.0)[:, None]
-    return dp * scale, near, int((tiny & near).sum())
+    with open(path) as f:
+        lines = f.readlines()
+    header_idx = next((i for i, l in enumerate(lines) if l.strip() and not l.startswith("#")),
+                      None)
+    if header_idx is None:
+        raise ValueError(f"{path}: no header line found")
+    header = lines[header_idx].rstrip("\n").split(",")
+    a = np.loadtxt(path, delimiter=",", skiprows=header_idx + 1, ndmin=2)
+    return {n: a[:, i] for i, n in enumerate(header)}
 
 
 def drone_names(cols):
@@ -109,15 +94,15 @@ def build(sources, z_floor=0.0, drop_zero_a_res=True, verbose=True):
     symmetric -- the lower drone is in the wash and the upper one is barely affected -- so both
     roles carry information.
 
-    Returns (rel, mask, y, stats).
-      rel  (N, MAX_NEIGHBOURS, 6) float32 -- peer minus own, position then velocity, world frame
-      mask (N, MAX_NEIGHBOURS)    float32 -- 1 where a neighbour is present and within range
-      y    (N, 3)                 float32 -- measured a_res [m/s^2]
+    Returns (rel, mask, ground, y, stats).
+      rel    (N, MAX_NEIGHBOURS, 6) float32 -- peer minus own, position then velocity, world frame
+      mask   (N, MAX_NEIGHBOURS)    float32 -- present AND passes the reference's proximity gate
+      ground (N, 4)                 float32 -- [0 - own_z, -own_vx, -own_vy, -own_vz]
+      y      (N,)                   float32 -- measured a_res_z [m/s^2] (NOT yet grams)
     """
-    rels, masks, ys = [], [], []
+    rels, masks, grounds, ys = [], [], [], []
     stats = {"files": 0, "rows_in": 0, "dropped_zero_a_res": 0, "dropped_z_floor": 0,
-             "dropped_no_neighbour": 0, "clamped_min_dist": 0, "dropped_far": 0,
-             "per_source": []}
+             "no_neighbour_influence": 0, "per_source": []}
 
     for src in sources:
         cols = load_merged(src) if isinstance(src, str) else src
@@ -139,13 +124,13 @@ def build(sources, z_floor=0.0, drop_zero_a_res=True, verbose=True):
                       f"dataset to trim.", file=sys.stderr)
                 continue
 
-            y = np.stack([cols[k] for k in need], axis=1)
+            a_res = np.stack([cols[k] for k in need], axis=1)     # (N, 3), for the zero-check
             p_e = np.stack([cols[f"{ego}.{a}"] for a in "xyz"], axis=1)
             v_e = np.stack([cols[f"{ego}.v{a}"] for a in "xyz"], axis=1)
 
             keep = np.ones(n_rows, bool)
             if drop_zero_a_res:
-                zero = np.all(y == 0.0, axis=1)
+                zero = np.all(a_res == 0.0, axis=1)
                 stats["dropped_zero_a_res"] += int(zero.sum())
                 keep &= ~zero
             if z_floor > 0.0:
@@ -153,31 +138,32 @@ def build(sources, z_floor=0.0, drop_zero_a_res=True, verbose=True):
                 stats["dropped_z_floor"] += int(low.sum())
                 keep &= ~low
 
-            peers = [n for n in names if n != ego][:MAX_NEIGHBOURS]
-            rel = np.zeros((n_rows, MAX_NEIGHBOURS, PHI_IN), np.float32)
-            mask = np.zeros((n_rows, MAX_NEIGHBOURS), np.float32)
+            # Ground term: unconditional, every row, regardless of neighbours or `keep` -- it is
+            # evaluated by the firmware every tick whether or not any peer is nearby.
+            ground = np.stack([0.0 - p_e[:, 2], -v_e[:, 0], -v_e[:, 1], -v_e[:, 2]],
+                              axis=1).astype(np.float32)
+
+            peers = [n for n in names if n != ego][:model.MAX_NEIGHBOURS]
+            rel = np.zeros((n_rows, model.MAX_NEIGHBOURS, model.PHI_IN_SL), np.float32)
+            present = np.zeros((n_rows, model.MAX_NEIGHBOURS), np.float32)
 
             for k, peer in enumerate(peers):
                 p_p = np.stack([cols[f"{peer}.{a}"] for a in "xyz"], axis=1)
                 v_p = np.stack([cols[f"{peer}.v{a}"] for a in "xyz"], axis=1)
-                dp = p_p - p_e                      # firmware convention: peer - own
-                dv = v_p - v_e
+                rel[:, k, :3] = p_p - p_e            # firmware convention: peer - own
+                rel[:, k, 3:] = v_p - v_e
+                present[:, k] = 1.0
 
-                dp, near, n_clamped = apply_input_guards(dp)
-                stats["dropped_far"] += int((~near).sum())
-                stats["clamped_min_dist"] += n_clamped
-
-                rel[:, k, :3] = dp
-                rel[:, k, 3:] = dv
-                mask[:, k] = near.astype(np.float32)
-
-            no_nb = mask.sum(axis=1) == 0
-            stats["dropped_no_neighbour"] += int((no_nb & keep).sum())
-            keep &= ~no_nb
+            mask = model.build_mask(rel, present)
+            stats["no_neighbour_influence"] += int(((mask.sum(axis=1) == 0) & keep).sum())
+            # Deliberately NOT dropped: a row with no neighbour inside the gate is a legitimate
+            # sample -- phi_G's ground term still applies, and the network needs "no interaction"
+            # examples as much as it needs interaction ones.
 
             rels.append(rel[keep])
             masks.append(mask[keep])
-            ys.append(y[keep].astype(np.float32))
+            grounds.append(ground[keep])
+            ys.append(a_res[keep, 2].astype(np.float32))   # scalar target: a_res_z only
             kept_here += int(keep.sum())
 
         stats["rows_in"] += n_rows * len(names)
@@ -189,37 +175,47 @@ def build(sources, z_floor=0.0, drop_zero_a_res=True, verbose=True):
 
     rel = np.concatenate(rels).astype(np.float32)
     mask = np.concatenate(masks).astype(np.float32)
+    ground = np.concatenate(grounds).astype(np.float32)
     y = np.concatenate(ys).astype(np.float32)
 
     if verbose:
         print(f"dataset: {len(y)} samples from {stats['files']} file(s)")
         for nm, nd, nr, kept in stats["per_source"]:
             print(f"  {nm}: {nd} drones x {nr} rows -> {kept} kept")
-        for k in ("dropped_zero_a_res", "dropped_z_floor", "dropped_no_neighbour",
-                  "dropped_far", "clamped_min_dist"):
+        for k in ("dropped_zero_a_res", "dropped_z_floor", "no_neighbour_influence"):
             if stats[k]:
                 print(f"  {k}: {stats[k]}")
         if stats["dropped_zero_a_res"] > 0.5 * max(stats["rows_in"], 1):
             print("  WARNING: most samples had a_res identically zero. That is the signature of "
                   "a missing RPM source, not of an absence of interaction.", file=sys.stderr)
-    return rel, mask, y, stats
+    return rel, mask, ground, y, stats
 
 
-def normalisation(rel, mask):
-    """Per-input mean and std over present neighbours only.
+def normalisation_rel(rel, mask):
+    """Per-input mean and std of the neighbour term, over present-and-gated neighbours only.
 
     Padding rows are exact zeros; folding them into the statistics would pull the mean toward
     zero by an amount that depends on how many drones happened to be flying, which would make
-    a 2-drone model and a 3-drone model normalise differently for no physical reason.
+    a 2-drone model and a 3-drone model normalise differently for no physical reason. A row
+    masked out by the GATE (a real neighbour, just outside the proximity window) is excluded for
+    the same reason -- it never reaches phi_S with a non-zero weight either.
     """
-    flat = rel.reshape(-1, PHI_IN)
+    flat = rel.reshape(-1, model.PHI_IN_SL)
     sel = mask.reshape(-1) > 0
     if sel.sum() < 2:
-        raise SystemExit("Fewer than two neighbour observations -- nothing to normalise.")
+        raise SystemExit("Fewer than two gated neighbour observations -- nothing to normalise.")
     mu = flat[sel].mean(axis=0).astype(np.float64)
     sigma = flat[sel].std(axis=0).astype(np.float64)
-    # A channel that never moved cannot be scaled; leave it at unit gain rather than dividing
-    # by noise. Reported by train.py so it is visible rather than silently absorbed.
+    sigma = np.where(sigma < 1e-6, 1.0, sigma)
+    return mu, sigma
+
+
+def normalisation_ground(ground):
+    """Per-input mean and std of the ground term. No mask: `ground` applies to every row."""
+    if len(ground) < 2:
+        raise SystemExit("Fewer than two samples -- nothing to normalise.")
+    mu = ground.astype(np.float64).mean(axis=0)
+    sigma = ground.astype(np.float64).std(axis=0)
     sigma = np.where(sigma < 1e-6, 1.0, sigma)
     return mu, sigma
 
@@ -254,34 +250,39 @@ def synthetic(n=20000, n_neighbours=1, seed=0, noise=0.02):
 
     Shape: force downward on a vehicle *below* another, falling off as a Gaussian in horizontal
     offset and decaying with vertical separation. That is the qualitative structure Neural-Swarm2
-    reports and the structure the simulator applies; the constants here are invented.
+    reports and the structure the simulator applies; the constants here are invented. Ground
+    effect is a small, separate downward term at low own_z, so the ground path has something
+    non-trivial to fit too.
     """
     rng = np.random.default_rng(seed)
-    rel = np.zeros((n, MAX_NEIGHBOURS, PHI_IN), np.float32)
-    mask = np.zeros((n, MAX_NEIGHBOURS), np.float32)
-    y = np.zeros((n, 3), np.float32)
+    rel = np.zeros((n, model.MAX_NEIGHBOURS, model.PHI_IN_SL), np.float32)
+    present = np.zeros((n, model.MAX_NEIGHBOURS), np.float32)
+    y = np.zeros(n, np.float32)
+
+    own_z = rng.uniform(0.05, 1.5, n).astype(np.float32)
+    own_vel = rng.normal(0.0, 0.3, (n, 3)).astype(np.float32)
+    ground = np.stack([0.0 - own_z, -own_vel[:, 0], -own_vel[:, 1], -own_vel[:, 2]],
+                      axis=1).astype(np.float32)
+    y += (-0.4 * np.exp(-own_z / 0.15)).astype(np.float32)          # ground effect, near-field only
 
     for k in range(n_neighbours):
         dp = np.stack([rng.uniform(-0.5, 0.5, n), rng.uniform(-0.5, 0.5, n),
-                       rng.uniform(-1.0, 1.0, n)], axis=1)
-        dv = rng.normal(0.0, 0.3, (n, 3))
-        # Through the same guards as real data, and the target is computed from the GUARDED
-        # separation -- the firmware genuinely cannot see below MIN_DIST, so a target that
-        # depended on the unguarded value would ask the model to recover information it is
-        # never given.
-        dp, near, _ = apply_input_guards(dp)
+                       rng.uniform(-1.0, 1.0, n)], axis=1).astype(np.float32)
+        dv = rng.normal(0.0, 0.3, (n, 3)).astype(np.float32)
         rel[:, k, :3] = dp
         rel[:, k, 3:] = dv
-        mask[:, k] = near.astype(np.float32)
+        present[:, k] = 1.0
 
         r = np.linalg.norm(dp[:, :2], axis=1)
         dz = dp[:, 2]
-        # Only a neighbour ABOVE (dz > 0) pushes the ego vehicle down.
+        # Only a neighbour ABOVE (dz > 0) pushes the ego vehicle down. Same shape as before the
+        # rewrite, but the target the gate would actually hide is no longer subtracted out --
+        # samples the real gate masks still get this contribution in `y`, same as a real flight
+        # would show a real (ungated) force that the network simply isn't shown the cause of.
         above = np.clip(dz, 0.0, None)
         a_z = -3.0 * np.exp(-(r / 0.15) ** 2) * np.exp(-above / 0.4) * (dz > 0.02)
-        y[:, 2] += a_z.astype(np.float32)
-        y[:, 0] += (0.15 * a_z * dp[:, 0] / np.maximum(r, 1e-3)).astype(np.float32)
-        y[:, 1] += (0.15 * a_z * dp[:, 1] / np.maximum(r, 1e-3)).astype(np.float32)
+        y += a_z.astype(np.float32)
 
+    mask = model.build_mask(rel, present)
     y += rng.normal(0.0, noise, y.shape).astype(np.float32)
-    return rel, mask, y
+    return rel, mask, ground, y
