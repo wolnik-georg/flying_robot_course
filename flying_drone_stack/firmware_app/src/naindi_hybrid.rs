@@ -232,6 +232,21 @@ pub extern "C" fn naindi_hybrid_test_set_j(x: f32, y: f32, z: f32) {
     unsafe { J_TEST_OVERRIDE = Some(Vec3::new(x, y, z)); }
 }
 
+// 2026-09-17: sim-only KR/KOMEGA override, mirroring naindi.rs's own naindi_test_set_gains()
+// exactly -- same shared root-cause hypothesis (docs/07 History (39)/(40)): reference torque
+// gains tuned for their J, applied unchanged to this project's real, heavier CF21BL J, lower
+// both omega_n and zeta at once. Kept as this file's own static, not shared with naindi.rs's,
+// per this module's isolation requirement. Never used unless a sim harness calls the setter.
+static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
+
+#[no_mangle]
+pub extern "C" fn naindi_hybrid_test_set_gains(kr_x: f32, kr_y: f32, kr_z: f32,
+                                                komega_x: f32, komega_y: f32, komega_z: f32) {
+    unsafe {
+        GAIN_TEST_OVERRIDE = Some((Vec3::new(kr_x, kr_y, kr_z), Vec3::new(komega_x, komega_y, komega_z)));
+    }
+}
+
 fn vclampscl(v: Vec3, limit: f32) -> Vec3 {
     Vec3::new(v.x.clamp(-limit, limit), v.y.clamp(-limit, limit), v.z.clamp(-limit, limit))
 }
@@ -459,6 +474,7 @@ pub unsafe extern "C" fn controllerOutOfTree3(
     s.i_error_att = s.i_error_att.add(e_r.scale(dt));
 
     let j = unsafe { J_TEST_OVERRIDE }.unwrap_or(Vec3::new(JXX, JYY, JZZ));
+    let (kr, komega) = unsafe { GAIN_TEST_OVERRIDE }.unwrap_or((KR, KOMEGA));
     let j_omega = Vec3::new(j.x * omega.x, j.y * omega.y, j.z * omega.z);
     let gyro_term = omega.cross(j_omega);
 
@@ -466,8 +482,8 @@ pub unsafe extern "C" fn controllerOutOfTree3(
     let flat_term = mat_mul_vec(&r_t_rdes, alpha_des);
     let diff = cross_term.sub(flat_term);
     let last_term = Vec3::new(j.x * diff.x, j.y * diff.y, j.z * diff.z);
-    let mut u = Vec3::new(-KR.x * e_r.x, -KR.y * e_r.y, -KR.z * e_r.z)
-        .sub(Vec3::new(KOMEGA.x * omega_error.x, KOMEGA.y * omega_error.y, KOMEGA.z * omega_error.z))
+    let mut u = Vec3::new(-kr.x * e_r.x, -kr.y * e_r.y, -kr.z * e_r.z)
+        .sub(Vec3::new(komega.x * omega_error.x, komega.y * omega_error.y, komega.z * omega_error.z))
         .sub(Vec3::new(KI_ATT.x * s.i_error_att.x, KI_ATT.y * s.i_error_att.y, KI_ATT.z * s.i_error_att.z))
         .add(gyro_term)
         .sub(last_term);

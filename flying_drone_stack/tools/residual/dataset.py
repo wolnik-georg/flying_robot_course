@@ -44,12 +44,14 @@ event essentially never leaves all three exactly zero.
    parameter, not removed, so a *different* analysis that genuinely wants ground-effect samples
    excluded still can.
 
-Still open, not fixed here: `train.py` imports `DeepSets` (no longer exported by `model.py`) and
-calls `dataset.normalisation(rel, mask)` as a single call; this file now exposes
-`normalisation_rel`/`normalisation_ground` (two separate statistics, per `model.fold_normalisation`'s
-own requirement) and returns a 5-tuple instead of 4. `train.py` needs its own pass to match -- a
-separate, larger task with its own decisions (loss unit, optimizer, export against the new
-weight layout), not attempted here.
+2026-09-17: `train.py` rewritten to match this file's contract -- `NeuralSwarm2` (not the removed
+`DeepSets`), the two separate `normalisation_rel`/`normalisation_ground` calls
+`model.fold_normalisation` needs, the 5-tuple `build()` return, and the network's native
+grams output converted to/from this project's acceleration convention at the loss boundary
+(`model.accel_to_grams`/`grams_to_accel`). The pipeline is exercised end-to-end via
+`--synthetic` (`fold check: max |trained - exported| = 8.45e-08 m/s^2`, 19297 weights) --
+what remains untested is `dataset.build()` against a real merged CSV, only reachable with a
+real flight log.
 """
 
 import sys

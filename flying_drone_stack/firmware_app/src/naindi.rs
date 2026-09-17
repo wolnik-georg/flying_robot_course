@@ -213,6 +213,31 @@ pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
     unsafe { J_TEST_OVERRIDE = Some(Vec3::new(x, y, z)); }
 }
 
+// 2026-09-17: sim-only override for KR/KOMEGA, same shape and same reasoning as
+// J_TEST_OVERRIDE above -- KR/KOMEGA are torque-domain gains (Nm/rad, Nm.s/rad) tuned by the
+// reference authors for THEIR airframe's J (16.57/16.66/29.26 e-6), copied verbatim per this
+// module's "no exceptions apart from mass/inertia/kt" rule. This project's real CF21BL J
+// (23.951/23.951/32.347 e-6) is ~44.5%/43.8%/10.6% larger per axis. For a fixed torque gain,
+// a heavier axis has both a LOWER closed-loop omega_n (= sqrt(KR/J)) and a LOWER damping ratio
+// (zeta = Komega/(2*sqrt(KR*J)), which falls as J grows even though omega_n also falls) -- the
+// textbook shape of "stable but comfortably damped on the reference airframe becomes
+// underdamped on a heavier one", consistent with the CS2 SIL finding of a GROWING oscillation
+// rather than an instant divergence (docs/07 History (39)/(40)).
+// Scaling KR and KOMEGA by the same per-axis ratio (J_real/J_ref) restores both omega_n and
+// zeta to the values the reference authors actually tuned for -- this is the untested half of
+// that hypothesis. Never used unless a sim harness explicitly calls the setter; default
+// (None) leaves the numerically-verified-to-1e-9 reference gains completely unchanged, so
+// nothing about the byte-for-bit port itself is touched by this hook's existence.
+static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
+
+#[no_mangle]
+pub extern "C" fn naindi_test_set_gains(kr_x: f32, kr_y: f32, kr_z: f32,
+                                         komega_x: f32, komega_y: f32, komega_z: f32) {
+    unsafe {
+        GAIN_TEST_OVERRIDE = Some((Vec3::new(kr_x, kr_y, kr_z), Vec3::new(komega_x, komega_y, komega_z)));
+    }
+}
+
 fn vclampscl(v: Vec3, limit: f32) -> Vec3 {
     Vec3::new(v.x.clamp(-limit, limit), v.y.clamp(-limit, limit), v.z.clamp(-limit, limit))
 }
@@ -378,6 +403,7 @@ pub unsafe extern "C" fn controllerOutOfTree2(
     s.i_error_att = s.i_error_att.add(e_r.scale(dt));
 
     let j = unsafe { J_TEST_OVERRIDE }.unwrap_or(Vec3::new(JXX, JYY, JZZ));
+    let (kr, komega) = unsafe { GAIN_TEST_OVERRIDE }.unwrap_or((KR, KOMEGA));
     let j_omega = Vec3::new(j.x * omega.x, j.y * omega.y, j.z * omega.z);
     let gyro_term = omega.cross(j_omega);
 
@@ -387,8 +413,8 @@ pub unsafe extern "C" fn controllerOutOfTree2(
     let flat_term = mat_mul_vec(&r_t_rdes, alpha_des);
     let diff = cross_term.sub(flat_term);
     let last_term = Vec3::new(j.x * diff.x, j.y * diff.y, j.z * diff.z);
-    let mut u = Vec3::new(-KR.x * e_r.x, -KR.y * e_r.y, -KR.z * e_r.z)
-        .sub(Vec3::new(KOMEGA.x * omega_error.x, KOMEGA.y * omega_error.y, KOMEGA.z * omega_error.z))
+    let mut u = Vec3::new(-kr.x * e_r.x, -kr.y * e_r.y, -kr.z * e_r.z)
+        .sub(Vec3::new(komega.x * omega_error.x, komega.y * omega_error.y, komega.z * omega_error.z))
         .sub(Vec3::new(KI_ATT.x * s.i_error_att.x, KI_ATT.y * s.i_error_att.y, KI_ATT.z * s.i_error_att.z))
         .add(gyro_term)
         .sub(last_term);
