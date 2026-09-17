@@ -276,6 +276,38 @@ pub extern "C" fn naindi_test_set_gains(kr_x: f32, kr_y: f32, kr_z: f32,
     }
 }
 
+// 2026-09-18: same shape/reasoning as GAIN_TEST_OVERRIDE, for the position loop. NOT a
+// "correct flying config" knob -- by the time this was added, KR/KOMEGA/KPOS_P/KPOS_D/
+// KPOS_I/mass/kt1-4/arm/t2t/J had ALL already been set to the reference authors' own values
+// in one test (naindi_reference_build_notes.md) and it still crashed, so there is no
+// "which of our numbers is wrong" question left to answer via airframe parameters. This
+// exists purely to test whether the ~1.4s oscillation period found in that fully-consistent
+// run tracks KPOS_P the way a real position-loop resonance would (same "does the shake move
+// with the gain" methodology as GAIN_TEST_OVERRIDE and docs/22 section 2h) -- a diagnostic
+// to localize the instability, not a proposed fix. Default (None) leaves KPOS_P/KPOS_D/
+// KPOS_I at the reference's own literal 12.0/10.5/2.0, byte-identical to the port as shipped.
+//
+// TESTED 2026-09-17 (NAINDI_POS_GAIN_SCALE=0.25, state_naindi/2026-09-17_210144): oscillation
+// period moved 1.4s -> 1.85s (a clean position-loop resonance predicts ~2x for a 4x gain cut,
+// i.e. ~2.76s; actual was ~34%). Position gain IS involved (rules out "irrelevant") but far
+// more weakly than a pure position-loop mode -- a coupled position+attitude oscillation, not
+// one loop in isolation. Softening KPOS_P didn't reduce max roll/pitch either. Every
+// single-loop-gain or single-airframe-constant hypothesis tested to date (attitude gains,
+// mass/kt/arm/t2t/J individually and fully self-consistent, position gains) has been
+// partially or fully refuted -- this needs a real closed-loop stability analysis, not another
+// single-variable sweep. Full writeup: host/naindi_reference_build_notes.md.
+static mut POS_GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3, Vec3)> = None;
+
+#[no_mangle]
+pub extern "C" fn naindi_test_set_pos_gains(kp_x: f32, kp_y: f32, kp_z: f32,
+                                             kd_x: f32, kd_y: f32, kd_z: f32,
+                                             ki_x: f32, ki_y: f32, ki_z: f32) {
+    unsafe {
+        POS_GAIN_TEST_OVERRIDE = Some((Vec3::new(kp_x, kp_y, kp_z), Vec3::new(kd_x, kd_y, kd_z),
+                                        Vec3::new(ki_x, ki_y, ki_z)));
+    }
+}
+
 fn vclampscl(v: Vec3, limit: f32) -> Vec3 {
     Vec3::new(v.x.clamp(-limit, limit), v.y.clamp(-limit, limit), v.z.clamp(-limit, limit))
 }
@@ -374,14 +406,15 @@ pub unsafe extern "C" fn controllerOutOfTree2(
 
     // -- Position controller (reference: only when setpoint mode is "modeAbs"; our HLC/Mode E
     //    setpoints are always absolute position, so this is unconditional here) --------------
+    let (kpos_p, kpos_d, kpos_i) = unsafe { POS_GAIN_TEST_OVERRIDE }.unwrap_or((KPOS_P, KPOS_D, KPOS_I));
     let pos_e = vclampscl(pd.sub(pos), KPOS_P_LIMIT);
     let vel_e = vclampscl(vd.sub(vel), KPOS_D_LIMIT);
     s.i_error_pos = s.i_error_pos.add(pos_e.scale(dt));
     s.i_error_pos = vclampscl(s.i_error_pos, KPOS_I_LIMIT);
     let a_d = acc_d_g
-        .add(Vec3::new(KPOS_D.x * vel_e.x, KPOS_D.y * vel_e.y, KPOS_D.z * vel_e.z))
-        .add(Vec3::new(KPOS_P.x * pos_e.x, KPOS_P.y * pos_e.y, KPOS_P.z * pos_e.z))
-        .add(Vec3::new(KPOS_I.x * s.i_error_pos.x, KPOS_I.y * s.i_error_pos.y, KPOS_I.z * s.i_error_pos.z));
+        .add(Vec3::new(kpos_d.x * vel_e.x, kpos_d.y * vel_e.y, kpos_d.z * vel_e.z))
+        .add(Vec3::new(kpos_p.x * pos_e.x, kpos_p.y * pos_e.y, kpos_p.z * pos_e.z))
+        .add(Vec3::new(kpos_i.x * s.i_error_pos.x, kpos_i.y * s.i_error_pos.y, kpos_i.z * s.i_error_pos.z));
 
     // -- RPM -> per-motor thrust (see module doc: our kt_i / rpm_get_all(), not kappa_f) -----
     let mut m1 = 0u16; let mut m2 = 0u16; let mut m3 = 0u16; let mut m4 = 0u16;

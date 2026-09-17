@@ -297,17 +297,44 @@ whether one exists. **Conclusion: this is not fixable by getting mass/kt "right"
 combination tried so far — real-brushless and the reference authors' own numbers both
 eventually diverge, just at different times.**
 
-**A concrete new lead, not yet tested:** the observed ~1.4s oscillation period is the right
-order of magnitude for the **position loop**, not the attitude loop — `KPOS_P=12.0` (never
-scaled or tested, still the reference's literal constant, both here and in every prior test)
-gives a naive `ω_n=√12.0=3.46 rad/s` → period 1.81s, within ~30% of the measured 1.4s (a
-difference consistent with `KPOS_D` damping and coupling to attitude, not a mismatch). No
-config tested so far has touched `KPOS_P/KPOS_D/KPOS_I` — every experiment to date has only
-varied attitude gains (`KR`/`KOMEGA`) or airframe constants (mass/kt/arm/t2t/J). **Next
-diagnostic: scale `KPOS_P/KPOS_D/KPOS_I` the same way `KR`/`KOMEGA` were scaled** (needs its
-own `GAIN_TEST_OVERRIDE`-style hook — doesn't exist yet), or fly a trajectory that never
-transitions to hover-hold (removes the position loop's own settle behavior) to see if the
-oscillation still appears.
+### Position-gain diagnostic, 2026-09-17 — position loop IS involved, but not the whole story
+
+**Important clarification on what this override is for, before the result:** by this point
+`KR`/`KOMEGA`/`KPOS_P`/`KPOS_D`/`KPOS_I`/mass/kt/arm/t2t/J had *all* already been set to the
+reference authors' own values in the fully-self-consistent run above, and it still crashed —
+so there is no "which of our numbers is wrong" question left to answer. `POS_GAIN_TEST_OVERRIDE`
+(mirroring `GAIN_TEST_OVERRIDE`'s exact shape) exists purely to test whether the ~1.4s
+oscillation tracks `KPOS_P` the way a real position-loop resonance would — a diagnostic to
+localize the instability, not a step toward a flyable configuration. Default (`None`) leaves
+`KPOS_P/KPOS_D/KPOS_I` at the reference's own literal `12.0/10.5/2.0`.
+
+```bash
+# crazyflie_sil.py: NAINDI_POS_GAIN_SCALE=<float> scales KPOS_P/D/I together by that factor
+# (controller=7/oot2 only). Combine with NAINDI_REFERENCE_MASS=1 for the fully-consistent test.
+NAINDI_REFERENCE_MASS=1 NAINDI_POS_GAIN_SCALE=0.25 ros2 launch ...
+```
+
+**Result:** at `NAINDI_POS_GAIN_SCALE=0.25` (`KPOS_P=3.0, KPOS_D=2.625, KPOS_I=0.5`), the
+oscillation period measured **~1.85s** (6 zero-crossings, `state_naindi/2026-09-17_210144`),
+up from the unscaled ~1.4s. A clean single-degree-of-freedom position-loop resonance predicts
+`period ∝ 1/√KPOS_P`, i.e. quartering `KPOS_P` should roughly **double** the period (1.4→2.76s);
+the actual shift was **~34%** (1.4→1.85s). **The position gain genuinely moves the oscillation
+(ruling out "irrelevant"), but far more weakly than a pure position-loop mode would — this is a
+coupled position+attitude oscillation, not a clean single-loop resonance.** Consistent with
+that: max roll/pitch was similar or slightly worse at the softened gain (51°/60° vs ~50°/65° at
+default), not better — softening the position loop alone didn't meaningfully improve stability,
+which a purely-position-loop-driven instability should have shown clearly.
+
+**Where this leaves things:** every single-parameter or single-loop-gain hypothesis tested so
+far (attitude gains, airframe mass/kt/arm/t2t/J individually and fully self-consistent,
+position gains) has been partially or fully refuted. The instability appears to be a genuine
+coupled-loop phenomenon in this specific closed-loop combination (this Rust port + this
+project's HLC/trajectory + this SIL's EKF/sensor model), not traceable to any one number being
+wrong. Properly characterizing it from here would need either a real linearized closed-loop
+stability analysis (root locus over the coupled position-attitude system) rather than further
+single-variable A/B flights, or accepting that this needs its own dedicated investigation
+before controller=7 is a realistic near-term candidate — not something to resolve with one more
+quick parameter sweep.
 
 Trajectory-transition-specific causes (integral windup or a setpoint discontinuity at the
 hover→land handover, the original hypothesis) are now less well supported — the reference-mass
