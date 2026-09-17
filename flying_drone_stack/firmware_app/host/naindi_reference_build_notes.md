@@ -192,3 +192,118 @@ reference's own compiled C, the same standard `controller=7` was held to. **Stil
 cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
 python3 host/test_naindi_hybrid_reference.py "$SCRATCH/build" ~/Desktop/crazyflie-firmware/build
 ```
+
+## CS2 SIL closed-loop validation (controller=7) — reference-consistent build recipe, 2026-09-17
+
+**This is a SIM-ONLY, throwaway build configuration. It must never be used to build
+`cf21bl.bin`/`cf2.bin` for a real flash — see "Restoring the default build" below.**
+
+### Why this exists
+
+The static test vectors above (and `test_naindi_hybrid_reference.py`) only ever check a single
+tick against a hand-picked state — they cannot catch a closed-loop instability. The first real
+closed-loop test (2026-09-16, `docs/07` History (39)/(40)) wired `oot2`/`oot3` into the CS2 SIL
+simulator and found both controllers crash a plain single-drone hover. Chasing why (2026-09-17)
+found the SIL's simulated plant is a second, independent implementation
+(`crazyflie_sim/backend/np.py`, NOT this project's own Rust simulator) with its own hardcoded
+airframe constants that don't automatically track whichever platform `naindi.rs`/
+`naindi_hybrid.rs` were compiled for.
+
+### The two separate platform switches involved
+
+| Switch | Governs | Default | For this test |
+|---|---|---|---|
+| `DRONE_PLATFORM` (Rust, `firmware_app/build.rs`) | `naindi.rs`'s own `JXX/JYY/JZZ`, `ARM_REF_DEFAULT`, `T2T_REF_DEFAULT` (and `lib.rs`'s equivalents for controller=6) | `bl` (brushless) if set, else standard/upgraded | **unset** (or `cf2`) |
+| `OOT_PLATFORM` (C, `crazyflie-firmware/bindings/setup.py`) | The `platform_defaults.h` block `oot_arm_length()`/`oot_thrust2torque()` (`firmware_app/host/oot_host.c`) read — these are what `crazyflie_server.py`'s `_setup_oot` uses to sync the **simulated plant's** arm/thrust-to-torque to the controller | `CONFIG_PLATFORM_CF21BL` if unset | **`CONFIG_PLATFORM_CF2`** |
+
+These are governed by **completely different mechanisms** (a Rust build-time env var vs. a
+Python `setup.py` env var reading a **different** name) — easy to set one and assume the other
+followed. Confirm both took effect before trusting a run:
+
+```bash
+python3 -c "
+import sys; sys.path.insert(0, '/home/georg/Desktop/crazyflie-firmware/build')
+import cffirmware as firm
+print('arm_length:', firm.oot_arm_length())       # expect 0.046 (reference), not 0.050 (bl)
+print('mass default:', firm.cvar.g_indi_mass)      # compile default only -- yaml still overrides this, see below
+"
+```
+
+The plant's own **inertia** (`crazyflie_sim/backend/np.py`'s `Quadrotor.J`) is a THIRD thing,
+hardcoded to the reference's own numbers (`16.571710e-6, 16.655602e-6, 29.261652e-6`) and
+**never synced from the firmware at all** (`_setup_oot` doesn't include `J` in its physics
+sync). This is what makes the standard/upgraded `DRONE_PLATFORM` choice load-bearing here: on
+that branch `naindi.rs`'s own `JXX/JYY/JZZ` (`lib.rs`) already equal those same numbers, so the
+controller's internal model and the plant's true inertia finally agree — not because the plant
+was fixed, but because the controller was pointed at what the plant already was.
+
+### The recipe
+
+```bash
+# 1. Rust side -- controller's own arm/t2t/J -> reference values
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+RUSTFLAGS="-C panic=abort" cargo build --release --target x86_64-unknown-linux-gnu \
+    --features residual_nn   # feature needed only if testing rnn.* too; harmless otherwise
+
+# 2. C side -- plant's arm/t2t sync source -> reference values (SEPARATE env var!)
+cd ~/Desktop/crazyflie-firmware
+rm -f build/_cffirmware*.so build/cffirmware.py build/cffirmware_wrap.c
+OOT_PLATFORM=CONFIG_PLATFORM_CF2 make bindings_python
+
+# 3. Run the SIL hover (server_sim_naindi.yaml selects oot2; crazyflies_sim1.yaml is
+#    required -- oot2/oot3 have no per-vehicle state-swap mechanism, one drone only)
+source /opt/ros/humble/setup.bash && source ~/Desktop/crazyswarm2/install/setup.bash
+cd ~/Desktop/crazyswarm2
+ros2 launch crazyflie launch.py backend:=sim rviz:=False mocap:=False teleop:=False \
+    crazyflies_yaml_file:=$(pwd)/crazyflie/config/crazyflies_sim1.yaml \
+    server_yaml_file:=$(pwd)/crazyflie/config/server_sim_naindi.yaml &
+sleep 6
+ros2 run crazyflie_examples simple_flight -- --trajectory hover --duration 8 --height 1.0
+# NAINDI_SCALED_GAINS=1  -- KR/KOMEGA scaled by J_real/J_ref (naindi.rs GAIN_TEST_OVERRIDE)
+# NAINDI_REFERENCE_MASS=1 -- g_indi_mass -> 0.034 kg before the plant snapshot (crazyflie_server.py)
+```
+
+Recorded state: `crazyswarm2/state_naindi/<timestamp>/csv/cf231_active.csv`
+(`server_sim_naindi.yaml`'s `record_states`).
+
+### Results
+
+| Config | Hover (t≈8-16s) | Landing (t≈16-19s) |
+|---|---|---|
+| `bl` platform, unscaled gains (2026-09-16 original) | **crashes** ~t=13s | — |
+| `bl` platform, `NAINDI_SCALED_GAINS=1` (2026-09-17) | **crashes** ~t=12.6s, same signature | — |
+| **`cf2`/reference platform** (this recipe), real mass/kt | **clean**, roll/pitch <1.2° | **crashes** ~t=17-19s, 30-45° |
+| `cf2`/reference platform + `NAINDI_REFERENCE_MASS=1` | **worse** — oscillation from ~t=12s, tumble ~t=16s | (never reached cleanly) |
+
+**Conclusion so far:** the arm/t2t/J platform mismatch was the hover crash's real cause — fixed
+by this recipe. `KR`/`KOMEGA` scaling (tried first, before this was understood) was solving a
+mismatch that didn't physically exist in the sim and made nothing better. Overriding mass alone
+(`NAINDI_REFERENCE_MASS=1`, decoupling it from the still-real `kt1-4`) makes things **worse**,
+not better — mass and kt must stay internally consistent (both real, since they were measured
+together; there's no reference-project kt in the same RPM²-domain units to pair with a
+reference mass). **The landing crash is still open and NOT mass/kt-driven** — next diagnostic is
+the hover→land setpoint transition (integral windup, a velocity/acceleration discontinuity at
+that segment boundary) or the still-untouched `KPOS_P/KPOS_D/KPOS_I` position gains (also
+reference-literal, never scaled or tested).
+
+### Restoring the default build
+
+**Every session that runs this recipe must restore the real hardware default afterward** —
+`OOT_PLATFORM`/`DRONE_PLATFORM` are easy to leave set in a shell and easy to forget:
+
+```bash
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl                      # real ARM build, reseeds the Kconfig .config to CF21BL
+DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" cargo build --release \
+    --target x86_64-unknown-linux-gnu --features residual_nn
+cd ~/Desktop/crazyflie-firmware
+rm -f build/_cffirmware*.so build/cffirmware.py build/cffirmware_wrap.c
+make bindings_python                # OOT_PLATFORM unset -> CONFIG_PLATFORM_CF21BL default
+```
+
+Verified 2026-09-17: after restoring, `oot_arm_length()` reads back `0.050` (brushless) and a
+`controller=6` geometric hover (`server_sim_geo.yaml`) flies exactly as before — `state_geo/`,
+max roll/pitch `0.0°` through the full flight. **Nothing about controller=6 or our own INDI
+(`controller=6`, `ctrl_mode` 0-3) is touched by any of this** — they only ever read `lib.rs`'s
+own platform-gated constants, built the same way they always have been; `naindi.rs`/
+`naindi_hybrid.rs` are a fully separate compiled path.

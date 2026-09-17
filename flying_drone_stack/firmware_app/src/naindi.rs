@@ -252,20 +252,20 @@ pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
 // substantially correct -- just not fixable by scaling attitude gains alone, because the
 // plant's J was never actually the real airframe's to begin with in this sim.
 //
-// STILL OPEN: the SAME run now crashes during LANDING instead (t~17-19s, roll/pitch to
-// 30-45 deg, not hover). mass/kt were NOT part of this fix -- crazyflies_sim1.yaml still
-// pushes the real measured brushless mass (0.041 kg) and kt over g_indi_mass/g_indi_kt1-4,
-// which this file reads directly (line ~350/366) regardless of platform build, so a real
-// mass/kt mismatch against the reference (0.034 kg) remains live throughout hover AND
-// landing -- evidently not enough to destabilize hover by itself, but landing's descent/
-// ground-effect regime may be more sensitive to it, or the landing crash may be a separate,
-// unrelated cause (e.g. the hover->land setpoint transition, similar in spirit to this
-// project's own controller's landing-transition bugs found elsewhere in this codebase).
-// Next diagnostic: isolate whether the landing crash is mass/kt-driven (there is no
-// existing override hook for g_indi_mass/kt -- would need one, or a yaml without the
-// override, mirroring GAIN_TEST_OVERRIDE) or trajectory-transition-driven (log the setpoint
-// through the hover->land handover, same idea as the hover-transition hypothesis this test
-// replaces).
+// STILL OPEN, mass/kt RULED OUT 2026-09-17: the same run crashes during LANDING instead
+// (t~17-19s, roll/pitch to 30-45 deg). Tested whether this is the residual mass/kt mismatch
+// (crazyflies_sim1.yaml pushes the real measured brushless mass/kt over g_indi_mass/
+// g_indi_kt1-4, which this file reads directly regardless of platform build) via a
+// crazyflie_server.py opt-in (NAINDI_REFERENCE_MASS=1) that overrides g_indi_mass to the
+// reference's 0.034 kg before the plant snapshot. Result: WORSE, not better -- decoupling
+// mass from the still-real kt1-4 destabilizes HOVER too (oscillation from ~t=12s). Mass and
+// kt must stay internally consistent (both real, since they were measured together) --
+// ruled out as the landing driver. Next diagnostic: the hover->land setpoint transition
+// (KI_ATT integral windup, a velocity/acceleration discontinuity at that segment boundary)
+// or the still-untouched KPOS_P/KPOS_D/KPOS_I position gains (also reference-literal, never
+// scaled or tested). Full recipe, every result, and how to restore the default brushless
+// build afterward: host/naindi_reference_build_notes.md's "CS2 SIL closed-loop validation"
+// section.
 static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
 
 #[no_mangle]
