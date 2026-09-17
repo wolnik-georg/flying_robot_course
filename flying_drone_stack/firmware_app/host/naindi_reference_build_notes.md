@@ -193,6 +193,95 @@ cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
 python3 host/test_naindi_hybrid_reference.py "$SCRATCH/build" ~/Desktop/crazyflie-firmware/build
 ```
 
+## Closed-loop test of their ACTUAL compiled C — 2026-09-18
+
+**The static test vectors above only ever check a single tick.** They prove the port is a
+faithful *translation* of `controller_lee.c`, not that the algorithm is stable in a real
+closed loop — that's a separate question the numeric comparison can't answer. This section
+builds a standalone closed-loop harness (`host/naindi_reference_closed_loop.py`) that flies
+**their actual compiled `controllerLee()`** — not `naindi.rs` — against the same rigid-body
+plant physics (`crazyflie_sim.backend.np.Quadrotor`) the CS2 SIL uses, to separate "port bug"
+from "their algorithm is genuinely unstable here".
+
+### Build recipe (extends the static-test scratch build above)
+
+The static-test scratch build's `bindings/setup.py`/`bindings/cffirmware.i` patches, `PLUS`:
+
+1. **New host stub file, `bindings/host_stubs.c`** (the static test's patches embedded the
+   equivalent code inline in `setup.py`'s docstring; this puts it in its own file since the
+   closed-loop harness needs two more symbols). Provides `paramGetVarId`/`paramGetUint`
+   (report the RPM deck "present" unconditionally), `logGetVarId`/`logGetUint` +
+   `oot_test_set_rpm()` (their RPM read path), `oot_test_set_kappa_f()` (their `kappa_f[4]`
+   is a runtime `PARAM_FLOAT`, zero by default), `motorsGetRatio`/`oot_test_set_pwm_ratio`
+   (unused at `use_nn=0`, linked for completeness), `usecTimestamp()` (fixed +2000us per
+   call, matching `ATTITUDE_RATE=500`), **and `pmGetBatteryVoltage()`** — a genuinely new
+   requirement versus the static test: not called by `controller_lee.c` itself, but needed
+   elsewhere in the link chain, and the static test never triggered it.
+2. Add `bindings/host_stubs.c` to `sources=` in `bindings/setup.py`.
+3. Add SWIG declarations for `oot_test_set_rpm`/`oot_test_set_kappa_f`/`oot_test_set_pwm_ratio`
+   to `bindings/cffirmware.i` (both the `%{ %}` block and the plain declaration below it).
+4. `cd $SCRATCH && rm -f build/_cffirmware*.so build/cffirmware_wrap.c && make bindings_python`
+
+Verified this rebuild is still bit-for-bit correct before trusting it for anything new:
+`test_naindi_reference.py`'s 5 static cases still pass at the same ~1e-9 tolerance.
+
+### `naindi_reference_closed_loop.py`
+
+Drives BOTH sides — `--which reference` (their `controllerLee()`) and `--which ours`
+(`naindi.rs`'s `controllerOutOfTree2`) — through the **identical** tick loop, plant, and
+trajectory, differing only in which compiled controller is called. This is the rigorous
+comparison: a reference-only run leaves the trajectory-shape difference from the CS2 SIL
+test as an uncontrolled variable, so an apples-to-apples same-harness run is the only way
+to isolate "port bug" from everything else. `--which ours` needs the host `cffirmware`
+rebuilt for the reference-consistent platform (`DRONE_PLATFORM` unset,
+`OOT_PLATFORM=CONFIG_PLATFORM_CF2` — see the section above) to match the airframe on the
+reference side; **remember to restore the default (`make DRONE=bl` + plain
+`make bindings_python`) afterward**, same as every other experiment in this file.
+
+Airframe: mass, kt, arm, t2t, J — **all** the reference authors' own values (kt is their real
+measured `kappa_f` from `~/Desktop/NA-INDI/pwm2thrust.py`, not this project's), fully
+self-consistent, matching the same config that flew `naindi.rs` clean through hover in the
+CS2 SIL before crashing later (`state_naindi/2026-09-17_203435`).
+
+**A real bug caught and fixed while building this harness, worth flagging:** `controllerLee()`
+gates on `RATE_DO_EXECUTE(ATTITUDE_RATE=500, tick)`, which is `(tick % 2) == 0` at
+`RATE_MAIN_LOOP=1000`/`ATTITUDE_RATE=500`. A raw incrementing tick counter (0,1,2,...) makes
+this fire on only every other call, silently halving the effective control rate to 250 Hz
+with no error — the controller just holds its previous output on odd ticks. Fixed by passing
+`tick = 2 * loop_index`, so every call is a real execution at true 500 Hz.
+
+### Results (`--duration 20`, climb 2s → hold 8s → land 2s → settle, matching the CS2 SIL
+tests' own `--duration 8 --height 1.0`)
+
+| Config | reference (their C) | ours (naindi.rs) |
+|---|---|---|
+| Bare position ramp (no feedforward) | clean, max roll/pitch 0.004° | clean, max roll/pitch 0.004° |
+| + landing phase added | clean | clean |
+| + minimum-jerk climb/land feedforward (real `sp.velocity`/`sp.acceleration`, not held at 0) | clean | clean |
+
+**All four configurations are clean, and — critically — `reference` and `ours` are
+numerically almost identical to each other in every one** (z-trajectories match to 5-6
+significant figures). **This is strong, direct evidence against a port bug**: given the
+identical plant, identical airframe, identical trajectory, the two compiled controllers
+produce the same behavior. It does **not** reproduce the crash the CS2 SIL test found.
+
+**What this means, honestly:** the crash is real (documented on video^Wlog, reproducible in
+the actual ROS2 SIL every time) but this standalone harness — despite matching airframe,
+gains, trajectory phases (climb/hold/land), and even feedforward shape — does not reproduce
+it. Something about the *actual* CS2 SIL execution differs from this simplified
+reimplementation in a way that matters. The leading unexamined candidate: `crazyflie_sil.py`
+steps physics at 2 kHz but only *attempts* a controller call every other substep (~1 kHz),
+and `RATE_DO_EXECUTE` gates that down again to the true 500 Hz — meaning the real SIL holds
+each control output across **4** physics substeps (dt=0.0005 each) between genuine
+recomputes, a different discretization than this harness's direct 1:1 dt=0.002 stepping.
+Also un-replicated: the real HLC's own Poly4D/min-snap polynomial shape (this harness uses a
+hand-picked quintic, not what `uploadTrajectory` actually generates) and any x/y motion in
+the real flight (this harness is pure-Z). **Next step, if pursued: instrument the actual CS2
+SIL run with per-tick logging (setpoint, `KI_ATT.i_error_att`, the exact physics-vs-control
+call pattern) around the crash window, rather than continuing to guess-and-check with a
+hand-rolled reimplementation** — the standalone harness has done what it usefully can:
+ruled out a port bug as the explanation, not found the actual trigger.
+
 ## CS2 SIL closed-loop validation (controller=7) — reference-consistent build recipe, 2026-09-17
 
 **This is a SIM-ONLY, throwaway build configuration. It must never be used to build
