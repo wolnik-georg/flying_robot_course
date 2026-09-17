@@ -268,23 +268,54 @@ Recorded state: `crazyswarm2/state_naindi/<timestamp>/csv/cf231_active.csv`
 
 ### Results
 
-| Config | Hover (t≈8-16s) | Landing (t≈16-19s) |
-|---|---|---|
-| `bl` platform, unscaled gains (2026-09-16 original) | **crashes** ~t=13s | — |
-| `bl` platform, `NAINDI_SCALED_GAINS=1` (2026-09-17) | **crashes** ~t=12.6s, same signature | — |
-| **`cf2`/reference platform** (this recipe), real mass/kt | **clean**, roll/pitch <1.2° | **crashes** ~t=17-19s, 30-45° |
-| `cf2`/reference platform + `NAINDI_REFERENCE_MASS=1` | **worse** — oscillation from ~t=12s, tumble ~t=16s | (never reached cleanly) |
+| Config | Result |
+|---|---|
+| `bl` platform, unscaled gains (2026-09-16 original) | **crashes** ~t=13s |
+| `bl` platform, `NAINDI_SCALED_GAINS=1` (2026-09-17) | **crashes** ~t=12.6s, same signature |
+| **`cf2`/reference platform** (this recipe), real (brushless) mass/kt | **clean hover**, roll/pitch <1.2°, then **crashes during landing**, t≈17-19s, 30-45° |
+| `cf2`/reference platform + `NAINDI_REFERENCE_MASS=1` (0.034 kg, **our own** real kt — self-inconsistent mix) | **worse** — oscillation from ~t=12s, tumble ~t=16s |
+| `cf2`/reference platform + `NAINDI_REFERENCE_MASS=1` (0.034 kg + **the reference's own** measured `kappa_f`, fully self-consistent — see below) | **still crashes**, but now DURING hover (~t=12.6-15.8s), not landing |
 
-**Conclusion so far:** the arm/t2t/J platform mismatch was the hover crash's real cause — fixed
-by this recipe. `KR`/`KOMEGA` scaling (tried first, before this was understood) was solving a
-mismatch that didn't physically exist in the sim and made nothing better. Overriding mass alone
-(`NAINDI_REFERENCE_MASS=1`, decoupling it from the still-real `kt1-4`) makes things **worse**,
-not better — mass and kt must stay internally consistent (both real, since they were measured
-together; there's no reference-project kt in the same RPM²-domain units to pair with a
-reference mass). **The landing crash is still open and NOT mass/kt-driven** — next diagnostic is
-the hover→land setpoint transition (integral windup, a velocity/acceleration discontinuity at
-that segment boundary) or the still-untouched `KPOS_P/KPOS_D/KPOS_I` position gains (also
-reference-literal, never scaled or tested).
+**The reference authors' own measured thrust constants exist** — not baked into
+`controller_lee.c` as a literal (their `kappa_f[4]` is a plain runtime `PARAM_FLOAT`, zero by
+default, meant to be set from a real calibration), but present in their own host-side tooling:
+`~/Desktop/NA-INDI/pwm2thrust.py` and `LMCE/residual_calculation.py`, both hardcoding
+`kappa_f = [2.139974655714972e-10, 2.3783777845095615e-10, 1.9693330742680727e-10,
+2.559402652634741e-10]` (same `force[i] = kappa_f[i] * rpm²` formula `naindi.rs` uses). The
+`NAINDI_REFERENCE_MASS=1` override in `crazyflie_server.py` now sets **both** `g_indi_mass`
+(0.034 kg, `controller_lee.c`'s own `.mass`) and `g_indi_kt1-4` (the array above) together,
+giving — for the first time — mass, kt, arm, t2t, and J **all** from the reference authors' own
+airframe, fully self-consistent, no mixing with this project's own numbers anywhere.
+
+**Result: still crashes.** Not better than the real-brushless-mass/kt run, and by a different
+signature — a growing oscillation starting almost immediately after climb completes (~t=12.6s),
+period **≈1.4s** (measured from 5 roll zero-crossings), tumbling by ~t=15.8s, well inside the
+requested 8s hover — **this is not a landing event at all**, it happens entirely during hover.
+That reframes the earlier "landing crash" finding: it isn't landing-specific — different
+mass/kt combinations shift *when* an underlying marginal oscillation tips into a tumble, not
+whether one exists. **Conclusion: this is not fixable by getting mass/kt "right" in any
+combination tried so far — real-brushless and the reference authors' own numbers both
+eventually diverge, just at different times.**
+
+**A concrete new lead, not yet tested:** the observed ~1.4s oscillation period is the right
+order of magnitude for the **position loop**, not the attitude loop — `KPOS_P=12.0` (never
+scaled or tested, still the reference's literal constant, both here and in every prior test)
+gives a naive `ω_n=√12.0=3.46 rad/s` → period 1.81s, within ~30% of the measured 1.4s (a
+difference consistent with `KPOS_D` damping and coupling to attitude, not a mismatch). No
+config tested so far has touched `KPOS_P/KPOS_D/KPOS_I` — every experiment to date has only
+varied attitude gains (`KR`/`KOMEGA`) or airframe constants (mass/kt/arm/t2t/J). **Next
+diagnostic: scale `KPOS_P/KPOS_D/KPOS_I` the same way `KR`/`KOMEGA` were scaled** (needs its
+own `GAIN_TEST_OVERRIDE`-style hook — doesn't exist yet), or fly a trajectory that never
+transitions to hover-hold (removes the position loop's own settle behavior) to see if the
+oscillation still appears.
+
+Trajectory-transition-specific causes (integral windup or a setpoint discontinuity at the
+hover→land handover, the original hypothesis) are now less well supported — the reference-mass
+run's oscillation starts well before any landing transition and has the same qualitative shape
+(growing, several-second oscillation into a tumble) as the real-mass run's landing crash. This
+was not directly ruled out (the current SIL harness doesn't log the setpoint/`KI_ATT` state,
+only position and attitude), but the position-loop-frequency match is the more specific,
+better-supported lead right now.
 
 ### Restoring the default build
 

@@ -252,20 +252,20 @@ pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
 // substantially correct -- just not fixable by scaling attitude gains alone, because the
 // plant's J was never actually the real airframe's to begin with in this sim.
 //
-// STILL OPEN, mass/kt RULED OUT 2026-09-17: the same run crashes during LANDING instead
-// (t~17-19s, roll/pitch to 30-45 deg). Tested whether this is the residual mass/kt mismatch
-// (crazyflies_sim1.yaml pushes the real measured brushless mass/kt over g_indi_mass/
-// g_indi_kt1-4, which this file reads directly regardless of platform build) via a
-// crazyflie_server.py opt-in (NAINDI_REFERENCE_MASS=1) that overrides g_indi_mass to the
-// reference's 0.034 kg before the plant snapshot. Result: WORSE, not better -- decoupling
-// mass from the still-real kt1-4 destabilizes HOVER too (oscillation from ~t=12s). Mass and
-// kt must stay internally consistent (both real, since they were measured together) --
-// ruled out as the landing driver. Next diagnostic: the hover->land setpoint transition
-// (KI_ATT integral windup, a velocity/acceleration discontinuity at that segment boundary)
-// or the still-untouched KPOS_P/KPOS_D/KPOS_I position gains (also reference-literal, never
-// scaled or tested). Full recipe, every result, and how to restore the default brushless
-// build afterward: host/naindi_reference_build_notes.md's "CS2 SIL closed-loop validation"
-// section.
+// STILL OPEN 2026-09-17: the same run crashes during LANDING instead (t~17-19s, roll/pitch
+// to 30-45 deg). Tested mass/kt two ways via crazyflie_server.py's NAINDI_REFERENCE_MASS=1:
+// first with the reference's own mass (0.034 kg) against this project's OWN real kt -- worse,
+// destabilizes hover too. Then with the reference authors' OWN measured kt as well (their
+// kappa_f, found in ~/Desktop/NA-INDI/pwm2thrust.py -- their firmware compiles no default at
+// all, it's a runtime PARAM_FLOAT) -- fully self-consistent, mass+kt+arm+t2t+J all from their
+// own airframe. STILL crashes, but now DURING hover (~t=12.6-15.8s, period ~1.4s), not
+// landing. This reframes the finding: no mass/kt combination tried is unconditionally
+// stable -- different combinations shift WHEN an underlying marginal oscillation tips into
+// a tumble, not whether one exists. The ~1.4s period is the right order of magnitude for the
+// POSITION loop (KPOS_P=12.0, never scaled -- naive omega_n=sqrt(12)=3.46 rad/s, 1.81s
+// period, within ~30%), not the attitude loop -- a genuinely new, untested lead. Full recipe,
+// every result, and how to restore the default brushless build afterward:
+// host/naindi_reference_build_notes.md's "CS2 SIL closed-loop validation" section.
 static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
 
 #[no_mangle]
