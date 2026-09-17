@@ -230,19 +230,42 @@ pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
 // touched by this hook's existence.
 //
 // TESTED 2026-09-17 (real CS2 SIL run, NAINDI_SCALED_GAINS=1, single-drone hover,
-// state_naindi/2026-09-17_202127): scaling did NOT fix the crash. Onset/timing and crash
-// signature are nearly identical to the unscaled baseline (state_naindi/2026-09-17_202027) --
-// both dump ~35-80 deg of pitch within ~0.4-0.6s starting almost exactly when the vehicle
-// reaches its target hover altitude (z approaching 1.0, position error crossing through zero),
-// not a slow-growing resonance. That shape argues against a steady-state damping-margin
-// problem (this hook's hypothesis) and toward something triggered AT the ramp-to-hover
-// trajectory transition -- e.g. KI_ATT integral windup accumulated during climb, or a
-// setpoint velocity/acceleration discontinuity at that segment boundary that this port
-// handles differently from controller=6 (which flies the identical commanded trajectory
-// clean). Inertia-mismatch hypothesis is NOT the (or not the whole) cause. Next diagnostic:
-// log KI_ATT.i_error_att and the setpoint accel/velocity feedforward terms through that
-// transition, or test a hover with zero initial position error (spawn already at height) to
-// see if removing the climb-to-hold transition removes the crash.
+// state_naindi/2026-09-17_202127): scaling KR/KOMEGA alone did NOT fix the crash --
+// nearly identical to the unscaled baseline (.../202027). BUT this test turned out to be
+// confounded: the CS2 SIL's simulated PLANT inertia was found to be hardcoded in
+// crazyflie_sim/backend/np.py (always the reference's own J, 16.57/16.66/29.26e-6) and is
+// NEVER synced from the firmware -- crazyflie_server.py's _setup_oot only syncs mass/kt/
+// arm/t2t, not J. So this test's plant was ALWAYS flying at the reference's light inertia;
+// scaling the CONTROLLER's gains for the heavier real J made its internal model MORE
+// mismatched from the plant it was actually flying, not less.
+//
+// REAL FIX FOUND 2026-09-17 (state_naindi/2026-09-17_203435): rebuilding the host bindings
+// with the standard/upgraded platform (unset DRONE_PLATFORM, i.e. NOT drone_bl) makes this
+// file's own ARM_REF_DEFAULT/T2T_REF_DEFAULT and JXX/JYY/JZZ (lib.rs) match the reference
+// exactly, AND -- because oot_arm_length()/oot_thrust2torque() (firmware_app/host/
+// oot_host.c) read platform_defaults.h, gated by the SEPARATE OOT_PLATFORM env var
+// bindings/setup.py reads (default CONFIG_PLATFORM_CF21BL; needs OOT_PLATFORM=
+// CONFIG_PLATFORM_CF2 to match) -- the simulated plant's arm/t2t sync to the same reference
+// values too. Result: hover is now COMPLETELY CLEAN through the exact window that crashed
+// every prior run (roll/pitch <1.2 deg from climb through 8s of hover, vs. a 35-80 deg/
+// 0.4-0.6s violent divergence before). This confirms the inertia-mismatch hypothesis WAS
+// substantially correct -- just not fixable by scaling attitude gains alone, because the
+// plant's J was never actually the real airframe's to begin with in this sim.
+//
+// STILL OPEN: the SAME run now crashes during LANDING instead (t~17-19s, roll/pitch to
+// 30-45 deg, not hover). mass/kt were NOT part of this fix -- crazyflies_sim1.yaml still
+// pushes the real measured brushless mass (0.041 kg) and kt over g_indi_mass/g_indi_kt1-4,
+// which this file reads directly (line ~350/366) regardless of platform build, so a real
+// mass/kt mismatch against the reference (0.034 kg) remains live throughout hover AND
+// landing -- evidently not enough to destabilize hover by itself, but landing's descent/
+// ground-effect regime may be more sensitive to it, or the landing crash may be a separate,
+// unrelated cause (e.g. the hover->land setpoint transition, similar in spirit to this
+// project's own controller's landing-transition bugs found elsewhere in this codebase).
+// Next diagnostic: isolate whether the landing crash is mass/kt-driven (there is no
+// existing override hook for g_indi_mass/kt -- would need one, or a yaml without the
+// override, mirroring GAIN_TEST_OVERRIDE) or trajectory-transition-driven (log the setpoint
+// through the hover->land handover, same idea as the hover-transition hypothesis this test
+// replaces).
 static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
 
 #[no_mangle]

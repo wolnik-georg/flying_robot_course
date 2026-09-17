@@ -1,28 +1,33 @@
 # Residual Learning — Onboard Inference and Offline Training
 
-> ## ⚠️ Onboard network verified; **training pipeline half-rewritten**
+> ## ✅ Pipeline COMPLETE and verified end-to-end against the compiled firmware — blocked only on C.1 data volume
 >
-> **Revised 2026-09-14.** This banner previously read "software foundation is COMPLETE". That was
-> true of the *old* network. `residual_nn.rs` has since been replaced with a byte-faithful port of
-> Neural-Swarm2's own architecture (19297 weights, scalar Z-only output, an always-on
-> ground-effect term), and the Python side was rewritten to match — **partly**.
+> **Revised 2026-09-17.** `train.py` (the last stale piece) has been rewritten to match
+> `dataset.py`'s 2026-09-15/16 contract. The full chain —
+> `dataset.build() → train.py → fold_normalisation → firmware_forward` — now runs end to end,
+> and **`test_pipeline.py`'s all 13 checks pass against the real compiled onboard firmware**
+> (`rnn.ready=1`, onboard prediction vs. independent reference ~1e-6/1e-7 m/s², ground effect
+> and the output clamp both correct), not just against the Python-side model.
 >
 > | Piece | State |
 > |---|---|
 > | Onboard network + weight upload | ✅ current, 19 checks passing |
-> | `model.py` — the firmware contract | ✅ rewritten, agrees with the compiled firmware to ~1e-6 m/s² |
-> | `test_pipeline.py` | ✅ rewritten, 13 checks passing |
-> | `dataset.py` — logs → tensors | ✅ **rewritten 2026-09-16**, verified against real flight data (§6) |
-> | `train.py` | ⛔ still stale — imports removed `DeepSets`, needs its own rewrite |
-> | Simulation dry run (§7) | ⛔ predates the port, cannot run today |
+> | `model.py` — the firmware contract | ✅ verified, agrees with the compiled firmware to ~1e-6 m/s². Architecture also directly cross-checked layer-by-layer against Neural-Swarm2's own upstream reference (`crazyswarm2/crazyflie_sim/backend/neuralswarm.py` + its real trained `.pth` weights) — exact match |
+> | `test_pipeline.py` | ✅ **all 13/13 checks pass against the real compiled firmware** (2026-09-17 re-run) |
+> | `dataset.py` — logs → tensors | ✅ rewritten 2026-09-16, verified against real flight data (§6) |
+> | `train.py` | ✅ **rewritten 2026-09-17** — `NeuralSwarm2`, separate rel/ground normalisation, the grams↔m/s² unit conversion at the loss boundary. Exercised end-to-end via `--synthetic` (fold check `8.45e-08 m/s²`, 19297 weights exported) |
+> | `upload_residual_weights.py` (crazyswarm2) | 🔴→✅ **real bug fixed 2026-09-17**: hardcoded `N_WEIGHTS=987` (the old architecture) would have rejected every correctly-sized export from the new one. Corrected to 19297 |
+> | Simulation dry run (§7) | ⛔ still predates the port, not re-run |
 >
-> So: **weights that train will fly correctly, and the loader that turns flight logs into
-> training tensors now works** — verified end-to-end against the first real A8 uSD flight
-> (2026-09-15/16). What is still missing is `train.py` itself (own rewrite needed) and enough
-> C.1 data to train something worth flying.
+> So: **the entire offline training pipeline and the onboard inference path are both now
+> implemented and verified against the real compiled firmware** — not just against each other.
+> What remains is not software: **no real flight has ever produced training data.** C.1 residual
+> data collection is unblocked and does not need to wait on anything above — see the Next Flight
+> Card and `docs/07`'s 2026-09-17 planning note (collect under **geometric**, not full INDI —
+> INDI's own RPM feedback partially reacts to the same disturbance being measured).
 >
-> **Nothing has been trained on a real flight** — no formation flight has produced a dataset, so
-> every number in this document is a simulation number, and the ones in §6/§7 belong to the
+> **Nothing has been trained on a real flight** — no formation flight has produced a dataset yet,
+> so every number in this document is a simulation number, and the ones in §6/§7 belong to the
 > superseded network.
 >
 > **Where this sits in the Core Thesis Workflow** ([`07`](07_Thesis_Progress_Checklist.md)):
@@ -30,12 +35,12 @@
 > | Step | This document's role |
 > |---|---|
 > | **C.0 Hardware Gate** ⬅️ next | Must clear `rnn.en` — §7 "The control-law change". **Unflown** |
-> | **C.1 Residual Data Collection** | Produces the training set. §7 says why A4/A7 are mandatory |
-> | **C.2 Train the Residual Model** | `dataset.py` ✅ ready. **Blocked — `train.py`** needs its own rewrite, then real C.1 volume |
+> | **C.1 Residual Data Collection** | **Unblocked, in progress.** Produces the training set — geometric only (see banner above). §7 says why A4/A7 are mandatory |
+> | **C.2 Train the Residual Model** | Pipeline ✅ ready end-to-end. Blocked only on C.1 producing real data |
 > | **C.3 Integrate the Strategies** | 5 of 7 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
-**Last updated:** 14 September 2026
+**Last updated:** 17 September 2026
 
 Five of the seven control strategies being compared need the same thing underneath them: a model
 that predicts the interaction force one vehicle is about to feel from the others. This document
@@ -291,13 +296,13 @@ neither.
 merge_usd_logs.py  ->  dataset.py  ->  train.py  ->  .npz  ->  upload_residual_weights  ->  drone
 ```
 
-| File | Role | State (2026-09-16) |
+| File | Role | State (2026-09-17) |
 |---|---|---|
 | `model.py` | The PyTorch model, the flat weight layout, `fold_normalisation`, `build_mask`. **The contract with `residual_nn.rs` lives here** | ✅ rewritten for the port, verified against the compiled firmware |
-| `dataset.py` | Merged CSV → tensors. Owns the sign convention and the validity filters | ✅ **rewritten, verified against real flight data** — see below |
-| `train.py` | Training, validation, export with provenance | ⛔ imports removed `DeepSets`; needs its own rewrite |
-| `test_pipeline.py` | End-to-end verification against the compiled controller | ✅ rewritten, 13 checks passing (does not exercise `dataset.py`) |
-| `crazyflie_examples/upload_residual_weights.py` | `ros2 run crazyflie_examples upload_residual_weights` | unchanged |
+| `dataset.py` | Merged CSV → tensors. Owns the sign convention and the validity filters | ✅ rewritten, verified against real flight data — see below |
+| `train.py` | Training, validation, export with provenance | ✅ **rewritten 2026-09-17** — matches `dataset.py`'s 5-tuple/two-normalisation contract, exercised end-to-end via `--synthetic` |
+| `test_pipeline.py` | End-to-end verification against the compiled controller | ✅ **13/13 checks pass against the real compiled firmware** (2026-09-17 re-run; does not exercise `dataset.py`'s real-CSV path) |
+| `crazyflie_examples/upload_residual_weights.py` | `ros2 run crazyflie_examples upload_residual_weights` | 🔴→✅ **bug fixed 2026-09-17**: hardcoded `N_WEIGHTS=987` (stale, pre-port) would have rejected every real export. Now 19297 |
 
 > **`dataset.py` rewritten 2026-09-16, resolving the four items below.** Three were genuinely
 > just code (now done); one was never actually a decision to defer:
@@ -328,11 +333,14 @@ merge_usd_logs.py  ->  dataset.py  ->  train.py  ->  .npz  ->  upload_residual_w
 > drones as ego, dropping `a_res == 0`) are re-verified above against real data rather than restored
 > as unit tests — a real gap still, if a regression-proof suite is wanted later.
 >
-> **Still blocked: `train.py`.** It imports `DeepSets` (removed from `model.py`) and calls the old
-> single-array `normalisation()`; this file now exposes `normalisation_rel`/`normalisation_ground`
-> (two separate statistics, matching `model.fold_normalisation`'s own requirement) and returns a
-> 5-tuple, not 4. `train.py` needs its own pass — a separate, larger task with its own decisions
-> (loss unit, optimizer, export against the new weight layout) — before C.2 can actually run.
+> **`train.py` rewritten 2026-09-17** to match this contract exactly: `NeuralSwarm2` (not the
+> removed `DeepSets`), the two separate `normalisation_rel`/`normalisation_ground` calls
+> `model.fold_normalisation` needs, the 5-tuple `build()` return, and the grams↔acceleration
+> conversion applied at the loss boundary (a fixed linear scale, `model.GRAMS_TO_NEWTONS/mass`,
+> not learned). `--synthetic` run: fold check `8.45e-08 m/s²`, 19297 weights exported, accepted
+> by the real compiled firmware (`test_pipeline.py`, `rnn.ready=1`). `dataset.build()` against a
+> *real* merged CSV through this path is still untested — only reachable once a real geometric
+> C.1 flight exists.
 
 ### Decisions worth knowing
 
@@ -532,8 +540,8 @@ preventing it here would remove the comparison.
 | **Strategies 3, 4, 6** | The prediction is available to them but none is wired up. Only strategy 2's feedforward exists |
 | **Training on real data** | The pipeline has only been run on synthetic data and a hand-built CSV fixture — no formation flight has happened yet, so nothing has been trained on a measurement |
 | **Strategies 5 and 7 (RL policies)** | Deliberately not started |
-| **Training from flight logs at all** | `dataset.py` ✅ rewritten and verified against real data (§6). `train.py` still imports the removed `DeepSets` and needs its own rewrite |
-| **Re-running the simulation dry run** | §7's rehearsal predates the port; blocked on `train.py` now, not `dataset.py` |
+| **Training from flight logs at all** | Pipeline ✅ complete and verified against the compiled firmware (§6, `test_pipeline.py` 13/13). Blocked only on C.1 producing a real log — `dataset.build()` against real data is untested |
+| **Re-running the simulation dry run** | §7's rehearsal predates the port; would need its own re-run against the new architecture, not blocked by anything above anymore |
 
 ---
 
@@ -547,8 +555,8 @@ preventing it here would remove the comparison.
 | `firmware_app/host/oot_host.c` | Peer injection for the simulator, which has no `peer_localization` module |
 | `firmware_app/host/test_residual_nn.py` | The numerical check for the onboard evaluation — 19 checks |
 | `firmware_app/Cargo.toml` | The `residual_nn` feature gate (default **off**; the weight array overflows real RAM) |
-| `tools/residual/` | The training pipeline: `model.py` ✅, `test_pipeline.py` ✅, `dataset.py` ✅ (2026-09-16), `train.py` ⛔ |
+| `tools/residual/` | The training pipeline, all ✅: `model.py`, `test_pipeline.py`, `dataset.py` (2026-09-16), `train.py` (2026-09-17) |
 | `tools/merge_usd_logs.py`, `tools/decode_usd_log.py` | Per-drone uSD logs → one time-aligned CSV |
-| `crazyflie_examples/upload_residual_weights.py` | Weight upload over ROS/CRTP |
+| `crazyflie_examples/upload_residual_weights.py` | Weight upload over ROS/CRTP — ✅ `N_WEIGHTS` bug fixed 2026-09-17 |
 | `tools/usd_thesis_config.txt` | 500 Hz onboard logging, now including `rnn.pred_*` |
 | `crazyswarm2/crazyflie/config/crazyflies.yaml` | Commented `rnn_pred` radio topic |
