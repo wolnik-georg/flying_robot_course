@@ -224,10 +224,25 @@ pub extern "C" fn naindi_test_set_j(x: f32, y: f32, z: f32) {
 // underdamped on a heavier one", consistent with the CS2 SIL finding of a GROWING oscillation
 // rather than an instant divergence (docs/07 History (39)/(40)).
 // Scaling KR and KOMEGA by the same per-axis ratio (J_real/J_ref) restores both omega_n and
-// zeta to the values the reference authors actually tuned for -- this is the untested half of
-// that hypothesis. Never used unless a sim harness explicitly calls the setter; default
-// (None) leaves the numerically-verified-to-1e-9 reference gains completely unchanged, so
-// nothing about the byte-for-bit port itself is touched by this hook's existence.
+// zeta to the values the reference authors actually tuned for. Never used unless a sim
+// harness explicitly calls the setter; default (None) leaves the numerically-verified-to-1e-9
+// reference gains completely unchanged, so nothing about the byte-for-bit port itself is
+// touched by this hook's existence.
+//
+// TESTED 2026-09-17 (real CS2 SIL run, NAINDI_SCALED_GAINS=1, single-drone hover,
+// state_naindi/2026-09-17_202127): scaling did NOT fix the crash. Onset/timing and crash
+// signature are nearly identical to the unscaled baseline (state_naindi/2026-09-17_202027) --
+// both dump ~35-80 deg of pitch within ~0.4-0.6s starting almost exactly when the vehicle
+// reaches its target hover altitude (z approaching 1.0, position error crossing through zero),
+// not a slow-growing resonance. That shape argues against a steady-state damping-margin
+// problem (this hook's hypothesis) and toward something triggered AT the ramp-to-hover
+// trajectory transition -- e.g. KI_ATT integral windup accumulated during climb, or a
+// setpoint velocity/acceleration discontinuity at that segment boundary that this port
+// handles differently from controller=6 (which flies the identical commanded trajectory
+// clean). Inertia-mismatch hypothesis is NOT the (or not the whole) cause. Next diagnostic:
+// log KI_ATT.i_error_att and the setpoint accel/velocity feedforward terms through that
+// transition, or test a hover with zero initial position error (spawn already at height) to
+// see if removing the climb-to-hold transition removes the crash.
 static mut GAIN_TEST_OVERRIDE: Option<(Vec3, Vec3)> = None;
 
 #[no_mangle]
