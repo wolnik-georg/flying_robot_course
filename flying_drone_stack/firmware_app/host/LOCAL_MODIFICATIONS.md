@@ -18,10 +18,10 @@ checkout or an upstream pull.
 
 | File | What it changes | Consequence if lost |
 |---|---|---|
-| `bindings/setup.py` | Links the out-of-tree controller into the SIL build; renames six colliding symbols (`peer_get_all` added 2026-08-23 for the residual network -- the host has no `peer_localization`, so `oot_host.c` injects peers instead); sets `CONFIG_PLATFORM_CF21BL` | **The simulator does not build.** Without the platform define it builds but silently uses the wrong airframe — `THRUST_MAX` 0.1125 N/motor instead of 0.2 — and attitude INDI never leaves the ground |
-| `bindings/cffirmware.i` | Exposes `controllerOutOfTree*`, the RPM/log helpers, the airframe constants, the gain globals and the `rnn.*` residual-network globals + peer injection | Simulator cannot select or configure our controller |
+| `bindings/setup.py` | Links the out-of-tree controller into the SIL build; renames six colliding symbols (`peer_get_all` added 2026-08-23 for the residual network -- the host has no `peer_localization`, so `oot_host.c` injects peers instead); sets `CONFIG_PLATFORM_CF21BL`. **2026-09-18: added `controller_indi.c`/`position_controller_indi.c` to `fw_sources`** — Bitcraze's own stock INDI wasn't compiled into the host build at all before this; needed to wire it into the SIL as a third reference point (see `controller_indi.h`'s row below and `docs/07`) | **The simulator does not build.** Without the platform define it builds but silently uses the wrong airframe — `THRUST_MAX` 0.1125 N/motor instead of 0.2 — and attitude INDI never leaves the ground. Losing the `controller_indi.c` addition just removes the `indi` controller option (`crazyflie_sil.py` — a separate, `flying_robot_course`-tracked change) |
+| `bindings/cffirmware.i` | Exposes `controllerOutOfTree*`, the RPM/log helpers, the airframe constants, the gain globals and the `rnn.*` residual-network globals + peer injection. **2026-09-18: added `%include "controller_indi.h"`** (was never SWIG-exposed before, despite the airframe-matching filter tweak below existing since July) | Simulator cannot select or configure our controller |
 | `src/deck/drivers/src/usddeck.c` | `MAX_USD_LOG_VARIABLES_PER_EVENT` 20 → 40 | **⚠️ The most dangerous one to lose.** The thesis logging config records **34** variables including `indi.a_res_*`. At the stock limit of 20 the log is **silently truncated** — no error, no warning, just missing columns. A flight campaign could be lost before anyone noticed |
-| `src/modules/interface/controller/controller_indi.h` | Filter cutoff and `g1`/`g2` re-derived for the CF21BL airframe through stock INDI's legacy output path (July 2026 investigation) | The stock-INDI comparison is no longer on equal terms with ours |
+| `src/modules/interface/controller/controller_indi.h` | Filter cutoff and `g1`/`g2` re-derived for the CF21BL airframe through stock INDI's legacy output path (July 2026 investigation) — `STABILIZATION_INDI_FILT_CUTOFF` 8.0 (stock) → **70.0 Hz**, matching the standard/upgraded platform's own `fc_bw`, not the brushless-flown 60Hz (see the file's own comment for why). **2026-09-18: actually run closed-loop for the first time** (via the new `indi` SIL controller above) — this is the config already flown clean on real hardware, confirmed apples-to-apples, not a mismatch | The stock-INDI comparison is no longer on equal terms with ours |
 | `src/modules/interface/controller/controller.h`, `src/modules/src/controller/controller.c`, `src/modules/src/Kconfig` (2026-09-14) | Adds `ControllerTypeOot2` / `CONFIG_CONTROLLER_OOT2` — a **second, independent** out-of-tree controller slot (`stabilizer.controller=7`) alongside the existing `ControllerTypeOot` (`=6`, our geometric/INDI, `ctrl_mode` 0-3). Exists so a byte-faithful Rust port of Cobo-Briesewitz's NA-INDI (`firmware_app/src/naindi.rs`) can fly without any risk of interfering with our own controller — separate enum value, separate dispatch row, separate Rust module, no shared state | Controller 7 does not exist / does not build; falls back silently to whatever `ControllerType_COUNT`-indexed garbage or a build error, depending on how it's lost |
 | Same three files (2026-09-16) | Adds `ControllerTypeOot3` / `CONFIG_CONTROLLER_OOT3` — a **third, independent** out-of-tree controller slot (`stabilizer.controller=8`). Ports the SAME reference file as Oot2 (`controller_lee.c`) but with `use_nn` enabled and their real trained network included (`firmware_app/src/naindi_hybrid.rs` + `naindi_hybrid_weights.rs`) — true NA-INDI, not their plain INDI. Own enum value, own dispatch row, own Rust module, no shared state with Oot or Oot2. **Compiles, links, and is now numerically verified — 6/6 test vectors match the reference's own compiled `controller_lee.c` (`use_nn=7`) to ~1e-9 on thrust and torque (2026-09-16, `test_naindi_hybrid_reference.py`). Still never flown — do not fly without clearing the hardware-validation gate.** | Controller 8 does not exist / does not build |
 | `src/modules/interface/stabilizer_types.h`, `src/hal/src/sensors_bmi088_bmp3xx.c` (2026-09-14) | Adds `sensorData_t.gyroNoLpf` (the pre-LPF gyro), populated right after `sensorsAlignToAirframe` and before `applyAxis3fLpf` overwrites `sensorData.gyro` in place — ported verbatim from NA-INDI-firmware, which added the same field for the same reason. Operator's explicit instruction (2026-09-14): controller=7 must read exactly the signal their reference does, not a filtered substitute, "no exceptions apart from mass/inertia/kt" | Controller 7's attitude-INDI angular-acceleration term silently falls back to the regular filtered gyro — no build error, just a quiet fidelity loss to the port. `bindings/cffirmware.i` also needs `%include "stabilizer_types.h"` to still see the new field (it already does, no separate change needed there beyond the controller=7 entry points) |
@@ -113,4 +113,28 @@ python3 -c "import cffirmware as f; print(f.oot_thrust_max())"        # must pri
 grep ControllerTypeOot2 src/modules/interface/controller/controller.h # must be present
 grep ControllerTypeOot3 src/modules/interface/controller/controller.h # must be present
 grep gyroNoLpf src/modules/interface/stabilizer_types.h               # must be present
+python3 -c "import cffirmware as f; print(f.controllerINDI)"          # must not error (2026-09-18)
 ```
+
+## Bitcraze's stock INDI wired into the SIL — 2026-09-18, a real result
+
+Third reference point for the controller=7 SIL investigation (`docs/07`): a structurally
+different INDI (`controller_indi.c`, pure gyro-differentiation, no RPM feedback at all — confirmed
+by grep, no `rpm`/`Rpm`/`RPM`/`motorsGetRatio` symbol anywhere in the file) from both this
+project's own (`lib.rs`, Tal & Karaman) and the Cobo-Briesewitz port (`naindi.rs`). Wired as a new
+`indi` controller option in `crazyswarm2/crazyflie_sim/crazyflie_sim/crazyflie_sil.py` (new config:
+`crazyswarm2/crazyflie/config/server_sim_stock_indi.yaml`) — cheap, since it needs no RPM
+injection plumbing, unlike `oot`/`oot2`/`oot3`.
+
+**Result: completely clean.** Same single-drone hover through `crazyflies_sim1.yaml`, same SIL,
+same trajectory that crashes `oot2` (controller=7) every time — max roll/pitch **exactly 0.0°**
+through climb, a full 8s hover, and landing (`crazyswarm2/state_stock_indi/2026-09-17_214312`).
+Matches the operator's real-hardware report (flew clean, worse tracking than either INDI above,
+no oscillation) using the *same* filter-matched config (the `controller_indi.h` row above) that
+was actually flown, not a mismatched comparison.
+
+**What this settles:** the SIL itself — same physics substrate, same trajectory, same EKF/sensor
+model — does not inherently produce instability. A clean flight here for a third, independent
+controller is strong evidence against a sim-vs-reality gap explaining `naindi.rs`'s crash;
+the instability found in `controller=7` looks like a genuine property of that specific
+port+gains combination, not an artifact of this simulator.
