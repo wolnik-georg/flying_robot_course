@@ -282,6 +282,80 @@ call pattern) around the crash window, rather than continuing to guess-and-check
 hand-rolled reimplementation** — the standalone harness has done what it usefully can:
 ruled out a port bug as the explanation, not found the actual trigger.
 
+## Investigation plan — root-causing the real-SIL-only gap, 2026-09-18
+
+**Status when this was written:** the algorithm and the port are both confirmed correct
+(closed-loop, not just single-tick) — see the section above. `naindi.rs` (controller=7)
+still crashes in the real CS2/ROS2 SIL under every airframe/gain configuration tried; the
+standalone harness cannot reproduce that crash despite matching airframe, gains, and
+trajectory phases. **The remaining question is narrower than "is the algorithm right" — it's
+"what does the real SIL do differently that this harness doesn't."** This section exists so
+that question can be picked up at any point without re-deriving where things stand.
+
+**Do not re-run more airframe/gain sweeps as the default next move.** That line is
+exhausted (`docs/07`'s History, five separate parameter classes tested: attitude gains,
+mass/kt together and separately, position gains, full reference-consistency). The next
+useful step is observational, not another A/B flight.
+
+### Ranked hypotheses
+
+1. **Physics/control discretization mismatch (leading candidate).** `crazyflie_sil.py` steps
+   physics at 2 kHz but only *attempts* a controller call every other substep (~1 kHz); the
+   Rust port's own `RATE_DO_EXECUTE`-equivalent gate then halves that again to the true
+   500 Hz. So the real SIL holds one control output across **4** physics substeps
+   (dt=0.0005 each) between genuine recomputes. This harness steps physics 1:1 with control
+   calls at dt=0.002 (500 Hz) — same nominal rate, different substep structure. A held
+   command across a longer physics-only interval could behave differently under numerical
+   integration, especially near a marginal stability boundary.
+   - **Test:** modify `naindi_reference_closed_loop.py` to replicate the exact real
+     substep/hold pattern — `dt_physics=0.0005`, attempt a controller call every 2nd
+     substep, let the Rust-side rate gate decide whether it actually computes, hold the
+     previous `Action` on every substep where the controller didn't run. Compare against
+     the current 1:1 500 Hz version on the identical trajectory.
+2. **Real HLC trajectory shape, not a hand-picked quintic.** `simple_flight.py`'s
+   `uploadTrajectory` sends real Poly4D/min-snap coefficients (Richter/Mellinger-style),
+   not necessarily matching this harness's minimum-jerk climb/land — different jerk/snap
+   content, different segment boundary conditions.
+   - **Test:** export the actual Poly4D coefficients `export_poly4d`/`simple_flight.py`
+     generates for `--trajectory hover --height 1.0`, evaluate that polynomial directly for
+     `sp.position/velocity/acceleration` in the harness instead of the quintic.
+3. **x/y motion, not pure-Z.** The real flight starts from `crazyflies_sim1.yaml`'s
+   configured initial position (nonzero x, per the very first crash CSVs read this
+   session), and per-drone `goTo`/takeoff sequencing might introduce small x/y motion this
+   harness never exercises (pure vertical climb from the origin).
+   - **Test:** match the real initial position and any x/y setpoint content from a real
+     log; cheap to try once hypothesis 1 or 2 are ruled out.
+4. **State/sensor handoff mismatch.** Assumed but never directly confirmed: that
+   `crazyflie_sil.py` hands the controller the plant's exact ground-truth state (no
+   estimator, no noise, no delay) — matching what this harness constructs directly from
+   `Quadrotor.state`. If that assumption is wrong (a KF/estimator stage, or some delay
+   between physics and control not visible from reading the code), it would explain a gap
+   no amount of trajectory/timing tuning could close from this harness alone.
+   - **Test:** only worth pursuing after 1-3 are exhausted — would need direct
+     instrumentation of a real SIL run, not further reasoning about the code.
+
+### The single most useful concrete action, if picked up
+
+**Instrument a real, currently-crashing CS2 SIL run with per-tick logging**, rather than
+keep guessing from outside. Add a temporary, env-var-gated debug CSV to
+`crazyflie_sil.py`'s `oot2` path (mirroring the existing `NAINDI_SCALED_GAINS`/
+`NAINDI_POS_GAIN_SCALE` opt-in pattern) that dumps, every tick the controller actually
+computes: `setpoint.position/velocity/acceleration`, `state.position/velocity`,
+`sensors.gyro`, `control.thrustSi/torque`, and the wall-clock gap since the previous real
+compute. Run the known-crashing config (brushless airframe, default gains,
+`state_naindi/2026-09-17_202027`'s own setup) with this logging on, focused on the window
+right before divergence.
+
+This single log turns hypotheses 1, 2, and 3 above from guesses into directly observable
+facts: the real dt-between-calls answers (1) immediately; the real setpoint trajectory
+shape answers (2); the real position trace answers (3). **Whatever it shows, replay that
+exact logged sequence (setpoint + sensors + rpm, tick by tick) through
+`naindi_reference_closed_loop.py` in a new `--replay-log CSV` mode** — if replaying the
+*real* recorded inputs into the *standalone* harness reproduces the crash, the discretization/
+trajectory/motion difference is confirmed as the cause and can be fixed directly; if it
+still doesn't crash, the gap is in the state/sensor handoff (hypothesis 4) or something
+this plan hasn't anticipated, and that failure mode itself is new, useful information.
+
 ## CS2 SIL closed-loop validation (controller=7) — reference-consistent build recipe, 2026-09-17
 
 **This is a SIM-ONLY, throwaway build configuration. It must never be used to build
