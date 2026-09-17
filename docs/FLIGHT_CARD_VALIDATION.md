@@ -1,5 +1,11 @@
 # Flight card — validate both controllers
 
+> **⚠️ Bench-check table below is HISTORICAL (09-09→09-13).** As of 2026-09-16,
+> `indi_gains.rpm_source` defaults to **1 (DShot)**, not 0 — the optical deck was found to
+> silently drop 2 of 4 motors' RPM in flight and DShot is now the standing source. See
+> `docs/lab_sessions/2026-09-16.md`. Everything else on this card (gains, filter params) is
+> unaffected.
+
 > **One page. Take this to the lab.** **Stage 1: three geometric flights, then ONE INDI
 > flight on the restored config only.** `check_flight.py` after every single one, stop on the
 > first FAIL. **Stage 2** (the new fixes, one variable per flight) begins only once stage 1
