@@ -316,32 +316,58 @@ into world frame, then subtract the gravity-cancelling `(0,0,1)` hover offset:
 
 **Result: the exact same previously-100%-crashing config — brushless airframe, default
 gains, `server_sim_naindi.yaml` + `crazyflies_sim1.yaml`, unmodified — now flies completely
-clean.** Max roll/pitch 0.003°/0.001° through climb, 8s hover, and into landing (verified
-2026-09-18, single run so far — see "Still to do" below). Re-verified `controller=6`
-(geometric and full-INDI) are both completely unaffected — `lib.rs` never reads either
-`state.acc` or `sensors.acc` at all (confirmed by grep: zero matches), so this fix is
-structurally isolated to `naindi.rs`/`naindi_hybrid.rs`.
+clean.** Max roll/pitch 0.003°/0.001° through climb, 8s hover, and into landing. Repeated:
+a second hover run (clean) and figure8 (`--kt 0.008`) — also clean, `z` rock-solid at 1.0
+throughout the actual maneuver (t=9.3-17.6s), normal ±5° banking roll, the larger 15-27°
+swings only during the final landing descent, not a divergence. Two trajectory shapes now
+confirmed for controller=7.
 
-**Also true for `naindi_hybrid.rs` (controller=8)** — same module, same `state->acc`
-read, same bug, same fix applies. Not yet independently re-tested in the real SIL (only
-controller=7 was re-verified) — should be, since it shares the identical root cause.
+**`controller=8` (`naindi_hybrid.rs`) re-verified 2026-09-18, same fix, also clean** —
+confirmed the same `state->acc` read at its own line ~369 before testing (not assumed from
+controller=7's finding). `server_sim_naindi_hybrid.yaml` (`oot3`), same brushless airframe,
+same default gains: max roll/pitch 0.106°/0.257° through hover and into landing (slightly
+higher than controller=7's, consistent with the NN feedforward adding its own dynamics —
+still fully stable, no divergence). **Both controller=7 and controller=8 are now confirmed
+working in the real CS2 SIL.**
+
+**Note on 2-drone:** not re-testable in this SIL as-is — `oot2`/`oot3` have no per-vehicle
+state-swap mechanism yet (`crazyflie_sil.py`'s own `__init__` guard limits them to one
+vehicle per sim run). The original 2-drone crash this investigation is sometimes conflated
+with was a **real hardware** RPM-deck defect (docs/07 History (41), fixed via DShot) — a
+separate issue from the SIL-only single-drone crash this fix addresses.
+
+### Full controller audit — who reads `state.acc`, who reads `sensors.acc`, who is affected
+
+Checked directly in the actual compiled source for every controller in the project, not
+assumed by analogy — one subtle correction along the way: an earlier note here claimed
+`lib.rs` "never reads either acc field," which was imprecise. It reads `sensors->acc` (via
+`(*sensors).acc`, easy to miss with a naive grep for the literal substring `sensors.acc`),
+just never `state->acc` — the distinction that actually matters, since `sensors.acc` was
+never broken (only `state.acc` was).
+
+| # | Controller | File | Reads | Affected by this fix? |
+|---|---|---|---|---|
+| 1 | PID | `controller_pid.c` | `sensors->acc.z` only | No |
+| 2 | Mellinger | `controller_mellinger.c` | `sensors->acc.z` only | No |
+| 3 | Stock INDI | `controller_indi.c`/`position_controller_indi.c` | `sensors->acc.{x,y,z}` only | No |
+| 4 | Brescianini | `controller_brescianini.c` | no `.acc` at all | No |
+| 5 | Stock Lee (`cf_second`) | `controller_lee.c` (crazyflie-firmware's own, NOT the reference's file of the same name) | no `.acc` at all | No |
+| 6 | This project's own (`ctrl_mode` 0-3) | `lib.rs` | `sensors->acc` only, never `state->acc` | No |
+| 7 | `naindi.rs` | our port of the reference's `controller_lee.c` | `state->acc` (line ~389) | **Yes — was broken, now fixed** |
+| 8 | `naindi_hybrid.rs` | same reference file, `use_nn` on | `state->acc` (line ~369) | **Yes — was broken, now fixed** |
+
+`setState()` populates `self.state.acc` for every simulated vehicle unconditionally
+(it's generic, not controller-specific) — the fix changes what data is *available*, but
+only controllers 7 and 8 ever read that field, so only they are behaviorally affected. All
+six others read `sensors.acc` (already correct before this fix, untouched by it) or nothing
+acceleration-related at all.
 
 ### Still to do before this counts as fully closed
 
-- **Update, same day:** re-ran hover a second time (clean) and figure8 (`--kt 0.008`) —
-  also clean: `z` holds rock-solid at 1.0 throughout the actual figure8 (t=9.3-17.6s),
-  normal ±5° banking roll during the maneuver, the larger 15-27° swings only during the
-  final landing descent (t>18.6s, not a divergence). Two trajectory shapes now confirmed.
-  **Note:** a 2-drone re-test in this SIL is not possible as-is — `oot2`/`oot3` have no
-  per-vehicle state-swap mechanism yet (`crazyflie_sil.py`'s own `__init__` guard limits
-  them to one vehicle per sim run). The original 2-drone crash this investigation is
-  sometimes conflated with was a **real hardware** RPM-deck defect (docs/07 History (41),
-  fixed via DShot) — a separate issue from the SIL-only single-drone crash this fix
-  addresses.
-- Re-verify `controller=8` (`naindi_hybrid.rs`) in the real SIL with this fix — untested.
 - This is a **simulator fix, not a hardware validation.** `naindi.rs`/`naindi_hybrid.rs`
   remain unflown — clearing the SIL is a precondition for flying, not a substitute for the
   same hardware-validation gate every other controller change goes through.
+- Only single-drone scenarios tested (2-drone not possible in this SIL, see above).
 - The `--zero-state-acc`/`--real-substeps`/`--motor-tau`/`--replay-log` flags added to
   `naindi_reference_closed_loop.py` while chasing this are now genuinely useful diagnostic
   tools, not just one-off scaffolding — worth keeping for the next investigation like this.
