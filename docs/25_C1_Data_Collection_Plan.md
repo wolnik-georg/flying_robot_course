@@ -141,9 +141,25 @@ faithful reproduction of *their* method, and a legitimate comparison point, but 
 interaction-force-aware controller in the sense Strategy 2 is — and the thesis should say so
 plainly rather than presenting the two as like-for-like.
 
-Retraining their network on our downwash data would not fix this: the input layer would have to
-gain neighbour state, at which point it is no longer their architecture. Worth stating as a
-limitation in Ch. 2/6 and, if anything, as a motivation for Strategy 2's design.
+**Can their network be retrained on our downwash data?** Mechanically, yes — and the uSD
+logging already carries everything it would need (`motor.m1-4` and `gyro.*` for the inputs,
+`a_res` for the label), as `naindi_hybrid.rs`'s own module doc notes. But it is worth being
+precise about what such a retrain could and could not learn, because the distinction matters
+for the thesis:
+
+- It **could** learn a mapping from own-state to residual — i.e. "when my own accelerometer,
+  gyro and PWM look like this, a residual of about this size is usually present".
+- It **could not** distinguish downwash from a neighbour 30 cm above from any other disturbance
+  producing a similar own-state signature, because relative geometry is not in its input.
+- Most importantly, it would be **correlative rather than anticipatory**. INDI already *measures*
+  the residual from own state; a network predicting the residual from the same own state is
+  largely approximating something already available. The value of Strategy 2's formulation is
+  that it predicts from *relative geometry*, so it can act **before** the disturbance shows up
+  in the vehicle's own measurements.
+
+So a retrained own-state net is a legitimate experiment, not a useless one — but it does not
+recover what neighbour-aware input provides. Worth stating as a limitation in Ch. 2/6 and, if
+anything, as a motivation for Strategy 2's design.
 
 ### …so does a retrained downwash variant need a new controller slot? **No — it already exists.**
 
