@@ -621,6 +621,9 @@ def vehicle_metrics_by_phase(v: VehicleLog, sc, scenario: str, controller: str,
     `pos_des`, when reconstructed by the caller, must be aligned to the FULL log (same length
     as `v.t`); it is sliced alongside everything else here.
     """
+    # Was the commanded trajectory LOGGED, or reconstructed by the caller? It decides whether
+    # ramp/land position error means anything at all.
+    cmd_logged = v.pos_des is not None
     rows = []
     for name, (lo, hi) in phase_windows(v, sc, t0).items():
         w = slice_log(v, lo, hi)
@@ -628,7 +631,23 @@ def vehicle_metrics_by_phase(v: VehicleLog, sc, scenario: str, controller: str,
         if pos_des is not None and len(v.t) == len(pos_des):
             pd_w = pos_des[(v.t >= lo) & (v.t <= hi)]
         r = vehicle_metrics(w, scenario, controller, n_robots, pd_w)
-        r.update(phase=name, phase_t_lo=lo, phase_t_hi=hi)
+        r.update(phase=name, phase_t_lo=lo, phase_t_hi=hi, cmd_logged=int(cmd_logged))
+        # 2026-09-18, caught the moment the first by-phase figure was drawn: outside the
+        # scenario window the vehicle is following the TAKEOFF / goTo / LAND profile, not the
+        # scenario curve. A caller who reconstructs `pos_des` from the scenario can only clamp
+        # it at the endpoints, so ramp/land "error" is the distance from a setpoint that was
+        # never commanded -- it came out at 0.72-0.79 m against 0.04-0.10 m in-scenario and
+        # visually dominated the plot while meaning nothing.
+        #
+        # uSD logs carry `ctrltarget.*` (the setpoint the firmware actually acted on), so there
+        # the number is real in every phase. Flag rather than drop: the row still carries valid
+        # effort, spectrum and attitude metrics, only the position error is void.
+        r["pos_err_valid"] = int(cmd_logged or name == "scenario" or name.startswith("approach"))
+        if not r["pos_err_valid"]:
+            r["notes"] = ((r.get("notes") or "") +
+                          " pos_* INVALID for this phase: commanded trajectory was "
+                          "reconstructed from the scenario, which does not describe the "
+                          "ramp/land profile. Use a uSD log (ctrltarget.*) for these phases.")
         rows.append(r)
     return rows
 

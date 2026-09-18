@@ -154,7 +154,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 | **P1** | ✅ **DONE 2026-09-18.** Control effort, attitude spectrum and min-separation added to `metrics.py`, wired into `vehicle_metrics`/`formation_row`, loaders extended (`gyro`/`tau` for ros, `+motor` for uSD) | — |
 | **P2** | ✅ **DONE 2026-09-18.** `approach_times()`, `phase_windows()`, `slice_log()`, `vehicle_metrics_by_phase()` — every metric now reportable per phase | — |
 | **P3** | ✅ **DONE 2026-09-18.** `aggregate.py` — mean±std/sem, paired Wilcoxon, bootstrap CI on the ratio, rank-biserial effect size, plus small-n and pseudo-replication guards | needs repeat FLIGHTS to produce a claim |
-| **P4** | Figure generation for C.4 | P3 |
+| **P4** | ✅ **DONE 2026-09-18.** `plot_comparison.py` — grouped bars with SEM error bars, per-phase breakdown, n annotated, honesty rules enforced in code | — |
 | **P5** | Residual-model evaluation suite (R², error vs dz, flight-wise split) | C.1 data |
 
 **P1 and P2 are pure desk work on data that already exists and should be done first.** P3 can be
@@ -304,3 +304,44 @@ flight, flags it loudly and suppresses the p-value regardless of n.
 controller is a design that can support a claim; one A8 run per controller analysed five ways is
 not, however many phases it is sliced into. That should be budgeted into the C.4 comparison
 sessions explicitly — roughly 3–5 flights per controller per scenario, not one.
+
+
+---
+
+## P4 implementation notes (2026-09-18) — honesty rules in code, and a third trap
+
+`plot_comparison.py` produces the thesis figures: grouped bars per metric, and a per-phase
+breakdown. It reads the **same per-run rows** `aggregate.py` does, so a figure and its table can
+never disagree, and it prints the matching summary table alongside every figure.
+
+**Honesty rules enforced in code, not left to discipline:**
+
+- **Error bars are SEM across repeat FLIGHTS**, never across phases of one flight. With n=1 there
+  is no measured spread, so the bar is drawn **hollow and hatched** with `n=1*` on its face — a
+  single run can never be mistaken for a measured mean.
+- **n is printed on every bar.** A reader never has to look elsewhere to see how much data it rests on.
+- **Axes always start at zero.** Truncated bar axes exaggerate differences and are the commonest
+  way an honest number becomes a misleading picture.
+- **Nothing is normalised away** — absolute units on the axis; ratios belong in the caption.
+- Okabe-Ito colour-blind-safe palette, with each controller keeping its colour across every
+  figure so the mapping is learned once.
+
+### Third trap, caught the moment the first figure was drawn
+
+The initial by-phase figure showed `ramp` at 0.72 m and `land` at 0.79 m, dwarfing the 0.04–0.10 m
+in-scenario bars and rendering the plot useless. Those numbers are **meaningless**: outside the
+scenario window the vehicle follows the *takeoff / goTo / land* profile, not the scenario curve,
+so a caller who reconstructs `pos_des` from the scenario can only clamp it at the endpoints — the
+"error" is the distance from a setpoint that was never commanded.
+
+`vehicle_metrics_by_phase()` now emits `cmd_logged` and `pos_err_valid` per row, and annotates the
+void rows; `plot_comparison.py` drops them with a printed count rather than silently. The
+underlying effort, spectrum and attitude metrics in those rows remain valid — only position error
+is void, so the row is flagged rather than discarded.
+
+**This is a third independent argument for the uSD-as-source-of-record policy**: uSD logs carry
+`ctrltarget.*`, the setpoint the firmware actually acted on, so position error is real in *every*
+phase and no reconstruction — and no exclusion — is needed at all.
+
+With the guard in place the figure reads cleanly and shows the P2 finding at a glance: INDI's
+advantage is visibly narrower at `approach1`/`approach2` than over the whole `scenario`.
