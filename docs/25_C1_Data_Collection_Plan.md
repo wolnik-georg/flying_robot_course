@@ -1,0 +1,146 @@
+# 25 — C.1 Residual Data Collection Plan (Neural-Swarm2, Strategy 2)
+
+Pre-decided so lab time is spent flying, not deciding. Fly top-down; every block is useful on
+its own, so stopping early still yields a trainable set.
+
+---
+
+## The constraint that drives everything: the proximity gate
+
+`model.neighbour_gate` replicates the reference's own cutoff literally:
+
+```
+|dx| < 0.2 m   AND   |dy| < 0.2 m   AND   |dvx| < 1.5 m/s      # dz is NOT tested
+```
+
+**A neighbour only becomes a training input when it is within ±20 cm laterally.** Vertical
+separation is unbounded — `dz` is deliberately not gated. Two consequences:
+
+- **Scenarios that keep the two vehicles vertically aligned are the high-yield ones.** Lateral
+  offset beyond 20 cm gates the neighbour out entirely and the row degenerates to "no
+  interaction", which is legitimate data but carries no downwash signal.
+- ⚠️ **A8 is a poor collection scenario**, despite being an excellent *demonstration* one. With
+  `span=1.0 m` the vehicles are laterally separated for most of the run and only pass through
+  the gate briefly at each crossing. Keep flying A8 for the comparison table (docs/24); do not
+  rely on it for training data.
+
+**Second hard constraint:** only `cf231_active` produces usable rows. `cf_second` is pinned to
+stock Lee, has no RPM source, and its `a_res` is identically zero — verified 2026-09-16 when
+`dataset.py` correctly excluded it as ego while still using it as the neighbour. So
+`cf231_active` must be the **bottom** vehicle (the one in the wash) in every downwash block.
+
+**What the model consumes** (`dataset.build` → `NeuralSwarm2`):
+`rel` = peer − own, position *and* velocity, world frame (6 per neighbour) · `ground` =
+`[0 − own_z, −own_vx, −own_vy, −own_vz]` · target `y` = measured `a_res_z`.
+So the state space to cover is **dz**, **relative velocity**, **small lateral offset**, and
+**own altitude** (for the ground term).
+
+---
+
+## Flight plan
+
+Durations are scenario time; add ~25 s per flight for arm/ramp/land. Estimate ~6–8 flights per
+battery pair.
+
+### Block A — dz coverage (do first, highest value)
+
+| # | Scenario | Params | Reps | Why |
+|---|---|---|---|---|
+| A-1 | **A7** dynamic merge | `--dz-start 1.10 --dz-end 0.10 --speed 0.30` | **3** | **The single most valuable run.** Sweeps `dz` continuously through the whole range *while staying laterally aligned*, so every sample is inside the gate. One flight covers what a dozen static holds would. |
+| A-2 | **A1** static stack | `--dz 0.20 --hold 15` | 2 | Static reference at close range, zero relative velocity — isolates the pure `dz` dependence. |
+| A-3 | **A1** static stack | `--dz 0.30 --hold 15` | 2 | " |
+| A-4 | **A1** static stack | `--dz 0.50 --hold 15` | 2 | " |
+| A-5 | **A1** static stack | `--dz 0.75 --hold 15` | 1 | Upper end — where `Fa` should be approaching zero. Negative examples matter. |
+
+### Block B — relative velocity
+
+| # | Scenario | Params | Reps | Why |
+|---|---|---|---|---|
+| B-1 | **A3** static-top | `--dz 0.25 --speed 0.30 --passes 4` | 2 | Bottom translates under a hovering top: sweeps `dvx` through the gate repeatedly at close range. |
+| B-2 | **A3** static-top | `--dz 0.25 --speed 0.50 --passes 4` | 2 | Same geometry, faster — separates velocity dependence from position dependence. |
+| B-3 | **A3** static-top | `--dz 0.40 --speed 0.40 --passes 4` | 1 | Mid `dz`, mid speed — fills the interior of the grid. |
+| B-4 | **A2** same-path tracking | `--dz 0.30 --path circle --speed 0.4` | 2 | Both vehicles moving together: non-zero own-velocity with a *stationary* relative state. Distinguishes "neighbour moving" from "I am moving". |
+
+### Block C — small lateral offset (inside the gate)
+
+| # | Scenario | Params | Reps | Why |
+|---|---|---|---|---|
+| C-1 | **A4** offset stack | `--dz 0.30 --offset 0.10 --axis y --motion lemniscate` | 2 | `offset 0.10` sits inside the 0.2 m gate, so this teaches the lateral falloff *within* the gated region — otherwise the net only ever sees near-zero `dx/dy`. |
+| C-2 | **A4** offset stack | `--dz 0.50 --offset 0.15 --axis x --motion lemniscate` | 2 | Other axis, larger offset, still gated in. Guards against an axis-aligned bias. |
+
+### Block D — ground effect (`phi_G`)
+
+| # | Scenario | Params | Reps | Why |
+|---|---|---|---|---|
+| D-1 | **C5** near-ground pass | `--z 0.10 --speed 0.25 --passes 2` | 2 | Single drone, no neighbour. `phi_G` is a *separate* input branch and needs its own data, or the ground term is trained on nothing. `z_floor` defaults to 0.0 precisely so these rows survive. |
+| D-2 | **C5** near-ground pass | `--z 0.15 --speed 0.25 --passes 2` | 2 | " |
+| D-3 | **C5** near-ground pass | `--z 0.25 --speed 0.25 --passes 2` | 1 | Upper end, where ground effect should be fading. |
+
+### If time remains
+
+| # | Scenario | Params | Why |
+|---|---|---|---|
+| E-1 | **A7** again | `--dz-start 1.10 --dz-end 0.10 --speed 0.50` | Faster merge — adds `dvz` coverage the 0.30 runs don't reach. |
+| E-2 | **A1** | `--dz 0.15 --hold 15` | Closer than Block A goes. Strong signal, tighter margin — only with everything else banked. |
+| E-3 | **A6** extreme stack | `--dz 0.10` + `--allow-extreme` | Strongest achievable signal. **Gated in the library for a reason** — last, deliberately, and only if the session has been clean throughout. |
+
+---
+
+## Minimum viable set
+
+If the session is short, **Block A (10 flights) + B-1/B-2 (4) + D-1/D-2 (4) = 18 flights** is
+enough to train a defensible first model: `dz` covered statically and dynamically, velocity
+covered at two speeds, ground effect covered at two heights.
+
+**Absolute floor if things go badly: A-1 ×3 and D-1 ×2.** A7 alone spans the entire `dz` range
+inside the gate, and C5 is the only source of ground-term data.
+
+---
+
+## Per-flight checklist
+
+1. `check_usd_deck.py` before flying — always, not only when troubleshooting.
+2. Confirm the pre-takeoff EKF-vs-mocap gate prints a small `|err|` for both vehicles
+   (added 2026-09-18, `crazyswarm2` `8296ad8`).
+3. `cf231_active` must be the **bottom** vehicle and must be running **geometric**
+   (`ctrl_mode: 0`) — the residual is a *measurement*, and collecting it under INDI would mean
+   learning a residual the controller is simultaneously cancelling.
+4. Pull the uSD card with `copy_usd_log.py` (verified sha256, wall-clock names), never `cp`.
+5. Merge with `merge_usd_logs.py --meta --roles` so each vehicle is aligned against its **own**
+   commanded trajectory; it aborts above 15 cm RMS, which is what actually verifies drone/role
+   identity from the data rather than from a typed filename.
+
+---
+
+## After collection
+
+```bash
+cd flying_drone_stack/tools/residual
+python3 train.py <merged_*.csv ...> -o weights/c1_geometric.npz
+```
+
+Pipeline verified end-to-end 2026-09-18 (`fold check: max |trained − exported| = 2.27e-07`), so
+this is a one-liner, not a debugging session. Watch the printed `baseline (predict zero)`
+reduction — if the trained model does not clearly beat predicting zero, the dataset lacks
+gated samples, and the most likely cause is too much lateral separation (see the gate above).
+
+---
+
+## Does NA-INDI (`controller=8`) need the same thing? **No — and that is itself a finding.**
+
+`naindi_hybrid.rs` carries Cobo-Briesewitz's **own real trained weights**, extracted from their
+compiled `nn.c`, so it needs no data collection and no training pipeline. But its input vector
+is **19-dimensional and own-state only** — rotation-matrix columns, EKF acceleration, velocity,
+gyro, and the four motor PWM ratios. **There is no relative or neighbour state in it at all**,
+and it was trained on their single-vehicle payload-swing experiment.
+
+The consequence is structural, not a tuning matter: **controller=8 cannot represent downwash as
+a function of relative geometry, because relative geometry is not among its inputs.** It can
+only learn whatever residual correlates with the vehicle's own state. It is therefore a
+faithful reproduction of *their* method, and a legitimate comparison point, but it is not an
+interaction-force-aware controller in the sense Strategy 2 is — and the thesis should say so
+plainly rather than presenting the two as like-for-like.
+
+Retraining their network on our downwash data would not fix this: the input layer would have to
+gain neighbour state, at which point it is no longer their architecture. Worth stating as a
+limitation in Ch. 2/6 and, if anything, as a motivation for Strategy 2's design.
