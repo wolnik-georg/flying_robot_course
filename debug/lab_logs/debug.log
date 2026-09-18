@@ -1,104 +1,44 @@
-# uSD card prep — one card per drone — 2026-09-14
-#
-# Both drones need their OWN uSD card, formatted FAT32, with
-# flying_drone_stack/tools/usd_thesis_config.txt copied to the card root AS config.txt
-# (exact filename, not the original name -- the firmware only reads "config.txt").
-# Do this once per card; cards then just live in each drone permanently.
+Summary: 1 package finished [0.60s]
+  1 package had stderr output: crazyflie_examples
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation --scenario A8 --passes 2 --yes
 
-# ── 1. Find the card's device node (do this AFTER inserting ONE card at a time --
-#      makes it unambiguous which device just appeared) ─────────────────────────────────
-lsblk
-# Look for a new device (e.g. /dev/sdb1 or /dev/mmcblk0p1) that wasn't there before.
-# DOUBLE CHECK this is the SD card and not a system disk before the next steps --
-# mkfs on the wrong device destroys data with no warning.
+[formation] A8  Vertical swap (2 robots), dz=0.25 m at crossing, span=1.00 m, passes=2
+[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
+[formation] 2 robot(s), 14.0 s, tags: swap, data_collection
+[formation] anchor [0. 0. 1.]
+    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
+    robot 1 [    top] slot [0.   0.5  0.25]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
+    closest commanded approach: 0.250 m between robots 0 and 1 at t=5.0s
+    robot 0 trajectory:  3 pieces, 14.00 s
+    robot 1 trajectory:  3 pieces, 14.00 s
+[formation] commanded relative geometry:
+     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.25.. -0.25  |d| 0.250..1.031 m
+[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r0_bottom.csv
+[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r1_top.csv
 
-# ── 2. Format FAT32 (replace sdX1 with the real device from step 1) ─────────────────────
-sudo umount /dev/sdX1 2>/dev/null   # unmount first if auto-mounted
-sudo mkfs.vfat -F 32 -n THESIS /dev/sdX1
+[formation] checks passed.
 
-# ── 3. Mount, copy config, unmount cleanly ───────────────────────────────────────────────
-mkdir -p /tmp/sdcard_mount
-sudo mount /dev/sdX1 /tmp/sdcard_mount
-cp /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/tools/usd_thesis_config.txt \
-   /tmp/sdcard_mount/config.txt
-sync
-sudo umount /tmp/sdcard_mount
+[formation] anchored on cf231_active at [0.  0.3 1. ]
+    cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.2  1. ]
+    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.65]
 
-# ── 4. Repeat steps 1-3 for the SECOND card (cf_second's) ────────────────────────────────
-# Insert the second card, run `lsblk` again to find its (likely different) device node,
-# then repeat the format + copy for it too. Two separate physical cards, same config.txt
-# content on both -- the config just says WHAT to log, not which drone it's on.
+[formation] per-drone effective config (what each vehicle actually flies):
+    cf231_active   controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
+    cf_second      controller=5 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
+[formation] takeoff: controller=6 ctrl_mode=0
+[formation] stage 1: climbing to slot heights...
+[formation] stage 2: converging to slots...
+[formation] uploading per-robot trajectories...
+[formation] scenario: controller=6 ctrl_mode=3
+[formation] uSD logging started (broadcast) at t=10.858s
+[formation] t_start(sim) = 1789748091.047s -> A8_2026-09-18_18-14-42.meta.json
+[formation] running A8 (14.0 s)...
+[formation] done, landing...
+[formation] landing: controller=6 ctrl_mode=0
+[log] cf231_active: 547 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-18_18-14-42.csv
+[log] cf_second: 547 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-18_18-14-42.csv
 
-# ── 5. Insert each card into its drone, power on, confirm detection ─────────────────────
-# cf231_active is on the DEV machine's check_usd_deck.py (URI radio://0/80/2M/E7E7E7E7E7) --
-# copy that script's URI or just edit it in place for cf_second's URI
-# (radio://0/80/2M/E7E7E7E7E9) to check that one too. Run from terminal 2 (sourced env):
-python3 /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/tools/check_usd_deck.py
-# Expect: "usd param group found: [...]" and "usd.logging current value = ..." with no
-# MISSING lines. If MISSING, the deck itself isn't seated/detected -- reseat it, don't
-# just re-copy the config file.
+[formation] realised relative geometry (last settled sample):
+    cf231_active - cf_second: got [ -8.919 -17.072  -0.267]  want [ 0.   -1.   -0.25]  err [ -8.919 -16.072  -0.017] m  |ez| 17 mm
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
 
-# ── After both cards are prepped and confirmed detected ──────────────────────────────────
-# Re-fly A8 (same command as before) -- run_formation.py already turns usd.logging on/off
-# automatically around the scenario (`allcfs.setParam('usd.logging', 1/0)`), no extra flag
-# needed. After landing, pull each card's binary log file off (card root, likely named by
-# timestamp or index depending on firmware log-writer naming) and I'll write the
-# uSD-vs-radio sync comparison once we have both files -- tools/merge_usd_logs.py and
-# tools/decode_usd_log.py already exist for this, just never run on real 2-drone data yet.
-#
-# 2026-09-14 (desk): ran `python3 tools/merge_usd_logs.py --self-test` -- PASSED. It recovers
-# known clock offsets from synthetic logs to <0.3 ms (and 1.3 ms on a noisy 15 s window), and
-# estimates a +40 ppm drift as +32 ppm. So the merge tool itself is trustworthy going in; if
-# tomorrow's real 2-drone merge looks wrong, suspect the logs or the usec.reset broadcast,
-# not the aligner. (`decode_usd_log.py` has no --help and wants a real log path as argv[1].)
-
-# ══════════════════════════════════════════════════════════════════════════════════════════
-# controller=7 (NA-INDI) single-drone hover test -- ONLY IF the full-INDI A8 gate fails
-# tomorrow. Do NOT run any of this unless our own INDI genuinely fails its 2-drone A8 check.
-# Written out in full now, NOT applied to the live yaml, so it's a fast copy-paste once the
-# gate result is known -- not something to work out live under time pressure.
-#
-# Why this is safe by construction, not just "should be fine":
-#   - flight.py's ramp phases (takeoff/landing) are HARDCODED to stabilizer.controller=6
-#     (_RAMP_CONTROLLER, flight.py line ~274) regardless of what the yaml says. Only the
-#     TRAJECTORY/hover phase reads the yaml's controller value. So cf231_active always takes
-#     off and lands under the well-flown geometric controller; it only runs controller=7
-#     during the level hover itself, after it's already stably airborne.
-#   - This is the EXACT same mechanism already proven tonight for switching ctrl_mode between
-#     phases (takeoff=0, trajectory=yaml value, landing=0) -- controller=7 just rides the same
-#     "yaml_controller != _RAMP_CONTROLLER" check that already triggers the phase-switch apply()
-#     call. No flight.py code changes needed; this was checked line by line (2026-09-14).
-#   - Per-robot overrides are NOT used for this test (unlike cf_second's permanent pin) --
-#     instead the *shared* `all:` controller value is changed, because this is a genuinely
-#     single-drone, isolated test (cf_second disabled), so there's no other robot to protect
-#     from the change. A per-robot override would ALSO apply during takeoff/landing (wrong --
-#     you'd want controller=7 in the air, not on the ramp), so don't use one here.
-#
-# ── Step 0 (prerequisite, part of testing full INDI anyway, not controller=7-specific) ──────
-# Remove cf231_active's temporary ctrl_mode:0 / pos_gains override in crazyflies.yaml (the one
-# marked "REMOVE this override before flying step 2") so it falls back to the shared full-INDI
-# default -- this has to happen before the full-INDI A8 attempt regardless of whether it passes.
-#
-# ── Step 1: flash controller=7 onto cf231_active (skip if already done) ─────────────────────
-cd /home/flyingrobots/georg/flying_robot_course/flying_drone_stack/firmware_app
-make DRONE=bl cload
-# Confirm the build banner says "Build for the cf21bl platform!" before flashing (2026-09-13
-# lesson -- wrong platform flashed once before). Confirmed buildable from a clean checkout on
-# 2026-09-14 (dev machine): 38.5KB RAM free, no code changes needed.
-
-# ── Step 2: isolate cf231_active alone (mirror of the cf_second isolation done earlier today) ─
-# In crazyswarm2/crazyflie/config/crazyflies.yaml:
-#   cf_second: enabled: true -> false
-#   all: firmware_params: stabilizer: controller: 6 -> 7
-# Restart terminal 1's `ros2 launch crazyflie launch.py` after saving.
-
-# ── Step 3: single-drone hover, tethered if available ────────────────────────────────────────
-ros2 run crazyflie_examples flight -- --trajectory hover --duration 15 --height 0.6
-# Start LOW (0.6m) and short -- this is a first flight of a brand-new, numerically-verified-only
-# controller. Do not go straight to 1.4m or a long duration. If clean, a second run at a more
-# normal height is reasonable; still hover-only, still not A8, still not 2-drone.
-
-# ── Step 4: revert afterwards, whatever the outcome ──────────────────────────────────────────
-#   all: firmware_params: stabilizer: controller: 7 -> 6
-#   cf_second: enabled: false -> true
-# Restart terminal 1's launch again before any further flight.
