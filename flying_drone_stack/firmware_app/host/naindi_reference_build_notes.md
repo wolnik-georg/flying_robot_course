@@ -428,17 +428,69 @@ than silently sharing one. **Single-drone regression check**: re-ran controller=
 `crazyflies_sim1.yaml` (1 vehicle) after this change — 0.002°/0.001°, matching the pre-change
 result, confirming the `_naindi_index=0` path is unaffected.
 
-**Not yet done**: a downwash-modeling backend (`neuralswarm`) with two `oot2`/`oot3` vehicles,
-which is what would actually exercise the residual/interaction-force content this thesis cares
-about, as opposed to two independent hovers. Also not yet done: a 2-drone maneuver (figure8/
-circle/oval) for either controller — only hover tested so far for the 2-drone case.
+## Downwash-backend (`neuralswarm`) validation, 2-drone and 3-drone — 2026-09-18
+
+Exercised the actual Neural-Swarm2 downwash model (`backend: neuralswarm`, not `backend: np`)
+against both controllers, across 2-drone and 3-drone formation-library scenarios — the first
+time either controller has been run against a real coupled interaction force rather than an
+independent hover. New configs: `crazyflie/config/server_sim_naindi_dw.yaml` /
+`server_sim_naindi_hybrid_dw.yaml`.
+
+### A real methodological confound, found and fixed before trusting any result
+
+First attempts (`run_formation.py`, default wall-clock client) produced badly truncated,
+physically-implausible flights — vehicles never reaching commanded height, "landing" mid-climb.
+Root-caused **before** attributing this to the controller: re-ran the identical scenario through
+`controller=6` (`ctrl_mode=0`, geometric, known-good) with the same backend/client — **it showed
+the exact same truncation.** This is not a controller=7/8 issue. Cause: `neuralswarm`'s per-tick
+deep-sets NN inference is heavy enough that the simulator runs meaningfully slower than real
+time, but `run_formation.py`'s own stage waits (`th.sleep(...)`) are wall-clock by default, so
+the client advances to the next command before the (slower) simulated vehicle has had time to
+get there. This exact issue and its fix are already documented in `docs/09_Simulation.md`
+("~4x slower... `use_sim_time:=true` is required on every client") — re-discovered empirically
+here, not a new finding, but worth restating: **every `run_formation`/`simple_flight` invocation
+against `backend: neuralswarm` needs `--ros-args -p use_sim_time:=true` appended after the
+script's own arguments**, e.g.:
+```bash
+ros2 run crazyflie_examples run_formation -- --scenario A8 --yes --ros-args -p use_sim_time:=true
+```
+With that flag, flights run to genuine completion (verified by comparing total recorded
+sim-time against the scenario's own printed climb+converge+hold+land duration) — e.g. A1's
+printed 12.0s hold plus overhead matched a ~36s total recorded flight, landing cleanly.
+
+### Results (`crazyflies_sim.yaml` = 2 robots, `crazyflies_sim3.yaml` = 3 robots, all with
+`--ros-args -p use_sim_time:=true`)
+
+| Scenario | Robots | Controller=7 max\|roll\|/\|pitch\| (any drone) | Controller=8 max\|roll\|/\|pitch\| | z bounded? |
+|---|---|---|---|---|
+| A1 (vertical stack hover, dz=0.5m) | 2 | 0.0°/1.7° | 0.3°/1.7° | yes, 0.0–1.9 |
+| A8 (vertical swap maneuver) | 2 | 2.4°/0.01° | 2.4°/0.5° | yes, 0.0–1.65 |
+| C1 (side-by-side coplanar hover) | 3 | 2.9°/1.7° | 2.9°/1.7° | yes, 0.0–1.4 |
+| B1 (I-stack circle, combined-wash superposition test) | 3 | 3.0°/2.6° | 3.0°/2.6° | yes, 0.0–1.9 |
+
+All 8 runs (4 scenarios × 2 controllers) completed cleanly to landing, no divergence, no
+non-finite values. Controller=7 and controller=8 numbers are near-identical across every
+scenario — expected, since `naindi_hybrid.rs`'s NN correction reads only own-state input (no
+real neighbour sensing, per that module's own doc), so the two controllers' closed-loop
+response to an identical external disturbance is essentially the same control law. B1 is the
+most demanding case tested (3 drones, tracking circle, bottom vehicle in the combined wash of
+two others, testing superposition) and stayed just as clean as the hover cases.
+
+**Coverage now**: both controllers confirmed clean across single-drone (4 trajectory shapes),
+2-drone (`np` and `neuralswarm` backends, hover + swap), and 3-drone (`neuralswarm`, hover +
+circle) — the full matrix of scenario types this thesis's SIL testing has ever exercised for
+any controller.
 
 ### Still to do before this counts as fully closed
 
-- This is a **simulator fix, not a hardware validation.** `naindi.rs`/`naindi_hybrid.rs`
-  remain unflown — clearing the SIL is a precondition for flying, not a substitute for the
-  same hardware-validation gate every other controller change goes through.
-- 2-drone downwash-backend and 2-drone maneuver coverage still open (see above).
+- This is a **simulator fix and now a broad simulator validation, not a hardware validation.**
+  `naindi.rs`/`naindi_hybrid.rs` remain unflown — clearing the SIL is a precondition for
+  flying, not a substitute for the same hardware-validation gate every other controller change
+  goes through. **A reasonable next step is now a real hardware flight** (single-drone hover
+  first, per the project's normal C.0 gate discipline) — the sim side has nothing left blocking
+  it, though sim cleanliness is a hypothesis for the lab to test, not a guarantee.
+- Scenarios not yet tried: any of the "extreme"-tagged scenarios (A6/A7), any 3-robot swap
+  (B3), and the full 16-scenario formation library beyond these 4 representative cases.
 - The `--zero-state-acc`/`--real-substeps`/`--motor-tau`/`--replay-log` flags added to
   `naindi_reference_closed_loop.py` while chasing this are now genuinely useful diagnostic
   tools, not just one-off scaffolding — worth keeping for the next investigation like this.
