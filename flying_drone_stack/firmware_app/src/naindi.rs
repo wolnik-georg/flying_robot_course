@@ -200,6 +200,22 @@ impl State {
 
 static mut ST: State = State::zero();
 
+// 2026-09-18: address/size of this controller's state, for the host simulator ONLY --
+// same shape and same reasoning as lib.rs's oot_state_ptr/oot_state_size (see that file's
+// comment). Lets the simulator's oot_select_drone-style byte-copy swap give each simulated
+// vehicle its own filters/integrators/timestamp instead of sharing this one static, which is
+// otherwise correct (one vehicle per MCU on real hardware). Nothing here reads or writes the
+// state and no control logic depends on it.
+#[no_mangle]
+pub extern "C" fn oot2_state_ptr() -> *mut u8 {
+    core::ptr::addr_of_mut!(ST) as *mut u8
+}
+
+#[no_mangle]
+pub extern "C" fn oot2_state_size() -> usize {
+    core::mem::size_of::<State>()
+}
+
 // Test-only inertia override for host-level numerical-vector validation against the
 // reference's own compiled C (see host/test_naindi_reference.py): J is a compile-time
 // per-platform constant in real flight (physically necessary, see module doc) and this

@@ -362,12 +362,83 @@ only controllers 7 and 8 ever read that field, so only they are behaviorally aff
 six others read `sensors.acc` (already correct before this fix, untouched by it) or nothing
 acceleration-related at all.
 
+### Trajectory coverage — controller=8, 2026-09-18
+
+Controller=7 had two trajectory shapes confirmed (hover, figure8). Controller=8 had only
+hover. Ran figure8/circle/oval through the same real SIL (`server_sim_naindi_hybrid.yaml` +
+`crazyflies_sim1.yaml`, unmodified default gains) to close that gap:
+
+| Trajectory | Max \|roll\|/\|pitch\| during maneuver (t≈12-16s) | Trajectory-start transient (t≈10-12s) | Landing transient | z during maneuver | Verdict |
+|---|---|---|---|---|---|
+| figure8 (`--kt 0.008`) | 5-6° | 26.9°/13.2° | 22.2°/10.0° | 0.99-1.00 | clean |
+| circle (`--kt 0.1`) | 4-9° | 39.4°/8.9° | 20.6°/28.0° | 1.00-1.01 | clean |
+| oval (`--kt 0.008`) | 2-7° | 32.4°/0.9° | (run cut by harness timeout during hold, before landing) | 1.00 | clean |
+
+All three: `z` never leaves the 0.99-1.01 m band during the actual maneuver — no divergence,
+no crash. **The ~27-39° transient at trajectory start is not a controller=8-specific finding**:
+re-checked controller=7's own figure8 log (`state_naindi/2026-09-18_101909`) and it shows the
+same shape at the same timing (26.86° roll, t=10-12s) — this is the `go_to`→`start_trajectory`
+setpoint discontinuity in `simple_flight.py` itself, common to both controllers, not something
+either INDI port introduces. Landing-phase swings (15-28°) also match the pattern already
+documented for controller=7. **Four trajectory shapes now confirmed clean for controller=7
+(hover, figure8) and controller=8 (hover, figure8, circle, oval)** — no shape-dependent
+instability found for either.
+
+## Multi-vehicle support for controller=7/8 — 2026-09-18
+
+Until now `oot2`/`oot3` were hard-limited to one vehicle per sim run: `naindi.rs` and
+`naindi_hybrid.rs` each keep one process-global `static mut ST` (filters, integrators,
+`timestamp_prev`) with no per-vehicle swap, unlike `controllerOutOfTree`'s own static, which
+the simulator already swaps in/out per vehicle via `firm.oot_select_drone()` +
+`oot_state_ptr()`/`oot_state_size()` (`lib.rs`) + `oot_select_drone()` (`oot_host.c`). Two
+drones sharing either controller would have silently cross-contaminated their INDI filter
+state — the exact bug class the existing `oot_select_drone` mechanism exists to prevent for
+controller=6.
+
+**Fix, mirroring the existing pattern exactly, nothing new invented:**
+- `naindi.rs` / `naindi_hybrid.rs`: added `oot2_state_ptr`/`oot2_state_size` and
+  `oot3_state_ptr`/`oot3_state_size` (same shape as `lib.rs`'s `oot_state_ptr`/
+  `oot_state_size`), pointing at each module's own `static mut ST`.
+- `oot_host.c`: generalized the old single-purpose `oot_select_drone` body into
+  `oot_swap_select()` (one park/restore implementation, parameterized by pointer+size) and
+  three independent slot pools (`g_pool_oot`/`g_pool_oot2`/`g_pool_oot3`), exposed as
+  `oot_select_drone`/`naindi_select_drone`/`naindi_hybrid_select_drone`. Three pools because a
+  sim run could in principle mix controllers across vehicles.
+- `bindings/cffirmware.i`: exposed the two new `*_select_drone` functions (both `%{ %}` and
+  plain-SWIG blocks, alongside the existing `oot_select_drone` line).
+- `crazyflie_sil.py`: removed the `_oot2_count > 0` / `_oot3_count > 0` guard that raised
+  `ValueError` on a second vehicle; `_oot2_count`/`_oot3_count` now assign each vehicle a slot
+  index (`self._naindi_index`, same pattern as `self._oot_index`), and
+  `firm.naindi_select_drone(self._naindi_index)` /
+  `firm.naindi_hybrid_select_drone(self._naindi_index)` are called immediately before the
+  controller, mirroring `firm.oot_select_drone(self._oot_index)` for `'oot'`.
+
+### Results (`crazyflies_sim.yaml`, 2 vehicles, `backend: np` — no interaction model, isolates
+the state-swap mechanism itself from any downwash-model question)
+
+| Controller | Trajectory | cf231_active max\|roll\|/\|pitch\| | cf_second max\|roll\|/\|pitch\| | z range (both) | Cross-contamination? |
+|---|---|---|---|---|---|
+| controller=7 (`oot2`) | hover | 0.006°/0.001° | 0.006°/0.001° | 0.00-1.00 | None — final positions match each drone's own `initial_position` (0.3,0.0 vs 0.3,0.5) |
+| controller=8 (`oot3`) | hover | 0.15°/0.36° | 0.15°/0.36° | 0.00-1.00 | None — same distinct final positions, same near-identical stats between drones |
+
+Both drones track near-identically (as expected — identical trajectory, identical airframe,
+`backend: np` has no coupling between them) and land at their own distinct commanded XY, not
+each other's — the signature that each vehicle genuinely has its own controller state rather
+than silently sharing one. **Single-drone regression check**: re-ran controller=7 hover through
+`crazyflies_sim1.yaml` (1 vehicle) after this change — 0.002°/0.001°, matching the pre-change
+result, confirming the `_naindi_index=0` path is unaffected.
+
+**Not yet done**: a downwash-modeling backend (`neuralswarm`) with two `oot2`/`oot3` vehicles,
+which is what would actually exercise the residual/interaction-force content this thesis cares
+about, as opposed to two independent hovers. Also not yet done: a 2-drone maneuver (figure8/
+circle/oval) for either controller — only hover tested so far for the 2-drone case.
+
 ### Still to do before this counts as fully closed
 
 - This is a **simulator fix, not a hardware validation.** `naindi.rs`/`naindi_hybrid.rs`
   remain unflown — clearing the SIL is a precondition for flying, not a substitute for the
   same hardware-validation gate every other controller change goes through.
-- Only single-drone scenarios tested (2-drone not possible in this SIL, see above).
+- 2-drone downwash-backend and 2-drone maneuver coverage still open (see above).
 - The `--zero-state-acc`/`--real-substeps`/`--motor-tau`/`--replay-log` flags added to
   `naindi_reference_closed_loop.py` while chasing this are now genuinely useful diagnostic
   tools, not just one-off scaffolding — worth keeping for the next investigation like this.

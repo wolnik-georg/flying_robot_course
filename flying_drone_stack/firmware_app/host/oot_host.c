@@ -141,34 +141,62 @@ float oot_thrust2torque(void)  { return THRUST2TORQUE; }
 extern unsigned char *oot_state_ptr(void);
 extern size_t oot_state_size(void);
 
-static unsigned char *g_slot[OOT_MAX_DRONES];
-static unsigned char *g_template = NULL;   /* pristine post-Init state */
-static int g_current = -1;
+/* 2026-09-18: naindi.rs/naindi_hybrid.rs each got their own oot2_state_ptr/oot3_state_ptr
+   (same shape as oot_state_ptr above), so the exact same park/restore logic that already
+   gives 'oot' per-vehicle state can be reused for 'oot2'/'oot3' instead of duplicating it --
+   one generic implementation, three independent slot pools (one per controller, since a
+   sim run could in principle mix them). */
+extern unsigned char *oot2_state_ptr(void);
+extern size_t oot2_state_size(void);
+extern unsigned char *oot3_state_ptr(void);
+extern size_t oot3_state_size(void);
+
+typedef struct {
+  unsigned char *slot[OOT_MAX_DRONES];
+  unsigned char *tmpl;   /* pristine post-Init state */
+  int current;
+} oot_swap_pool_t;
+
+static void oot_swap_select(oot_swap_pool_t *pool, unsigned char *live, size_t n, int idx)
+{
+  if (idx < 0 || idx >= OOT_MAX_DRONES || idx == pool->current) {
+    return;
+  }
+  if (pool->tmpl == NULL) {
+    /* First call, before any vehicle has run: whatever *Init left behind is the correct
+       starting state. Zeroing instead would be subtly wrong -- it would give every vehicle
+       after the first a state Init never produced. */
+    pool->tmpl = malloc(n);
+    memcpy(pool->tmpl, live, n);
+  }
+  if (pool->current >= 0) {
+    memcpy(pool->slot[pool->current], live, n);   /* park the outgoing vehicle */
+  }
+  if (pool->slot[idx] == NULL) {
+    pool->slot[idx] = malloc(n);
+    memcpy(pool->slot[idx], pool->tmpl, n);       /* fresh vehicle, fresh controller */
+  }
+  memcpy(live, pool->slot[idx], n);               /* load the incoming vehicle */
+  pool->current = idx;
+}
+
+static oot_swap_pool_t g_pool_oot  = { .current = -1 };
+static oot_swap_pool_t g_pool_oot2 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot3 = { .current = -1 };
 
 void oot_select_drone(int idx)
 {
-  if (idx < 0 || idx >= OOT_MAX_DRONES || idx == g_current) {
-    return;
-  }
-  size_t n = oot_state_size();
-  unsigned char *live = oot_state_ptr();
+  oot_swap_select(&g_pool_oot, oot_state_ptr(), oot_state_size(), idx);
+}
 
-  if (g_template == NULL) {
-    /* First call, before any vehicle has run: whatever controllerOutOfTreeInit left
-       behind is the correct starting state. Zeroing instead would be subtly wrong --
-       it would give every vehicle after the first a state Init never produced. */
-    g_template = malloc(n);
-    memcpy(g_template, live, n);
-  }
-  if (g_current >= 0) {
-    memcpy(g_slot[g_current], live, n);          /* park the outgoing vehicle */
-  }
-  if (g_slot[idx] == NULL) {
-    g_slot[idx] = malloc(n);
-    memcpy(g_slot[idx], g_template, n);          /* fresh vehicle, fresh controller */
-  }
-  memcpy(live, g_slot[idx], n);                  /* load the incoming vehicle */
-  g_current = idx;
+void naindi_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot2, oot2_state_ptr(), oot2_state_size(), idx);
+}
+
+void naindi_hybrid_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot3, oot3_state_ptr(), oot3_state_size(), idx);
 }
 
 /* ---- Peer positions, host simulator only ----------------------------------

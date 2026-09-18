@@ -218,6 +218,20 @@ impl State {
 
 static mut ST: State = State::zero();
 
+// 2026-09-18: address/size of this controller's state, for the host simulator ONLY -- same
+// shape and reasoning as naindi.rs's oot2_state_ptr/oot2_state_size (see that file's
+// comment); kept as its own separate hook per this module's isolation requirement (a
+// separate `static mut ST`, never shared with naindi.rs).
+#[no_mangle]
+pub extern "C" fn oot3_state_ptr() -> *mut u8 {
+    core::ptr::addr_of_mut!(ST) as *mut u8
+}
+
+#[no_mangle]
+pub extern "C" fn oot3_state_size() -> usize {
+    core::mem::size_of::<State>()
+}
+
 // Test-only inertia override for host-level numerical-vector validation against the
 // reference's own compiled C (see host/test_naindi_hybrid_reference.py), mirroring
 // naindi.rs's own naindi_test_set_j() exactly (same rationale: J is a compile-time
