@@ -481,6 +481,59 @@ two others, testing superposition) and stayed just as clean as the hover cases.
 circle) — the full matrix of scenario types this thesis's SIL testing has ever exercised for
 any controller.
 
+## `indi_gains.rpm_source` default flipped to DShot (1) — 2026-09-18
+
+`rpm_get_all()` (`traj_iface.c`) is **one shared function**, called by identical symbol from
+`lib.rs` (controller=6), `naindi.rs` (controller=7), and `naindi_hybrid.rs` (controller=8) —
+there is no separate RPM path per controller, so this is a single global switch, not something
+that can default differently "for controller=7/8 only". Compiled default changed
+`g_indi_rpm_source = 0` (optical deck) → `1` (DShot), matching the project's standing decision
+since 2026-09-16 (the deck was found to silently report zero for 2 of 4 motors in real flight).
+`cf231_active`'s `crazyflies.yaml` already overrode this explicitly regardless of the compiled
+default, so this is belt-and-suspenders for controller=6 — but it closes a real gap for
+controller=7/8, which had no config of their own pushing `rpm_source` before now, and would
+otherwise silently default to the known-defective deck the moment either is selected.
+
+**Zero effect on any sim result, confirmed not assumed**: the host build's own `rpm_get_all()`
+(`host/oot_host.c`) completely bypasses `g_indi_rpm_source` — it injects the simulator's true
+RPM directly via `oot_set_rpm()` for all three controllers alike, since the simulator was never
+modeling a deck-vs-DShot difference. Re-ran a single-drone hover after rebuilding: 0.003°/0.001°
+max roll/pitch, exactly matching the pre-change baseline.
+
+**Rebuilt and reverified**: embedded build (`cargo build --release`, default `DRONE_PLATFORM=bl`)
+and host bindings both clean; sim hover re-check clean (see above).
+
+## Prerequisites for a real controller=7/8 flight — not yet done, next lab session
+
+Confirmed in source, not assumed, before writing this list:
+- `mod naindi;` / `mod naindi_hybrid;` (`src/lib.rs`) are compiled **unconditionally** — no
+  sim-only `cfg` gate — so any normal `make`/`make cload` build already includes both.
+- `CONFIG_CONTROLLER_OOT2=y` / `CONFIG_CONTROLLER_OOT3=y` are already set in
+  `firmware_app/app-config` (not sim-only Kconfig) — `stabilizer.controller=7`/`=8` are valid,
+  selectable enum values on the real embedded build, not just the host/sim one.
+- `stabilizer.controller` for `cf231_active` is currently set to `6` in `crazyswarm2/crazyflie/
+  config/crazyflies.yaml`'s shared `all:` block (line ~327) — **this has not been changed**, on
+  purpose; flipping the live flying config to `7`/`8` is a deliberate lab-session action, not
+  something to pre-set silently ahead of time.
+
+**Before the flight:**
+1. **Reflash `cf231_active`** (`cd firmware_app && make cload`, default `DRONE=bl`) so the
+   physical firmware matches everything verified in sim today, including the `rpm_source`
+   default change above.
+2. **Set `stabilizer.controller: 7`** for `cf231_active` (per-robot override, same pattern as
+   `cf_second`'s `controller: 5` — do not change the shared `all:` block, which would also
+   affect `cf_second`). Leave `indi_gains.rpm_source: 1` as-is (already explicit in
+   `cf231_active`'s block, and now also the compiled default).
+3. **Single-drone hover first** — cheapest, most directly comparable to the sim result that
+   just passed. Watch attitude closely, same discipline as any new controller's first flight;
+   land immediately on any sign of the growing oscillation pattern seen before the 2026-09-18
+   fix. If clean, a 2-drone scenario (A1 or A8, matching what was sim-tested) is the natural
+   follow-on; controller=8 can follow the same ladder once controller=7 clears the first rung.
+4. **This is testing a hypothesis, not confirming a guarantee** — sim cleanliness (including
+   the unscaled reference `KR`/`Kω` gains against this project's ~44% larger real inertia,
+   which sim testing never found to be a problem after the `state.acc` fix, but which real
+   hardware has never actually tested) is the thing the lab session checks.
+
 ### Still to do before this counts as fully closed
 
 - This is a **simulator fix and now a broad simulator validation, not a hardware validation.**
@@ -488,7 +541,8 @@ any controller.
   flying, not a substitute for the same hardware-validation gate every other controller change
   goes through. **A reasonable next step is now a real hardware flight** (single-drone hover
   first, per the project's normal C.0 gate discipline) — the sim side has nothing left blocking
-  it, though sim cleanliness is a hypothesis for the lab to test, not a guarantee.
+  it, though sim cleanliness is a hypothesis for the lab to test, not a guarantee. See the
+  prerequisites list immediately above for the concrete steps.
 - Scenarios not yet tried: any of the "extreme"-tagged scenarios (A6/A7), any 3-robot swap
   (B3), and the full 16-scenario formation library beyond these 4 representative cases.
 - The `--zero-state-acc`/`--real-substeps`/`--motor-tau`/`--replay-log` flags added to
