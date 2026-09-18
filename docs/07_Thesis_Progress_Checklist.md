@@ -796,6 +796,36 @@ All seven share one residual model, one weight format and one upload path, so th
 *how they use the prediction* rather than in how they obtain it. That is what makes the comparison
 a comparison.
 
+### The two learned components are NOT interchangeable
+
+A recurring question, settled by reading both sources: **Neural-Swarm2's network and NA-INDI's
+network share nothing.** Different architecture, input space, output dimensionality, size and
+normalisation — no weights can be transferred in either direction, and no training run serves both.
+
+| | **Neural-Swarm2** (Strategy 2) | **NA-INDI** (`controller=8`) |
+|---|---|---|
+| Base controller | Geometric SE(3), ours (`lib.rs`) | Their INDI (`controller_lee.c` → `naindi_hybrid.rs`) |
+| Net architecture | **Deep Sets**: per-neighbour φ_S + ground φ_G + decoder ρ_S | **Plain MLP**, 19→24→24→24→6, LeakyReLU (slope 0.01) |
+| Input | 6 per neighbour (rel. pos xyz, rel. vel xyz, world frame) + 4 ground `[0−z, −vx, −vy, −vz]` | 19, **own-state only**: R columns (6), EKF accel (3), velocity (3), gyro (3), motor PWM ratios (4) |
+| Neighbour awareness | **Yes** — explicit relative state, permutation-invariant, ≤3 neighbours | **None** |
+| Output | **1 scalar** — `Fa_z`, z-force only (grams) | **6** — force residual (3) *and* torque residual (3) |
+| Weight count | 19,297 exported / 11,461 trainable (small path only) | **1,830** |
+| Normalisation | mean/std, folded into the exported weights | min-max to [−1,1] (`X_MINS`/`X_MAXS`) |
+| Trained on | this project's C.1 downwash data *(to be collected)* | their own **single-vehicle payload-swing** experiment |
+| Proximity gate | `|dx|<0.2 ∧ |dy|<0.2 ∧ |dvx|<1.5` (reference's own cutoff) | n/a |
+
+**Consequence for Strategy 4.** There are two distinct implementations of the same strategy
+family, and comparing them is itself a result rather than a redundancy:
+
+- **`controller=8`** — their INDI + their own-state MLP, the faithful reproduction, untouched.
+- **`controller=6` + `ctrl_mode=3` + `rnn.en=1`** — this project's INDI + this project's
+  neighbour-aware Deep Sets net. Needs **no new controller slot**: `lib.rs` already computes
+  `a_indi` (measured) and `a_nn` (predicted) and adds both into `f_d`, with the source stating
+  the intent outright — *"the two are deliberately allowed to be on together… exactly what
+  strategy 4 exists to measure"*. One C.1 dataset and one C.2 training run therefore serve
+  **both** Strategy 2 (`ctrl_mode=0`) and Strategy 4 (`ctrl_mode=3`), differing only by a
+  runtime flag — which also makes them a clean A/B on identical weights.
+
 | # | Strategy | Uses the NN residual? | Controller(s) | State |
 |---|---|---|---|---|
 | 1 | **Pure INDI** | No — reacts to the *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) | `6`: ✅ flying single-drone, 2-drone gate next session. `7`: ✅ ported, verified ~1e-9 vs reference C, but **2026-09-16: diverges into a crash in CS2 SIL closed-loop sim** (single-drone hover) — one root cause fixed (hardcoded reference-airframe arm/t2t), a second suspected (attitude gains vs this project's real inertia) unresolved. **Do not fly.** See Strategy 4's row for the shared finding |
