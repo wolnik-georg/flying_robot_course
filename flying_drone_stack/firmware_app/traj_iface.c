@@ -463,8 +463,18 @@ float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
 float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
 
 /* rpm_source declared here (used by PARAM_ADD below); full doc comment is at
- * rpm_get_all()'s definition near the RPM bridge, further down this file. */
-uint8_t g_indi_rpm_source = 0;   /* 0 = optical deck (default, flight-proven), 1 = DShot */
+ * rpm_get_all()'s definition near the RPM bridge, further down this file.
+ *
+ * 2026-09-18: default flipped 0 -> 1. DShot has been the project's STANDING RPM source
+ * since 2026-09-16 (the optical deck was found to report exactly zero for 2 of 4 motors
+ * throughout real flight, invisible on the bench -- see the long comment at rpm_get_all()
+ * and crazyflies.yaml's cf231_active block). cf231_active already overrides this
+ * explicitly via firmware_params regardless of the compiled default, so this change is
+ * belt-and-suspenders there -- but it also applies to controller=7/8 (naindi.rs/
+ * naindi_hybrid.rs), which share this exact same rpm_get_all() call and had no config of
+ * their own pushing rpm_source at all before now. Reverting to the deck needs new
+ * evidence, not just an unset override. */
+uint8_t g_indi_rpm_source = 1;   /* 0 = optical deck, 1 = DShot (default since 2026-09-18) */
 
 PARAM_GROUP_START(indi_gains)
   PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
@@ -527,17 +537,20 @@ PARAM_GROUP_STOP(pos_gains)
 /* Exposes per-motor RPM via the Crazyflie log system. Two possible sources,
  * selected at RUNTIME by indi_gains.rpm_source (added 2026-09-11):
  *
- *   0 (DEFAULT) = optical RPM deck, log group "rpm" (m1..m4). What every flight to
- *       date has used, ever since the 2026-07-16 switch away from DShot fixed a
- *       catastrophic attitude-INDI divergence (see flying_drone_stack/docs/
- *       results_2026-07-15_brushless.md and dshot_rpm_source_plan.md). Requires the
- *       deck to be physically fitted (deck.bcRpm=1 force-enables its driver, since it
- *       has vid/pid=0x00 and never auto-detects).
- *   1 = DShot bidirectional ESC telemetry, log group "motor" (m1_rpm..m4_rpm). Always
- *       running on this platform regardless of this switch (CONFIG_MOTORS_ESC_PROTOCOL_
- *       DSHOT_BIDIRECTIONAL=y is unconditional in app-config-bl -- it is how the ESCs
- *       are driven at all) -- this only changes which readout INDI's tau_current uses.
- *       No deck, no reflective markers, no extra hardware.
+ *   0 = optical RPM deck, log group "rpm" (m1..m4). Used from the 2026-07-16 switch away
+ *       from DShot (which fixed a catastrophic attitude-INDI divergence at the time, see
+ *       flying_drone_stack/docs/results_2026-07-15_brushless.md) until 2026-09-16, when
+ *       the deck itself was found to report exactly zero for 2 of 4 motors throughout
+ *       real flight -- invisible on the bench, a real in-flight-only hardware defect.
+ *       Requires the deck to be physically fitted (deck.bcRpm=1 force-enables its
+ *       driver, since it has vid/pid=0x00 and never auto-detects).
+ *   1 (DEFAULT since 2026-09-18) = DShot bidirectional ESC telemetry, log group "motor"
+ *       (m1_rpm..m4_rpm). Always running on this platform regardless of this switch
+ *       (CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y is unconditional in
+ *       app-config-bl -- it is how the ESCs are driven at all) -- this only changes
+ *       which readout INDI's tau_current uses. No deck, no reflective markers, no extra
+ *       hardware. Read by controller=6/7/8 alike (naindi.rs/naindi_hybrid.rs call this
+ *       exact same function) -- there is no separate RPM path per controller.
  *
  * WHY THIS IS A RUNTIME SWITCH NOW, NOT A COMPILE-TIME ONE: the 2026-07-16 fix was
  * real -- switching sources ended a divergence that reflashing gains alone never had.
