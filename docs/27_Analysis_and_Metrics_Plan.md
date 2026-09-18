@@ -122,7 +122,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 
 | Phase | Work | Blocks |
 |---|---|---|
-| **P1** | Control effort + frequency-domain + min-separation metrics added to `metrics.py` | nothing — pure analysis of data already collected |
+| **P1** | ✅ **DONE 2026-09-18.** Control effort, attitude spectrum and min-separation added to `metrics.py`, wired into `vehicle_metrics`/`formation_row`, loaders extended (`gyro`/`tau` for ros, `+motor` for uSD) | — |
 | **P2** | Phase segmentation, driven by the scenario definition + meta sidecar | P1 metrics become per-phase |
 | **P3** | Aggregation layer: mean ± std, n, Wilcoxon paired test, effect size | needs repeats from the lab, but can be written and tested on synthetic/existing data now |
 | **P4** | Figure generation for C.4 | P3 |
@@ -154,3 +154,34 @@ above is an *analysis* gap, not a logging gap. Confirmed present:
 
 **Nothing needs adding before C.1.** Every metric proposed above is computable from data the
 current config already captures.
+
+
+---
+
+## P1 implementation notes (2026-09-18) — two findings from first real use
+
+`control_effort()`, `attitude_spectrum()` and `separation_metrics()` are implemented in
+`metrics.py` and folded into `vehicle_metrics()` / `formation_row()`. `VehicleLog` gained
+`tau`, `motor` and `gyro`; the uSD loader populates all three, and the **ros loader now
+populates `gyro` and `tau`, which `ROS_HEADER` always listed but nothing ever read**. Verified
+on synthetic data (a 7 Hz line injected into the gyro is recovered at exactly 7.00 Hz) and then
+on the real 2026-09-18 A8 pair — which immediately surfaced two things worth knowing:
+
+**1. Frequency-domain analysis needs the uSD stream, not the radio CSVs.** The radio logs run
+at **20 Hz** (dropped from 100 for 2-drone bandwidth headroom), so Nyquist is 10 Hz — barely
+above this band's 9 Hz top, with everything above 10 Hz folding straight back into it. The first
+run produced a confident-looking "dominant 7.17 Hz, 82 % band power" for INDI that is **not
+trustworthy**. `attitude_spectrum` now requires genuine oversampling (`fs ≥ 4 × band_hi`) rather
+than a bare Nyquist pass, and reports `spectrum_ok` so a caller cannot silently consume a bad
+number. **The 500 Hz uSD stream clears this comfortably — use it for any frequency-domain claim.**
+
+**2. `tau_*` is not a controller-agnostic effort metric.** `indi.tau_*` is the INDI path's own
+commanded torque and reads **exactly zero under geometric** (`ctrl_mode=0`), so comparing
+`tau_rms` across those two controllers compares a real number against a structural zero. The
+controller-agnostic effort signal is the **per-rotor PWM ratio** (`motor.m1-4`), which every
+controller drives — and which is **uSD-only**, absent from the radio CSV schema. Use `motor_*`
+for cross-controller effort claims; treat `tau_*` as an INDI-internal diagnostic.
+
+**Consequence for C.4: the comparison must be built on uSD logs, not radio CSVs.** Both of the
+metrics added here need signals or rates the radio stream does not carry. That is a protocol
+decision worth making explicitly now rather than discovering during writing.
