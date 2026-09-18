@@ -140,7 +140,7 @@ def main():
             loss = loss_fn(pred_accel, Y[idx])
             loss.backward()
             opt.step()
-            tot += float(loss) * len(idx)
+            tot += loss.detach().item() * len(idx)
         sched.step()
 
         net.eval()
