@@ -1,0 +1,97 @@
+{
+  "scenario": "A8",
+  "params": {
+    "dz": 0.25,
+    "span": 1.0,
+    "duration": 6.0,
+    "settle": 2.0,
+    "passes": 2,
+    "rotate_deg": 0.0
+  },
+  "realised": {
+    "peak_speed": 0.3646,
+    "peak_accel": 0.2087,
+    "speed_requested": null,
+    "period_effective": null,
+    "period_pinned": false,
+    "path_kind": "fixed"
+  },
+  "roles": [
+    "bottom",
+    "top"
+  ],
+  "names": [
+    "cf231_active",
+    "cf_second"
+  ],
+  "height": 1.0,
+  "anchor": [
+    0.0,
+    0.3,
+    1.0
+  ],
+  "t_start_sim": 1789749084.8848474,
+  "duration": 14.0,
+  "timescale": 1.0,
+  "per_drone": {
+    "cf231_active": {
+      "controller": 6,
+      "ctrl_mode": 0,
+      "indi": {
+        "kr": 2400.0,
+        "kw": 170.0,
+        "kr_z": 2400.0,
+        "kw_z": 170.0,
+        "kr_geo": 0.01,
+        "kw_geo": 0.0011,
+        "kr_z_geo": 0.01,
+        "kw_z_geo": 0.00138,
+        "fc_bw": 206.0,
+        "mass": 0.041,
+        "kt1": 4.1623e-10,
+        "kt2": 4.0592e-10,
+        "kt3": 4.1116e-10,
+        "kt4": 4.0631e-10,
+        "j_scale": 1.0,
+        "notch_f0": 6.9,
+        "notch_bw": 3.0,
+        "rpm_source": 1.0
+      },
+      "pos": {
+        "kp_xy": 40.0,
+        "kp_z": 30.0,
+        "kv_xy": 8.0,
+        "kv_z": 10.0
+      }
+    },
+    "cf_second": {
+      "controller": 5,
+      "ctrl_mode": 3,
+      "indi": {
+        "kr": 2400.0,
+        "kw": 170.0,
+        "kr_z": 2400.0,
+        "kw_z": 170.0,
+        "kr_geo": 0.01,
+        "kw_geo": 0.0011,
+        "kr_z_geo": 0.01,
+        "kw_z_geo": 0.00138,
+        "fc_bw": 206.0,
+        "mass": 0.041,
+        "kt1": 4.1623e-10,
+        "kt2": 4.0592e-10,
+        "kt3": 4.1116e-10,
+        "kt4": 4.0631e-10,
+        "j_scale": 1.0,
+        "notch_f0": 6.9,
+        "notch_bw": 3.0
+      },
+      "pos": {
+        "kp_xy": 64.0,
+        "kp_z": 48.0,
+        "kv_xy": 5.0,
+        "kv_z": 7.0
+      }
+    }
+  }
+}
