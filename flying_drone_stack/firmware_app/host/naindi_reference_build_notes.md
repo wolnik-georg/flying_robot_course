@@ -282,6 +282,70 @@ call pattern) around the crash window, rather than continuing to guess-and-check
 hand-rolled reimplementation** — the standalone harness has done what it usefully can:
 ruled out a port bug as the explanation, not found the actual trigger.
 
+## ROOT CAUSE FOUND AND FIXED — 2026-09-18
+
+**The plan below worked on the first pass through it.** Summary for anyone who only reads
+one section of this file: `crazyflie_sil.py`'s `setState()` populated `self.sensors.acc`
+every tick but **never once set `self.state.acc`** — a plain omission, not a subtle
+numerical issue. `naindi.rs` reads `state->acc` (not `sensors->acc`) for its position-INDI
+residual term `a_imu` (module doc; `let acc = &st.acc;` at naindi.rs's line ~389) — so
+`a_imu` was **exactly zero for the entire flight, every controller=7/8 SIL run to date**.
+The INDI residual `a_res = a_imu - a_rpm` therefore equaled `-a_rpm` instead of a genuine
+measured-vs-modeled comparison: roughly constant during steady hover (which is why hover
+alone sometimes looked clean), but large and dynamically varying whenever commanded thrust
+changes — climb, landing — which is exactly the failure window every single crash to date
+was observed in.
+
+**Confirmed by direct A/B, not just code-reading:** `naindi_reference_closed_loop.py` grew
+a `--zero-state-acc` flag that replicates the bug standalone. With everything else already
+matched to the real crashing config (real substeps, real motor lag, the real logged
+setpoint sequence via `--replay-log`), `--zero-state-acc` **diverges at t=10.4s** — the
+exact same window (t≈9.9-11.1s) the real logged crash actually happened in. Without it
+(computing `state.acc` correctly), the identical run is completely clean. That is about as
+clean an isolated cause-and-effect as a test like this can produce.
+
+**Fix, `crazyflie_sim/crazyflie_sim/crazyflie_sil.py`'s `setState()`:** populate
+`self.state.acc` too, not just `self.sensors.acc`. The two fields have different
+conventions — `sensors.acc` (`sim_data_types.State`'s own field) is body-frame *specific
+force* (reads `(0,0,1)` at hover, the accelerometer/thrust-reaction convention);
+`state->acc` (what `controller_lee.c`/`naindi.rs` read) is world-frame,
+**gravity-excluded**, comparable directly against `a_rpm` (which already has gravity
+subtracted) — reads `(0,0,0)` at hover. Converting: rotate the body-frame specific force
+into world frame, then subtract the gravity-cancelling `(0,0,1)` hover offset:
+`state.acc_world = rotate(quat, sensors_acc_body) - (0, 0, 1)`.
+
+**Result: the exact same previously-100%-crashing config — brushless airframe, default
+gains, `server_sim_naindi.yaml` + `crazyflies_sim1.yaml`, unmodified — now flies completely
+clean.** Max roll/pitch 0.003°/0.001° through climb, 8s hover, and into landing (verified
+2026-09-18, single run so far — see "Still to do" below). Re-verified `controller=6`
+(geometric and full-INDI) are both completely unaffected — `lib.rs` never reads either
+`state.acc` or `sensors.acc` at all (confirmed by grep: zero matches), so this fix is
+structurally isolated to `naindi.rs`/`naindi_hybrid.rs`.
+
+**Also true for `naindi_hybrid.rs` (controller=8)** — same module, same `state->acc`
+read, same bug, same fix applies. Not yet independently re-tested in the real SIL (only
+controller=7 was re-verified) — should be, since it shares the identical root cause.
+
+### Still to do before this counts as fully closed
+
+- **Update, same day:** re-ran hover a second time (clean) and figure8 (`--kt 0.008`) —
+  also clean: `z` holds rock-solid at 1.0 throughout the actual figure8 (t=9.3-17.6s),
+  normal ±5° banking roll during the maneuver, the larger 15-27° swings only during the
+  final landing descent (t>18.6s, not a divergence). Two trajectory shapes now confirmed.
+  **Note:** a 2-drone re-test in this SIL is not possible as-is — `oot2`/`oot3` have no
+  per-vehicle state-swap mechanism yet (`crazyflie_sil.py`'s own `__init__` guard limits
+  them to one vehicle per sim run). The original 2-drone crash this investigation is
+  sometimes conflated with was a **real hardware** RPM-deck defect (docs/07 History (41),
+  fixed via DShot) — a separate issue from the SIL-only single-drone crash this fix
+  addresses.
+- Re-verify `controller=8` (`naindi_hybrid.rs`) in the real SIL with this fix — untested.
+- This is a **simulator fix, not a hardware validation.** `naindi.rs`/`naindi_hybrid.rs`
+  remain unflown — clearing the SIL is a precondition for flying, not a substitute for the
+  same hardware-validation gate every other controller change goes through.
+- The `--zero-state-acc`/`--real-substeps`/`--motor-tau`/`--replay-log` flags added to
+  `naindi_reference_closed_loop.py` while chasing this are now genuinely useful diagnostic
+  tools, not just one-off scaffolding — worth keeping for the next investigation like this.
+
 ## Investigation plan — root-causing the real-SIL-only gap, 2026-09-18
 
 **Status when this was written:** the algorithm and the port are both confirmed correct
