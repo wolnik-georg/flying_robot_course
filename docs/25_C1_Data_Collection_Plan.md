@@ -144,3 +144,38 @@ plainly rather than presenting the two as like-for-like.
 Retraining their network on our downwash data would not fix this: the input layer would have to
 gain neighbour state, at which point it is no longer their architecture. Worth stating as a
 limitation in Ch. 2/6 and, if anything, as a motivation for Strategy 2's design.
+
+### …so does a retrained downwash variant need a new controller slot? **No — it already exists.**
+
+The natural next thought is a `controller=9`: an NA-INDI variant retrained from scratch on
+downwash data, leaving `controller=7`/`controller=8` byte-untouched as faithful reproductions.
+That instinct is right about keeping 7 and 8 pristine — but the variant itself needs no new slot.
+
+`lib.rs` already computes **both** residuals and adds **both** into `f_d`:
+
+```rust
+.add(a_indi.scale(res_sign))   // measured, INDI
+.add(a_nn.scale(res_sign));    // predicted, Neural-Swarm2 deep-sets net
+```
+
+with the intent stated outright in the source: *"the two are deliberately allowed to be on
+together. Double-counting is a real risk and is exactly what strategy 4 exists to measure; it is
+not prevented here, because preventing it would remove the comparison."*
+
+So the interaction-aware hybrid is:
+
+| Strategy | Configuration |
+|---|---|
+| **2** — Geometric + NN residual | `controller=6`, `ctrl_mode=0`, `rnn.en=1` |
+| **4** — Hybrid: INDI *measured* + NN *predicted* | **`controller=6`, `ctrl_mode=3`, `rnn.en=1`** |
+| 4 (reference reproduction) | `controller=8` — the authors' own-state net, untouched |
+| 1 — Pure INDI | `controller=6, ctrl_mode=3` (ours) · `controller=7` (theirs, untouched) |
+
+This is **architecturally better than a retrained `controller=8`** for the purpose, because the
+Neural-Swarm2 network is permutation-invariant and consumes relative neighbour position and
+velocity — the correct input space, which their own-state MLP structurally lacks.
+
+**Practical consequences: no `controller=9`, no second training pipeline, no second collection
+campaign.** The same C.1 dataset and the same C.2 training run produce weights serving *both*
+Strategy 2 and Strategy 4 — they differ only by a runtime flag, which also makes them a genuinely
+clean A/B on identical weights.
