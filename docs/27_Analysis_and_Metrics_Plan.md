@@ -153,7 +153,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 |---|---|---|
 | **P1** | ✅ **DONE 2026-09-18.** Control effort, attitude spectrum and min-separation added to `metrics.py`, wired into `vehicle_metrics`/`formation_row`, loaders extended (`gyro`/`tau` for ros, `+motor` for uSD) | — |
 | **P2** | ✅ **DONE 2026-09-18.** `approach_times()`, `phase_windows()`, `slice_log()`, `vehicle_metrics_by_phase()` — every metric now reportable per phase | — |
-| **P3** | Aggregation layer: mean ± std, n, Wilcoxon paired test, effect size | needs repeats from the lab, but can be written and tested on synthetic/existing data now |
+| **P3** | ✅ **DONE 2026-09-18.** `aggregate.py` — mean±std/sem, paired Wilcoxon, bootstrap CI on the ratio, rank-biserial effect size, plus small-n and pseudo-replication guards | needs repeat FLIGHTS to produce a claim |
 | **P4** | Figure generation for C.4 | P3 |
 | **P5** | Residual-model evaluation suite (R², error vs dz, flight-wise split) | C.1 data |
 
@@ -258,3 +258,49 @@ sharper target than "beat INDI" — beat it *at closest approach*.
 
 Pass-to-pass consistency is reassuring (INDI 54.5 vs 52.3 mm; geometric 119.7 vs 100.9 mm), which
 is itself a useful data-quality check that only per-crossing reporting can provide.
+
+
+---
+
+## P3 implementation notes (2026-09-18) — and a methodological trap it caught
+
+`aggregate.py` provides `summarise()` (mean ± std ± sem, median, IQR, **n**) and
+`paired_compare()` (ratio with a bootstrap CI, matched-pairs rank-biserial effect size, and a
+Wilcoxon signed-rank p-value **when the design earns one**).
+
+**Choices, and why:**
+
+- **Wilcoxon, not a t-test.** n is a handful, the metrics are RMSEs (bounded below,
+  right-skewed), and normality is neither plausible nor checkable at this n. Wilcoxon assumes
+  only symmetry of the paired differences.
+- **Paired, not independent.** Runs are matched by (scenario, phase) — the same commanded
+  trajectory flown by each controller. Pairing removes scenario-to-scenario variance, which is
+  large here and would otherwise swamp the controller effect.
+- **Bootstrap CI on the ratio, not Gaussian propagation.** The quantity of interest is a *ratio*
+  of RMSEs; its distribution is asymmetric and propagation understates the upper tail. A
+  percentile bootstrap over pairs assumes nothing.
+- **Effect size always, p-value conditionally.** Below n=6 the p-value is suppressed with an
+  explicit note, because at that n a Wilcoxon cannot reach conventional significance *regardless
+  of effect size* — printing one invites a reader to conclude "no effect" from "not enough runs".
+- A CI straddling 1.0 triggers an explicit warning that no difference has been established.
+
+Verified on three synthetic designs: small-n with a real effect (reports ratio + CI, withholds
+p), adequate-n with a real effect (p = 0.0078, CI excludes 1.0), and adequate-n with **no** effect
+(ratio 0.993, CI [0.95, 1.04], warning fires, p = 0.64). It declines to overclaim in exactly the
+cases where it should.
+
+### ⚠️ The trap: phases are not repeats
+
+Running it on the real 2026-09-18 pair produced `n_pairs=5` — because the five *phases* of one
+flight were being treated as five independent samples. The arithmetic is happy to produce a
+confident CI and, past n=6, a p-value from that, but it would be **measuring within-flight
+variation and reporting it as between-flight evidence**. This is pseudo-replication, and it is
+the single easiest way to publish an indefensible number from a correct-looking pipeline.
+
+`paired_compare()` now checks the `run` column and, if either controller has only one distinct
+flight, flags it loudly and suppresses the p-value regardless of n.
+
+**Direct consequence for the flight plan: repeats must be repeated FLIGHTS.** Three A8 runs per
+controller is a design that can support a claim; one A8 run per controller analysed five ways is
+not, however many phases it is sliced into. That should be budgeted into the C.4 comparison
+sessions explicitly — roughly 3–5 flights per controller per scenario, not one.
