@@ -515,6 +515,124 @@ def separation_metrics(vehicles: list[VehicleLog], dz_cmd: float | None = None,
     return out
 
 
+# ── P2: phase segmentation (2026-09-18, docs/27) ────────────────────────────────────────
+# Whole-flight metrics mix ramp, cruise, crossing and landing, and the physically meaningful
+# number for downwash lives in the crossing alone. Before this, that window was picked by hand
+# (`t = 11-25 s` in the 2026-09-18 comparison), which is neither reproducible nor auditable.
+
+APPROACH_HALFWIDTH_S = 1.5   # window either side of commanded closest approach
+
+
+def approach_times(sc, i: int = 0, j: int = 1, n: int = 1000,
+                    tol: float = 1.15) -> list[float]:
+    """Times of **commanded** closest approach between two robots, in scenario time.
+
+    Returns EVERY crossing, not one. 2026-09-18: an earlier single-`argmin` version silently
+    reported only one of A8's two passes (`passes=2` crosses twice at the same 0.25 m minimum)
+    and picked between them on floating-point noise -- it returned t=11.02 s where
+    `run_formation.py` itself reports the first crossing at t=5.0 s. Half the interaction data
+    would have been dropped from every A8 row, invisibly.
+
+    Deliberately computed from the SCENARIO, never from measured positions. A window defined by
+    what each vehicle actually did would differ per controller -- each would then be scored over
+    a window its own performance chose, which is exactly the silent bias that makes a comparison
+    indefensible. The command is identical across controllers by construction, so the window is.
+
+    `tol` accepts local minima within 15% of the global one as genuine crossings.
+    """
+    ts = np.linspace(0.0, float(sc.duration), n)
+    d = np.array([float(np.linalg.norm(np.asarray(sc.relative(i, j, float(t))))) for t in ts])
+    if not len(d):
+        return []
+    thresh = float(np.min(d)) * tol
+    near = d <= thresh
+    if not np.any(near):
+        return [float(ts[int(np.argmin(d))])]
+    # Group contiguous below-threshold runs; take each run's own argmin as its crossing.
+    out, start = [], None
+    for k, flag in enumerate(near):
+        if flag and start is None:
+            start = k
+        elif not flag and start is not None:
+            seg = slice(start, k)
+            out.append(float(ts[start + int(np.argmin(d[seg]))]))
+            start = None
+    if start is not None:
+        seg = slice(start, len(near))
+        out.append(float(ts[start + int(np.argmin(d[seg]))]))
+    return out
+
+
+def phase_windows(v: VehicleLog, sc, t0: float | None = None,
+                   halfwidth: float = APPROACH_HALFWIDTH_S) -> dict:
+    """`{phase: (t_lo, t_hi)}` in **this log's own time base**.
+
+    `t0` is the log time at which the scenario starts:
+      * `t_zero='scenario_start'` (uSD extract, --meta-aligned merge) -> 0.0, nothing needed.
+      * `t_zero='sim_wall'` (ros radio CSV)                            -> pass the sidecar's
+        `t_start_sim`, or the caller gets scenario-relative phases that are simply wrong.
+
+    Phases returned: `ramp` (before the trajectory), `scenario` (the whole commanded
+    trajectory), `land` (after), and **one `approach<k>` per commanded crossing** for 2-robot
+    scenarios -- `approach1`, `approach2`, ... numbered in time order. Multi-pass scenarios
+    genuinely have several crossings (A8 `passes=2` has two) and reporting them separately also
+    exposes pass-to-pass consistency, which a single merged window would hide. Empty phases are
+    omitted rather than returned as zero-width.
+    """
+    if t0 is None:
+        if v.t_zero == "scenario_start":
+            t0 = 0.0
+        else:
+            raise ValueError(
+                f"{v.name}: t_zero={v.t_zero!r} -- cannot place the scenario on this log's "
+                f"clock without t0. Pass the sidecar's t_start_sim (ros logs), or use a "
+                f"--meta-aligned merge / uSD extract where t=0 IS the scenario start.")
+    dur = float(sc.duration)
+    lo, hi = (float(v.t[0]), float(v.t[-1])) if len(v.t) else (t0, t0 + dur)
+    out: dict[str, tuple[float, float]] = {}
+    if lo < t0:
+        out["ramp"] = (lo, t0)
+    out["scenario"] = (t0, t0 + dur)
+    if hi > t0 + dur:
+        out["land"] = (t0 + dur, hi)
+    if getattr(sc, "n_robots", 0) >= 2:
+        for k, ta_rel in enumerate(approach_times(sc), start=1):
+            ta = t0 + ta_rel
+            out[f"approach{k}"] = (max(t0, ta - halfwidth), min(t0 + dur, ta + halfwidth))
+    return out
+
+
+def slice_log(v: VehicleLog, lo: float, hi: float) -> VehicleLog:
+    """A VehicleLog restricted to [lo, hi] in its own time base. Every array field is cut
+    together, so downstream metrics cannot silently mix windows."""
+    m = (v.t >= lo) & (v.t <= hi) if len(v.t) else np.zeros(0, bool)
+    cut = lambda a: None if a is None else a[m]        # noqa: E731
+    return VehicleLog(v.name, v.fmt, v.t[m] if len(v.t) else v.t,
+                       cut(v.pos), cut(v.pos_des), cut(v.a_res), cut(v.a_hat), cut(v.e_r),
+                       int(m.sum()), v.source, t_zero=v.t_zero,
+                       tau=cut(v.tau), motor=cut(v.motor), gyro=cut(v.gyro))
+
+
+def vehicle_metrics_by_phase(v: VehicleLog, sc, scenario: str, controller: str,
+                              n_robots: int, pos_des: np.ndarray | None = None,
+                              t0: float | None = None) -> list[dict]:
+    """One metrics row per phase, each tagged with `phase` and its window.
+
+    `pos_des`, when reconstructed by the caller, must be aligned to the FULL log (same length
+    as `v.t`); it is sliced alongside everything else here.
+    """
+    rows = []
+    for name, (lo, hi) in phase_windows(v, sc, t0).items():
+        w = slice_log(v, lo, hi)
+        pd_w = None
+        if pos_des is not None and len(v.t) == len(pos_des):
+            pd_w = pos_des[(v.t >= lo) & (v.t <= hi)]
+        r = vehicle_metrics(w, scenario, controller, n_robots, pd_w)
+        r.update(phase=name, phase_t_lo=lo, phase_t_hi=hi)
+        rows.append(r)
+    return rows
+
+
 def vehicle_metrics(v: VehicleLog, scenario: str, controller: str, n_robots: int,
                      pos_des: np.ndarray | None) -> dict:
     """One row of Chapter-5 metrics for a single vehicle.

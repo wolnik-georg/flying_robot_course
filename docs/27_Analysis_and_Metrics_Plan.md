@@ -6,6 +6,35 @@ gaps can be closed while the lab work proceeds rather than discovered at writing
 
 ---
 
+## Policy: uSD logs are the analysis source of record
+
+**Decided 2026-09-18.** Every metric, plot, comparison row and thesis figure is built from the
+**uSD stream**. The radio CSVs are for **live monitoring and quick troubleshooting only** and
+must not be the basis of a reported result.
+
+This is not a preference, it is forced by what each stream can carry:
+
+| | uSD (`usd_thesis_config.txt`) | radio CSV |
+|---|---|---|
+| Rate | **500 Hz** | **20 Hz** for 2-drone runs (dropped from 100 for bandwidth headroom) |
+| Frequency-domain work (5–9 Hz band) | ✅ Nyquist 250 Hz, comfortable | ❌ Nyquist 10 Hz — the band's own top edge; content above 10 Hz aliases into it |
+| `motor.m1-4` PWM ratios | ✅ present | ❌ absent from the schema |
+| Cross-controller control effort | ✅ via `motor_*` | ❌ only `tau_*`, which is **structurally zero** under geometric |
+| Commanded position | ✅ `ctrltarget.*` logged directly | ❌ must be reconstructed from the scenario |
+| Dropouts | none — written locally | packets dropped silently under load |
+
+Practical consequences:
+
+- **uSD logging must be on for every run that will be reported**, comparison and collection
+  alike. `check_usd_deck.py` before flying is already the standing rule.
+- `compare_downwash.py` currently reads radio CSVs and reconstructs the commanded trajectory.
+  That was right for the 2026-09-18 runs (no uSD extraction yet) but it should move to uSD
+  input, where `ctrltarget.*` removes the reconstruction step entirely — strictly more
+  trustworthy, since it is the setpoint the firmware itself acted on.
+- A radio-only run is still useful for "did it fly clean?", and useless for "how clean, exactly?"
+
+---
+
 ## What already exists — a better foundation than expected
 
 **`experiments/analysis/metrics.py`** — per-vehicle rows:
@@ -123,7 +152,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 | Phase | Work | Blocks |
 |---|---|---|
 | **P1** | ✅ **DONE 2026-09-18.** Control effort, attitude spectrum and min-separation added to `metrics.py`, wired into `vehicle_metrics`/`formation_row`, loaders extended (`gyro`/`tau` for ros, `+motor` for uSD) | — |
-| **P2** | Phase segmentation, driven by the scenario definition + meta sidecar | P1 metrics become per-phase |
+| **P2** | ✅ **DONE 2026-09-18.** `approach_times()`, `phase_windows()`, `slice_log()`, `vehicle_metrics_by_phase()` — every metric now reportable per phase | — |
 | **P3** | Aggregation layer: mean ± std, n, Wilcoxon paired test, effect size | needs repeats from the lab, but can be written and tested on synthetic/existing data now |
 | **P4** | Figure generation for C.4 | P3 |
 | **P5** | Residual-model evaluation suite (R², error vs dz, flight-wise split) | C.1 data |
@@ -185,3 +214,47 @@ for cross-controller effort claims; treat `tau_*` as an INDI-internal diagnostic
 **Consequence for C.4: the comparison must be built on uSD logs, not radio CSVs.** Both of the
 metrics added here need signals or rates the radio stream does not carry. That is a protocol
 decision worth making explicitly now rather than discovering during writing.
+
+
+---
+
+## P2 implementation notes (2026-09-18) — one bug caught, one finding exposed
+
+`phase_windows()` segments a log into `ramp` / `scenario` / `approach<k>` / `land`, derived from
+the scenario definition and the meta sidecar rather than chosen by hand. `slice_log()` cuts every
+array field together so metrics cannot silently mix windows, and `vehicle_metrics_by_phase()`
+returns one tagged row per phase.
+
+**Design decision worth keeping:** the approach window is computed from the **commanded**
+trajectory, never from measured positions. A window defined by what each vehicle actually did
+would differ per controller — each would then be scored over a window its own performance chose,
+which is precisely the silent bias that makes a comparison indefensible. The command is identical
+across controllers by construction, so the window is too.
+
+**Bug caught during testing.** The first version took a single `argmin` of commanded separation
+and reported one crossing. A8 with `passes=2` crosses **twice**, at the same 0.25 m minimum, so
+`argmin` chose between them on floating-point noise — returning t=11.02 s where
+`run_formation.py` itself reports the first crossing at **t=5.0 s**. Half the interaction data
+would have been dropped from every A8 row, invisibly. `approach_times()` now returns every
+crossing (local minima within 15 % of the global), numbered in time order, and its first value
+matches `run_formation.py`'s exactly.
+
+**Finding this exposed, on the 2026-09-18 A8 pair** (bottom drone, position RMSE):
+
+| Phase | geometric | full INDI | ratio |
+|---|---|---|---|
+| whole `scenario` | 103.5 mm | 35.6 mm | **2.9×** |
+| `approach1` | 119.7 mm | 54.5 mm | 2.2× |
+| `approach2` | 100.9 mm | 52.3 mm | 1.9× |
+
+**INDI's advantage is *smaller* during the actual crossings (1.9–2.2×) than over the scenario as
+a whole (2.9×)**, and both controllers are worse there in absolute terms. So INDI does relatively
+better in the easy parts and relatively worse exactly when the disturbance is strongest — the
+opposite of the naive expectation, and invisible in a whole-window number.
+
+That matters for the thesis argument: **the headroom available to the learning-based strategies is
+concentrated in the crossing**, where INDI is weakest relative to its own average. It also gives a
+sharper target than "beat INDI" — beat it *at closest approach*.
+
+Pass-to-pass consistency is reassuring (INDI 54.5 vs 52.3 mm; geometric 119.7 vs 100.9 mm), which
+is itself a useful data-quality check that only per-crossing reporting can provide.
