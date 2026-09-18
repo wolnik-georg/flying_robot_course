@@ -1,4 +1,10 @@
-# ── Run on the LAB PC. Paste the whole block. ──────────────────────────────
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ # ── Run on the LAB PC. Paste the whole block. ──────────────────────────────
 LOG=~/georg/flying_robot_course/debug/lab_logs/debug.log
 exec > >(tee "$LOG") 2>&1
 
@@ -47,3 +53,170 @@ grep -n "activeMarker\|bcActiveMarker" ~/georg/ros2_ws/install/crazyflie/share/c
 echo "(empty above = no per-drone marker IDs are being set at all)"
 
 echo "########## DONE ##########"
+########## 1. LOCATE CHECKOUTS ##########
+/home/flyingrobots/georg/ros2_ws
+/home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+/home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+########## 2. SOURCE vs INSTALLED (the key comparison) ##########
+SRC=/home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+--- SOURCE default_single_marker ---
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+--- INSTALLED default_single_marker (best hope: may still hold the 4 points) ---
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+--- BUILD dir copy, if any ---
+########## 3. FILE TIMESTAMPS (shows what was overwritten and when) ##########
+lrwxrwxrwx 1 flyingrobots flyingrobots    85 2026-05-07 16:45:18.669039241 +0200 /home/flyingrobots/georg/ros2_ws/install/crazyflie/share/crazyflie/config/motion_capture.yaml -> /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/motion_capture.yaml
+-rw-rw-r-- 1 flyingrobots flyingrobots 16563 2026-09-18 20:07:47.118316381 +0200 /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml
+-rw-rw-r-- 1 flyingrobots flyingrobots  1976 2026-06-13 16:53:21.242872713 +0200 /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/motion_capture.yaml
+########## 4. GIT RECOVERY SOURCES ##########
+--- status ---
+On branch tune-indi-on-crazyflie-thrust-upgraded
+Your branch is up to date with 'origin/tune-indi-on-crazyflie-thrust-upgraded'.
+
+nothing to commit, working tree clean
+--- local diff ---
+--- stash list ---
+stash@{0}: WIP on main: f0c128c Stage 2e attempt 4: keep kr/kw=483/76, switch pos_gains to geometric's point
+stash@{1}: WIP on main: 247b515 Restore the tilt clamp (clamp_en 11 -> 15) for level formation flight
+stash@{2}: WIP on main: b756e2c switch to upgraded drone.
+stash@{3}: WIP on main: df52fdd update yaml.
+stash@{4}: WIP on main: 006d800 update yaml and flight script.
+stash@{5}: WIP on main: 6e50b69 regenreate new trajecotries.
+stash@{6}: WIP on stable-brushless-full-indi: 525b099 update yaml and add knobs.
+stash@{7}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 9fa83eb update yaml and add knobs.
+stash@{8}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0f631da update yaml and add knobs.
+stash@{9}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7ee26b2 update yaml and add knobs.
+stash@{10}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fe1ac8d update yaml
+stash@{11}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 10f4f4e update yaml
+stash@{12}: WIP on tune-indi-on-crazyflie-thrust-upgraded: dc6a2df fix pos gains on ramp up.
+stash@{13}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging.
+stash@{14}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging.
+stash@{15}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 985b394 update logging.
+stash@{16}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 236519e update logging.
+stash@{17}: WIP on tune-indi-on-crazyflie-thrust-upgraded: e8ad0d5 add both rpm sources.
+stash@{18}: WIP on tune-indi-on-crazyflie-thrust-upgraded: cebd0f4 update config for brushless.
+stash@{19}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d222c9b update indi gains.
+stash@{20}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d9a688c update indi gains.
+stash@{21}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fcdb746 more conservative gains.
+stash@{22}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0507b8b update kt values.
+stash@{23}: WIP on stable-jun30-working: a436cf9 reduce height
+stash@{24}: WIP on stable-jun30-working: fab451d update z gains.
+stash@{25}: WIP on stable-jun30-working: 7345493 generate more trajectories.
+stash@{26}: WIP on stable-june20: 1407a45 update kt1...4
+stash@{27}: WIP on main: 2dca19e Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{28}: WIP on stable-june20: ba0ff4a generate more trajectories.
+stash@{29}: WIP on main: 87d1cc5 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{30}: WIP on main: 34eec58 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{31}: WIP on main: 78fe52a Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{32}: WIP on main: 8657a20 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{33}: WIP on main: 0de81da Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{34}: WIP on main: 5f75afb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{35}: WIP on main: ad55be8 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{36}: WIP on main: 37a31c3 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+stash@{37}: WIP on main: 6d565bb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+--- reflog ---
+525b099 HEAD@{0}: checkout: moving from restore-working to tune-indi-on-crazyflie-thrust-upgraded
+0a36198 HEAD@{1}: commit: preserve
+525b099 HEAD@{2}: checkout: moving from stable-brushless-full-indi to restore-working
+c26da31 HEAD@{3}: checkout: moving from main to stable-brushless-full-indi
+03e6701 HEAD@{4}: pull: Fast-forward
+23eaf13 HEAD@{5}: pull: Fast-forward
+cce2f2b HEAD@{6}: pull: Fast-forward
+d824fba HEAD@{7}: pull: Fast-forward
+dfc43c7 HEAD@{8}: pull: Fast-forward
+9ce06e2 HEAD@{9}: pull: Fast-forward
+873066c HEAD@{10}: pull: Fast-forward
+d287e9e HEAD@{11}: pull: Fast-forward
+4470738 HEAD@{12}: pull: Fast-forward
+a9209fe HEAD@{13}: pull: Fast-forward
+48aba5e HEAD@{14}: pull: Fast-forward
+f5b5448 HEAD@{15}: pull: Fast-forward
+84b977a HEAD@{16}: pull: Fast-forward
+7955ab8 HEAD@{17}: pull: Fast-forward
+7252ea7 HEAD@{18}: pull: Fast-forward
+6fbeecc HEAD@{19}: pull: Fast-forward
+6671db9 HEAD@{20}: pull: Fast-forward
+9886f46 HEAD@{21}: pull: Fast-forward
+05490b1 HEAD@{22}: pull: Fast-forward
+b52c840 HEAD@{23}: pull: Fast-forward
+3fc2688 HEAD@{24}: pull: Fast-forward
+e07342f HEAD@{25}: pull: Fast-forward
+9d9c3de HEAD@{26}: pull: Fast-forward
+f85dc2b HEAD@{27}: pull: Fast-forward
+389ae07 HEAD@{28}: pull: Fast-forward
+5030e27 HEAD@{29}: pull: Fast-forward
+69eed32 HEAD@{30}: pull: Fast-forward
+4c279e5 HEAD@{31}: pull: Fast-forward
+c7c3ca1 HEAD@{32}: pull: Fast-forward
+67971d5 HEAD@{33}: pull: Fast-forward
+1fd12bc HEAD@{34}: pull: Fast-forward
+ad8fae6 HEAD@{35}: pull: Fast-forward
+1fdf1c9 HEAD@{36}: pull: Fast-forward
+a77518f HEAD@{37}: pull: Fast-forward
+5a3ecf4 HEAD@{38}: pull: Fast-forward
+f77af64 HEAD@{39}: checkout: moving from bb88e7395fdad1f51e71bfdee316ecba29de6982 to main
+--- dangling blobs/commits (wiped work often survives here) ---
+dangling commit 6700af7d0ecad2d2b3ba5bb47cfa0b55dc4b596f
+dangling tree a90332bf08d18a86cf10a6f59ad58a3bc47ccf19
+dangling tree d203eeac99ecef019f79fbe28da50738e84d6c54
+dangling commit ff0318d97b9f73b6838c57f318997a1ab02c3334
+dangling tree 6104e223a817d8522f1ad040f80c9bbbed3a4d51
+dangling commit 3f0756d0dad8cab962d394d5494648c948c05aa4
+dangling commit 000a02545322d9acffa37d6fe2003ccdb300e01b
+dangling tree cb0ae2f4253816eb18058c0664323ab1fb0a3dbf
+dangling tree f00ae04b4f2251d0a157d62e804b1d1f2a0c89bd
+dangling commit 770cca056a4aecd356408a979bf19baa4b129e1c
+dangling commit e90c890b03b29acb671ac9fc50dd535003231de9
+dangling tree 2b0ee645f19da0d4377241896aad83a8d6f49a2b
+dangling tree c60eecf0c16b4ddafaa08d0fd202ef8351a514db
+dangling commit ab0f47ad779b9107dbbcc69a4e58230c367166a3
+dangling commit c90f4934a93ba78366ba3f7e410e380380e0dabc
+dangling tree 9910cd3ac4e2b5982794b1bb2d1dd4c73cf397ec
+dangling commit 0f129dccf55d417eece1b52ca2661433bf548963
+dangling tree 7512e858cf221912834a3ecba87104543e6b539d
+dangling commit bb123b1e9fb7c9f51d9e91254c6506adec8ef0e2
+dangling commit d7127e64bcca975c5e9e158411a72dede2d7706e
+dangling tree 801362cb3f1f86afe5369bce2abd179c91dcf37c
+dangling commit 4e1441c818bf22ace8886591688bf4a2724cee38
+dangling commit 9d14c8a5403bb0b90aa624a62dca891c21f4471e
+dangling tree ac146d6c0d6bf1196c8bbf42c1ab7a52896701ee
+dangling tree 591505324bc1393ad54bfcb324508650a3522f4d
+dangling tree 831587ef621c7c824e53834e9a399d9961c17e23
+dangling tree ec160cb07254e346e9a5dd2e4974c244f6ae84df
+dangling tree 0e174b6f7a0c389d97c52aa6e9717baf97440e27
+dangling commit 7817d497441b765141ff4527b66bfb79e736a2f2
+dangling commit 89175e88cb4d615b5fda21578fb6873fe010f7b8
+########## 5. SEARCH ALL DANGLING OBJECTS FOR THE 4-POINT CONFIG ##########
+########## 6. EDITOR / SYSTEM BACKUPS ##########
+########## 7. ACTIVE MARKER IDs CURRENTLY ON THE DRONES ##########
+(empty above = no per-drone marker IDs are being set at all)
+########## DONE ##########
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ 
