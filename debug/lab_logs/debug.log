@@ -1,5 +1,4 @@
-Summary: 1 package finished [0.60s]
-  1 package had stderr output: crazyflie_examples
+ crazyflie_examples
 (venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation --scenario A8 --passes 2 --yes
 
 [formation] A8  Vertical swap (2 robots), dz=0.25 m at crossing, span=1.00 m, passes=2
@@ -20,25 +19,24 @@ Summary: 1 package finished [0.60s]
 
 [formation] anchored on cf231_active at [0.  0.3 1. ]
     cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.2  1. ]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.65]
+    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.25]
 
 [formation] per-drone effective config (what each vehicle actually flies):
     cf231_active   controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
     cf_second      controller=5 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-[formation] takeoff: controller=6 ctrl_mode=0
+[formation] takeoff: cf231_active controller=6 ctrl_mode=0
+[formation] takeoff: cf_second controller=5 ctrl_mode=0
 [formation] stage 1: climbing to slot heights...
 [formation] stage 2: converging to slots...
 [formation] uploading per-robot trajectories...
-[formation] scenario: controller=6 ctrl_mode=3
-[formation] uSD logging started (broadcast) at t=10.858s
-[formation] t_start(sim) = 1789748091.047s -> A8_2026-09-18_18-14-42.meta.json
+[formation] scenario: cf231_active controller=6 ctrl_mode=0
+[formation] scenario: cf_second controller=5 ctrl_mode=3
+[formation] uSD logging started (broadcast) at t=10.869s
+[formation] t_start(sim) = 1789750816.397s -> A8_2026-09-18_19-00-07.meta.json
 [formation] running A8 (14.0 s)...
 [formation] done, landing...
-[formation] landing: controller=6 ctrl_mode=0
-[log] cf231_active: 547 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-18_18-14-42.csv
-[log] cf_second: 547 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-18_18-14-42.csv
-
-[formation] realised relative geometry (last settled sample):
-    cf231_active - cf_second: got [ -8.919 -17.072  -0.267]  want [ 0.   -1.   -0.25]  err [ -8.919 -16.072  -0.017] m  |ez| 17 mm
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
+[formation] landing: cf231_active controller=6 ctrl_mode=0
+[formation] landing: cf_second controller=5 ctrl_mode=0
+^C[log] cf231_active: 2171 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-18_19-00-07.csv
+[log] cf_second: 2172 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-18_19-00-07.csv
 
