@@ -1,42 +1,49 @@
- crazyflie_examples
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation --scenario A8 --passes 2 --yes
+# ── Run on the LAB PC. Paste the whole block. ──────────────────────────────
+LOG=~/georg/flying_robot_course/debug/lab_logs/debug.log
+exec > >(tee "$LOG") 2>&1
 
-[formation] A8  Vertical swap (2 robots), dz=0.25 m at crossing, span=1.00 m, passes=2
-[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
-[formation] 2 robot(s), 14.0 s, tags: swap, data_collection
-[formation] anchor [0. 0. 1.]
-    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    robot 1 [    top] slot [0.   0.5  0.25]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    closest commanded approach: 0.250 m between robots 0 and 1 at t=5.0s
-    robot 0 trajectory:  3 pieces, 14.00 s
-    robot 1 trajectory:  3 pieces, 14.00 s
-[formation] commanded relative geometry:
-     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.25.. -0.25  |d| 0.250..1.031 m
-[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r0_bottom.csv
-[formation] wrote data/formations/A8_dz0.25_span1.0_duration6.0_settle2.0_passes2_rotate_deg0.0_r1_top.csv
+echo "########## 1. LOCATE CHECKOUTS ##########"
+ls -d ~/georg/ros2_ws 2>/dev/null
+find ~/georg ~/ -maxdepth 4 -name "crazyswarm2" -type d 2>/dev/null | head
+find ~/ -maxdepth 5 -name "motion_capture*.yaml*" 2>/dev/null
 
-[formation] checks passed.
+echo "########## 2. SOURCE vs INSTALLED (the key comparison) ##########"
+SRC=$(find ~/georg -maxdepth 4 -type d -name crazyswarm2 2>/dev/null | head -1)
+echo "SRC=$SRC"
+echo "--- SOURCE default_single_marker ---"
+grep -A14 "marker_configurations" "$SRC/crazyflie/config/motion_capture.yaml"
+echo "--- INSTALLED default_single_marker (best hope: may still hold the 4 points) ---"
+grep -A14 "marker_configurations" ~/georg/ros2_ws/install/crazyflie/share/crazyflie/config/motion_capture.yaml
+echo "--- BUILD dir copy, if any ---"
+find ~/georg/ros2_ws/build -name "motion_capture.yaml" -exec echo {} \; -exec grep -A14 "marker_configurations" {} \; 2>/dev/null
 
-[formation] anchored on cf231_active at [0.  0.3 1. ]
-    cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.2  1. ]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.   0.8  1.25]
+echo "########## 3. FILE TIMESTAMPS (shows what was overwritten and when) ##########"
+ls -la --time-style=full-iso "$SRC/crazyflie/config/motion_capture.yaml" \
+  ~/georg/ros2_ws/install/crazyflie/share/crazyflie/config/motion_capture.yaml \
+  "$SRC/crazyflie/config/crazyflies.yaml" 2>/dev/null
 
-[formation] per-drone effective config (what each vehicle actually flies):
-    cf231_active   controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
-    cf_second      controller=5 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-[formation] takeoff: cf231_active controller=6 ctrl_mode=0
-[formation] takeoff: cf_second controller=5 ctrl_mode=0
-[formation] stage 1: climbing to slot heights...
-[formation] stage 2: converging to slots...
-[formation] uploading per-robot trajectories...
-[formation] scenario: cf231_active controller=6 ctrl_mode=0
-[formation] scenario: cf_second controller=5 ctrl_mode=3
-[formation] uSD logging started (broadcast) at t=10.869s
-[formation] t_start(sim) = 1789750816.397s -> A8_2026-09-18_19-00-07.meta.json
-[formation] running A8 (14.0 s)...
-[formation] done, landing...
-[formation] landing: cf231_active controller=6 ctrl_mode=0
-[formation] landing: cf_second controller=5 ctrl_mode=0
-^C[log] cf231_active: 2171 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf231_active_2026-09-18_19-00-07.csv
-[log] cf_second: 2172 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-09-18_19-00-07.csv
+echo "########## 4. GIT RECOVERY SOURCES ##########"
+cd "$SRC" || exit
+echo "--- status ---";      git status
+echo "--- local diff ---";  git diff -- crazyflie/config/
+echo "--- stash list ---";  git stash list
+echo "--- reflog ---";      git reflog | head -40
+echo "--- dangling blobs/commits (wiped work often survives here) ---"
+git fsck --lost-found --dangling 2>/dev/null | head -30
 
+echo "########## 5. SEARCH ALL DANGLING OBJECTS FOR THE 4-POINT CONFIG ##########"
+for o in $(git fsck --lost-found --dangling 2>/dev/null | awk '{print $3}'); do
+  if git cat-file -p "$o" 2>/dev/null | grep -q "default_single_marker\|marker_configurations"; then
+    echo "=== FOUND in object $o ==="; git cat-file -p "$o" | grep -B3 -A14 "marker_configurations"
+  fi
+done
+
+echo "########## 6. EDITOR / SYSTEM BACKUPS ##########"
+ls -la "$SRC/crazyflie/config/" | grep -i "bak\|orig\|~\|swp\|save"
+find ~/ -maxdepth 6 \( -name "*motion_capture*~" -o -name "*motion_capture*.bak" -o -name "*motion_capture*.orig" \) 2>/dev/null | head
+
+echo "########## 7. ACTIVE MARKER IDs CURRENTLY ON THE DRONES ##########"
+grep -n "activeMarker\|bcActiveMarker" ~/georg/ros2_ws/install/crazyflie/share/crazyflie/config/crazyflies.yaml
+echo "(empty above = no per-drone marker IDs are being set at all)"
+
+echo "########## DONE ##########"
