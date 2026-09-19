@@ -149,13 +149,10 @@ find ~ -newermt "2026-03-01" ! -newermt "2026-07-01" \( -name "*.yaml" -o -name 
 
 echo
 echo "############################################################"
-echo "# 9. REMINDER -- BRANCH STATE MUST BE FIXED BEFORE FLYING"
+echo "# 9. BRANCH STATE (resolved 2026-09-19, checking it stayed that way)"
 echo "############################################################"
-echo "The lab PC was left on 'tune-indi-on-crazyflie-thrust-upgraded'."
-echo "None of the 2026-09-18 fixes are active there. To restore:"
-echo "    cd ~/georg/ros2_ws/src/crazyswarm2 && git checkout main && git pull"
-echo "    cd ~/georg/ros2_ws && colcon build --symlink-install"
-echo "Current branch right now: $(git rev-parse --abbrev-ref HEAD)"
+echo "Current branch: $(git rev-parse --abbrev-ref HEAD)  (expect: main)"
+echo "HEAD: $(git log -1 --oneline)"
 
 echo
 echo "############################################################"
