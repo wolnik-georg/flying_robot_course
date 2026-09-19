@@ -1,48 +1,2948 @@
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation -- --scenario A1 --yes
+############################################################
+# 0. CONTEXT
+############################################################
+pwd: /home/flyingrobots/georg/ros2_ws/src/crazyswarm2
+current branch: main
+HEAD: bd66101 Register cf_second as a rigid body: test the unregistered-marker hypothesis
+Sat Sep 19 12:30:39 PM CEST 2026
 
-[formation] A1  Vertical stack hover, dz=0.50 m
-[formation] Both stationary; the lower vehicle sits in the upper one's wash.
-[formation] 2 robot(s), 12.0 s, tags: hover, data_collection
-[formation] anchor [0. 0. 1.]
-    robot 0 [ bottom] slot [0. 0. 0.]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
-    robot 1 [    top] slot [0.  0.  0.5]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
-    closest commanded approach: 0.500 m between robots 0 and 1 at t=0.0s
-    robot 0 trajectory:  2 pieces, 12.00 s
-    robot 1 trajectory:  2 pieces, 12.00 s
-[formation] commanded relative geometry:
-     bottom - top     dx  +0.00.. +0.00  dy  +0.00.. +0.00  dz  -0.50.. -0.50  |d| 0.500..0.500 m
-[formation] wrote data/formations/A1_dz0.5_hold12.0_rotate_deg0.0_r0_bottom.csv
-[formation] wrote data/formations/A1_dz0.5_hold12.0_rotate_deg0.0_r1_top.csv
+############################################################
+# 1. ALL LOCAL BRANCHES (includes ones deleted from origin)
+############################################################
+* main                                   bd66101 [origin/main] Register cf_second as a rigid body: test the unregistered-marker hypothesis
+  restore-working                        0a36198 [origin/restore-working: ahead 1] preserve
+  stable-brushless-full-indi             c26da31 [origin/stable-brushless-full-indi: ahead 1] artifacts for stable flights
+  stable-jun30-working                   a436cf9 [origin/stable-jun30-working] reduce height
+  stable-june20                          713e542 [origin/stable-june20] remove positoin gains.
+  tune-indi-on-crazyflie-thrust-upgraded 525b099 [origin/tune-indi-on-crazyflie-thrust-upgraded] update yaml and add knobs.
 
-[formation] checks passed.
+############################################################
+# 2. CONFIG ON EVERY LOCAL BRANCH
+#    Looking for: a marker config with 4 points (p0..p3) other
+#    than 'default'/'mocap_deck', and/or a robot type cf21_active
+############################################################
+=================== BRANCH: main ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
 
-[formation] anchored on cf231_active at [0.  0.3 1. ]
-    cf231_active [ bottom]  start [0.  0.3 0. ] -> slot [0.  0.3 1. ]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.  0.3 1.5]
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf_second:
+    type: cf21                           # standard CF2.1 -- fine indefinitely, see above
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
 
-[formation] per-drone effective config (what each vehicle actually flies):
-    cf231_active   controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
-    cf_second      controller=5 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-[formation] resetting EKF (complementary re-init, then Kalman)...
-[formation] waiting for EKF to converge on mocap...
-    cf231_active   EKF [-0.056  0.456 -0.023]  mocap [-0.056  0.456 -0.023]  |err| 0 mm
-    cf_second      EKF [-0.022 -0.186 -0.025]  mocap [-0.022 -0.185 -0.025]  |err| 1 mm
-[formation] takeoff: cf231_active controller=6 ctrl_mode=0
-[formation] takeoff: cf_second controller=5 ctrl_mode=0
-[formation] stage 1: climbing to slot heights...
-[formation] stage 2: converging to slots...
-[formation] uploading per-robot trajectories...
-[formation] scenario: cf231_active controller=6 ctrl_mode=0
-[formation] scenario: cf_second controller=5 ctrl_mode=3
-[formation] uSD logging started (broadcast) at t=15.178s
-[formation] t_start(sim) = 1789813590.917s -> A1_2026-09-19_12-26-17.meta.json
-[formation] running A1 (12.0 s)...
-[formation] done, landing...
-[formation] landing: cf231_active controller=6 ctrl_mode=0
-[formation] landing: cf_second controller=5 ctrl_mode=0
-^C[log] cf231_active: 528 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A1_cf231_active_2026-09-19_12-26-17.csv
-[log] cf_second: 528 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A1_cf_second_2026-09-19_12-26-17.csv
+=================== BRANCH: restore-working ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
 
-[formation] realised relative geometry (last settled sample):
-    cf231_active - cf_second: got [-51.615 -13.847  49.026]  want [ 0.   0.  -0.5]  err [-51.615 -13.847  49.526] m  |ez| 49526 mm
-Traceback (most recent call last):
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
+
+=================== BRANCH: stable-brushless-full-indi ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
+
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
+
+=================== BRANCH: stable-jun30-working ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
+
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
+
+=================== BRANCH: stable-june20 ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
+
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
+
+=================== BRANCH: tune-indi-on-crazyflie-thrust-upgraded ===================
+--- motion_capture.yaml marker_configurations:
+    marker_configurations:
+      default: # for standard Crazyflie
+        offset: [0.0, 0.0, 0.0]
+        points:
+          p0: [   0.0,    0.0, 0.022]  # top
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+      default_single_marker:
+        offset: [0.0, -0.01, -0.04]
+        points:
+          p0: [0.0177184,0.0139654,0.0557585]
+      mocap_deck:
+        offset: [0.0, 0.0, -0.01]
+        points:
+          p0: [0.03, 0.0, 0.0] # front
+          p1: [0.00, -0.03, 0.0] # right
+          p2: [-0.015, 0.0, 0.0] # back
+          p3: [0.00, 0.03, 0.0] # left
+      medium_frame:
+        offset: [0.0, 0.0, -0.03]
+        points:
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+      big_frame:
+        offset: [0.0, 0.0, -0.06]
+        points:
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p3: [0.0535816,-0.0400775,0.0432799]
+
+    dynamics_configurations:
+--- crazyflies.yaml robot_types:
+  cf21:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: default_single_marker
+      dynamics: default
+  cf21_mocap_deck:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      marker: mocap_deck
+      dynamics: default
+--- crazyflies.yaml robots -> type:
+  cf231_active:
+    type: cf21  # see robot_types
+  cf5:
+    type: cf21  # see robot_types
+  cf21:
+  cf21_mocap_deck:
+
+
+############################################################
+# 3. EVERY OBJECT IN THIS REPO'S DATABASE (reachable or not)
+#    This is where deleted branches and dropped stashes live.
+############################################################
+### MATCH in blob 1117a5d7487324046606de46cae0c1851614e1fe
+2:0,1,activeMarker,btSns
+3:1,1,activeMarker,i2cOk
+--- (full first 60 lines) ---
+id,type,group,name
+0,1,activeMarker,btSns
+1,1,activeMarker,i2cOk
+2,1,motion,motion
+3,5,motion,deltaX
+4,5,motion,deltaY
+5,2,motion,shutter
+6,1,motion,maxRaw
+7,1,motion,minRaw
+8,1,motion,Rawsum
+9,1,motion,outlierCount
+10,1,motion,squal
+11,7,motion,std
+12,7,ring,fadeTime
+13,1,loco,mode
+14,7,loco,spiWr
+15,7,loco,spiRe
+16,2,ranging,state
+17,7,ranging,distance0
+18,7,ranging,distance1
+19,7,ranging,distance2
+20,7,ranging,distance3
+21,7,ranging,distance4
+22,7,ranging,distance5
+23,7,ranging,distance6
+24,7,ranging,distance7
+25,7,ranging,pressure0
+26,7,ranging,pressure1
+27,7,ranging,pressure2
+28,7,ranging,pressure3
+29,7,ranging,pressure4
+30,7,ranging,pressure5
+31,7,ranging,pressure6
+32,7,ranging,pressure7
+33,7,tdoa2,d7-0
+34,7,tdoa2,d0-1
+35,7,tdoa2,d1-2
+36,7,tdoa2,d2-3
+37,7,tdoa2,d3-4
+38,7,tdoa2,d4-5
+39,7,tdoa2,d5-6
+40,7,tdoa2,d6-7
+41,7,tdoa2,cc0
+42,7,tdoa2,cc1
+43,7,tdoa2,cc2
+44,7,tdoa2,cc3
+45,7,tdoa2,cc4
+46,7,tdoa2,cc5
+47,7,tdoa2,cc6
+48,7,tdoa2,cc7
+49,2,tdoa2,dist7-0
+50,2,tdoa2,dist0-1
+51,2,tdoa2,dist1-2
+52,2,tdoa2,dist2-3
+53,2,tdoa2,dist3-4
+54,2,tdoa2,dist4-5
+55,2,tdoa2,dist5-6
+56,2,tdoa2,dist6-7
+57,1,twr,rangingSuccessRate0
+58,1,twr,rangingPerSec0
+==========================================
+### MATCH in blob 171b9f44879a967d69a54a73875ffce5f5c36367
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 2dc0e2eee38819051da192b8a7aac220e7705b4e
+2:0,1,activeMarker,btSns
+3:1,1,activeMarker,i2cOk
+--- (full first 60 lines) ---
+id,type,group,name
+0,1,activeMarker,btSns
+1,1,activeMarker,i2cOk
+2,1,motion,motion
+3,5,motion,deltaX
+4,5,motion,deltaY
+5,2,motion,shutter
+6,1,motion,maxRaw
+7,1,motion,minRaw
+8,1,motion,Rawsum
+9,1,motion,outlierCount
+10,1,motion,squal
+11,7,motion,std
+12,7,ring,fadeTime
+13,1,loco,mode
+14,7,loco,spiWr
+15,7,loco,spiRe
+16,2,ranging,state
+17,7,ranging,distance0
+18,7,ranging,distance1
+19,7,ranging,distance2
+20,7,ranging,distance3
+21,7,ranging,distance4
+22,7,ranging,distance5
+23,7,ranging,distance6
+24,7,ranging,distance7
+25,7,ranging,pressure0
+26,7,ranging,pressure1
+27,7,ranging,pressure2
+28,7,ranging,pressure3
+29,7,ranging,pressure4
+30,7,ranging,pressure5
+31,7,ranging,pressure6
+32,7,ranging,pressure7
+33,7,tdoa2,d7-0
+34,7,tdoa2,d0-1
+35,7,tdoa2,d1-2
+36,7,tdoa2,d2-3
+37,7,tdoa2,d3-4
+38,7,tdoa2,d4-5
+39,7,tdoa2,d5-6
+40,7,tdoa2,d6-7
+41,7,tdoa2,cc0
+42,7,tdoa2,cc1
+43,7,tdoa2,cc2
+44,7,tdoa2,cc3
+45,7,tdoa2,cc4
+46,7,tdoa2,cc5
+47,7,tdoa2,cc6
+48,7,tdoa2,cc7
+49,2,tdoa2,dist7-0
+50,2,tdoa2,dist0-1
+51,2,tdoa2,dist1-2
+52,2,tdoa2,dist2-3
+53,2,tdoa2,dist3-4
+54,2,tdoa2,dist4-5
+55,2,tdoa2,dist5-6
+56,2,tdoa2,dist6-7
+57,1,twr,rangingSuccessRate0
+58,1,twr,rangingPerSec0
+==========================================
+### MATCH in blob 3a0fe990e4b6e623de15978e5e8f24ccb816a8b8
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 3dddb8438dc0ef4e7499e42c396ce44d7e626cc6
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 4166895644396f3a369127cf590e13f8335bfac3
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 4268fe91333a15c5f31198f391fc4f2e09a1a7a7
+2:0,1,activeMarker,btSns
+3:1,1,activeMarker,i2cOk
+--- (full first 60 lines) ---
+id,type,group,name
+0,1,activeMarker,btSns
+1,1,activeMarker,i2cOk
+2,1,motion,motion
+3,5,motion,deltaX
+4,5,motion,deltaY
+5,2,motion,shutter
+6,1,motion,maxRaw
+7,1,motion,minRaw
+8,1,motion,Rawsum
+9,1,motion,outlierCount
+10,1,motion,squal
+11,7,motion,std
+12,7,ring,fadeTime
+13,1,loco,mode
+14,7,loco,spiWr
+15,7,loco,spiRe
+16,2,ranging,state
+17,7,ranging,distance0
+18,7,ranging,distance1
+19,7,ranging,distance2
+20,7,ranging,distance3
+21,7,ranging,distance4
+22,7,ranging,distance5
+23,7,ranging,distance6
+24,7,ranging,distance7
+25,7,ranging,pressure0
+26,7,ranging,pressure1
+27,7,ranging,pressure2
+28,7,ranging,pressure3
+29,7,ranging,pressure4
+30,7,ranging,pressure5
+31,7,ranging,pressure6
+32,7,ranging,pressure7
+33,7,tdoa2,d7-0
+34,7,tdoa2,d0-1
+35,7,tdoa2,d1-2
+36,7,tdoa2,d2-3
+37,7,tdoa2,d3-4
+38,7,tdoa2,d4-5
+39,7,tdoa2,d5-6
+40,7,tdoa2,d6-7
+41,7,tdoa2,cc0
+42,7,tdoa2,cc1
+43,7,tdoa2,cc2
+44,7,tdoa2,cc3
+45,7,tdoa2,cc4
+46,7,tdoa2,cc5
+47,7,tdoa2,cc6
+48,7,tdoa2,cc7
+49,2,tdoa2,dist7-0
+50,2,tdoa2,dist0-1
+51,2,tdoa2,dist1-2
+52,2,tdoa2,dist2-3
+53,2,tdoa2,dist3-4
+54,2,tdoa2,dist4-5
+55,2,tdoa2,dist5-6
+56,2,tdoa2,dist6-7
+57,1,twr,rangingSuccessRate0
+58,1,twr,rangingPerSec0
+==========================================
+### MATCH in blob 484a61f0347642f416d7d8f7e15dfa8ccda9c713
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 4ca72df351a175bcb08e964539fa916901cc5d20
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 52caea9f45883d832d5d3c3f98debe48654b7559
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob 5afd0c2784125699ff9edfd0c0ed72dc5e4a7dce
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 5cc6a045c9badee1814d064c909b328f257237c2
+2:0,1,activeMarker,btSns
+3:1,1,activeMarker,i2cOk
+--- (full first 60 lines) ---
+id,type,group,name
+0,1,activeMarker,btSns
+1,1,activeMarker,i2cOk
+2,1,motion,motion
+3,5,motion,deltaX
+4,5,motion,deltaY
+5,2,motion,shutter
+6,1,motion,maxRaw
+7,1,motion,minRaw
+8,1,motion,Rawsum
+9,1,motion,outlierCount
+10,1,motion,squal
+11,7,motion,std
+12,7,ring,fadeTime
+13,1,loco,mode
+14,7,loco,spiWr
+15,7,loco,spiRe
+16,2,ranging,state
+17,7,ranging,distance0
+18,7,ranging,distance1
+19,7,ranging,distance2
+20,7,ranging,distance3
+21,7,ranging,distance4
+22,7,ranging,distance5
+23,7,ranging,distance6
+24,7,ranging,distance7
+25,7,ranging,pressure0
+26,7,ranging,pressure1
+27,7,ranging,pressure2
+28,7,ranging,pressure3
+29,7,ranging,pressure4
+30,7,ranging,pressure5
+31,7,ranging,pressure6
+32,7,ranging,pressure7
+33,7,tdoa2,d7-0
+34,7,tdoa2,d0-1
+35,7,tdoa2,d1-2
+36,7,tdoa2,d2-3
+37,7,tdoa2,d3-4
+38,7,tdoa2,d4-5
+39,7,tdoa2,d5-6
+40,7,tdoa2,d6-7
+41,7,tdoa2,cc0
+42,7,tdoa2,cc1
+43,7,tdoa2,cc2
+44,7,tdoa2,cc3
+45,7,tdoa2,cc4
+46,7,tdoa2,cc5
+47,7,tdoa2,cc6
+48,7,tdoa2,cc7
+49,2,tdoa2,dist7-0
+50,2,tdoa2,dist0-1
+51,2,tdoa2,dist1-2
+52,2,tdoa2,dist2-3
+53,2,tdoa2,dist3-4
+54,2,tdoa2,dist4-5
+55,2,tdoa2,dist5-6
+56,2,tdoa2,dist6-7
+57,1,twr,rangingSuccessRate0
+58,1,twr,rangingPerSec0
+==========================================
+### MATCH in blob 651678aa18ae6bd7b9bb146d3b1017e966056731
+2:0,1,activeMarker,btSns
+3:1,1,activeMarker,i2cOk
+--- (full first 60 lines) ---
+id,type,group,name
+0,1,activeMarker,btSns
+1,1,activeMarker,i2cOk
+2,1,motion,motion
+3,5,motion,deltaX
+4,5,motion,deltaY
+5,2,motion,shutter
+6,1,motion,maxRaw
+7,1,motion,minRaw
+8,1,motion,Rawsum
+9,1,motion,outlierCount
+10,1,motion,squal
+11,7,motion,std
+12,7,ring,fadeTime
+13,1,loco,mode
+14,7,loco,spiWr
+15,7,loco,spiRe
+16,2,ranging,state
+17,7,ranging,distance0
+18,7,ranging,distance1
+19,7,ranging,distance2
+20,7,ranging,distance3
+21,7,ranging,distance4
+22,7,ranging,distance5
+23,7,ranging,distance6
+24,7,ranging,distance7
+25,7,ranging,pressure0
+26,7,ranging,pressure1
+27,7,ranging,pressure2
+28,7,ranging,pressure3
+29,7,ranging,pressure4
+30,7,ranging,pressure5
+31,7,ranging,pressure6
+32,7,ranging,pressure7
+33,7,tdoa2,d7-0
+34,7,tdoa2,d0-1
+35,7,tdoa2,d1-2
+36,7,tdoa2,d2-3
+37,7,tdoa2,d3-4
+38,7,tdoa2,d4-5
+39,7,tdoa2,d5-6
+40,7,tdoa2,d6-7
+41,7,tdoa2,cc0
+42,7,tdoa2,cc1
+43,7,tdoa2,cc2
+44,7,tdoa2,cc3
+45,7,tdoa2,cc4
+46,7,tdoa2,cc5
+47,7,tdoa2,cc6
+48,7,tdoa2,cc7
+49,2,tdoa2,dist7-0
+50,2,tdoa2,dist0-1
+51,2,tdoa2,dist1-2
+52,2,tdoa2,dist2-3
+53,2,tdoa2,dist3-4
+54,2,tdoa2,dist4-5
+55,2,tdoa2,dist5-6
+56,2,tdoa2,dist6-7
+57,1,twr,rangingSuccessRate0
+58,1,twr,rangingPerSec0
+==========================================
+### MATCH in blob 693724323531183ac1e90772ed151b0b3310f181
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 744da786b891c6bd1d0bb54686b18a3f8f0eb58f
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 8b63c5926997fe96c4c9d5b17bde3736c61885ed
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 946b297e3168132c61b8f991969498cb3d0312b2
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob 9624182f2be6d80432ef402e2719057196d65968
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob 9b5e2cfd8af48075a0a9005e0f54def30e27fcbb
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 9dfbcc72087d76b256646970623e2e9af4ed2583
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob 9df11e41fd796d2359f700558138baf275507a22
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob a45b4f7b2430ef83e3a19197570a09a8496593bc
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob a59eb129623f32c2a23527063992256514b50ee7
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob a66833752920443450c3fe018a50a44b92537a2b
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob c1f2ca0f9bdbe2ce4f7891c546eedf2bd799d9c9
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob c7291c8101c689a44cfe029927a764c7d2d170ae
+5:3,8,0,activeMarker,front
+6:4,8,0,activeMarker,back
+7:5,8,0,activeMarker,left
+8:6,8,0,activeMarker,right
+9:7,8,0,activeMarker,mode
+10:8,8,0,activeMarker,poll
+--- (full first 60 lines) ---
+id,type,readonly,group,name
+0,8,0,radiotest,channel
+1,0,0,radiotest,power
+2,8,0,radiotest,contwave
+3,8,0,activeMarker,front
+4,8,0,activeMarker,back
+5,8,0,activeMarker,left
+6,8,0,activeMarker,right
+7,8,0,activeMarker,mode
+8,8,0,activeMarker,poll
+9,8,1,deck,bcActiveMarker
+10,8,1,deck,bcAI
+11,8,1,deck,bcBuzzer
+12,8,1,deck,bcFlow
+13,8,1,deck,bcFlow2
+14,8,1,deck,bcLedRing
+15,8,1,deck,bcLighthouse4
+16,8,1,deck,bcDWM1000
+17,8,1,deck,bcLoco
+18,8,1,deck,bcMultiranger
+19,8,1,deck,bcOA
+20,8,1,deck,bcUSD
+21,8,1,deck,bcZRanger
+22,8,1,deck,bcZRanger2
+23,8,1,deck,bcColorLedBot
+24,8,1,deck,bcColorLedTop
+25,8,0,motion,disable
+26,8,0,motion,adaptive
+27,6,0,motion,flowStdFixed
+28,8,0,ring,effect
+29,10,1,ring,neffect
+30,8,0,ring,solidRed
+31,8,0,ring,solidGreen
+32,8,0,ring,solidBlue
+33,8,0,ring,headlightEnable
+34,6,0,ring,emptyCharge
+35,6,0,ring,fullCharge
+36,10,0,ring,fadeColor
+37,6,0,ring,fadeTime
+38,8,0,system,highlight
+39,8,0,system,storageStats
+40,8,0,system,storageReformat
+41,8,0,system,taskDump
+42,0,1,system,selftestPassed
+43,8,0,system,assertInfo
+44,8,0,system,testLogParam
+45,8,0,system,doAssert
+46,8,0,loco,mode
+47,6,0,tdoa2,stddev
+48,6,0,tdoa3,stddev
+49,9,0,multiranger,filterMask
+50,8,1,usd,canLog
+51,8,0,usd,logging
+52,10,0,colorLedBot,wrgb8888
+53,8,0,colorLedBot,brightCorr
+54,10,0,colorLedTop,wrgb8888
+55,8,0,colorLedTop,brightCorr
+56,8,1,deckTest,bcColorLedBot
+57,8,1,deckTest,bcColorLedTop
+58,8,0,led,bitmask
+==========================================
+### MATCH in blob ca89f8c2dec28d5527b649c2eb90bd3869c8a33c
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob dbb2fe0626486d0e23f27cda2dae572f4dbc7830
+5:  cf231_active:
+9:    type: cf21_active  # see robot_types
+57:      marker: default_single_marker
+81:      marker: mocap_deck
+100:  cf21_active:
+104:      marker: active_deck
+--- (full first 60 lines) ---
+# named list of all robots
+fileversion: 3
+
+robots:
+  cf231_active:
+    enabled: true
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21_active  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+  cf231:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7EE03
+    initial_position: [0.0, 0.0, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  cf5:
+    enabled: false
+    uri: radio://0/80/2M/E7E7E7E705
+    initial_position: [0.0, -0.5, 0.0]
+    type: cf21  # see robot_types
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    #firmware_logging:
+    #  custom_topics:
+    #    topic_name3: 
+    #      frequency: 1
+    #      vars: ["acc.x", "acc.y", "acc.z"]
+    # reference_frame: "odom_cf5" 
+
+# Definition of the various robot types
+robot_types:
+  cf21:
+    motion_capture:
+      tracking: "librigidbodytracker" # one of "vendor", "librigidbodytracker"
+      # only if enabled; see motion_capture.yaml
+      marker: default_single_marker
+      dynamics: default
+    big_quad: false
+    battery:
+==========================================
+### MATCH in blob 02413a5afdb2fb92a739f3a0a5788287c1195222
+grep: (standard input): binary file matches
+--- (full first 60 lines) ---
+ÿÿ ‘·ƒî …î Áï éï ğ                 ±w 9ğ     Qx î ¸¸¸¸¸¸í 'í 7í Gí Uí -¸Q•Ê )Ê ñÍ¸¸¸¸¸mí ¸¸¸¸¸¸¸!¸¸¸¸¸}ãí ¸¸¸¸¸¸¸¸¸¸¸¸¸	XÑ:¸¸¸¸¸¸¸¸¸¸5— e:¸íéE9¸¸¸¸¸¸¸¸        ğ Aà ¿ƒğ C0µOêAOêC”ê¿ê¿Tê Uêêd\êe\ ğâ€OêTTÔëUU¸¿mBİ,D€êê‚ê  ƒê€êê6-ˆ¿0½ğ OOê1Oô€Lê1Ğ@BaëAğ OOê3Lê3ĞRBcëC”ê ğ§€¤ñÕñ Ûúü"úò€Añ úò€CúóYAà¥ñ ñ *úü(¿LğCúóÀQëãqğ EÕOğ Üñ ~ë  në±õ€Ó±õ ÓI_ê0 Oê<ñOêDRõ€€ğš€¼ñ O¿_êPPñ  AëQAê0½_êL@AAëô€¤ñéÑ‘ğ ¿F  ±úó¿ 3£ñ³ñ Ú2İñÂñúğ!úñàñØ¿Âñ úñ úüÜ¿Aê@ä¢¿ëQ)C0½oê<Ú4ÜñÄñ  úğúó@ê !úóEê0½ÄñÄñ  úğúó@ê )F0½!úğ)F0½”ğ ƒô€¿ô€4=Nçêd\¿êe\)Ğ”ê¿êĞTê ¿FF0½‘ê¿ !  0½_êT\Ñ@ IA(¿Ağ A0½õ€<¿õ€0½ğ EEğşAAôpOğ  0½êd\¿FFêe\¿FFPê4¿Rê5‘êAô !0½ ¿ğ ¿ !pG0µOô€dñ2Oğ Oğ Pç ¿ğ ¿ !pG0µOô€dñ2ğ EH¿@BOğ >ç ¿B OêâOê1Oêp¿ğC“ğOğ`QpG2ğB¿pG“ğO¿Aô !pG0µOô`tğ E!ğ Aç ¿Pê¿pG0µOğ 
+àPê¿pG0µğ EÕ@BaëAOô€dñ2_ê‘\?ôØ®Oğ_êÜ¿2_êÜ¿2ëÜÂñ  úü úğúş@ê !úñD½æ ¿pµOğÿLôàlêT¿êU”ê•ê ğŞø,Dê!êLQ#êLSPê5¿Rê5Aô€Cô€8Ğ ûÎOğ áûåğ BàûåOğ áûVœğ ¿Nğ¤ñÿ¶õ dõ@tÒ_êNmAFëBêÆ!AêUQOêÅ @ê^POêÎ.´ñıˆ¿¼õàoØ¾ñ O¿_êPPñ  AëQp½ğ FFê@ê ê´ë\Â¿ÔëAêQp½Aô€Oğ < ó«€ñ6Ş¿  ğ Ap½Äñ  <5Ú4ÜñÄñ  úó úğúò@ê ğ B!ğ AëÓp!úöBë^êC¿ êÓpp½ÄñÄñ  úó úğúò@ê ğ AëÓpAñ ^êC¿ êÓpp½Äñ  úòNê úóúòCê!úğğ A!úò ê  ëÓp^êC¿ êÓpp½”ğ Ñğ F@ Aëô€¿<÷ĞAê•ğ ¿pGğ FR Cëô€¿=÷ĞCêpG”êêU¿•êĞPêA¿RêCÑÑêğ AOğ  p½PêA¿FFRêCĞ”êÑPê6Ñ•êÑRê6¿FF
+Ñêğ AAğşAAôpOğ  p½AğşAAôxp½pµOğÿLôàlêT¿êU”ê•ê ğ§ø¤ëêRê5Oê1 ğˆ€Oê3Oğ€UEêCêcOê"EêEêeOê &ğ AB¿–BDñıõ@tÒ[Oê2¶eë[Oê2Oô€Oô ,¶ëuë"¿¶uF@ê [Oê2¶ëuë"¿¶uF@ê\ [Oê2¶ëuë"¿¶uF@êœ [Oê2¶ëuë"¿¶uF@êÜ UêĞOêEêuOêOêÃCêRsOêÂ_êÀÑô€ÑAê Oğ  Oğ L¶çô€¿C  ´ñıˆ¿¼õào?ö¯®µë¿¶ë_êPPñ  AëQp½ğ NNê1ë\Â¿ÔëAêQp½Aô€Oğ <æEêæêU”ê¿•ê?ô;¯”ê
+ÑPê4ô4¯•êô%¯FF,ç•êÑRê5?ôı®FF"çPêA¿RêCôÅ®PêAô¯RêCôë®çOğÿ<à ¿Oğà ¿OğMøÍOêAêl\OêC¿êl\Ğ°PêA¿RêC‘ê¿ê  pGñ ‘êX¿™B¿B,¿Øoêãp@ğ pGOêAêl\ÑPê<ÑOêCêl\ÖÑRê<ÓĞ]øpG ¿„FFbFŒFFcF à ¿µÿ÷·ÿ (H¿ñ ½Møíÿ÷ôÿ¿   ]øû ¿Møíÿ÷êÿ4¿   ]øû ¿Møíÿ÷àÿ”¿   ]øû ¿Møíÿ÷Îÿ”¿   ]øû ¿Møíÿ÷Äÿ4¿   ]øû ¿OêAêl\ÑPê<
+ÑOêCêl\ÑRê<ÑOğ  pGOğ pGJ Òõ ÒÕoôxs³ëbRÔOêÁ#Cğ CCêPS#úğpGOğ  pGPê0ÑOğÿ0pGOğ  pGOêA²ñàC$¿³õ Üñş\Ùğ LOêÀLêPp²ñ O@ëƒ ¿ ğ pGğ€O!Ññ8r¼¿ğ @pGAô€OêRRÂñÂñ úó úğ¿@ğ OêÁ#OêÓ#úü@ê #úóOêCÌçêbSÑPê3¿Oğş@@ô@ pGğ @@ğş@@ô  pG ¿€ğ @à ¿ğ AB ¿_êA’êê"lê#ljĞOêbÒëcÁ¿ÒA@H@A@¸¿[B+ˆ¿pGğ O@ô   ğ@¿@Bğ OAô !ğA¿IB’ê?Ğ¢ñAúüë Ãñ úñ ğ CÕIB`ë@ °õ Ó°ñ€Ó@Oê1ñş*QÒ±ñ O@ëÂP¿ ğ @ê pGI @ë  ô ¢ñíÑ°ú€ü¬ñ²ë úğª¿ ëÂPRBC¼¿Ğ@CpG’ğ ô ¿€ô  2;µçOêAê"l¿ê#l!Ğ’êĞ’ğ ¿FpGê¿  pGğOÑ@ (¿@ğ @pGñ r<¿ õ  pG ğ CCğş@@ô  pGê"b¿Fê#cFB¿_êA#ê@ô€ pGOğ à ¿ğ CH¿@B_ê ¿pGCğ–CFOğ  àPê¿pGOğ 
+à ¿Pê¿pGğ CÕ@BaëA_ê¿„FF  Cğ¶C¿£ñ€S£õ ¼úŒò:£ëÂSÛúücD úüÂñ ¼ñ O úòCë ¿ ğ pGñ úüÂñ PêL !úòCë ¿ êÜppGS¹J¹ )¿ (¿Oğÿ1Oğÿ0 ğö¹­ñméÎ ğŠøİøàİé#°pGCğU3Àƒğ33 ğ30D ë ğ0 ë   ë @ pGî
+õîÀzñîúÔ ğ!¸µ€ğ @ ğø@BaëA½8µ " #FFÿ÷ÿı(¹ F)F½è8@ ğ.¸ Fñ A ğ)ø@BaëA8½ ¿Ğµÿ÷!û "KFFÿ÷sûÿ÷!şFÿ÷ôú "	Kÿ÷jûFF0F9Fÿ÷¬ùÿ÷ş "#FCFĞ½ ¿  ğ=  ğAĞµ "KFFÿ÷Qûÿ÷ÿıFÿ÷Òú "	Kÿ÷HûFF0F9Fÿ÷Šùÿ÷ğı "#FCFĞ½ ¿  ğ=  ğA-éğGFˆF +KÑŠBFgÙ²ú‚òJ±Âñ úó ú÷•@Gê”@OêN#¸ûş÷ú…üûˆCêCûñ™B	Ùëñÿ0€ğ™B@ò?+D[¤²³ûşğû3DêD ûü¤E	Ù, ñÿ3€ğ¤E@ò8,D@ê@¤ë '±Ô@ #Æé C9F½èğ‡‹B	Ù . ğë€ 'Æé 8F9F½èğ‡³úƒ÷ /GÑ‹BÓ‚B òú€„aë ˜F .àĞÆé Hİç¹ÿŞ²ú‚ò *@ğ€IOêNú…ø'±ûşü#ûCêCûñ™BÙëñÿ0Ò™B òÍ€„FY£²±ûşğûCêDû ø EÙ, ñÿ3Ò E ò¶€F¤ë@ê@ŸçÇñ »@"úşNêúô úõ!úóOêH%C³ûøù,û3úúDêC	û
+ôœBúò úñÙë	ñÿ0€ğ‡€œB@ò„€©ñ	sD­²³ûøğû3EêD û
+ú¢EÙë ñÿ3kÒ¢EiÙ8tD@ê	@ û‰¤ë
+LEÂFKFTÓQĞ .iĞ±ë
+dëúüı@ü@LêÆé T 'GçÂñ  ú÷•@úğ!úóOêN8C³ûş÷ú…øû3AêAûó‹BúôÙiñÿ</Ò‹B-Ù?)DË²³ûşğû3AêA ûó‹BÙi ñÿ<Ò‹BÙ8)DÉ@êG;ç7F0F	çFçæFûæAE«Ò¸ë
+ië8F¤ç`FéçF•çgFÑçF|ç8,DGç¬ñ+D/ç8Fç7FéæpG ¿ø+ø;*(¿šB÷ĞĞpGFø+ *ûÑ8pG ñOğÿ2C`Àé#a #`pG #apGChK`šhŠ`šhQ`™`ah3`pG
+hS0µ
+ÑiZhJ`‘`‹`Y`ah3`0½ ñ\h%h•BïØ#FùçĞé!i‘`ĞéQ`Zh‚B¿‚hZ` "ah:`hpG-éğAFğÙú3K3Mh3N2`*h *RÑ,`h+(Ñ/Hßøø€/Oÿ÷¤ÿ.Hÿ÷¡ÿ.Hÿ÷ÿ-Hÿ÷›ÿ-Hÿ÷˜ÿ,Hÿ÷•ÿ@Fÿ÷’ÿ8Fÿ÷ÿ)Hÿ÷Œÿ(Hÿ÷‰ÿ(Hÿ÷†ÿ'KÃø €'K`'J'Ihh3`âj#d#“@C`K  û0!ÿ÷|ÿğ°ú3hc±+hÚjãjšBÒKOğ€R`¿óO¿óo½èğ3h +ÖÑ+hÚjãjšB˜¿,`Ïç ¿  x  d  „  ,  ˜  ¬  À  Ô  è  P  |  h  |  €      í à  JhhK¹Oğÿ2`pGhÒhhùç ¿|  D  µF(¹@òr	I	H#ğübiKšBÑ jK˜BĞ°ú€ğ@	½  üç ¿üh  P  -éğGİé	dOê‚	JFFF k¥!˜F*ğÿı#k©ñ	™D)ğ	¥³kñ4	5øøx	±«B÷Ñ #„ø=0-(¿%Oğ 
+åb¥d ÄøL ÿ÷ÒşÅññ ÿ÷Ìş$a¥adbÄéªÄøX „ø\ BF9FHFğ©ù `±4`½èğ‡„ø4PÖç  µø]0F;¹ kğù F½è@ğ	¹+ùĞ+Ğ@özrIH½è@#ğ¼½ü¶€µLOM#h¹ğZÿùçğ£ùûhŞh0ÿ÷­ş+h;+`#h;#`ğ¸ù0Fÿ÷Çÿçç  |    øµKNhF0h0Fÿ÷‘ş3F@¹1hNÉj2h ˆ@"ê 2`jÑ7±hH1½èø@ÿ÷Y¾hdT`ÓJhh½èø@1ÿ÷Y¾Jhh1ÿ÷Sş	Kh¢Bˆ¿`ø½ ¿  x    h  €  |  D  -éğC‡°İéEFFF™F,¹@òC"IH#ğ¢û-¹OôrIH#ğ›û`#“›`+ĞOôrIH#ğû›µ±¼±#…ø]0«,c“› “BFKF9F0F•ÿ÷øş(Fÿ÷1ş˜°½èğƒ(Fúç Føç ¿ü]t‰-éğCF…° ˆFF™FğšÿFè±` ğ•ÿF¨± #€ø]0›c“› “2FKFAF8Fÿ÷Äş Fÿ÷ıı °½èğƒ(FğøOğÿ0öç  pµF'MğËø¹,h&0Fÿ÷Ôı`¹àj#K!AC[X3¹!I"h‚@#ê`£j±ñ ÿ÷ÀıJh3`+h£B!Ñ1FHÿ÷’ıJh3`ğÂøKh›±+h£BÑKh+±@òÍBIH#ğıúKOğ€R`¿óO¿óop½Jh F;`ÿ÷µşÿ÷3şÛçx  „      |    d    ü~í à  øµF(¹@òdRIH#ğÉúKh«B ĞğWøKlihKhğrø¼BĞ´BĞKœBÑ«jƒ¹•ø\0+¿  ø½KœBĞ ,¿  öç  ôç òç ğçü°x  |  €  h  |  pµF(¹OôèbIH#ğ‡úM+h£B)ĞD³ğø Fÿ÷×ığ±&0Fÿ÷ıIâjh#“@C`K  û01Fÿ÷êü+hâjÛjšBÓKOğ€R`¿óO¿óo½èp@ğ¸p½üºx    „  í àµˆ° $ª©¨ÍéDğ¶ş›“›šIHÍé C#Fÿ÷…şK`à±ğü(ÑOğ_ƒóˆ¿óo¿óOKOğÿ2`K`K`ğbÿKhZkK`ğEø°½0ûÑ@ö*
+I
+H#ğúôçÒyT @  D  d    x    àü×Jh3`pG ¿  KhpG ¿  -éøO=K>Jh`=Jh *kÑh4`¤¹:M+hh+±@ö¬"8I9H#ğÒù8K*hh)``7Jh3`ÿ÷ı5M5O+hœBOğ Ò:h3KÑj"JCšX*1Jh(¿Oğ *¿OğXF½èøßøŒ ßø°Úø  h¹Oğÿ2*`àçÚø  ÒhÖhqhŒBÒ)`×çñ@Fÿ÷6ü±j±ñ ÿ÷0üğjÙø 0"ú ñCKÉø OğAFû 0ÿ÷üû8hñjÂj‘B(¿OğÊçJh3`Oğ ¼ç ¿    à  |  üE€  H  D  x  „  ”  L    -éøC/L#h+¹@ö™.I.H#ğEùğ×ş#h;#`$h,± $ğñş F½èøƒ'Kh +õĞ&M'Nßø¬€àëhÜhñ	ñ ÿ÷ÊûHFÿ÷Çûâj1h'úó C û€IF3`ÿ÷—ûKâjhÛjšBÓK`+h +ÜÑ±ÿ÷QüM,hD±N'ÿ÷ÿ ±7`<ùÑ,`Kh +ºĞKOğ€R`¿óO¿óo$±ç ¿  üª  P    x  ”  L  í à„  8µFF(¹@òâBIH#ğÎø,¹@òãBIH#ğÇøKh+±@òäBIH#ğ¾øÿ÷ÄşK*hh,¿! !‚B,`Ùa¹ÿ÷_ÿ8¹KOğ€R`¿óO¿óo8½	¹ BğÒ ! ÿ÷¦üëç ¿üSf  ~  í àµF@¹KOğ€R`¿óO¿óo½
+Kh+±Oô§b	I	H#ğyøÿ÷ş ! Fÿ÷{üÿ÷!ÿ (ãĞêçí à  ü~8µFF¹Khğòı%e½è8@ğ¾ ¿x  pµ!Kh!K±"`p½`ğÑıKI`hhN¢BÙh0hBm*DBeh`Kh´ú„ôä²Äñ#McCëX+¹@öç2IH#ğ)ø"ûóé3Hh@hH`+D˜B¿ChK`ûTchÛh3`3hZk
+KÂç ¿  ”     ü  x    „  ü  àpµF*Nğı¹4h%(Fÿ÷–ú`¹àj&K!AC[X3¹$I"h‚@#ê`£j±ñ ÿ÷‚ú)FHMÿ÷Zú”ø\0+¿ #„ø\0ğ‡ı*h*±ğaıÿ÷ûğı3h£BÑ+h‹±Kh+±@òìbIH"ğ»ÿKOğ€R`¿óO¿óop½JhJh‘BÑ3`öç½èp@ÿ÷P¿x  „    h  d    ü~í à  8µFF(¹@öBIH"ğˆÿKh F1ÿ÷ú(F!½è8@ÿ÷„»ü˜x  pµFFF(¹OôCb
+I
+H"ğkÿ
+Kh(F1ÿ÷åù ,!F¿0FOğÿ0½èp@ÿ÷c» ¿ü˜x  8µÃhÜh,¹OôFbIH"ğJÿñ(Fÿ÷èùKhã¹%(Fÿ÷áùIâjh#“@C`K )F û0ÿ÷°ùKâjhÛjšBƒ¿	K `  8½)FHïçü›    „  x  ”  P  Kh`KhC`pG ¿H    pµFF(¹@öÛBIH"ğüş-¹@öÜBIH"ğõşğ‡üKh+hYĞH&h hah†BĞ‘BØ #+`$ğ—ü Fp½R“BõÙ›+` Fÿ÷Åÿ $ñç ¿üÈO  H  K"`pG”  pµFFF¹Jh%`ñ4b`êj"a*kâa*l¢`ªlbajm¢a+ĞJhªBÑ ##sÖ±)k
+FSø¥(úĞ›#„p½+#sñÑÿ÷Ÿü«j±##sÿ÷Aıèç(Fÿ÷»û sãç&„ëç ¿x  -éøOhFF’F³Kh[hK`ñ»B¿ËhK`KhÓø€ %Oğ$ch[hc`ŸB¿ãhc`chŞhû‘SF"0Fÿ÷œÿ°EñëÑ(F½èø  -éøCFFÿ÷ZüKh‹B9ØOğ ßø„DF$&	ëûP"ÿ÷»ÿ¨ññxDòÑK"hûPÿ÷®ÿKDh"ûPÿ÷¦ÿD"IûPÿ÷ŸÿDûP"Iÿ÷˜ÿD±ğ û8`ÿ÷Çü F½èøƒ $øç  |  €  |  h  è  Kh3±Kh +¿   pG pGd    øµF (1Ğ JÃjhÉj‹BF1Ò‚iM *¡¿2hÒjÂñ‚a"ûSBišBÑ8Fÿ÷{øK0¹àjh!@"ê`2hhÒjâb$úğC` 9F ûPÿ÷@ø Fà3hÛjÃb ø½h€lÜj B,¿   öç ¿x  „    8µF¹  8½KhƒBĞAò-IH"ğ›ıãl+¹Aò.IH"ğ“ıãláj¢l;‘BãdäĞ +âÑ%(Fÿ÷)øJ0¹ájh ˆ@#ê `£lãbÃñ¡ah$úğC`	J  û )Fş÷ëÿ FÂç ¿x  üp†  „  pµFF (DĞÃl+¹Aò}!I!H"ğOı£lB8¿Fãj«B5Ğãl+2ÑKh£BÑAò˜IH"ğ;ı¢iãjåb *¤¿Åñ¥aM"ûSbišBÑ&0Fş÷ËÿäjJ(¹h  @#ê `h#£@C` 1F ûP½èp@ş÷’¿p½ ¿ü†x  ¤„    Kh±hÊl2ÊdhpG ¿x  -éğAFFF(±AòB"IH"ğìüLğ}úñ#hSø(0ƒ¹#h3D!ƒø\U±(Fÿ÷âøKOğ€R`¿óO¿óoğ†úğbú#hSø(P%±#hg± "Cø(  h0D #€ø\0ğtú(F½èğjñç ¿üx  í àøµFFF(¹Aòè2*I*H"ğ¥ü-±Aòé2&I(H"ğüğPûïó‡Oğ_ƒóˆ¿óo¿óOc!ë…“ø\ ƒø\«m*ñ«e'Ñ£j+±AòBIH"ğ|üKhû¹%(Fş÷ÿIâjh#“@C`K )F û0ş÷çşKâjhÛjšBÙ#±3`J`‡óˆø½ñ
+Hëç ¿üÚ¢    „  x  ”  P  µFğĞù¤kğïù´ú„ğ@	½pµFl†kFB¹h¹€hÿ÷€ş¥`6¦cp½m¹@h)ğıch"lD¢hc`“BÓ#hc`  íçÀh)ğı#lâh!h[BDŠBâ`>¿¢h›ã`-íÑ±>êç0FØçF´lFb±ÙhœhD¡BÙ`$¿hÙ`Ùh]øK)ğl½]øKpGpµFğ}ù”øEPñ$m² -Üÿ#„øE0ğ“ùğoù”øDPñm² -Üÿ#„øD0½èp@ğƒ¹cj +çĞ0Fÿ÷sü±ÿ÷úü=m²Üç#i +éĞ0Fÿ÷gü±ÿ÷îü=m²Şç  8µFF(¹@òIH"ğªûğ<ùÔé1"hb`KCĞ[D `ã`  ÿ# c„øD0„øE0•¹#ic±ñ ÿ÷<ü8±KOğ€R`¿óO¿óoğ;ù 8½ñ ş÷ñıñ$ ş÷íıòçÑìí à÷µFFFF(¹Oô¤rIH"ğhû,¹Oô¦rIH"ğaû6³-¹IHOô¨r"ğYûP#“›P+Ğ@òYIH"ğNû›|±! -¿&F„øF&`Äéu Fÿ÷Œÿø 0„øL0 F°ğ½ -İĞ@òQIHÖçÑ0F¶~øµFFF(¹OôÃrIH"ğûûôM±´ûõó³BĞOôÇrIH"ğûñP  ğDÿF`± #€øF0U¹ `Äée! Fÿ÷Iÿ„øLp Fø½ ñP`ñç ¿Ñ¿-éÿGF’FF(¹@ò	2WIWH"ğáú?¹#l+±@ò
+2RITH"ğØú.Ñãk+Ğ@ò2MIOH"ğÍúÿ÷Åü8¹›+±@ò2GIKH"ğÂúßø(‘ßø(Oğ 
+ğNø¢kãkšBÓ.Ñ£lCJCô€s`9F2F Fÿ÷uşcj±ñ$ ÿ÷Pû8±<KOğ€R`¿óO¿óoğOø °½èğ‡E¹ğGø£l1JCô s`  ñçºñ Ñ¨ÿ÷rûğ8øÿ÷ˆøğø”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0ğ$ø©¨ÿ÷dûX» ğûÿ¢kãkšBÑğø£lCô€cÉø 0™ñ ÿ÷Åú Fÿ÷gşÿ÷ùP±Oğ
+‘çğø Fÿ÷\şÿ÷÷øôçOğ€SÈø 0¿óO¿óoëç Fÿ÷Mşÿ÷èø¥ç ¿ÑìôD‹  àí àµ " F Fÿ÷¬şF8± #ƒ``Ã`FFÿ÷(ÿ F°½µF ! ÿ÷çşF8± #ƒ``Ã`FFÿ÷ÿ F½  -éøC‰FFFF(¹@òİ2-I-H"ğóù¹ñ Ñ#l+±@òŞ2'I)H"ğèù/Ñãk+Ğ@òß2"I$H"ğİùğøïó†Oğ_ƒóˆ¿óo¿óO¢kãkšBÓ/+Ñ”øEP£km²:FIF Fÿ÷ıkÑcj¹ àñ$ ÿ÷dú (÷Ğ¸ñ ôĞ Èø  †óˆ½èøƒ-ÑOôbI	H"ğ¤ù5m²„øEPàç  ìç ¿ÑìôDáøµFF(¹Oô‘b&I'H"ğˆù#l+±@òŒB"I$H"ğ€ù#h;¹£h+±@ò‘BI H"ğvùğ(øïó†Oğ_ƒóˆ¿óo¿óO£kâkšB$Ù”øEP3m²£ckÑcj¹ 	àñ$ ÿ÷ú (÷Ğ /õĞ 8`†óˆø½-ÑOô¢bI	H"ğFù5m²„øEPãç  íç ¿Ñìú	á-éğC…°F’F(¹@ò,RIIIH"ğ'ù>¹#l+±Oô¦bDIFH"ğùÿ÷û8¹›+±@ò5R?IAH"ğùAOßøOğ 	 ğ ş¥kÕ±1F F=ÿ÷ı¥c#ic±ñ ÿ÷ªù8±7KOğ€R`¿óO¿óo ğ©ş °½èğƒ¹ ğ¡ş  öç¹ñ Ñ¨ÿ÷Ñù ğ—şş÷çş ğqş”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğƒş©¨ÿ÷Ãù» Fÿ÷…üÈ±£lCô@s;`™ñ$ ÿ÷)ù Fÿ÷Ëüş÷fÿ8¹Oğ€SÈø 0¿óO¿óoOğ	›ç Fÿ÷ºüş÷Uÿöç Fÿ÷´üş÷Oÿ Fÿ÷\ü (ìĞ­ç ¿Ñz	†	‹  àí à-éÿAF‘(¹@ò¾RWIWH"ğø#l+±@òÂRSITH"ğyøÿ÷qú8¹›+±@òÇRMIPH"ğnø %OOßø<.F ğûı£kã±;£c#h¹ÿ÷[û `#ic±ñ ÿ÷ù8±EKOğ€R`¿óO¿óo ğş%(F°½èğ›S¹-±@òb6I;H"ğ?ø ğóı %îç¹¨ÿ÷%ù ğëış÷;ş ğÅı”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğ×ı©¨ÿ÷ù`» Fÿ÷Ùû³£lCô@s;`#h;¹ ğ¤ı hÿ÷úF ğÀı™ñ$ ÿ÷sø Fÿ÷üş÷°ş8¹Oğ€SÈø 0¿óO¿óo&‹ç Fÿ÷üş÷ ş÷ç Fÿ÷ÿûş÷šş Fÿ÷§û (íĞ -–Ğ ğuıaj±#khÁñ hÿ÷|ú—ç ¿Ñz	ú‹  àí à=
+-éğC…°F’F(¹@ò—bDIDH!ğ»ÿ?¹#l+±@ò›b?IAH!ğ²ÿÿ÷ªù8¹›+±OôÔb:I<H!ğ§ÿ &ßøì°F ğ5ı£kÓ±9F Fåhÿ÷˜ûcjå`c±ñ$ ÿ÷?ø8±1KOğ€R`¿óO¿óo ğ>ı °½èğƒ¹ ğ6ı  öç¹¨ÿ÷hø ğ.ış÷~ı ğı”øD0ÿ+¿„øD€”øE0ÿ+¿„øE€ ğı©¨ÿ÷\øğ¹ Fÿ÷û ±™ñ$ ş÷Æÿ Fÿ÷hûş÷ş8¹Oğ€SÉø 0¿óO¿óo&¤ç Fÿ÷Xûş÷óı÷ç Fÿ÷Rûş÷íı Fÿ÷úú (íĞ¶ç ¿Ñz	†	‹í à-éøC‰FFF(¹@ò,r%I&H!ğ ÿ¹ñ Ñ+l+±@ò-r I!H!ğÿ ğÇıïó‡Oğ_ƒóˆ¿óo¿óO¬k\³•øD`IFv²(Fÿ÷şú<s¬cÑ+i¹ àñ ş÷ ÿ (÷Ğ¸ñ ôĞ Èø  ‡óˆ½èøƒ.ÑOôîbIH!ğàş6v²…øD`àç Fìç ¿ÑìÙ	$
+µF(¹@ò¾rIH!ğÇş ğYü¤k ğxü F½ÑíµF(¹@önIH!ğ³şàk£kÃXBXA½ ¿Ñì0µJ #Rø3PëÃ¹Bø3``0½3
++óÑúçp¿  pµFFF ğ$ü”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğ6ü£k+¹2F)Fñ$ ş÷ÿ F½èp@ÿ÷†º  ÷µL ğü%h½¹ON8Fş÷Ùø0Fş÷ÖøKJ`K!`  •Kÿ÷åú `±Iÿ÷¬ÿ°½èğ@ ğ¼ ¿    ¤  ˜     œ  ¼  ]
+‘BµA` a
+ØÒƒišBÒKhş÷¼ø  ½šBÒ™BÒKóç õç ¿œ  ˜  0µ‰°ÿ÷ªÿKhË± %ª©¨ÍéUğú›“$›“ ”+Fš
+I
+Hş÷Sú
+K`± F	°0½HI@ò!ğùı  õç ¿  Ô
+¡r   ø
+Ü
+-éğA€F, FFF ğúFØ± #€ø(0-¹@ò_IH!ğÕıÿ÷aÿ›Äø €ÄéW#b ş÷Gø.±”ø(0Cğ„ø(0 F½èğÜ
+
+-éóA˜F,#“›	œ,+FFFĞOôŸrIH!ğªı›L¹Oô¢rIH!ğ¢ı F°½èğ#„ø(0-¹@ò_IH!ğ”ıÿ÷ ÿ›&`ÄéX#b ş÷ø /åĞ”ø(0Cğ„ø(0Şç ¿Ü
+«
+Æ
+
+-éÿAFFFF(¹OôÁrIH!ğkıL h€±-ÍéX–Üş÷[ÿ #(¿
+š h¿F©ÿ÷iú°½èğ #:F©ÿ÷OûöçÜ
+   -é÷CMOßøt€+hh2¹Jh)``°½èğƒÛhÜhhñ	HFı÷Óÿ#j F˜G”ø(0[æÕ£i3DBÒc`$aIF(hı÷«ÿÛç # “2FF Fÿ÷Ÿÿ (ÒÑ@ò©29F@F!ğıËç˜  Ü
+œ  b
+-éğOyNzO‰°ßøø±Ûø 0hE³Ûhh $ş÷şúş÷ûsKßøàhB‚F™FÓ`³oKhh²ú‚òR	¥ë
+Øø  ÿ÷Hşş÷Œû¹iJOğ€S`¿óO¿óo	à$×ç“ÿ÷…ÿ›Ãø  ş÷xû`MXà…B/Øş÷rûÛø 0ÛhÓø°ñ ı÷\ÿ›ø(0XÕÛø+FRF)DXFÿ÷oşh± ”#F*F!FXFÿ÷-ÿ(¹Oôr1F8F!ğüÛø 0XF˜GĞç#ğ‹ø(0õç"F­ç”ø(0¡iCğ„ø(0›ZFD Fÿ÷Gş°±#j F˜G”ø(0YÕ¢i™ #
+D “F Fÿ÷üş(¹@ò621F8F!ğmü "©Øø  ÿ÷3û (?ôc¯› +óÛœci± ı÷şşş÷iúÙø 0˜BƒFÒÿ÷
+ÿ›Éø °	+ßØ¢Rø#ğ‰s ‰s ‰s At Ot }t ‰s ‰s At Ot ”ø(0#ğ„ø(0Áç”ø(0Cğ„ø(0›£a+¹@òO21F(F!ğ ü¡i[FZFYD Fÿ÷Ûıªç”ø(0šßÔ F ğïø¢çÜ
+b
+¸  œ  í àj
+˜    µF(¹@ò
+BIH!ğ÷û ğ‰ùäi ğ¨ù F½Ü
+ µKh‚BÓ\hˆB¿AhF	Y`AhD¢BÑ	L$h¢BĞRh
+DB`hh`˜B¿`½Fàç ¿Lf    -éøCFş÷ÉùDIDNhû¹DJDMP¿2CK"ğ›¿Dö cD;#ğ  h`*`Ãé  ˜`Âé 0:K`:K`Oğ C3`3hBĞş÷Húğtû 'Là ,÷Ğ4b¿$ğ4 ,ïĞ.Kh¢B˜FêÓ)Khjh¢BÒ*h *@Ñ
+hªBßĞ*hh`kh+ñÙë	ğĞÅ" I H!ğgûkhÉø0HFl`ÿ÷sÿIjhØø 0h›ƒB8¿`Èø 03hCJk` #+`h3`ş÷ùù /®Ğ{ĞOôƒrIH!ğ?û8F½èøƒ+FFµç ¿  8f    Lf  8f  @f  <f  4Df  u8µF (4ĞMPø*hBÑOôrIH!ğûTø<+±@òIH!ğ	ûTø<*hBĞTø¹¹#êDø<ş÷ùJTø<h¤ñ D`ÿ÷ÿ	Jh3`½è8@ş÷™¹8½8f  »ì<f  Hf  KhpG ¿<f  H h h€óˆOğ  €óˆb¶a¶¿óO¿óo ß ¿  í àßø hAôp`pG  ˆí àµ #“Kh3Ğå"	I
+H!ğ¬úOğ_ƒóˆ¿óo¿óO› +üĞ°]øû    <Oğ€s@ø<K@ø<!ğoğ@ø@ø ,@ø$<D8pG ¿=w         Khh°èğO€ó	ˆ¿óoOğ  €óˆpG¯ó €x  Oğ_ƒóˆ¿óo¿óOJh3+`
+ÑKhğÿĞOôÒrIH!ğSºpG    í àVµL#h+¹@ò«IH!ğ@ú#h;#`¹ƒóˆ½ ¿    ‹        ïó	€¿óoKhğ¿ íŠ éğO`-é	 Oğ_ €óˆ¿óO¿óoş÷¾ùOğ  €óˆ	¼hh°èğOğ¿°ìŠ€ó	ˆ¿óopG ¿¯ó €x  µOğ_ƒóˆ¿óo¿óOş÷ø±KOğ€R` #ƒóˆ½í àKI "`
+==========================================
+### MATCH in blob 82ccfef25fadd47e0766ba35236d1e6b82610d68
+grep: (standard input): binary file matches
+--- (full first 60 lines) ---
+ÿÿ -ecä eä µå ùå =æ                 )o æ     ½o _ä qeqeqeqeqeqe÷â ã ã 'ã 5ã qe5UÀ í¿ ƒæ qeqeqeqeqeMã qeqeqeqeqeqeqeùqeqeqeqeqeQµÃã qeqeqeqeqeqeqeqeqeqeqeqeqe©Iqeqeqeqeqeqeqeqeqeqe¡ ±qe‰)qeqeqeqeqeqeqeqeğ Aà ¿ƒğ C0µOêAOêC”ê¿ê¿Tê Uêêd\êe\ ğâ€OêTTÔëUU¸¿mBİ,D€êê‚ê  ƒê€êê6-ˆ¿0½ğ OOê1Oô€Lê1Ğ@BaëAğ OOê3Lê3ĞRBcëC”ê ğ§€¤ñÕñ Ûúü"úò€Añ úò€CúóYAà¥ñ ñ *úü(¿LğCúóÀQëãqğ EÕOğ Üñ ~ë  në±õ€Ó±õ ÓI_ê0 Oê<ñOêDRõ€€ğš€¼ñ O¿_êPPñ  AëQAê0½_êL@AAëô€¤ñéÑ‘ğ ¿F  ±úó¿ 3£ñ³ñ Ú2İñÂñúğ!úñàñØ¿Âñ úñ úüÜ¿Aê@ä¢¿ëQ)C0½oê<Ú4ÜñÄñ  úğúó@ê !úóEê0½ÄñÄñ  úğúó@ê )F0½!úğ)F0½”ğ ƒô€¿ô€4=Nçêd\¿êe\)Ğ”ê¿êĞTê ¿FF0½‘ê¿ !  0½_êT\Ñ@ IA(¿Ağ A0½õ€<¿õ€0½ğ EEğşAAôpOğ  0½êd\¿FFêe\¿FFPê4¿Rê5‘êAô !0½ ¿ğ ¿ !pG0µOô€dñ2Oğ Oğ Pç ¿ğ ¿ !pG0µOô€dñ2ğ EH¿@BOğ >ç ¿B OêâOê1Oêp¿ğC“ğOğ`QpG2ğB¿pG“ğO¿Aô !pG0µOô`tğ E!ğ Aç ¿Pê¿pG0µOğ 
+àPê¿pG0µğ EÕ@BaëAOô€dñ2_ê‘\?ôØ®Oğ_êÜ¿2_êÜ¿2ëÜÂñ  úü úğúş@ê !úñD½æ ¿pµOğÿLôàlêT¿êU”ê•ê ğŞø,Dê!êLQ#êLSPê5¿Rê5Aô€Cô€8Ğ ûÎOğ áûåğ BàûåOğ áûVœğ ¿Nğ¤ñÿ¶õ dõ@tÒ_êNmAFëBêÆ!AêUQOêÅ @ê^POêÎ.´ñıˆ¿¼õàoØ¾ñ O¿_êPPñ  AëQp½ğ FFê@ê ê´ë\Â¿ÔëAêQp½Aô€Oğ < ó«€ñ6Ş¿  ğ Ap½Äñ  <5Ú4ÜñÄñ  úó úğúò@ê ğ B!ğ AëÓp!úöBë^êC¿ êÓpp½ÄñÄñ  úó úğúò@ê ğ AëÓpAñ ^êC¿ êÓpp½Äñ  úòNê úóúòCê!úğğ A!úò ê  ëÓp^êC¿ êÓpp½”ğ Ñğ F@ Aëô€¿<÷ĞAê•ğ ¿pGğ FR Cëô€¿=÷ĞCêpG”êêU¿•êĞPêA¿RêCÑÑêğ AOğ  p½PêA¿FFRêCĞ”êÑPê6Ñ•êÑRê6¿FF
+Ñêğ AAğşAAôpOğ  p½AğşAAôxp½pµOğÿLôàlêT¿êU”ê•ê ğ§ø¤ëêRê5Oê1 ğˆ€Oê3Oğ€UEêCêcOê"EêEêeOê &ğ AB¿–BDñıõ@tÒ[Oê2¶eë[Oê2Oô€Oô ,¶ëuë"¿¶uF@ê [Oê2¶ëuë"¿¶uF@ê\ [Oê2¶ëuë"¿¶uF@êœ [Oê2¶ëuë"¿¶uF@êÜ UêĞOêEêuOêOêÃCêRsOêÂ_êÀÑô€ÑAê Oğ  Oğ L¶çô€¿C  ´ñıˆ¿¼õào?ö¯®µë¿¶ë_êPPñ  AëQp½ğ NNê1ë\Â¿ÔëAêQp½Aô€Oğ <æEêæêU”ê¿•ê?ô;¯”ê
+ÑPê4ô4¯•êô%¯FF,ç•êÑRê5?ôı®FF"çPêA¿RêCôÅ®PêAô¯RêCôë®çOğÿ<à ¿Oğà ¿OğMøÍOêAêl\OêC¿êl\Ğ°PêA¿RêC‘ê¿ê  pGñ ‘êX¿™B¿B,¿Øoêãp@ğ pGOêAêl\ÑPê<ÑOêCêl\ÖÑRê<ÓĞ]øpG ¿„FFbFŒFFcF à ¿µÿ÷·ÿ (H¿ñ ½Møíÿ÷ôÿ¿   ]øû ¿Møíÿ÷êÿ4¿   ]øû ¿Møíÿ÷àÿ”¿   ]øû ¿Møíÿ÷Îÿ”¿   ]øû ¿Møíÿ÷Äÿ4¿   ]øû ¿OêAêl\ÑPê<
+ÑOêCêl\ÑRê<ÑOğ  pGOğ pGOêA²ñàC$¿³õ Üñş\Ùğ LOêÀLêPp²ñ O@ëƒ ¿ ğ pGğ€O!Ññ8r¼¿ğ @pGAô€OêRRÂñÂñ úó úğ¿@ğ OêÁ#OêÓ#úü@ê #úóOêCÌçêbSÑPê3¿Oğş@@ô@ pGğ @@ğş@@ô  pG ¿€ğ @à ¿ğ AB ¿_êA’êê"lê#ljĞOêbÒëcÁ¿ÒA@H@A@¸¿[B+ˆ¿pGğ O@ô   ğ@¿@Bğ OAô !ğA¿IB’ê?Ğ¢ñAúüë Ãñ úñ ğ CÕIB`ë@ °õ Ó°ñ€Ó@Oê1ñş*QÒ±ñ O@ëÂP¿ ğ @ê pGI @ë  ô ¢ñíÑ°ú€ü¬ñ²ë úğª¿ ëÂPRBC¼¿Ğ@CpG’ğ ô ¿€ô  2;µçOêAê"l¿ê#l!Ğ’êĞ’ğ ¿FpGê¿  pGğOÑ@ (¿@ğ @pGñ r<¿ õ  pG ğ CCğş@@ô  pGê"b¿Fê#cFB¿_êA#ê@ô€ pGOğ à ¿ğ CH¿@B_ê ¿pGCğ–CFOğ  àPê¿pGOğ 
+à ¿Pê¿pGğ CÕ@BaëA_ê¿„FF  Cğ¶C¿£ñ€S£õ ¼úŒò:£ëÂSÛúücD úüÂñ ¼ñ O úòCë ¿ ğ pGñ úüÂñ PêL !úòCë ¿ êÜppGS¹J¹ )¿ (¿Oğÿ1Oğÿ0 ğÜ¹­ñméÎ ğnøİøàİé#°pGî
+õîÀzñîúÔ ğ!¸µ€ğ @ ğø@BaëA½8µ " #FFÿ÷3ş(¹ F)F½è8@ ğ*¸ Fñ A ğ%ø@BaëA8½ ¿Ğµÿ÷Uû "KFFÿ÷§û ğùFÿ÷(û "Kÿ÷ûFF0F9Fÿ÷àù ğù!FĞ½  ğ=  ğAĞµ "KFFÿ÷‰û ğùFÿ÷
+û "Kÿ÷€ûFF0F9Fÿ÷Âù ğpù!FĞ½  ğ=  ğA-éğGFˆF +@ğ…€ŠBFHÙ²ú‚òJ±Âñ úó ú÷•@Gê”@OêN#¸ûş÷ú…üûˆCêCûñ™B	Ùëñÿ0€ğã€™B@òà€?+D[¤²³ûşğû3DêD ûü¤E	Ù, ñÿ3€ğË€¤E@òÈ€8,D@ê@¤ë '±Ô@ #Æé C9F½èğ‡ *SĞ²ú‚ò *@ğ¶€IOêNú…ø'±ûşü#ûCêCûñ™BÙëñÿ0Ò™B òì€„FY£²±ûşğûCêDû ø EÙ, ñÿ3Ò E òÜ€F¤ë@ê@¾ç‹BÙ .xĞ 'Æé 8F9F½èğ‡³úƒ÷¹‹BÓ‚B ò½€„aë ˜F .©ĞÆé H¦çÿŞÇñ »@"úüLêúô úø!úóOêNHê³ûşù!û3úŒøAêC	ûúšEúò úñÙë	ñÿ0€ğˆ€šE@ò…€©ñ	cD£ë
+¤²³ûşğû3DêD ûø EÙë ñÿ3kÒ EiÙ8dD@ê	@¤ë û‰LEÆFKFTÓQĞ .iĞ±ëdëúõ"úóü@CÆé T 'Fç7F0FCçF7çFçÂñ  ú÷•@úğ!úóOêN8C³ûş÷ú…øû3AêAûó‹BúôÙiñÿ<(Ò‹B&Ù?)DË²³ûşğû3AêA ûó‹BÙi ñÿ<Ò‹BÙ8)DÉ@êGçAE«Ò¸ëië8F¤ç`FğçF•çgFØçF{ç8FEç¬ñ+Dç8,D!ç7FèæpG ¿J Òõ ÒÕoôxs³ëbRÔOêÁ#Cğ CCêPS#úğpGOğ  pGPê0ÑOğÿ0pGOğ  pGø+ø;*(¿šB÷ĞĞpGFø+ *ûÑ8pG ñOğÿ2C`Àé#a #`pG #apGChK`šhŠ`Q`™`ah3`pG
+hS0µ
+ÑiZhJ`‘`‹`Y`ah3`0½ ñ\h%h•BïØ#FùçĞéiŠ`AhQ`Zh‚B¿‚hZ` "ah8`pG  JhhK¹Oğÿ2`pGhÒhÒhRhøçÌ  ”  µF(¹@òfR	I	H ğ7ûbiKšBÑ jK˜BĞ°ú€ğ@	½  üç ¿Un´  œ  µKhP`Jh‚BFÙJhh½è@1ÿ÷”¿	Jhh1ÿ÷ÿKh”B8¿`½ ¿È  Ü  Ğ  Ì  ”  -éğAh .:ĞKh\hL`ñ¼B¿ËhK`Kh &ÓøÀOğFHh@hH`‡B¿xhH`HhÄh`ñ4 X` l˜`sàja*Ñ j±ƒøà lXa`m˜aÔø0€ %ø ¥(
+Ğ­¤Eƒññ ÔÑ0F½èğ5îç  -éøO
+ŸˆFF›F‚F(¹@ò-"hIhH ğ£ú/Ù@ò."dIeH ğ›ú6¹¨ ğÉüF ( ğ¯€` ğÂüF ( ğ¥€­ *Fc¥!0F$ğû#k=Dñÿ2%ğ	ñ4ñ	øø±EøÑ/Oğ ¸Fñ(¿Oğ0F„ø=PÄø,€Äé…ÿ÷Øşñ ÿ÷ÔşÈñ¢a¥e$adbÄéU„ø\PZFQFHFğ’ı› `±`ğ®ı;K<Mhßø(2`*h *\Ñ,`h+*Ñ6Hßø¡ßø‘ÿ÷Ÿş4Hÿ÷œş3Hÿ÷™ş3Hÿ÷–ş2Hÿ÷“ş2Hÿ÷şPFÿ÷şHFÿ÷Šş.Hÿ÷‡ş.Hÿ÷„ş-Hÿ÷ş-KÃø  ,KÃø ,J,Ihh3`âj#d$úóC`K  û01Fÿ÷uşğıØø 0[±+hÛj»BÒKOğ€R`¿óO¿óo F½èø0Fğ®üOğÿ4öçØø 0 +ÍÑ+hÛj»B˜¿,`Çç ¿U?ŸJŸP  È  Ô  è  ü    $  8  œ  È  ´  Ì  Ğ  \  d  í à°  h  |  8µFğı¹$Kh%(Fÿ÷;ş`¹àj!K!AC[X3¹I"h‚@#ê`£j±ñ ÿ÷'ş)FHÿ÷şJh3`Jh3`ğıKh£±Kh£BÑKh+±@ò2IH ğmùKOğ€R`¿óO¿óo8½ğÈüÿ÷ş½è8@ğä¼È  Ô  d  È  `  \  °  X  UŸí àøµFˆ»Oô²bIH½èø@ ğ;¹ğŸü Fÿ÷öı(FÑ'8Fÿ÷ËıJãjh@C`J  û 9Fÿ÷œı3hâjÛjšBÓKOğ€R`¿óO¿óo½èø@ğ™¼N3hƒBÑÑø½UÅd  Ô  í àÈ  µKIH $Íé CÍéD#F–"ÿ÷Aş(ÑğEù(ÑOğ_ƒóˆ¿óo¿óOKOğÿ2`K`K`ğù°½è@ğÊ¼@¹IH@òQb°½è@ ğÌ¸°½  İ}Z ”  °  Ü  UâJh3`pG ¿X  KhpG ¿Ü  -éøO=K>Jh`=Jh *kÑh2`h¥¹:L#hh+±@òªr8I8H ğ“ø8K"hh!``6Jh3`ÿ÷6ı4L5O#h«BOğ Ù:h2KÑj"JCšX*(¿Oğ/Jh *¿XF ½èøßøŒ ßø°Úø  h¹Oğÿ2"`áçÚø  ÒhÖhqhBÒ!`Øçñ@Fÿ÷ñü±j±ñ ÿ÷ëüğjÙø 0"ú ñCKÉø OğAFû 0ÿ÷¸ü8hñjÂj‘B(¿OğÊçJh3`Oğ ·ç ¿Ü    àX  Ì  U­ŸĞ  ˜  ”  È  Ô  à  T  d  -éøC.L#h+¹@òb-I-H ğøğkû#h;#`#h+± $ğ…û F½èøƒ&Kh +õĞ%M&Nßø¨€+h›¹$L#h±$M&#hk»"Kh,äÑ!KOğ€R`¿óO¿óoÜçëhÜhñ	ñ ÿ÷püHFÿ÷müâj1h'úó C û€IF3`ÿ÷>üKâjhÛjšBËÓK`Æçÿ÷ÿ ±.`#h;#`Çç ¿X  U P  œ  d  T  à  í àÈ  Ô  8µFF(¹@ò?2!I"Hğ’ÿ,¹OôPrIHğ‹ÿKh+±@òA2IHğ‚ÿÿ÷ÆşKh+h,¿! !“B,`Ùa¹ÿ÷aÿ8¹KOğ€R`¿óO¿óo8½	¹¢BğÒM(h0ÿ÷ıû@¹*hIĞjh"‚@#ê` Fÿ÷4üİç ¿Ut‡X  ŸÜ  í àÈ  d  8µF@¹KOğ€R`¿óO¿óo8½Kh+±@ò£2IHğ+ÿÿ÷oşKh,DM(h0ÿ÷½û@¹*hIĞjh"‚@#ê` Fÿ÷ôûÿ÷ ÿ (ÒĞÙç ¿í àX  UŸÜ  È  d  µNL#h¹ğıùçÿ÷<ş5hÿ÷áş -óĞğUúóhİh(ÿ÷†û	Jh;`#h;#`ğiú(kğ¨ù(Fğ¥ùÜçÈ  `  P  -éøCFFÿ÷şKh‹B7Øßø„€& $Oğ	>ëD"	ûÿ÷ÄûD .ôÑK"hëDÿ÷ºûKDh"ëDÿ÷²ûD"IëDÿ÷«ûDëD"Iÿ÷¤ûD±ğÿ8`ÿ÷ƒş F½èøƒ $øçP  Ì  Ğ  È  ´  Ô  8µFF¹Khğâù%e½è8@ğÿ¹ ¿È  pµKhK±"`p½`ğ×şJNh BÙ1hKmDKeK`h´ú„ôä²Äñ#McCëX+¹@öÈIHğLş"ûóé3Hh@hH`+D˜B¿ChK`ûTchÛh3`3hZkKÇçX  à  L  È  d  Ô  Uê  àøµF(Mğ…ù¹,h&0Fÿ÷µú`¹àj$K!AC[X3¹"I"h‚@#ê`£j±ñ ÿ÷¡úO1F8Fÿ÷zúğ†ù+h£BKhÑ‹±Kh+±@ò.RIHğïıKOğ€R`¿óO¿óoø½J9hh‘BÑ+`÷ç½èø@ÿ÷g¿ +ñĞğ=ùÿ÷ƒú½èø@ğY¹ ¿È  Ô  d  ´  °  X  UŸí àP  pµFF(¹@öÚIHğ²ıL!h0F1ÿ÷1ú h0ÿ÷Dú@¹"hIĞjh"‚@#ê`kÑ!h
+H1½èp@ÿ÷ºKh(D½èp@ÿ÷nºU¹È  d  ´  Ü  øµFFF(¹@öYIHğwıL!h8F1ÿ÷ëù h0ÿ÷	ú@¹"hIĞjh"‚@#ê`.Ñ!h
+H1½èø@ÿ÷Ô¹Kh(D½èø@ÿ÷3º ¿U¹È  d  ´  Ü  8µÃhÜh,¹@ö´IHğ<ıñ(Fÿ÷ÓùKhã¹%(Fÿ÷ÌùIâjh#“@C`K )F û0ÿ÷œùKâjhÛjšBƒ¿	K `  8½)FHïçU X  d  Ô  È  à  œ  µF(¹@ö"IHğûüKh#`Khc`½UÓ˜  Ü  pµFF(¹@ö"IHğâü-¹@ö"IHğÛüğ?øKh+hZĞJhÔé b†BĞ‘BÒˆƒB
+Ù[D+` Fÿ÷¿ÿ $ğHø Fp½$ùçUÓ1ŸÜ  ˜  K"`pGà  Kh3±Kh +¿   pG pG°  X  -éğAF (.ĞMÃj*hÒj“B(Ò‚iN *¡¿*hÒjÂñ‚a'BiûcšBÑ ñ@Fÿ÷ùJ ±+hhØjàb#ƒ@C`#AFû `½èğAÿ÷å¸+hÛjÃb½èğàjGCóY +åÑh!@#ê`ŞçÈ  Ô  d  øµF¹  ø½ KhƒBĞ@ö§RIHğEüãl+¹@ö©RIHğ=üãláj¢l;‘BãdäĞ +âÑ%(Fÿ÷ÌøNJP¹çj!yCsX+¹h ¸@#ê `£lãbÃñ¡ah$úğC`  û`)Fÿ÷‹ø F¾ç ¿È  UØŸîŸÔ  d  Kh±hÊl2ÊdhpG ¿È  pµFlFj¹h± %à@hÿ÷–ÿf`F£k3£c(Fp½e¹€h#ğéü£h"lDbh£`“BèÓ#h£`ìçÀh#ğÜü#lâh!h[BDŠBâ`>¿bh›ã`-ÕÑ£k +ÒĞ£k;£cÎçF´lFb±Ùh\hD¡BÙ`$¿hÙ`Ùh]øK#ğ¶¼]øKpG8µF ğÿñ$£l +ÜOğÿ3£d ğ#ÿ ğÿşñcl +ÜOğÿ3cd½è8@ ğ¿cj +éĞ(Fÿ÷Aş±ÿ÷Òş£l;£dÜç#i +èĞ(Fÿ÷4ş±ÿ÷Åşcl;cdÛç  8µFF(¹Oô„rIHğhû ğÌşÔé1"h¢`KCĞ[D``ã`  Oğÿ3 ccd£d¹#ik±ñ ÿ÷	ş(ÑKOğ€R`¿óO¿óo ğËş 8½ñ ş÷©ÿñ$ ş÷¥ÿòç” ­ í àøµFFF(¹@òCIHğ'û}±ûğ0T0 ğRıFH¹@òIHğû Fø½(Fğç]± ñT#`Äée! Fÿ÷˜ÿ„øPpîçFóç ¿” ' â-éÿGF’FF(¹@òg"WIWHğñú?¹#l+±OôrRITHğèú.Ñãk+Ğ@òi"MIOHğİúÿ÷/ş8¹›+±OôrGIKHğÒúßø(‘ßø(Oğ 
+ ğ0ş¢kãkšBÓ."ÑãlCJCô€s`9F2F Fÿ÷Äşcjs±ñ$ ÿ÷nı(
+Ñ;KOğ€R`¿óO¿óoà (ôÑ ğ-ş °½èğ‡E¹ ğ%şãl/JCô s`  ñçºñ Ñ¨ÿ÷Œı ğşÿ÷Òù ğğıcl3¿ #cd£l3¿ #£d ğş©¨ÿ÷ıX» ğİı¢kãkšBÑ ğùıãlCô€cÉø 0™ñ ÿ÷«ü Fÿ÷»şÿ÷PúP±Oğ
+‘ç ğäı Fÿ÷°şÿ÷EúôçOğ€SÈø 0¿óO¿óoëç Fÿ÷¡şÿ÷6ú©ç ¿” ­ µ ¡L¡  àí àpµFT  ğeüFØ± %#Àé5Oğÿ3…c€øP`CdÀé UƒdÀéU0ş÷‹şñ$ ş÷‡ş+F*F)F Fÿ÷ÿ Fp½  -éğAˆFFFF(¹@ò$B&I&Hğú¸ñ Ñ#l+±@ò%B I"Hğúù-Ñãk+Ğ@ò&BIHğïù ğWşïó‡Oğ_ƒóˆ¿óo¿óO¢kãkšBÓ-Ñ*FAF Fÿ÷âı£l3Ñcj¹ 	àñ$ ÿ÷‡ü (÷Ğ .õĞ 0`‡óˆ½èğ£l3£dëç  õç ¿” ­ µ ¡pµFF(¹@ò¿B!I"Hğªù#l+±@òÃBIHğ¢ù#h;¹ch+±Oô™bIHğ˜ù ğ şïó†Oğ_ƒóˆ¿óo¿óO¢kãkšBÒ£k3£c£l3Ñcj¹ 	àñ$ ÿ÷4ü (÷Ğ -õĞ (`†óˆp½£l3£dìç  öç ¿” ­ ¢¡»¡-éÿGF’˜FF(¹@ò[RUIUHğUù>¹#l+±@ò\RPIRHğLùÿ÷ü8¹›+±@ò_RKIMHğAùßø8‘LOOğ 
+ ğ ü£k{³1F Fåhÿ÷uı¸ñ Ñ£k;£c#h¹ÿ÷'ı``#i»±ñ ÿ÷Üû(Ñ<KOğ€R`¿óO¿óoàcjå`+±ñ$ ÿ÷Êû (íÑ ğ”ü °½èğ‡¹ ğŒü  öçºñ Ñ¨ÿ÷øû ğ‚üÿ÷>ø ğ\ücl3¿ #cd£l3¿ #£d ğrü©¨ÿ÷úû€» ğIü£k» ğgüãlCô@sÉø 0#h3¹ ğ<ü`hÿ÷7ü ğYü™ñ$ ÿ÷û Fÿ÷ ıÿ÷µøp¹Oğ€S;`¿óO¿óoà ğDü Fÿ÷ıÿ÷¥øOğ
+wç Fÿ÷ıÿ÷ø©ç” ­ I L¡í à  àøµFFF(¹@òbIHğ—ø?¹#l+±@òbIHğø ğöüïó…Oğ_ƒóˆ¿óo¿óO k¸±9F Fÿ÷¾ü£k;£ccl3Ñ#i¹ 	àñ ÿ÷(û (÷Ğ .õĞ 0`…óˆø½cl3cdìç ¿” ­ I µF(¹OôÔbIHğQø ğµû¤k ğÔû F½” ® µF(¹@öIHğ=øàk£kÃXBXA½ ¿” ® 0µJ #Rø3PëÃ¹Bø3``0½3
++óÑúçäp pµFFF ğ€ûcl3¿ #cd£l3¿ #£d ğ–û£k+¹2F)Fñ$ ÿ÷„ú F½èp@ÿ÷X¼  øµL ğbû%hí¹ON8Fş÷aü0Fş÷^üK`K*F! `ÿ÷·ü `(¹@ò2IHğáÿ h±
+Iÿ÷ªÿ½èø@ ğ`»  ì     ä  è  ¢0¢<¢‘BµA` a
+ØÒƒišBÒKhş÷?ü  ½šBÒ™BÒKóç õç ¿è  ä  µÿ÷§ÿKhK¹HIOô‡rğÿ  °]øû #" ’Íé3“OôrIHş÷Üü (çĞíç ¿  â¢Š¢±j -éğA€FFFF™±,  ğ¨ùFX±ÿ÷rÿ›Äø €ÄéW&bcb ş÷ßû F½èğOô›rIHğ_ÿ,Fôç ¿¢n¢-éÿAFFFF(¹@òAIHğKÿL h€±-ÍéX–Üÿ÷•ú #(¿
+š h¿F©ÿ÷9ü°½èğ #:F©ÿ÷ıöç¢’¢  -é÷CMOßøt€+hh2¹Jh)``°½èğƒÛhÜhhñ	HFş÷¬ûcj F˜Gãi+çÑ£i3DBÒc`$aIF(hş÷…ûÜç # “2FF Fÿ÷ ÿ (ÓÑOô?r9F@FğğşÌç ¿ä  ¢è  A¢-éğOeOfN‰°»F:hh +DĞÒhÒø  bL“ş÷şş÷!ş"hßøŒ›BF¡F5Òÿ÷¡ÿ%`ş÷´ş #F©Øø  ÿ÷]ı (ÜĞ› +óÛœci± ş÷Pûş÷ şÙø 0˜BFÒÿ÷ƒÿ›Éø P	+ßØ"úóôzuÑğÇMÑ›ÔÕ F ğbùĞçšF»ç `C³‚E?Øş÷}şÛø 0ÛhÜh ş÷$ûãi+Ñ¡iSF*FQD Fÿ÷¶ş(Ñ # “RFF Fÿ÷ÿ(¹@ò“1F/Hğnşcj F˜G£ç,Khh²ú‚òR	ªëØø  ÿ÷>şş÷Jş (“Ñ%KOğ€R`¿óO¿óoŠç "êç¡i›*FD Fÿ÷€ş(ô¯cj F˜Gãi+ôx¯¢i™Íø  
+DSFQF Fÿ÷Üş (ôk¯Oô(r1FHğ+şcç›£a+¹@ò·"1FHğ!ş¡i+F*F)D Fÿ÷RşRç ¿ä  ¢  A¢è  í àI¢  µF(¹OôSrIHğÿı ğcù$j ğ‚ù F½¢’¢µKh‚BÓ\hˆB¿AhF	Y`AhD¢BÑ	L$h¢BĞRh
+DB`hh`˜B¿`½Fàç ¿l«    -éøCFş÷ı?I?OhË¹?K?JX¿3#ğ  `P`<J"ğÂé  ĞÃé  9K
+``8K`Oğ C;`;hBĞş÷”ığªø &0F½èøƒ ,õĞ4b¿$ğ4 ,íĞ+Kh¢B˜FèÓ&Khjh¢BÒ*h *:Ñ
+hªBİĞ*hh`kh+ñÙë	ğĞè"IHğsıkhÉø0HFl`ÿ÷wÿIjhØø 0h›ƒB8¿`Èø 0;hCk` #+`ş÷Gı .°Ğs±ĞOô”rIHğOıªç+FF»ç ¿  `«     l«  X«  h«  d«  ™¢Ä¢£8µF€³MPø*hBÑOôrIHğ'ıTø<+±@ò=IHğıTø<*hBĞTø™¹#êDø<ş÷VüJTø<h¤ñ D`ÿ÷ÿ½è8@ş÷ğ¼8½ ¿`«  ™¢B£s£d«  KhpG ¿d«  H h h€óˆb¶a¶¿óO¿óo ß ¿  í àßø hAôp`pG  ˆí àµ	Kh3Ğ@òIHğËüOğ_ƒóˆ¿óo¿óOşç    “£Á£Oğ€s@éK@ø<oğ@ø ,@ø$<D8pG ¿Ñn Khh°èğO€ó	ˆ¿óoOğ  €óˆpGÈ  Oğ_ƒóˆ¿óo¿óOJh3+`
+ÑKhğÿĞ@òŸIHğ¼pG    í à“£Û£µL#h+¹OôÓrIHğnü#h;#`¹ƒóˆ½ ¿    “£¤ïó	€¿óoKhğ¿ íŠ éğO`Mø=Oğ_ €óˆ¿óO¿óoş÷ÒıOğ  €óˆ¼hh°èğOğ¿°ìŠ€ó	ˆ¿óopG ¿È  µïóƒOğ_‚óˆ¿óo¿óOş÷wû±KOğ€R` #ƒóˆ½í àKJ`"Cø,pG ¿à à? µ.L.J!h‘BÑ@ò=,I-Hğ ü"h,KšBÑOôŸr'I*Hğöû)KxÒ²’ÿ"px'JÛ²ø0ø0ğ_p#K"` !ø  ñÿ4#Ô±`hôàb`›JÛ²pKhBô`hBğB`ÿ÷®ÿK "`ÿ÷áşJhCğ@C`ÿ÷Êşÿ÷âşø R Ò²ø !"FÌç ¿ í àqÂA“£¤pÂA±¤ ä àt«  x«   í à    4ï àµïóƒ+ÙJ›\JxšBÙOô8rIHğ…ûKJhhôàc“BÙOô<rIH½è@ğu»½ğã àt«  “£"¤í àx«  L¤µ!Oô€p ğbü !Oô€p½è@ ğ[¼  Ch
+y#ğ@s#ô€sCê#
+hCC`Ñé#CŠhµC„hJ"@CJyCêBƒ`
+}Ãj:#ôpÒ²CêSÃb½ ¿ı÷ÿÀ #`ƒ€Àé3a#upG  µĞé 2ICLhJ"@C‚hCÂhCK`½ ¿ #@à0üÿ #Àé 3Àé3pGƒh±Cğƒ`pG#ğúç	)pµÙ¡ñ
+ÅhëD&¦@%êúô,CÄ`*Ø:Ckë‚$”@#êúòCBcp½iëA$´@%êúô,Caäç*Ø:kë‚$”@#êúòCcãç:Ãjë‚$”@#ê‘@CÁb×çƒhCğ€Cƒ`pGÀl€²pGhB¿   pG  K±™hC™`pGšh"ê š`pG ¿  àK±ÙhCÙ`pGÚh"ê Ú`pG ¿  àh#ğ` #`C`ƒ`Ã`a!#Ca*K˜BÑ="Cø,pG(K˜BÑOôtbCø ,pG%K˜BÑOôtCø8,pG"K˜BÑOğtbCøP,pGK˜BÑJCød,pGK˜BÑJCø|,pGK˜BÑJCø”,pGK˜BÑOğ=RCø¬,àK˜BÃĞK˜BÇĞK˜BÌĞK˜BÑĞK˜BÖĞK˜BÚĞK˜BŞĞK˜BâĞpG ¿`@(`@@`@X`@p`@=   ˆ`@@   `@  = ¸`@d@(d@@d@Xd@pd@ˆd@ d@¸d@hJµ@Ìhh#CLi#CŒi#CÌi#Cj#CLj#CŒj#CLk#CŒk#CC`Ñé4Bi#C"ğCCaiC`Khƒ`‹hÃ`½?€ğh±Cğ`pG#ğúçA`pG@h€²pG h ğ pGµ
+K
+LJ B”¿FF‹ L¿@h h@ ğğ  ğ‚ 0¿ ½ ¿ `@d@ d@µKJ	L B”¿FF!ğğ##ğ‚Š L¿Ã`ƒ`½ ¿ `@ d@d@ÕCiR±Cğ€€)CaĞhğC`pG#ğ€€)CaÑpG€)öĞ *ïÑhğ#êíç  JKµL Bˆ¿F!ğğ""ğÃ’± h êÑ  ğˆ L¿[hh@#ğğ  ğ‚±¿ ½Biğ€íç ¿ d@ `@d@ÿ÷œ¿hƒyµÒC +/ĞKh
+@`Zhh"êZ`yhñ€Bõ2h!C`šhh"êš`hÚh"êÚ`Byh*Ñšh
+Cš`Úhh
+CÚ`½ñ€Cõ3h
+C`öçyñ€Cõ3h
+@õç <@K[iB¿   pG ¿ <@KXapG ¿ <@ÿ÷î¿KXapG ¿ <@ğµ "&%húü<ê.ÑT húóÛC@`yĞø à§@Gê`y?/Ø‡h;@ƒ`Ky‡h£@;Cƒ`Ch#êC`‹yGh“@›²;CC`Ãhú÷#êÃ`ËyÇh£@;CÃ`2*ÇÑğ½Oöÿr #Àé #pGiB¿   pGƒpGAƒpG
+±ƒpGAƒpGµğÉ ë › j$œ@!êbjš@
+Cb½µK˜BÑ!Oô  ğù !Oô ½è@ ğx¹K˜BÑ!Oô€  ğpù !Oô€ ïçK˜BÑ!Oô   ğdù !Oô  ãç½ ¿ T @ X @ \ @µ†ˆ&ğ?F6hFF6 ğÑøš)I²ûññˆ²C¦€#ˆ'N#ğ#€+h³BØ[ 0²ûóó›²+€²8¿# „£ƒ#ˆCğ#€#ˆªˆi‰#ôc
+C#ğC#€«‰*‰C#°p½îˆKöÿp†B¿ CCëC²ûóó¿›²²ûóóCô€C›²Ãó
+¹CğOô–rJCOôzq²ûñò2’²Cô C"„Æç ¿@B  † "±Ağ‰²‚pGğşùçˆ±Cô€c€pG#ô€cøç‚pG ŠÀ²pGƒˆ±Cô cƒ€pG#ô cøçƒˆ±Cô€Sƒ€pG#ô€Søçƒˆ±C€pG#êúç‚° # ““ “ ›!ğAS±›3“›hB¿   °pG›	3òçÉC‰²‚pG  K`pG ¿ 0 @KX`pG ¿ 0 @K˜`pG ¿ 0 @KJöª"`pG ¿ 0 @KLöÌB`pG ¿ 0 @µJ“hğ+Ğ+ĞKJ`“hIÃóÌ\hã@C`”hÄó‚$]#úô„`’hÂóB2Š\Ó@Ã`½KåçThQhRhcÂóˆğ?L¿
+KK³ûñóSCJRhÂóB2R ³ûòóÎç ¿ 8@ $ô     z K±kCcpGk"ê cpG ¿ 8@K±YkCYcpGZk"ê ZcpG ¿ 8@K±lCdpGl"ê dpG ¿ 8@K±YlCYdpGZl"ê ZdpG ¿ 8@K±jCbpGj"ê bpG ¿ 8@K±YjCYbpGZj"ê ZbpG ¿ 8@B	*KÑh ğ #ú ğ ğ pG*¿o[oóç ¿ 8@JSoCğ€sSgpG 8@µ'K˜BÑ!Oô€Pÿ÷Íÿ !Oô€P½è@ÿ÷Æ¿ K˜BÑ!Oô€@ÿ÷°ÿ !Oô€@½è@ÿ÷©¿K˜BÑ!Oô @ÿ÷¡ÿ !Oô @ïçK˜BÑ!Oô Pÿ÷£ÿ !Oô PÔçK˜BÑ!Oô€ÿ÷—ÿ !Oô€ÈçK˜BÑ!Oô ÿ÷‹ÿ !Oô ¼ç½ 0@ 8 @ < @ 4@ P@ T@ˆµôARLˆˆ#CŒˆ#CÌˆ#C‰#CL‰#CŒ‰#CÌ‰#CC€ƒ‹#ô cƒƒŠ‚½ˆ±Cğ@€pG#ğ@øç€‰pGpGƒˆ±C€pG#êúç‰B¿   pG0µŒ$ğ$$„‹Œ$ğó­²$$Bê%ğ
+CC¤²Eğƒ„0½0µŒ$ğ$$„‹Œ%ô@u¤²-$ğ -Bê3DêC¤²­²Dğƒ„0½JˆB›²Ğõ€bBĞ°ñ€OĞ¢õ€2BĞõ€bBĞõ€bBÑJˆ#ğpCJBĞõ€bB¿#ô@s
+‰›²C€KhÃbˆ…K˜BĞõ€c˜BÑ‹z†#ƒ‚pG ¿  @  @ #Oğÿ2Àé 2ƒrpG…‚‚pGˆ±Cğ€pG#ğøçŒ#ğ„pµŒ‚ˆ‹ˆNˆ$ğs$$,C#ğ‰5C+CM¨B’²Ğõ€e¨BÑÍ‰NŠ#ğ+Cˆ#ğ+CŠ"ô@r5C*C‚€ƒŠhBc„p½  @Œ#ğ„pµŒ„ˆ‹ˆNˆ"ôæBBê"#ğ ‰5CCêM¨B¤²’²›²Ğõ€e¨BÑÍ‰NŠ#ğ€CêOö¿u@‹ˆEêŠ$ô@d5CDê…›²¤²„€ƒŠh‚c„p½  @Œ#ô€s„pµŒ‚ˆ„‹ˆNˆ$ğs$$,C#ô s‰5CCê#M¨B’²›²Ğõ€e¨BÑÍ‰NŠ#ô cCê#Oöÿ5@‹ˆEê#Š"ô@R5CBê›²’²‚€„ƒŠhÂc„p½  @Œ#ô€S„pµŒ„ˆ‚‹ˆNˆ"ôæBBê"#ô S‰5CCê3
+M¨B¤²’²›²Ğõ€e¨BÑŠ$ô€DDê…¤²„€‚ƒŠhd„p½  @AcpGcpGÁcpGdpG‹#ğCƒpG‹#ô cCê!‰²ƒpGƒ‹#ğCƒpGƒ‹#ô cCê!‰²ƒpG #"€C€‚€Ã€pG@kpG€kpG lpG‹#ğƒ‹CƒpG‹#ô@cƒ‹Cê!‰²ƒpGƒ‹#ğƒƒƒ‹CƒpGƒ‹#ô@cƒƒƒ‹Cê!‰²ƒpGøµFˆ²ˆIˆ3‰5¹ÿ÷ şñˆ½èø@ÿ÷Æ¿-Ñÿ÷1şñˆ½èø@ÿ÷Ç¿-ŒÑ%ô€u--„‡‹Œ¿²­²'ğó%ô eEê%CGê­²¿²Eô€u‡ƒ„ñˆ½èø@ÿ÷³¿%ô€U--„°øÀŒ%ô U,ô@|mOê\mEê5Oê\Gê'Lê­²¿²Eô€U‡ƒ„ñˆ½èø@ÿ÷™¿°øD0!±Cô C øD0pGÃóùçƒ‰±CpG#êúçŠB¿   pGŠ‚‰ê ’²Ğ
+B¿   pGÉC‰²‚pGÿ÷á¿  0µŠÊˆ›²#ô@SC‚ƒ‰F#ô°R‹ˆ	‰Ci‰"ğCCƒƒŠª‰›²#ô@sC…°ƒ‚FhFÿ÷7üKœBĞõ€cœB"Ñ™¢‰#ûó¢‰)hOğdL¿I ‰ ³ûññ±ûõóOêûÕÚ 22²ûõòğBê ›²#°0½™Ûç23³ûõóğCñç ¿ @ƒ‰±Cô SƒpG#ô SøçÁó€pG€ˆÀó pGƒŠ±C‚pG#êúçµÁóBğ,OğúñÑ0h:±C`½,¿00õç#êõçÉC‰²€pGÁóBµ#ğ*úóÑ‚‰@ˆ’²k±#	
+úñ
+B¿F  ½*¿Š‚ŠíçF÷ç  @ğ¿`K@ô 0Ø`pG ¿ í àµÃxx³KÙhCxÉCÁó!Áñä²£@Ü²#Cúñƒx@I#C
+DÛ²‚ø 3x"X	ğúóAø 0½S	!ğúò 3IAø# óç í à á àµğğüñ€Aõœ1› Šh$œ@"êŠ`Šh˜@Cˆ`½  7µ #L“F ğÂø*h<i“Ğ› +ôÚ›Cğ“›a)hK
+i’;ĞšÒøÔ ğ¨ø  °0½ ¿A µÄxD¹ ë‚ 3ĞøĞ ›"F“BÑ  ½Qø"@`2öçµ2ĞøĞ0’  BÑë€ ½hAø @0õç  #pµ)C€Oğ@ƒ€2ÑOôc€Oô sÃ€#rÁrOğ Cõ bExaÃ`õb ñ !B'Øõ€bBaõˆbÀøÌ Fõ dø[ !B Øõ€Q ñĞ "•BØõ`cÀø1  p½A¹@òc€Oô cÃ€ÁrKÍç #ËçDø+õ v¦c1 2ÍçBøK1 4×çDø2õ€QØç  @pµF %"zPø?*.F&ÑkbzfóE
+±Eô€câhÓh#ô”#ğ@Ó`ÿ÷>ÿãx+Ñ*#cóãh`ãx+Ñâh–h&ğ>Cğ*có–`  p½ÚhBğ@Ú`ÿ÷"ÿ-#cóEcz±Eô€ãh c
+ğáÿŞçÂh“hCğ“`  pGÂh“h#ğ“`  pG  µ #“›Cğ “›aóŠ“ÃhšaÁhK
+i’;Ğš’øÔ 
+ğ¶ÿ  °]øûA µ #“›Cğ“ÃhšaÁhK
+i’;ĞšÒøÔ 
+ğšÿ  °]øûA µÀhÃhÃób"ğ`)bócÑCğ SÃ`2 
+==========================================
+### MATCH in blob 11210328e7fca4cf566480a0f4c50ec815c637c0
+grep: (standard input): binary file matches
+--- (full first 60 lines) ---
+ÿÿ ±«í í Aî iî ‘î                 u ¹î     !v ÿì õ«õ«õ«õ«õ«õ«—ë §ë ·ë Çë Õë Q
+õ«u
+õÈ È YÁõ«õ«õ«õ«õ«íë õ«õ«õ«õ«õ«õ«õ«E
+9
+õ«õ«õ«õ«õ«qcì õ«õ«õ«õ«éõ«õ«õ«õ«õ«õ«õ«õ«õ«™U]7õ«õ«õ«õ«õ«õ«õ«õ«õ«õ«• õ6õ«åái
+]
+õ«õ«õ«õ«õ«õ«õ«õ«        ğ Aà ¿ƒğ C0µOêAOêC”ê¿ê¿Tê Uêêd\êe\ ğâ€OêTTÔëUU¸¿mBİ,D€êê‚ê  ƒê€êê6-ˆ¿0½ğ OOê1Oô€Lê1Ğ@BaëAğ OOê3Lê3ĞRBcëC”ê ğ§€¤ñÕñ Ûúü"úò€Añ úò€CúóYAà¥ñ ñ *úü(¿LğCúóÀQëãqğ EÕOğ Üñ ~ë  në±õ€Ó±õ ÓI_ê0 Oê<ñOêDRõ€€ğš€¼ñ O¿_êPPñ  AëQAê0½_êL@AAëô€¤ñéÑ‘ğ ¿F  ±úó¿ 3£ñ³ñ Ú2İñÂñúğ!úñàñØ¿Âñ úñ úüÜ¿Aê@ä¢¿ëQ)C0½oê<Ú4ÜñÄñ  úğúó@ê !úóEê0½ÄñÄñ  úğúó@ê )F0½!úğ)F0½”ğ ƒô€¿ô€4=Nçêd\¿êe\)Ğ”ê¿êĞTê ¿FF0½‘ê¿ !  0½_êT\Ñ@ IA(¿Ağ A0½õ€<¿õ€0½ğ EEğşAAôpOğ  0½êd\¿FFêe\¿FFPê4¿Rê5‘êAô !0½ ¿ğ ¿ !pG0µOô€dñ2Oğ Oğ Pç ¿ğ ¿ !pG0µOô€dñ2ğ EH¿@BOğ >ç ¿B OêâOê1Oêp¿ğC“ğOğ`QpG2ğB¿pG“ğO¿Aô !pG0µOô`tğ E!ğ Aç ¿Pê¿pG0µOğ 
+àPê¿pG0µğ EÕ@BaëAOô€dñ2_ê‘\?ôØ®Oğ_êÜ¿2_êÜ¿2ëÜÂñ  úü úğúş@ê !úñD½æ ¿pµOğÿLôàlêT¿êU”ê•ê ğŞø,Dê!êLQ#êLSPê5¿Rê5Aô€Cô€8Ğ ûÎOğ áûåğ BàûåOğ áûVœğ ¿Nğ¤ñÿ¶õ dõ@tÒ_êNmAFëBêÆ!AêUQOêÅ @ê^POêÎ.´ñıˆ¿¼õàoØ¾ñ O¿_êPPñ  AëQp½ğ FFê@ê ê´ë\Â¿ÔëAêQp½Aô€Oğ < ó«€ñ6Ş¿  ğ Ap½Äñ  <5Ú4ÜñÄñ  úó úğúò@ê ğ B!ğ AëÓp!úöBë^êC¿ êÓpp½ÄñÄñ  úó úğúò@ê ğ AëÓpAñ ^êC¿ êÓpp½Äñ  úòNê úóúòCê!úğğ A!úò ê  ëÓp^êC¿ êÓpp½”ğ Ñğ F@ Aëô€¿<÷ĞAê•ğ ¿pGğ FR Cëô€¿=÷ĞCêpG”êêU¿•êĞPêA¿RêCÑÑêğ AOğ  p½PêA¿FFRêCĞ”êÑPê6Ñ•êÑRê6¿FF
+Ñêğ AAğşAAôpOğ  p½AğşAAôxp½pµOğÿLôàlêT¿êU”ê•ê ğ§ø¤ëêRê5Oê1 ğˆ€Oê3Oğ€UEêCêcOê"EêEêeOê &ğ AB¿–BDñıõ@tÒ[Oê2¶eë[Oê2Oô€Oô ,¶ëuë"¿¶uF@ê [Oê2¶ëuë"¿¶uF@ê\ [Oê2¶ëuë"¿¶uF@êœ [Oê2¶ëuë"¿¶uF@êÜ UêĞOêEêuOêOêÃCêRsOêÂ_êÀÑô€ÑAê Oğ  Oğ L¶çô€¿C  ´ñıˆ¿¼õào?ö¯®µë¿¶ë_êPPñ  AëQp½ğ NNê1ë\Â¿ÔëAêQp½Aô€Oğ <æEêæêU”ê¿•ê?ô;¯”ê
+ÑPê4ô4¯•êô%¯FF,ç•êÑRê5?ôı®FF"çPêA¿RêCôÅ®PêAô¯RêCôë®çOğÿ<à ¿Oğà ¿OğMøÍOêAêl\OêC¿êl\Ğ°PêA¿RêC‘ê¿ê  pGñ ‘êX¿™B¿B,¿Øoêãp@ğ pGOêAêl\ÑPê<ÑOêCêl\ÖÑRê<ÓĞ]øpG ¿„FFbFŒFFcF à ¿µÿ÷·ÿ (H¿ñ ½Møíÿ÷ôÿ¿   ]øû ¿Møíÿ÷êÿ4¿   ]øû ¿Møíÿ÷àÿ”¿   ]øû ¿Møíÿ÷Îÿ”¿   ]øû ¿Møíÿ÷Äÿ4¿   ]øû ¿OêAêl\ÑPê<
+ÑOêCêl\ÑRê<ÑOğ  pGOğ pGOêA²ñàC$¿³õ Üñş\Ùğ LOêÀLêPp²ñ O@ëƒ ¿ ğ pGğ€O!Ññ8r¼¿ğ @pGAô€OêRRÂñÂñ úó úğ¿@ğ OêÁ#OêÓ#úü@ê #úóOêCÌçêbSÑPê3¿Oğş@@ô@ pGğ @@ğş@@ô  pG ¿€ğ @à ¿ğ AB ¿_êA’êê"lê#ljĞOêbÒëcÁ¿ÒA@H@A@¸¿[B+ˆ¿pGğ O@ô   ğ@¿@Bğ OAô !ğA¿IB’ê?Ğ¢ñAúüë Ãñ úñ ğ CÕIB`ë@ °õ Ó°ñ€Ó@Oê1ñş*QÒ±ñ O@ëÂP¿ ğ @ê pGI @ë  ô ¢ñíÑ°ú€ü¬ñ²ë úğª¿ ëÂPRBC¼¿Ğ@CpG’ğ ô ¿€ô  2;µçOêAê"l¿ê#l!Ğ’êĞ’ğ ¿FpGê¿  pGğOÑ@ (¿@ğ @pGñ r<¿ õ  pG ğ CCğş@@ô  pGê"b¿Fê#cFB¿_êA#ê@ô€ pGOğ à ¿ğ CH¿@B_ê ¿pGCğ–CFOğ  àPê¿pGOğ 
+à ¿Pê¿pGğ CÕ@BaëA_ê¿„FF  Cğ¶C¿£ñ€S£õ ¼úŒò:£ëÂSÛúücD úüÂñ ¼ñ O úòCë ¿ ğ pGñ úüÂñ PêL !úòCë ¿ êÜppGS¹J¹ )¿ (¿Oğÿ1Oğÿ0 ğÜ¹­ñméÎ ğnøİøàİé#°pGî
+õîÀzñîúÔ ğ!¸µ€ğ @ ğø@BaëA½8µ " #FFÿ÷3ş(¹ F)F½è8@ ğ*¸ Fñ A ğ%ø@BaëA8½ ¿Ğµÿ÷Uû "KFFÿ÷§û ğùFÿ÷(û "Kÿ÷ûFF0F9Fÿ÷àù ğù!FĞ½  ğ=  ğAĞµ "KFFÿ÷‰û ğùFÿ÷
+û "Kÿ÷€ûFF0F9Fÿ÷Âù ğpù!FĞ½  ğ=  ğA-éğGFˆF +@ğ…€ŠBFHÙ²ú‚òJ±Âñ úó ú÷•@Gê”@OêN#¸ûş÷ú…üûˆCêCûñ™B	Ùëñÿ0€ğã€™B@òà€?+D[¤²³ûşğû3DêD ûü¤E	Ù, ñÿ3€ğË€¤E@òÈ€8,D@ê@¤ë '±Ô@ #Æé C9F½èğ‡ *SĞ²ú‚ò *@ğ¶€IOêNú…ø'±ûşü#ûCêCûñ™BÙëñÿ0Ò™B òì€„FY£²±ûşğûCêDû ø EÙ, ñÿ3Ò E òÜ€F¤ë@ê@¾ç‹BÙ .xĞ 'Æé 8F9F½èğ‡³úƒ÷¹‹BÓ‚B ò½€„aë ˜F .©ĞÆé H¦çÿŞÇñ »@"úüLêúô úø!úóOêNHê³ûşù!û3úŒøAêC	ûúšEúò úñÙë	ñÿ0€ğˆ€šE@ò…€©ñ	cD£ë
+¤²³ûşğû3DêD ûø EÙë ñÿ3kÒ EiÙ8dD@ê	@¤ë û‰LEÆFKFTÓQĞ .iĞ±ëdëúõ"úóü@CÆé T 'Fç7F0FCçF7çFçÂñ  ú÷•@úğ!úóOêN8C³ûş÷ú…øû3AêAûó‹BúôÙiñÿ<(Ò‹B&Ù?)DË²³ûşğû3AêA ûó‹BÙi ñÿ<Ò‹BÙ8)DÉ@êGçAE«Ò¸ëië8F¤ç`FğçF•çgFØçF{ç8FEç¬ñ+Dç8,D!ç7FèæpG ¿J Òõ ÒÕoôxs³ëbRÔOêÁ#Cğ CCêPS#úğpGOğ  pGPê0ÑOğÿ0pGOğ  pGø+ø;*(¿šB÷ĞĞpGFø+ *ûÑ8pG ñOğÿ2C`Àé#a #`pG #apGChK`šhŠ`Q`™`ah3`pG
+hS0µ
+ÑiZhJ`‘`‹`Y`ah3`0½ ñ\h%h•BïØ#FùçĞéiŠ`AhQ`Zh‚B¿‚hZ` "ah:`hpG-éğAFğİù3K3Mh3N2`*h *RÑ,`h+(Ñ/Hßøø€/Oÿ÷¦ÿ.Hÿ÷£ÿ.Hÿ÷ ÿ-Hÿ÷ÿ-Hÿ÷šÿ,Hÿ÷—ÿ@Fÿ÷”ÿ8Fÿ÷‘ÿ)Hÿ÷ÿ(Hÿ÷‹ÿ(Hÿ÷ˆÿ'KÃø €'K`'J'Ihh3`âj#d#“@C`K  û0!ÿ÷~ÿğ´ù3hc±+hÚjãjšBÒKOğ€R`¿óO¿óo½èğ3h +ÖÑ+hÚjãjšB˜¿,`Ïç ¿€  ø  à    ¬    ,  @  T  h  Ì  ø  ä  ü       ”  í à˜  JhhK¹Oğÿ2`pGhÒhÒhRhøçü  Ä  µF(¹@òr	I	H"ğ·ÿbiKšBÑ jK˜BĞ°ú€ğ@	½  üç ¿ññòä  Ì  -éğGİé	dOê‚	JFFF k¥!˜F)ğ<ı#k©ñ	™D)ğ	³kñ4	5øø	±«BøÑ #„ø=0-(¿%Oğ 
+åb¥d ÄøL ÿ÷ÕşÅññ ÿ÷ÏşÄøX $a¥adbÄéª„ø\ BF9FHFğ°ø `±4`½èğ‡„ø4PÖçµø]0F;¹ kğø F½è@ğ¸+ùĞ+Ğ@örIH½è@"ğ;¿½ññ«ñ€µLOM#h¹ğ,şùçğ©øûhŞh0ÿ÷°ş+h;+`#h;#`ğ¾ø0Fÿ÷Çÿçç„  ø  €  øµKNhF0h0Fÿ÷”ş3F@¹1hNÉj2h ˆ@"ê 2`jÑ7±hH1½èø@ÿ÷]¾hdT`ÓJhh½èø@1ÿ÷\¾Jhh1ÿ÷Vş	Kh¢Bˆ¿`ø½ ¿  ø  ”  ä     ü  Ä  -éğC‡°İéTFFF™F-¹@òM"IH"ğ¾ş,¹@òN"IH"ğ·ş`#“›`+Ğ@òV"IH"ğ¬ş›œ±µ±#„ø]0«%c“›” “BFKF9F0Fÿ÷úş Fÿ÷3şœ F°½èğƒ,Fùçññó3óHó-éğCF…° ˆFF™Fğ¶şFè±` ğ±şF¨± #€ø]0›c“› “2FKFAF8Fÿ÷Èş Fÿ÷ş °½èğƒ(Fğ.ÿOğÿ0öç  pµF'MğÓÿ¹,h&0Fÿ÷Ùı`¹àj#K!AC[X3¹!I"h‚@#ê`£j±ñ ÿ÷ÅıJh3`+h£B!Ñ1FHÿ÷˜ıJh3`ğÊÿKh›±+h£BÑKh+±@òÒBIH"ğşKOğ€R`¿óO¿óop½Jh F;`ÿ÷·şÿ÷7şÛçø    ”    ø  „  à  Œ  ññ=òí à€  øµF(¹Oô­bIH"ğçıKh«B Ğğ_ÿKlihKhğzÿ¼BĞ´BĞKœBÑ«jƒ¹•ø\0+¿  ø½KœBĞ ,¿  öç  ôç òç ğçññ¥ñø  ü     ä  ø  pµF(¹OôçbIH"ğ¥ıM+h£B)ĞD³ğÿ Fÿ÷Ûığ±&0Fÿ÷ ıIâjh#“@C`K  û01Fÿ÷ğü+hâjÛjšBÓKOğ€R`¿óO¿óo½èp@ğ¿p½ññyòø  ”    í àµˆ° $ª©¨ÍéDğZı›“›šIHÍé C#Fÿ÷‡şK`à±ğ2û(ÑOğ_ƒóˆ¿óo¿óOKOğÿ2`K`K`ğPşKhZkK`ğMÿ°½0ûÑOôb
+I
+H"ğ+ıôç‘ò=T À  Ä  à    ø    àññ–òJh3`pG ¿Œ  KhpG ¿  -éøO<K=Jh`<Jh *jÑh4`¤¹9M+hh+±@ö"7I8H"ğğü7K*hh)``6Jh3`ÿ÷ı4M4O+h£BOğ Ù:h2KÑj"JCšX*(¿Oğ.Jh *¿XF ½èøßøˆ ßø¬Úø  h¹Oğÿ2*`áçÚø  ÒhÖhqhŒBÒ)`Øçñ@Fÿ÷<ü±j±ñ ÿ÷6üğjÙø 0"ú ñCKÉø OğAFû 0ÿ÷ü8hñjÂj‘B(¿OğÊçJh3`Oğ ·ç    àŒ  ü  ññaó   È  Ä  ø      ˆ  ”  -éøC/L#h+¹@ö….I.H"ğeüğáı#h;#`$h,± $ğûı F½èøƒ'Kh +õĞ&M'Nßø¬€àëhÜhñ	ñ ÿ÷ÑûHFÿ÷Îûâj1h'úó C û€IF3`ÿ÷ŸûKâjhÛjšBÓK`+h +ÜÑ±ÿ÷WüM,hD±N'ÿ÷ÿ ±7`<ùÑ,`Kh +ºĞKOğ€R`¿óO¿óo$±ç ¿Œ  ññÆó€  Ì  ”  ø    ˆ  í à  8µFF(¹@òæBIH"ğîû,¹@òçBIH"ğçûKh+±OôbIH"ğŞûÿ÷ÆşK*hh,¿! !‚B,`Ùa¹ÿ÷_ÿ8¹KOğ€R`¿óO¿óo8½	¹ BğÒ ! ÿ÷ªüëç ¿ññò%òŒ  =ò  í àµF@¹KOğ€R`¿óO¿óo½
+Kh+±@ò<R	I	H"ğ™ûÿ÷ş ! Fÿ÷üÿ÷!ÿ (ãĞêçí àŒ  ññ=ò8µFF¹Khğüü%e½è8@ğ½ ¿ø  pµKhK±"`p½`ğ»üJNh BÙ1hKmDKeK`h´ú„ôä²Äñ#McCëX+¹@ö·2IH"ğNû"ûóé3Hh@hH`+D˜B¿ChK`ûTchÛh3`3hZkKÇçŒ    |  ø  ”    ññÇò  àpµF*NğŸü¹4h%(Fÿ÷¥ú`¹àj&K!AC[X3¹$I"h‚@#ê`£j±ñ ÿ÷‘ú)FHMÿ÷jú”ø\0+¿ #„ø\0ğ™ü*h*±ğsüÿ÷!ûğ‘ü3h£BÑ+h‹±Kh+±@òäbIH"ğãúKOğ€R`¿óO¿óop½JhJh‘BÑ3`öç½èp@ÿ÷X¿ø    ”  ä  à  Œ  ññ=òí à€  8µFF(¹@öÎ2IH"ğ°úKh F1ÿ÷ú(F!½è8@ÿ÷»ññWòø  pµFFF(¹@öù2
+I
+H"ğ“ú
+Kh(F1ÿ÷õù ,!F¿0FOğÿ0½èp@ÿ÷o» ¿ññWòø  8µÃhÜh,¹@ö)BIH"ğrúñ(Fÿ÷÷ùKhã¹%(Fÿ÷ğùIâjh#“@C`K )F û0ÿ÷ÀùKâjhÛjšBƒ¿	K `  8½)FHïçññ·óŒ  ”    ø    Ì  Kh`KhC`pG ¿È    pµFF(¹@ö”BIH"ğ$ú,¹@ö•BIH"ğúğ™ûKh#hZĞH.h hjh†BĞŠBÙˆƒB
+Ù[D#`(Fÿ÷Ëÿ $ğ¢û Fp½ ##`$÷çññ‡òó  È  K"`pG  pµFFF¹Jh%`ñ4b`êj"a*kâa*l¢`ªlbajm¢a+ĞJhªB
+Ñ ##sÖ±)k #Ê\¥*Ğ›#„p½+#sóÑÿ÷«ü«j±##sÿ÷Kıêç(Fÿ÷Çû såç3æç&„éç ¿ø  -éøOhFF“F³Kh[hK`ñ³B¿ËhK`KhÓø€ %Oğ$
+ch[hc`B¿shc`chßh
+û‘[F"8Fÿ÷œÿ¸EñëÑ(F½èø  -éğGFFÿ÷dü Kh‹B;ØßøŒOğ $Oğ
+$&ñÿ8ûP"
+û‘ÿ÷·ÿD¸ñ òÑK"hûPÿ÷¬ÿKDh"ûPÿ÷¤ÿD"IûPÿ÷ÿDûP"Iÿ÷–ÿD±ğú8`ÿ÷Íü F½èğ‡ $øç€  ü     ø  ä    Kh3±Kh +¿   pG pGà  Œ  -éğAF (5Ğ#JÃjhÉj‹BF6Ò‚i M *¡¿:hÒjÂñ‚a&BiûSšB!Ñ ñ@Fÿ÷†øKH¹àjFCªY*¹h!@"ê`:hhÒjâb$úğC` AF ûPÿ÷Iø Fà;hÛjÃb ½èğh€lÜj B,¿   õç ¿ø    ”  øµF¹  ø½ KhƒBĞ@öÑrIH"ğ»øãl+¹@öÒrIH"ğ³øãláj¢l;‘BãdäĞ +âÑ%(Fÿ÷0øNJP¹çj!yCsX+¹h ¸@#ê `£lãbÃñ¡ah$úğC`  û`)Fş÷ïÿ F¾ç ¿ø  ññŒó¢ó  ”  øµFF (GĞÃl+¹OôR"I"H"ğkø£lB8¿Fãj«B8Ğãl+5ÑKh£BÑAò;IH"ğWø¢iãjåb *¤¿Åñ¥aMbi&ûSšBÑ'8Fş÷ÎÿâjL@¹VC«Y+¹#h!‘@#ê#`!h#“@C#` 9F ûP½èø@ş÷“¿ø½ññ¢óø  cò  ”  Kh±hÊl2ÊdhpG ¿ø  µFğŒù¤kğ«ù´ú„ğ@	½øµFl†kFR¹hG»€hÿ÷2ÿ§`F6¦c(Fø½e¹@h(ğıch"lD¢hc`“BğÓ#hc`íçÀh(ğı#lâh!h[BDŠBâ`>¿¢h›ã`-Ñ±> %Ùç5F×çF´lFb±ÙhœhD¡BÙ`$¿hÙ`Ùh]øK(ğ\½]øKpGpµFğ7ù”øEPñ$m² -Üÿ#„øE0ğMùğ)ù”øDPñm² -Üÿ#„øD0½èp@ğ=¹cj +çĞ0Fÿ÷ı±ÿ÷¢ı=m²Üç#i +éĞ0Fÿ÷ı±ÿ÷–ı=m²Şç  8µFF(¹@òIH!ğzÿğöøÔé1"hb`KCĞ[D `ã`  ÿ# c„øD0„øE0•¹#ic±ñ ÿ÷äü8±KOğ€R`¿óO¿óoğõø 8½ñ ş÷©şñ$ ş÷¥şòçô¹ôí à÷µFFFF(¹OôrIH!ğ8ÿ,¹OôŸrIH!ğ1ÿ6³-¹IHOô¡r!ğ)ÿP#“›P+Ğ@òKIH!ğÿ›|±! -¿&F„øF&`Äéu Fÿ÷Œÿø 0„øL0 F°ğ½ -İĞ@òCIHÖçôÛóıóôƒôKôøµFFF(¹Oô»rIH!ğëşûğP0 ğÿFp± #€øF0e± ñP#`Äée! Fÿ÷Sÿ„øLp Fø½Fòç ¿ôÛó-éÿGF’FF(¹@òñ"WIWH!ğ¿ş?¹#l+±@òò"RITH!ğ¶ş.Ñãk+Ğ@òó"MIOH!ğ«şÿ÷}ı8¹›+±@òö"GIKH!ğ şßø(‘ßø(Oğ 
+ğø¢kãkšBÓ.Ñ£lCJCô€s`9F2F Fÿ÷şcj±ñ$ ÿ÷ü8±<KOğ€R`¿óO¿óoğø °½èğ‡E¹ğø£l1JCô s`  ñçºñ Ñ¨ÿ÷(üğ øÿ÷Hù ğÚÿ”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğìÿ©¨ÿ÷üX» ğÃÿ¢kãkšBÑ ğßÿ£lCô€cÉø 0™ñ ÿ÷{û Fÿ÷uşÿ÷ÀùP±Oğ
+‘ç ğÊÿ Fÿ÷jşÿ÷µùôçOğ€SÈø 0¿óO¿óoëç Fÿ÷[şÿ÷¦ù¥ç ¿ô¹ôÁôõXõ  àí àµ " F Fÿ÷ºşF8± #ƒ``Ã`FFÿ÷(ÿ F°½µF ! ÿ÷õşF8± #ƒ``Ã`FFÿ÷ÿ F½  -éøC‰FFFF(¹@òÃ2(I(H!ğÑı¹ñ Ñ#l+±Oôqr"I$H!ğÆı/Ñãk+Ğ@òÅ2IH!ğ»ığKøïó†Oğ_ƒóˆ¿óo¿óO¢kãkšBÓ/"Ñ”øEP:Fm²IF Fÿ÷šıkÑcj¹ àñ$ ÿ÷û (÷Ğ¸ñ ôĞ Èø  †óˆ½èøƒ5m²„øEPèç  ôçô¹ôÁôõpµFF(¹OôŒb"I#H!ğrı#l+±@òdBI H!ğjı#h;¹£h+±@òiBIH!ğ`ı ğğÿïó†Oğ_ƒóˆ¿óo¿óO¢kãk“BÙ”øE02[²¢cZÑcj¹ 	àñ$ ÿ÷Åú (÷Ğ -õĞ (`†óˆp½3[²„øE0ëç  õç ¿ô¹ô®õÇõ-éğC…°F’F(¹Oô bIIIH!ğı>¹#l+±@òRDIFH!ğıÿ÷äû8¹›+±@ò	R?IAH!ğıAOßøOğ 	 ğ~ş¥kÕ±1F F=ÿ÷'ı¥c#ic±ñ ÿ÷vú8±7KOğ€R`¿óO¿óo ğ‡ş °½èğƒ¹ ğş  öç¹ñ Ñ¨ÿ÷ú ğuşş÷½ÿ ğOş”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğaş©¨ÿ÷ú» Fÿ÷§üÈ±£lCô@s;`™ñ$ ÿ÷õù Fÿ÷ïüÿ÷:ø8¹Oğ€SÈø 0¿óO¿óoOğ	›ç Fÿ÷Şüÿ÷)øöç Fÿ÷Øüÿ÷#ø Fÿ÷~ü (ìĞ­ç ¿ô.ö:öXõ  àí à-éÿAF‘(¹@ò‘RWIWH!ğuü#l+±@ò•RSITH!ğmüÿ÷?û8¹›+±@òšRMIPH!ğbü %OOßø<.F ğÙı£kã±;£c#h¹ÿ÷5ü `#ic±ñ ÿ÷Ğù8±EKOğ€R`¿óO¿óo ğáı%(F°½èğ›S¹-±@òáR6I;H!ğ3ü ğÑı %îç¹¨ÿ÷ñù ğÉış÷ÿ ğ£ı”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğµı©¨ÿ÷ãù`» Fÿ÷ûû³£lCô@s;`#h;¹ ğ‚ı hÿ÷åúF ğı™ñ$ ÿ÷?ù Fÿ÷9üş÷„ÿ8¹Oğ€SÈø 0¿óO¿óo&‹ç Fÿ÷)üş÷tÿ÷ç Fÿ÷#üş÷nÿ Fÿ÷Éû (íĞ -–Ğ ğSıaj±#khÁñ hÿ÷Tû—ç ¿ô.ö®õXõ  àí àØö-éğC…°F’F(¹OôÍbDIDH!ğ¯û?¹#l+±@òlb?IAH!ğ¦ûÿ÷xú8¹›+±@òqb:I<H!ğ›û &ßøì°F ğı£kÓ±9F Fåhÿ÷¼ûcjå`c±ñ$ ÿ÷ù8±1KOğ€R`¿óO¿óo ğı °½èğƒ¹ ğı  öç¹¨ÿ÷4ù ğış÷Tş ğæü”øD0ÿ+¿„øD€”øE0ÿ+¿„øE€ ğúü©¨ÿ÷(ùğ¹ Fÿ÷@û ±™ñ$ ÿ÷’ø Fÿ÷Œûş÷×ş8¹Oğ€SÉø 0¿óO¿óo&¤ç Fÿ÷|ûş÷Çş÷ç Fÿ÷vûş÷Áş Fÿ÷û (íĞ¶ç ¿ô.ö:öXõí à-éøC‰FFF(¹@òûb!I"H!ğû¹ñ Ñ+l+±@òübIH!ğ	û ğ™ıïó‡Oğ_ƒóˆ¿óo¿óO¬k³•øD`IFv²(Fÿ÷"û<s¬cÑ+i¹ àñ ÿ÷lø (÷Ğ¸ñ ôĞ Èø  ‡óˆ½èøƒ6v²…øD`èç Fôç ¿ô¹ôöµF(¹@òŠrIH!ğÅú ğAü¤k ğ`ü F½ôºôµF(¹@ö1IH!ğ±úàk£kÃXBXA½ ¿ô¹ô0µJ #Rø3PëÃ¹Bø3``0½3
++óÑúçôp pµFFF ğü”øD0ÿ+¿ #„øD0”øE0ÿ+¿ #„øE0 ğü£k+¹2F)Fñ$ ş÷Øÿ F½èp@ÿ÷´º  ÷µL ğêû%h½¹ON8Fş÷¿ù0Fş÷¼ùKJ`K!`  •Kÿ÷û `±Iÿ÷¬ÿ°½èğ@ ğí» ¿ˆ             8  øö‘BµA` a
+ØÒƒišBÒKhş÷¡ù  ½šBÒ™BÒKóç õç ¿    0µ‰°ÿ÷ªÿKhË± %ª©¨ÍéUğú›“$›“ ”+Fš
+I
+Hş÷5û
+K`± F	°0½HI@ò!ğ÷ù  õç ¿ˆ  o÷¡p Œ  “÷w÷-éğA€F, FFF ğúFØ± #€ø(0-¹@òeIH!ğÓùÿ÷aÿ›Äø €ÄéW#b ş÷-ù.±”ø(0Cğ„ø(0 F½èğw÷*÷-éóA˜F,#“›	œ,+FFFĞOô¢rIH!ğ¨ù›L¹Oô¥rIH!ğ ù F°½èğ#„ø(0-¹@òeIH!ğ’ùÿ÷ ÿ›&`ÄéX#b ş÷íø /åĞ”ø(0Cğ„ø(0Şç ¿w÷F÷a÷*÷-éÿAFFFF(¹OôÁrIH!ğiùL h€±-ÍéX–Üÿ÷3ø #(¿
+š h¿F©ÿ÷‰ú°½èğ #:F©ÿ÷oûöçw÷›÷ˆ  -é÷CMOßøt€+hh2¹Jh)``°½èğƒÛhÜhhñ	HFş÷¸ø#j F˜G”ø(0[æÕ£i3DBÒc`$aIF(hş÷øÛç # “2FF Fÿ÷Ÿÿ (ÒÑOôar9F@F!ğùËç  w÷  ıö-éğOwNxO‡°xM+hÓø °»ñ *ĞÛhÓø ° $ş÷Üûş÷âûqKßøÔhB‚F™FÓ`³mKhh´ú„ôd	"F«ë
+Øø  ÿ÷Eşş÷güˆ¹fJOğ€S`¿óO¿óoà$Öçÿ÷ƒÿ^KÃø  ş÷Tü^MQàƒEßØş÷Nü+hÛhİh(ş÷Bø•ø(0XÕ©i[FRFYD(Fÿ÷qşh± ”#FZF!F(Fÿ÷/ÿ(¹Oôür1F8F!ğø+j(F˜GÕç#ğ…ø(0öç”ø(0¡iCğ„ø(0›ZFD Fÿ÷Lş°±#j F˜G”ø(0YÕ¢i™ #
+D “F Fÿ÷ÿ(¹@ò21F8F!ğpø "©Øø  ÿ÷Bû (?ôh¯› +óÛœci± ı÷èÿş÷NûÙø 0˜BƒFÒÿ÷ÿ›Éø °	+ßØ¢Rø#ğ ¿q q q 9r Gr ur q q 9r Gr ”ø(0#ğ„ø(0Àç”ø(0Cğ„ø(0›£a+¹@ò+21F(F!ğ"ø¡i[FZFYD Fÿ÷ßı©ç”ø(0šßÔ F ğãø¡çw÷ıö  4    í à÷ˆ  µF(¹@òå2IH ğùÿ ğuùäi ğ”ù F½w÷›÷µKh‚BÓ\hˆB¿AhF	Y`AhD¢BÑ	L$h¢BĞRh
+DB`hh`˜B¿`½Fàç ¿Àd    -éøCFş÷­ú?I?OhË¹?K?JX¿3#ğ  `P`<J"ğÂé  ĞÃé  9K
+``8K`Oğ C;`;hBĞş÷0ûğRû &0F½èøƒ ,õĞ4b¿$ğ4 ,íĞ+Kh¢B˜FèÓ&Khjh¢BÒ*h *:Ñ
+hªBİĞ*hh`kh+ñÙë	ğĞÂ"IH ğmÿkhÉø0HFl`ÿ÷wÿIjhØø 0h›ƒB8¿`Èø 0;hCk` #+`ş÷ãú .°Ğs±ĞOôrIH ğIÿªç+FF»ç ¿  ´d  ”  Àd  ¬d  ¼d  ¸d  ¢÷Ï÷ø8µF€³MPø*hBÑOô‹rIH ğ!ÿTø<+±@òIH ğÿTø<*hBĞTø™¹#êDø<ş÷ôùJTø<h¤ñ D`ÿ÷ÿ½è8@ş÷Œº8½ ¿´d  ¢÷Vø‡ø¸d  KhpG ¿¸d  H h h€óˆOğ  €óˆb¶a¶¿óO¿óo ß ¿  í àßø hAôp`pG  ˆí àµ #“Kh3Ğã"	I
+H ğÀşOğ_ƒóˆ¿óo¿óO› +üĞ°]øû    §ø×øOğ€s@ø<K@ø<!ğoğ@ø@ø ,@ø$<D8pG ¿u     Khh°èğO€ó	ˆ¿óoOğ  €óˆpG¯ó €ø  Oğ_ƒóˆ¿óo¿óOJh3+`
+ÑKhğÿĞ@òŸIH ği¾pG    í à§øñøµL#h+¹OôÓrIH ğVş#h;#`¹ƒóˆ½ ¿    §ø&ù        ïó	€¿óoKhğ¿ íŠ éğO`-é	 Oğ_ €óˆ¿óO¿óoş÷´úOğ  €óˆ	¼hh°èğOğ¿°ìŠ€ó	ˆ¿óopG ¿¯ó €ø  µOğ_ƒóˆ¿óo¿óOş÷ÿø±KOğ€R` #ƒóˆ½í àKI "`
+`JI`"`pG ¿à àà àà à? µ0L0J!h‘BÑOô”r.I/H ğÜı"h.KšBÑ@ò))I,H ğÒı+KxÒ²’ÿ"px)JÛ²ø0ø0ğ_p%K"` !ø  ñÿ4(Ô±`hôàb`›JÛ²pKhBô`hBğB`ÿ÷¦ÿK $`ÿ÷ÇşJhCğ@C`ÿ÷¬şş÷úÿ÷Æş F°½ø R Ò²ø !"FÇç í àqÂA§ø¤ùpÂAÇù ä àÈd  Ìd   í à    4ï àµïóƒ+ÙJ›\JxšBÙ@òò"IH ğ]ıKJhhôàc“BÙ@ò2IH½è@ ğM½½ğã àÈd  §ø8ùí àÌd  bùµ!Oô€p ğbü !Oô€p½è@ ğ[¼  Ch
+y#ğ@s#ô€sCê#
+hCC`Ñé#CŠhµC„hJ"@CJyCêBƒ`
+}Ãj:#ôpÒ²CêSÃb½ ¿ı÷ÿÀ #`ƒ€Àé3a#upG  µĞé 2ICLhJ"@C‚hCÂhCK`½ ¿ #@à0üÿ #Àé 3Àé3pGƒh±Cğƒ`pG#ğúç	)pµÙ¡ñ
+ÅhëD&¦@%êúô,CÄ`*Ø:Ckë‚$”@#êúòCBcp½iëA$´@%êúô,Caäç*Ø:kë‚$”@#êúòCcãç:Ãjë‚$”@#ê‘@CÁb×çƒhCğ€Cƒ`pGÀl€²pGhB¿   pG  K±™hC™`pGšh"ê š`pG ¿  àK±ÙhCÙ`pGÚh"ê Ú`pG ¿  àh#ğ` #`C`ƒ`Ã`a!#Ca*K˜BÑ="Cø,pG(K˜BÑOôtbCø ,pG%K˜BÑOôtCø8,pG"K˜BÑOğtbCøP,pGK˜BÑJCød,pGK˜BÑJCø|,pGK˜BÑJCø”,pGK˜BÑOğ=RCø¬,àK˜BÃĞK˜BÇĞK˜BÌĞK˜BÑĞK˜BÖĞK˜BÚĞK˜BŞĞK˜BâĞpG ¿`@(`@@`@X`@p`@=   ˆ`@@   `@  = ¸`@d@(d@@d@Xd@pd@ˆd@ d@¸d@hJµ@Ìhh#CLi#CŒi#CÌi#Cj#CLj#CŒj#CLk#CŒk#CC`Ñé4Bi#C"ğCCaiC`Khƒ`‹hÃ`½?€ğh±Cğ`pG#ğúçA`pG@h€²pG h ğ pGµ
+K
+LJ B”¿FF‹ L¿@h h@ ğğ  ğ‚ 0¿ ½ ¿ `@d@ d@µKJ	L B”¿FF!ğğ##ğ‚Š L¿Ã`ƒ`½ ¿ `@ d@d@ÕCiR±Cğ€€)CaĞhğC`pG#ğ€€)CaÑpG€)öĞ *ïÑhğ#êíç  JKµL Bˆ¿F!ğğ""ğÃ’± h êÑ  ğˆ L¿[hh@#ğğ  ğ‚±¿ ½Biğ€íç ¿ d@ `@d@ÿ÷œ¿hƒyµÒC +/ĞKh
+@`Zhh"êZ`yhñ€Bõ2h!C`šhh"êš`hÚh"êÚ`Byh*Ñšh
+Cš`Úhh
+CÚ`½ñ€Cõ3h
+C`öçyñ€Cõ3h
+@õç <@K[iB¿   pG ¿ <@KXapG ¿ <@ÿ÷î¿KXapG ¿ <@ğµ "&%húü<ê.ÑT húóÛC@`yĞø à§@Gê`y?/Ø‡h;@ƒ`Ky‡h£@;Cƒ`Ch#êC`‹yGh“@›²;CC`Ãhú÷#êÃ`ËyÇh£@;CÃ`2*ÇÑğ½Oöÿr #Àé #pGiB¿   pGƒpGAƒpG
+±ƒpGAƒpGµğÉ ë › j$œ@!êbjš@
+Cb½µK˜BÑ!Oô  ğù !Oô ½è@ ğx¹K˜BÑ!Oô€  ğpù !Oô€ ïçK˜BÑ!Oô   ğdù !Oô  ãç½ ¿ T @ X @ \ @µ†ˆ&ğ?F6hFF6 ğÑøš)I²ûññˆ²C¦€#ˆ'N#ğ#€+h³BØ[ 0²ûóó›²+€²8¿# „£ƒ#ˆCğ#€#ˆªˆi‰#ôc
+C#ğC#€«‰*‰C#°p½îˆKöÿp†B¿ CCëC²ûóó¿›²²ûóóCô€C›²Ãó
+==========================================
+
+############################################################
+# 4. ANY marker_configurations BLOCK WITH MORE THAN ONE POINT
+#    under a name other than default/mocap_deck/medium/big
+############################################################
+
+==========================================
+      active_deck:
+      big_frame:
+--- blob 0c2efa16a76c95cceedc7118e36bb9865a43ec4c
+--- blob 43c04bf5f63e02eeb087cec884daf73886609e65
+--- blob 75b0a279856e1834d2389ed8ec72fa5515f37772
+--- blob c9324ea417b3460519c36bd5edf9a511a316572e
+--- blob cf5e025c3794b182b4797a982e73b9b948b15d57
+--- blob deab0be5e19e3fba6b88142c01908687877b1c6d
+--- blob e5b9f0a0676aa375a5ddd14bcf82eb25c8dfb3b1
+--- blob ea20e4b4474b47d156e81f70f7da0dfb27752c53
+      default: # for standard Crazyflie
+      default_single_marker:
+    dynamics_configurations:
+    marker_configurations:
+      medium_frame:
+      mocap_deck:
+        offset: [0.0, 0.0, 0.0]
+        offset: [0.0, 0.0, -0.01]
+        offset: [0.0, 0.0, -0.02]
+        offset: [0.0, 0.0, -0.03]
+        offset: [0.0, 0.0, -0.06]
+        offset: [0.0, -0.01, -0.04]
+          p0: [   0.0,    0.0, 0.022]  # top
+          p0: [-0.00896228,-0.000716753,0.0716129]
+          p0: [0.0177184,0.0139654,0.0557585]
+          p0: [-0.019, 0.019, 0.0] # front left (M4)
+          p0: [0.03, 0.0, 0.0] # front
+          p0: [0.0558163,-0.00196302,0.0945539]
+          p1: [0.00, -0.03, 0.0] # right
+          p1: [-0.0113941,0.00945842,0.0984811]
+          p1: [-0.0156318,0.0997402,0.0508162]
+          p1: [0.019, 0.019, 0.0] # front right (M1)
+          p1: [-0.0262914,0.0509139,0.0402475]
+          p1: [-0.042,  0.042, 0.0  ]  # back left   (M3)
+          p2: [-0.015, 0.0, 0.0] # back
+          p2: [-0.019, -0.019, 0.0] # back left (M3)
+          p2: [-0.0306277,0.0514879,0.0520456]
+          p2: [-0.0328889,-0.02757,0.0390601]
+          p2: [-0.042, -0.042, 0.0  ]  # back right  (M2)
+          p2: [0.0461693,-0.0881012,0.0380672]
+          p3: [0.00, 0.03, 0.0] # left
+          p3: [0.019, -0.019, 0.0] # back right (M2)
+          p3: [ 0.042, -0.042, 0.0  ]  # front right (M1)
+          p3: [0.0431307,-0.0331216,0.0388839]
+          p3: [0.0535816,-0.0400775,0.0432799]
+          p3: [-0.0789959,-0.0269793,0.0461144]
+        points:
+
+############################################################
+# 5. CURRENT STASHES THAT TOUCH config/  (37 exist here)
+############################################################
+=================== stash@{0}: WIP on main: f0c128c Stage 2e attempt 4: keep kr/kw=483/76, switch pos_gains to geometric's point ===================
+
+=================== stash@{3}: WIP on main: df52fdd update yaml. ===================
+
+=================== stash@{4}: WIP on main: 006d800 update yaml and flight script. ===================
+
+=================== stash@{5}: WIP on main: 6e50b69 regenreate new trajecotries. ===================
+
+=================== stash@{6}: WIP on stable-brushless-full-indi: 525b099 update yaml and add knobs. ===================
+
+=================== stash@{7}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 9fa83eb update yaml and add knobs. ===================
+
+=================== stash@{8}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0f631da update yaml and add knobs. ===================
+
+=================== stash@{9}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7ee26b2 update yaml and add knobs. ===================
+
+=================== stash@{10}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fe1ac8d update yaml ===================
+
+=================== stash@{11}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 10f4f4e update yaml ===================
+
+=================== stash@{12}: WIP on tune-indi-on-crazyflie-thrust-upgraded: dc6a2df fix pos gains on ramp up. ===================
+
+=================== stash@{13}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging. ===================
+
+=================== stash@{14}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging. ===================
+
+=================== stash@{15}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 985b394 update logging. ===================
+
+=================== stash@{16}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 236519e update logging. ===================
+
+=================== stash@{17}: WIP on tune-indi-on-crazyflie-thrust-upgraded: e8ad0d5 add both rpm sources. ===================
+
+=================== stash@{19}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d222c9b update indi gains. ===================
+
+=================== stash@{20}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d9a688c update indi gains. ===================
+
+=================== stash@{21}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fcdb746 more conservative gains. ===================
+
+=================== stash@{22}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0507b8b update kt values. ===================
+
+=================== stash@{23}: WIP on stable-jun30-working: a436cf9 reduce height ===================
+
+=================== stash@{24}: WIP on stable-jun30-working: fab451d update z gains. ===================
+
+=================== stash@{25}: WIP on stable-jun30-working: 7345493 generate more trajectories. ===================
+
+=================== stash@{26}: WIP on stable-june20: 1407a45 update kt1...4 ===================
+
+=================== stash@{27}: WIP on main: 2dca19e Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{28}: WIP on stable-june20: ba0ff4a generate more trajectories. ===================
+
+=================== stash@{29}: WIP on main: 87d1cc5 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{30}: WIP on main: 34eec58 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{31}: WIP on main: 78fe52a Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{32}: WIP on main: 8657a20 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{33}: WIP on main: 0de81da Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{34}: WIP on main: 5f75afb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{35}: WIP on main: ad55be8 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{36}: WIP on main: 37a31c3 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+=================== stash@{37}: WIP on main: 6d565bb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2 ===================
+
+
+############################################################
+# 6. STASH REFLOG -- includes stashes already POPPED/DROPPED
+############################################################
+3845bec stash@{0}: WIP on main: f0c128c Stage 2e attempt 4: keep kr/kw=483/76, switch pos_gains to geometric's point
+396db55 stash@{1}: WIP on main: 247b515 Restore the tilt clamp (clamp_en 11 -> 15) for level formation flight
+ac28310 stash@{2}: WIP on main: b756e2c switch to upgraded drone.
+ab34296 stash@{3}: WIP on main: df52fdd update yaml.
+4e1441c stash@{4}: WIP on main: 006d800 update yaml and flight script.
+17afccf stash@{5}: WIP on main: 6e50b69 regenreate new trajecotries.
+f3ea428 stash@{6}: WIP on stable-brushless-full-indi: 525b099 update yaml and add knobs.
+f88e03a stash@{7}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 9fa83eb update yaml and add knobs.
+0eed767 stash@{8}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0f631da update yaml and add knobs.
+bb833e6 stash@{9}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7ee26b2 update yaml and add knobs.
+688cf86 stash@{10}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fe1ac8d update yaml
+ff83fcb stash@{11}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 10f4f4e update yaml
+abcaddc stash@{12}: WIP on tune-indi-on-crazyflie-thrust-upgraded: dc6a2df fix pos gains on ramp up.
+3f0756d stash@{13}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging.
+da1f1b4 stash@{14}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging.
+3dd495b stash@{15}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 985b394 update logging.
+26533ca stash@{16}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 236519e update logging.
+aef8783 stash@{17}: WIP on tune-indi-on-crazyflie-thrust-upgraded: e8ad0d5 add both rpm sources.
+fdf4505 stash@{18}: WIP on tune-indi-on-crazyflie-thrust-upgraded: cebd0f4 update config for brushless.
+5354893 stash@{19}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d222c9b update indi gains.
+6cff521 stash@{20}: WIP on tune-indi-on-crazyflie-thrust-upgraded: d9a688c update indi gains.
+c7f9dc8 stash@{21}: WIP on tune-indi-on-crazyflie-thrust-upgraded: fcdb746 more conservative gains.
+cd4eb52 stash@{22}: WIP on tune-indi-on-crazyflie-thrust-upgraded: 0507b8b update kt values.
+6ca0d39 stash@{23}: WIP on stable-jun30-working: a436cf9 reduce height
+519f892 stash@{24}: WIP on stable-jun30-working: fab451d update z gains.
+05e16cb stash@{25}: WIP on stable-jun30-working: 7345493 generate more trajectories.
+bde3aef stash@{26}: WIP on stable-june20: 1407a45 update kt1...4
+bb123b1 stash@{27}: WIP on main: 2dca19e Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+56d6f60 stash@{28}: WIP on stable-june20: ba0ff4a generate more trajectories.
+237c906 stash@{29}: WIP on main: 87d1cc5 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+882f550 stash@{30}: WIP on main: 34eec58 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+f3c2797 stash@{31}: WIP on main: 78fe52a Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+13bd8d8 stash@{32}: WIP on main: 8657a20 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+a83f377 stash@{33}: WIP on main: 0de81da Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+30c4269 stash@{34}: WIP on main: 5f75afb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+57c2114 stash@{35}: WIP on main: ad55be8 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+6ca2868 stash@{36}: WIP on main: 37a31c3 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+df9c2de stash@{37}: WIP on main: 6d565bb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+--- full stash ref history ---
+3845bec stash@{0} WIP on main: f0c128c Stage 2e attempt 4: keep kr/kw=483/76, switch pos_gains to geometric's point
+396db55 stash@{1} WIP on main: 247b515 Restore the tilt clamp (clamp_en 11 -> 15) for level formation flight
+ac28310 stash@{2} WIP on main: b756e2c switch to upgraded drone.
+ab34296 stash@{3} WIP on main: df52fdd update yaml.
+4e1441c stash@{4} WIP on main: 006d800 update yaml and flight script.
+17afccf stash@{5} WIP on main: 6e50b69 regenreate new trajecotries.
+f3ea428 stash@{6} WIP on stable-brushless-full-indi: 525b099 update yaml and add knobs.
+f88e03a stash@{7} WIP on tune-indi-on-crazyflie-thrust-upgraded: 9fa83eb update yaml and add knobs.
+0eed767 stash@{8} WIP on tune-indi-on-crazyflie-thrust-upgraded: 0f631da update yaml and add knobs.
+bb833e6 stash@{9} WIP on tune-indi-on-crazyflie-thrust-upgraded: 7ee26b2 update yaml and add knobs.
+688cf86 stash@{10} WIP on tune-indi-on-crazyflie-thrust-upgraded: fe1ac8d update yaml
+ff83fcb stash@{11} WIP on tune-indi-on-crazyflie-thrust-upgraded: 10f4f4e update yaml
+abcaddc stash@{12} WIP on tune-indi-on-crazyflie-thrust-upgraded: dc6a2df fix pos gains on ramp up.
+3f0756d stash@{13} WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging.
+da1f1b4 stash@{14} WIP on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging.
+3dd495b stash@{15} WIP on tune-indi-on-crazyflie-thrust-upgraded: 985b394 update logging.
+26533ca stash@{16} WIP on tune-indi-on-crazyflie-thrust-upgraded: 236519e update logging.
+aef8783 stash@{17} WIP on tune-indi-on-crazyflie-thrust-upgraded: e8ad0d5 add both rpm sources.
+fdf4505 stash@{18} WIP on tune-indi-on-crazyflie-thrust-upgraded: cebd0f4 update config for brushless.
+5354893 stash@{19} WIP on tune-indi-on-crazyflie-thrust-upgraded: d222c9b update indi gains.
+6cff521 stash@{20} WIP on tune-indi-on-crazyflie-thrust-upgraded: d9a688c update indi gains.
+c7f9dc8 stash@{21} WIP on tune-indi-on-crazyflie-thrust-upgraded: fcdb746 more conservative gains.
+cd4eb52 stash@{22} WIP on tune-indi-on-crazyflie-thrust-upgraded: 0507b8b update kt values.
+6ca0d39 stash@{23} WIP on stable-jun30-working: a436cf9 reduce height
+519f892 stash@{24} WIP on stable-jun30-working: fab451d update z gains.
+05e16cb stash@{25} WIP on stable-jun30-working: 7345493 generate more trajectories.
+bde3aef stash@{26} WIP on stable-june20: 1407a45 update kt1...4
+bb123b1 stash@{27} WIP on main: 2dca19e Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+56d6f60 stash@{28} WIP on stable-june20: ba0ff4a generate more trajectories.
+237c906 stash@{29} WIP on main: 87d1cc5 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+882f550 stash@{30} WIP on main: 34eec58 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+f3c2797 stash@{31} WIP on main: 78fe52a Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+13bd8d8 stash@{32} WIP on main: 8657a20 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+a83f377 stash@{33} WIP on main: 0de81da Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+30c4269 stash@{34} WIP on main: 5f75afb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+57c2114 stash@{35} WIP on main: ad55be8 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+6ca2868 stash@{36} WIP on main: 37a31c3 Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+df9c2de stash@{37} WIP on main: 6d565bb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+
+############################################################
+# 7. UNREACHABLE / DANGLING COMMITS (dropped stashes land here)
+#    Stash commits look like: 'WIP on <branch>: ...'
+############################################################
+--- 6700af7d0ecad2d2b3ba5bb47cfa0b55dc4b596f : WIP on main: 919b762 update trajs.
+--- 35018875932e47000b0be05309059892f3c39cf3 : index on main: adb175d Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+    *** touches config/ ***
+commit 35018875932e47000b0be05309059892f3c39cf3
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Tue Jun 16 19:13:03 2026 +0200
+
+    index on main: adb175d Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+
+diff --git a/crazyflie/config/crazyflies.yaml b/crazyflie/config/crazyflies.yaml
+index 78f6edb..64de7c8 100644
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@ -153,12 +153,12 @@ all:
+     deck:
+       bcRpm: 1  # RPM deck has no 1-Wire ID â€” must be force-enabled
+     indi_gains:
+-      ctrl_mode: 3  # 0=geometric, 2=att INDI, 3=full INDI (pos+att) â€” no reflash needed
+-      kr: 1325.0          # KR=1325 â†’ Ï‰n=36.4 rad/s, Ï„_dom=86ms (practical limit)
+-      kw: 145.0           # KW=145 â†’ Î¶=2.0 (raised from 114 for more damping, less wobble)
+-      kr_z: 1325.0
+-      kw_z: 145.0
+-      fc_bw: 25.0         # 25 Hz is sweet spot â€” 15 adds too much lag, higher adds too much noise
++      ctrl_mode: 0  # 0=geometric, 2=att INDI, 3=full INDI (pos+att) â€” no reflash needed
++      kr: 1300.0 
++      kw: 130.0           
++      kr_z: 1300.0
++      kw_z: 130.0
++      fc_bw: 80.0     
+     locSrv:
+       extPosStdDev: 1e-3
+       extQuatStdDev: 0.5e-1
+--- 04024e76ba4b0071bf8fbdd728f928ab09b0f70d : index on main: 75ae4e4 switch to brushless and more trajs.
+--- 7402c721c6aff3152a1773dac283c723fcd09ebf : index on tune-indi-on-crazyflie-thrust-upgraded: ceb727e revert gains changes.
+    *** touches config/ ***
+commit 7402c721c6aff3152a1773dac283c723fcd09ebf
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Sat Jul 4 12:14:48 2026 +0200
+
+    index on tune-indi-on-crazyflie-thrust-upgraded: ceb727e revert gains changes.
+
+diff --git a/crazyflie/config/crazyflies.yaml b/crazyflie/config/crazyflies.yaml
+index 11daba8..d7c343a 100644
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@ -146,7 +146,7 @@ all:
+       enHighLevel: 1
+     stabilizer:
+       estimator: 2 # 1: complementary, 2: kalman
+-      controller: 2 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
++      controller: 6 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
+     # ring:
+     #   effect: 16 # 6: double spinner, 7: solid color, 16: packetRate
+     #   solidBlue: 255 # if set to solid color
+@@ -184,8 +184,8 @@ all:
+     # To reactivate standard: comment this block, uncomment the STANDARD block above.
+     # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     indi_gains:
+-      ctrl_mode: 0            # start geometric; switch to 3 (full INDI) after kt identified
+-      kr: 1050.0              # same as standard â€” adjust after hover confirmed
++      ctrl_mode: 0        # full INDI (pos+att)
++      kr: 1050.0          # Phase 1 locked
+       kw: 87.0
+       kr_z: 1050.0
+       kw_z: 87.0
+--- ff0318d97b9f73b6838c57f318997a1ab02c3334 : WIP on main: 430c786 adjust loop.
+--- 2704280415b314aad9221ccefff62318ddd361ec : index on main: 748ad2d update trajs.
+--- 7d059eb80f46be3c3bf475f9c28b756efc3278e3 : index on tune-indi-on-crazyflie-thrust-upgraded: 5a4b44f update yaml and add knobs.
+--- 3f0756d0dad8cab962d394d5494648c948c05aa4 : WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging.
+    *** touches config/ ***
+commit 3f0756d0dad8cab962d394d5494648c948c05aa4
+Merge: 1bf4906 6ac20cc
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Sat Jul 18 16:22:28 2026 +0200
+
+    WIP on tune-indi-on-crazyflie-thrust-upgraded: 1bf4906 update logging.
+
+diff --cc crazyflie/config/crazyflies.yaml
+index 668cd94,e8e4718..1225c67
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@@ -209,10 -209,10 +209,10 @@@ all
+      # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      indi_gains:
+        ctrl_mode: 3              # full INDI â€” RPM from OPTICAL DECK (rpm.*), not DShot (fixes 7 Hz cycle)
+--      kr: 1200.0                # locked 2026-07-16: att ladder BL-att2 optimum (plateau at kr=900+)
+--      kw: 97.0
+--      kr_z: 1200.0
+--      kw_z: 97.0
+++      kr: 1300.0                # locked 2026-07-16: att ladder BL-att2 optimum (plateau at kr=900+)
+++      kw: 100.0
+++      kr_z: 1300.0
+++      kw_z: 100.0
+        fc_bw: 60.0               # 2026-07-16 hover sweep: flat optimum 50-80, cliff <40. 60 = safe optimum.
+        mass: 0.041               # AUW 41.0 g (measured 2026-07-15)
+        # kt re-identified 2026-07-16 from OPTICAL DECK geometric hover (18-09-05): RPM balanced
+@@@ -223,9 -223,9 +223,9 @@@
+        kt3: 4.1116e-10           # was 4.0689e-10
+        kt4: 4.0631e-10           # was 4.2210e-10
+      pos_gains:
+-       kp_xy: 40.0
+ -      kp_xy: 60.0
+++      kp_xy: 50.0
+        kp_z:  30.0
+-       kv_xy: 11.0               # BL-5: Î¶_pos 0.63â†’0.87 (was 8.0); cut hover wobble + lag
+ -      kv_xy: 16.0               # BL-5: Î¶_pos 0.63â†’0.87 (was 8.0); cut hover wobble + lag
+++      kv_xy: 8.0               # BL-5: Î¶_pos 0.63â†’0.87 (was 8.0); cut hover wobble + lag
+        kv_z:  10.0
+      locSrv:
+        extPosStdDev: 1e-3
+--- 000a02545322d9acffa37d6fe2003ccdb300e01b : WIP on main: 1065b46 adjust loop.
+--- 2e0cb227805b6cc2962cda22f174d5715ac06175 : index on main: 6d565bb Merge branch 'main' of https://github.com/wolnik-georg/crazyswarm2
+--- 770cca056a4aecd356408a979bf19baa4b129e1c : WIP on tune-indi-on-crazyflie-thrust-upgraded: 522f975 update yaml and add knobs.
+    *** touches config/ ***
+commit 770cca056a4aecd356408a979bf19baa4b129e1c
+Merge: 522f975 7356f3b
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Sun Jul 19 13:20:18 2026 +0200
+
+    WIP on tune-indi-on-crazyflie-thrust-upgraded: 522f975 update yaml and add knobs.
+
+diff --cc crazyflie/config/crazyflies.yaml
+index 5b6efff,5b6efff..7555fba
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@@ -146,7 -146,7 +146,7 @@@ all
+        enHighLevel: 1
+      stabilizer:
+        estimator: 2 # 1: complementary, 2: kalman
+--      controller: 2 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
+++      controller: 6 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
+      # ring:
+      #   effect: 16 # 6: double spinner, 7: solid color, 16: packetRate
+      #   solidBlue: 255 # if set to solid color
+--- e90c890b03b29acb671ac9fc50dd535003231de9 : WIP on main: 7f717a9 Enable filt_prewarp/filt_dt_us for stage 2b, fc_bw=206 as the deliberate no-op
+    *** touches config/ ***
+commit e90c890b03b29acb671ac9fc50dd535003231de9
+Merge: 7f717a9 4a53bc0
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Fri Sep 11 18:46:22 2026 +0200
+
+    WIP on main: 7f717a9 Enable filt_prewarp/filt_dt_us for stage 2b, fc_bw=206 as the deliberate no-op
+
+diff --cc crazyflie/config/crazyflies.yaml
+index 416da12,416da12..c298493
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@@ -20,7 -20,7 +20,7 @@@ robots
+    cf231_active:
+      enabled: true
+      uri: radio://0/80/2M/E7E7E7E7E7
+--    initial_position: [0.3, 0.0, 0.0]
+++    initial_position: [0.15, 0.0, 0.0]
+      type: cf21  # see robot_types
+      # firmware_params:
+      #   kalman:
+@@@ -325,7 -325,7 +325,7 @@@ all
+      # To switch back to brushless: comment out the UPGRADED block above, uncomment this block.
+      # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      indi_gains:
+--      ctrl_mode: 0              # geometric -- was 3 (full INDI), switched 2026-09-07 lab
+++      ctrl_mode: 3              # geometric -- was 3 (full INDI), switched 2026-09-07 lab
+                                   # session: known brushless INDI fragility, get geometric
+                                   # working first (hover/circle/figure8, tracking error),
+                                   # switch back to 3 for INDI checks once that's confirmed
+--- fa0c8eac5d386ca46d6d55f4b268d9d6ab686a75 : index on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging.
+    *** touches config/ ***
+commit fa0c8eac5d386ca46d6d55f4b268d9d6ab686a75
+Author: Georg Wolnik <wolnik.georg1703@gmail.com>
+Date:   Thu Jul 16 19:04:27 2026 +0200
+
+    index on tune-indi-on-crazyflie-thrust-upgraded: 7b27c89 update logging.
+
+diff --git a/crazyflie/config/crazyflies.yaml b/crazyflie/config/crazyflies.yaml
+index 273a4aa..e6bbf55 100644
+--- a/crazyflie/config/crazyflies.yaml
++++ b/crazyflie/config/crazyflies.yaml
+@@ -146,7 +146,7 @@ all:
+       enHighLevel: 1
+     stabilizer:
+       estimator: 2 # 1: complementary, 2: kalman
+-      controller: 2 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
++      controller: 6 # 1: PID, 2: mellinger, 6: geometric SE(3) (OOT â€” requires CONFIG_CONTROLLER_OOT=y)
+     # ring:
+     #   effect: 16 # 6: double spinner, 7: solid color, 16: packetRate
+     #   solidBlue: 255 # if set to solid color
+@@ -209,10 +209,10 @@ all:
+     # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     indi_gains:
+       ctrl_mode: 3              # full INDI â€” RPM from OPTICAL DECK (rpm.*), not DShot (fixes 7 Hz cycle)
+-      kr: 603.0                 # stable INDI hover baseline (from upgraded drone)
+-      kw: 90.0
+-      kr_z: 603.0
+-      kw_z: 90.0
++      kr: 1800.0                 # stable INDI hover baseline (from upgraded drone)
++      kw: 119.0
++      kr_z: 1800.0
++      kw_z: 119.0
+       fc_bw: 60.0               # 2026-07-16 hover sweep: flat optimum 50-80, cliff <40. 60 = safe optimum.
+       mass: 0.041               # AUW 41.0 g (measured 2026-07-15)
+
+############################################################
+# 8. OUTSIDE GIT: other workspaces / older checkouts / backups
+############################################################
+--- every motion_capture / crazyflies yaml on the machine ---
+--- any file anywhere containing a marker_configurations block ---
+--- any file anywhere mentioning cf21_active or cf232 ---
+--- other workspaces / home dirs ---
+total 56
+drwxr-xr-x 14 root         root         4096 Oct  6  2025 .
+drwxr-xr-x 23 root         root         4096 Feb 18  2025 ..
+drwxr-x--- 20 christoph    christoph    4096 Jul 16  2025 christoph
+drwxr-x--- 40 demo         demo         4096 Sep 17 19:15 demo
+drwxr-x--- 28 eckart       eckart       4096 Jun 25 14:41 eckart
+drwxr-x--- 30 flyingrobots flyingrobots 4096 Sep 19 12:08 flyingrobots
+drwxr-x--- 26 kwahba       kwahba       4096 Jun 25  2025 kwahba
+drwxr-x--- 49 lndw         lndw         4096 Sep 16 12:00 lndw
+drwxr-x--- 23 nancai       nancai       4096 Sep  5  2025 nancai
+drwxr-x--- 28 phanfeld     phanfeld     4096 May  7  2025 phanfeld
+drwxr-x--- 30 prj-naindi   prj-naindi   4096 Nov 11  2025 prj-naindi
+drwxr-x--- 23 prj-orn-cbf  prj-orn-cbf  4096 Feb 20  2026 prj-orn-cbf
+drwxr-x--- 25 viktor       viktor       4096 Sep 30  2025 viktor
+drwxr-x--- 25 whoenig      whoenig      4096 Sep  2 14:08 whoenig
+--- anything modified Mar-Jun 2026 that looks like config ---
+/home/flyingrobots/.vscode/extensions/repreng.csv-1.3.0/node_modules/papaparse/.github/workflows/node.js.yml
+/home/flyingrobots/.vscode/extensions/repreng.csv-1.3.0/.github/workflows/ci.yml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/t9IH.yaml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/CQWX.yaml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/nNRR.yaml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/FCIt.yaml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/cTys.yaml
+/home/flyingrobots/.config/Code/User/History/78c8c3d0/o1CF.yaml
+/home/flyingrobots/georg/crazyflie-firmware/tools/test/gcc.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_sh2a_v6.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/gcc_auto_limits.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/gcc_64.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/gcc_manual_math.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_arm_v5.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/clang_file.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_arm_v5_3.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/clang_strict.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_armcortex_LM3S9B92_v5_4.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/hitech_picc18.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/ansi.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_cortexm3_v5.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_arm_v4.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/gcc_32.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/iar_msp430.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/targets/gcc_auto_stdint.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/test/.rubocop.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/examples/example_3/target_gcc_32.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/.github/workflows/main.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/unity/auto/generate_config.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/FreeRTOS/.github/workflows/ci.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/tools/test/gcc.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/.travis.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/testdata/sample.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/iar_sh2a_v6.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/gcc_auto_limits.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/gcc_64.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/gcc_manual_math.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/iar_arm_v5.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/clang_file.yml
+/home/flyingrobots/georg/crazyflie-firmware/vendor/libdw1000/vendor/unity/test/targets/iar_arm_v5_3.yml
+
+############################################################
+# 9. BRANCH STATE (resolved 2026-09-19, checking it stayed that way)
+############################################################
+Current branch: main  (expect: main)
+HEAD: bd66101 Register cf_second as a rigid body: test the unregistered-marker hypothesis
+
+############################################################
+# DONE -- commit and push debug.log
+#   cd ~/georg/flying_robot_course
+#   git add debug/lab_logs/debug.log && git commit -m 'active marker search' && git push
+############################################################
