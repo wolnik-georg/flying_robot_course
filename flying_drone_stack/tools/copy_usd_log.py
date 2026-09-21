@@ -137,6 +137,32 @@ def main():
 
     print(f"[copy_usd_log] verified byte-identical (sha256 {dst_hash[:16]}...)")
     print(f"[copy_usd_log] wrote {dest}  ({dest.stat().st_size:,} bytes)")
+
+    tools_dir = Path(__file__).resolve().parent
+    sys.path.insert(0, str(tools_dir))
+    try:
+        import decode_usd_log
+        d = decode_usd_log.load(str(dest))
+        duration_s = float(d["t"][-1] - d["t"][0]) if len(d["t"]) > 1 else 0.0
+        n_rows = len(d["t"])
+        print(f"[copy_usd_log] decoded: {n_rows} rows, duration {duration_s:.1f} s")
+        if duration_s < 5.0:
+            print("[copy_usd_log] WARNING: recording shorter than 5 s — likely aborted or "
+                  "failed; do not assume this is a full flight.", file=sys.stderr)
+        if "run_tag" in d:
+            tags = {int(x) for x in d["run_tag"] if x == x and x > 0}
+            if len(tags) == 1:
+                print(f"[copy_usd_log] usd.runTag = {tags.pop()} (match meta.json usd_run_tag)")
+            elif tags:
+                print(f"[copy_usd_log] WARNING: inconsistent run_tag values in file: {tags}",
+                      file=sys.stderr)
+            else:
+                print("[copy_usd_log] WARNING: run_tag column all zero", file=sys.stderr)
+        else:
+            print("[copy_usd_log] no usd.runTag channel (pre-tag firmware archive)")
+    except Exception as e:
+        print(f"[copy_usd_log] could not decode for run_tag/duration check: {e}", file=sys.stderr)
+
     print(f"[copy_usd_log] NOTE: to match this against a radio CSV from the same flight, do it "
           f"explicitly by scenario name and approximate flight time -- never assume a CSV that "
           f"happens to arrive in the same git pull is the match (this is exactly the mistake "

@@ -1,0 +1,59 @@
+[WARN] [1790015981.802852638] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'usec.reset'
+[WARN] [1790015981.803169167] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'stabilizer.estimator'
+[WARN] [1790015981.803395599] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'stabilizer.estimator'
+[WARN] [1790016050.377030581] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'stabilizer.estimator'
+[WARN] [1790016050.377304201] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'stabilizer.estimator'
+[WARN] [1790016051.153475637] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'kalman.resetEstimation'
+[WARN] [1790016051.153742475] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'kalman.resetEstimation'
+[WARN] [1790016051.934773301] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'kalman.resetEstimation'
+[WARN] [1790016051.935021809] [CrazyflieAPI]: (crazyflie.py)setParam : keyError raised 'kalman.resetEstimation'
+
+[formation] A1  Vertical stack hover, dz=0.20 m
+[formation] Both stationary; the lower vehicle sits in the upper one's wash.
+[formation] 2 robot(s), 12.0 s, tags: hover, data_collection
+[formation] anchor [0. 0. 1.]
+    robot 0 [ bottom] slot [0. 0. 0.]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
+    robot 1 [    top] slot [0.  0.  0.2]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
+    closest commanded approach: 0.200 m between robots 0 and 1 at t=0.0s
+    robot 0 trajectory:  2 pieces, 12.00 s
+    robot 1 trajectory:  2 pieces, 12.00 s
+[formation] commanded relative geometry:
+     bottom - top     dx  +0.00.. +0.00  dy  +0.00.. +0.00  dz  -0.20.. -0.20  |d| 0.200..0.200 m
+[formation] wrote data/formations/A1_dz0.2_hold12.0_rotate_deg0.0_r0_bottom.csv
+[formation] wrote data/formations/A1_dz0.2_hold12.0_rotate_deg0.0_r1_top.csv
+
+[formation] checks passed.
+Warning: No joystick found!
+
+[formation] anchored on cf231_active at [0.3 0.  1. ]
+    cf231_active [ bottom]  start [0.3 0.  0. ] -> slot [0.3 0.  1. ]
+    cf_second    [    top]  start [0.3 0.5 0. ] -> slot [0.3 0.  1.2]
+
+[formation] per-drone effective config (what each vehicle actually flies):
+    cf231_active   controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
+    cf_second      controller=5 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
+[formation] resetting EKF (complementary re-init, then Kalman)...
+[formation] waiting for EKF to converge on mocap...
+[log] cf231_active: 0 rows -> /home/georg/Desktop/flying_robot_course/experiments/logs/A1_cf231_active_2026-09-21_20-39-41.csv
+[log] cf_second: 0 rows -> /home/georg/Desktop/flying_robot_course/experiments/logs/A1_cf_second_2026-09-21_20-39-41.csv
+
+[formation] realised relative geometry (last settled sample):
+    cf231_active - cf_second: got [ 0.  -0.5  0. ]  want [ 0.   0.  -0.2]  err [ 0.  -0.5  0.2] m  |ez| 200 mm
+Traceback (most recent call last):
+  File "/home/georg/Desktop/crazyswarm2/install/crazyflie_examples/lib/crazyflie_examples/run_formation", line 33, in <module>
+    sys.exit(load_entry_point('crazyflie-examples==1.0.3', 'console_scripts', 'run_formation')())
+  File "/home/georg/Desktop/crazyswarm2/install/crazyflie_examples/local/lib/python3.10/dist-packages/crazyflie_examples/run_formation.py", line 602, in main
+    th.sleep(3.0)
+  File "/home/georg/Desktop/crazyswarm2/build/crazyflie_py/crazyflie_py/crazyflie.py", line 71, in sleep
+    rclpy.spin_once(self.node, timeout_sec=0)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 208, in spin_once
+    executor.spin_once(timeout_sec=timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 808, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 797, in _spin_once_impl
+    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 780, in wait_for_ready_callbacks
+    return next(self._cb_iter)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 653, in _wait_for_ready_callbacks
+    wait_set = _rclpy.WaitSet(
+rclpy._rclpy_pybind11.RCLError: failed to initialize wait set: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/wait.c:130

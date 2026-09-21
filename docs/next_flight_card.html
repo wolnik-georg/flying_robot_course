@@ -82,6 +82,12 @@ table.compact th{font-family:var(--mono); font-size:.72rem; font-weight:600;
   text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
 table.compact td:first-child{color:var(--ink); font-weight:500}
 table.compact tr:last-child td{border-bottom:none}
+table.compact td.stat-done{color:var(--go); font-weight:600}
+table.compact td.stat-partial{color:var(--warn); font-weight:600}
+table.compact td.stat-open{color:var(--ink-2)}
+table.compact td.stat-qa{color:var(--muted); font-style:italic}
+table.compact td.stat-fail{color:var(--stop)}
+table.track td:nth-child(5){font-family:var(--mono); font-size:.82rem}
 
 .note{
   background:var(--sunk); border-left:3px solid var(--accent);
@@ -105,14 +111,15 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — 21 September 2026</div>
+  <div class="eyebrow">Flight readiness — updated 21 Sep 2026 · next lab ~2 days</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
     <strong>standing INDI</strong> for comparison flights separately (table below).</p>
   <p class="refline">
     Meeting (21 Sep) · <code>docs/meetings/2026-09-21.md</code> ·
-    Session · <code>docs/lab_sessions/2026-09-19.md</code> ·
+    Session · <code>docs/lab_sessions/2026-09-21.md</code> ·
+    Manifest · <code>experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json</code> ·
     C.1 · <code>docs/25_C1_Data_Collection_Plan.md</code> ·
     uSD dual-RPM · <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code>
   </p>
@@ -122,11 +129,12 @@ footer{
   <h2>Meeting follow-up — next ~week</h2>
   <div class="panel next">
     <ul class="plain">
-      <li><strong>Dual RPM on uSD (pre C.1)</strong> — keep <code>indi_gains.rpm_source=1</code> (DShot) for control and <code>a_res</code>; log <strong>both</strong> <code>motor.m*_rpm</code> and <code>rpm.m*</code> on the card. Reflash firmware with <code>MAX_USD_LOG…=48</code>, copy updated <code>usd_thesis_config.txt</code> → <code>config.txt</code> on <strong>both</strong> SD cards.</li>
+      <li><strong>uSD session tag (before next data day)</strong> — flash firmware with <code>usd.runTag</code> + copy updated <code>usd_thesis_config.txt</code> (48 channels: prior 47 + <code>usd.runTag</code>, <code>indi.e_r_norm</code> kept); bench-verify both drones; one A8 validation flight with tag-based merge (<code>docs/39</code>). Until then, desk pairing uses RMS search only.</li>
+      <li><strong>Dual RPM on uSD</strong> — keep <code>indi_gains.rpm_source=1</code> (DShot); log <strong>both</strong> <code>motor.m*_rpm</code> and <code>rpm.m*</code> on the card (<code>MAX_USD_LOG…=48</code>).</li>
       <li><strong>Investigate DShot vs optical deck</strong> — lag, dropout, per-motor differences on real flights (<code>tools/investigate_dshot_rpm.py</code> / merged uSD). <strong>Preserve logs</strong> for possible future learning features; C.1 training still uses <code>a_res</code> from DShot path today.</li>
-      <li><strong>Z tracking (from plots review)</strong> — bottom-drone <strong>z error high overall</strong>, not only at crossing. Double-check <strong>position-z I and gains</strong> on <code>cf5</code>: <code>pos_gains.kp_z</code>, <code>kv_z</code>, and position integral (<code>KI_P</code> / <code>pos_gains</code> as applicable). Revisit dashboards after any change — do not retune mid–C.1 block without noting it in the session log.</li>
+      <li><strong>Z tracking (from plots review)</strong> — dashboards can show large cf5 z error vs onboard <code>ctrltarget_z</code>; for thesis alignment use scenario-reconstructed command (<code>commanded_trajectory</code> + merge lag search). <strong>2026-09-21 desk check</strong> (<code>experiments/analysis/c1_a1_z_diagnostic_2026_09_21.py</code> → <code>a1_z_diagnostic.json</code>): <strong>accepted</strong> A1 merges track the scenario at <strong>5.4&nbsp;cm</strong> and <strong>7.2&nbsp;cm</strong> 3D RMS (matches manifest). <strong>Refused</strong> A1 attempts: midday archive bins (thesis04/06/07) sit at <strong>18–21&nbsp;cm</strong> 3D RMS with ~−19&nbsp;cm z bias vs scenario; afternoon bins (thesis16/17/18) at <strong>15.6 / 35.7 / 61.3&nbsp;cm</strong> — merge gate failures on specific attempts, not the two training merges. Before reflying A1 gaps, still worth checking <code>pos_gains.kp_z</code>, <code>kv_z</code>, and position integral on <code>cf5</code>; do not retune mid–C.1 block without noting it in the session log.</li>
       <li><strong>C.1 — Neural-Swarm2 data collection</strong> — geometric on <code>cf5</code>; blocks A→D in table below (<code>docs/25</code>).</li>
-      <li><strong>C.2 desk — after first new flights</strong> — merge uSD → run <strong>end-to-end pipeline check</strong> (<code>dataset.build</code> + <code>train.py</code> + weight sanity). Then <strong>train on data collected from this campaign onward</strong> (do not mix pre-09-19 A8-only smoke unless explicitly justified).</li>
+      <li><strong>C.2 desk (now)</strong> — <strong>8</strong> verified merges in manifest (<strong>5</strong> C.1 training-eligible A1/A3 + 3 A8 QA): C.2 E2E already run (<code>docs/40</code>); extend manifest only after new flights (no pre-09-19 A8-only mix unless justified).</li>
       <li><strong>Finalize INDI baseline</strong> (parallel, before large C.4) — our geo + our full INDI; Omar / established INDI; stock INDI; Briesewitz c=7 — per supervisor follow-up (check notes from meeting).</li>
     </ul>
   </div>
@@ -239,27 +247,211 @@ footer{
     <p class="note"><strong>Preflight yaml:</strong> repo <code>crazyswarm2/crazyflie/config/crazyflies.yaml</code> (2026-09-21) pins <code>cf5</code> to <code>controller: 6</code>, <code>ctrl_mode: 0</code>, <code>rpm_source: 1</code>, <code>rnn.en: 0</code> + DShot <code>rpm</code> radio topic. Sync on the lab PC; for full-INDI A8 only, temporarily set cf5 <code>ctrl_mode: 3</code> (or stock INDI <code>controller: 3</code> for the comparison row).</p>
   </div>
 
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — scenarios (ideal set, fly in order)</h3>
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — plan tracker (<code>docs/25</code>)</h3>
+  <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 10px">
+    <strong>Training data</strong> = merged uSD in manifest only (not radio CSV).
+    <strong>5</strong> C.1 training merges in bank (of ~18 minimum-viable) · <strong>2</strong> plan rows complete ·
+    <strong>2</strong> partial · <strong>10</strong> not started (plus A8 QA-only).
+    Post-flash: pair by <code>usd_run_tag</code> (<code>docs/39</code>).
+  </p>
   <div class="panel next">
-    <table class="compact">
+    <table class="compact track">
       <thead>
-        <tr><th>Block</th><th>Scenario</th><th>Params (summary)</th><th>Reps</th></tr>
+        <tr>
+          <th>Plan</th><th>Scenario</th><th>Parameters</th><th>Reps</th>
+          <th>Merged uSD (21 Sep)</th><th>Status</th>
+        </tr>
       </thead>
       <tbody>
-        <tr><td><strong>A</strong> Δz</td><td><strong>A7</strong> dynamic merge</td><td>dz 1.10→0.10, speed 0.30</td><td><strong>3</strong></td></tr>
-        <tr><td>A</td><td>A1 static stack</td><td>dz 0.20 / 0.30 / 0.50 / 0.75, hold ~15&nbsp;s</td><td>2 / 2 / 2 / 1</td></tr>
-        <tr><td><strong>B</strong> velocity</td><td>A3 static-top</td><td>dz 0.25, speed 0.30 &amp; 0.50, passes 4</td><td>2 + 2</td></tr>
-        <tr><td>B</td><td>A3</td><td>dz 0.40, speed 0.40, passes 4</td><td>1</td></tr>
-        <tr><td>B</td><td>A2 same-path</td><td>dz 0.30, circle, speed 0.4</td><td>2</td></tr>
-        <tr><td><strong>C</strong> lateral y</td><td><strong>A4</strong> offset stack</td><td>dz 0.30, offset 0.10, axis y, lemniscate</td><td><strong>2</strong></td></tr>
-        <tr><td>C</td><td>A4</td><td>dz 0.50, offset 0.15, axis x, lemniscate</td><td>2</td></tr>
-        <tr><td><strong>D</strong> ground</td><td>C5 solo cf5</td><td>z 0.10 / 0.15 / 0.25, speed 0.25, passes 2</td><td>2 / 2 / 1</td></tr>
+        <tr>
+          <td>A-1</td><td><strong>A7</strong></td>
+          <td><code>--dz-start 1.10 --dz-end 0.10 --speed 0.30</code></td>
+          <td>3</td><td>—</td><td class="stat-open">Not flown (failed <code>12-37-31</code>)</td>
+        </tr>
+        <tr>
+          <td>A-2</td><td><strong>A1</strong></td>
+          <td><code>--dz 0.20 --hold 15</code></td>
+          <td>2</td><td><code>13-25-10</code> (1/2)</td><td class="stat-partial">1 merged · 2nd rep optional</td>
+        </tr>
+        <tr>
+          <td>A-3</td><td><strong>A1</strong></td>
+          <td><code>--dz 0.30 --hold 15</code></td>
+          <td>2</td><td>—</td><td class="stat-fail">Refly — archive unmergeable</td>
+        </tr>
+        <tr>
+          <td>A-4</td><td><strong>A1</strong></td>
+          <td><code>--dz 0.50 --hold 15</code></td>
+          <td>2</td><td>—</td><td class="stat-fail">Refly — archive unmergeable</td>
+        </tr>
+        <tr>
+          <td>A-5</td><td><strong>A1</strong></td>
+          <td><code>--dz 0.75 --hold 15</code></td>
+          <td>1</td><td><code>12-51-16</code></td><td class="stat-done">Done</td>
+        </tr>
+        <tr>
+          <td>B-1</td><td><strong>A3</strong></td>
+          <td><code>--dz 0.25 --speed 0.30 --passes 4</code></td>
+          <td>2</td><td><code>13-00-57</code>, <code>13-02-56</code></td><td class="stat-done">Done (2/2)</td>
+        </tr>
+        <tr>
+          <td>B-2</td><td><strong>A3</strong></td>
+          <td><code>--dz 0.25 --speed 0.50 --passes 4</code></td>
+          <td>2</td><td><code>13-04-34</code> (1/2)</td><td class="stat-partial">Need 1 rep (lost <code>13-05-58</code> cf5 uSD)</td>
+        </tr>
+        <tr>
+          <td>B-3</td><td><strong>A3</strong></td>
+          <td><code>--dz 0.40 --speed 0.40 --passes 4</code></td>
+          <td>1</td><td>—</td><td class="stat-fail">Refly (bad top log <code>13-12-16</code>)</td>
+        </tr>
+        <tr>
+          <td>B-4</td><td><strong>A2</strong></td>
+          <td><code>--dz 0.30 --path circle --speed 0.4</code></td>
+          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>C-1</td><td><strong>A4</strong></td>
+          <td><code>--dz 0.30 --offset 0.10 --axis y --motion lemniscate</code></td>
+          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>C-2</td><td><strong>A4</strong></td>
+          <td><code>--dz 0.50 --offset 0.15 --axis x --motion lemniscate</code></td>
+          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>D-1</td><td><strong>C5</strong> solo</td>
+          <td><code>--z 0.10 --speed 0.25 --passes 2 --z-floor 0</code></td>
+          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>D-2</td><td><strong>C5</strong> solo</td>
+          <td><code>--z 0.15 --speed 0.25 --passes 2 --z-floor 0</code></td>
+          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>D-3</td><td><strong>C5</strong> solo</td>
+          <td><code>--z 0.25 --speed 0.25 --passes 2 --z-floor 0</code></td>
+          <td>1</td><td>—</td><td class="stat-open">Not flown</td>
+        </tr>
+        <tr>
+          <td>—</td><td><strong>A8</strong></td>
+          <td><code>--dz 0.25 --span 1.0 --passes 2–4</code> (demo)</td>
+          <td>—</td><td><code>12-11-05</code>, <code>12-11-46</code>, <code>13-14-36</code></td>
+          <td class="stat-qa">QA / docs only — not C.1 training (gate)</td>
+        </tr>
       </tbody>
     </table>
     <ul class="plain" style="margin-top:.75em">
-      <li><strong>Minimum viable (~18 flights):</strong> all of Block A + B-1/B-2 + D-1/D-2.</li>
+      <li><strong>Minimum viable (~18 flights):</strong> Block A + B-1/B-2 + D-1/D-2 — see gaps above.</li>
       <li><strong>Floor:</strong> A7 ×3 + C5 ×2 if the session goes badly.</li>
-      <li><strong>After lab:</strong> <code>merge_usd_logs.py --meta --roles</code> → validate pipeline → <code>tools/residual/train.py</code> on <strong>new C.1 merges only</strong>.</li>
+      <li><strong>After lab:</strong> tag merge (<code>merge_usd_logs.py --run-tag</code>) or RMS fallback for old archives → add to manifest → <code>train.py</code> on C.1 merges only.</li>
+    </ul>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — what each scenario teaches (one line)</h3>
+  <div class="panel next">
+    <ul class="plain">
+      <li><strong>A7</strong> — Top and bottom stay aligned while <code>dz</code> sweeps 1.10→0.10&nbsp;m; one flight covers almost the whole vertical separation axis inside the neighbour gate.</li>
+      <li><strong>A1</strong> — Fixed vertical stack, both hover ~15&nbsp;s; pure <code>dz</code> at ~zero relative velocity (static downwash curve).</li>
+      <li><strong>A3 @ dz 0.25</strong> — Top hovers, bottom translates back and forth; repeats sweep relative horizontal speed at close range (velocity term for the net).</li>
+      <li><strong>A3 @ dz 0.40</strong> — Same pattern at mid separation and mid speed; fills the middle of the <code>dz</code>–speed grid.</li>
+      <li><strong>A2</strong> — Both drones follow the same circular path; own motion with near-fixed relative state (separates “I’m moving” from “neighbour is moving”).</li>
+      <li><strong>A4</strong> — Stacked but laterally offset (≤0.15&nbsp;m), lemniscate motion; excites small <code>dx/dy</code> <em>inside</em> the 0.2&nbsp;m gate (mandatory for lateral falloff).</li>
+      <li><strong>C5</strong> — Solo <code>cf5</code> near the floor; no neighbour — data for the ground-effect branch <code>phi_G</code>, not downwash.</li>
+      <li><strong>A8</strong> — Crossing at wide span: good for controller demos and docs/24; <strong>not</strong> for C.1 training (neighbour gated out most of the run).</li>
+    </ul>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Next lab — fly list (priority order)</h3>
+  <p style="color:var(--muted); font-size:.88rem; margin:0 0 8px">
+    Prefix every command: <code>ros2 run crazyflie_examples run_formation --</code> · add
+    <code>--auto-center --yes</code> on hardware · after <code>usd.runTag</code> flash + one A8 tag check.
+  </p>
+  <div class="panel next">
+    <table class="compact track">
+      <thead>
+        <tr><th>Pri</th><th>Plan</th><th>Command</th><th>Why</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td>A-3</td>
+          <td><code>--scenario A1 --dz 0.30 --hold 15</code> ×2</td>
+          <td>Block A gap — no merge from 21 Sep archive</td>
+        </tr>
+        <tr>
+          <td>2</td><td>A-4</td>
+          <td><code>--scenario A1 --dz 0.50 --hold 15</code> ×2</td>
+          <td>Block A gap</td>
+        </tr>
+        <tr>
+          <td>3</td><td>B-2</td>
+          <td><code>--scenario A3 --dz 0.25 --speed 0.50 --passes 4</code></td>
+          <td>2nd rep for speed 0.50 (have <code>13-04-34</code> only)</td>
+        </tr>
+        <tr>
+          <td>4</td><td>B-3</td>
+          <td><code>--scenario A3 --dz 0.40 --speed 0.40 --passes 4</code></td>
+          <td>Mid grid — refly after <code>13-12-16</code></td>
+        </tr>
+        <tr>
+          <td>5</td><td>D-1</td>
+          <td><code>--scenario C5 --z 0.10 --speed 0.25 --passes 2 --z-floor 0</code> ×2</td>
+          <td>Ground effect — solo cf5; park cf_second</td>
+        </tr>
+        <tr>
+          <td>6</td><td>D-2</td>
+          <td><code>--scenario C5 --z 0.15 --speed 0.25 --passes 2 --z-floor 0</code> ×2</td>
+          <td>Ground effect</td>
+        </tr>
+        <tr>
+          <td>7</td><td>D-3</td>
+          <td><code>--scenario C5 --z 0.25 --speed 0.25 --passes 2 --z-floor 0</code></td>
+          <td>Ground effect upper</td>
+        </tr>
+        <tr>
+          <td>8</td><td>A-1</td>
+          <td><code>--scenario A7 --dz-start 1.10 --dz-end 0.10 --speed 0.30</code> ×3</td>
+          <td>Highest-value block A — retry after failed <code>12-37-31</code></td>
+        </tr>
+        <tr>
+          <td>9</td><td>B-4</td>
+          <td><code>--scenario A2 --dz 0.30 --path circle --speed 0.4</code> ×2</td>
+          <td>Block B velocity (both moving)</td>
+        </tr>
+        <tr>
+          <td>10</td><td>C-1</td>
+          <td><code>--scenario A4 --dz 0.30 --offset 0.10 --axis y --motion lemniscate</code> ×2</td>
+          <td>Block C — lateral inside gate</td>
+        </tr>
+        <tr>
+          <td>11</td><td>C-2</td>
+          <td><code>--scenario A4 --dz 0.50 --offset 0.15 --axis x --motion lemniscate</code> ×2</td>
+          <td>Block C — other axis / offset</td>
+        </tr>
+        <tr>
+          <td>—</td><td>A-2</td>
+          <td><code>--scenario A1 --dz 0.20 --hold 15</code></td>
+          <td>Optional 2nd rep (already have <code>13-25-10</code>)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel done" style="margin-top:14px">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
+      <strong>21 Sep desk:</strong> 8 merges verified (<code>verify_c1_2026_09_21.py</code>) —
+      <strong>5</strong> count toward C.1 training (A1×2, A3×3); <strong>3</strong> A8 are QA-only.
+      Details · <code>docs/lab_sessions/2026-09-21.md</code> · pairing · <code>docs/39</code>
+    </p>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Desk window (before next lab)</h3>
+  <div class="panel warn">
+    <ul class="plain" style="margin:0">
+      <li>C.2 smoke on manifest paths only (<code>dataset.build</code>, <code>train.py</code>, baseline vs zero).</li>
+      <li><s>Analysis dashboards on the 8 verified merges</s> — done 2026-09-21 (<code>run_c1_2026_09_21_suite.py</code>).</li>
+      <li>cf5 z-tracking note from failed A1 archive (gains vs data quality) — inform pre-lab yaml, no silent retune.</li>
+      <li>Flash + bench <code>usd.runTag</code> + one tagged A8 (unblocks clean pairing from next session).</li>
+      <li>Thesis: methods paragraph on data collection + partial dz/speed grid (cite manifest, not radio CSV).</li>
     </ul>
   </div>
 </section>

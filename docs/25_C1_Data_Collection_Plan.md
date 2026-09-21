@@ -5,6 +5,53 @@ its own, so stopping early still yields a trainable set.
 
 ---
 
+## Progress — 2026-09-21 lab (verified merges)
+
+Training-eligible uSD only: `experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json`
+(8 flights; **5** count toward C.1 training, **3** A8 QA-only). Re-verified with
+`experiments/analysis/verify_c1_2026_09_21.py`. Compare-downwash catalog:
+[`24_Downwash_Compensation_Comparison.md`](24_Downwash_Compensation_Comparison.md) § 2026-09-21.
+
+| Plan row | Status | Manifest / note |
+|---|---|---|
+| A-1 **A7** | **Not flown** (failed attempt) | Refly |
+| A-2 **A1** dz 0.20 ×2 | **1/2** | `13-25-10` |
+| A-3 **A1** dz 0.30 ×2 | **0/2** | Refly (archive unmergeable) |
+| A-4 **A1** dz 0.50 ×2 | **0/2** | Refly |
+| A-5 **A1** dz 0.75 ×1 | **1/1** | `12-51-16` |
+| B-1 **A3** 0.30 ×2 | **2/2** | `13-00-57`, `13-02-56` |
+| B-2 **A3** 0.50 ×2 | **1/2** | `13-04-34`; 2nd rep missing cf5 uSD |
+| B-3 **A3** 0.40 ×1 | **Not flown** | Refly B-3 |
+| B-4 **A2** | **Not flown** | — |
+| C-1/C-2 **A4** | **Not flown** | — |
+| D-1…D-3 **C5** | **Not flown** | — |
+
+A8 shakedown flights are in the manifest for QA/demos only — **not** counted toward C.1
+(neighbour gate). Next lab priorities: **A1 @ 0.30 & 0.50**, **A3 B-2 rep + B-3**, **C5 block**,
+then **A7**, **A2**, **A4**. See `docs/next_flight_card.html`.
+
+**Coverage grid (2026-09-21 desk).** Compare-downwash catalog:
+[`24_Downwash_Compensation_Comparison.md`](24_Downwash_Compensation_Comparison.md) § Catalog —
+2026-09-21. Figure:
+`experiments/analysis/out/c1_2026-09-21/c1_coverage_2026-09-21.png`.
+
+| Block | Cell (plan) | Reps needed | On disk 2026-09-21 | Status |
+|---|---|---|---|---|
+| A-2 | A1 dz 0.20 | 2 | `13-25-10` (1) | **Partial** — refly 2nd |
+| A-3 | A1 dz 0.30 | 2 | `12-40-41`, `13-27-27` meta only | **Unmergeable** — ~20 cm / **15.6 cm** 3D RMS on best bins (`a1_z_diagnostic.json`) |
+| A-4 | A1 dz 0.50 | 2 | `12-43-34`, `13-28-49` meta only | **Unmergeable** — ~18 / **35.7 cm** 3D RMS |
+| A-5 | A1 dz 0.75 | 1 | `12-51-16` (1) | **Done** |
+| A-1 | A7 dynamic | 3 | — | **Not flown** |
+| B-1 | A3 dz 0.25 v 0.30 | 2 | `13-00-57`, `13-02-56` | **Done** |
+| B-2 | A3 dz 0.25 v 0.50 | 2 | `13-04-34` (1); `13-05-58` no cf5 uSD | **Partial** |
+| B-3 | A3 dz 0.40 v 0.40 | 1 | — | **Not flown** |
+| B-4 | A2 same-path | 2 | — | **Not flown** |
+| C-1/C-2 | A4 offset | 4 | — | **Not flown** |
+| D-1…D-3 | C5 ground | 3+ | — | **Not flown** |
+| — | A8 QA | — | 3 merges in manifest | **QA only** (not training) |
+
+---
+
 ## The constraint that drives everything: the proximity gate
 
 `model.neighbour_gate` replicates the reference's own cutoff literally:
@@ -107,9 +154,10 @@ inside the gate, and C5 is the only source of ground-term data.
    (`ctrl_mode: 0`) — the residual is a *measurement*, and collecting it under INDI would mean
    learning a residual the controller is simultaneously cancelling.
 4. Pull the uSD card with `copy_usd_log.py` (verified sha256, wall-clock names), never `cp`.
-5. Merge with `merge_usd_logs.py --meta --roles` so each vehicle is aligned against its **own**
-   commanded trajectory; it aborts above 15 cm RMS, which is what actually verifies drone/role
-   identity from the data rather than from a typed filename.
+   After flash with `usd.runTag`, confirm printed tag matches `meta.json` `usd_run_tag`.
+5. Merge: **tagged logs** — `merge_usd_logs.py --run-tag … --archive-t1 … --archive-t2 …`
+   (+ `--meta` for RMS quality printout). **Pre-tag archives** — `merge_usd_logs.py --meta
+   --roles`; aborts above 15 cm RMS (pairing search). See `docs/28`, `docs/39`.
 
 ---
 

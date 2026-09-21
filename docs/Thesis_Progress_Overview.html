@@ -187,14 +187,14 @@ footer{
   <div class="stat"><span class="n">17</span><span class="t">papers in library, all cited</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
   <div class="stat"><span class="n">7</span><span class="t">A8 uSD packages archived (19&nbsp;Sep)</span></div>
-  <div class="stat"><span class="n">0</span><span class="t">C.1 collection flights flown yet</span></div>
+  <div class="stat"><span class="n">8</span><span class="t">C.1 merges verified (21&nbsp;Sep); gaps remain</span></div>
 </div>
 
 <section>
   <div class="sec-head"><h2>Snapshot — 21 September 2026</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
-    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-19.md</code>.
+    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-21.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
@@ -203,7 +203,13 @@ footer{
       — A8 sequence flown and logged; geo vs INDI on cf5 is ~tie on z (n=2), not the old cf231 gap.</li>
     <li><strong>Desk parallel track (§1–12):</strong> <strong>complete</strong> — audited 21&nbsp;Sep;
       C.4 grouping fix (geo n=2 vs INDI n=2 on 19&nbsp;Sep A8). See <code>docs/35</code>.</li>
-    <li><strong>Not started:</strong> C.1 scenario matrix (thesis training data); C.4 repeats + statistics.</li>
+    <li><strong>C.1 (partial):</strong> 8 verified merges on 21&nbsp;Sep (4 usable for C.2 training);
+      refly gaps per flight card / <code>docs/25</code> grid — not a complete scenario matrix yet.</li>
+    <li><strong>C.2 (desk):</strong> E2E on 4 flights — LOO: A3 beats predict-zero; A1 hold-out and
+      A1↔A3 cross fail; loader↔firmware ~1e-6&nbsp;m/s² (pos + measured rel-vel paths); SIL Stage E
+      closed-loop pass with <em>vacuous</em> sim EKF gate (ground-truth passthrough —
+      <code>docs/38</code>, <code>docs/40</code>). Hardware open-loop still open.</li>
+    <li><strong>Not started:</strong> C.4 repeats + statistics.</li>
     <li><strong>C.1 rule:</strong> collect under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>
       — not full INDI on the study drone (<code>docs/25</code>, <code>docs/13</code>).</li>
     <li><strong>Open / backlog:</strong> <code>cf231_active</code> hardware; clean 2-drone A1 after Sep
@@ -256,7 +262,10 @@ footer{
         <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
         <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; hardware hover still gated</li>
         <li class="pending"><strong>C.1</strong> — fly scenario matrix under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>; A4 mandatory, A7 high value <em>docs/25, flight card</em></li>
-        <li class="pending"><strong>C.2 → C.3</strong> — train NS2 weights from C.1 logs, upload, enable Strategy&nbsp;2 in flight</li>
+        <li><strong>C.2 desk</strong> — trained/validated on 21&nbsp;Sep C.1 merges; report
+          <code>out/c2_e2e_2026-09-21/</code>, plan <code>docs/40</code> <em>docs/13</em></li>
+        <li class="pending"><strong>C.3</strong> — hardware: open-loop <code>rnn.en=0</code>, then
+          compensated flight; needs <code>residual_nn</code> build + more C.1 coverage before trusting deploy</li>
         <li class="pending"><strong>C.4</strong> — systematic head-to-head on matched scenarios with repeats and statistics <em>thesis result; docs/24 living table → docs/27 metrics</em></li>
         <li><em>Earlier lab history (Sep 7–14 validation, notch abandoned, first 2-drone bugs):</em> <code>docs/07</code> History, <code>docs/lab_sessions/</code></li>
       </ul>
@@ -313,9 +322,9 @@ footer{
     feasibility; they are not yet a comparison result.
   </p>
   <p>
-    <strong>C.1 volume</strong> unlocks <strong>Strategy&nbsp;2</strong> (geometric + NS2). Until
-    then, the minimum set (Strategies&nbsp;0–1 and later 4) can still be flown, but the predictive
-    arm of the study stays empty.
+    <strong>Strategy&nbsp;2</strong> (geometric + NS2) has a <strong>desk-validated</strong> training/upload path
+    on partial C.1 data; the predictive arm still needs <strong>more C.1 coverage</strong> and <strong>hardware C.3</strong>
+    before it is a fair C.4 row. Strategies&nbsp;0–1 (and later 4) remain flyable meanwhile.
   </p>
   <p>
     <strong>INDI baseline</strong> for Strategy&nbsp;1 is not fully settled: our full INDI flies
@@ -342,10 +351,10 @@ footer{
       matrix on the flight card. Preflight: reset cf5 to <code>controller: 6</code>, not stock INDI
       from the last test.</p>
     </li>
-    <li>
-      <h3>C.2 — Train NS2</h3>
-      <p class="why">Pipeline verified; needs C.1 merged logs. Can start as soon as the first
-      usable blocks land.</p>
+    <li class="done">
+      <h3>C.2 — Train &amp; desk-validate NS2</h3>
+      <p class="why">2026-09-21: 4 usable merges, LOO + loader/firmware + SIL Stage E (honest sim
+      caveats in <code>docs/40</code>). Model not trustworthy off A3 manifold; refly C.1 before deploy claims.</p>
     </li>
     <li>
       <h3>C.3 — Integrate strategies</h3>
@@ -404,9 +413,9 @@ footer{
         <td><code>docs/24</code>, <code>docs/25</code></td>
       </tr>
       <tr>
-        <td><strong>C.2 on first C.1 packages</strong></td>
-        <td>Strategy&nbsp;2 row; catches pipeline issues early</td>
-        <td><code>tools/residual/</code>, <code>docs/13</code></td>
+        <td><strong>C.2 desk E2E — done (21&nbsp;Sep)</strong></td>
+        <td>LOO/cross-scenario limits documented; Stage E SIL go/no-fly only</td>
+        <td><code>docs/40</code>, <code>docs/13</code>, <code>out/c2_e2e_2026-09-21/</code></td>
       </tr>
       <tr>
         <td><strong>INDI baseline desk</strong></td>
@@ -447,12 +456,11 @@ footer{
 </section>
 
 <footer>
-  Updated 21&nbsp;Sep (desk track audit COMPLETE) · SSOT: <code>docs/07</code> (some inner
-  tables there still say “C.0 next” — trust the top “WHERE WE ARE” block and the flight card) ·
+  Updated 21&nbsp;Sep (C.1 partial + C.2 desk E2E + doc renumber 39/40) · SSOT: <code>docs/07</code> ·
   Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
+  C.2: <code>docs/40</code>, <code>docs/13</code> ·
   Analysis: <code>docs/28</code>, <code>docs/27</code> ·
-  Comparison table: <code>docs/24</code> (cf5 rows / protocol text still to sync) ·
-  Session: <code>docs/lab_sessions/2026-09-19.md</code>
+  Comparison: <code>docs/24</code> · Session: <code>docs/lab_sessions/2026-09-21.md</code>
 </footer>
 
 </div>

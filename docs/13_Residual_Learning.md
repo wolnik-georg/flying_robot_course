@@ -1,34 +1,24 @@
 # Residual Learning — Onboard Inference and Offline Training
 
-> ## ✅ Pipeline COMPLETE and verified end-to-end against the compiled firmware — blocked only on C.1 data volume
+> ## ✅ Pipeline complete; **2026-09-21 desk validation on 4 real C.1 flights** — deploy trust still data-limited
 >
-> **Revised 2026-09-17.** `train.py` (the last stale piece) has been rewritten to match
-> `dataset.py`'s 2026-09-15/16 contract. The full chain —
-> `dataset.build() → train.py → fold_normalisation → firmware_forward` — now runs end to end,
-> and **`test_pipeline.py`'s all 13 checks pass against the real compiled onboard firmware**
-> (`rnn.ready=1`, onboard prediction vs. independent reference ~1e-6/1e-7 m/s², ground effect
-> and the output clamp both correct), not just against the Python-side model.
+> **Revised 2026-09-21** after [`40_C2_Residual_Pipeline_E2E_Validation_Plan.md`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md).
+> Report: `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
+> `C2_VALIDATION_REPORT.md`).
 >
 > | Piece | State |
 > |---|---|
-> | Onboard network + weight upload | ✅ current, 19 checks passing |
-> | `model.py` — the firmware contract | ✅ verified, agrees with the compiled firmware to ~1e-6 m/s². Architecture also directly cross-checked layer-by-layer against Neural-Swarm2's own upstream reference (`crazyswarm2/crazyflie_sim/backend/neuralswarm.py` + its real trained `.pth` weights) — exact match |
-> | `test_pipeline.py` | ✅ **all 13/13 checks pass against the real compiled firmware** (2026-09-17 re-run) |
-> | `dataset.py` — logs → tensors | ✅ rewritten 2026-09-16, verified against real flight data (§6) |
-> | `train.py` | ✅ **rewritten 2026-09-17** — `NeuralSwarm2`, separate rel/ground normalisation, the grams↔m/s² unit conversion at the loss boundary. Exercised end-to-end via `--synthetic` (fold check `8.45e-08 m/s²`, 19297 weights exported) |
-> | `upload_residual_weights.py` (crazyswarm2) | 🔴→✅ **real bug fixed 2026-09-17**: hardcoded `N_WEIGHTS=987` (the old architecture) would have rejected every correctly-sized export from the new one. Corrected to 19297 |
-> | Simulation dry run (§7) | ⛔ still predates the port, not re-run |
+> | Onboard network + weight upload | ✅ 19 checks passing |
+> | `model.py` / `test_pipeline.py` | ✅ vs compiled firmware ~1e-6 m/s² (synthetic tensors) |
+> | `dataset.py` + `train.py` on real merges | ✅ 53644 samples pooled; **4 usable flights** (`A1_13-25-10` → 0 rows) |
+> | **`test_real_data_pipeline.py` (Stage C)** | ✅ Path A: positions, NumPy peer dv=0 → ~**6.6×10⁻⁷** m/s². Path B: measured `rel` velocity via two `oot_set_peer` samples (100 ms) → ~**6×10⁻⁶** m/s². See script docstring — Path A does not exercise \|dvx\| gate alone |
+> | **LOO generalisation (Stage B)** | 🟡 A3 held-out beats predict-zero; **A1 held-out worse than zero**; A1↔A3 cross-scenario fails |
+> | **SIL closed-loop gate (Stage E)** | ✅ **Pass (desk/SIL)** — real A3 sim flight + 5k+ rows (`c2_e2e_stage_e.json`); sim publishes **ground truth** on both `/state` and `/pose` so the 150 mm EKF gate is vacuous there (`docs/38`); go/no-fly for **closed-loop stability**, not model quality or SIL estimator fidelity |
+> | Hardware open-loop `rnn.en=0` | ⬜ Not flown yet |
 >
-> So: **the entire offline training pipeline and the onboard inference path are both now
-> implemented and verified against the real compiled firmware** — not just against each other.
-> What remains is not software: **no real flight has ever produced training data.** C.1 residual
-> data collection is unblocked and does not need to wait on anything above — see the Next Flight
-> Card and `docs/07`'s 2026-09-17 planning note (collect under **geometric**, not full INDI —
-> INDI's own RPM feedback partially reacts to the same disturbance being measured).
->
-> **Nothing has been trained on a real flight** — no formation flight has produced a dataset yet,
-> so every number in this document is a simulation number, and the ones in §6/§7 belong to the
-> superseded network.
+> **Honest takeaway:** Software chain is trustworthy enough to integrate cautiously; the **learned
+> model is not trustworthy off the A3 training manifold** until more C.1 coverage (see
+> `next_flight_card.html`). Collect under **geometric** (§6 banner rationale unchanged).
 >
 > **Where this sits in the Core Thesis Workflow** ([`07`](07_Thesis_Progress_Checklist.md)):
 >
@@ -36,11 +26,11 @@
 > |---|---|
 > | **C.0 Hardware Gate** ⬅️ next | Must clear `rnn.en` — §7 "The control-law change". **Unflown** |
 > | **C.1 Residual Data Collection** | **Unblocked, in progress.** Produces the training set — geometric only (see banner above). §7 says why A4/A7 are mandatory |
-> | **C.2 Train the Residual Model** | Pipeline ✅ ready end-to-end. Blocked only on C.1 producing real data |
+> | **C.2 Train the Residual Model** | Desk-validated 2026-09-21 on 4 flights; needs more C.1 before deploy |
 > | **C.3 Integrate the Strategies** | 5 of 7 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
-**Last updated:** 17 September 2026
+**Last updated:** 21 September 2026
 
 Five of the seven control strategies being compared need the same thing underneath them: a model
 that predicts the interaction force one vehicle is about to feel from the others. This document
@@ -419,15 +409,29 @@ real and the synthetic path.
 before a drone has flown. **No result may be quoted from it.** Files written this way carry a
 `synthetic: true` flag that the uploader prints in capitals.
 
+### Real-data E2E validation (2026-09-21)
+
+Executed per [`40`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md). Scripts:
+`experiments/analysis/c2_e2e_validation.py`, `tools/residual/test_real_data_pipeline.py`,
+`experiments/analysis/c2_stage_e_dryrun.sh`.
+
+| Stage | Result |
+|---|---|
+| **A** | 5 C.1-eligible merges → **4** usable (`A1_13-25-10`: all-zero `a_res`) |
+| **B LOO** | A3 folds: RMSE ↓ vs predict-zero (~33–71%). **A1 hold-out: RMSE 5.66 vs baseline 1.79 (−216%)** |
+| **B cross** | Train A3 → test A1: same failure; train A1 → test A3: RMSE ~9–10 vs baseline ~0.74 |
+| **C** | Path A (positions, NumPy peer dv=0): max \|Δ\| ≈ 6.6×10⁻⁷ m/s². Path B (differenced `oot_set_peer`, measured `rel` vel): ≈ 6×10⁻⁶ m/s². Path A alone does not prove the \|dvx\| gate; Path B does. Sign sanity OK |
+| **D** | Synthetic overhead sweep on LOO weights is **not** a clean decay signature (thin data / extrapolation). Held-out **binned error vs dz** is structured on A3 (errors smaller near dz ~0.2–0.3 m) and flat-bad on A1 dz ~0.75 m — see the **2026-09-21 coverage grid** in [`25_C1_Data_Collection_Plan.md`](25_C1_Data_Collection_Plan.md) (which dz/speed cells are merged vs refly-only) |
+| **E** | **First attempt:** inconclusive (EKF `[0,0,0]` vs real `/pose` — root cause in `docs/38`). **After sim plumbing fix + rerun:** A3 dz 0.30, `rnn.en=0/1`, **5200+ rows**, hover to ~1.0 m / ~1.3 m, `meaningful_flight: true`, no divergence (`c2_e2e_stage_e.json`). **Not** hardware-like EKF: ROS “EKF” = ground-truth passthrough (Kalman externalize unused for publish). Log path: `FLYING_ROBOT_COURSE_ROOT` (2026-09-21) |
+
 ---
 
 ## 7. End-to-end dry run in simulation
 
-> **Historical, 2026-08-23 — run against the OLD 987-weight network.** The dry run has not been
-> repeated since the Neural-Swarm2 port. `dataset.py` now runs again (2026-09-16), but `train.py`
-> still doesn't, so phases 2–5 below would still not execute today. Kept as the record of what the
-> rehearsal proved about the *plumbing* (which is architecture-independent); every number in it
-> belongs to the superseded network.
+> **2026-08-23 run:** OLD 987-weight network — numbers below are historical. **2026-09-21:** Stage E
+> dry run with real LOO weights: `c2_stage_e_dryrun.sh` → `c2_e2e_stage_e.json` (**pass**, real
+> closed loop in sim; see `docs/38` for ground-truth `/state`/`/pose` caveat). Older
+> `run_residual_dryrun.sh` path is hardware-oriented rehearsal.
 
 `experiments/analysis/run_residual_dryrun.sh` rehearses the whole of thesis C.1 → C.2 → C.3 without a
 drone. It exists because every step of that sequence can fail, and finding out in the lab costs

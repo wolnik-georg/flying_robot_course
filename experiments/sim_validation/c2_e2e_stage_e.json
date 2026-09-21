@@ -1,0 +1,52 @@
+{
+  "note": "Desk/SIL go-no-fly gate \u2014 not evidence the model is good.",
+  "weights": "train_without_A1_12-51-16.npz (LOO, trained on A3\u00d73)",
+  "scenario": "A3 dz=0.30 neuralswarm backend",
+  "predict": {
+    "label": "predict_rnn_en_0",
+    "n_rows": 5204,
+    "drones": {
+      "cf231_active": {
+        "z_min": 0.0,
+        "z_max": 1.007469,
+        "cmd_z_max": 1.000007,
+        "rnn_pred_z_rms": 0.7876142682051973,
+        "rmse_pred_vs_a_res": 0.5542707081486331
+      },
+      "cf_second": {
+        "z_min": 0.0,
+        "z_max": 1.299298,
+        "cmd_z_max": 1.300008,
+        "rnn_pred_z_rms": 1.2658325721977552,
+        "rmse_pred_vs_a_res": 1.2481198411923164
+      }
+    },
+    "diverged": false,
+    "meaningful_flight": true
+  },
+  "compensate": {
+    "label": "compensate_rnn_en_1",
+    "n_rows": 5186,
+    "drones": {
+      "cf231_active": {
+        "z_min": 0.0,
+        "z_max": 1.028479,
+        "cmd_z_max": 1.000007,
+        "rnn_pred_z_rms": 0.6902966071328145,
+        "rmse_pred_vs_a_res": 0.5935240564054601
+      },
+      "cf_second": {
+        "z_min": 0.0,
+        "z_max": 1.362647,
+        "cmd_z_max": 1.300009,
+        "rnn_pred_z_rms": 1.7739434095215993,
+        "rmse_pred_vs_a_res": 1.7452187145619933
+      }
+    },
+    "diverged": false,
+    "meaningful_flight": true
+  },
+  "meaningful_flight": true,
+  "pass": true,
+  "inconclusive_reason": null
+}

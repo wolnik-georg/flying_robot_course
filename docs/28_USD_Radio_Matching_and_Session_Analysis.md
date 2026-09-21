@@ -115,12 +115,42 @@ on each card, same scenario params).
    trust it alone when all runs share the same A8 params (see 2026-09-15). Use **thesis counter
    order + merge RMS &lt; 15 cm** as the gate.
 
+### THESIS1 / THESIS2 card labels ≠ bottom / top drone
+
+The SD volume names (**THESIS1**, **THESIS2**) are **card IDs**, not roles. Either card can sit
+in **cf5** (bottom) or **cf_second** (top) on any given day. **`copy_usd_log.py`’s `drone`
+argument is only for the archive filename** — it does not prove which vehicle wore the card.
+
+**Always pair using merge alignment:**
+
+1. For each candidate uSD file, score **bottom** vs **top** role against the radio
+   `A8_<stamp>.meta.json` (same logic as `merge_usd_logs.py --meta --roles`).
+2. **Bottom** = role whose trajectory fits with lower RMS at the bottom slot; assign that file
+   to **`cf5`** in symlinks regardless of whether it came off THESIS1 or THESIS2.
+3. **Top** → symlink as **`cf_second`**.
+4. Pass logs to merge as **`cf5_…` first, `cf_second_…` second**, with `--roles bottom top`.
+
+When several flights share **identical A8 params**, trajectory RMS alone cannot distinguish
+which `thesisNN` belongs to which radio stamp — use **flight order on the card**, **lab notes**,
+and **radio row count / `t_start_sim`**, then confirm merge RMS **&lt; 15 cm** per package.
+
 ### Matching rules (non-negotiable)
+
+**Primary (firmware with `usd.runTag`, from 2026-09-22 onward after flash + bench verify):**
+
+1. Host writes `usd_run_tag` (unix seconds) into the flight `.meta.json` and broadcasts
+   `usd.runTag` before `usd.logging=1` (see `docs/39_USD_Radio_Logging_Robustness_Plan.md`).
+2. After copy, `index_usd_archive.py` on each card directory → lookup by tag.
+3. `merge_usd_logs.py --run-tag <tag> --archive-t1 … --archive-t2 …` (+ `--meta` for QA).
+   **Tag identifies the pair; RMS is a quality gate only** in this mode (bad RMS with a
+   matching tag = real tracking/estimation issue, not a pairing mistake).
+
+**Fallback (archives ≤ 2026-09-21, no `run_tag` column):**
 
 | Do | Don't |
 |---|---|
 | `merge_usd_logs.py --meta --roles` (each drone vs **its own** commanded trajectory) | Cross-drone z-correlation for A8 alignment |
-| Pair by **scenario + time + lab notes + thesisNN order** | Match uSD to radio because both arrived in the same `git pull` |
+| Pair by **role fit + scenario + time + lab notes + thesisNN order** | Assume THESIS1 = bottom or THESIS2 = top; match uSD to radio from `git pull` order alone |
 | Keep raw uSD under `usd_raw/`; symlink into success packages | Overwrite or delete raw card files |
 | Treat merge **RMS &gt; 15 cm** as wrong file/role | Merge anyway |
 | Use **uSD merged CSV** for thesis metrics (500 Hz, `ctrltarget`, `motor`, `a_res`) | Report frequency or motor metrics from 20 Hz radio CSV |

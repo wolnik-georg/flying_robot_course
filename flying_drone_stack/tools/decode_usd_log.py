@@ -46,6 +46,7 @@ RENAME = {
     "stabilizer.yaw": "yaw_deg",
     "indi.dt_us": "dt_us",
     "pm.vbat": "vbat",
+    "usd.runTag": "run_tag",
 }
 
 

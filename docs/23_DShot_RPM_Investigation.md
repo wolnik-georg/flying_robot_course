@@ -160,3 +160,27 @@ walked in July without success. Revert to `rpm_source=0`, record the result, sto
 option for every future drone in the comparative study — genuinely useful given the operator's
 stated concern about marker reliability and interaction-force contamination in tight multi-drone
 formations, which is exactly where this thesis's measurements matter most.
+
+---
+
+## 5. Spot check — 2026-09-21 C.1 flight (geometric, cf5 bottom)
+
+**Log:** `experiments/logs/usd_raw/2026-09-21_THESIS1/cf5_pm_thesis09_thesis09_2026-09-21_13-18-45.bin`
+(bottom file behind accepted merge `A3_2026-09-21_13-00-57`). Tool:
+`flying_drone_stack/tools/investigate_dshot_rpm.py` (pyenv `flying_robots` interpreter).
+
+| Quantity | Value |
+|---|---|
+| Gyro σ (x / y / z) | 43.5 / 82.4 / 10.5 °/s |
+| Gyro FFT peak (x / y) | **2.10 Hz** (both) |
+| `tau_x` / `tau_y` FFT peak | 2.02 Hz (σ ≈ 0 — geometric hover, not INDI) |
+| Deck vs DShot bias (m1–m4) | **−0.47% … −0.04%** |
+| Deck vs DShot lag | **0–4 ms** |
+
+Plot: `.../cf5_pm_thesis09_thesis09_2026-09-21_13-18-45_dshot_investigation.png`.
+
+**`rpm_source=1` decision:** unchanged. This flight was already collected with DShot as the
+active RPM path for C.1; the spot check shows deck and DShot agree within sub-percent bias and
+single-digit-ms lag on a real geometric formation run — it **supports** keeping DShot for
+residual logging, but does **not** replace the §4 H0 partition on DShot at locked INDI gains
+(that test remains open).

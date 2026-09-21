@@ -106,8 +106,10 @@ Full protocol and flight catalog: **`docs/28_USD_Radio_Matching_and_Session_Anal
 
 1. Archive both cards to `experiments/logs/usd_raw/<date>_THESIS{1,2}/` with `copy_usd_log.py`
    (or a verified bulk copy — never hand-rename in the archive).
-2. Note in the lab session which drone wore which card and **`thesisNN` per flight** (cheapest
-   match key when scenario params repeat).
+2. Note in the lab session **which physical drone wore THESIS1 vs THESIS2** (cards swap —
+   the label is not “always bottom/top”) and **`thesisNN` per flight** (cheapest match key
+   when scenario params repeat). After copy, assign **bottom/top from merge role RMS**, not
+   from the card name (`docs/28`).
 3. Merge with **`merge_usd_logs.py --meta experiments/logs/A8_<stamp>.meta.json --roles bottom top`**
    on symlinks named `cf5_...` / `cf_second_...` so merged columns match radio meta names.
 4. Refuse merge if either drone reports **RMS &gt; 15 cm** (wrong file or role).
@@ -149,13 +151,14 @@ whole uSD investigation had to do because this wasn't recorded at the time.
 | **`indi.a_res_{x,y,z}`** | **the residual, f_res/m — the thesis measurement.** Zero unless an RPM source is present |
 | `indi.{tau,alp}_*` | INDI internals, for diagnosing the controller |
 | `indi.e_r_{x,y,z}`, `indi.e_r_norm` | Geometric attitude error `e_R` used in the torque law. Present under every `ctrl_mode` (0-3), not only INDI (added 2026-09-08) |
+| `usd.runTag` | Session tag (unix s) set by host before `usd.logging=1`; 48th channel, uses the last free slot (prior config had 47 variables). Primary pairing key post-flash (`docs/39`). |
 | `stabilizer.{roll,pitch,yaw}`, `gyro.*`, `acc.*` | attitude and raw IMU |
 | `ctrltarget.*` | commanded position → tracking error |
 | `motor.m*` | control effort (PWM), one of the protocol's comparison metrics |
 | `motor.m*_rpm` | DShot ESC telemetry on the uSD file — **same source** as `indi_gains.rpm_source=1` uses for `a_res`; logged for offline delay/cross-check, not a second control path |
 | `rpm.m*` | optical RPM deck — logged **alongside** DShot; control still uses DShot only |
 
-47 variables at 500 Hz (`rpm.m*` + `motor.m*_rpm` added 2026-09-21 for dual-RPM logging during C.1).
+48 variables at 500 Hz (cap = `MAX_USD_LOG_VARIABLES_PER_EVENT`: dual RPM, full `indi.e_r_*`, and `usd.runTag` as of 2026-09-21 evening).
 Cap is **48** (`MAX_USD_LOG_VARIABLES_PER_EVENT` in local `usddeck.c`, was 40). **Reflash both study drones** after raising the cap, then copy this config to both SD cards.
 If the card cannot keep up (check for gaps after the first flight), drop
 `motor.m*` first, then `acc.*` — `indi.a_res_*` and `stateEstimate.*` are the ones the thesis

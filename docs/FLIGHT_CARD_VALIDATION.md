@@ -1,5 +1,8 @@
 # Flight card — validate both controllers
 
+> **Superseded for current flight priorities** — use [`next_flight_card.html`](next_flight_card.html).
+> This card documents the Sep&nbsp;2026 controller-validation ladder (stages 1–2); keep for history.
+
 > **⚠️ Bench-check table below is HISTORICAL (09-09→09-13).** As of 2026-09-16,
 > `indi_gains.rpm_source` defaults to **1 (DShot)**, not 0 — the optical deck was found to
 > silently drop 2 of 4 motors' RPM in flight and DShot is now the standing source. See

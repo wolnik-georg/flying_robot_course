@@ -7,21 +7,24 @@ half lives in `firmware_app/src/residual_nn.rs`; the full design is in
 **Use system `python3`** — it has torch and the SIL bindings. The pyenv `flying_robots`
 environment has neither.
 
-## State (2026-09-17) — pipeline ready; blocked on C.1 flight data volume
+## State (2026-09-21) — pipeline verified on real C.1 data; model quality data-limited
 
 Neural-Swarm2 port (`phi_Net`/`rho_Net`, 19297 weights, scalar Z). **Authoritative detail:**
-[`docs/13_Residual_Learning.md`](../../../docs/13_Residual_Learning.md).
+[`docs/13_Residual_Learning.md`](../../../docs/13_Residual_Learning.md). **E2E validation:**
+[`docs/40_C2_Residual_Pipeline_E2E_Validation_Plan.md`](../../../docs/40_C2_Residual_Pipeline_E2E_Validation_Plan.md)
+→ `experiments/analysis/out/c2_e2e_2026-09-21/`.
 
 | File | State |
 |---|---|
 | `model.py` | ✅ Verified vs compiled firmware (~1e-6 m/s²) |
 | `dataset.py` | ✅ Rewritten 2026-09-16; tested on real merged CSV |
-| `train.py` | ✅ Rewritten 2026-09-17; `--synthetic` end-to-end OK |
+| `train.py` | ✅ Runs on real merges; LOO on 4 flights (2026-09-21) |
 | `test_pipeline.py` | ✅ 13/13 vs compiled firmware |
+| `test_real_data_pipeline.py` | ✅ Real rows vs compiled (~1e-6 m/s²) |
 | `../../firmware_app/host/test_residual_nn.py` | ✅ 19 checks |
 
-**Still missing:** enough **C.1 merged logs** under geometric (see `docs/25`) for a defensible
-trained model — not a software blocker.
+**Still missing for a defensible deployed model:** more **C.1 merged logs** (scenario/dz coverage,
+see `docs/25`) — especially A1 reflys and A3 B-2/B-3. Software is not the blocker.
 
 **Desk dry-run (2026-09-21):** trained on one A8 geometric merge — rehearsal only.
 Manifest: `experiments/analysis/out/c2_dryrun/manifest.json` · weights:

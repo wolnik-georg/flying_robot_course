@@ -115,7 +115,7 @@ the five steps below are the thesis itself. They are strictly ordered.
 |---|---|---|
 | **1** | **[C.0 — Hardware Gate](#c0--hardware-gate)** | ✅ Closed enough (Sep 2026) |
 | **2** | [C.1 — Residual Data Collection](#c1--residual-data-collection) | ⬅️ **NEXT** — [`31`](31_Desk_Parallel_Track.md) for desk parallel |
-| **3** | [C.2 — Train the Residual Model](#c2--train-the-residual-model) | ⬜ Blocked by C.1. *Pipeline ready; needs real data* |
+| **3** | [C.2 — Train the Residual Model](#c2--train-the-residual-model) | 🟡 **Desk-validated** on 4 C.1 flights (2026-09-21); needs more C.1 coverage before trusting deploy |
 | **4** | [C.3 — Integrate the Strategies](#c3--integrate-the-strategies) | ⬜ 1 of 7 wired |
 | **5** | [C.4 — Systematic Comparison](#c4--systematic-comparison) | ⬜ The thesis result |
 
@@ -767,11 +767,16 @@ Fly the validated formations under **pure Geometric control**, logging high-qual
 states. Geometric is the right choice: it does not compensate, so the residual is *observed*
 rather than partly cancelled.
 
-- [ ] Confirm `a_res` is non-zero and correctly signed before collecting anything
-- [ ] Collect at safe separations first, tightening only once the loose cases are clean
+- [x] Confirm `a_res` is non-zero and correctly signed before collecting anything — **2026-09-21**
+      A3 merges (`docs/24` catalog)
+- [ ] Collect at safe separations first, tightening only once the loose cases are clean — **2026-09-21
+      refused A1 attempts** fail merge at 15.6–61&nbsp;cm 3D RMS (accepted A1 merges are 5.4/7.2&nbsp;cm);
+      refly gaps per `docs/25` grid + `a1_z_diagnostic.json`
 - [ ] **Must include both vertical and lateral motion** — A1, A3 (vertical), **A4, A7 (lateral)**
-- [ ] Log `a_res`, full state and rotor speeds at 500 Hz to uSD (radio cannot carry two drones)
-- [ ] Verify the merged multi-drone logs actually contain relative state and `f_res`
+- [x] Log `a_res`, full state and rotor speeds at 500 Hz to uSD (radio cannot carry two drones) —
+      **8 verified merges** in `c1_2026-09-21_merged/` manifest
+- [x] Verify the merged multi-drone logs actually contain relative state and `f_res` — C.2 E2E
+      `docs/40` on manifest paths
 
 > ⚠️ **A4/A7 are not optional.** The simulation dry run showed A3 alone never excites relative
 > `y` — `train.py` reported `sigma = 1.0` for those inputs. Collecting only vertical scenarios
@@ -785,16 +790,21 @@ This is the training set for **every** residual-learning strategy.
 
 ### C.2 — Train the Residual Model
 
-The pipeline is **built and verified**; this step is running it on real data for the first time.
-Tooling: `flying_drone_stack/tools/residual/` — [`13_Residual_Learning.md`](13_Residual_Learning.md) §6.
+The pipeline is **built and verified** on real 2026-09-21 C.1 merges (4 usable flights after
+`A1_13-25-10` → 0 rows). Full desk E2E: [`40_C2_Residual_Pipeline_E2E_Validation_Plan.md`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md),
+report `experiments/analysis/out/c2_e2e_2026-09-21/`. Tooling:
+`flying_drone_stack/tools/residual/` — [`13_Residual_Learning.md`](13_Residual_Learning.md) §6.
 
-- [ ] Merge the per-drone uSD logs onto a common clock (`merge_usd_logs.py`)
-- [ ] Train the deep-sets residual network on the collected flights
-- [ ] **Validate model quality before integrating** — RMSE against *predicting zero* is the number
-      that matters; a model that cannot beat that has learned nothing
-- [ ] Export (normalisation folded into layer 1) and upload the weights
-- [ ] Fly once with weights loaded and **`rnn.en = 0`** — predicted vs measured residual, open
-      loop. This is the only comparison that distinguishes a good model from a lucky feedback loop
+- [x] Merge the per-drone uSD logs onto a common clock (`merge_usd_logs.py`) — 8 merges in
+      `c1_2026-09-21_merged/` manifest
+- [x] Train the deep-sets residual network on the collected flights — LOO + cross-scenario 2026-09-21
+- [x] **Validate model quality before integrating** — LOO: A3 held-out folds beat predict-zero
+      (~33–71% RMSE reduction); **A1 held-out worse than predict-zero**; A1↔A3 cross-scenario fails
+- [x] Export (normalisation folded into layer 1) and upload path — Stage C real-data vs compiled PASS
+- [ ] Fly once with weights loaded and **`rnn.en = 0`** — hardware open-loop (**SIL Stage E
+      pass** 2026-09-21 — closed-loop sim only, ground-truth state in sim per `docs/38`;
+      `c2_e2e_stage_e.json`; not hardware yet)
+- [ ] Refly C.1 gaps (`next_flight_card.html`) before claiming a deployable model
 
 ---
 
@@ -859,6 +869,10 @@ family, and comparing them is itself a result rather than a redundancy:
 ### C.4 — Systematic Comparison
 
 **The thesis result.** Fly the same frozen formation library under every strategy.
+
+**Desk (2026-09-21):** geometric-only phase metrics ran through `run_c4_desk_prep.py`
+(`c4_desk_prep_2026-09-21/`) — no crash, no fabricated INDI row; **not** pooled with 19 Sep A8
+(scenario grouping). See [`31`](31_Desk_Parallel_Track.md) §1.
 
 - [ ] Run the full library per strategy, 2 robots
 - [ ] Measure **tracking error**, **residual rejection**, and **robustness**

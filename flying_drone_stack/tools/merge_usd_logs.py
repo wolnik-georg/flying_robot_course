@@ -342,12 +342,37 @@ def main():
                          "the drones against each other. Strongly preferred -- see below.")
     ap.add_argument("--roles", nargs="*", default=[],
                     help="role per log, in the same order as the logs (e.g. bottom top)")
+    ap.add_argument("--run-tag", type=int, default=None,
+                    help="match logs by usd.runTag (post-2026-09-21 firmware); use with "
+                         "--archive-t1 and --archive-t2")
+    ap.add_argument("--archive-t1", default=None, help="THESIS1 (or cf5-card) archive dir")
+    ap.add_argument("--archive-t2", default=None, help="THESIS2 (or top-card) archive dir")
+    ap.add_argument("--tag-quality-only", action="store_true",
+                    help="with --run-tag: print RMS from --meta but never refuse merge on RMS")
     a = ap.parse_args()
 
     if a.self_test:
         sys.exit(self_test())
+
+    if a.run_tag is not None:
+        if not a.archive_t1 or not a.archive_t2:
+            ap.error("--run-tag requires --archive-t1 and --archive-t2")
+        import index_usd_archive
+        i1 = index_usd_archive.index_directory(Path(a.archive_t1))["by_run_tag"]
+        i2 = index_usd_archive.index_directory(Path(a.archive_t2))["by_run_tag"]
+        key = str(a.run_tag)
+        if key not in i1 or key not in i2:
+            sys.exit(f"[merge] run_tag {a.run_tag} not found in both archives "
+                     f"(t1={key in i1}, t2={key in i2})")
+        p1, p2 = Path(i1[key]["path"]), Path(i2[key]["path"])
+        a.logs = [str(p1), str(p2)]
+        if not a.roles:
+            a.roles = ["bottom", "top"]
+        a.tag_quality_only = True
+        print(f"[merge] run_tag {a.run_tag}: {p1.name} + {p2.name}")
+
     if not a.logs:
-        ap.error("give at least one uSD log, or --self-test")
+        ap.error("give at least one uSD log, or --self-test, or --run-tag")
 
     names, logs = [], []
     for p in a.logs:
@@ -401,10 +426,13 @@ def main():
                 sys.exit(f"[merge] {n}: no lag covers enough of the scenario to align on. "
                          f"Wrong file for this scenario, or wrong role?")
             rms = float(np.sqrt(mse)) * 100.0
+            quality_only = getattr(a, "tag_quality_only", False)
             flag = "" if rms < 15.0 else "   <-- BAD FIT: wrong role, or wrong file for this flight"
+            if quality_only and rms >= 15.0:
+                flag = "   <-- quality flag (pair accepted by run_tag)"
             print(f"   {n:14s} role={role:7s} scenario starts at its t={lag:6.2f}s  "
                   f"RMS {rms:5.1f} cm{flag}")
-            if rms >= 15.0:
+            if rms >= 15.0 and not quality_only:
                 sys.exit(f"[merge] refusing to merge on an alignment this poor -- fix the "
                          f"role/file pairing first.")
             lags.append(lag)

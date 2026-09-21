@@ -30,10 +30,11 @@ study (C.4)** and does not drift into stale docs.
 | **One-command desk run** | `python3 experiments/analysis/run_c4_desk_prep.py` (figures use pyenv `flying_robots` if present) |
 | Default input | `experiments/analysis/out/a8_2026-09-19/a8_2026-09-19_phase_metrics_all.csv` |
 | Default output | `experiments/analysis/out/c4_desk_prep/` (`phase_metrics_c4_compare.csv` → figures) |
+| **2026-09-21 geometric-only prep** | `python3 experiments/analysis/run_c4_desk_prep.py --rows experiments/analysis/out/c1_2026-09-21/c1_2026-09-21_phase_metrics_all.csv --out experiments/analysis/out/c4_desk_prep_2026-09-21` — **exit 0**; no INDI rows (expected). **Not pooled** with 2026-09-19: scenarios differ and `aggregate.py` headline grouping is not `(scenario, study_controller)`-safe across days ([`35`](35_Desk_Parallel_Audit_Closeout.md)). |
 | Audit closeout | [`35_Desk_Parallel_Audit_Closeout.md`](35_Desk_Parallel_Audit_Closeout.md) |
 
-After new flight days: re-run `run_a8_*_suite.py` or extend suite → refresh phase CSV →
-`run_c4_desk_prep.py`.
+After new flight days: re-run `run_a8_*_suite.py` or **`run_c1_2026_09_21_suite.py`** → refresh phase CSV →
+`run_c4_desk_prep.py` (per-day `--rows` / `--out` until scenario-keyed pooling exists).
 
 ---
 
@@ -157,6 +158,16 @@ Legacy radio CSV path unchanged (no `--merged-usd`).
 | Literature complement (Grok merge) | [`36_Four_Five_Robot_Complement.md`](36_Four_Five_Robot_Complement.md) |
 
 Not on the C.1 critical path; useful for Ch. 7 and supervisor discussion.
+
+---
+
+**2026-09-21 desk extension (does not reopen the COMPLETE audit).** Indexed items above were
+extended to the eight verified C.1 merges: flight-analysis suite
+(`run_c1_2026_09_21_suite.py`), **docs/24** catalog rows, geometric-only C.4 prep output
+(`c4_desk_prep_2026-09-21/`), DShot spot-check entry in **docs/23**, Ch. 5 campaign tense,
+and **docs/25** coverage grid. **Task 4 fix:** `c1_a1_z_diagnostic_2026_09_21.py` now matches
+merge alignment; flight card + lab log §4 updated (prior ctrltarget-based “150&nbsp;mm bias” claim
+withdrawn). Consistency pass (docs/24/25/23/07/31/flight card/lab log/ch5): see **docs/37**.
 
 ---
 

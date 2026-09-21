@@ -162,7 +162,16 @@ def analyse_run_merged(meta_path: Path, merged_path: Path):
     meta = json.loads(meta_path.read_text())
     sid = meta["scenario"]
     stamp = meta_path.name[:-len(".meta.json")].replace(f"{sid}_", "", 1)
-    vehicles = M.load_merged_csv(merged_path)
+    raw = M.load_merged_csv(merged_path)
+    vehicles = {}
+    for logical in meta["names"]:
+        if logical in raw:
+            vehicles[logical] = raw[logical]
+            continue
+        for k, v in raw.items():
+            if k.startswith(f"{logical}_"):
+                vehicles[logical] = v
+                break
     scenarios = _load_scenarios()
     sc = scenarios.BUILDERS[sid](**meta["params"])
     anchor = np.array(meta["anchor"], dtype=float)

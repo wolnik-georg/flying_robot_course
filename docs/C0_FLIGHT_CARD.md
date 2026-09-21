@@ -1,5 +1,8 @@
 # C.0 flight card — one page, print it
 
+> **Superseded for day-to-day priorities** — use [`next_flight_card.html`](next_flight_card.html)
+> (current lab plan). This file keeps the historical C.0 rung sequence for reference.
+
 > **Citation audit closed 27 Aug 2026. Do not block C.0 on more papers.**
 
 **Read nothing else on flight day.** Detail lives in
