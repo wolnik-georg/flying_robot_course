@@ -4,7 +4,17 @@ Audit of what the analysis toolchain already produces against what a defensible 
 comparison (C.4) actually needs, with the gaps ranked. Written 2026-09-18, before C.1, so the
 gaps can be closed while the lab work proceeds rather than discovered at writing time.
 
+**Desk quick start (2026-09-21):** [`31_Desk_Parallel_Track.md`](31_Desk_Parallel_Track.md) ·
+run `python3 experiments/analysis/run_c4_desk_prep.py` on archived phase metrics.
+
+**Controller column policy (2026-09-21):** phase CSVs carry **`study_controller`** (what was
+flown on cf5) and **`controller`** (metrics label). Stock-Lee-on-both baselines must stay
+`stock_lee` — never `geometric`. C.4 summarise/plots use the compare subset only
+(`run_c4_desk_prep.py` → `phase_metrics_c4_compare.csv`). Details: [`35`](35_Desk_Parallel_Audit_Closeout.md).
+
 ---
+
+**Operational workflow (match → package → suite):** `docs/28_USD_Radio_Matching_and_Session_Analysis.md`.
 
 ## Policy: uSD logs are the analysis source of record
 
@@ -155,7 +165,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 | **P2** | ✅ **DONE 2026-09-18.** `approach_times()`, `phase_windows()`, `slice_log()`, `vehicle_metrics_by_phase()` — every metric now reportable per phase | — |
 | **P3** | ✅ **DONE 2026-09-18.** `aggregate.py` — mean±std/sem, paired Wilcoxon, bootstrap CI on the ratio, rank-biserial effect size, plus small-n and pseudo-replication guards | needs repeat FLIGHTS to produce a claim |
 | **P4** | ✅ **DONE 2026-09-18.** `plot_comparison.py` — grouped bars with SEM error bars, per-phase breakdown, n annotated, honesty rules enforced in code | — |
-| **P5** | Residual-model evaluation suite (R², error vs dz, flight-wise split) | C.1 data |
+| **P5** | ✅ **Desk suite 2026-09-21.** `flying_drone_stack/tools/residual/eval_model.py` — R², mean/zero baselines, contiguous val blocks, per-flight metrics, binned error vs $d_y$/ $d_z$; optional plots | meaningful numbers need **C.1 volume**, dry-run OK on rehearsal weights |
 
 **P1 and P2 are pure desk work on data that already exists and should be done first.** P3 can be
 written and unit-tested before the repeats exist. Only P5 genuinely waits on C.1.

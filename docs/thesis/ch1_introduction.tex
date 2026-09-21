@@ -25,17 +25,15 @@
 \section{Motivation}
 \label{sec:intro-motivation}
 
-A Crazyflie~2.0 measures \SI{9}{\centi\metre} rotor-to-rotor, and when the interaction between
-vehicles is left unmodelled, planners have adopted conservative separations, Shi et
-al.~\cite{shi2020neuralswarm} cite \SI{60}{\centi\metre} from earlier planning work as one such
-example. The margin is not arbitrary caution. Below it, the downwash of one vehicle acting on another is strong enough to destabilise
-the lower one, and the standard remedy is to keep the vehicles far enough apart that the effect can
-be ignored.
+When several quadrotors fly close together, the downwash of the upper vehicle can destabilise the
+one below. The usual remedy is to stay far enough apart that the interaction can be ignored. For a
+Crazyflie~2.0 (\SI{9}{\centi\metre} rotor-to-rotor) that conservative planning gap has been taken
+as about \SI{60}{\centi\metre}; Shi et al.~\cite{shi2020neuralswarm} cite that figure from earlier
+planning work as one such example.
 
 That margin is expensive. It sets the density at which a team can operate, and therefore the size
-of the space a given number of vehicles requires. Applications that motivate multirotor teams in
-the first place, inspection in confined spaces, cooperative transport, aerial docking, are
-precisely those in which the space is not available. In some of them, close approach is the task
+of the space a given number of vehicles requires. Applications that motivate multirotor teams in the first place --- inspection in confined spaces,
+cooperative transport, aerial docking --- are precisely those in which the space is not available. In some of them, close approach is the task
 rather than a hazard to be avoided.
 
 Removing the margin requires a controller that accounts for the interaction rather than avoiding
@@ -45,9 +43,9 @@ sharply as vehicles close and decaying quickly with lateral offset, and it is ma
 since the vehicle above is affected far less than the one below. It is also hard to derive from
 first principles in the regime that matters. Simplified models exist for part of the problem:
 the mean flow from a quadrotor's propellers in hover is well approximated by a turbulent jet
-beyond about two and a half motor-to-motor distances below it~\cite{bauersfeld2024airflow}, but
-formation flight operates closer than that, in a near field for which those authors report no
-closed-form model.
+beyond about two and a half motor-to-motor distances below the
+vehicle~\cite{bauersfeld2024airflow}. Formation flight happens closer than that. In that near
+field those authors report no closed-form model.
 
 The field's response has been to obtain the interaction from data rather than from theory, and it
 has worked. Reported results include a reduction in worst-case height error by a factor of two or
@@ -75,15 +73,15 @@ using a model learned offline. This can compensate ahead of the disturbance rath
 but the model is only valid over the configurations its training data covered, and outside them its
 behaviour is not merely degraded but unconstrained.
 
-These are complementary rather than competing: one is reactive and general, the other predictive
-and specific. A hybrid is therefore an obvious construction, and has been built, for a single
-vehicle, where its advantage over the reactive method alone was described as small without a
-payload, and as leaving performance similar to the reactive method with
-one~\cite{cobobriesewitz2026lindi}.
+The two sources are complementary. Measurement is late but not tied to a training set. Prediction
+can act earlier but only where it was trained. Combining them is the obvious next construction. It
+has been built, on a single vehicle. There the authors describe the extra gain over the reactive
+method as small without a payload, and as leaving performance similar to the reactive method when a
+payload is attached~\cite{cobobriesewitz2026lindi}.
 
 The practical question a system designer faces is which to use, and it has no answer in the
 literature. Not because the individual results are weak, and not because the field avoids
-systematic comparison, recent work benchmarks online-learning estimators on a single
+systematic comparison. Recent work benchmarks online-learning estimators on a single
 vehicle~\cite{gu2025comparative} and fractional-order and classical regulators for close-proximity
 swarms~\cite{abro2025fractional}. It is that the results for \emph{these} families cannot be
 composed: each is reported against its own baseline, on its own airframe, at its own separations,
@@ -127,22 +125,24 @@ for a deployed model is not reported.
     interaction regime, separation, relative velocity, and whether the disturbance is
     quasi-static or transient?
 
-  \item[RQ3] How much prediction accuracy does a deep-sets residual model trained only on
-    two-vehicle data lose when applied to three-vehicle formations, and is that loss small enough
-    for the summed per-neighbour architecture to remain the right engineering choice? \emph{This
-    is a measurement of the transfer penalty, not a test of whether superposition holds: it does
-    not, and that is already established}~\cite{shi2020neuralswarm,gielis2023aggregate}.
+  \item[RQ3] How large is the transfer penalty when a summed per-neighbour residual model is
+    trained only on two-vehicle data and then used on three-vehicle formations, and is that penalty
+    small enough that the summed architecture remains the right engineering choice? This measures
+    the size of a known approximation. It is not a test of whether superposition holds: it does
+    not, and that is already established~\cite{shi2020neuralswarm,gielis2023aggregate}. The
+    question applies to the predictive model and to the predictive term of the hybrid. It does not
+    apply to a purely reactive law.
 
-  \item[RQ4] What are the sensing, computational and data requirements of each strategy, and is the
-    added complexity of the hybrid justified in the multi-robot case?
+  \item[RQ4] For each strategy, what sensing, onboard compute and training data does it require,
+    and how do those costs sit next to the tracking and rejection it delivers? In particular, is the
+    extra complexity of the hybrid justified in the multi-robot case?
 \end{description}
 
 RQ1 is the primary question and the one the experimental design serves. RQ2 carries the most
-engineering value, because it converts a ranking into a rule about when to use which. RQ3 is
-deliberately narrower than asking whether interactions superpose, they do not, and that is
-already reported, and asks instead for the magnitude of the resulting error on a deployed model.
-RQ4 exists because a method that wins by a small margin while requiring additional sensing, an
-offline training campaign and a larger compute budget may still be the wrong choice.
+engineering value, because it converts a ranking into a rule about when to use which. RQ3 asks for
+the magnitude of the transfer penalty on a deployed model, not whether superposition holds.
+RQ4 compares cost against performance for every strategy, and then asks whether the hybrid's extra
+bill is worth it when the residual comes from neighbours.
 
 The questions are stated with falsifiable hypotheses in Chapter~\ref{ch:related} and
 Chapter~\ref{ch:setup}; each is answerable by the experiments described in

@@ -22,10 +22,16 @@ only way rows stay comparable as controllers change.
 (`crazyswarm2` d824fba). Runs BEFORE that carry a +0.40 m over-command on `cf_second` only,
 which shows up as a large, spurious z error for that vehicle -- it is a config artefact, not
 a controller effect, and `--z-comp` exists to model it when analysing those older runs.
-`cf231_active` never carried the compensation, so the drone under study is always clean.
+Legacy runs on `cf231_active` never carried that compensation; the study drone is now **cf5**
+(`--drone cf5`, default).
 
 Written 2026-09-18, replacing the ad-hoc heredoc that produced the first two rows of docs/24,
 so every later row is computed the same way rather than re-derived by hand.
+
+**uSD path (2026-09-21):** pass `--merged-usd <merge.csv>` with the same `.meta.json`. Tracking
+error uses **`ctrltarget.*`** from the merge when present (policy in docs/27); metrics are computed
+over the scenario duration window with `t=0` at scenario start (`# meta:t_zero=scenario_start`).
+Radio CSV + trajectory reconstruction remains for legacy runs.
 """
 
 from __future__ import annotations
@@ -41,6 +47,7 @@ import numpy as np
 # The scenario definitions are ROS-free by design (see formations/scenarios.py), so this
 # imports cleanly without a sourced ROS environment.
 _CS2 = Path.home() / "Desktop" / "crazyswarm2" / "crazyflie_examples"
+_REPO = Path(__file__).resolve().parents[2]  # flying_robot_course
 
 
 def _load_scenarios():
@@ -135,6 +142,91 @@ def analyse_run(meta_path: Path, z_comp: dict[str, float], search: tuple[float, 
     return dict(sid=sid, stamp=stamp, params=meta["params"], per_drone=cfg, results=results)
 
 
+def _load_merged_table(path: Path) -> tuple[list[str], np.ndarray, dict[str, int]]:
+    lines = path.read_text().splitlines()
+    hdr_i = next(i for i, l in enumerate(lines) if l.strip() and not l.startswith("#"))
+    header = lines[hdr_i].split(",")
+    cols = {c: i for i, c in enumerate(header)}
+    skip = hdr_i + 1
+    data = np.loadtxt(path, delimiter=",", skiprows=skip, ndmin=2)
+    return header, data, cols
+
+
+def analyse_run_merged(meta_path: Path, merged_path: Path):
+    """docs/24-style metrics from a --meta-aligned merged uSD CSV."""
+    metrics_dir = _REPO / "experiments" / "analysis"
+    if str(metrics_dir) not in sys.path:
+        sys.path.insert(0, str(metrics_dir))
+    import metrics as M  # noqa: E402
+
+    meta = json.loads(meta_path.read_text())
+    sid = meta["scenario"]
+    stamp = meta_path.name[:-len(".meta.json")].replace(f"{sid}_", "", 1)
+    vehicles = M.load_merged_csv(merged_path)
+    scenarios = _load_scenarios()
+    sc = scenarios.BUILDERS[sid](**meta["params"])
+    anchor = np.array(meta["anchor"], dtype=float)
+    t0 = 0.0 if any(v.t_zero == "scenario_start" for v in vehicles.values()) else float(
+        meta.get("t_start_sim", 0.0))
+    timescale = float(meta.get("timescale", 1.0))
+
+    _, data, cols = _load_merged_table(merged_path)
+
+    def series(name: str, field: str) -> np.ndarray | None:
+        key = f"{name}.{field}"
+        return data[:, cols[key]] if key in cols else None
+
+    results = {}
+    for idx, name in enumerate(meta["names"]):
+        if name not in vehicles:
+            print(f"[compare] WARN: {name} not in merge, skipping")
+            continue
+        v = vehicles[name]
+        pos_des = v.pos_des
+        if pos_des is None:
+            pos_des = M.commanded_from_scenario(sc, idx, anchor, t0, timescale, v.t)
+        mask = (v.t >= 0.0) & (v.t <= sc.duration)
+        if mask.sum() < 200:
+            print(f"[compare] WARN: too few samples in scenario window for {name}, skipping")
+            continue
+        pos = v.pos[mask]
+        des = pos_des[mask]
+        d = pos - des
+        rms = lambda v_: float(np.sqrt(np.mean(np.square(v_))))  # noqa: E731
+        pk = lambda v_: float(np.max(np.abs(v_)))                 # noqa: E731
+
+        roll = series(name, "roll_deg")
+        pitch = series(name, "pitch_deg")
+        yaw = series(name, "yaw_deg")
+        gx = series(name, "gyro_x")
+        gy = series(name, "gyro_y")
+        gz = series(name, "gyro_z")
+        arz = series(name, "a_res_z")
+
+        def stat(arr, m):
+            if arr is None:
+                return float("nan")
+            x = arr[mask]
+            return m(x)
+
+        results[name] = dict(
+            t0=0.0, n=int(mask.sum()),
+            ex_rms=rms(d[:, 0]), ey_rms=rms(d[:, 1]), ez_rms=rms(d[:, 2]),
+            e3_rms=rms(np.linalg.norm(d, axis=1)),
+            e3_max=float(np.max(np.linalg.norm(d, axis=1))),
+            ex_pk=pk(d[:, 0]), ey_pk=pk(d[:, 1]), ez_pk=pk(d[:, 2]),
+            roll_std=stat(roll, np.std), roll_pk=stat(roll, lambda x: pk(x)),
+            pitch_std=stat(pitch, np.std), pitch_pk=stat(pitch, lambda x: pk(x)),
+            yaw_std=stat(yaw, np.std), yaw_pk=stat(yaw, lambda x: pk(x)),
+            gx_std=stat(gx, np.std), gy_std=stat(gy, np.std), gz_std=stat(gz, np.std),
+            arz_min=stat(arz, np.min),
+        )
+
+    cfg = meta.get("per_drone", {})
+    return dict(sid=sid, stamp=stamp, params=meta["params"], per_drone=cfg, results=results,
+                source="merged_usd", merged=str(merged_path))
+
+
 def fmt_human(run):
     print("=" * 78)
     print(f"{run['sid']}  {run['stamp']}   params={run['params']}")
@@ -174,8 +266,11 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("meta", nargs="+", type=Path,
                     help="one or more <scenario>_<stamp>.meta.json sidecars")
-    ap.add_argument("--drone", default="cf231_active",
-                    help="vehicle under study, used for --markdown (default cf231_active)")
+    ap.add_argument("--merged-usd", type=Path, default=None,
+                    help="single merged uSD CSV (same stamp as each meta); if set, all meta "
+                         "files must share this merge or pass one meta only")
+    ap.add_argument("--drone", default="cf5",
+                    help="vehicle under study, used for --markdown (default cf5)")
     ap.add_argument("--markdown", action="store_true", help="also emit docs/24 table rows")
     ap.add_argument("--z-comp", default="",
                     help="pre-2026-09-18 runs only: model the removed height compensation, "
@@ -194,7 +289,12 @@ def main():
         z_comp[k.strip()] = float(v)
     lo, hi, step = (float(x) for x in args.window.split(","))
 
-    runs = [analyse_run(m, z_comp, (lo, hi, step)) for m in args.meta]
+    if args.merged_usd:
+        if len(args.meta) != 1:
+            ap.error("--merged-usd expects exactly one .meta.json (one flight per merge)")
+        runs = [analyse_run_merged(args.meta[0], args.merged_usd)]
+    else:
+        runs = [analyse_run(m, z_comp, (lo, hi, step)) for m in args.meta]
     for run in runs:
         fmt_human(run)
     if args.markdown:

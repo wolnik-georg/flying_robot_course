@@ -6,10 +6,10 @@
 %  Sources: docs/05_Experimental_Protocol_2Robot.md, docs/10_Formation_Library.md,
 %           docs/11_Hardware_Readiness_Checklist.md, docs/09_Simulation.md.
 %
-%  HONESTY NOTE. At the time of writing NOTHING HAS FLOWN. This chapter describes a design,
-%  not a completed campaign. Every statement about what "is" done must be checkable; every
-%  statement about what will be done is written as such. Do not let the future tense slip
-%  into the past as chapters 6-7 are drafted -- update this chapter instead.
+%  HONESTY NOTE (updated 21 September 2026). Hardware flights began September 2026 (C.0/C.4
+%  indicative runs, uSD pipeline). C.1 collection and full C.4 repeats were still in progress
+%  when this draft was last edited. Revise tense section-by-section as the campaign completes;
+%  record protocol deviations here, not only in the results chapters.
 %
 %  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
 %  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
@@ -26,6 +26,14 @@ observed difference.
 
 Section~\ref{sec:setup-validity} states the threats this design is built against, and which of
 them it does not eliminate.
+
+\paragraph{Campaign status (September 2026).}
+Two-robot flights with OptiTrack and onboard logging at \SI{500}{\hertz} have been executed on
+the brushless pair \textbf{cf5} (study vehicle) and \textbf{cf\_second} (top). Micro-SD merges
+with per-vehicle role alignment replaced radio-only windows for thesis metrics. Indicative
+Strategy~0 vs~1 comparisons exist; the systematic comparison (C.4) still requires repeated
+flights per controller and scenario. Residual-model training data collection (C.1) runs under
+\textbf{geometric control on cf5} so measured $a_{\mathrm{res}}$ is not cancelled by full INDI.
 
 % -------------------------------------------------------------------------------------
 \section{Platform}
@@ -330,6 +338,8 @@ No result in the two-robot results chapter or~the multi-robot results chapter re
     Training/test leakage & Held-out scenarios; split by contiguous flight segment, never by sample & --- \\
     Session effects & Strategies interleaved within a session; repeated conditions & --- \\
     Silent loss of the residual & $a_{\mathrm{res}} \neq 0$ verified at the start of every session & --- \\
+    Radio vs onboard clock & uSD logs at \SI{500}{\hertz}; analysis uses merged uSD and firmware \texttt{ctrltarget.*} where available & Residual-time alignment across vehicles depends on merge quality; \texttt{merge\_usd\_logs.py} aborts above \SI{15}{\centi\metre} RMS role check \\
+    Mocap identity / marker swap & Pre-takeoff EKF-vs-mocap gate; role verification from merge & Residual risk if a session bypasses the gate \\
     Simulation-to-hardware gap & No claim rests on simulation & --- \\
     Single airframe & --- & \textbf{Not mitigated.} Generalisation beyond this platform is discussed, not demonstrated \\
     \bottomrule
@@ -358,6 +368,5 @@ flying sixteen frozen scenarios inside a tracked volume of roughly \SI{2}{\metre
 strategies are selected at runtime and interleaved within sessions; and three null scenarios
 establish what a measurement of zero looks like under the same pipeline.
 
-\todo{This chapter describes a design. At the time of writing no flight has taken place. Revise to
-past tense as the campaign proceeds, and record deviations from this protocol here rather than only
-in the results.}
+\todo{Continue revising to past tense for each scenario and controller row as C.4 repeats land.
+Record any deviation from the frozen gain block or scenario parameters in this chapter.}

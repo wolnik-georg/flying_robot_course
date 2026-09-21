@@ -73,3 +73,5 @@
 | C2 | indi | 3 | PASS | 0.0 | 0.0 | 1.6 | no | 100% | gap=0.4,n=3,speed=0.4,length=0.9,rotate_deg=0.0 | `state_indi/2026-08-23_165216/csv` |
 | C3 | indi | 3 | PASS | 0.0 | 0.0 | 0.0 | no | 100% | side=0.5,hold=12.0,rotate_deg=0.0 | `state_indi/2026-08-23_165524/csv` |
 | C5 | indi | 1 | PASS | nan | nan | 0.5 | no | 100% | z=0.15,speed=0.25,length=1.2,passes=2,rotate_deg=0.0 | `state_indi/2026-08-23_165846/csv` |
+| A8 | geo | 2 | FAIL | nan | nan | nan | no | -22372794162% | dz=0.25,span=1.0,duration=6.0,settle=2.0,passes=1,rotate_deg=0.0 | `state_geo/2026-09-19_223700/csv` |
+| A8 | geo | 2 | FAIL | nan | nan | nan | no | -22372794163% | dz=0.25,span=1.0,duration=6.0,settle=2.0,passes=1,rotate_deg=0.0 | `state_geo/2026-09-19_223808/csv` |

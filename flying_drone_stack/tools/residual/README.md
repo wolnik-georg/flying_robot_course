@@ -7,39 +7,25 @@ half lives in `firmware_app/src/residual_nn.rs`; the full design is in
 **Use system `python3`** — it has torch and the SIL bindings. The pyenv `flying_robots`
 environment has neither.
 
-## ⚠️ State, 2026-09-14 — half of this pipeline runs, half does not
+## State (2026-09-17) — pipeline ready; blocked on C.1 flight data volume
 
-`residual_nn.rs` was replaced with a faithful port of Neural-Swarm2's own architecture
-(`phi_Net`/`rho_Net`, 19297 weights, scalar Z-only output, an always-on ground-effect term, and
-the reference's three-term proximity gate). The Python side was rewritten to match — partly.
+Neural-Swarm2 port (`phi_Net`/`rho_Net`, 19297 weights, scalar Z). **Authoritative detail:**
+[`docs/13_Residual_Learning.md`](../../../docs/13_Residual_Learning.md).
 
 | File | State |
 |---|---|
-| `model.py` | **Current.** Rewritten for the port; verified against the compiled firmware to ~1e-6 m/s². |
-| `test_pipeline.py` | **Current.** 13 checks, all passing, including upload into the real controller. |
-| `../../firmware_app/host/test_residual_nn.py` | **Current.** 19 checks, all passing. |
-| `dataset.py` | **Stale — raises on import.** Cannot produce the scalar target or the ground-effect input. |
-| `train.py` | **Blocked** by `dataset.py`. |
+| `model.py` | ✅ Verified vs compiled firmware (~1e-6 m/s²) |
+| `dataset.py` | ✅ Rewritten 2026-09-16; tested on real merged CSV |
+| `train.py` | ✅ Rewritten 2026-09-17; `--synthetic` end-to-end OK |
+| `test_pipeline.py` | ✅ 13/13 vs compiled firmware |
+| `../../firmware_app/host/test_residual_nn.py` | ✅ 19 checks |
 
-So the **model ↔ firmware contract is verified end to end**, and **training from flight logs is
-not possible yet**. Nothing here is on the critical path until C.1 produces logs, but it must be
-finished before C.2.
+**Still missing:** enough **C.1 merged logs** under geometric (see `docs/25`) for a defensible
+trained model — not a software blocker.
 
-Four decisions are needed before `dataset.py` can be rewritten; all four are stated in full in
-that file's docstring:
-
-1. The target is now **scalar** — the architecture predicts vertical residual only, so the x/y
-   components of the measured `a_res` have no predictor. This is a scoping consequence for the
-   thesis comparison, not only for the code.
-2. `build()` must also emit the **ground-effect input** `[0 − own_z, −own_vx, −own_vy, −own_vz]`.
-3. **`--z-floor` now contradicts the architecture** — it drops low-altitude samples because
-   "ground effect is a different force", but Neural-Swarm2 models ground effect explicitly and
-   needs exactly those samples.
-4. The distance cutoff and near-field rescaling are gone; `model.build_mask` replaces them.
-
-The loader tests that used to live in `test_pipeline.py` (peer-minus-own convention, both drones
-as ego, dropping `a_res == 0` samples) went with `dataset.py` and are **not covered anywhere
-right now**. That is a real gap.
+**Desk dry-run (2026-09-21):** trained on one A8 geometric merge — rehearsal only.
+Manifest: `experiments/analysis/out/c2_dryrun/manifest.json` · weights:
+`weights/c2_dryrun_2026-09-19_geo.npz`. Index: [`docs/31_Desk_Parallel_Track.md`](../../../docs/31_Desk_Parallel_Track.md).
 
 `phi_L`/`rho_L` — the reference's "large vehicle" path — export as **zeros**: this fleet is
 Crazyflies only, there is no data to train them on, and zeros state that plainly rather than
@@ -49,7 +35,7 @@ shipping an untrained copy of the small path that would look trained.
 
 ```bash
 # 1. merge the per-drone uSD logs from one flight into a common clock
-python3 ../merge_usd_logs.py cf231.usd cf232.usd -o merged_a1.csv
+python3 ../merge_usd_logs.py --meta --roles ... -o merged_a1.csv
 
 # 2. train, and export weights folded and flattened for the firmware
 python3 train.py merged_a1.csv -o weights/a1_geometric.npz
@@ -71,6 +57,7 @@ python3 test_pipeline.py          # torch -> export -> upload -> compiled firmwa
 | `model.py` | The PyTorch model, the flat weight layout, and the normalisation fold. **The contract with the firmware lives here** |
 | `dataset.py` | Merged CSV → training tensors. Owns the sign convention and the firmware's input guards |
 | `train.py` | Training, validation, export with provenance |
+| `eval_model.py` | P5 evaluation on merged CSVs (R², flight-wise, error vs geometry) |
 | `test_pipeline.py` | End-to-end verification against the compiled controller |
 
 ## Four things that will bite

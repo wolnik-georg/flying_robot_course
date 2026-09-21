@@ -209,7 +209,7 @@ def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
     data = np.loadtxt(path, delimiter=",", skiprows=skiprows + 1, ndmin=2)
     n_raw = data.shape[0]
     cols = {c: i for i, c in enumerate(header)}
-    names = sorted({c.split(".", 1)[0] for c in header[1:] if "." in c})
+    names = sorted({c.split(".", 1)[0] for c in header[1:] if "." in c and not c.startswith("rel.")})
     t_all = data[:, cols["t"]] if n_raw else np.zeros(0)
 
     def col(name, field):
@@ -229,6 +229,8 @@ def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
             pos = np.stack([col(name, ax) for ax in "xyz"], axis=1) \
                 if all(f"{name}.{ax}" in cols for ax in "xyz") else None
         pos_des = vec3(name, "cmd")
+        if pos_des is None:
+            pos_des = vec3(name, "ctrltarget")
         a_res = vec3(name, "a_res")
         a_hat = vec3(name, "rnn_pred")
         e_r = vec3(name, "e_r")

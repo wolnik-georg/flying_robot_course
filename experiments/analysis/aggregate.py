@@ -195,9 +195,12 @@ def main():
     ap.add_argument("--baseline", default=None)
     ap.add_argument("--treatment", default=None)
     ap.add_argument("--vehicle", default=None, help="restrict to one vehicle_id")
+    ap.add_argument("--group-by", default="controller",
+                    help="column for summarise / paired_compare grouping (e.g. study_controller)")
     args = ap.parse_args()
 
     df = pd.read_csv(args.rows)
+    gcol = args.group_by if args.group_by in df.columns else "controller"
     if args.phase and "phase" in df.columns:
         df = df[df["phase"] == args.phase]
     if args.vehicle and "vehicle_id" in df.columns:
@@ -205,10 +208,11 @@ def main():
     if args.metric not in df.columns:
         sys.exit(f"no column {args.metric!r}; have: {', '.join(df.columns)}")
 
-    print(summarise(df, args.metric).to_string(index=False))
+    print(summarise(df, args.metric, by=(gcol,)).to_string(index=False))
     if args.baseline and args.treatment:
         print()
-        print(format_compare(paired_compare(df, args.metric, args.baseline, args.treatment)))
+        print(format_compare(paired_compare(df, args.metric, args.baseline, args.treatment,
+                                            controller_col=gcol)))
 
 
 if __name__ == "__main__":

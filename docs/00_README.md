@@ -7,24 +7,29 @@ Georg Wolnik, supervised by Prof. Wolfgang Hönig.
 it is the single source of truth for what is done, where we are, and what comes next. Everything
 else is detail hanging off it.
 
+**Desk work (no lab):** [`31_Desk_Parallel_Track.md`](31_Desk_Parallel_Track.md) indexes §1–12
+(**COMPLETE** 21 Sep — [`35`](35_Desk_Parallel_Audit_Closeout.md)). Lab critical path: **C.1**.
+
 > ### ⇄ Two parallel tracks
 >
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.0 stage 1** — validate the controllers | *(nothing blocking)* |
-> | Blocked by | Lab access | Nothing |
+> | Next | **C.1** — residual data (geometric on cf5) | Ch. 6–9 after **C.4** data |
+> | Blocked by | Lab access for flying | C.4 results for results chapters |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
-> **Software preparation is FINISHED. Next actionable phase: C.0 — Hardware Gate.**
+> **Software preparation is FINISHED. Critical path: C.1 → C.2 → C.3 → C.4.**
 >
 > | # | Phase | Detail |
 > |---|---|---|
-> | **1** | **C.0 — Hardware Gate** ⬅️ **next** | [`11`](11_Hardware_Readiness_Checklist.md) |
-> | 2 | C.1 — Residual Data Collection | [`10`](10_Formation_Library.md), [`11`](11_Hardware_Readiness_Checklist.md) |
+> | 1 | C.0 — Hardware Gate | ✅ closed enough (Sep 2026) |
+> | **2** | **C.1 — Residual Data Collection** ⬅️ **next** | [`25`](25_C1_Data_Collection_Plan.md), [`next_flight_card.html`](next_flight_card.html) |
 > | 3 | C.2 — Train the Residual Model | [`13`](13_Residual_Learning.md) |
 > | 4 | C.3 — Integrate the Strategies | [`13`](13_Residual_Learning.md), [`01`](01_Thesis_Project_Snapshot.md) |
-> | 5 | C.4 — Systematic Comparison | [`05`](05_Experimental_Protocol_2Robot.md) |
+> | 5 | C.4 — Systematic Comparison | [`05`](05_Experimental_Protocol_2Robot.md), [`24`](24_Downwash_Compensation_Comparison.md) |
+>
+> **Desk work without lab:** [`31_Desk_Parallel_Track.md`](31_Desk_Parallel_Track.md)
 
 ---
 
@@ -33,12 +38,19 @@ else is detail hanging off it.
 | I want to | Go to |
 |---|---|
 | Know the project status, what's next | [`07`](07_Thesis_Progress_Checklist.md) |
+| **Desk work in parallel (no lab)** | [`31`](31_Desk_Parallel_Track.md), closeout [`35`](35_Desk_Parallel_Audit_Closeout.md) |
+| **Next lab (C.1)** | [`next_flight_card.html`](next_flight_card.html), [`25`](25_C1_Data_Collection_Plan.md) |
+| C.4 metrics & figures (desk) | [`27`](27_Analysis_and_Metrics_Plan.md), `experiments/analysis/run_c4_desk_prep.py` |
+| INDI baseline plan | [`29`](29_INDI_Baseline_Desk_Plan.md) |
+| Results chapter outline | [`30`](30_Results_Chapters_Skeleton.md) |
+| Two-track visual overview | [`Thesis_Progress_Overview.html`](Thesis_Progress_Overview.html) |
 | **Start the next phase (C.0)** | [`11`](11_Hardware_Readiness_Checklist.md) |
 | **Find my way around the three repos** | [`14`](14_Repository_Map.md) |
 | Understand the thesis idea and the 7 strategies | [`01`](01_Thesis_Project_Snapshot.md), [`03`](03_Gap_and_Contribution_Statement.md) |
 | Understand the physics being measured | [`04`](04_Unified_Residual_Wrench_Model.md) |
 | **Fly a trajectory on hardware** | [`08`](08_Trajectory_Upload_Paths.md) — Mode D vs Mode E |
 | **Fly a formation** (2–3 robots) | [`10`](10_Formation_Library.md) |
+| **Sketch n≥4 formations** (desk / Ch. 7) | [`36`](36_Four_Five_Robot_Formation_Sketch.md), literature [`36b`](36_Four_Five_Robot_Complement.md) |
 | **Run anything in simulation** | [`09`](09_Simulation.md) |
 | Know whether the formations are validated | [`12`](12_Sim_Formation_Validation_Report.md) |
 | Know whether speed matters for the formations | [`21`](21_Formation_Speed_Sweep_Report.md) |

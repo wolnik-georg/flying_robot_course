@@ -1,6 +1,6 @@
 # Formation Scenario Library
 
-**Last updated:** 22 August 2026
+**Last updated:** 21 September 2026 (A1–C5 frozen; n≥4 extension appended below)
 
 The set of multi-robot geometries used to excite inter-vehicle aerodynamic interaction,
 and how to run them. This is the experimental input side of the thesis: every scenario
@@ -287,6 +287,106 @@ supply the control cases without which a positive result is not interpretable. I
 are the ones I would add first if the first flights suggest the residual depends on
 something the current set holds fixed; items 3–5 belong after the two-robot comparison is
 done, not before.
+
+---
+
+## Extension sketch — four robots (Priority D + F4)
+
+> **Not part of the frozen 16.** These IDs are **documented only** — not yet in
+> `run_formation.py`, not sim-validated, **not a C.1 gate**. Full matrix, literature, and
+> tiers: [`36_Four_Five_Robot_Formation_Sketch.md`](36_Four_Five_Robot_Formation_Sketch.md),
+> [`36_Four_Five_Robot_Complement.md`](36_Four_Five_Robot_Complement.md). Visual catalogue:
+> [`10_Formation_Library.html`](10_Formation_Library.html#four-robot-sketch).
+
+| What it isolates | Scenarios |
+|---|---|
+| n = 4 plumbing / low interaction (controls) | F4a, F4b, F4c |
+| Column superposition (4 washers on bottom) | D1 |
+| Parallel wash columns | D2 |
+| Non-planar 4-body overlap | D3 |
+| Literature swap (Neural-Swarm n = 4) | D4 |
+| Asymmetric multi-source hover | D5, D7 |
+| Moving stack / platoon | D6 |
+| NS2 ring / Gielis / ground (Tier 2+) | D8, D9, D10 |
+
+### Priority D — four robots (interaction)
+
+| ID | Scenario | Swept / default | What it is for |
+|----|----------|-----------------|----------------|
+| D1 | Four-stack | dz ∈ {0.24, 0.30, 0.40, 0.50} m | Bottom in **three** upstream fields — superposition past B1 |
+| D2 | Twin I-stack | dz = 0.30 m, lateral w = 0.30 m | Two independent wash columns + coupling |
+| D3 | Skew tetra | edge ≈ 0.35 m | Non-planar asymmetric overlap |
+| D4 | 2×2 vertical swap ⚠ | dz_pair = 0.25 m | NS n = 4 swap family; multi-transient wash |
+| D5 | Square + hover leader | dz = 0.30 m | One elevated centre over coplanar trio |
+| D6 | Reverse-circle platoon | dz = 0.30 m, v = 0.30 m/s | Four-high stack on counter-rotate path |
+| D7 | Offset stack train | offset 0.15 m, dz 0.30 m | Partial overlap while translating |
+
+### Controls at n = 4 (F4)
+
+| ID | Scenario | Default | What it is for |
+|----|----------|---------|----------------|
+| F4a | Coplanar square | side s = 0.40 m | **Control** — Tier 1 plumbing |
+| F4b | Coplanar line-4 | gap g = 0.40 m | Wake chain; Gielis LF **shape** only |
+| F4c | Rotated square | TBD | Mocap / packing check — not science |
+
+### Tier 2+ (four robots)
+
+| ID | Scenario | Notes |
+|----|----------|-------|
+| D8 | Two-ring four | Scaled Neural-Swarm2 three-ring |
+| D9 | Gielis-quad | Triangle + free fourth bottom vehicle |
+| D10 | Ground + stack | NS2 ground-effect thread; gate like C5 |
+
+---
+
+## Extension sketch — five robots (Priority E + F5)
+
+> Same status as § four-robot extension above. **E1 at dz = 0.50 m does not fit** the z budget;
+> five-stack defaults **dz ∈ {0.24, 0.30} m** only.
+
+| What it isolates | Scenarios |
+|---|---|
+| n = 5 controls | F5a, F5b |
+| Column superposition (max n−1 washers) | E1, E6 |
+| Hybrid planar + vertical | E2, E3, E4 |
+| Literature swap (Neural-Swarm n = 5) | E5 |
+| Ring + swap extensions (Tier 2+) | E7, E8 |
+
+### Priority E — five robots (interaction)
+
+| ID | Scenario | Swept / default | What it is for |
+|----|----------|-----------------|----------------|
+| E1 | Five-stack | dz ∈ {0.24, 0.30} m | Bottom in four upstream fields |
+| E2 | 3+2 hybrid | dz = 0.30 m, line span ≤ 1.0 m | Coplanar trio + stack of two above centre |
+| E3 | Double-V | dz = 0.30 m, r = 0.25 m | Two V-stacks + one centre high |
+| E4 | Pentagon stack | R = 0.30 m, dz = 0.30 m | One elevated over coplanar ring |
+| E5 | Five-way swap ⚠ | dz = 0.22 m | NS n = 5 swap; scales B3 / A8 |
+| E6 | Tight NS2 spacing | dz = **0.24 m** hover | Spacing discipline (not NS2 3-ring task) |
+
+### Controls at n = 5 (F5)
+
+| ID | Scenario | Default | What it is for |
+|----|----------|---------|----------------|
+| F5a | Coplanar pentagon | R ≈ 0.35 m | **Control** — Tier 1 |
+| F5b | Coplanar line-5 | g = 0.35 m | Extended wake chain |
+
+### Tier 2+ (five robots)
+
+| ID | Scenario | Notes |
+|----|----------|-------|
+| E7 | Two-ring five | D8 + centre column |
+| E8 | Swap-column five | E5 crossings on a circle for sustained `a_res` |
+
+### Extension campaign tiers (when implemented)
+
+| Tier | Scenarios | Controllers |
+|------|-----------|-------------|
+| T1 smoke | F4a, D1, F5a, E1 | geometric + full INDI |
+| After T1 | D4, E5 | literature swaps |
+| T2 | D2, D3, D6, E2, E6 | interaction core |
+| T2+ | D8–D10, E7–E8, F4c | optional |
+
+**Tier 1 order:** F4a → D1 @ 0.30 m → F5a → E1 @ 0.24 m → D4 / E5.
 
 ---
 

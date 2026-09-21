@@ -169,31 +169,59 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 11 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 21 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
-    Comparison of control strategies for interaction-force aware multirotor teams —
-    Crazyflie&nbsp;2.1 brushless, Crazyswarm2, an out-of-tree controller in Rust.
+    Systematic comparison of reactive, predictive and hybrid strategies for downwash-aware
+    formation flight — Crazyflie&nbsp;2.1 brushless, Crazyswarm2, out-of-tree Rust controller.
   </p>
   <div class="statusline">
-    <span class="pill blocked"><span class="dot"></span>Writing · complete to the data boundary</span>
-    <span class="pill blocked"><span class="dot"></span>Lab · H0 partition inconclusive, first 2-drone flight done</span>
-    <span style="color:var(--muted)">09-11: stage 1 closed, stage 2 no clean pass · 09-12: neither INDI sub-loop clean alone, first 2-drone flight flown after 6 bug fixes (stock Lee only) · 09-13: cf_second pinned to stock Lee, notch fix flown and CRASHED, offline analysis found it structurally flawed, abandoned · 09-14 plan: geometric+INDI A1 hover (neither has worked in 2-drone yet), then uSD sync</span>
+    <span class="pill blocked"><span class="dot"></span>Writing · Ch.&nbsp;1–5 done; Ch.&nbsp;6–9 need C.4</span>
+    <span class="pill"><span class="dot"></span>Lab · C.1 data collection is the critical path</span>
+    <span style="color:var(--muted)">Platform stable after 19&nbsp;Sep (4-point mocap, cf5 + cf_second, uSD match/merge/analysis). Full INDI 2-drone A8 flies; C.1 collects under <strong>geometric on cf5</strong> per <code>docs/25</code>. Comparative result = C.4 after C.1→C.2→C.3.</span>
   </div>
 </header>
 
 <div class="stats">
-  <div class="stat"><span class="n">38</span><span class="t">pages drafted, Ch.&nbsp;1–5</span></div>
-  <div class="stat"><span class="n">20</span><span class="t">sources, 18 read in full</span></div>
+  <div class="stat"><span class="n">41</span><span class="t">pages drafted, Ch.&nbsp;1–5</span></div>
+  <div class="stat"><span class="n">17</span><span class="t">papers in library, all cited</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
-  <div class="stat"><span class="n">3</span><span class="t">root causes found &amp; fixed</span></div>
-  <div class="stat"><span class="n">987</span><span class="t">weights running onboard</span></div>
+  <div class="stat"><span class="n">7</span><span class="t">A8 uSD packages archived (19&nbsp;Sep)</span></div>
+  <div class="stat"><span class="n">0</span><span class="t">C.1 collection flights flown yet</span></div>
 </div>
+
+<section>
+  <div class="sec-head"><h2>Snapshot — 21 September 2026</h2></div>
+  <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
+    Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
+    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-19.md</code>.
+  </p>
+  <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
+    <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
+      4-point mocap; DShot RPM; uSD match → merge → analysis working on 19&nbsp;Sep archive.</li>
+    <li><strong>2-drone controllers on cf5:</strong> stock Lee (top), our geometric + full INDI (bottom)
+      — A8 sequence flown and logged; geo vs INDI on cf5 is ~tie on z (n=2), not the old cf231 gap.</li>
+    <li><strong>Desk parallel track (§1–12):</strong> <strong>complete</strong> — audited 21&nbsp;Sep;
+      C.4 grouping fix (geo n=2 vs INDI n=2 on 19&nbsp;Sep A8). See <code>docs/35</code>.</li>
+    <li><strong>Not started:</strong> C.1 scenario matrix (thesis training data); C.4 repeats + statistics.</li>
+    <li><strong>C.1 rule:</strong> collect under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>
+      — not full INDI on the study drone (<code>docs/25</code>, <code>docs/13</code>).</li>
+    <li><strong>Open / backlog:</strong> <code>cf231_active</code> hardware; clean 2-drone A1 after Sep
+      collision; EKF-reset fix never isolated; <code>docs/24</code> protocol text still names cf231;
+      crazyswarm2 yaml reset for C.1 (cf5 geometric) — sync lab PC from git.</li>
+    <li><strong>Strategy&nbsp;2 in flight:</strong> train/upload path verified; onboard net still
+      RAM-gated (<code>docs/13</code>) — C.3 is not “flip a switch” until build enables
+      <code>residual_nn</code>.</li>
+  </ul>
+</section>
 
 <section>
   <div class="sec-head"><h2>The two tracks</h2></div>
   <p class="note" style="margin-bottom:20px">
-    They ran in parallel for most of the project and did not block each other. That has now ended: the writing track has been carried as far as it can go without measurements, so <strong>both tracks now wait on the same flights</strong>. Work on one is still never progress on the other — there is simply only one of them left to do.
+    Chapters&nbsp;6–9 need the <strong>C.4 comparison campaign</strong>, so the writing track cannot
+    finish without lab data. The lab track’s bottleneck is <strong>C.1 flight volume</strong>, not
+    missing software. Between lab sessions, a <strong>third lane — desk prep for C.4</strong> —
+    is deliberately parallel: it improves the comparative study without replacing flying.
   </p>
 
   <div class="lanes">
@@ -206,7 +234,7 @@ footer{
         <li>Problem statement + 4 research questions, each with a falsifiable hypothesis</li>
         <li>Related-work structure built so that reading it produces the gap statement</li>
         <li>Two literature sweeps — arXiv, then cross-database + citation graph <em>157 citing works screened</em></li>
-        <li>Every held paper read <strong>in full</strong>, not from abstracts <em>18 of 20; one paywalled</em></li>
+        <li>Every held paper read <strong>in full</strong>, not from abstracts <em>17 in library, all cited</em></li>
         <li>Claim ledger: every citable number in the source's own words</li>
         <li>Chapters 1–5 drafted, revised and accuracy-audited</li>
         <li>Seven strategies described, implementation separated from reference method</li>
@@ -217,30 +245,20 @@ footer{
     <div class="lane lab">
       <div class="lane-head">
         <h2>Code, sim &amp; flight</h2>
-        <span class="lbl" style="color:var(--warn)">Hardware Gate (C.0)</span>
+        <span class="lbl" style="color:var(--warn)">Core workflow C.0 → C.4</span>
       </div>
       <ul>
-        <li>Four lab sessions flown, 2026-09-07/09/11/12 — the first three single-drone, 09-12 the first multi-drone session</li>
-        <li><strong>2026-09-09: six hover flights crashed, three root causes found and fixed. 2026-09-11: those fixes flown for the first time.</strong> Stage 1 of the validation card (geometric hover/circle/figure8 + restored-config INDI hover) closed <strong>clean</strong></li>
-        <li>Along the way: found and fixed a real trajectory-export bug (a wind-up ramp that rang, causing a ±53° start-of-trajectory oscillation mistaken at first for a controller fault) — confirmed fixed in flight</li>
-        <li>Stage 2 (the new fixes, one variable per flight): residual conditioning and a sample-rate/filter bug both confirmed fixed and safe. Lowering the filter cutoff made things worse (reverted). The notch filter's first-ever flight test <strong>crashed</strong> — stable to 6.4s, then diverged to 88°/66° within 0.7s; root cause not yet understood, disabled pending offline analysis</li>
-        <li>The attitude-gain shake-band test: four bisection attempts brought peak trajectory-tracking oscillation from 88° down to 7°, including a real finding that position gains and attitude gains are coupled (lowering one alone can destabilize) — but <strong>no configuration reached a clean pass</strong> on both attitude and position hold together. Session ended reverted to the confirmed-clean locked gains</li>
-        <li><strong>The vehicle is provably healthy</strong> — stock Lee controller hovered clean at roll std 0.74°, and geometric now flies cleanly on every trajectory tested — the open question is specifically INDI's residual oscillation under trajectory tracking, not the airframe</li>
-        <li><strong>Findings independently audited</strong> (09-09 crash session) — 6 of 7 conclusions confirmed, one downgraded to unproven, three more defects found and fixed</li>
-        <li>Every flight records its complete firmware configuration into the log itself</li>
-        <li>Formation library re-validated in sim against three fixed bugs; all 9 two-drone scenarios confirmed, both controllers</li>
-        <li>Analysis pipeline and onboard <code>e_R</code> logging DONE, plus a one-command per-flight pass/fail check</li>
-        <li><strong>2026-09-12: the H0 partition was run</strong> (attitude-INDI-only vs position-INDI-only) — both sub-loops crashed, each worse alone than the combined system, so the partition did not cleanly localize the shake; itself a real negative result. Full INDI re-flown afterward as a sanity check and passed as expected</li>
-        <li>The 09-11 notch crash was <strong>root-caused offline the same day</strong>: a third filter chain (<code>tau_current</code>'s Butterworth pre-filter) missed the 2026-07-29 fix's cold-start-warmup treatment. Fixed in firmware, verified compiling clean on both platforms — <strong>not yet reflashed/flown</strong></li>
-        <li><strong>First-ever 2-drone flight achieved</strong> — a standard CF2.1 enabled as <code>cf_second</code> (not brushless yet, to validate the infrastructure cheaply). Found and fixed six real, durable bugs in <code>formation_flight.py</code> (missing pos_gains selection, a mid-air controller-identity-switch risk, no hover support, arming gated behind a removed flag, a hardcoded dev-machine log path, and a landing collision for stacked formations). Clean flight on stock Lee confirmed the downwash signal (lower drone roll std 17.9° vs upper 0.75°)</li>
-        <li>A follow-up flight of our OOT geometric controller on both drones <strong>crashed both</strong>. Root cause, corrected twice via git-verified checks rather than assumed: not the attitude gains (bit-identical to a 2026-07-02 clean flight on standard) but shared firmware config drifted brushless-only for two months, compounded by a bigger bug — the per-robot mass/<code>kt</code> override was being silently wiped every <code>apply()</code> call, so <code>cf_second</code> (standard) likely flew on brushless's thrust model the whole time. Generalized the per-robot override mechanism to fix this for good. This explains standard's own instability, not brushless's crash directly — brushless's config was never touched by the bug; its crash reads as collateral damage from the standard drone thrashing directly above it, not a fault of its own</li>
-        <li><strong>Architecture decision 09-13:</strong> rather than brushless-swap <code>cf_second</code>, it's permanently pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the controller under study, removing the cross-platform gain-sharing risk by construction (stock Lee never reads <code>indi_gains</code>/<code>pos_gains</code>)</li>
-        <li><strong>09-13, notch test flown — CRASHED.</strong> Worse than the original 09-11 crash, zero log data saved (the crash was violent enough the radio/log pipeline never completed). The <code>bc7190c</code> fix does not resolve the problem; reverted. Most of the session before this was lost to an unrelated hardware/tooling problem: the drone had been flashed with the wrong firmware platform (standard onto brushless), compounded by a diagnostic that accidentally forced it into bootloader mode — resolved with an explicit <code>DRONE=bl</code> reflash. Drone inspected, no damage.</li>
-        <li><strong>09-13 desk-time, CONCLUSIVE:</strong> offline bode/phase analysis (<code>experiments/analysis/notch_filter_bode.py</code>) found the attitude loop's own natural frequency (<code>ωₙ = √kr = 7.80 Hz</code> at <code>kr=2400</code>) sits almost exactly inside the notch's rejection band (<code>f0=6.9</code>, <code>bw=3.0</code>) — phase swings ~175° across it, and even at <code>ωₙ</code> the notch applies +58° phase and halves the signal. The "shake" is likely the loop's own dynamics, not an external resonance — <strong>the notch-filter approach is abandoned</strong>, no retuning of <code>notch_f0</code>/<code>notch_bw</code> can fix a filter sitting on top of the loop's own bandwidth. Full account: <code>docs/lab_sessions/2026-09-13.md</code></li>
-        <li><strong>Neither our own geometric nor INDI has actually worked in a 2-drone scenario yet</strong> — the only clean 2-drone flight remains stock Lee (<code>a_res=0</code>, no real data); the one attempt at our own geometric on both drones is what crashed on 09-12.</li>
-        <li class="pending"><strong>09-14 plan:</strong> (1) geometric, 2 drones, A1 hover — closes C.0 flight 5, is the first real C.1 data point; (2) full INDI, 2 drones, A1 hover — deliberately ahead of C.0's strict order since A1 doesn't exercise the open trajectory-tracking shake; (3) uSD logging + sync validation; (4) if clean, move to A3. The <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line (09-11 attempt 4, peak 6.7°) continues separately. Brushless swap deferred to its own session</li>
-        <li><strong>09-14 desk-time, before lab: NA-INDI faithful port DONE and numerically verified.</strong> Supervisor judged the residual oscillation unacceptable as-is; rather than keep iterating on our own INDI, ported Cobo &amp; Briesewitz's <code>controller_lee.c</code> bit-for-bit into a brand-new, fully independent controller slot (<code>stabilizer.controller=7</code>) that never touches the existing geometric/INDI controller. Verified against the reference's own compiled C — built a throwaway, never-modified copy of their firmware and ran 5 hand-picked states through both — <strong>all 5 match thrust and torque to ~1e-9</strong>. Exactly 4 documented, physically/architecturally necessary deviations; everything else identical. Builds clean on every platform, switchable via a plain <code>controller: 7</code> in the yaml like any other controller. <strong>Never flown</strong> — needs the same hover-first hardware validation as any new control law before it counts as data</li>
-        <li><strong>09-14 desk-time: Neural-Swarm2 exact-architecture port DONE — but does not fit in RAM, and that is not to be fixed by touching the network.</strong> <code>residual_nn.rs</code> replaced with a direct port of Neural-Swarm2's own <code>phi_Net</code>/<code>rho_Net</code> from their vendored reference code. 19297 weights (~77&nbsp;KB), up from 987 (~4&nbsp;KB) — a real firmware link overflows RAM by ~39&nbsp;KB, confirmed not estimated. Operator's explicit, standing decision after being offered pruning options: leave it exactly as ported, "out of the box," overflow included — the fix, whenever it happens, must come from elsewhere in the build. The existing test suites and training pipeline still target the old shape and need rewriting before their output means anything</li>
+        <li><strong>Software preparation complete</strong> — formation library, sim validation, residual path, NS2 architecture port; <code>dataset.py</code> / <code>train.py</code> verified on real merged CSV <em>docs/13</em></li>
+        <li><strong>2-drone platform operational</strong> — uSD end-to-end; 7 A8 packages analyzed (19&nbsp;Sep desk pass); not the same as finishing C.0 checklist on paper <em>docs/28</em></li>
+        <li><strong>A8 on cf5</strong> — Lee / geometric / full INDI logged; stock Bitcraze INDI tried once, unstable <em>n=1</em></li>
+        <li><strong>Study pair now</strong> — <code>cf5</code> bottom / <code>cf_second</code> stock Lee top; <code>cf231_active</code> bench-only <em>19 Sep</em></li>
+        <li><strong>Mocap</strong> — 4-point <code>active_deck</code> restored; tracking stable at close range</li>
+        <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
+        <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; hardware hover still gated</li>
+        <li class="pending"><strong>C.1</strong> — fly scenario matrix under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>; A4 mandatory, A7 high value <em>docs/25, flight card</em></li>
+        <li class="pending"><strong>C.2 → C.3</strong> — train NS2 weights from C.1 logs, upload, enable Strategy&nbsp;2 in flight</li>
+        <li class="pending"><strong>C.4</strong> — systematic head-to-head on matched scenarios with repeats and statistics <em>thesis result; docs/24 living table → docs/27 metrics</em></li>
+        <li><em>Earlier lab history (Sep 7–14 validation, notch abandoned, first 2-drone bugs):</em> <code>docs/07</code> History, <code>docs/lab_sessions/</code></li>
       </ul>
     </div>
   </div>
@@ -259,13 +277,13 @@ footer{
       <tr><td class="ch">3</td><td>System Modelling</td><td>The residual-force formulation; verified line by line against the firmware</td><td class="num">2,443</td></tr>
       <tr><td class="ch">4</td><td>Control Architectures</td><td>Seven strategies as settings of one control law — and where that stops holding</td><td class="num">3,178</td></tr>
       <tr><td class="ch">5</td><td>Experimental Setup</td><td>Scenarios, protocol, frozen gains, what would falsify each hypothesis</td><td class="num">2,670</td></tr>
-      <tr><td class="ch">6–9</td><td style="color:var(--muted)">Results, discussion, conclusion</td><td style="color:var(--muted)">Waiting on flight data — deliberately not started</td><td class="num" style="color:var(--muted)">—</td></tr>
+      <tr><td class="ch">6–9</td><td style="color:var(--muted)">Results, discussion, conclusion</td><td style="color:var(--muted)">Waiting on C.4 comparison campaign — not started</td><td class="num" style="color:var(--muted)">—</td></tr>
     </tbody>
   </table>
   </div>
   <p class="note">
-    Chapter 5 is written in future tense on purpose: nothing has been flown as a controlled
-    experiment yet, and no result is claimed anywhere in the draft.
+    Chapter&nbsp;5 turns to past tense as the C.1/C.4 protocol is executed. Chapters&nbsp;6–9 stay
+    empty until C.4 produces defensible numbers.
   </p>
 </section>
 
@@ -288,138 +306,153 @@ footer{
 </section>
 
 <div class="risk">
-  <h2>The one thing that still gates everything</h2>
+  <h2>What the comparative thesis still needs</h2>
   <p>
-    A sign error meant the controller <strong>added</strong> the interaction force it was supposed
-    to cancel — reinforcing every disturbance instead of removing it, measured at exactly
-    <strong>2.00×</strong> on a known input in simulation. The correction was written, and then
-    it flew: every flight carrying it diverged.
+    The <strong>head-to-head claim</strong> lives in <strong>C.4</strong>: same scenarios, same
+    metrics, enough repeats, and control-effort alongside tracking error. Single A8 flights show
+    feasibility; they are not yet a comparison result.
   </p>
   <p>
-    That reversal is the honest state of this project right now. The correction is <em>believed
-    right on paper</em> and <em>behaved badly in the air</em>, and both can be true at once — it
-    does not only change thrust, it moves the commanded attitude. So it has been parked at the
-    value that flew for weeks, kept behind a runtime switch, and will be re-introduced one flight
-    at a time rather than assumed.
+    <strong>C.1 volume</strong> unlocks <strong>Strategy&nbsp;2</strong> (geometric + NS2). Until
+    then, the minimum set (Strategies&nbsp;0–1 and later 4) can still be flown, but the predictive
+    arm of the study stays empty.
   </p>
   <p>
-    <strong>Update, 11 September:</strong> the staged re-validation happened. Stage 1 (the
-    restored configuration, unchanged) flew clean on both controllers — so the restoration
-    itself is confirmed good, and attribution among the three original root causes no longer
-    matters, since all three are reverted and the result is clean either way. What's still open
-    is different: a residual, trajectory-tracking-only attitude oscillation on full INDI that
-    survived four separate gain-tuning attempts (88°→7° peak, never a clean pass). The two-drone
-    residual-sign A/B (<code>res_sign=-1</code>) — the decisive flight every downstream number
-    depends on — has still not happened on hardware; it's queued behind isolating this
-    oscillation via the H0 partition (attitude-INDI-only vs position-INDI-only), planned next.
-  </p>
-  <p>
-    The comparison against the cited paper's own code (10 September) held up: the two INDI
-    implementations are confirmed the <em>same law written two ways</em>, not a bug on our
-    side. The filter bug it surfaced is fixed and flight-confirmed safe. The gain-magnitude
-    lead it raised (our attitude loop's natural frequency inside the observed oscillation band)
-    is the hypothesis the 09-11 bisection was actually testing — real progress, not yet a
-    resolution.
+    <strong>INDI baseline</strong> for Strategy&nbsp;1 is not fully settled: our full INDI flies
+    in 2-drone A8, but stock INDI and Briesewitz <code>c=7</code> still need disciplined rows in
+    <code>docs/24</code> before C.4 numbers are quoted in the thesis.
   </p>
 </div>
 
 <section>
-  <div class="sec-head"><h2>Next — in the lab</h2></div>
+  <div class="sec-head"><h2>Core workflow — lab track</h2></div>
   <p class="note" style="margin-bottom:22px">
-    Strictly ordered. Each rung exists so that a failure has exactly one explanation.
+    Ordered so each phase makes the next interpretable. Detail:
+    <code>docs/next_flight_card.html</code>, <code>docs/25</code>.
   </p>
   <ol class="ladder">
     <li class="done">
-      <h3>Bench check</h3>
-      <p class="why">Confirm the position gain on the drone is the flight-proven value, not the
-      simulator's. Tape-measure the flight volume — scenarios sit within ~10&nbsp;cm of the walls.</p>
-    </li>
-    <li class="done">
-      <h3>Re-validate both controllers, stage 1</h3>
-      <p class="why">Run 09-11: three geometric flights + one restored-config INDI hover, all
-      clean. The restoration is confirmed good on hardware.</p>
-    </li>
-    <li class="done">
-      <h3>Stage 2 — isolate the residual oscillation</h3>
-      <p class="why">Four gain-bisection attempts (09-11) brought peak trajectory-tracking
-      oscillation from 88° to 7° but never reached a clean pass. <strong>The H0 partition
-      (09-12) ran and was inconclusive</strong> — both isolated sub-loops crashed on hover
-      alone, worse than full INDI, so the two loops are too coupled to isolate this way; a real
-      negative result, not a dead end. The notch-filter crash was root-caused and fixed offline
-      the same day (a third filter chain missed an earlier cold-start fix). <strong>UPDATE
-      09-13: flown for real — CRASHED, worse than the original crash, zero log data.</strong>
-      <strong>Desk-time follow-up, same day, CONCLUSIVE:</strong> offline bode/phase analysis
-      found the attitude loop's own natural frequency (<code>ωₙ=7.80 Hz</code> at
-      <code>kr=2400</code>) sits almost exactly inside the notch's rejection band — the "shake"
-      is likely the loop's own dynamics, not an external resonance. <strong>The notch-filter
-      approach is abandoned</strong>; continuing the <code>kr</code>/<code>kw</code> retuning
-      line instead (09-11 attempt 4, peak 6.7°).</p>
+      <h3>C.0 — Hardware gate (practically)</h3>
+      <p class="why">Formation + uSD + our geometric/INDI on cf5 are flying; remaining C.0 loose
+      ends (EKF fix isolation, optional sign A/B) do not block starting C.1.</p>
     </li>
     <li class="key">
-      <h3>Two drones, first flight — DONE 09-12 (stock Lee only)</h3>
-      <p class="why">First-ever 2-drone flight ran end to end on stock Lee after fixing six real
-      <code>formation_flight.py</code> bugs, confirming a real downwash signature — but stock
-      Lee gives <code>a_res=0</code>, so this is not yet real thesis data. A follow-up
-      geometric attempt on both drones crashed both — root-caused to shared firmware config
-      drift plus a per-robot mass/kt override being silently wiped every flight (now fixed for
-      good). <strong>Architecture decision 09-13</strong>: <code>cf_second</code> permanently
-      pinned to stock Lee regardless of platform — only <code>cf231_active</code> is ever the
-      controller under study, removing this failure mode by construction. <strong>Neither our
-      own geometric nor INDI has actually worked in 2-drone yet</strong> — that's the 09-14
-      plan: geometric A1 hover, then full INDI A1 hover (ahead of the strict C.0 order since A1
-      doesn't exercise the open trajectory shake), then uSD logging + sync validation.</p>
-    </li>
-    <li class="key">
-      <h3>Prove the residual sign</h3>
-      <p class="why">Two drones stacked, compensation on versus off. Enabling it must
-      <em>shrink</em> the separation error. This is the decisive flight — still ahead, blocked
-      on the uSD logging validation above.</p>
+      <h3>C.1 — Residual data collection</h3>
+      <p class="why">Geometric on <code>cf5</code> while logging <code>a_res</code>; scenario
+      matrix on the flight card. Preflight: reset cf5 to <code>controller: 6</code>, not stock INDI
+      from the last test.</p>
     </li>
     <li>
-      <h3>Trajectory ladder</h3>
-      <p class="why">Figure-8 on the old upload path, then the new one, then a circle. The new
-      path has 180+ hover flights and multiple trajectory flights now (09-11) — this buys the
-      right to trust it.</p>
+      <h3>C.2 — Train NS2</h3>
+      <p class="why">Pipeline verified; needs C.1 merged logs. Can start as soon as the first
+      usable blocks land.</p>
     </li>
     <li>
-      <h3>Freeze the gains</h3>
-      <p class="why">Written down and unchanged from here. Re-tuning later would measure tuning
-      effort rather than the methods being compared. Not yet reached — the notch fix needs a
-      real flight test first, and stage 2's oscillation question is still open.</p>
+      <h3>C.3 — Integrate strategies</h3>
+      <p class="why">After C.2: upload weights and fly Strategy&nbsp;2 — needs onboard
+      <code>residual_nn</code> build/RAM path, not only training. NA-INDI / <code>c=8</code> parallel
+      once baseline and supervisor strategy are fixed.</p>
+    </li>
+    <li>
+      <h3>C.4 — Systematic comparison</h3>
+      <p class="why">Matched repeats across Strategies&nbsp;0–4 on the same scenarios — the
+      experimental answer to the research questions.</p>
     </li>
   </ol>
-  <p>
-    Then data collection — vertical <em>and</em> lateral scenarios. A vertical-only dataset has no
-    lateral variation at all, and the model would be extrapolating the first time a formation
-    moves sideways.
+</section>
+
+<section>
+  <div class="sec-head"><h2>Desk work in parallel with lab</h2></div>
+  <p class="note" style="margin-bottom:18px">
+    These advance the <strong>comparative study</strong> without substituting for C.1 flights.
+    When the lab is unavailable, prefer this list over re-tuning prose or extra exploratory A8.
+  </p>
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr><th>Task</th><th>Why it matters for C.4 / RQs</th><th>Where</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Desk index (§1–12) — complete</strong></td>
+        <td>Audit closeout <code>docs/35</code>; C.4 compare CSV split; post-session + 3-drone smoke</td>
+        <td><code>docs/31_Desk_Parallel_Track.md</code></td>
+      </tr>
+      <tr>
+        <td><strong>Analysis aggregation</strong> — mean ± std, <em>n</em>, paired tests, error bars</td>
+        <td>Without this, “INDI wins” from one run is not defensible</td>
+        <td><code>run_c4_desk_prep.py</code>, <code>docs/27</code></td>
+      </tr>
+      <tr>
+        <td><strong>Phase metrics</strong> — crossing / closest-approach windows</td>
+        <td>Downwash lives in interaction phases; whole-log windows bias comparisons</td>
+        <td><code>docs/27</code>, <code>metrics.py</code></td>
+      </tr>
+      <tr>
+        <td><strong>Control effort + disturbance pairing</strong></td>
+        <td>Examiners expect effort; pair runs with similar realized <code>a_res</code></td>
+        <td><code>docs/27</code></td>
+      </tr>
+      <tr>
+        <td><strong>C.4 figure templates</strong></td>
+        <td>Ch.&nbsp;6–7 need publication figures when data exists</td>
+        <td><code>docs/27</code></td>
+      </tr>
+      <tr>
+        <td><strong>Protocol sync</strong> — cf5, uSD-only reporting, scenario list</td>
+        <td>Keeps <code>docs/24</code> aligned with what you will fly</td>
+        <td><code>docs/24</code>, <code>docs/25</code></td>
+      </tr>
+      <tr>
+        <td><strong>C.2 on first C.1 packages</strong></td>
+        <td>Strategy&nbsp;2 row; catches pipeline issues early</td>
+        <td><code>tools/residual/</code>, <code>docs/13</code></td>
+      </tr>
+      <tr>
+        <td><strong>INDI baseline desk</strong></td>
+        <td>Fair Strategy&nbsp;0 vs&nbsp;1 vs reference INDI before large C.4 matrix</td>
+        <td><code>docs/22</code>, firmware host notes</td>
+      </tr>
+      <tr>
+        <td><strong>Writing</strong> — Ch.&nbsp;5 past tense; results skeleton</td>
+        <td>Reduces deadline risk; not a substitute for C.4 data</td>
+        <td><code>docs/thesis/ch5_experimental_setup.tex</code>, <code>docs/30</code></td>
+      </tr>
+      <tr>
+        <td><strong>P5 residual eval</strong>, <strong>C.4 budget</strong>, <strong>NA-INDI memo</strong></td>
+        <td>C.2 metrics ready; lab hours planned; supervisor decision captured</td>
+        <td><code>eval_model.py</code>, <code>docs/32</code>, <code>docs/34</code></td>
+      </tr>
+      <tr>
+        <td><strong>Post-session checklist</strong>, <strong>3-drone sim smoke</strong></td>
+        <td>Repeatable lab→desk pipeline; B1/B2 sim story for Ch.&nbsp;7</td>
+        <td><code>docs/28</code>, <code>docs/33</code>, <code>run_3drone_smoke.sh</code></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note" style="margin-top:14px">
+    <strong>Lower priority between lab blocks:</strong> FBL follow-up (Strategy&nbsp;3);
+    extended <code>c=8</code> hardware ladder; cf231 hardware bench.
   </p>
 </section>
 
 <section>
-  <div class="sec-head"><h2>Next — on paper</h2></div>
+  <div class="sec-head"><h2>Writing track</h2></div>
   <p>
-    The writing track is <strong>blocked on flight data</strong>, not idle by choice. Everything
-    that could be written without measurements has been: Chapters 1–5 are drafted, revised and
-    accuracy-audited, and frozen. Chapters 6–9 are the results, discussion and conclusion — they
-    need the comparison campaign to exist. Chapter 5 turns to past tense once it has been run.
-    One paper remains abstract-only behind a paywall — the closest published work to this
-    setting, and the single verification gap that cannot be closed by reading harder.
-  </p>
-  <p>
-    Three of the seven strategies are deliberately not implemented: one waits on code from its
-    authors, two need a model that only real flight data can train, and two reinforcement-learning
-    variants are explicitly a stretch goal rather than part of the contribution.
+    Chapters&nbsp;1–5 are drafted and frozen to the data boundary. Chapters&nbsp;6–9 need
+    <strong>C.4</strong>. Minimum contribution scope remains <strong>Strategies&nbsp;0–4</strong>
+    (<code>docs/01</code>); Strategies&nbsp;5–7 are advanced / stretch.
   </p>
 </section>
 
 <footer>
-  Detail: docs/07 (status) · docs/FLIGHT_CARD_VALIDATION.md (the ladder above, with commands and
-  09-11/09-12 results) ·
-  docs/lab_sessions/2026-09-12.md (H0 partition + first 2-drone flight, full account) ·
-  docs/lab_sessions/2026-09-11.md (stage 1/2 session, full account) ·
-  docs/lab_sessions/2026-09-09.md (the crash session + fixes) · docs/REVIEW_FINDINGS_2026-09-09.md (independent audit) ·
-  docs/lab_sessions/sim_scenario_commands_2026-09-08.md (formation-library sim commands) ·
-  docs/10 (formations) · docs/13 (residual learning) · docs/12 &amp; SPEED_MATRIX.md (sim validation)
+  Updated 21&nbsp;Sep (desk track audit COMPLETE) · SSOT: <code>docs/07</code> (some inner
+  tables there still say “C.0 next” — trust the top “WHERE WE ARE” block and the flight card) ·
+  Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
+  Analysis: <code>docs/28</code>, <code>docs/27</code> ·
+  Comparison table: <code>docs/24</code> (cf5 rows / protocol text still to sync) ·
+  Session: <code>docs/lab_sessions/2026-09-19.md</code>
 </footer>
 
 </div>

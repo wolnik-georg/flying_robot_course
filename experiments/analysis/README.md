@@ -30,6 +30,22 @@ already promised (RMSE, sag, residual, e_R), so the first real flight campaign d
 wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see
 `docs/07_Thesis_Progress_Checklist.md`).
 
+## uSD session pipeline (match → package → P1–P4)
+
+**Doc:** `docs/28_USD_Radio_Matching_and_Session_Analysis.md` (workflow + per-day flight tables).
+
+| Script | Role |
+|---|---|
+| `flying_drone_stack/tools/merge_usd_logs.py` | Align drones on `--meta` + `--roles`; write merged 500 Hz CSV |
+| `experiments/analysis/match_usd_to_radio.py` | Optional pair scoring (radio correlation); not sole matcher for repeated A8 |
+| `experiments/analysis/run_a8_2026_09_19_suite.py` | End-to-end for 2026-09-19: symlink raw uSD, merge, `run_analysis`, plots, phase metrics, `aggregate` / `plot_comparison` |
+| `run_analysis.py` | Per-flight metrics + report |
+| `plot_flight.py` / `plot_interaction.py` | Dashboard + downwash interaction figures |
+| `aggregate.py` / `plot_comparison.py` | Cross-flight comparison (docs/27 P3–P4) |
+| `run_c4_desk_prep.py` | One-shot desk run: `phase_metrics_c4_compare.csv` (geo+INDI only) → summarise + figures (`docs/31`, [`35`](../../docs/35_Desk_Parallel_Audit_Closeout.md)) |
+
+Merged uSD logs expose setpoints as **`ctrltarget_*`** (loaded automatically since 2026-09-19).
+
 ## Run it
 
 ```bash

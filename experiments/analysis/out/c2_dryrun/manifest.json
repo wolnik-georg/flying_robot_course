@@ -1,0 +1,14 @@
+{
+  "purpose": "C.2 pipeline rehearsal — not a deployable NS2 model",
+  "date": "2026-09-21",
+  "input_merged_csv": "experiments/logs/a8_2026-09-19_successful/2026-09-19_15-04-41/A8_2026-09-19_15-04-41_merged_usd.csv",
+  "study_controller": "geometric",
+  "weights_out": "flying_drone_stack/tools/residual/weights/c2_dryrun_2026-09-19_geo.npz",
+  "epochs": 80,
+  "best_val_rmse_m_s2": 0.1049,
+  "predict_zero_baseline_m_s2": 0.2199,
+  "notes": [
+    "A8-only merge — no lateral C.1 coverage; retrain after C.1 blocks.",
+    "dataset reported dropped_zero_a_res for ego rows — expect richer a_res after proper collection flights."
+  ]
+}

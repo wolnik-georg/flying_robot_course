@@ -98,6 +98,26 @@ uSD logs and radio CSVs are never merged automatically — matching one to the o
 deliberate step, done by scenario name and approximate flight time, confirmed with whoever was
 in the lab, never inferred from file arrival order.
 
+## Matching uSD to radio after a lab day (2026-09-19 workflow)
+
+Full protocol and flight catalog: **`docs/28_USD_Radio_Matching_and_Session_Analysis.md`**.
+
+**Quick recipe:**
+
+1. Archive both cards to `experiments/logs/usd_raw/<date>_THESIS{1,2}/` with `copy_usd_log.py`
+   (or a verified bulk copy — never hand-rename in the archive).
+2. Note in the lab session which drone wore which card and **`thesisNN` per flight** (cheapest
+   match key when scenario params repeat).
+3. Merge with **`merge_usd_logs.py --meta experiments/logs/A8_<stamp>.meta.json --roles bottom top`**
+   on symlinks named `cf5_...` / `cf_second_...` so merged columns match radio meta names.
+4. Refuse merge if either drone reports **RMS &gt; 15 cm** (wrong file or role).
+5. Run the session suite (example):  
+   `python3 experiments/analysis/run_a8_2026_09_19_suite.py`  
+   → packages under `experiments/logs/a8_<date>_successful/`, plots + metrics, no raw edits.
+
+Optional helper: `experiments/analysis/match_usd_to_radio.py` (radio correlation scores only —
+same A8 params make trajectory correlation ambiguous; counter order + merge RMS wins).
+
 ## Decoding, and finding the actual flight inside the file
 
 ```bash
@@ -110,10 +130,9 @@ python3 flying_drone_stack/tools/find_flight_window.py <usd_log.bin> bottom \
     --extract experiments/logs/usd_raw/<scenario>_<drone>_<date>_<time>_flight.csv
 ```
 
-`find_flight_window.py` currently only knows A8's trajectory shape (`Shuttle`+`Pause`). Extending
-it to another scenario means reading that scenario's actual `RobotPlan` in
-`formations/scenarios.py` and adding it to `commanded_trajectory()` — it deliberately refuses to
-guess a curve shape for a scenario it hasn't been taught.
+`find_flight_window.py` rebuilds **any** formation-library scenario from the flight's
+`.meta.json` via `formations/scenarios.py` (generalized 2026-09-15). Pass the correct
+`bottom` / `top` / … role for that scenario.
 
 ## Right after landing, before you touch anything else
 
@@ -132,9 +151,13 @@ whole uSD investigation had to do because this wasn't recorded at the time.
 | `indi.e_r_{x,y,z}`, `indi.e_r_norm` | Geometric attitude error `e_R` used in the torque law. Present under every `ctrl_mode` (0-3), not only INDI (added 2026-09-08) |
 | `stabilizer.{roll,pitch,yaw}`, `gyro.*`, `acc.*` | attitude and raw IMU |
 | `ctrltarget.*` | commanded position → tracking error |
-| `motor.m*` | control effort, one of the protocol's comparison metrics |
+| `motor.m*` | control effort (PWM), one of the protocol's comparison metrics |
+| `motor.m*_rpm` | DShot ESC telemetry on the uSD file — **same source** as `indi_gains.rpm_source=1` uses for `a_res`; logged for offline delay/cross-check, not a second control path |
+| `rpm.m*` | optical RPM deck — logged **alongside** DShot; control still uses DShot only |
 
-39 variables at 500 Hz (`rnn.pred_*` and `rnn.clamped` added 2026-08-23; `indi.e_r_*` added 2026-09-08 -- see docs/13_Residual_Learning.md; the limit is 40, raised from the stock 20 by a local `usddeck.c` change). One slot of headroom left. If the card cannot keep up (check for gaps after the first flight), drop
+47 variables at 500 Hz (`rpm.m*` + `motor.m*_rpm` added 2026-09-21 for dual-RPM logging during C.1).
+Cap is **48** (`MAX_USD_LOG_VARIABLES_PER_EVENT` in local `usddeck.c`, was 40). **Reflash both study drones** after raising the cap, then copy this config to both SD cards.
+If the card cannot keep up (check for gaps after the first flight), drop
 `motor.m*` first, then `acc.*` — `indi.a_res_*` and `stateEstimate.*` are the ones the thesis
 cannot do without.
 

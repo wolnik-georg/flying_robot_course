@@ -85,6 +85,7 @@ table.iso td.ids{font-family:var(--font-mono);color:var(--accent-2);white-space:
 .badge{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.03em;padding:2px 9px;border-radius:999px;white-space:nowrap}
 .badge.extreme{background:var(--warn-bg);color:var(--warn)}
 .badge.control{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.badge.sketch{background:color-mix(in srgb, var(--accent-2) 16%, transparent);color:var(--accent-2);border:1px solid color-mix(in srgb, var(--accent-2) 45%, transparent)}
 .card h3{font-family:var(--font-body);font-size:1.15rem;font-weight:700;margin:0}
 .card .param{font-family:var(--font-mono);font-size:.82rem;color:var(--accent-2)}
 .card .why{color:var(--muted);font-size:.92rem;line-height:1.55;margin:0}
@@ -157,6 +158,8 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
     <a class="navlink" href="#two-robot">Two-robot (A)</a>
     <a class="navlink" href="#three-robot">Three-robot (B)</a>
     <a class="navlink" href="#coverage">Coverage (C)</a>
+    <a class="navlink" href="#four-robot-sketch">Four-robot sketch (D)</a>
+    <a class="navlink" href="#five-robot-sketch">Five-robot sketch (E)</a>
     <a class="navlink" href="#running">Grids &amp; running</a>
   </div>
 </nav>
@@ -167,7 +170,9 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   <p class="subtitle">16 multi-robot geometries used to excite inter-vehicle aerodynamic
   interaction — the experimental input side of the thesis. Diagrams below animate the actual
   motion; static scenarios (hover, control cases) are shown still on purpose. Full detail,
-  commands, and verification status: <code>docs/10_Formation_Library.md</code>.</p>
+  commands, and verification status: <code>docs/10_Formation_Library.md</code>.
+  <strong>16 scenarios are frozen and sim-validated;</strong> n = 4/5 rows below are an
+  <em>extension sketch</em> (not yet in <code>run_formation</code>).</p>
   <div class="legend">
     <div class="item"><svg viewBox="-14 -14 28 28"><use href="#drone"/></svg> drone</div>
     <div class="item"><svg viewBox="-14 -14 28 28" class="drone-ghost"><use href="#drone"/></svg> fixed / reference</div>
@@ -519,8 +524,395 @@ code{font-family:var(--font-mono);font-size:.9em;background:var(--surface-2);pad
   </div>
 </section>
 
+<section class="block" id="four-robot-sketch">
+  <div class="sec-head"><span class="sec-eyebrow">§5 · Extension sketch</span><h2>Four-robot scenarios (D + F4)</h2></div>
+  <p class="sec-note"><span class="badge sketch">sketch · not in runner</span>
+    A1–C5 stay frozen. These geometries are for Ch. 7 / optional sim — see
+    <code>docs/36_Four_Five_Robot_Formation_Sketch.md</code>. Tier 1 smoke:
+    <strong>F4a</strong>, <strong>D1</strong> @ dz 0.30 m.</p>
+  <div class="grid">
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="95" y="75"/><use href="#drone" x="165" y="75"/>
+        <use href="#drone" x="95" y="125"/><use href="#drone" x="165" y="125"/>
+        <line x1="109" y1="75" x2="151" y2="75" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <line x1="109" y1="125" x2="151" y2="125" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="118" y="68" class="dim-label">s</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">F4a</span><span class="badge control">control</span><span class="badge sketch">sketch</span></div>
+        <h3>Coplanar square</h3>
+        <div class="param">s = 0.40 m · hover</div>
+        <p class="why">Tier 1 plumbing — low wash; extends C1 to n = 4.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="55" y="95"/><use href="#drone" x="105" y="95"/>
+        <use href="#drone" x="155" y="95"/><use href="#drone" x="205" y="95"/>
+        <line x1="69" y1="95" x2="191" y2="95" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="118" y="82" class="dim-label">g</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">F4b</span><span class="badge sketch">sketch</span></div>
+        <h3>Coplanar line-4</h3>
+        <div class="param">g = 0.40 m · hover</div>
+        <p class="why">Wake chain; Gielis leader–follower shape only (their rig ≠ free flight).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="155"/><use href="#drone" x="130" y="120"/>
+        <use href="#drone" x="130" y="85"/><use href="#drone" x="130" y="50"/>
+        <line x1="175" y1="50" x2="175" y2="155" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="183" y="108" class="dim-label">Δz ×3</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D1</span><span class="badge sketch">sketch</span></div>
+        <h3>Four-stack</h3>
+        <div class="param">Δz ∈ {0.24…0.50} m · hover</div>
+        <p class="why">Bottom in three upstream fields — superposition past B1 (expect geometric sag like B1).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="90" y="135"/><use href="#drone" x="90" y="75"/>
+        <use href="#drone" x="170" y="135"/><use href="#drone" x="170" y="75"/>
+        <line x1="55" y1="75" x2="55" y2="135" class="dim-dash"/>
+        <line x1="195" y1="75" x2="195" y2="135" class="dim-dash"/>
+        <line x1="105" y1="152" x2="155" y2="152" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="118" y="166" class="dim-label">w</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D2</span><span class="badge sketch">sketch</span></div>
+        <h3>Twin I-stack</h3>
+        <div class="param">Δz = 0.30 m, w = 0.30 m</div>
+        <p class="why">Two parallel wash columns — extends B1+B2 to n = 4.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="75" y="145"/><use href="#drone" x="130" y="95"/>
+        <use href="#drone" x="185" y="55"/><use href="#drone" x="185" y="145"/>
+        <path d="M75 145 L130 95 L185 55 L185 145 Z" class="dim-dash"/>
+        <text x="95" y="178" class="tag-label">tetrahedron (schematic)</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D3</span><span class="badge sketch">sketch</span></div>
+        <h3>Skew tetra</h3>
+        <div class="param">edge ≈ 0.35 m · hover</div>
+        <p class="why">Thesis-original — non-planar four-body overlap.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <g class="anim-ty-up"><use href="#drone" x="90" y="140"/><use href="#drone" x="170" y="140"/></g>
+        <g class="anim-ty-down"><use href="#drone" x="90" y="55"/><use href="#drone" x="170" y="55"/></g>
+        <line x1="90" y1="55" x2="90" y2="140" class="dim-dash"/>
+        <line x1="170" y1="55" x2="170" y2="140" class="dim-dash"/>
+        <text x="55" y="30" class="tag-label">2×2 swap · NS n=4</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D4</span><span class="badge extreme">⚠</span><span class="badge sketch">sketch</span></div>
+        <h3>2×2 vertical swap</h3>
+        <div class="param">Δz_pair = 0.25 m</div>
+        <p class="why">Literature-aligned swap — Neural-Swarm four-vehicle train family.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top + side · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="75" y="130"/><use href="#drone" x="130" y="130"/><use href="#drone" x="185" y="130"/>
+        <use href="#drone" x="130" y="55"/>
+        <line x1="130" y1="68" x2="130" y2="118" class="dim-line" marker-end="url(#arrend)"/>
+        <text x="138" y="95" class="dim-label">Δz</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D5</span><span class="badge sketch">sketch</span></div>
+        <h3>Square + hover leader</h3>
+        <div class="param">Δz = 0.30 m</div>
+        <p class="why">One dominant elevated source over coplanar trio.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <circle cx="130" cy="100" r="42" class="path-trace"/>
+        <g class="anim-orbit3" style="transform-origin:130px 100px">
+          <use href="#drone" x="130" y="58"/><use href="#drone" x="130" y="88"/>
+          <use href="#drone" x="130" y="118"/><use href="#drone" x="130" y="148"/>
+        </g>
+        <text x="178" y="100" class="tag-label">stack orbits</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D6</span><span class="badge sketch">sketch</span></div>
+        <h3>Reverse-circle platoon</h3>
+        <div class="param">Δz = 0.30 m, v = 0.30 m/s</div>
+        <p class="why">Moving four-high stack — hardest geometric superposition case.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <path d="M60 130 H200" class="path-trace"/>
+        <g class="anim-tx">
+          <use href="#drone" x="65" y="145"/><use href="#drone" x="95" y="115"/>
+          <use href="#drone" x="125" y="85"/><use href="#drone" x="155" y="55"/>
+        </g>
+        <text x="70" y="48" class="tag-label">staggered offsets</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D7</span><span class="badge sketch">sketch</span></div>
+        <h3>Offset stack train</h3>
+        <div class="param">offset 0.15 m, Δz = 0.30 m</div>
+        <p class="why">Partial overlap while translating — extends A4.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <circle cx="130" cy="95" r="28" class="dim-dash"/><circle cx="130" cy="95" r="58" class="dim-dash"/>
+        <use href="#drone" x="130" y="37"/><use href="#drone" x="188" y="95"/>
+        <use href="#drone" x="130" y="153"/><use href="#drone" x="72" y="95"/>
+        <text x="88" y="178" class="tag-label">NS2 3-ring (scaled)</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D8</span><span class="badge sketch">sketch</span></div>
+        <h3>Two-ring four</h3>
+        <div class="param">Tier 2+</div>
+        <p class="why">Scaled Neural-Swarm2 three-ring layout at n = 4.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <path d="M130 55 L185 135 L75 135 Z" class="dim-dash"/>
+        <use href="#drone" x="130" y="55"/><use href="#drone" x="185" y="135"/><use href="#drone" x="75" y="135"/>
+        <use href="#drone" x="130" y="155"/>
+        <text x="88" y="178" class="tag-label">free 4th bottom</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D9</span><span class="badge sketch">sketch</span></div>
+        <h3>Gielis-quad</h3>
+        <div class="param">Tier 2+</div>
+        <p class="why">Triangle aloft + free bottom vehicle (aggregate, not load-stand).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="20" y1="145" x2="240" y2="145" class="ground"/>
+        <use href="#drone" x="130" y="55"/><use href="#drone" x="130" y="90"/>
+        <use href="#drone" x="130" y="125"/><use href="#drone" x="130" y="155"/>
+        <line x1="175" y1="145" x2="175" y2="155" class="dim-line" marker-end="url(#arrend)"/>
+        <text x="182" y="142" class="dim-label">low z</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">D10</span><span class="badge sketch">sketch</span></div>
+        <h3>Ground + stack</h3>
+        <div class="param">Tier 2+ · gate like C5</div>
+        <p class="why">NS2 ground-effect thread over a vertical stack.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <g transform="rotate(45 130 95)">
+          <use href="#drone" x="95" y="75"/><use href="#drone" x="165" y="75"/>
+          <use href="#drone" x="95" y="125"/><use href="#drone" x="165" y="125"/>
+        </g>
+        <text x="88" y="178" class="tag-label">mocap packing</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">F4c</span><span class="badge sketch">sketch</span></div>
+        <h3>Rotated square</h3>
+        <div class="param">logistics only</div>
+        <p class="why">Packing / mocap check — not a science scenario.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="block" id="five-robot-sketch">
+  <div class="sec-head"><span class="sec-eyebrow">§6 · Extension sketch</span><h2>Five-robot scenarios (E + F5)</h2></div>
+  <p class="sec-note">Five-stack <strong>E1</strong> defaults to Δz <strong>0.24–0.30 m</strong> (0.50 m
+    does not fit z budget). Tier 1: <strong>F5a</strong>, <strong>E1</strong> @ 0.24 m. Then
+    <strong>E5</strong> swap after T1 smoke.</p>
+  <div class="grid">
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <polygon points="130,42 178,77 160,132 100,132 82,77" class="dim-dash"/>
+        <use href="#drone" x="130" y="42"/><use href="#drone" x="178" y="77"/>
+        <use href="#drone" x="160" y="132"/><use href="#drone" x="100" y="132"/><use href="#drone" x="82" y="77"/>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">F5a</span><span class="badge control">control</span><span class="badge sketch">sketch</span></div>
+        <h3>Coplanar pentagon</h3>
+        <div class="param">R ≈ 0.35 m · hover</div>
+        <p class="why">Tier 1 control — extends C3 to n = 5.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="45" y="95"/><use href="#drone" x="90" y="95"/>
+        <use href="#drone" x="135" y="95"/><use href="#drone" x="180" y="95"/><use href="#drone" x="215" y="95"/>
+        <line x1="59" y1="95" x2="201" y2="95" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">F5b</span><span class="badge sketch">sketch</span></div>
+        <h3>Coplanar line-5</h3>
+        <div class="param">g = 0.35 m · hover</div>
+        <p class="why">Extended wake chain — extends C2.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="158"/><use href="#drone" x="130" y="128"/>
+        <use href="#drone" x="130" y="98"/><use href="#drone" x="130" y="68"/><use href="#drone" x="130" y="38"/>
+        <line x1="172" y1="38" x2="172" y2="158" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="180" y="102" class="dim-label">Δz ×4</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E1</span><span class="badge sketch">sketch</span></div>
+        <h3>Five-stack</h3>
+        <div class="param">Δz ∈ {0.24, 0.30} m · hover</div>
+        <p class="why">Max superposition — bottom in four upstream fields (NS2 spacing discipline).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="70" y="145"/><use href="#drone" x="130" y="145"/><use href="#drone" x="190" y="145"/>
+        <use href="#drone" x="130" y="95"/><use href="#drone" x="130" y="55"/>
+        <line x1="130" y1="68" x2="130" y2="132" class="dim-dash"/>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E2</span><span class="badge sketch">sketch</span></div>
+        <h3>3+2 hybrid</h3>
+        <div class="param">Δz = 0.30 m, span ≤ 1.0 m</div>
+        <p class="why">Coplanar line + stack above centre — mixed aggregate geometry.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <use href="#drone" x="130" y="45"/>
+        <use href="#drone" x="75" y="120"/><use href="#drone" x="130" y="120"/><use href="#drone" x="185" y="120"/>
+        <use href="#drone" x="75" y="155"/><use href="#drone" x="185" y="155"/>
+        <text x="88" y="178" class="tag-label">double V + centre</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E3</span><span class="badge sketch">sketch</span></div>
+        <h3>Double-V</h3>
+        <div class="param">Δz = 0.30 m, r = 0.25 m</div>
+        <p class="why">Multiple asymmetric wash sources at n = 5.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top + side · static</span><svg viewBox="0 0 260 190">
+        <polygon points="130,125 165,145 145,165 115,165 95,145" class="dim-dash"/>
+        <use href="#drone" x="130" y="125"/><use href="#drone" x="165" y="145"/>
+        <use href="#drone" x="145" y="165"/><use href="#drone" x="115" y="165"/><use href="#drone" x="95" y="145"/>
+        <use href="#drone" x="130" y="55"/>
+        <line x1="130" y1="68" x2="130" y2="112" class="dim-line" marker-end="url(#arrend)"/>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E4</span><span class="badge sketch">sketch</span></div>
+        <h3>Pentagon stack</h3>
+        <div class="param">R = 0.30 m, Δz = 0.30 m</div>
+        <p class="why">One elevated over coplanar ring footprint.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · animated</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <line x1="130" y1="35" x2="130" y2="158" class="path-trace"/>
+        <g class="anim-sweep"><use href="#drone" x="130" y="158"/></g>
+        <use href="#drone" x="130" y="38" class="drone-ghost"/>
+        <use href="#drone" x="130" y="68"/><use href="#drone" x="130" y="98"/><use href="#drone" x="130" y="128"/>
+        <text x="148" y="30" class="tag-label">5-way crossing · NS n=5</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E5</span><span class="badge extreme">⚠</span><span class="badge sketch">sketch</span></div>
+        <h3>Five-way swap</h3>
+        <div class="param">Δz = 0.22 m</div>
+        <p class="why">Neural-Swarm five-vehicle swap — scales B3 / A8.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">side view · static</span><svg viewBox="0 0 260 190">
+        <line x1="30" y1="168" x2="230" y2="168" class="ground"/>
+        <use href="#drone" x="130" y="155"/><use href="#drone" x="130" y="131"/>
+        <use href="#drone" x="130" y="107"/><use href="#drone" x="130" y="83"/><use href="#drone" x="130" y="59"/>
+        <line x1="172" y1="59" x2="172" y2="155" class="dim-line" marker-end="url(#arrend)" marker-start="url(#arrstart)"/>
+        <text x="180" y="112" class="dim-label">0.24 m</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E6</span><span class="badge sketch">sketch</span></div>
+        <h3>Tight NS2 spacing</h3>
+        <div class="param">Δz = 0.24 m hover</div>
+        <p class="why">Literature min vertical spacing — not the full 16-robot 3-ring task.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · static</span><svg viewBox="0 0 260 190">
+        <circle cx="130" cy="95" r="22" class="dim-dash"/><circle cx="130" cy="95" r="48" class="dim-dash"/>
+        <use href="#drone" x="130" y="47"/><use href="#drone" x="178" y="95"/>
+        <use href="#drone" x="130" y="143"/><use href="#drone" x="82" y="95"/>
+        <use href="#drone" x="130" y="95"/>
+        <text x="88" y="178" class="tag-label">rings + centre</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E7</span><span class="badge sketch">sketch</span></div>
+        <h3>Two-ring five</h3>
+        <div class="param">Tier 2+</div>
+        <p class="why">D8 two-ring layout plus centre column at n = 5.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="diagram"><span class="viewtag">top view · animated</span><svg viewBox="0 0 260 190">
+        <circle cx="130" cy="95" r="55" class="path-trace"/>
+        <g class="anim-orbit3" style="transform-origin:130px 95px">
+          <use href="#drone" x="130" y="40"/><use href="#drone" x="177" y="123"/>
+          <use href="#drone" x="83" y="123"/><use href="#drone" x="130" y="95"/>
+          <use href="#drone" x="165" y="65"/>
+        </g>
+        <text x="65" y="165" class="tag-label">swap on circle</text>
+      </svg></div>
+      <div class="body">
+        <div class="idrow"><span class="id">E8</span><span class="badge sketch">sketch</span></div>
+        <h3>Swap-column five</h3>
+        <div class="param">Tier 2+</div>
+        <p class="why">E5 crossings on a circle — sustained `a_res` excitation.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
 <section class="block" id="running">
-  <div class="sec-head"><span class="sec-eyebrow">§5</span><h2>Grids &amp; running</h2></div>
+  <div class="sec-head"><span class="sec-eyebrow">§7</span><h2>Grids &amp; running</h2></div>
   <p class="sec-note">Separation and speed are explicit, discrete grids — small on purpose,
     covering the regimes the literature reports rather than searching a continuum.</p>
   <div class="isolates-table">
@@ -545,5 +937,5 @@ ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.50 --hold 10 --ch
 
 <footer class="foot">
   <span>docs/10_Formation_Library.md — full spec, this page's source</span>
-  <span>16 scenarios · A1–A8 (2 robots) · B1–B3 (3 robots) · C1–C5 (coverage)</span>
+  <span>16 frozen · A1–C5 · +23 sketch (D/E/F4/F5) in §5–§6 · md: docs/36*</span>
 </footer>

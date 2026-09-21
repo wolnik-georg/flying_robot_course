@@ -106,3 +106,6 @@ measurement remain separate.
 - Build verified clean: `latexmk -pdf ch2_standalone.tex` compiles with no new errors and no
   overfull boxes (the only warnings are pre-existing cross-chapter refs that resolve only in
   the full thesis build).
+
+| 2026-09-20 | ch1 | — | — | — | Ch.1 proofread — wording only; no number changed. |
+| 2026-09-20 | ch1 | — | — | — | Ch.1 two list/splice fixes; no numbers. |

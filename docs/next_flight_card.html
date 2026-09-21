@@ -51,49 +51,38 @@ header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:30
   text-transform:uppercase; color:var(--muted);
 }
 h1{font-size:clamp(1.9rem,5.5vw,2.6rem); font-weight:700; margin:.15em 0 .3em; line-height:1.05}
-.lede{color:var(--ink-2); font-size:1.02rem; max-width:58ch; margin:0}
+.lede{color:var(--ink-2); font-size:1.02rem; max-width:62ch; margin:0}
 .lede strong{color:var(--ink)}
-.superseded{
-  margin-top:14px; padding:10px 14px; background:var(--sunk); border-radius:8px;
-  font-size:.9rem; color:var(--ink-2);
+.refline{
+  margin-top:12px; font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.6;
 }
-.superseded a{color:var(--accent)}
-
-.stack{display:flex; flex-direction:column; gap:14px; margin:0 0 36px}
-.card{
-  background:var(--surface); border:1px solid var(--rule); border-radius:10px;
-  padding:16px 18px; border-left:4px solid var(--rule);
-}
-.card.go{border-left-color:var(--go)}
-.card.hold{border-left-color:var(--warn)}
-.card.stop{border-left-color:var(--stop)}
-.card-head{display:flex; align-items:baseline; gap:10px; margin-bottom:6px; flex-wrap:wrap}
-.num{
-  font-family:var(--mono); font-weight:600; font-size:.8rem;
-  color:var(--muted); flex-shrink:0;
-}
-.card h3{margin:0; font-size:1.15rem; font-weight:700; flex:1}
-.pill{
-  font-family:var(--mono); font-size:.65rem; font-weight:600; letter-spacing:.06em;
-  text-transform:uppercase; padding:.2em .6em; border-radius:999px; white-space:nowrap;
-}
-.pill.go{background:var(--go-soft); color:var(--go)}
-.pill.hold{background:var(--warn-soft); color:var(--warn)}
-.pill.stop{background:var(--stop-soft); color:var(--stop)}
-.card p{color:var(--ink-2); font-size:.95rem; margin:0}
-.card p + p{margin-top:.5em}
-.card code{font-size:.85em}
 
 section{margin-bottom:36px}
 h2{font-size:1.3rem; font-weight:700; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--rule)}
 ul.plain{margin:0; padding-left:1.2em; color:var(--ink-2)}
-ul.plain li{margin-bottom:.5em}
+ul.plain li{margin-bottom:.45em}
 ul.plain strong{color:var(--ink)}
 
-.not-this-week{
-  background:var(--sunk); border-radius:10px; padding:16px 18px;
+.panel{
+  background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+  padding:16px 18px; margin-bottom:14px;
 }
-.not-this-week ul{margin:0; padding-left:1.2em; color:var(--muted)}
+.panel.done{border-left:4px solid var(--go)}
+.panel.next{border-left:4px solid var(--accent)}
+.panel.warn{border-left:4px solid var(--warn)}
+
+table.compact{
+  width:100%; border-collapse:collapse; font-size:.88rem; margin:.6em 0 0;
+}
+table.compact th, table.compact td{
+  text-align:left; padding:6px 8px; border-bottom:1px solid var(--rule);
+  color:var(--ink-2); vertical-align:top;
+}
+table.compact th{font-family:var(--mono); font-size:.72rem; font-weight:600;
+  text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
+table.compact td:first-child{color:var(--ink); font-weight:500}
+table.compact tr:last-child td{border-bottom:none}
+
 .note{
   background:var(--sunk); border-left:3px solid var(--accent);
   border-radius:0 8px 8px 0; padding:10px 14px; margin-top:12px;
@@ -101,182 +90,205 @@ ul.plain strong{color:var(--ink)}
 }
 .note strong{color:var(--ink)}
 
-.not-this-week li{margin-bottom:.4em}
+.not-this-week{
+  background:var(--sunk); border-radius:10px; padding:14px 18px;
+}
+.not-this-week ul{margin:0; padding-left:1.2em; color:var(--muted); font-size:.95rem}
+.not-this-week li{margin-bottom:.35em}
 
 footer{
   margin-top:48px; padding-top:16px; border-top:1px solid var(--rule);
   font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.7;
 }
-footer a{color:var(--muted)}
 </style>
 
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 15 September 2026, evening</div>
+  <div class="eyebrow">Flight readiness — 21 September 2026</div>
   <h1>Next Flight Card</h1>
-  <p class="lede">What's flashable, what's flying, and what's next — updated after tonight's
-    session, which ended with the <strong>uSD logging chain validated end to end</strong> and
-    the <strong>first usable two-drone dataset</strong>, after root-causing a
-    crash-every-flight bug we had introduced ourselves.</p>
-  <div class="superseded">
-    The full history — notch-filter investigation, H0 partition, the first 2-drone flight and
-    its bugs — lives in the Controller Validation Card
-    (<code>docs/flight_card_validation.html</code>) and <code>docs/lab_sessions/*.md</code>.
-    This page starts from tonight's state, not a repeat of it.
-  </div>
-  <div class="superseded">
-    <strong>2026-09-16 desk-only addendum (no lab session that day):</strong> controller=7 and
-    the new controller=8 (NA-INDI hybrid) were both run in closed-loop simulation for the first
-    time and both crash a plain single-drone hover. Neither is a usable fallback for the gate
-    below — see the corrected cards. Everything else on this page (the uSD chain, the per-drone
-    logging fix, the gate itself) is unaffected; full account in <code>docs/07</code> and
-    memory <code>project_controller8_naindi_hybrid_2026-09-16</code>.
-  </div>
-  </header>
+  <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
+    <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
+    <strong>standing INDI</strong> for comparison flights separately (table below).</p>
+  <p class="refline">
+    Meeting (21 Sep) · <code>docs/meetings/2026-09-21.md</code> ·
+    Session · <code>docs/lab_sessions/2026-09-19.md</code> ·
+    C.1 · <code>docs/25_C1_Data_Collection_Plan.md</code> ·
+    uSD dual-RPM · <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code>
+  </p>
+</header>
 
 <section>
-  <h2>Tonight's result</h2>
-  <div class="stack">
-    <div class="card go">
-      <div class="card-head"><h3>uSD chain validated — first usable two-drone dataset</h3><span class="pill go">done</span></div>
-      <p>A8, both drones, 500&nbsp;Hz with a 2.3&nbsp;ms worst-case gap. Both logs match their
-        commanded trajectory unambiguously at <strong>1.9 / 1.8&nbsp;cm RMS</strong>,
-        cross-drone clock agreement <strong>~20–30&nbsp;ms</strong>, and
-        <code>indi.a_res_*</code> is live throughout. Realised geometry: <code>dz</code>
-        0.193–0.283&nbsp;m against a commanded 0.25, closest approach 0.198&nbsp;m with
-        <code>a_res_z</code> reaching −3.36&nbsp;m/s² there — the downwash interaction A8
-        exists to measure, recorded correctly on both vehicles for the first time.
-        Data in <code>experiments/logs/usd_raw/</code>.</p>
-    </div>
-    <div class="card hold">
-      <div class="card-head"><h3>The bug that cost most of the session — ours</h3><span class="pill hold">fixed, worth remembering</span></div>
-      <p>Every flight crashed at a <em>fixed elapsed time</em> regardless of scenario length.
-        Two theories were investigated and were wrong: battery sag (a symptom — the violent
-        correction draws the current) and an <code>apply()</code> controller-identity race (a
-        genuine bug, fixed and kept, but not the cause). The decisive test was flying
-        <strong>A1, a pure hover with no trajectory motion</strong>, which failed identically
-        and eliminated trajectory content, crossing geometry, downwash, <code>dz</code>,
-        <code>passes</code>, controller and gains in one flight.</p>
-      <p><strong>Root cause:</strong> <code>usec.reset</code> was broadcast <em>mid-flight</em>,
-        and the high-level commander's entire time base is that same clock
-        (<code>float t = usecTimestamp() / 1e6;</code>) with <code>t_begin</code> stored from it
-        at takeoff. Zeroing it in the air makes <code>piecewise_eval</code> compute
-        <code>t − t_begin</code> ≈ <em>minus</em> several hundred seconds and hand the
-        controller a garbage setpoint — motors cut or the vehicle tumbles within one tick.
-        Fixed by broadcasting it once <strong>on the ground before takeoff</strong>. Post-fix
-        flights returned to the pre-bug baseline exactly.</p>
-    </div>
-    <div class="card go">
-      <div class="card-head"><h3>Per-drone config is now logged correctly</h3><span class="pill go">done</span></div>
-      <p>The shared <code>all:</code> block used to be written verbatim into every drone's log,
-        so every A8 since 09-14 recorded <code>ctrl_mode=3</code>/full INDI for
-        <code>cf231_active</code>, which actually flew <code>ctrl_mode=0</code>/geometric
-        (proof: <code>tau_x/y/z</code> exactly 0.0 across all 7637 uSD samples). Per-drone
-        controller assignment is <em>intended</em> — <code>cf_second</code> stays pinned to
-        stock Lee — so the override is kept and only the logging was fixed.</p>
-    </div>
+  <h2>Meeting follow-up — next ~week</h2>
+  <div class="panel next">
+    <ul class="plain">
+      <li><strong>Dual RPM on uSD (pre C.1)</strong> — keep <code>indi_gains.rpm_source=1</code> (DShot) for control and <code>a_res</code>; log <strong>both</strong> <code>motor.m*_rpm</code> and <code>rpm.m*</code> on the card. Reflash firmware with <code>MAX_USD_LOG…=48</code>, copy updated <code>usd_thesis_config.txt</code> → <code>config.txt</code> on <strong>both</strong> SD cards.</li>
+      <li><strong>Investigate DShot vs optical deck</strong> — lag, dropout, per-motor differences on real flights (<code>tools/investigate_dshot_rpm.py</code> / merged uSD). <strong>Preserve logs</strong> for possible future learning features; C.1 training still uses <code>a_res</code> from DShot path today.</li>
+      <li><strong>Z tracking (from plots review)</strong> — bottom-drone <strong>z error high overall</strong>, not only at crossing. Double-check <strong>position-z I and gains</strong> on <code>cf5</code>: <code>pos_gains.kp_z</code>, <code>kv_z</code>, and position integral (<code>KI_P</code> / <code>pos_gains</code> as applicable). Revisit dashboards after any change — do not retune mid–C.1 block without noting it in the session log.</li>
+      <li><strong>C.1 — Neural-Swarm2 data collection</strong> — geometric on <code>cf5</code>; blocks A→D in table below (<code>docs/25</code>).</li>
+      <li><strong>C.2 desk — after first new flights</strong> — merge uSD → run <strong>end-to-end pipeline check</strong> (<code>dataset.build</code> + <code>train.py</code> + weight sanity). Then <strong>train on data collected from this campaign onward</strong> (do not mix pre-09-19 A8-only smoke unless explicitly justified).</li>
+      <li><strong>Finalize INDI baseline</strong> (parallel, before large C.4) — our geo + our full INDI; Omar / established INDI; stock INDI; Briesewitz c=7 — per supervisor follow-up (check notes from meeting).</li>
+    </ul>
   </div>
 </section>
 
 <section>
-  <h2>What's actually flashable right now</h2>
-  <div class="stack">
-    <div class="card go">
-      <div class="card-head"><span class="num">6</span><h3>Geometric / INDI (unchanged)</h3><span class="pill go">flying</span></div>
-      <p>Confirmed by diff, not just by reasoning: nothing about today's two ports touches
-        <code>controllerOutOfTree</code>, its state, or its dispatch. Whatever is already
-        flashed behaves exactly as it did yesterday.</p>
-    </div>
-    <div class="card stop">
-      <div class="card-head"><span class="num">7</span><h3>NA-INDI faithful port — DO NOT SELECT</h3><span class="pill stop">crashes in sim</span></div>
-      <p>Numerically verified against the reference's own compiled C to ~1e-9. <strong>2026-09-16:
-        the first-ever closed-loop simulator run found it crashes into a growing attitude
-        oscillation on a plain single-drone hover</strong> — no 2-drone content, no downwash,
-        nothing exotic. One root cause fixed (a hardcoded reference-airframe constant), a second
-        (its attitude gains vs our real, heavier airframe) still open and uninvestigated.
-        <strong>Do not select <code>stabilizer.controller=7</code> on hardware, and do not use it
-        as a fallback if our own INDI struggles below</strong> — see the gate card.</p>
-    </div>
-    <div class="card stop">
-      <div class="card-head"><span class="num">8</span><h3>NA-INDI hybrid (use_nn) — DO NOT SELECT</h3><span class="pill stop">crashes in sim</span></div>
-      <p>Same status as controller=7, same day, same root cause, same open question — the two
-        share the same underlying control-law code. <strong>Do not select
-        <code>stabilizer.controller=8</code> on hardware.</strong></p>
-    </div>
-    <div class="card hold">
-      <div class="card-head"><span class="num">↳</span><h3>Neural-Swarm2 residual (Strategy 2)</h3><span class="pill hold">verified, disabled, untrained</span></div>
-      <p>Exact architecture port done and now <strong>verified against the compiled firmware</strong>
-        — 19 + 13 checks passing, agreement to ~1e-6&nbsp;m/s². Its 19297-weight array is ~77&nbsp;KB,
-        too big to carry by default, so it sits behind a build flag (off for real hardware unless
-        explicitly requested); the network itself was not modified to make it fit.</p>
-      <p><strong>No trained weights exist and none can be produced yet</strong> — the log-to-tensor
-        step is still blocked on two decisions (the architecture predicts vertical residual only;
-        the low-altitude sample filter now fights the ground-effect network). So this has no effect
-        on any flight either way, and it blocks C.2 rather than anything in the lab.</p>
-    </div>
-    <div class="card hold">
-      <div class="card-head"><span class="num">↳</span><h3>cf_second +0.40m height compensation</h3><span class="pill hold">temporary, code-side</span></div>
-      <p>Active in <code>flight.py</code>, <code>run_formation.py</code>, and
-        <code>formation_flight.py</code> — keyed by robot name, only affects
-        <code>cf_second</code>. Confirmed working (A8 re-fly showed correct height ordering).
-        Remove once <code>cf_second</code>'s mocap rigid body is recalibrated properly.</p>
-    </div>
+  <h2>Done this week (checked)</h2>
+  <div class="panel done">
+    <ul class="plain">
+      <li><strong>4-point <code>active_deck</code> mocap</strong> — single-marker root cause fixed.</li>
+      <li><strong>Formation pair:</strong> <code>cf5</code> (study / bottom) + <code>cf_second</code> (Lee top); <code>cf231_active</code> bench only.</li>
+      <li><strong>A8 controller matrix on cf5:</strong> stock Lee, geometric, full INDI — 7 uSD merges archived (<code>a8_2026-09-19_successful/</code>).</li>
+      <li><strong>Full INDI 2-drone A8:</strong> flies clean (n=2); merge RMS &lt;15&nbsp;cm.</li>
+      <li><strong>Desk pipeline:</strong> thesis-order uSD↔radio match, merged analysis suite (<code>docs/28</code>).</li>
+      <li><strong>uSD + analysis:</strong> log <code>thesisNN</code> per flight; merge/plot pipeline working.</li>
+    </ul>
   </div>
 </section>
 
 <section>
-  <h2>Next session, in order</h2>
-  <div class="stack">
-    <div class="card go">
-      <div class="card-head"><span class="num">1</span><h3>Full INDI, 2 drones, A8</h3><span class="pill hold">the load-bearing step</span></div>
-      <p>Our own INDI (<code>ctrl_mode=3</code>) on <code>cf231_active</code>,
-        <code>cf_second</code> on stock Lee as always. Everything after this depends on the
-        outcome — see the gate below. Geometric has now flown A8 clean repeatedly <em>and</em>
-        with validated uSD logging, so this is the only controller question left open.</p>
-    </div>
-    <div class="card hold">
-      <div class="card-head"><span class="num">⚠</span><h3>Gate: does our own INDI actually work?</h3><span class="pill hold">decides everything after</span></div>
-      <p><strong>If it comes back clean:</strong> our own INDI is the working controller — move
-        straight into C.1 data collection.</p>
-      <p><strong>If it doesn't</strong> — the residual oscillation returns, or it's otherwise
-        unusable — <strong>the fallback is our own geometric controller (<code>ctrl_mode=0</code>)
-        or retuning our own INDI gains, not <code>stabilizer.controller=7</code>.</strong>
-        2026-09-16: controller=7 (and =8) were sim-tested for the first time and both crash a
-        plain single-drone hover — see the cards above. They are not a usable fallback right now.
-        Do not select either on hardware.</p>
-    </div>
-    <div class="card go">
-      <div class="card-head"><span class="num">2</span><h3>C.1 data collection</h3><span class="pill go">unblocked</span></div>
-      <p>Whichever controller clears the gate becomes the standing choice. Real scenario
-        flights with uSD logging throughout. <strong>A4 is mandatory</strong>, not optional:
-        A3 never excites relative <em>y</em>, so without A4 the model trains on a degenerate
-        slice and RQ3 becomes unanswerable. A7 or a lateral translate strongly preferred.</p>
-      <p class="note"><strong>Before flying a new scenario:</strong>
-        <code>find_flight_window.py</code> currently only knows A8's curve shape — each new
-        scenario needs its <code>RobotPlan</code> added to <code>commanded_trajectory()</code>
-        first. It deliberately refuses to guess. Desk work, do it ahead of the session.</p>
-    </div>
+  <h2>INDI vs geometric — why the big gap disappeared</h2>
+  <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .5em">
+      The <strong>large</strong> INDI win lives in <code>docs/24</code> row 1–2
+      (<strong>cf231</strong>, 18&nbsp;Sep). Today’s numbers are a <strong>different airframe,
+      metric, and scenario slice</strong> — not a proof that INDI regressed.</p>
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Block</th>
+          <th>Bottom drone</th>
+          <th>Metric</th>
+          <th>Geometric</th>
+          <th>Full INDI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>18 Sep (docs/24)</td>
+          <td><code>cf231_active</code></td>
+          <td>Crossing window, cmd traj, <code>passes=2</code></td>
+          <td>‖e‖ <strong>104</strong>&nbsp;mm (z 71&nbsp;mm)</td>
+          <td>‖e‖ <strong>36</strong>&nbsp;mm (z 34&nbsp;mm)</td>
+        </tr>
+        <tr>
+          <td>19 Sep (docs/24 § cf5)</td>
+          <td><code>cf5</code></td>
+          <td>Whole merged uSD (~9&nbsp;s geo/INDI; ~15&nbsp;s some Lee runs)</td>
+          <td>‖e‖ <strong>40–42</strong>&nbsp;mm</td>
+          <td>‖e‖ <strong>36–37</strong>&nbsp;mm</td>
+        </tr>
+      </tbody>
+    </table>
+    <ul class="plain" style="margin-top:.75em">
+      <li><strong>Geometric collapsed on cf5</strong> (~104 → ~41&nbsp;mm) — mainly <strong>valid mocap</strong>, not a controller retune.</li>
+      <li><strong>INDI total error similar</strong> (~36&nbsp;mm both days); on cf5, <strong>z ≈ total</strong> for both controllers (~tie).</li>
+      <li><strong>C.4 later</strong> — only after INDI baseline fixed; matched scenarios and log length on <strong>cf5</strong>.</li>
+    </ul>
   </div>
 </section>
 
 <section>
-  <h2>Explicitly not this week</h2>
+  <h2>Next lab (in order)</h2>
+  <div class="panel next">
+    <ul class="plain">
+      <li><strong>0 — SD shakedown (optional, first session)</strong> — A8 geometric on cf5, <code>--passes 2 --dz 0.25 --span 1.0</code>; confirm fresh <code>thesis00</code> (or next counter), dual RPM columns on uSD, merge + dashboard before Block&nbsp;A.</li>
+      <li><strong>1 — C.1 / Neural-Swarm2 data</strong> — see matrices below; full plan <code>docs/25_C1_Data_Collection_Plan.md</code>.</li>
+      <li><strong>2 — Logging sanity (each session)</strong> — after land, check new <code>thesisNN</code> on the card covers the <strong>full flight</strong> (~15&nbsp;s+ on A8 if you want two close approaches in the plot). Merge uses the <strong>shorter</strong> of the two drones’ recordings — it does not cut a long card down. Confirm <code>passes</code> in meta if you meant <code>--passes 2</code> (19&nbsp;Sep geo/INDI were <code>passes=1</code>; long Lee runs still showed two approaches).</li>
+      <li><strong>3 — Finalize INDI baseline</strong> (before big C.4) — our geometric + our full INDI (flying); <strong>Omar / established INDI</strong>; <strong>stock INDI</strong> and <strong>Briesewitz pure INDI (c=7)</strong> on same stack — same or better than ours?</li>
+      <li><strong>4 — FBL controller</strong> — desk follow-up when ready.</li>
+      <li><strong>5 — Comparative study</strong> — start slowly once (3) is decided; do not block (1).</li>
+    </ul>
+    <p class="note"><strong>Side note (later):</strong> controller <strong>7 / 8</strong> — single-drone hover first, then 2-drone A8 if clean; sim hover still fails today — not ahead of C.1 or (3).</p>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — controllers (collection flights)</h3>
+  <div class="panel next">
+    <table class="compact">
+      <thead>
+        <tr><th>Vehicle</th><th>Role</th><th>Fly with</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>cf5</code></td>
+          <td>Bottom (in wash)</td>
+          <td><strong>Geometric</strong> <code>c=6</code> <code>ctrl_mode=0</code></td>
+          <td>Label = measured <code>a_res_z</code>; INDI on bottom cancels what you train on</td>
+        </tr>
+        <tr>
+          <td><code>cf_second</code></td>
+          <td>Top (disturbance)</td>
+          <td><strong>Stock Lee</strong> <code>c=5</code></td>
+          <td>Neighbour only; <code>a_res</code> not used as ego target</td>
+        </tr>
+        <tr>
+          <td>Both</td>
+          <td>—</td>
+          <td>uSD on; control RPM = DShot</td>
+          <td>Card logs <strong>DShot + deck</strong> RPM; <code>rnn.en=0</code> while collecting</td>
+        </tr>
+        <tr>
+          <td><code>cf5</code> solo</td>
+          <td>Block D</td>
+          <td>Geometric + uSD</td>
+          <td><strong>C5</strong> near-ground — ground-effect branch <code>phi_G</code></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:10px"><strong>Gate:</strong> neighbour counts only if <code>|dx|,|dy|&lt;0.2</code>&nbsp;m and <code>|dvx|&lt;1.5</code>&nbsp;m/s — favour <strong>stacked / aligned</strong> scenarios, not <strong>A8</strong> (demo only).</p>
+    <p class="note"><strong>Preflight yaml:</strong> repo <code>crazyswarm2/crazyflie/config/crazyflies.yaml</code> (2026-09-21) pins <code>cf5</code> to <code>controller: 6</code>, <code>ctrl_mode: 0</code>, <code>rpm_source: 1</code>, <code>rnn.en: 0</code> + DShot <code>rpm</code> radio topic. Sync on the lab PC; for full-INDI A8 only, temporarily set cf5 <code>ctrl_mode: 3</code> (or stock INDI <code>controller: 3</code> for the comparison row).</p>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — scenarios (ideal set, fly in order)</h3>
+  <div class="panel next">
+    <table class="compact">
+      <thead>
+        <tr><th>Block</th><th>Scenario</th><th>Params (summary)</th><th>Reps</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>A</strong> Δz</td><td><strong>A7</strong> dynamic merge</td><td>dz 1.10→0.10, speed 0.30</td><td><strong>3</strong></td></tr>
+        <tr><td>A</td><td>A1 static stack</td><td>dz 0.20 / 0.30 / 0.50 / 0.75, hold ~15&nbsp;s</td><td>2 / 2 / 2 / 1</td></tr>
+        <tr><td><strong>B</strong> velocity</td><td>A3 static-top</td><td>dz 0.25, speed 0.30 &amp; 0.50, passes 4</td><td>2 + 2</td></tr>
+        <tr><td>B</td><td>A3</td><td>dz 0.40, speed 0.40, passes 4</td><td>1</td></tr>
+        <tr><td>B</td><td>A2 same-path</td><td>dz 0.30, circle, speed 0.4</td><td>2</td></tr>
+        <tr><td><strong>C</strong> lateral y</td><td><strong>A4</strong> offset stack</td><td>dz 0.30, offset 0.10, axis y, lemniscate</td><td><strong>2</strong></td></tr>
+        <tr><td>C</td><td>A4</td><td>dz 0.50, offset 0.15, axis x, lemniscate</td><td>2</td></tr>
+        <tr><td><strong>D</strong> ground</td><td>C5 solo cf5</td><td>z 0.10 / 0.15 / 0.25, speed 0.25, passes 2</td><td>2 / 2 / 1</td></tr>
+      </tbody>
+    </table>
+    <ul class="plain" style="margin-top:.75em">
+      <li><strong>Minimum viable (~18 flights):</strong> all of Block A + B-1/B-2 + D-1/D-2.</li>
+      <li><strong>Floor:</strong> A7 ×3 + C5 ×2 if the session goes badly.</li>
+      <li><strong>After lab:</strong> <code>merge_usd_logs.py --meta --roles</code> → validate pipeline → <code>tools/residual/train.py</code> on <strong>new C.1 merges only</strong>.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Flashable / do not select</h2>
+  <div class="panel">
+    <ul class="plain">
+      <li><strong>Controller 6</strong> — our geometric + full INDI (<code>ctrl_mode</code> 0 / 3): <strong>OK to fly</strong>.</li>
+      <li><strong>Controller 7 / 8</strong> — Briesewitz / NA-INDI ports: <strong>sim hover crash</strong>; only cautious <strong>single-drone</strong> trials if explicitly scheduling (see side note above).</li>
+      <li><strong>Neural-Swarm2 residual</strong> — verified, disabled, no trained weights (blocks C.2, not lab today).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Not now</h2>
   <div class="not-this-week">
     <ul>
-      <li>Rewriting the Neural-Swarm2 test suites / training pipeline against the new architecture</li>
-      <li>The <code>kr</code>/<code>kw</code> + <code>pos_gains</code> retuning line for the trajectory-tracking shake — continues separately, doesn't block anything above</li>
-      <li>Recalibrating <code>cf_second</code>'s mocap rigid body — real fix for the height offset, but the code-side compensation already unblocks flying</li>
-      <li>Brushless swap for <code>cf_second</code> — deferred to its own session</li>
-      <li>The core/ambitious thesis-draft split — desk work, picked up in parallel</li>
+      <li>Large C.4 A8 matrix before INDI baseline + C.1 volume</li>
+      <li>cf231 bench, optional A1 retest, brushless swap</li>
+      <li>NA-INDI retrain vs reference weights — supervisor question open (<code>docs/meetings/2026-09-21.md</code> § Questions)</li>
     </ul>
   </div>
 </section>
 
 <footer>
-  Full account of today's desk-time work: <code>docs/lab_sessions/2026-09-15.md</code> ·
-  Progress tracker: <code>docs/07_Thesis_Progress_Checklist.md</code> ·
-  Prior state: Controller Validation Card, Two Tracks to the Thesis
+  Progress · <code>docs/07_Thesis_Progress_Checklist.md</code> ·
+  Prior uSD / usec.reset history · <code>docs/flight_card_validation.html</code>
 </footer>
 
 </div>

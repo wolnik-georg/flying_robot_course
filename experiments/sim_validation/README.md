@@ -17,6 +17,9 @@ Output of `../analysis/run_sim_matrix.sh`. **34 cases = 16 scenarios × 2 contro
 | `EXTERNAL_REVIEW_BRIEF.md` | The brief sent out for independent review of scenario-set completeness |
 
 ```bash
+# Three-drone desk smoke (B1 + B2) — see docs/33_Three_Drone_Sim_Smoke.md
+../analysis/run_3drone_smoke.sh
+
 # One case
 ../analysis/run_sim_matrix.sh one geo 2 --scenario A3 --dz 0.30
 

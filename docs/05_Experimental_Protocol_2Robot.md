@@ -1,11 +1,12 @@
 # Experimental Protocol – Two-Robot Comparison
 
-> **Where this sits:** this is the protocol for **C.4 — Systematic Comparison**, the last step of
-> the Core Thesis Workflow in [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md).
-> Its *Procedure* and *Metrics* also govern the flights in **C.1 — Residual Data Collection**,
-> which run the same formations under pure Geometric control.
+> **Where this sits:** protocol for **C.4 — Systematic Comparison** ([`07`](07_Thesis_Progress_Checklist.md)).
+> **C.1** uses the same scenarios but collects under **geometric on cf5** ([`25`](25_C1_Data_Collection_Plan.md),
+> [`13`](13_Residual_Learning.md)). **Living table:** [`24`](24_Downwash_Compensation_Comparison.md).
+> **Desk index:** [`31`](31_Desk_Parallel_Track.md).
 >
-> **Nothing here can start until C.0 — the Hardware Gate — passes.**
+> **2026-09-21:** C.0 is closed enough to fly C.1; cf5 + cf_second, uSD end-to-end. C.4 still
+> needs repeat flights and [`27`](27_Analysis_and_Metrics_Plan.md) aggregation.
 >
 > The formations below were written before the scenario library existed. They are now **realised
 > by the frozen 16-scenario library** in [`10_Formation_Library.md`](10_Formation_Library.md) —
@@ -21,8 +22,9 @@ Fair comparison of:
 
 on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: **Minimum = Methods 1–4** (Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI), **Advanced = Methods 5–7** (the residual-RL and learning-based-MPC strategies)).
 
-**Phasing:** The first data-collection campaign uses **Pure INDI only** (`controller=6`) — it
-needs no learned residual model and no FBL code, so it can start immediately. Later campaigns add
+**Phasing:** **C.1** collects under **geometric** on the study drone ([`25`](25_C1_Data_Collection_Plan.md))
+so `a_res` labels are not cancelled by full INDI. **C.4** compares reactive (S0, S1), predictive
+(S2), and hybrid (S4) on matched scenarios. Later campaigns add
 **Geometric + NN**, **Hybrid/NA-INDI** (`stabilizer.controller=8`, not `7` — see
 `docs/strategy_controller_map.html` for the corrected mapping; numerically verified vs the
 reference's own compiled C, but **2026-09-16: crashes in CS2 closed-loop sim** on a plain

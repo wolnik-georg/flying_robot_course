@@ -1,0 +1,86 @@
+{
+  "weights": "/home/georg/Desktop/flying_robot_course/flying_drone_stack/tools/residual/weights/c2_dryrun_2026-09-19_geo.npz",
+  "train_meta": {
+    "created": "2026-09-19 22:19:48",
+    "git": "78fd1d6",
+    "sources": [
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/a8_2026-09-19_successful/2026-09-19_15-04-41/A8_2026-09-19_15-04-41_merged_usd.csv"
+    ],
+    "synthetic": false,
+    "n_samples": 4540,
+    "mass_kg": 0.0364,
+    "val_rmse": 0.10494108498096466,
+    "baseline_rmse": 0.219890758395195,
+    "epochs": 80,
+    "seed": 0
+  },
+  "build_stats": {
+    "files": 1,
+    "rows_in": 9080,
+    "dropped_zero_a_res": 4540,
+    "dropped_z_floor": 0,
+    "no_neighbour_influence": 4203,
+    "per_source": [
+      [
+        "experiments/logs/a8_2026-09-19_successful/2026-09-19_15-04-41/A8_2026-09-19_15-04-41_merged_usd.csv",
+        2,
+        4540,
+        4540
+      ]
+    ]
+  },
+  "mass_kg": 0.0364,
+  "combined": {
+    "n": 4540,
+    "rmse_mps2": 0.3628407930010083,
+    "r2": 0.22944841339147426,
+    "baseline_zero_rmse": 0.4838368594646454,
+    "baseline_mean_rmse": 0.41334742307662964,
+    "pct_reduction_vs_zero": 25.007616533704457
+  },
+  "val_block_split": {
+    "n": 908,
+    "rmse_mps2": 0.10494109103692077,
+    "r2": 0.15847654694775748,
+    "baseline_zero_rmse": 0.219890758395195,
+    "baseline_mean_rmse": 0.11439643055200577,
+    "pct_reduction_vs_zero": 52.27580649464261
+  },
+  "train_block_split": {
+    "n": 3632,
+    "rmse_mps2": 0.40226066571937635,
+    "r2": 0.2258865827744846,
+    "baseline_zero_rmse": 0.5296552181243896,
+    "baseline_mean_rmse": 0.45719900727272034,
+    "pct_reduction_vs_zero": 24.05235482360426
+  },
+  "per_flight": [
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/a8_2026-09-19_successful/2026-09-19_15-04-41/A8_2026-09-19_15-04-41_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 9080,
+        "dropped_zero_a_res": 4540,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 4203,
+        "per_source": [
+          [
+            "experiments/logs/a8_2026-09-19_successful/2026-09-19_15-04-41/A8_2026-09-19_15-04-41_merged_usd.csv",
+            2,
+            4540,
+            4540
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 4540,
+        "rmse_mps2": 0.3628407930010083,
+        "r2": 0.22944841339147426,
+        "baseline_zero_rmse": 0.4838368594646454,
+        "baseline_mean_rmse": 0.41334742307662964,
+        "pct_reduction_vs_zero": 25.007616533704457
+      }
+    }
+  ],
+  "binned_error": []
+}

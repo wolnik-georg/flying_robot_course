@@ -45,6 +45,7 @@ PALETTE = {
     "geometric": "#0072B2",
     "indi": "#D55E00",
     "stock_indi": "#009E73",
+    "stock_lee": "#999999",
     "naindi": "#CC79A7",
     "ns2": "#E69F00",
     "hybrid": "#56B4E9",
@@ -125,7 +126,8 @@ def bar_panel(ax, df: pd.DataFrame, metric: str, controller_col="controller",
         ax.spines[sp].set_visible(False)
 
 
-def figure_metrics(df: pd.DataFrame, metrics: list[str], out: Path, title: str = "") -> Path:
+def figure_metrics(df: pd.DataFrame, metrics: list[str], out: Path, title: str = "",
+                   controller_col: str = "controller") -> Path:
     n = len(metrics)
     cols = min(3, n)
     rows = int(np.ceil(n / cols))
@@ -135,7 +137,7 @@ def figure_metrics(df: pd.DataFrame, metrics: list[str], out: Path, title: str =
         if metric not in df.columns:
             ax.set_visible(False)
             continue
-        bar_panel(ax, df, metric)
+        bar_panel(ax, df, metric, controller_col=controller_col)
     for k in range(n, rows * cols):
         axes[k // cols][k % cols].set_visible(False)
     if title:
@@ -207,9 +209,12 @@ def main():
     ap.add_argument("--phase", default=None, help="restrict the metric figure to one phase")
     ap.add_argument("--vehicle", default=None)
     ap.add_argument("--title", default="")
+    ap.add_argument("--group-by", default="controller",
+                    help="column for controller grouping (default controller)")
     args = ap.parse_args()
 
     df = pd.read_csv(args.rows)
+    gcol = args.group_by if args.group_by in df.columns else "controller"
     if args.vehicle and "vehicle_id" in df.columns:
         df = df[df["vehicle_id"] == args.vehicle]
     # Drop rows whose position error is void (reconstructed command outside the scenario
@@ -224,19 +229,21 @@ def main():
             df = df[df["pos_err_valid"] == 1]
 
     if args.by_phase:
-        p = figure_by_phase(df, args.metric, args.out / f"by_phase_{args.metric}.png")
+        p = figure_by_phase(df, args.metric, args.out / f"by_phase_{args.metric}.png",
+                            controller_col=gcol)
         print(f"wrote {p}")
         return
     if args.phase and "phase" in df.columns:
         df = df[df["phase"] == args.phase]
     metrics = [m.strip() for m in args.metrics.split(",") if m.strip()]
-    p = figure_metrics(df, metrics, args.out / "comparison.png", args.title)
+    p = figure_metrics(df, metrics, args.out / "comparison.png", args.title,
+                       controller_col=gcol)
     print(f"wrote {p}")
     # The matching numbers, so a figure never travels without its table.
     for m in metrics:
         if m in df.columns:
             print()
-            print(A.summarise(df, m, by=("controller",)).to_string(index=False))
+            print(A.summarise(df, m, by=(gcol,)).to_string(index=False))
 
 
 if __name__ == "__main__":

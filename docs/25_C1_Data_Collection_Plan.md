@@ -24,10 +24,11 @@ separation is unbounded — `dz` is deliberately not gated. Two consequences:
   the gate briefly at each crossing. Keep flying A8 for the comparison table (docs/24); do not
   rely on it for training data.
 
-**Second hard constraint:** only `cf231_active` produces usable rows. `cf_second` is pinned to
-stock Lee, has no RPM source, and its `a_res` is identically zero — verified 2026-09-16 when
-`dataset.py` correctly excluded it as ego while still using it as the neighbour. So
-`cf231_active` must be the **bottom** vehicle (the one in the wash) in every downwash block.
+**Second hard constraint:** only **cf5** (study / bottom drone) produces usable ego rows.
+`cf_second` is pinned to stock Lee, has no RPM source, and its `a_res` is identically zero —
+verified 2026-09-16 when `dataset.py` correctly excluded it as ego while still using it as the
+neighbour. So **cf5** must be the **bottom** vehicle (the one in the wash) in every downwash
+block. (`cf231_active` is bench-only since 2026-09-19.)
 
 **What the model consumes** (`dataset.build` → `NeuralSwarm2`):
 `rel` = peer − own, position *and* velocity, world frame (6 per neighbour) · `ground` =
@@ -102,7 +103,7 @@ inside the gate, and C5 is the only source of ground-term data.
 1. `check_usd_deck.py` before flying — always, not only when troubleshooting.
 2. Confirm the pre-takeoff EKF-vs-mocap gate prints a small `|err|` for both vehicles
    (added 2026-09-18, `crazyswarm2` `8296ad8`).
-3. `cf231_active` must be the **bottom** vehicle and must be running **geometric**
+3. **cf5** must be the **bottom** vehicle and must be running **geometric**
    (`ctrl_mode: 0`) — the residual is a *measurement*, and collecting it under INDI would mean
    learning a residual the controller is simultaneously cancelling.
 4. Pull the uSD card with `copy_usd_log.py` (verified sha256, wall-clock names), never `cp`.

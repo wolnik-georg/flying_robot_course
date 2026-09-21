@@ -186,7 +186,10 @@ def build(sources, z_floor=0.0, drop_zero_a_res=True, verbose=True):
             print(f"  {nm}: {nd} drones x {nr} rows -> {kept} kept")
         for k in ("dropped_zero_a_res", "dropped_z_floor", "no_neighbour_influence"):
             if stats[k]:
-                print(f"  {k}: {stats[k]}")
+                note = ""
+                if k == "dropped_zero_a_res":
+                    note = " (row-ticks summed over all ego drones; partner may read 0 a_res)"
+                print(f"  {k}: {stats[k]}{note}")
         if stats["dropped_zero_a_res"] > 0.5 * max(stats["rows_in"], 1):
             print("  WARNING: most samples had a_res identically zero. That is the signature of "
                   "a missing RPM source, not of an absence of interaction.", file=sys.stderr)

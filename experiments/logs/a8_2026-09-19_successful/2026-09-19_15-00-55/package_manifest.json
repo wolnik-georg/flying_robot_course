@@ -1,0 +1,25 @@
+{
+  "stamp": "2026-09-19_15-00-55",
+  "study_controller": "stock_lee",
+  "designated_success": true,
+  "bottom_usd_raw": "/home/georg/Desktop/flying_robot_course/experiments/logs/usd_raw/2026-09-19_THESIS1/thesis29",
+  "top_usd_raw": "/home/georg/Desktop/flying_robot_course/experiments/logs/usd_raw/2026-09-19_THESIS2/thesis18",
+  "bottom_thesis": "thesis29",
+  "top_thesis": "thesis18",
+  "radio_rows": {
+    "cf5": 453,
+    "cf_second": 453
+  },
+  "merge_ok": true,
+  "merge_log_tail": [
+    "   -> cross-drone clock agreement: 160 ms (independent clocks, shared usec.reset origin)",
+    "",
+    "[merge] cross-check: direct z-correlation between drones (unreliable when altitudes are flat -- the alignment above is authoritative)",
+    "   cf5 vs cf_second: residual offset +377.4 ms (corr 0.25)   <-- LARGER THAN EXPECTED",
+    "      drift +88829.2 ppm -> 1323.3 ms accumulated over this flight",
+    "",
+    "[merge] 7449 rows x 97 cols @ 500 Hz -> /home/georg/Desktop/flying_robot_course/experiments/logs/a8_2026-09-19_successful/2026-09-19_15-00-55/A8_2026-09-19_15-00-55_merged_usd.csv",
+    "[merge] relative-state cols: 12   f_res cols: 6"
+  ],
+  "status": "success"
+}

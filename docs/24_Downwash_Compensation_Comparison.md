@@ -7,17 +7,24 @@ C.4 itself, which needs repeats and statistics.
 
 **Protocol (keep identical for every new row).**
 
-- Scenario **A8**, `dz=0.25`, `span=1.0`, `duration=6.0`, `settle=2.0`, `passes=2`,
-  `rotate_deg=0.0`, `--height 1.0`, `timescale 1.0`.
-- **`cf231_active` is the vehicle under study** and is the *bottom* drone — the one receiving
-  downwash. **`cf_second` stays pinned to stock Lee (`controller: 5`)** as the upper
-  disturbance source, never as a controller under test.
-- Both vehicles brushless (CF21BL) since 2026-09-18 17:42.
-- Errors are computed against the **reconstructed commanded trajectory**: rebuild the scenario
-  from `crazyflie_examples.formations.scenarios` with the flight's own params, evaluate
-  `robots[i].curve.at(t)`, offset by `anchor + robots[i].slot` (from the run's `.meta.json`),
-  and time-align by minimising RMS over the scenario window. Typical `t0 ≈ 11.07 s`, n ≈ 280.
-- Report over the crossing window only (the scenario's own `duration`, not the ramp/land).
+- **Study vehicle (bottom, in the wash):** **`cf5`** since 2026-09-19. **`cf231_active`** rows
+  below are historical (18 Sep only); do not mix protocols without labelling.
+- **Partner (top):** **`cf_second`**, stock Lee (`controller: 5`) — disturbance source only.
+- Both vehicles brushless (CF21BL).
+- **Source of record:** merged **uSD @ 500 Hz** (`merge_usd_logs.py --meta --roles`). Radio CSVs
+  are monitoring only (`docs/27`).
+- **Tracking error:** use **`ctrltarget.*`** from uSD when present; no radio reconstruction for
+  thesis figures.
+- **Canonical number for a new table row:** `compare_downwash.py --merged-usd` over the
+  **scenario duration window** (same policy as `ctrltarget.*`). Phase/crossing RMSE for C.4
+  lives in `vehicle_metrics_by_phase` / `run_c4_desk_prep.py`. Catalog “whole log” RMSE in
+  `docs/28` is a quick QA column only — do not paste it into **docs/24** if it disagrees.
+- **Phases:** report **scenario / crossing** windows via `vehicle_metrics_by_phase` (`docs/27`
+  P2), not whole-log RMSE when comparing downwash unless explicitly noted.
+- **Repeats:** 3–5 **flights** per (scenario, controller) for C.4 claims — not one flight sliced
+  into phases (`aggregate.py` guards).
+- Default comparison scenario for baseline rows: **A8** with params from the flight
+  `.meta.json` (often `passes=1` on 19 Sep logs; state that in the row).
 
 > ⚠️ **Do not apply `Z_OFFSET_COMPENSATION` when reconstructing the command.** It was removed
 > 2026-09-18 (`crazyswarm2` `d824fba`). Runs before that on `cf_second` carry a +0.40 m
@@ -31,7 +38,7 @@ C.4 itself, which needs repeats and statistics.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | **S0 — Geometric** (ours, `c=6 m=0`) | 64.5 mm | 39.8 mm | 70.5 mm | **103.5 mm** | 227.4 mm | 7.14° | 6.16° | 2.07° | 58.95 | −2.81 m/s² | 2026-09-18 18:31:15 |
 | **S1 — Full INDI** (ours, `c=6 m=3`) | **5.8 mm** | **8.0 mm** | **34.2 mm** | **35.6 mm** | 145.2 mm | 2.70° | 1.64° | 0.16° | 58.53 | −4.14 m/s² | 2026-09-18 18:39:08 |
-| **S1b — Stock INDI** (Bitcraze, `c=3`) | — | — | — | — | — | — | — | — | — | — | *not yet flown* |
+| **S1b — Stock INDI** (Bitcraze, `c=3`) | — | — | — | — | — | — | — | — | — | — | *19 Sep cf5, n=1 unstable — not a row* |
 | **S1c — Briesewitz INDI** (`c=7`) | — | — | — | — | — | — | — | — | — | — | *not yet flown* |
 | **S4 — NA-INDI** (`c=8`) | — | — | — | — | — | — | — | — | — | — | *not yet flown* |
 | **S2 — Neural-Swarm2** | — | — | — | — | — | — | — | — | — | — | *needs C.1/C.2 first* |
@@ -82,6 +89,22 @@ than the direct thrust channel that handles the vertical component.
   stock-Lee pin). It answers directly whether ~35.6 mm / 2.70° is simply what INDI can do
   against this downwash, or whether ours is under-performing. Hover first: its gains are
   compiled defaults for a standard CF2.1, unvalidated on this brushless airframe.
+
+## Results — `cf5` (bottom, uSD, 2026-09-19)
+
+**Protocol note:** Rows below use **merged uSD @ 500 Hz** (`ctrltarget.*`), whole merged window,
+`passes=1` (not the 2026-09-18 `passes=2` pair). Study vehicle **cf5** replaces `cf231_active`
+for this session. **Indicative — n=2** for geometric vs full INDI only.
+
+| Strategy (cf5) | pos RMSE ‖e‖ (cf5) | run stamps | Source |
+|---|---|---|---|
+| Stock Lee (both drones `c=5`) | 37–104 mm (3 repeats; one outlier 15-00-55) | 14-58-02, 15-00-55, 15-01-33 | uSD merged |
+| **Geometric** (`c=6 m=0`) | **40–42 mm** | 15-04-01, 15-04-41 | uSD merged |
+| **Full INDI** (`c=6 m=3`) | **36–37 mm** | 15-06-38, 15-07-11 | uSD merged |
+
+Packages, plots, and repro: **`docs/28_USD_Radio_Matching_and_Session_Analysis.md`**.
+
+---
 
 ## Reproducing the numbers
 
