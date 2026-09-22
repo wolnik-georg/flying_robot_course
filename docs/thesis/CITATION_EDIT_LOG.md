@@ -109,3 +109,7 @@ measurement remain separate.
 
 | 2026-09-20 | ch1 | — | — | — | Ch.1 proofread — wording only; no number changed. |
 | 2026-09-20 | ch1 | — | — | — | Ch.1 two list/splice fixes; no numbers. |
+| 2026-09-22 | ch1 | — | — | — | Ch.1 contributions wording; fairness no longer “same gains for every family”. |
+| 2026-09-22 | ch4, ch5 | — | — | — | Ch.4/5 fairness = per-strategy tune then freeze. |
+| 2026-09-22 | ch1, ch2, ch4, ch5 | — | — | — | Removed campaign hybrid / NA-INDI (Strategy 4). Cobo remains literature only. Compared set 0–3. |
+| 2026-09-22 | docs/07, 13, kick-off, C0, 05, 34, reserve | — | — | — | Planning docs: campaign hybrid removed; set 0–3; per-strategy tune-then-freeze. |

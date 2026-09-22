@@ -27,15 +27,16 @@
 > | **C.0 Hardware Gate** ⬅️ next | Must clear `rnn.en` — §7 "The control-law change". **Unflown** |
 > | **C.1 Residual Data Collection** | **Unblocked, in progress.** Produces the training set — geometric only (see banner above). §7 says why A4/A7 are mandatory |
 > | **C.2 Train the Residual Model** | Desk-validated 2026-09-21 on 4 flights; needs more C.1 before deploy |
-> | **C.3 Integrate the Strategies** | 5 of 7 consume this prediction; only Strategy 2 is wired |
+> | **C.3 Integrate the Strategies** | Compared set 0–3; Strategies 2–3 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
 **Last updated:** 21 September 2026
 
-Five of the seven control strategies being compared need the same thing underneath them: a model
-that predicts the interaction force one vehicle is about to feel from the others. This document
-is the engineering record of that shared foundation — what runs on the drone, how weights get
-there, and how the prediction is evaluated.
+The **predictive strategies in the compared set (Strategy 2; Strategy 3 when FBL arrives)** need a
+model that predicts the interaction force one vehicle is about to feel from the others. This
+document is the engineering record of that shared foundation — what runs on the drone, how weights
+get there, and how the prediction is evaluated. **NA-INDI / campaign hybrid is not in the compared
+set** (Sep 2026 supervisor decision).
 
 It is deliberately one layer down from
 [`07_Thesis_Progress_Checklist.md`](07_Thesis_Progress_Checklist.md), which holds status. The
@@ -45,15 +46,13 @@ physics is in [`04_Unified_Residual_Wrench_Model.md`](04_Unified_Residual_Wrench
 
 ## 1. Why this is shared infrastructure, not one method's implementation
 
-| Strategy | Uses the residual network? |
+| Strategy (thesis 0–3) | Uses the residual network? |
 |---|---|
+| 0. Geometric baseline | No |
 | 1. Pure INDI | No — reacts to the measured residual instead |
-| 2. Geometric + NN | **Yes**, as a feedforward term |
-| 3. FBL + NN | **Yes** *(FBL code still with the authors)* |
-| 4. Hybrid neural-augmented INDI | **Yes**, alongside the INDI measurement |
-| 5. Residual RL | Later — separate policy network, deliberately not started |
-| 6. Learning-based MPC | **Yes**, as the prediction model inside the horizon |
-| 7. Geometric + residual RL | Later |
+| 2. Geometric + NN | **Yes**, as a feedforward term on the geometric loop |
+| 3. FBL + NN | **Yes** *(FBL code still with the authors — not implemented)* |
+| *(stretch 5–7)* | RL / MPC — deferred, not core compared set |
 
 Building the network once, with one weight format and one upload path, means those methods differ
 in *how they use the prediction* rather than in how they obtain it. That is what makes the
@@ -529,9 +528,9 @@ difference is only that INDI measures the disturbance after the fact while the n
 before it arrives. Default `rnn.en = 0` makes `a_nn` exactly zero, so the control law is
 byte-identical to what flew before.
 
-The INDI term and the network term are deliberately allowed to be on together. Double-counting is
-a real risk, and it is exactly what strategy 4 (hybrid neural-augmented INDI) exists to measure;
-preventing it here would remove the comparison.
+For **Strategy 2**, only the network term is used in the campaign (`ctrl_mode=0`, `rnn.en=1`).
+The INDI term (`a_indi`) is zero on that mode. **`ctrl_mode=3` + `rnn.en=1` is not a compared
+mode** (former hybrid slot removed Sep 2026).
 
 ---
 
@@ -541,7 +540,7 @@ preventing it here would remove the comparison.
 |---|---|
 | **Flying any of it** | The control-law change (`rnn.en`) has never been on a drone, and it changes a control term. It comes *after* C.0 validates the two already-unflown fixes, not before |
 | **Training on a lateral scenario** | A3 alone leaves relative `y` unexcited. C.1 must collect A4/A7 as well |
-| **Strategies 3, 4, 6** | The prediction is available to them but none is wired up. Only strategy 2's feedforward exists |
+| **Strategy 3 (FBL)** | Not wired — author code pending. Only Strategy 2's geometric feedforward exists |
 | **Training on real data** | The pipeline has only been run on synthetic data and a hand-built CSV fixture — no formation flight has happened yet, so nothing has been trained on a measurement |
 | **Strategies 5 and 7 (RL policies)** | Deliberately not started |
 | **Training from flight logs at all** | Pipeline ✅ complete and verified against the compiled firmware (§6, `test_pipeline.py` 13/13). Blocked only on C.1 producing a real log — `dataset.build()` against real data is untested |

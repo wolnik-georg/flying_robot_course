@@ -2,6 +2,10 @@
 
 > **Superseded for day-to-day priorities** — use [`next_flight_card.html`](next_flight_card.html)
 > (current lab plan). This file keeps the historical C.0 rung sequence for reference.
+>
+> **Compared set (2026-09-22):** Strategies **0–3** only; **no NA-INDI / hybrid campaign flights.**
+> Keep **`rnn.en=0`** through C.0; enabling prediction is for **Strategy 2** after the gate, not
+> a hybrid comparison rung.
 
 > **Citation audit closed 27 Aug 2026. Do not block C.0 on more papers.**
 

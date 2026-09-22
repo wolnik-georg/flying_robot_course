@@ -1,7 +1,14 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 21 September 2026
+**Last updated:** 22 September 2026
+
+> **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
+> pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
+> comparison table; **author code not received — implementation blocked**). **NA-INDI / LINDI /
+> former campaign hybrid is not compared** (supervisor decision, Sep 2026 meeting). Cobo remains
+> related-work literature only. **Fairness:** each strategy tuned on the hardware gate, then gains
+> frozen before comparison flights — not one shared gain set forced on every law.
 
 **This is the single source of truth for project status.** It is the one file to read to know what
 is done, where we are, and what comes next. Keep it current — see *Keeping this current* at the
@@ -129,7 +136,7 @@ something" and "the interaction broke something" are indistinguishable.
 
 | Decision | Consequence |
 |---|---|
-| **NN inference runs ONBOARD; training is offline** | Every controller — geometric, hybrid, learning-based — runs on the brushless Crazyflie. Needed an MLP in `no_std` Rust + a weight-upload path — **built and verified**, see [`13`](13_Residual_Learning.md). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
+| **NN inference runs ONBOARD; training is offline** | Every compared controller — geometric baseline, INDI, and predictive (geo+NN / FBL when wired) — runs on the brushless Crazyflie. Needed an MLP in `no_std` Rust + a weight-upload path — **built and verified**, see [`13`](13_Residual_Learning.md). Peer position is **already available onboard** via `peerLocalizationGetPositionByID()`, so the NN's main input is free. |
 | **uSD logging is the dataset; radio is for monitoring** | Radio cannot carry 2 drones at full rate. 500 Hz onboard per drone, independent of radio — `tools/README_usd_thesis_logging.md`. Requires a Micro SD deck per drone. |
 
 ---
@@ -166,13 +173,13 @@ here so they are not re-opened without new evidence.
 | # | Question | Decision | Reason |
 |---|---|---|---|
 | 1 | C.1 scenario order | **Changed — A4 is now mandatory**, A7 or a lateral translate strongly preferred | A3 never excites relative *y*; without A4 the model trains on a degenerate slice and RQ3 becomes unanswerable. See [`11`](11_Hardware_Readiness_Checklist.md) § Minimum viable dataset |
-| 2 | Frozen shared gains vs per-method tuning | **Keep frozen and shared** | Strategies 0/1/2/4 share the whole loop, so freezing is the stronger scientific choice. Record the residual risk for 3/6 under threats to validity |
-| 3 | Strategy 4 form | **Keep the reference form** — NN predicts the bulk, incremental term corrects the remainder | Independent subtraction double-counts. Masking of a poor prediction is mitigated by assessing model quality open-loop |
+| 2 | Frozen shared gains vs per-method tuning | **Per-strategy tune, then freeze** (matches thesis) | Same flights and measurement pipeline; each law tuned for itself before comparison flights. Tuning effort is in scope for RQ4 |
+| 3 | Strategy 4 / NA-INDI hybrid form | **Not in the compared set** (Sep 2026) | Former hybrid campaign slot removed from thesis; Cobo/LINDI/NA-INDI stay in related work only |
 | 4 | 2 vs 3 robots | **2 robots suffice for the primary ranking (RQ1); 3 are required for the transfer-penalty claim (RQ3)** | The library already supports 3 — **do not descope the B scenarios** |
 | 5 | Strategies 5 / 7 (RL) | **Explicitly deferred / stretch, not core** | The contribution does not depend on them. Do **not** invest in an RL training environment now |
 | 6 | Mode E maturity | **The 3-rung ladder is necessary and sufficient**: figure-8 Mode D → figure-8 Mode E → circle Mode E, only then multi-robot | One trajectory flight is not enough trust for a whole campaign |
 
-**Explicitly not to be done now:** wire Strategy 4 or 6 · per-method gain tuning · RL environment
+**Explicitly not to be done now:** NA-INDI / hybrid as a campaign strategy · wire stretch Strategy 6 · RL environment
 work · further simulator fidelity archaeology · results chapters.
 
 ---
@@ -391,10 +398,10 @@ to the experiment that answers it, and a threats-to-validity table.
 
 | RQ | Question | Answered by |
 |---|---|---|
-| **RQ1** | How do reactive, predictive and hybrid compensation compare under identical conditions? | C.4 |
+| **RQ1** | How do reactive and predictive compensation compare to the uncompensated baseline under identical hardware, trajectories, formations and separations? | C.4 |
 | **RQ2** | Does the advantage depend on the interaction regime (separation, relative velocity, transient vs quasi-static)? | C.4 + a deliberate train/test split across scenario classes |
 | **RQ3** | Does a 2-robot residual model transfer to 3 robots — do interactions superpose? | C.1 logs + C.2. **Needs only logged data, not a working 3-robot controller** |
-| **RQ4** | What does each strategy cost in sensing, compute and data — is the hybrid justified? | C.2, C.4 |
+| **RQ4** | For each compared strategy, what sensing, onboard compute and training data does it require, and how do those costs sit next to tracking and rejection? | C.2, C.4 |
 
 > **Three open questions for the supervisor** are listed at the end of `15`, including whether RQ3
 > should be promoted to a primary question.
@@ -415,14 +422,15 @@ verification status and stated deviations) — never merged into one sentence. T
 made explicit as three questions: what the controller knows about the residual, *when* it knows it,
 and *where* that knowledge enters the control law.
 
-Implementation reality, stated plainly: **S1 flying · S2 implemented, unflown · S3, S4, S6 not
-wired · S5, S7 deliberately deferred.** The uncompensated geometric baseline (S0) is added as a
-flown condition — without it, "how much did compensation help" has no denominator.
+Implementation reality, stated plainly (**thesis numbering 0–3**): **S0 + S1 flying · S2
+implemented, unflown · S3 (FBL) not implemented (author code pending) · stretch S5–S7 deliberately
+deferred.** NA-INDI / campaign hybrid is **out of scope**. S0 is flown in every scenario — without
+it, "how much did compensation help" has no denominator.
 
 ### W.4 — Contribution statement ✅
 
-`19_Contribution_Statement.md`. Five claims (C1 controlled
-comparison, C2 hybrid multi-robot, C3 superposition test, C4 cost account, C5 apparatus), an
+`19_Contribution_Statement.md`. Four claims (C1 controlled comparison, C2 superposition penalty,
+C3 cost account, C4 apparatus — renumber when `19` is next edited), an
 explicit **what this thesis does not claim** table, and a one-paragraph abstract version. Two
 honesty notes carried in the document: the "first systematic comparison" claim depends on a survey
 our own source ledger rates as least-verified and must be re-audited before use; and a null result
@@ -567,26 +575,22 @@ Three things the chapter states that the experiments then depend on:
 **Combined build is now 24 pages** across Chapters 2–4, no undefined citations, no dangling
 references, all 15 sources cited.
 
-Organised around one observation: strategies 0, 1, 2 and 4 are **terms in a single shared control
-law** — they differ only in which of the two residual terms in the desired-acceleration vector is
-active. That is the strongest fairness argument available, and it is verifiable from the source
-rather than asserted.
+Organised around the **compared set 0–3** (baseline, INDI, geometric+NN, FBL+NN). Fairness is same
+flights and measurement pipeline; **per-strategy tune then freeze** — not one gain set on every law.
 
-§4.9 states what that does **not** guarantee, before results rather than after:
+§4.10 states what that does **not** guarantee, before results rather than after:
 
 | Limitation | Why it is stated up front |
 |---|---|
-| Strategies 3 and 6 do **not** share the substrate | A linearising law and a receding-horizon optimiser are different controllers, not different terms. For those, "identical conditions" means trajectories and hardware, not structure — a weaker comparison, and a difference could be attributed to the controller |
-| Frozen shared gains are fair but not neutral | Gains suiting a geometric loop may disadvantage a strategy that could take more aggressive ones. The alternative reintroduces the tuning confound. Neither is free of criticism; the choice is deliberate |
+| Strategy 3 (FBL) does **not** share the geometric substrate | A feedback-linearising law is a different controller. "Identical conditions" means trajectories, separations and logging, not structure |
+| Per-strategy tuning has a cost | Tuning effort is in scope for RQ4; gains are frozen after each strategy's hardware-gate tuning |
 | Each implementation represents a family, not a paper | Where a strategy underperforms, the conclusion concerns *this implementation* on *this* platform |
 
-**Implementation status is stated honestly**: 2 flying, 1 implemented and unflown, 1 as separable
-components, 3 not implemented. The chapter does not describe unimplemented strategies as though
-they exist.
+**Implementation status is stated honestly**: baseline + INDI flying; geometric+NN implemented,
+unflown; FBL+NN not implemented (author code pending). Campaign hybrid / NA-INDI removed (Sep 2026).
 
-Two design questions are recorded rather than left implicit: the Strategy 4 form (independent terms
-vs. INDI correcting only the network's residual — the two measure different things), and whether
-Strategy 6 is feasible onboard at all, which is itself an RQ4 result.
+Stretch Strategy 6 (MPC) feasibility onboard remains an open engineering question for RQ4 if that
+line is ever pursued — not part of the core 0–3 campaign.
 
 ### W.7 — Chapter 5, experimental setup ✅
 
@@ -702,7 +706,7 @@ control law, and none of it counts as C.0 progress by itself.
       `ch5_experimental_setup.tex` §5.4.2 still says "that signal will be added before the
       comparison campaign" — code caught up, prose has not; leave the .tex alone until the
       next writing pass, this is a pointer not a fix
-- [ ] 3 Wire Strategy 5 differencing, `rnn.en=0`, sim limits only
+- [ ] ~~3 Wire Strategy 5 differencing~~ — **cancelled:** campaign hybrid removed (2026-09-22); `rnn.en=0` remains the C.0 default
 - [ ] 4 Empty results-chapter shells (no numbers)
 - [ ] 5 Align Ch. 4 stretch 6/7 with kick-off 1–5
 - [ ] 6 Follow up FBL author code
@@ -756,7 +760,7 @@ before freezing means the gains move underneath the dataset.
 |---|---|---|
 | 1 | **Residual sign fix** | Position INDI was *adding* `a_res` instead of subtracting it, reinforcing every unmodelled force at exactly 2.00×. The fix inverts a control term |
 | 2 | **`a_res` gating fix** | RPM was read only when `mode != 0`, so `a_res` was dead under geometric — silently blocking all Geometric+NN training data |
-| 3 | **`rnn.en` compensation** | The learned residual now feeds the position loop. Default off → byte-identical, but it is a control term. **Leave it off for all of C.0** |
+| 3 | **`rnn.en` compensation** | When enabled, the learned residual feeds the **geometric** position loop (Strategy 2). Default off → byte-identical. **Leave it off for all of C.0**; not a hybrid (`ctrl_mode=3` + NN) comparison rung |
 
 > **None of the three is detectable in single-drone flight** — `a_res ≈ 0` with no neighbour.
 > They only appear once another vehicle's downwash is present, which is why stage 3 exists.
@@ -810,59 +814,29 @@ report `experiments/analysis/out/c2_e2e_2026-09-21/`. Tooling:
 
 ### C.3 — Integrate the Strategies
 
-All seven share one residual model, one weight format and one upload path, so they differ in
-*how they use the prediction* rather than in how they obtain it. That is what makes the comparison
-a comparison.
+The **compared set (0–3)** shares one residual model, one weight format and one upload path for
+Strategy 2 (and Strategy 3 when FBL code arrives). Predictive strategies differ in *how they use
+the prediction*, not in how neighbour-aware weights are trained.
 
-### The two learned components are NOT interchangeable
-
-A recurring question, settled by reading both sources: **Neural-Swarm2's network and NA-INDI's
-network share nothing.** Different architecture, input space, output dimensionality, size and
-normalisation — no weights can be transferred in either direction, and no training run serves both.
-
-| | **Neural-Swarm2** (Strategy 2) | **NA-INDI** (`controller=8`) |
-|---|---|---|
-| Base controller | Geometric SE(3), ours (`lib.rs`) | Their INDI (`controller_lee.c` → `naindi_hybrid.rs`) |
-| Net architecture | **Deep Sets**: per-neighbour φ_S + ground φ_G + decoder ρ_S | **Plain MLP**, 19→24→24→24→6, LeakyReLU (slope 0.01) |
-| Input | 6 per neighbour (rel. pos xyz, rel. vel xyz, world frame) + 4 ground `[0−z, −vx, −vy, −vz]` | 19, **own-state only**: R columns (6), EKF accel (3), velocity (3), gyro (3), motor PWM ratios (4) |
-| Neighbour awareness | **Yes** — explicit relative state, permutation-invariant, ≤3 neighbours | **None** |
-| Output | **1 scalar** — `Fa_z`, z-force only (grams) | **6** — force residual (3) *and* torque residual (3) |
-| Weight count | 19,297 exported / 11,461 trainable (small path only) | **1,830** |
-| Normalisation | mean/std, folded into the exported weights | min-max to [−1,1] (`X_MINS`/`X_MAXS`) |
-| Trained on | this project's C.1 downwash data *(to be collected)* | their own **single-vehicle payload-swing** experiment |
-| Proximity gate | `|dx|<0.2 ∧ |dy|<0.2 ∧ |dvx|<1.5` (reference's own cutoff) | n/a |
-
-**Consequence for Strategy 4.** There are two distinct implementations of the same strategy
-family, and comparing them is itself a result rather than a redundancy:
-
-- **`controller=8`** — their INDI + their own-state MLP, the faithful reproduction, untouched.
-- **`controller=6` + `ctrl_mode=3` + `rnn.en=1`** — this project's INDI + this project's
-  neighbour-aware Deep Sets net. Needs **no new controller slot**: `lib.rs` already computes
-  `a_indi` (measured) and `a_nn` (predicted) and adds both into `f_d`, with the source stating
-  the intent outright — *"the two are deliberately allowed to be on together… exactly what
-  strategy 4 exists to measure"*. One C.1 dataset and one C.2 training run therefore serve
-  **both** Strategy 2 (`ctrl_mode=0`) and Strategy 4 (`ctrl_mode=3`), differing only by a
-  runtime flag — which also makes them a clean A/B on identical weights.
+**NA-INDI / LINDI / `controller=8`:** firmware ports and sim history remain in the repo; they are
+**not campaign strategies** after the Sep 2026 supervisor decision. Cobo-Briesewitz is cited in
+related work only. Do not schedule `controller=8` or `ctrl_mode=3` + `rnn.en=1` as a hybrid
+comparison rung — Strategy 2 uses `rnn.en=1` on the **geometric** position loop after C.0.
 
 | # | Strategy | Uses the NN residual? | Controller(s) | State |
 |---|---|---|---|---|
-| 1 | **Pure INDI** | No — reacts to the *measured* residual | `controller=6` (ours) **or** `controller=7` (Cobo-Briesewitz INDI, `use_nn=0`) | `6`: ✅ flying single-drone, 2-drone gate next session. `7`: ✅ ported, verified ~1e-9 vs reference C, but **2026-09-16: diverges into a crash in CS2 SIL closed-loop sim** (single-drone hover) — one root cause fixed (hardcoded reference-airframe arm/t2t), a second suspected (attitude gains vs this project's real inertia) unresolved. **Do not fly.** See Strategy 4's row for the shared finding |
-| 2 | **Geometric + NN residual** | Yes, as feedforward | `controller=6` + `rnn.en=1` | ✅ Implemented, **unflown** — no trained weights yet |
-| 3 | **FBL + NN residual** | Yes | not assigned | ⬜ *FBL code still with the authors* |
-| 4 | **Hybrid Neural-Augmented INDI** | Yes, alongside the INDI measurement | `controller=8` — **numerically verified (~1e-9 vs the reference's own compiled C) and SIM-CLEARED across the full scenario matrix; unflown** | ✅ built, ✅ sim-cleared, ⬜ **unflown**. 2026-09-16: `ControllerTypeOot3`/`CONFIG_CONTROLLER_OOT3` slot-patched in, verified 6/6 vs the reference's compiled C to ~1e-9. The closed-loop SIL instability first seen that day (and originally attributed here to the reference authors' un-rescaled `KR`/`Kω` against this project's ~44% larger inertia) was **root-caused and fixed on 2026-09-18: it was a genuine `crazyflie_sil.py` bug, not the port** — `setState()` populated `sensors.acc` every tick but never `state.acc`, and `naindi.rs`/`naindi_hybrid.rs` read `state->acc` for their position-INDI residual, so `a_imu` was exactly zero for every controller=7/8 SIL run ever made, turning `a_res` into `-a_rpm`. Confirmed by direct A/B (`--zero-state-acc` reproduces the divergence standalone in the same t≈10.4s window), and a separate closed-loop harness driving the reference's own compiled `controllerLee()` beside our port through identical physics found them matching to 5-6 significant figures — strong independent evidence against a port bug. **After the fix the previously-100%-crashing config flies completely clean**, and controller=8 was independently re-verified rather than assumed from controller=7. Coverage now: 4 trajectory shapes single-drone (hover/figure8/circle/oval), 2-drone (`np` and `neuralswarm` backends), 3-drone (`neuralswarm`, hover + circle incl. B1's combined-wash superposition test) — the full matrix this project's SIL has ever exercised for any controller, max roll/pitch under 3° throughout. Per-vehicle state-swap added (`oot3_state_ptr` + `naindi_hybrid_select_drone`) so multi-drone runs no longer share one global filter state. `indi_gains.rpm_source` compiled default flipped 0→1 so controller=7/8 inherit the 09-16 DShot decision rather than silently defaulting to the known-defective optical deck. **Nothing sim-side blocks a first hardware flight** — single-drone hover first under normal C.0 gate discipline, understood as testing a hypothesis the sim supports, not a guarantee it carries over. Still genuinely untested on hardware: whether the reference authors' own `KR`/`Kω`, never rescaled for this airframe, hold up in flight. `controller=7` is NOT this strategy — its `use_nn` is dead code, so it runs as Strategy 1's alternative implementation. See docs/07 History (37)-(40) and `firmware_app/host/naindi_reference_build_notes.md`. |
-| 5 | **Residual RL** | Separate policy network | **open — not defined** | ⬜ **Deliberately deferred** |
-| 6 | **Learning-based MPC** | Yes, as the prediction model in the horizon | **open — not defined** | ⬜ Not wired |
-| 7 | **Geometric + Residual RL** | Separate policy network | **open — not defined** | ⬜ **Deliberately deferred** |
+| 0 | **Geometric baseline** | No | `controller=6`, `ctrl_mode=0` | ✅ flying |
+| 1 | **Pure INDI** | No — measured residual | `controller=6`, `ctrl_mode=3` (full INDI) | ✅ flying (2-drone A8 gate passed Sep 2026) |
+| 2 | **Geometric + NN residual** | Yes, feedforward on geometric loop | `controller=6`, `ctrl_mode=0`, `rnn.en=1` after weights + open-loop check | ✅ implemented, **unflown** with trained weights on hardware |
+| 3 | **FBL + NN residual** | Yes, inside FBL law | author code pending | ⬜ **not implemented** — FBL code still with the authors |
+| — | *(stretch: RL / MPC)* | — | — | ⬜ deferred (not core compared set) |
 
-- [ ] Wire strategies 4 and 6 to the existing prediction
-- [ ] Strategy 3 when the FBL code arrives — it does not block the others
-- [ ] Strategies 5 and 7 last
-- [ ] *Any stateful controller needs a per-vehicle state swap, or the multi-drone simulator
-      silently shares its filters — see [`09_Simulation.md`](09_Simulation.md)*
+Optional engineering reference (not compared): `controller=7`/`8` = Cobo INDI / NA-INDI ports for
+reproduction and sim only — **do not fly as thesis comparison modes** unless scope changes again.
 
-> Strategies 2 and 4 may run the measured and predicted residual **together**. Double-counting is
-> a real risk and is exactly what Strategy 4 exists to measure; it is not prevented in code,
-> because preventing it would remove the comparison.
+- [ ] Strategy 3 when the FBL code arrives — it does not block 0–2
+- [ ] Strategy 2: hardware open-loop (`rnn.en=0`) then closed-loop (`rnn.en=1`) on frozen library
+- [ ] *Any stateful controller needs a per-vehicle state swap in sim — see [`09_Simulation.md`](09_Simulation.md)*
 
 ---
 

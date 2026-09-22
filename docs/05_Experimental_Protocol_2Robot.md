@@ -14,23 +14,21 @@
 > the library versions are spec-checked, safety-gated and sim-validated.
 
 ## Goal
-Fair comparison of:
-- Pure INDI
-- Geometric + NN
-- FBL + NN
-- Hybrid (Neural-Augmented INDI / NA-INDI)
+Fair comparison of the **thesis compared set (Strategies 0–3)** on two Crazyflie brushless drones
+in tight formation:
 
-on two Crazyflie brushless drones in tight formation. We aim for up to 7 controllers if time allows (see `docs/01_Thesis_Project_Snapshot.md` §2 for the full list and target levels: **Minimum = Methods 1–4** (Pure INDI, Geometric+NN, FBL+NN, Hybrid/NA-INDI), **Advanced = Methods 5–7** (the residual-RL and learning-based-MPC strategies)).
+- **0** — uncompensated geometric baseline (flown in every scenario)
+- **1** — pure INDI (reactive)
+- **2** — geometric + learned residual (Neural-Swarm line)
+- **3** — FBL + flatness-preserving residual *(author code not received — in scope, implementation blocked)*
+
+**NA-INDI / LINDI / campaign hybrid is not compared** (supervisor decision, Sep 2026). Stretch
+controllers (RL, MPC) remain deferred per `docs/01_Thesis_Project_Snapshot.md`.
 
 **Phasing:** **C.1** collects under **geometric** on the study drone ([`25`](25_C1_Data_Collection_Plan.md))
-so `a_res` labels are not cancelled by full INDI. **C.4** compares reactive (S0, S1), predictive
-(S2), and hybrid (S4) on matched scenarios. Later campaigns add
-**Geometric + NN**, **Hybrid/NA-INDI** (`stabilizer.controller=8`, not `7` — see
-`docs/strategy_controller_map.html` for the corrected mapping; numerically verified vs the
-reference's own compiled C, but **2026-09-16: crashes in CS2 closed-loop sim** on a plain
-single-drone hover, same as `controller=7` — not ready, not a near-term fallback, needs its own
-investigation before it can clear a hardware gate), and **FBL + NN** once the respective residual
-models / controller code are ready.
+so `a_res` labels are not cancelled by full INDI. **C.4** compares Strategies **0–3** on matched
+scenarios. **Fairness:** each strategy tuned on the hardware gate, then gains frozen before
+comparison flights — not one shared gain set on every law.
 
 ## Hardware
 - 2× Crazyflie brushless (identical configuration)

@@ -18,8 +18,8 @@
 \chapter{Experimental Setup and Protocol}
 \label{ch:setup}
 
-Chapter~\ref{ch:control} described Strategies~0--4 (the uncompensated baseline, pure INDI,
-geometric+NN, FBL+NN and the hybrid), each treated as its own controller. This chapter describes the platform,
+Chapter~\ref{ch:control} described Strategies~0--3 (the uncompensated baseline, pure INDI,
+geometric+NN and FBL+NN), each treated as its own controller. This chapter describes the platform,
 the scenarios, the measurement chain and the protocol, and
 in each case the reasoning is the same: the design exists to remove alternative explanations for an
 observed difference.
@@ -57,7 +57,7 @@ Each vehicle carries two additions that are not optional for this work:
 
 \paragraph{A rotor-speed source}, optical RPM deck or DShot telemetry. Without it the applied
 thrust cannot be reconstructed, so $a_{\mathrm{res}}$ is unavailable and \emph{reads identically
-zero} rather than failing loudly. Strategies 1 and 4 additionally cannot run at all. This is the
+zero} rather than failing loudly. Strategy~1 additionally cannot run at all. This is the
 single most consequential hardware prerequisite in the setup.
 
 \paragraph{A micro SD deck}, the recording medium for the dataset, for the reasons in
@@ -275,11 +275,9 @@ Each strategy flies the frozen library. Because the control law is selected at r
 separate days, which pairs them against the same battery state, temperature and calibration.
 Each condition is repeated to allow a distribution rather than a single number to be reported.
 
-Each strategy is compared under identical trajectories, formations, hardware and frozen gains, not
-identical control structure — this holds uniformly across all of them, not just a subset.
-Pure INDI (1) and the hybrid (4) additionally share the entire position and attitude loop, differing
-only in which residual term is active, which the discussion chapter can point to when interpreting
-their results, without treating the other strategies' comparisons as weaker on that account.
+Each strategy is compared under identical trajectories, formations, hardware and separations, with
+its own gains frozen after the hardware gate, not identical control structure — this holds
+uniformly across all of them, not just a subset.
 
 \subsection{Metrics}
 \label{sec:setup-metrics}
@@ -337,7 +335,7 @@ No result in the two-robot results chapter or~the multi-robot results chapter re
     \toprule
     Threat & Mitigation & Residual risk \\
     \midrule
-    Tuning confound & Gains frozen before collection; shared across strategies; runtime selection allows interleaving & Shared gains may suit some strategies better. Justified for 1/2/4, which share the whole loop; weaker for 3 and 6, which do not (§\ref{sec:ctrl-fairness}) \\
+    Tuning confound & Each strategy tuned on the hardware gate; those gains frozen before comparison flights; runtime selection allows interleaving & Per-strategy tuning effort is in scope for RQ4 (§\ref{sec:ctrl-fairness}) \\
     Measurement floor & Null scenarios C1--C3 bound it under the same pipeline & --- \\
     Model error read as interaction & Null scenarios detect it; airframe constants identified once and frozen & Battery discharge within a flight is not compensated \\
     Training/test leakage & Held-out scenarios; split by contiguous flight segment, never by sample & --- \\
@@ -369,9 +367,10 @@ the effect is bounded by the null scenarios but not removed.
 Two or three identical brushless quadrotors, each carrying a rotor-speed source and an SD card,
 flying sixteen frozen scenarios inside a tracked volume of roughly \SI{2}{\metre} $\times$
 \SI{4}{\metre} $\times$ \SI{1.7}{\metre}, with \num{35} variables recorded onboard at
-\SI{500}{\hertz} independently of team size. Gains are frozen before any data is collected;
-strategies are selected at runtime and interleaved within sessions; and three null scenarios
+\SI{500}{\hertz} independently of team size. Each strategy is tuned on the hardware gate. Those
+gains are frozen before the comparison and training-collection flights; strategies are selected at
+runtime and interleaved within sessions; and three null scenarios
 establish what a measurement of zero looks like under the same pipeline.
 
 \todo{Continue revising to past tense for each scenario and controller row as C.4 repeats land.
-Record any deviation from the frozen gain block or scenario parameters in this chapter.}
+Record any deviation from a per-strategy gain block, frozen after the hardware gate, or from scenario parameters in this chapter.}

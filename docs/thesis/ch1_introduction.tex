@@ -107,7 +107,8 @@ Two narrower gaps follow. The hybrid has been demonstrated only where the residu
 \emph{self-induced}, a single vehicle, with effects such as blade flapping, drag and ground
 forces, optionally carrying a slung payload, and not
 where it is produced by other vehicles and is therefore a function of a measurable relative state,
-which is where the predictive component has the most to contribute. And the summation that
+which is where the predictive component has the most to contribute; multi-robot evaluation of such
+hybrids is not in the scope of this thesis. And the summation that
 predictive architectures use to aggregate per-neighbour contributions is known to be an
 approximation~\cite{shi2020neuralswarm,gielis2023aggregate}, yet the size of the penalty it carries
 for a deployed model is not reported.
@@ -117,9 +118,9 @@ for a deployed model is not reported.
 \label{sec:intro-rq}
 
 \begin{description}
-  \item[RQ1] Under identical hardware, trajectories, formations and separations, how do reactive,
-    predictive and hybrid interaction-force compensation strategies compare in trajectory-tracking
-    accuracy and residual-force rejection?
+  \item[RQ1] Under identical hardware, trajectories, formations and separations, how do reactive
+    and predictive interaction-force compensation strategies compare to the uncompensated baseline
+    in trajectory-tracking accuracy and residual-force rejection?
 
   \item[RQ2] Does the relative advantage of reactive versus predictive compensation depend on the
     interaction regime, separation, relative velocity, and whether the disturbance is
@@ -129,20 +130,18 @@ for a deployed model is not reported.
     trained only on two-vehicle data and then used on three-vehicle formations, and is that penalty
     small enough that the summed architecture remains the right engineering choice? This measures
     the size of a known approximation. It is not a test of whether superposition holds: it does
-    not, and that is already established~\cite{shi2020neuralswarm,gielis2023aggregate}. The
-    question applies to the predictive model and to the predictive term of the hybrid. It does not
+    not, and that is already established~\cite{shi2020neuralswarm,gielis2023aggregate}. The question
+    applies to the predictive strategies (Strategy~2 and, if implemented, Strategy~3). It does not
     apply to a purely reactive law.
 
-  \item[RQ4] For each strategy, what sensing, onboard compute and training data does it require,
-    and how do those costs sit next to the tracking and rejection it delivers? In particular, is the
-    extra complexity of the hybrid justified in the multi-robot case?
+  \item[RQ4] For each compared strategy, what sensing, onboard compute and training data does it
+    require, and how do those costs sit next to the tracking and rejection it delivers?
 \end{description}
 
 RQ1 is the primary question and the one the experimental design serves. RQ2 carries the most
 engineering value, because it converts a ranking into a rule about when to use which. RQ3 asks for
 the magnitude of the transfer penalty on a deployed model, not whether superposition holds.
-RQ4 compares cost against performance for every strategy, and then asks whether the hybrid's extra
-bill is worth it when the residual comes from neighbours.
+RQ4 compares cost against performance for every compared strategy.
 
 The questions are stated with falsifiable hypotheses in Chapter~\ref{ch:related} and
 Chapter~\ref{ch:setup}; each is answerable by the experiments described in
@@ -153,26 +152,19 @@ than as a failure.
 \section{Contributions}
 \label{sec:intro-contrib}
 
-This thesis sets out to establish the following. Nothing here is a claim about results; the
-experiments are described in Chapter~\ref{ch:setup} and reported in
-the two- and multi-robot results chapters.
+This thesis sets out to establish the following. This list is the intended contribution, not a
+report of measured outcomes. The experiments that would support it are specified in
+Chapter~\ref{ch:setup} and, once flown, belong in the results chapters.
 
 \begin{enumerate}
-  \item \textbf{A controlled comparison.} To the best of our knowledge the first evaluation of
-    reactive, predictive and hybrid compensation on the same airframe, the same trajectories, the same formations and the same
-    frozen gains, with a single definition of the residual and a measured noise floor. The
-    methodological content is in the word \emph{controlled}, and it applies uniformly to every
-    strategy: each is its own controller, and none is held to a stronger or weaker standard than
-    another. Two of them, pure INDI (Strategy~1) and the hybrid (Strategy~4), happen to share an
-    attitude law and differ only in which residual term is active, which is a useful point of
-    comparison but not a privileged category the others are excluded from. The design provides: a
-    frozen scenario library so every strategy meets identical excitation; gains fixed before data
-    collection so a difference cannot be a tuning artefact; one residual definition logged
-    identically under every controller, including those that do not use it; and null conditions in
-    which no interaction is expected, so that a positive result is separable from noise.
-
-  \item \textbf{The first multi-robot evaluation of the reactive--predictive hybrid,} extending a
-    result established for a single vehicle into the regime where its premise is strongest.
+  \item \textbf{A controlled comparison.} To the best of our knowledge, the first evaluation of
+    reactive and predictive compensation on the same airframe, the same trajectories and the same
+    formations, with one definition of the residual logged under every controller, including those
+    that do not use it, and with null flights that establish the measurement floor.
+    ``Controlled'' means the experiment is held fixed, not that every law is given the same gains.
+    Geometric tracking, INDI and feedback linearisation are different controllers; each is tuned for
+    itself. Gains are then frozen before the comparison flights so a later difference is not
+    mid-campaign retuning.
 
   \item \textbf{A quantification of what the summed per-neighbour approximation costs} when a
     model trained on two vehicles meets three. This measures a penalty whose \emph{existence} is
@@ -189,8 +181,7 @@ Supporting these, but explicitly \emph{not} a scientific contribution, is the ap
 them feasible: the frozen scenario library, the residual measurement path, an onboard network with
 a weight-upload protocol, an offline training pipeline verified against the compiled controller,
 and a simulation environment running the same controller source that flies. It is described in
-Chapter~\ref{ch:setup} and offered for reuse. A thesis whose contribution is its tooling has
-not answered a question, and it is listed here only so that the engineering effort is visible.
+Chapter~\ref{ch:setup} and offered for reuse.
 
 \paragraph{What this thesis does not claim.} No new control method is proposed: every strategy
 follows published work, and the contribution is the comparison. The residual model is not offered
@@ -203,7 +194,7 @@ strategy is claimed to be best in general, the useful outcome is conditional, wh
 conclusion is that the choice of compensation family matters less than whether compensation is
 present at all, and the engineering question becomes one of cost. The experimental design is built
 so that this outcome is distinguishable from a failed experiment, which is what the null conditions
-and the frozen gains are for.
+and gains frozen after each strategy is tuned are for.
 
 \todo[color=green!25]{\textbf{Provenance, not pending work.} ``To the best of our knowledge'' is supported by two audits: an arXiv keyword
 sweep and a cross-database sweep including a citation-graph scan. Both found adjacent comparisons, cited in §\ref{sec:rw-existing-comparisons},
@@ -248,8 +239,8 @@ consume a force residual use that number. It gives
 both routes to it in one notation, and states the assumptions the formulation makes together with
 where each is expected to fail.
 
-\textbf{Chapter~\ref{ch:control}} describes Strategies~0--4 (the uncompensated baseline, pure INDI,
-geometric+NN, FBL+NN and the hybrid), and the point at which each
+\textbf{Chapter~\ref{ch:control}} describes Strategies~0--3 (the uncompensated baseline, pure INDI,
+geometric+NN and FBL+NN), and the point at which each
 injects its knowledge of the interaction, separating in each case what is implemented here from the
 published method it follows.
 

@@ -1,5 +1,9 @@
 # 34 — NA-INDI decision memo (~1 page for supervisor)
 
+> **2026-09-22 — Supervisor decision (Sep 2026 meeting): NA-INDI / LINDI / Cobo hybrid is NOT in the
+> compared set.** Thesis compared strategies are 0–3 only (see `docs/07` banner). **This memo is
+> kept as history** of the pre-decision options; do not treat Option A/B/C below as open campaign work.
+
 **Date:** 21 September 2026  
 **Question for meeting:** How much NA-INDI work belongs in the thesis **before** C.1 volume is banked?
 

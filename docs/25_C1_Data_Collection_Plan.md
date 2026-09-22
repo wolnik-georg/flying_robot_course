@@ -210,6 +210,9 @@ So a retrained own-state net is a legitimate experiment, not a useless one — b
 recover what neighbour-aware input provides. Worth stating as a limitation in Ch. 2/6 and, if
 anything, as a motivation for Strategy 2's design.
 
+> C.1 collection is geometric only (`ctrl_mode=0`, `rnn.en=0`). The hybrid appendix below is
+> obsolete (2026-09-22).
+
 ### …so does a retrained downwash variant need a new controller slot? **No — it already exists.**
 
 The natural next thought is a `controller=9`: an NA-INDI variant retrained from scratch on
