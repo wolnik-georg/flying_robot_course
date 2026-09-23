@@ -40,6 +40,9 @@ artifacts. This plan closes that gap using data already on disk — no lab time 
 
 ## Task 1 — Run the standard analysis pipeline on all 8 merges
 
+> **Update 2026-09-23:** “8 merges” = the **2026-09-21** manifest only. C.1 bank is now **24**
+> training merges (+ **A4 ×4** still open) — see `manifest_2026-09-23_c1.json` and `docs/25` progress table.
+
 Build `experiments/analysis/run_c1_2026_09_21_suite.py`, modeled directly on
 `run_a8_2026_09_19_suite.py` (same repo, read it first) but generalized:
 
