@@ -100,22 +100,60 @@ def metrics_one_motor(rd: np.ndarray, rs: np.ndarray) -> dict:
     return out
 
 
+def _injected_shift_lag(rd: np.ndarray, N: int) -> tuple[float, float]:
+    """Build DShot trace delayed by N samples vs deck; return (expected_ms, measured_ms)."""
+    rs = np.empty_like(rd)
+    rs[:N] = rd[0]
+    rs[N:] = rd[:-N]
+    expect = N * DT_MS
+    got = float(cross_corr_lag(rd.astype(float), rs.astype(float), FS))
+    return expect, got
+
+
 def synthetic_lag_self_test() -> bool:
     """Shift deck by N samples; DShot copy should recover N * DT_MS lag."""
-    # Use a long noisy trace
     rng = np.random.default_rng(0)
     n = 8000
     rd = np.cumsum(rng.normal(0, 1, n)) + 15000 + 200 * np.sin(
         2 * np.pi * 3.0 * np.arange(n) / FS
     )
     N = 5  # 10 ms at 500 Hz
-    rs = np.empty_like(rd)
-    rs[:N] = rd[0]
-    rs[N:] = rd[:-N]
-    got = cross_corr_lag(rd.astype(float), rs.astype(float), FS)
-    expect = N * DT_MS
+    expect, got = _injected_shift_lag(rd, N)
     ok = abs(got - expect) < 0.01
-    print(f"Synthetic lag self-test: injected {N} samples ({expect:.1f} ms), measured {got:.2f} ms — {'PASS' if ok else 'FAIL'}")
+    print(
+        f"Synthetic lag self-test (noise): injected {N} samples ({expect:.1f} ms), "
+        f"measured {got:.2f} ms — {'PASS' if ok else 'FAIL'}"
+    )
+    return ok
+
+
+def synthetic_lag_self_test_real_deck() -> bool:
+    """Same injected shift on cf5.rpm_m1 from a real 23-Sep A1 merged CSV."""
+    csv_path = (
+        REPO
+        / "experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv"
+    )
+    if not csv_path.exists():
+        print(f"Real-deck lag self-test: missing {csv_path} — FAIL")
+        return False
+    _, arrays = load_merged_csv(csv_path)
+    col = "cf5.rpm_m1"
+    if col not in arrays:
+        print(f"Real-deck lag self-test: no {col} in merge — FAIL")
+        return False
+    rd = arrays[col].astype(float)
+    valid = rd > 0
+    if valid.sum() < 2000:
+        print(f"Real-deck lag self-test: too few valid deck samples ({valid.sum()}) — FAIL")
+        return False
+    rd = rd[valid]
+    N = 5
+    expect, got = _injected_shift_lag(rd, N)
+    ok = abs(got - expect) < 0.01
+    print(
+        f"Synthetic lag self-test (real cf5.rpm_m1, A1 17-17-26): injected {N} samples "
+        f"({expect:.1f} ms), measured {got:.2f} ms — {'PASS' if ok else 'FAIL'}"
+    )
     return ok
 
 
@@ -164,7 +202,7 @@ def main() -> int:
     out_dir = args.out
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    if not synthetic_lag_self_test():
+    if not synthetic_lag_self_test() or not synthetic_lag_self_test_real_deck():
         print("Aborting: lag self-test failed.", file=sys.stderr)
         return 1
 
