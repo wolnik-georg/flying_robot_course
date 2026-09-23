@@ -13,8 +13,9 @@
  * g_self's struct initializer defaults to indi=0 (geometric only, no RPM feedback) -- the
  * wrapper cannot be told otherwise from outside without the real PARAM subsystem (not linked
  * here), so this exercises the geometric-only path. Expected result for the exact-hover case
- * below: thrustSi = CF_MASS * GRAVITY = 0.0393 * 9.81 = 0.385533 (pure gravity feedforward,
- * zero position/attitude error) -- confirmed 2026-09-23. */
+ * below: thrustSi = CF_MASS * GRAVITY = 0.0427 * 9.81 = 0.418887 (CF_MASS is Omar's own
+ * brushless-established 42.7g, not this project's measured 41.0g -- see app-config-bl; pure
+ * gravity feedforward, zero position/attitude error) -- confirmed 2026-09-23. */
 #include <stdio.h>
 #include <string.h>
 #include "math3d.h"
@@ -51,7 +52,7 @@ int main(void) {
     printf("thrustSi=%.6f torque=(%.6f,%.6f,%.6f)\n",
            control.thrustSi, control.torque[0], control.torque[1], control.torque[2]);
 
-    const float expected = 0.385533f;
+    const float expected = 0.418887f;
     if (control.thrustSi != control.thrustSi /* NaN check */
             || control.thrustSi < expected - 1e-3f || control.thrustSi > expected + 1e-3f) {
         printf("FAIL: thrustSi=%.6f, expected ~%.6f (CF_MASS * GRAVITY)\n",

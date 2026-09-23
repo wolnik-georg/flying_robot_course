@@ -17,7 +17,10 @@ INCS=(
   -I "$CF/src/platform/interface" -I "$CF/vendor/CMSIS/CMSIS/DSP/Include"
   -I "$CF/vendor/CMSIS/CMSIS/Core/Include"
 )
-DEFS=(-DCRAZYFLIE_FW -DUNIT_TEST_MODE -DCONFIG_PLATFORM_CF21BL)
+# CONFIG_MODIFIED_CF_MASS mirrors app-config-bl / bindings/setup.py -- Omar's own
+# brushless-established mass (his cf21blrpm_defconfig), not this project's own measurement.
+# Update here too if that value ever changes.
+DEFS=(-DCRAZYFLIE_FW -DUNIT_TEST_MODE -DCONFIG_PLATFORM_CF21BL -DCONFIG_MODIFIED_CF_MASS=42700)
 
 gcc -c "${DEFS[@]}" "${INCS[@]}" "$CF/src/modules/src/controller/controller_omar_indi.c" \
     -fno-strict-aliasing -Wno-address-of-packed-member -o "$WORK/omar_indi.o"

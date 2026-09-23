@@ -1,5 +1,5 @@
 diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
-index d4ae77ca..c548064e 100755
+index d4ae77ca..35fd1933 100755
 --- a/bindings/cffirmware.i
 +++ b/bindings/cffirmware.i
 @@ -1,3 +1,7 @@
@@ -10,10 +10,23 @@ index d4ae77ca..c548064e 100755
  %module cffirmware
  %include <stdint.i>
  
-@@ -41,6 +45,141 @@
+@@ -19,7 +23,9 @@
+ #include "num.h"
+ #include "controller_mellinger.h"
+ #include "controller_brescianini.h"
++#include "controller_indi.h"
+ #include "controller_lee.h"
++#include "controller_omar_indi.h"
+ #include "power_distribution.h"
+ #include "axis3fSubSampler.h"
+ #include "outlierFilterTdoa.h"
+@@ -40,7 +46,158 @@
+ %include "imu_types.h"
  %include "controller_mellinger.h"
  %include "controller_brescianini.h"
++%include "controller_indi.h"
  %include "controller_lee.h"
++%include "controller_omar_indi.h"
 +
 +/* ── Out-of-tree controller (flying_drone_stack firmware_app) ────────────────
 + * The same geometric SE(3) / INDI controller that runs on the drone, compiled for
@@ -41,6 +54,8 @@ index d4ae77ca..c548064e 100755
 +/* Test-only inertia override for host_test_naindi_reference.py -- see naindi.rs module doc. */
 +extern void naindi_test_set_j(float x, float y, float z);
 +extern void naindi_test_set_arm(float arm, float t2t);
++extern void naindi_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++extern void naindi_test_set_pos_gains(float kp_x, float kp_y, float kp_z, float kd_x, float kd_y, float kd_z, float ki_x, float ki_y, float ki_z);
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +/* controller=8 (ControllerTypeOot3): SAME reference file as OOT2 but with use_nn enabled and
 + * their real trained network, firmware_app/src/naindi_hybrid.rs. NOT YET NUMERICALLY VERIFIED
@@ -54,6 +69,7 @@ index d4ae77ca..c548064e 100755
 +extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
 +extern void naindi_hybrid_test_set_j(float x, float y, float z);
 +extern void naindi_hybrid_test_set_arm(float arm, float t2t);
++extern void naindi_hybrid_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
 +/* controller=8's NN reads commanded PWM ratio (motorsGetRatio), not RPM -- injected the same
 + * way oot_set_rpm() injects RPM for controller=6/7. See oot_host.c. */
 +extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
@@ -61,6 +77,8 @@ index d4ae77ca..c548064e 100755
 +extern float oot_get_e_r(int i);
 +extern float oot_get_e_r_norm(void);
 +void oot_select_drone(int idx);
++void naindi_select_drone(int idx);
++void naindi_hybrid_select_drone(int idx);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
 +void oot_set_peer_count(int n);
@@ -73,6 +91,8 @@ index d4ae77ca..c548064e 100755
 +float oot_thrust_max(void);
 +float oot_arm_length(void);
 +float oot_thrust2torque(void);
++float oot_omar_mass(void);
++float oot_omar_kt_equiv(void);
 +extern float oot_get_tau(int i);
 +extern float oot_get_alp(int i);
 +extern float oot_get_alp_raw(int i);
@@ -105,6 +125,8 @@ index d4ae77ca..c548064e 100755
 +/* Test-only inertia override for host_test_naindi_reference.py -- see naindi.rs module doc. */
 +extern void naindi_test_set_j(float x, float y, float z);
 +extern void naindi_test_set_arm(float arm, float t2t);
++extern void naindi_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++extern void naindi_test_set_pos_gains(float kp_x, float kp_y, float kp_z, float kd_x, float kd_y, float kd_z, float ki_x, float ki_y, float ki_z);
 +extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern void controllerOutOfTree3Init(void);
 +extern bool controllerOutOfTree3Test(void);
@@ -114,11 +136,14 @@ index d4ae77ca..c548064e 100755
 +extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
 +extern void naindi_hybrid_test_set_j(float x, float y, float z);
 +extern void naindi_hybrid_test_set_arm(float arm, float t2t);
++extern void naindi_hybrid_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
 +extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
 +extern float oot_get_a_res(int i);
 +extern float oot_get_e_r(int i);
 +extern float oot_get_e_r_norm(void);
 +void oot_select_drone(int idx);
++void naindi_select_drone(int idx);
++void naindi_hybrid_select_drone(int idx);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
 +void oot_set_peer_count(int n);
@@ -131,6 +156,8 @@ index d4ae77ca..c548064e 100755
 +float oot_thrust_max(void);
 +float oot_arm_length(void);
 +float oot_thrust2torque(void);
++float oot_omar_mass(void);
++float oot_omar_kt_equiv(void);
 +extern float oot_get_tau(int i);
 +extern float oot_get_alp(int i);
 +extern float oot_get_alp_raw(int i);
@@ -153,7 +180,7 @@ index d4ae77ca..c548064e 100755
  %include "axis3fSubSampler.h"
  %include "outlierFilterTdoa.h"
 diff --git a/bindings/setup.py b/bindings/setup.py
-index 5f650752..73d69da1 100644
+index 5f650752..ec90ebfa 100644
 --- a/bindings/setup.py
 +++ b/bindings/setup.py
 @@ -2,8 +2,30 @@
@@ -187,7 +214,17 @@ index 5f650752..73d69da1 100644
  include = [
      "src/modules/interface",
      "src/modules/interface/controller",
-@@ -57,17 +79,47 @@ fw_sources = [
+@@ -42,6 +64,9 @@ fw_sources = [
+     "src/modules/src/controller/controller_mellinger.c",
+     "src/modules/src/controller/controller_brescianini.c",
+     "src/modules/src/controller/controller_lee.c",
++    "src/modules/src/controller/controller_indi.c",
++    "src/modules/src/controller/position_controller_indi.c",
++    "src/modules/src/controller/controller_omar_indi.c",
+     "src/utils/src/pid.c",
+     "src/utils/src/filter.c",
+     "src/utils/src/num.c",
+@@ -57,17 +82,58 @@ fw_sources = [
      "src/modules/src/kalman_core/mm_distance.c",
  ]
  
@@ -233,6 +270,17 @@ index 5f650752..73d69da1 100644
 +        # This is the same failure that was traced on the upgraded CF2.1 hardware.
 +        # Override with OOT_PLATFORM=CONFIG_PLATFORM_CF2 for the brushed drone.
 +        "-D" + os.environ.get("OOT_PLATFORM", "CONFIG_PLATFORM_CF21BL"),
++        # 2026-09-23: CF_MASS override, mirrors firmware_app/app-config-bl's
++        # CONFIG_MODIFIED_CF_MASS -- but the embedded build's Kconfig .config and THIS host
++        # build's .config are two entirely separate files (confirmed directly: the embedded
++        # build's app-config-bl override never reached this .config, which still reported
++        # "CONFIG_MODIFY_CF_MASS is not set"). Without this define, every host/SIL test of
++        # controller=9 (and anything else reading CF_MASS) silently used the stock 39.3g
++        # default, not the 42.7g actually flashed to hardware -- a real config-drift risk
++        # between what's tested and what flies. 42700 = Omar's own brushless-established mass
++        # (crazyflie-firmware-omar/configs/cf21blrpm_defconfig), matching app-config-bl.
++        # If app-config-bl's CONFIG_MODIFIED_CF_MASS is ever changed, update this too.
++        "-DCONFIG_MODIFIED_CF_MASS=" + os.environ.get("OOT_CF_MASS_UG", "42700"),
 +    ] + oot_defines,
  )
  

@@ -76,6 +76,16 @@ wrong for us), Omar reads the platform's compile-time mass constant (right idea,
 is for *his* airframe, not ours). None of this alone explains the oscillation; it does mean "just
 copy Omar's gains" is not a drop-in — his gains were tuned for his own vehicle and mass.
 
+> **Update 2026-09-23, controller=9 only:** operator decision reversed the "his constant is for
+> his airframe" framing above for this specific port — `CF_MASS` on `controller=9`'s build is
+> now set to Omar's own brushless-established `42700` (42.7g, his `cf21blrpm_defconfig`), not
+> this project's independently measured 41.0g. Rationale: use exactly the airframe constant set
+> he established for brushless throughout, not a mix of his port + our own measurement —
+> consistent with `MOTORRPM2FORCE`/`THRUST2TORQUE`/`ARM_LENGTH` already being his values
+> verbatim. Position/attitude gains remain his untouched defaults either way (§8's "what
+> remains" list). Re-verified after the change: numerical test still 6/6 to `d=0.00e+00`, SIL
+> height-tracking still exact — see `omar_indi_reference_build_notes.md`.
+
 ---
 
 ## 3. Position-residual computation (`a_indi` / `a_res`) — algorithm-level diff

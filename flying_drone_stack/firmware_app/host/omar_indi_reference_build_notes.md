@@ -3,10 +3,19 @@
 Mirrors `naindi_reference_build_notes.md`'s recipe exactly, for `controller_omar_indi.c`
 (`stabilizer.controller=9`) against `~/Desktop/crazyflie-firmware-omar`'s own, completely
 unmodified `controller_lee.c`. Simpler than the NA-INDI case: no NN (`nn.c`/`nn_utils.c` not
-needed), no `<motors.h>` include, and no gain/mass/arm/t2t pinning required at all -- both sides
-are built for the SAME platform (`CONFIG_PLATFORM_CF21BL`, no `CONFIG_MODIFIED_CF_MASS`
-override), so every airframe constant comes from the identical `platform_defaults_cf21bl.h`
-logic on both sides automatically.
+needed), no `<motors.h>` include, and no gain/arm/t2t pinning required at all -- both sides are
+built for the SAME platform (`CONFIG_PLATFORM_CF21BL`), so every airframe constant comes from
+the identical `platform_defaults_cf21bl.h` logic on both sides automatically.
+
+**Mass, current recipe (2026-09-23, revised):** both sides use `CONFIG_MODIFIED_CF_MASS=42700`
+-- Omar's own brushless-established mass (his `cf21blrpm_defconfig`), not this project's
+independently measured 41.0g. Operator decision: use exactly the airframe constant set he
+established for brushless throughout, not a mix. Get this by seeding the scratch reference with
+his own `cf21blrpm_defconfig` (not the bare `cf21bl_defconfig`, which has no mass override), and
+by the `-DCONFIG_MODIFIED_CF_MASS=42700` compile define this project's own host build now
+carries (`bindings/setup.py`, `LOCAL_MODIFICATIONS.md`) -- the embedded build's `app-config-bl`
+and this host build's `.config` are two entirely separate files, confirmed directly (see "Bug #1
+addendum" below), so the mass define has to be set in both places independently.
 
 ```bash
 SCRATCH=/tmp/omar_indi_build   # any throwaway directory
@@ -17,8 +26,8 @@ cp -r ~/Desktop/crazyflie-firmware/vendor/FreeRTOS/. "$SCRATCH/vendor/FreeRTOS/"
 cp -r ~/Desktop/crazyflie-firmware/vendor/libdw1000/. "$SCRATCH/vendor/libdw1000/"
 
 cd "$SCRATCH"
-make cf21bl_defconfig   # plain CF21BL, no mass override -- matches this project's own
-                         # host build default (CONFIG_MODIFIED_CF_MASS unset there too)
+make cf21blrpm_defconfig   # HIS brushless target config -- already carries
+                           # CONFIG_MODIFIED_CF_MASS=42700 via his own defconfig, no override needed
 sed -i 's/# CONFIG_MOTORS_REQUIRE_ARMING is not set/CONFIG_MOTORS_REQUIRE_ARMING=y/' build/.config
 make oldconfig
 ```
@@ -92,12 +101,14 @@ Closed with a standalone isolated compile, now a permanent, reusable test:
 `host/test_oot4_dispatch_wrapper.sh` (builds `controller_omar_indi.c` a second time with
 `-DCRAZYFLIE_FW` plus `oot4_dispatch_stubs.c`, links `test_oot4_dispatch_wrapper.c`'s `main()`,
 which calls `controllerOutOfTree4Init()` → `controllerOutOfTree4Test()` →
-`controllerOutOfTree4()` directly). Result: `thrustSi=0.385533` — exactly
-`CF_MASS × g = 0.0393 × 9.81 = 0.385533` (pure gravity feedforward; `indi` defaults to `0` in
-`g_self`'s struct initializer and there is no PARAM subsystem in this isolated harness to
-override it, so this is the geometric-only path). Confirms the wrapper correctly threads through
-to the real control law with the right compiled-in constants — the dispatch path is not just
-untested code sitting in the binary.
+`controllerOutOfTree4()` directly). Result (2026-09-23, revised for the 42700 mass): `thrustSi=
+0.418887` — exactly `CF_MASS × g = 0.0427 × 9.81 = 0.418887` (pure gravity feedforward; `indi`
+defaults to `0` in `g_self`'s struct initializer and there is no PARAM subsystem in this isolated
+harness to override it, so this is the geometric-only path). Confirms the wrapper correctly
+threads through to the real control law with the right compiled-in constants — the dispatch path
+is not just untested code sitting in the binary. (Originally run 2026-09-22 against the stock
+`CF_MASS=0.0393` fallback, `thrustSi=0.385533` — before either mass override reached the host
+build at all; see the Bug #1 addendum below.)
 
 ```bash
 cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
@@ -123,6 +134,25 @@ mismatch, precisely the class of bug this whole `_setup_oot()` method exists to 
 with a dedicated branch reading `oot_omar_mass()`/`oot_omar_kt_equiv()` (two new `oot_host.c`
 getters) instead. Confirmed in the launch log: `simulated airframe taken from firmware:
 mass=0.0393 kg` — the controller's own number, not the unrelated `g_indi_mass`.
+
+**Bug #1 addendum (2026-09-23) — the mass value itself, and a separate config-drift bug found
+while revising it:** the `0.041 kg`/`0.0393 kg` numbers above were both narrated on 2026-09-22,
+before the operator decision to use Omar's own brushless mass throughout. That decision (see the
+top of this file) superseded `g_indi_mass=0.041` as the *intended* plant value — it was never the
+right number to sync `CF_MASS` against in the first place, independent of Bug #1's sync-path fix,
+which remains correct and unaffected. Revising it surfaced a second, independent bug: the host/
+SWIG build's own `build/.config` never had `CONFIG_MODIFIED_CF_MASS` set at all — confirmed via
+`grep CONFIG_MODIFIED_CF_MASS build/.config` showing `# CONFIG_MODIFY_CF_MASS is not set` even
+after `app-config-bl` (the *embedded* build's Kconfig merge) had `=42700`. The embedded and host
+builds are two entirely separate `.config` files; setting one never touched the other. Every prior
+host/SIL/numerical run of controller=9 had silently used the stock `CF_MASS=0.0393` fallback
+regardless of what `app-config-bl` said. Fixed by adding
+`-DCONFIG_MODIFIED_CF_MASS=` + `os.environ.get("OOT_CF_MASS_UG", "42700")` directly to
+`bindings/setup.py`'s compile args (mirroring the existing `OOT_PLATFORM` `-D` pattern), and by
+seeding the *reference* scratch build from Omar's own `cf21blrpm_defconfig` (which propagates the
+value through the normal Kconfig→autoconf.h path with no `-D` hack needed). Both sides now read
+`CF_MASS=0.0427 kg` — confirmed in the re-run launch log: `simulated airframe taken from firmware:
+mass=0.0427 kg`.
 
 **Unit-conversion detail worth flagging for anyone touching this again**: his `MOTORRPM2FORCE`
 convention is `force = MOTORRPM2FORCE * (rpm in RAD/S)^2`; this project's plant/`g_indi_kt*`
