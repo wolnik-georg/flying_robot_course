@@ -200,7 +200,7 @@ No execution taken on either path.
 
 ---
 
-## 8. controller=9 — scaffolded, verified, sim-complete (2026-09-22/23)
+## 8. controller=9 — built, numerically verified, sim-complete (2026-09-22/23)
 
 > **Note on the number:** `docs/26_Controller9_NA_INDI_Retrained.md` once reserved
 > `controller=9` for an unrelated, never-built concept (a retrained NA-INDI network). That plan

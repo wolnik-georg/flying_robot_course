@@ -18,18 +18,16 @@ bottom.
 
 ## ▶ WHERE WE ARE
 
-> ### 🏁 **The 2-drone full-INDI A8 gate PASSED on 2026-09-18. The critical path is now C.1 residual data collection.**
+> ### 🏁 **C.1 nearly complete — 24 training merges banked; A4 ×4 remains (2026-09-23)**
 >
-> The load-bearing hardware gate that blocked the critical path since 09-16 is closed: A8 flew
-> clean on 2026-09-18 in both geometric (18:31) and full INDI (18:39), both drones brushless.
-> The same session then hit ~10 runaway-climb failures, **root-caused to a stuck EKF that neither
-> flight script ever properly reset** (`crazyswarm2` `8296ad8`) — that fix is committed but
-> **never flown, and validating it is the first action of the next session**.
+> Latest lab: [`2026-09-23`](lab_sessions/2026-09-23.md) — tag-paired uSD for Blocks A/B/D plus A7/A2;
+> manifests verify **19 + 5** training merges (`training_eligible_crosswalk.json` for 21 Sep).
+> **Required flights left:** **A4** lemniscate C-1/C-2 only. **Parallel (non-blocking):** Omar INDI
+> **`controller=9`** — sim-validated, never flown (`docs/41` §8). Writing: Ch. 6–9 still need **C.4** data.
 >
-> Everything downstream (C.2 training, C.3 integration, C.4 comparison) now waits on **flight
-> data**, not on software: the training pipeline is verified end-to-end, the collection plan is
-> pre-decided (`docs/25`), and the analysis pipeline runs raw log → per-phase metrics →
-> statistical claim → publication figure (`docs/27`, P1–P4 complete).
+> ⚠️ **Superseded headline (2026-09-18):** “Critical path is C.1 from scratch; EKF fix is first action
+> of next session” — see [`lab_sessions/2026-09-18.md`](lab_sessions/2026-09-18.md) and History (43–46).
+> C.1 volume is now largely collected; EKF-fix flight status is **not verifiable from this repo** — confirm on lab PC if still open.
 
 | | |
 |---|---|
@@ -47,7 +45,7 @@ bottom.
 | **Reference implementations acquired** | **2026-09-10: the NA-INDI authors' code and firmware.** We now hold working **INDI, IL-NDI and NA-INDI** implementations (`~/Desktop/NA-INDI`, `~/Desktop/NA-INDI-firmware`, read-only). Their INDI is **algebraically identical to ours** — both reduce to `J·α_ref + ω×Jω − τ_dist`; ours is faithful Tal & Karaman, theirs the disturbance-observer arrangement. **Ours is not wrong.** Seven implementation differences enumerated in [`22`](22_NA_INDI_Repo_Survey.md) §2e. Headline: **our attitude INDI is carefully conditioned, our position INDI is not conditioned at all** — and `ctrl_mode=3` (position loop live) is what crashed on 09-09. Post-validation candidates, one at a time: condition `a_res` (adopt), `dt` resolution + gyro source (investigate), per-axis yaw filtering (consider). **Do not adopt their subtractive form** — same law, and it would change what INDI denotes in the comparison |
 | **NA-INDI faithful port — BUILT + NUMERICALLY VERIFIED, unflown** | **2026-09-14, supervisor-driven decision to fix the unacceptable INDI oscillation by porting their code bit-for-bit rather than continuing to iterate on ours.** New, fully independent controller slot `stabilizer.controller=7` (`ControllerTypeOot2`) alongside the existing `=6` (our geometric/INDI, `ctrl_mode` 0–3) — same enum/dispatch/Kconfig pattern as the existing OOT hook, patch-preserved in `firmware_app/host/naindi_controller_slot.patch`. Implemented in a new sibling Rust module (`firmware_app/src/naindi.rs`); required one further local `crazyflie-firmware` change (`gyroNoLpf`, ported verbatim into `stabilizer_types.h`/`sensors_bmi088_bmp3xx.c`, patch `naindi_gyro_no_lpf.patch`) so the port reads the exact same unfiltered gyro signal the reference does, per the operator's explicit "no exceptions apart from mass/inertia/kt" instruction. **Numerically verified against the reference's own compiled C**: built a throwaway, never-modified copy of `~/Desktop/NA-INDI-firmware` with its own bindings and ran 5 hand-picked non-trivial states (hover, position error, roll+velocity error, 90° yaw with asymmetric RPM, a fully aggressive multi-axis case) through both — **all 5 match thrust and torque to ~1e-9** (`firmware_app/host/test_naindi_reference.py`, build notes in `naindi_reference_build_notes.md`). Exactly 4 documented deviations, all physically/architecturally necessary (mass/J, `use_nn` omitted as dead code upstream, RPM→thrust source, yaw-mode dispatch limited to `modeAbs` — consistent with this project's existing Mode E/HLC convention). Builds clean on all three platforms (`bl`/`std`/`upgrade`). Switchable via a plain `controller: 7` in `crazyflies.yaml`, exactly like any other controller — no crazyswarm2-side change needed, and controller=6/everything else is bit-for-bit untouched. **Never flown** — must clear the same hardware-validation discipline as any other new control law before it counts as data. |
 | **Neural-Swarm2 exact-architecture port — IMPLEMENTED, RAM overflow, not to be fixed by touching the network** | **2026-09-14, same supervisor-driven pass.** `residual_nn.rs` replaced with a direct port of `phi_Net`/`rho_Net` from the vendored reference (`crazyswarm2/.../neuralswarm.py`) — see History (29). 19297 weights, ~77 KB, overflows real firmware RAM by ~39 KB (confirmed via a real link). **Operator's explicit, standing decision: the network must never be modified to fix this** — whatever eventually resolves the build has to come from elsewhere. Test suites and the training pipeline still target the old 987-weight shape and need a rewrite before any of their output can be trusted. |
-| **Blocking** | **Both tracks now block on the same thing: flight data.** Lab track: stage 1 of the controller-validation card is closed, but stage 2 (residual oscillation on INDI trajectory tracking) has not reached a clean pass as of 2026-09-11 — see history (21). Writing track: **no longer "nothing"** — Ch. 1–5 are frozen (2026-09-09) and Ch. 6–9 are results/discussion/conclusion, which cannot be written before the campaign exists. The two-track parallelism that held for most of the project has ended; the writing track is complete to the data boundary, not idle by choice |
+| **Blocking** | **Writing:** Ch. 6–9 need the **C.4** comparison campaign. **Lab:** C.1 needs **A4 ×4** only, then C.2 should re-run on the full **~28**-merge bank (24 today + 4 A4). INDI trajectory oscillation (History 21) and **controller=7/8/9 hardware** remain parallel tracks, not blockers for finishing C.1 collection |
 | **⚠️ Must clear in C.0** | **Superseded 2026-09-09 — all three unflown changes are now PARKED at the frozen behaviour, not pending.** The residual sign fix flew (2026-08-23 → 09-09) and every `ctrl_mode=3` flight crashed; it is now behind `indi_gains.res_sign`, default **+1** = the flight-proven `.add`. `rnn.en` residual compensation stays off (`rnn.ready=0` on any flight without a deliberate weight upload). The `a_res` gating fix is retained — it is logging-only and provably outside the control path (toggling `res_sign` changes 0/100 samples at `ctrl_mode=0`). **What must now clear C.0 is the reverse: prove the RESTORED frozen behaviour still flies, then re-introduce the sign fix one flight at a time via `res_sign=-1`.** |
 
 ### What is complete
@@ -104,7 +102,7 @@ work on one should never be reported as progress on the other.
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
 | **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **C.1** flight volume; desk parallel [`31`](31_Desk_Parallel_Track.md) | Ch. 6–9 after **C.4** |
+| **Next** | **A4 ×4** (close C.1); desk parallel [`31`](31_Desk_Parallel_Track.md) | Ch. 6–9 after **C.4** |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the

@@ -246,7 +246,9 @@ This is **architecturally better than a retrained `controller=8`** for the purpo
 Neural-Swarm2 network is permutation-invariant and consumes relative neighbour position and
 velocity — the correct input space, which their own-state MLP structurally lacks.
 
-**Practical consequences: no `controller=9`, no second training pipeline, no second collection
-campaign.** The same C.1 dataset and the same C.2 training run produce weights serving *both*
+**Practical consequences: no *retrained-NA-INDI* `controller=9` slot, no second training pipeline,
+no second collection campaign.** (⚠️ **Number reuse 2026-09-23:** `stabilizer.controller=9` is now
+**Omar's literal INDI port** — see `docs/26` banner and `docs/41` §8 — unrelated to this paragraph.)
+The same C.1 dataset and the same C.2 training run produce weights serving *both*
 Strategy 2 and Strategy 4 — they differ only by a runtime flag, which also makes them a genuinely
 clean A/B on identical weights.

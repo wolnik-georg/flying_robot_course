@@ -178,8 +178,8 @@ written and unit-tested before the repeats exist. Only P5 genuinely waits on C.1
 above is an *analysis* gap, not a logging gap. Confirmed present:
 
 - `motor.m1`–`m4` — **PWM ratios**, exactly what `motorsGetRatio()` returns. Control-effort
-  metrics are supported, **and so is `controller=9` retraining** (docs/26), which needs this
-  rather than `motor.m*_rpm`.
+  metrics are supported. (⚠️ **2026-09-23:** `docs/26`'s *retrained NA-INDI* `controller=9` plan was
+  superseded; **`stabilizer.controller=9` is Omar's INDI port** — PWM ratios still relevant to his C path.)
 - `indi.tau_x/y/z` — torque, for control effort.
 - `gyro.x/y/z` and `acc.x/y/z` at 500 Hz — enough bandwidth for the 5–9 Hz PSD work in gap 3
   (Nyquist 250 Hz, far above the band of interest).
