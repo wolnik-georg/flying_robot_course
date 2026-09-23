@@ -4,7 +4,8 @@
 **Framing:** This is a **sensor-quality** study only — agreement, lag, and dropout between the optical RPM deck and DShot bidirectional telemetry on the **actual C.1 dataset**. It does **not** reopen July’s DShot/INDI root-cause narrative, does **not** claim closed-loop stability, and does **not** propose changing the standing **`indi_gains.rpm_source=1`** policy.
 
 **Reproduce:** `experiments/analysis/out/rpm_source_quality/README.md`  
-**Tool:** `experiments/analysis/rpm_source_quality.py` (imports validated `cross_corr_lag` from `flying_drone_stack/tools/investigate_dshot_rpm.py`; does not modify that script).
+**Tool:** `experiments/analysis/rpm_source_quality.py` (imports validated `cross_corr_lag` from `flying_drone_stack/tools/investigate_dshot_rpm.py`; does not modify that script).  
+**Web page:** [`43_RPM_Source_Quality.html`](43_RPM_Source_Quality.html) — same content, browsable format.
 
 ---
 

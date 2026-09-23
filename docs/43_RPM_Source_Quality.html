@@ -1,0 +1,293 @@
+<title>RPM Source Quality</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F4F5F3; --surface:#FFFFFF; --sunk:#ECEEEA;
+  --ink:#16191A; --ink-2:#414947; --muted:#6E7773; --rule:#D8DBD6;
+  --accent:#1F5C4D; --accent-soft:#E3EDE9;
+  --warn:#9A6B12; --warn-soft:#F6EDDC;
+  --stop:#B4341C; --stop-soft:#FAE7E2;
+  --go:#1F5C4D; --go-soft:#E3EDE9;
+  --cond:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+    --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+    --accent:#4FB39A; --accent-soft:#13302A;
+    --warn:#D9A544; --warn-soft:#332A16;
+    --stop:#E4694C; --stop-soft:#33201B;
+    --go:#4FB39A; --go-soft:#13302A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1312; --surface:#171C1B; --sunk:#1E2523;
+  --ink:#E9EFEC; --ink-2:#BCC6C1; --muted:#8B958F; --rule:#2B3331;
+  --accent:#4FB39A; --accent-soft:#13302A;
+  --warn:#D9A544; --warn-soft:#332A16;
+  --stop:#E4694C; --stop-soft:#33201B;
+  --go:#4FB39A; --go-soft:#13302A;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px; margin:0 auto; padding:clamp(22px,4vw,48px) clamp(16px,4vw,32px) 72px}
+h1,h2,h3{font-family:var(--cond); letter-spacing:-.01em; text-wrap:balance}
+p{margin:0 0 .8em}
+code{font-family:var(--mono); font-size:.88em; background:var(--sunk); padding:.05em .35em; border-radius:4px}
+
+header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:30px}
+.eyebrow{
+  font-family:var(--mono); font-size:.68rem; font-weight:500; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+h1{font-size:clamp(1.9rem,5.5vw,2.6rem); font-weight:700; margin:.15em 0 .3em; line-height:1.05}
+.lede{color:var(--ink-2); font-size:1.02rem; max-width:62ch; margin:0}
+.lede strong{color:var(--ink)}
+.refline{
+  margin-top:12px; font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.6;
+}
+
+section{margin-bottom:36px}
+h2{font-size:1.3rem; font-weight:700; margin:0 0 12px; padding-bottom:8px; border-bottom:1px solid var(--rule)}
+h3{font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px}
+ul.plain{margin:0; padding-left:1.2em; color:var(--ink-2)}
+ul.plain li{margin-bottom:.45em}
+ul.plain strong{color:var(--ink)}
+
+.panel{
+  background:var(--surface); border:1px solid var(--rule); border-radius:10px;
+  padding:16px 18px; margin-bottom:14px;
+}
+.panel.done{border-left:4px solid var(--go)}
+.panel.next{border-left:4px solid var(--accent)}
+.panel.warn{border-left:4px solid var(--warn)}
+
+.scroll{overflow-x:auto}
+table.compact{
+  width:100%; border-collapse:collapse; font-size:.88rem; margin:.6em 0 0; min-width:520px;
+}
+table.compact th, table.compact td{
+  text-align:left; padding:6px 8px; border-bottom:1px solid var(--rule);
+  color:var(--ink-2); vertical-align:top;
+}
+table.compact th{font-family:var(--mono); font-size:.72rem; font-weight:600;
+  text-transform:uppercase; letter-spacing:.04em; color:var(--muted)}
+table.compact td:first-child{color:var(--ink); font-weight:500}
+table.compact tr:last-child td{border-bottom:none}
+table.compact td.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+table.compact td.flag{color:var(--warn); font-weight:600}
+
+.note{
+  background:var(--sunk); border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0; padding:10px 14px; margin-top:12px;
+  font-size:.92em; color:var(--muted);
+}
+.note strong{color:var(--ink)}
+
+.steps{list-style:none; margin:0; padding:0; counter-reset:step}
+.steps li{
+  counter-increment:step; position:relative; padding:0 0 14px 34px;
+  border-left:1px solid var(--rule); margin-left:11px; color:var(--ink-2); font-size:.94rem;
+}
+.steps li:last-child{border-left-color:transparent; padding-bottom:0}
+.steps li::before{
+  content:counter(step); position:absolute; left:-12px; top:-1px;
+  width:22px; height:22px; display:grid; place-items:center;
+  font-family:var(--mono); font-size:.72rem; font-weight:600;
+  background:var(--surface); color:var(--accent);
+  border:1px solid var(--accent); border-radius:50%;
+}
+.steps strong{color:var(--ink)}
+
+footer{
+  margin-top:48px; padding-top:16px; border-top:1px solid var(--rule);
+  font-family:var(--mono); font-size:.78rem; color:var(--muted); line-height:1.7;
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Desk study — 23 Sep 2026 · sensor quality only</div>
+  <h1>RPM Source Quality</h1>
+  <p class="lede">Does the <strong>optical RPM deck</strong> agree with <strong>DShot</strong>
+    bidirectional telemetry on real C.1 flights? Bias, lag, and dropout across
+    <strong>29</strong> merged logs — not a stability claim, not a policy change.</p>
+  <p class="refline">
+    Script · <code>experiments/analysis/rpm_source_quality.py</code> ·
+    Outputs · <code>experiments/analysis/out/rpm_source_quality/</code> ·
+    Full write-up · <code>docs/43_RPM_Source_Quality.md</code> ·
+    Planning prompt · <code>docs/42_RPM_Source_Quality_Desk_Prompt.md</code>
+  </p>
+</header>
+
+<section>
+  <h2>Scope</h2>
+  <div class="panel">
+    <table class="compact">
+      <thead><tr><th>In scope</th><th>Out of scope</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Deck vs DShot as two <strong>measurements</strong> — agreement, timing, dropout</td>
+          <td>Reopening July's DShot/INDI root-cause story</td>
+        </tr>
+        <tr>
+          <td>Per-motor, per-vehicle, per-scenario behaviour on the real C.1 dataset</td>
+          <td>Proving closed-loop INDI stability from logs alone</td>
+        </tr>
+        <tr>
+          <td>Top (<code>cf_second</code>) vs bottom (<code>cf5</code>) where both are logged</td>
+          <td>Changing the standing <code>indi_gains.rpm_source=1</code> policy</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">Since 2026-09-16, DShot feeds control (<code>rpm_source=1</code>) because the
+      deck reported zero on 2/4 motors in real 2-drone flight. C.1 flights are
+      <strong>geometric on cf5</strong>, not full INDI — both sources are logged on every flight
+      regardless of which one is active, so this comparison covers the whole dataset.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Pipeline — how the numbers were made</h2>
+  <ol class="steps">
+    <li><strong>Load</strong> both C.1 manifests, keep only entries that actually merged
+      (<code>merge_status == "merged"</code>, or present in the 21-Sep manifest which predates
+      that field).</li>
+    <li><strong>Detect vehicle prefixes</strong> from each merged CSV's own header — never
+      hardcoded — since 23-Sep merges use <code>cf5.</code>/<code>cf_second.</code> and 21-Sep
+      merges use long run-stamped prefixes like <code>cf5_A3_13-00-57.</code>.</li>
+    <li><strong>Per motor, per vehicle:</strong> validity mask
+      <code>(deck&gt;0) &amp; (dshot&gt;0) &amp; (dshot&lt;60000)</code> (guards DShot's
+      <code>0xFFFF</code> invalid sentinel), then bias / RMSE / max-error / cross-correlation lag
+      on the valid rows.</li>
+    <li><strong>Self-test before trusting any lag number:</strong> inject a known 5-sample
+      (10 ms) shift into both a synthetic trace and a real <code>cf5.rpm_m1</code> trace pulled
+      from an actual merge — the pipeline aborts if either fails to recover exactly 10.00 ms.</li>
+    <li><strong>Aggregate</strong> per scenario × vehicle role, reporting <strong>n</strong> at
+      every level and the <strong>worst</strong> case alongside the mean — a global mean would
+      hide the one scenario that actually fails (see below).</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Inventory</h2>
+  <div class="panel">
+    <table class="compact">
+      <tbody>
+        <tr><td>Merged C.1 CSVs</td><td class="num">29</td><td>8 × 21-Sep + 21 × 23-Sep</td></tr>
+        <tr><td>Dual RPM present</td><td class="num">29 / 29</td><td>zero missing</td></tr>
+        <tr><td>Single-vehicle merges</td><td class="num">8</td><td>all C5, cf5-only, excluded from cross-vehicle rows</td></tr>
+        <tr><td>Motor-rows analyzed</td><td class="num">200</td><td>29 flights × vehicles present × 4 motors</td></tr>
+        <tr><td>Raw <code>.bin</code> archives</td><td class="num">91</td><td>not used — card filenames can invert the actual vehicle role, see <code>usd_raw/*_PAIRING.md</code></td></tr>
+        <tr><td>uSD config</td><td class="num">48 ch · 500 Hz</td><td><code>usd_thesis_config.txt</code>, both RPM sources logged always</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Results by scenario and vehicle role</h2>
+  <p style="color:var(--ink-2); font-size:.92rem">Lag convention: positive = DShot lags deck.
+    Values often land on a 2&nbsp;ms grid (the 500&nbsp;Hz sample period) — read single flights to
+    that resolution, not finer. "Worst" is the max over that bucket's motor-rows, not a mean.</p>
+  <div class="panel scroll">
+    <table class="compact">
+      <thead>
+        <tr>
+          <th>Scenario</th><th>Role</th><th>Flights</th>
+          <th>Bias % mean</th><th>Bias % worst</th>
+          <th>Lag ms mean</th><th>Lag ms max</th>
+          <th>Deck-zero % worst</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>A1</td><td>bottom</td><td class="num">6</td><td class="num">+0.02</td><td class="num">0.28</td><td class="num">0.67</td><td class="num">4</td><td class="num">0.0</td></tr>
+        <tr><td>A1</td><td>top</td><td class="num">6</td><td class="num">&minus;0.02</td><td class="num">0.30</td><td class="num">4.67</td><td class="num">44</td><td class="num">0.0</td></tr>
+        <tr><td>A2</td><td>bottom</td><td class="num">2</td><td class="num">&minus;0.06</td><td class="num">0.22</td><td class="num">1.0</td><td class="num">2</td><td class="num">0.0</td></tr>
+        <tr><td>A2</td><td>top</td><td class="num">2</td><td class="num">&minus;0.90</td><td class="flag">3.72</td><td class="num">0.0</td><td class="num">0</td><td class="flag">69.8</td></tr>
+        <tr><td>A3</td><td>bottom</td><td class="num">7</td><td class="num">&minus;0.07</td><td class="num">0.34</td><td class="num">1.79</td><td class="num">4</td><td class="num">0.0</td></tr>
+        <tr><td>A3</td><td>top</td><td class="num">7</td><td class="num">&minus;0.07</td><td class="num">0.22</td><td class="num">2.71</td><td class="num">24</td><td class="num">0.0</td></tr>
+        <tr><td>A7</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.00</td><td class="num">0.16</td><td class="num">1.5</td><td class="num">2</td><td class="num">0.0</td></tr>
+        <tr><td>A7</td><td>top</td><td class="num">3</td><td class="num">&minus;0.07</td><td class="num">0.21</td><td class="num">5.5</td><td class="num">36</td><td class="num">0.0</td></tr>
+        <tr><td>A8</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.05</td><td class="num">0.34</td><td class="num">2.17</td><td class="num">6</td><td class="num">0.0</td></tr>
+        <tr><td>A8</td><td>top</td><td class="num">3</td><td class="num">&minus;0.08</td><td class="num">0.27</td><td class="num">0.0</td><td class="num">10</td><td class="num">0.0</td></tr>
+        <tr><td>C5</td><td>bottom (solo)</td><td class="num">8</td><td class="num">&minus;0.09</td><td class="num">0.42</td><td class="num">2.62</td><td class="num">24</td><td class="num">0.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="refline" style="margin-top:8px">Source ·
+    <code>experiments/analysis/out/rpm_source_quality/summary_by_scenario_vehicle.csv</code> ·
+    per-flight detail in the sibling <code>per_flight.csv</code> ·
+    figure <code>overview_lag_bias_by_role.png</code></p>
+</section>
+
+<section>
+  <h2>Open finding — A2 top vehicle, deck dropout</h2>
+  <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .5em">
+      Both A2 merges: <strong>cf5 (bottom)</strong> — 0% deck-zero, all 4 motors, both flights.
+      <strong>cf_second (top)</strong> — deck reads <strong>zero on 54–70% of samples, on every
+      motor</strong>, both flights. DShot: 0% dropout on the same rows.</p>
+    <table class="compact">
+      <thead><tr><th>Flight</th><th>Motor</th><th>Deck-zero %</th><th>DShot-zero %</th></tr></thead>
+      <tbody>
+        <tr><td>19-21-05 (top)</td><td class="num">m1–m4</td><td class="num">63.1 / 67.9 / 68.1 / 67.6</td><td class="num">0.0</td></tr>
+        <tr><td>19-27-03 (top)</td><td class="num">m1–m4</td><td class="num">69.6 / 68.9 / 53.8 / 69.8</td><td class="num">0.0</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><strong>Scope:</strong> not m1-specific — airframe-wide on the top drone,
+      A2 only, among this dataset. No root-cause claim (marker geometry, deck driver, A2's
+      low-height/wide-radius profile — all untested here). Lag on this bucket reads as
+      <code>0&nbsp;ms</code> because too few valid deck samples remain for a meaningful
+      correlation, not because the two sources actually agree instantly.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Top vs bottom — a consistent pattern</h2>
+  <div class="panel next">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0">
+      Wherever both vehicles are logged, <strong>cf_second (top)</strong> shows larger and
+      noisier cross-correlation lag than <strong>cf5 (bottom)</strong> — e.g. A1 top mean
+      4.7&nbsp;ms vs bottom 0.7&nbsp;ms; A7 top max 36&nbsp;ms vs bottom 2&nbsp;ms. Isolated
+      extrema (44&nbsp;ms on one A1-top motor-row) should be read as noisy correlation peaks, not
+      calibrated actuator delay — most values still sit on the 2&nbsp;ms sampling grid. Bias stays
+      sub-percent everywhere except where deck dropout dominates (A2 top, above).</p>
+  </div>
+</section>
+
+<section>
+  <h2>Thesis methods — draft paragraph</h2>
+  <div class="panel done">
+    <p style="color:var(--ink-2); font-size:.94rem; margin:0">
+      During C.1 data collection, onboard uSD logging recorded both optical-deck RPM
+      (<code>rpm.m1–4</code>) and DShot bidirectional ESC RPM (<code>motor.m1_rpm–m4_rpm</code>)
+      at 500&nbsp;Hz on every flight, independent of the control path. Since 2026-09-16, the
+      bottom (geometric) drone uses <code>indi_gains.rpm_source=1</code>, so DShot telemetry
+      feeds torque reconstruction and the logged residual <code>indi.a_res_*</code>; the deck
+      remained on the airframe as a parallel logged channel for post-hoc agreement checks. Across
+      29 merged sessions, agreement is sub-percent and lag single-digit milliseconds on the
+      collection drone, with one scenario-specific exception (A2, top vehicle) where the deck
+      drops out on the majority of samples. This does not assert either source would behave
+      identically inside a closed-loop INDI experiment.</p>
+  </div>
+</section>
+
+<footer>
+  Full write-up · <code>docs/43_RPM_Source_Quality.md</code> ·
+  Flight card · <code>docs/next_flight_card.html</code> ·
+  Historical DShot tooling + one-flight spot check · <code>docs/23_DShot_RPM_Investigation.md</code> §5
+</footer>
+
+</div>
