@@ -18,9 +18,10 @@ execution is lab.
 | **S1c** | Briesewitz INDI | `c=7` | Sim clean post `state.acc` fix; **not flown** | Single-drone hover → A8 ladder (`naindi_reference_build_notes.md`) |
 | **S4** | NA-INDI hybrid | `c=8` | Sim clean; **not flown** | After supervisor NA-INDI data strategy; same ladder as c=7 |
 | **S2** | Geometric + NS2 | `c=6`, `rnn.en=1` | Train path verified; onboard RAM gated | C.1 → C.2 → C.3 |
+| **S1d** | Supervisor's (Omar) INDI | `c=9` | 2026-09-22/23: literal C port, numerically verified 6/6 to `d=0.00e+00`, both dispatch paths exercised, SIL-complete — clean single/2/3-drone under both no-interaction (`np`) and real coupled downwash (`neuralswarm`) backends. Two SIL wiring bugs found and fixed (plant mass sync, PWM→force inversion); **not flown** | See `docs/41` §8 — hardware gate next, same standard as controller=7/8 |
 
-**External reference (optional row):** Omar / established INDI stack — coordinate with supervisor;
-same scenario params as table protocol.
+Row above supersedes the "external reference" note previously here — Omar's INDI is now a
+same-firmware controller slot, not an external stack to coordinate separately.
 
 ---
 

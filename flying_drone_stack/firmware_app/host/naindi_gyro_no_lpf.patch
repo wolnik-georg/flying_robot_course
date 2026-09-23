@@ -18,8 +18,29 @@ index 35e54eeb..bff13f71 100644
        applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
  
        measurement.type = MeasurementTypeGyroscope;
+diff --git a/src/modules/interface/math3d.h b/src/modules/interface/math3d.h
+index 260fe3ff..953c3463 100644
+--- a/src/modules/interface/math3d.h
++++ b/src/modules/interface/math3d.h
+@@ -293,6 +293,16 @@ static inline struct vec vadd4(struct vec a, struct vec b, struct vec c, struct
+ 	// TODO: make sure it compiles to optimal code
+ 	return vadd(vadd(a, b), vadd(c, d));
+ }
++// 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++// (supervisor's INDI, controller_omar_indi.c). His source assumes a newer Bitcraze upstream than
++// this tree is pinned to; vadd5 is a plain upstream helper (also present verbatim in
++// NA-INDI-firmware, same signature), not a customization -- backported so his file compiles
++// unmodified. See firmware_app/host/LOCAL_MODIFICATIONS.md.
++// add 5 vectors.
++static inline struct vec vadd5(struct vec a, struct vec b, struct vec c, struct vec d, struct vec e) {
++	// TODO: make sure it compiles to optimal code
++	return vadd(vadd4(a, b, c, d), e);
++}
+ // subtract b and c from a.
+ static inline struct vec vsub2(struct vec a, struct vec b, struct vec c) {
+ 	return vadd3(a, vneg(b), vneg(c));
 diff --git a/src/modules/interface/stabilizer_types.h b/src/modules/interface/stabilizer_types.h
-index 9751c300..99b7e769 100644
+index 9751c300..b24d9eef 100644
 --- a/src/modules/interface/stabilizer_types.h
 +++ b/src/modules/interface/stabilizer_types.h
 @@ -165,6 +165,12 @@ typedef struct zDistance_s {
@@ -35,3 +56,17 @@ index 9751c300..99b7e769 100644
    Axis3f mag;               // gauss
    baro_t baro;
  #ifdef LOG_SEC_IMU
+@@ -253,6 +259,13 @@ typedef struct setpoint_s {
+ 
+   attitude_t attitude;      // deg
+   attitude_t attitudeRate;  // deg/s
++  // 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++  // (supervisor's INDI, controller_omar_indi.c) -- his source assumes a newer Bitcraze upstream
++  // than this tree is pinned to; attitudeAcc is a plain upstream field (also present verbatim in
++  // NA-INDI-firmware), not a customization -- backported so his file compiles unmodified and
++  // reads/writes zero everywhere else, since nothing but controller=9 touches it. See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md.
++  attitude_t attitudeAcc;   // deg/s^2
+   quaternion_t attitudeQuaternion;
+   float thrust;
+   point_t position;         // m

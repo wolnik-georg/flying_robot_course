@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "log.h"
+#include "param.h"
 #include "platform_defaults.h"
 
 /* ── symbols the firmware normally provides, stubbed for the host ──────────────
@@ -44,18 +45,35 @@
  * rust_eh_personality is the unwinding hook a no_std Rust staticlib still
  * references even when built with panic=abort. Nothing here can unwind, so an
  * empty definition is enough to satisfy the linker. */
+static uint16_t g_host_rpm[4] = {0, 0, 0, 0};
+
+/* 2026-09-22: controller=9 (controller_omar_indi.c, a literal C copy of the supervisor's own
+ * controller_lee.c) reads RPM via logGetVarId("rpm","mN")/logGetUint() -- a genuinely different
+ * mechanism than rpm_get_all() (which lib.rs/naindi.rs/naindi_hybrid.rs use). Rather than add a
+ * second, parallel test-only RPM array, group="rpm"/name="mN" now resolves to ids 1-4 and reads
+ * back the SAME g_host_rpm[] oot_set_rpm() already writes -- one physical quantity, one place to
+ * set it, whichever read path a given controller happens to use. Every other group/name still
+ * returns "not present"/0, unchanged from before -- this is additive, not a behavior change for
+ * any controller that never asks for "rpm"/"mN". */
 logVarId_t logGetVarId(const char *group, const char *name)
 {
-    (void)group; (void)name;
-    return 0xffffu;               /* always "not present" */
+    if (group && name && group[0] == 'r' && group[1] == 'p' && group[2] == 'm' && group[3] == '\0'
+        && name[0] == 'm' && name[2] == '\0' && name[1] >= '1' && name[1] <= '4') {
+        return (logVarId_t)(name[1] - '0');   /* 1..4 */
+    }
+    return 0xffffu;               /* always "not present" for anything else */
 }
 
-uint32_t logGetUint(logVarId_t varid) { (void)varid; return 0u; }
+uint32_t logGetUint(logVarId_t varid)
+{
+    if (varid >= 1 && varid <= 4) {
+        return g_host_rpm[varid - 1];
+    }
+    return 0u;
+}
 float    logGetFloat(logVarId_t varid) { (void)varid; return 0.0f; }
 
 void rust_eh_personality(void) {}
-
-static uint16_t g_host_rpm[4] = {0, 0, 0, 0};
 
 void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4)
 {
@@ -67,6 +85,21 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     *m1 = g_host_rpm[0]; *m2 = g_host_rpm[1];
     *m3 = g_host_rpm[2]; *m4 = g_host_rpm[3];
 }
+
+/* 2026-09-22: controller=9's controllerOmarIndiInit() calls paramGetVarId("deck","bcRpm") once
+ * to decide whether the RPM path is exercised at all -- report "present" unconditionally so the
+ * INDI branch is actually exercised in host tests, mirroring the exact precedent already used
+ * for the reference's own host_stubs.c (naindi_reference_build_notes.md). paramGetUint always
+ * reads back 1 for the one id this stub hands out, matching "deck present". */
+paramVarId_t paramGetVarId(const char *group, const char *name)
+{
+    (void)group; (void)name;
+    paramVarId_t id = { 1, 0 };
+    return id;
+}
+
+uint32_t paramGetUint(paramVarId_t varid) { (void)varid; return 1u; }
+float    pmGetBatteryVoltage(void) { return 3.8f; }
 
 /* 2026-09-16: controller=8 (naindi_hybrid.rs) calls motorsGetRatio() directly -- their NN's
  * own input vector uses commanded PWM ratio, not measured RPM (see controller_lee.c's own
@@ -127,6 +160,20 @@ float oot_get_e_r_norm(void)   { return l_e_r_norm; }
 float oot_thrust_max(void)     { return THRUST_MAX; }
 float oot_arm_length(void)     { return ARM_LENGTH; }
 float oot_thrust2torque(void)  { return THRUST2TORQUE; }
+
+/* 2026-09-22: controller=9 (controller_omar_indi.c) reads its own mass/thrust constant from
+ * platform_defaults_cf21bl.h, separate from g_indi_mass/g_indi_kt1-4 (traj_iface.c's globals,
+ * which THIS controller never touches) -- so crazyflie_server.py's plant sync needs its own
+ * pair of getters, not the ones above (which stay correct for 'oot'/'oot2'/'oot3' as before).
+ * oot_omar_mass() is CF_MASS directly -- no controller instance needed, same as oot_arm_length
+ * above (both are just compile-time platform macros). oot_omar_kt_equiv() converts
+ * MOTORRPM2FORCE (his convention: force = MOTORRPM2FORCE * (rpm in RAD/S)^2) into this
+ * project's own kt convention (force = kt * (rpm in REV/MIN)^2, what the simulated plant's
+ * Quadrotor model and g_indi_kt1-4 both use) by folding in the (2*pi/60)^2 unit conversion --
+ * getting this wrong silently under-thrusts the simulated plant by ~91x, so it is done once
+ * here, not duplicated in Python. */
+float oot_omar_mass(void)      { return CF_MASS; }
+float oot_omar_kt_equiv(void)  { return MOTORRPM2FORCE * 0.010966227112321508f; }
 
 /* ---- Per-vehicle controller state, host simulator only --------------------
    The simulator drives every simulated drone through this one compiled controller,

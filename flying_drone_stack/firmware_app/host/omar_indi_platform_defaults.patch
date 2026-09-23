@@ -1,0 +1,27 @@
+diff --git a/src/platform/interface/platform_defaults_cf21bl.h b/src/platform/interface/platform_defaults_cf21bl.h
+index e6d3ebd9..77029246 100644
+--- a/src/platform/interface/platform_defaults_cf21bl.h
++++ b/src/platform/interface/platform_defaults_cf21bl.h
+@@ -52,6 +52,22 @@
+     #define CF_MASS 0.0393f  // kg
+ #endif
+ 
++// 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++// (supervisor's INDI, controller_omar_indi.c -- a literal copy of his controller_lee.c). Both
++// constants below are copied verbatim from his own crazyflie-firmware-omar
++// platform_defaults_cf21bl.h so the ported controller reads the SAME numbers he calibrated for
++// this airframe, not a substitute. MOTORRPM2FORCE was entirely absent from our tree before this.
++// THRUST2TORQUE already existed below but only inside CONFIG_ENABLE_THRUST_BAT_COMPENSATED (an
++// unrelated battery-compensation feature we don't enable on this build) -- defining it here,
++// unconditionally, avoids silently pulling in that feature just to get the constant, and avoids
++// falling back to platform_defaults.h's generic THRUST2TORQUE (0.005964552f, not calibrated for
++// this brushless airframe). See docs/41_Pure_INDI_Implementation_Comparison.md and
++// firmware_app/host/LOCAL_MODIFICATIONS.md.
++#define MOTORRPM2FORCE  3.91194027330774e-08f // force_in_newton = MOTORRPM2FORCE * (motor rpm in rad/s)^2
++#ifndef THRUST2TORQUE
++    #define THRUST2TORQUE   0.00569278844371417f // m -- supervisor's CF21BL calibration
++#endif
++
+ #ifdef CONFIG_ENABLE_THRUST_BAT_COMPENSATED
+     // Minimum and maximum thrust per motor
+     // Note: The maximum thrust is a trade-off between consistency of thrust over all battery levels

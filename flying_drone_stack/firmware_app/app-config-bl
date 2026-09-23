@@ -13,5 +13,25 @@ CONFIG_APP_ENABLE=n
 CONFIG_CONTROLLER_OOT=y
 # 2026-09-14: second OOT slot -- stabilizer.controller=7, the faithful NA-INDI port.
 CONFIG_CONTROLLER_OOT2=y
+# 2026-09-22: third OOT slot enabled here ONLY so the enum stays contiguous and OOT4 (below)
+# lands at stabilizer.controller=9 as documented, not 8. Enabling this flag does not change any
+# existing flight config -- controller=8 was already a valid value before, just unused on this
+# build; still NOT NUMERICALLY VERIFIED, do not select it. See LOCAL_MODIFICATIONS.md.
+CONFIG_CONTROLLER_OOT3=y
+# 2026-09-22: fourth OOT slot -- stabilizer.controller=9, supervisor's INDI, literal C copy of
+# controller_lee.c from crazyflie-firmware-omar (see docs/41). NEVER FLOWN, do not select.
+CONFIG_CONTROLLER_OOT4=y
+# 2026-09-22: CF_MASS override -- was previously unset on this build, silently falling back to
+# the STOCK 39.3g default (neither Omar's 42.7g nor ours). 41.0g is OUR OWN bench-measured
+# brushless mass (2026-07-15, project_brushless_commissioning memory), used everywhere else in
+# this project's pipeline -- Omar's 42.7g was calibrated for HIS physical unit/deck loadout, not
+# ours, so it is not correct here even though the platform (CF21BL) is nominally the same.
+# Affects every stock/ported controller that reads CF_MASS directly (grep-confirmed: stock
+# Lee=5, stock Mellinger=2, stock Brescianini=4, Omar's port=9 -- Mellinger/Brescianini are not
+# used anywhere in this project's flight plans, listed for completeness). Does NOT affect our
+# own Rust controller (=6, controller=7/8 Rust ports either) -- all three have their own
+# separate, unaffected mass constants.
+CONFIG_MODIFY_CF_MASS=y
+CONFIG_MODIFIED_CF_MASS=41000
 CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y
 CONFIG_DECK_FORCE="bcRpm"

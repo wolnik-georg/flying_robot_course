@@ -5,8 +5,9 @@ clean them.** This question is closed — the file exists so it does not come up
 
 `~/Desktop/crazyflie-firmware` tracks **bitcraze upstream** and is deliberately not forked
 (see the reasoning in the project memory: a fork has to be kept in sync and adds a repository to
-reason about, which is not worth it for a small additive change). The consequence is that nine
-files carry uncommitted local changes. That is the intended steady state, not an untidy loose end.
+reason about, which is not worth it for a small additive change). The consequence is that
+several files carry uncommitted local changes, plus two new untracked files. That is the
+intended steady state, not an untidy loose end.
 
 Each file now carries a `LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT` comment in place.
 This manifest is the durable copy, because comments in a tree we do not own can be wiped by a
@@ -14,7 +15,7 @@ checkout or an upstream pull.
 
 ---
 
-## The seven modifications
+## The modifications
 
 | File | What it changes | Consequence if lost |
 |---|---|---|
@@ -25,6 +26,12 @@ checkout or an upstream pull.
 | `src/modules/interface/controller/controller.h`, `src/modules/src/controller/controller.c`, `src/modules/src/Kconfig` (2026-09-14) | Adds `ControllerTypeOot2` / `CONFIG_CONTROLLER_OOT2` — a **second, independent** out-of-tree controller slot (`stabilizer.controller=7`) alongside the existing `ControllerTypeOot` (`=6`, our geometric/INDI, `ctrl_mode` 0-3). Exists so a byte-faithful Rust port of Cobo-Briesewitz's NA-INDI (`firmware_app/src/naindi.rs`) can fly without any risk of interfering with our own controller — separate enum value, separate dispatch row, separate Rust module, no shared state | Controller 7 does not exist / does not build; falls back silently to whatever `ControllerType_COUNT`-indexed garbage or a build error, depending on how it's lost |
 | Same three files (2026-09-16) | Adds `ControllerTypeOot3` / `CONFIG_CONTROLLER_OOT3` — a **third, independent** out-of-tree controller slot (`stabilizer.controller=8`). Ports the SAME reference file as Oot2 (`controller_lee.c`) but with `use_nn` enabled and their real trained network included (`firmware_app/src/naindi_hybrid.rs` + `naindi_hybrid_weights.rs`) — true NA-INDI, not their plain INDI. Own enum value, own dispatch row, own Rust module, no shared state with Oot or Oot2. **Compiles, links, and is now numerically verified — 6/6 test vectors match the reference's own compiled `controller_lee.c` (`use_nn=7`) to ~1e-9 on thrust and torque (2026-09-16, `test_naindi_hybrid_reference.py`). Still never flown — do not fly without clearing the hardware-validation gate.** | Controller 8 does not exist / does not build |
 | `src/modules/interface/stabilizer_types.h`, `src/hal/src/sensors_bmi088_bmp3xx.c` (2026-09-14) | Adds `sensorData_t.gyroNoLpf` (the pre-LPF gyro), populated right after `sensorsAlignToAirframe` and before `applyAxis3fLpf` overwrites `sensorData.gyro` in place — ported verbatim from NA-INDI-firmware, which added the same field for the same reason. Operator's explicit instruction (2026-09-14): controller=7 must read exactly the signal their reference does, not a filtered substitute, "no exceptions apart from mass/inertia/kt" | Controller 7's attitude-INDI angular-acceleration term silently falls back to the regular filtered gyro — no build error, just a quiet fidelity loss to the port. `bindings/cffirmware.i` also needs `%include "stabilizer_types.h"` to still see the new field (it already does, no separate change needed there beyond the controller=7 entry points) |
+| Same three files + `src/modules/src/controller/Kbuild` (2026-09-22) | Adds `ControllerTypeOot4` / `CONFIG_CONTROLLER_OOT4` — a **fourth, independent** out-of-tree controller slot (`stabilizer.controller=9`). Unlike Oot2/Oot3, this one is **not a Rust port** — it's a literal C copy of the supervisor's own `controller_lee.c` (`~/Desktop/crazyflie-firmware-omar`), verified byte-identical after normalizing renamed identifiers (`controllerLee*`→`controllerOmarIndi*`/`controllerOutOfTree4*`, `ctrlLee`→`ctrlOmarIndi` param/log groups — pure renames, zero control-law lines touched, done to avoid colliding with our own stock `controller_lee.c`/`ControllerTypeLee`). See `docs/41_Pure_INDI_Implementation_Comparison.md`. Own enum value, own dispatch row, own C file (`controller_omar_indi.c`/`.h`), no shared state with Oot/Oot2/Oot3. `app-config-bl` now also enables `CONFIG_CONTROLLER_OOT3` (previously off) purely so the enum stays contiguous and Oot4 lands at 9, not 8 — does not change any existing flight config. **Compiles for the brushless target. 2026-09-22, same day: numerically verified 6/6 to `d=0.00e+00` against his own compiled build (`firmware_app/host/test_omar_indi_reference.py`), and SIL-clean single/2/3-drone (`backend: np`, `firmware_app/host/omar_indi_reference_build_notes.md`). NEVER FLOWN, not queued to fly — same C.0 hardware-validation gate as controller=7/8.** | Controller 9 does not exist / does not build |
+| `bindings/setup.py`, `bindings/cffirmware.i` (2026-09-22) | Adds `controller_omar_indi.c` to `fw_sources` and `%include`s `controller_omar_indi.h`, exposing `controllerOmarIndi_t`/`controllerOmarIndiInit`/`controllerOmarIndi` to the host/SWIG build — same pattern already used for stock `controller_lee.c`. Also exposes two new `oot_host.c` getters, `oot_omar_mass()`/`oot_omar_kt_equiv()`, used by `crazyflie_server.py`'s plant-sync path (see below) | Controller 9 not selectable in the CS2 SIL; `import cffirmware` still works (additive) |
+| `firmware_app/host/oot_host.c` (2026-09-22) | Extends `logGetVarId`/`logGetUint` to resolve `("rpm","m1".."m4")` against the **existing** `g_host_rpm[]` array (already written by `oot_set_rpm()`) instead of always reporting "not present" — controller=9 reads RPM via this log-based path, a genuinely different mechanism from `rpm_get_all()` (what `lib.rs`/`naindi.rs` use); reusing the same array means the existing RPM-injection call in `crazyflie_sil.py` feeds both paths with no new setter. Also adds `paramGetVarId`/`paramGetUint` (report the RPM deck "present" unconditionally — controller=9's `Init()` checks this once) and `oot_omar_mass()`/`oot_omar_kt_equiv()` (return `CF_MASS`/`MOTORRPM2FORCE`-converted-to-this-project's-kt-convention, for the plant sync below). All additive — every other group/name/controller's behavior through these functions is unchanged | Controller 9's Init crashes (undefined `paramGetVarId`) or silently reads zero RPM forever; sim plant airframe mismatches the controller's internal model |
+| `crazyswarm2/crazyflie_sim/crazyflie_sim/crazyflie_sil.py`, `crazyflie_server.py` (2026-09-22, `flying_robot_course`-tracked, not a `crazyflie-firmware` local mod) | Adds the `'oot4'` controller option: per-vehicle `controllerOmarIndi_t()` instance (no `select_drone` needed, unlike oot/oot2/oot3 — see `controllerOmarIndi()`'s explicit-self signature), `indi=3` set once at Init, RPM injection reusing the existing `oot_set_rpm()` call. `_setup_oot()` gets a **dedicated** physics-sync branch for `'oot4'` (`oot_omar_mass()`/`oot_omar_kt_equiv()`) rather than falling through to the `g_indi_mass`/`g_indi_kt*`-based default, which this controller never reads — that fallthrough would have built a plant ~4% off the controller's real mass, caught before it shipped. New configs: `crazyflie/config/server_sim_omar_indi.yaml` (`backend: np`) and `server_sim_omar_indi_dw.yaml` (`backend: neuralswarm`, real coupled downwash, mirrors `server_sim_naindi_dw.yaml`). **2026-09-23 fix**: `self.kt`/`self.thrust_max` (needed by `pwm_to_rpm()`/`pwm_to_force()` to invert a commanded PWM back into a physically consistent force) were missing from the `'oot4'` branch entirely — `self.thrust_max` staying `None` crashed the server outright on the first real `takeoff()` call (`TypeError`), and before that was caught, the missing `self.kt` alone had already produced a silent, reproducible ~15-20% steady-state height deficit (plant using a generic wrong thrust curve, not this controller's own model). Both now set from `oot_omar_kt_equiv()`/`oot_thrust_max()`. See `omar_indi_reference_build_notes.md`'s "Bug #2" section for the full diagnostic trail | Controller 9 not selectable in the CS2 SIL at all, or selectable but silently flying a mismatched plant / crashing on takeoff |
+| `src/platform/interface/platform_defaults_cf21bl.h` (2026-09-22) | Adds `MOTORRPM2FORCE` (previously entirely absent from this tree) and an unconditional `THRUST2TORQUE` fallback, both copied verbatim from the supervisor's own `platform_defaults_cf21bl.h` — his `controller_omar_indi.c` reads these directly, so using his numbers (not a substitute) keeps the port airframe-correct on our brushless platform, which he had already parameterized for both standard and brushless before we touched anything | Controller 9 won't compile (`MOTORRPM2FORCE` undefined), or compiles but silently uses the wrong (generic/upgraded-platform) torque constant |
+| `src/modules/interface/math3d.h`, `src/modules/interface/stabilizer_types.h` (2026-09-22) | Adds `vadd5()` (math3d.h) and `setpoint_t.attitudeAcc` (stabilizer_types.h) — his source assumes a newer Bitcraze upstream commit than this tree is pinned to; both are plain upstream helpers/fields (also present verbatim in NA-INDI-firmware, same signature/name), not customizations of any kind, backported only so his file compiles unmodified. Read/written by nothing except controller=9 | Controller 9 does not compile |
 
 ---
 
@@ -88,6 +95,56 @@ above regenerate both after further edits. `naindi_hybrid_weights.rs` and `naind
 themselves live in `firmware_app/src/` (the `flying_robot_course` repo) and need no patch. `app-config`
 needs `CONFIG_CONTROLLER_OOT3=y` alongside the existing two flags (already committed there).
 
+### Controller 9 (Omar's INDI, literal C port) — recovery
+
+`naindi_controller_slot.patch` also now carries `ControllerTypeOot4`/`CONFIG_CONTROLLER_OOT4`
+(controller.h/controller.c/Kconfig/Kbuild — the same regenerate command above, now including
+`src/modules/src/controller/Kbuild`, covers it):
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git diff src/modules/interface/controller/controller.h src/modules/src/controller/controller.c \
+  src/modules/src/Kconfig src/modules/src/controller/Kbuild \
+  > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_controller_slot.patch
+```
+
+The math3d.h/stabilizer_types.h backport (`vadd5`, `attitudeAcc`) is folded into
+`naindi_gyro_no_lpf.patch` (same regenerate command as the gyroNoLpf row, now including
+`src/modules/interface/math3d.h`):
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git diff src/modules/interface/stabilizer_types.h src/hal/src/sensors_bmi088_bmp3xx.c \
+  src/modules/interface/math3d.h \
+  > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/naindi_gyro_no_lpf.patch
+```
+
+The `platform_defaults_cf21bl.h` addition has its own patch:
+
+```bash
+cd ~/Desktop/crazyflie-firmware
+git apply ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/omar_indi_platform_defaults.patch
+# regenerate after further edits:
+git diff src/platform/interface/platform_defaults_cf21bl.h \
+  > ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/omar_indi_platform_defaults.patch
+```
+
+`controller_omar_indi.c` and `controller_omar_indi.h` are **new, untracked** files — not covered
+by any `git diff`-based patch. Their recovery copies are
+`firmware_app/host/controller_omar_indi.{c,h}.snapshot`; restore with:
+
+```bash
+cp ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/controller_omar_indi.c.snapshot \
+   ~/Desktop/crazyflie-firmware/src/modules/src/controller/controller_omar_indi.c
+cp ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/host/controller_omar_indi.h.snapshot \
+   ~/Desktop/crazyflie-firmware/src/modules/interface/controller/controller_omar_indi.h
+```
+
+Regenerate the snapshots after any further edit to either file (should be rare — the whole point
+is that these stay a literal copy of his source, renamed identifiers only). `app-config-bl` needs
+`CONFIG_CONTROLLER_OOT3=y` + `CONFIG_CONTROLLER_OOT4=y` (already committed there, in the
+`flying_robot_course` repo, no patch needed).
+
 Two host-only files complete the picture (already committed to the `flying_robot_course` repo,
 not local modifications to `crazyflie-firmware` itself, so no patch needed for them):
 - `firmware_app/host/oot_host.c` provides a `usecTimestamp()` stub (wall-clock microseconds) —
@@ -102,9 +159,10 @@ not local modifications to `crazyflie-firmware` itself, so no patch needed for t
 cd ~/Desktop/crazyflie-firmware && git status --short
 ```
 
-Expect exactly these nine files modified (setup.py, cffirmware.i, usddeck.c, controller_indi.h,
-controller.h, controller.c, Kconfig, stabilizer_types.h, sensors_bmi088_bmp3xx.c). **If that list
-is empty, the modifications have been wiped** — re-apply before building or flying. A quick
+Expect these files modified (setup.py, cffirmware.i, usddeck.c, controller_indi.h, controller.h,
+controller.c, Kconfig, Kbuild, stabilizer_types.h, sensors_bmi088_bmp3xx.c, math3d.h,
+platform_defaults_cf21bl.h) plus two new untracked files (controller_omar_indi.c, .h). **If that
+list is empty, the modifications have been wiped** — re-apply before building or flying. A quick
 functional check:
 
 ```bash
@@ -112,7 +170,10 @@ grep MAX_USD_LOG_VARIABLES_PER_EVENT src/deck/drivers/src/usddeck.c   # must rea
 python3 -c "import cffirmware as f; print(f.oot_thrust_max())"        # must print 0.2
 grep ControllerTypeOot2 src/modules/interface/controller/controller.h # must be present
 grep ControllerTypeOot3 src/modules/interface/controller/controller.h # must be present
+grep ControllerTypeOot4 src/modules/interface/controller/controller.h # must be present
 grep gyroNoLpf src/modules/interface/stabilizer_types.h               # must be present
+grep MOTORRPM2FORCE src/platform/interface/platform_defaults_cf21bl.h # must be present
+test -f src/modules/src/controller/controller_omar_indi.c             # must exist
 python3 -c "import cffirmware as f; print(f.controllerINDI)"          # must not error (2026-09-18)
 ```
 

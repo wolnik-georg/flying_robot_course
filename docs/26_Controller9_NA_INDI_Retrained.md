@@ -1,7 +1,19 @@
-# 26 — `controller=9`: NA-INDI Retrained for Downwash (scoped, not started)
+# 26 — NA-INDI Retrained for Downwash (superseded, never built)
 
-**Status: scoped only.** No code, no slot patch, nothing built. This document exists so the
-decision and its reasoning are on record before any work starts.
+> **⚠️ Number collision, resolved 2026-09-23.** This document's own title used to be
+> "`controller=9`: NA-INDI Retrained for Downwash" — but per `docs/34_NA_INDI_Decision_Memo.md`'s
+> 2026-09-22 banner, the whole NA-INDI/hybrid track this document describes is **out of the
+> compared set** (thesis strategies are 0–3 only) and was **never implemented** — no enum value,
+> no slot patch, nothing built, exactly as this file always said. Because it was purely a
+> reservation on paper and never coded, `stabilizer.controller=9` was reused on 2026-09-23 for
+> something unrelated: a literal C port of the supervisor's own INDI implementation
+> (`controller_omar_indi.c`, see `docs/41_Pure_INDI_Implementation_Comparison.md` §8 and
+> `firmware_app/host/LOCAL_MODIFICATIONS.md`). **If this document is ever revived, it needs a
+> different enum value** (`controller=10` or later) — `=9` is taken. Kept below for its
+> architecture reasoning (8 vs 9 own-state-vs-neighbour-state question), not as a live plan.
+
+**Status: superseded (`docs/34`, 2026-09-22) and never built. Kept for its reasoning only, not
+as an active plan or a claim on the `controller=9` slot.**
 
 ---
 

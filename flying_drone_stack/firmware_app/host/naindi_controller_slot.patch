@@ -1,8 +1,8 @@
 diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
-index 4854009b..4f5c07ba 100644
+index 4854009b..4ec68c56 100644
 --- a/src/modules/interface/controller/controller.h
 +++ b/src/modules/interface/controller/controller.h
-@@ -37,6 +37,26 @@ typedef enum {
+@@ -37,6 +37,36 @@ typedef enum {
    ControllerTypeLee,
  #ifdef CONFIG_CONTROLLER_OOT
    ControllerTypeOot,
@@ -26,10 +26,20 @@ index 4854009b..4f5c07ba 100644
 +  // docs/strategy_controller_map.html (flying_robot_course repo) for why this is a distinct
 +  // strategy from ControllerTypeOot2, not a variant of it.
 +  ControllerTypeOot3,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT4
++  // 2026-09-22: fourth, independent out-of-tree controller slot -- a literal C copy of the
++  // supervisor's own controller_lee.c (crazyflie-firmware-omar), NOT a Rust port. Only
++  // identifier names were changed (to avoid colliding with our stock controller_lee.c /
++  // ControllerTypeLee) -- every control-law line is byte-identical to his source. Kept fully
++  // separate from ControllerTypeOot/Oot2/Oot3 -- own enum value, own dispatch row, own C file
++  // (controller_omar_indi.c), no shared state with any of them. See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md and docs/41_Pure_INDI_Implementation_Comparison.md.
++  ControllerTypeOot4,
  #endif
    ControllerType_COUNT,
  } ControllerType;
-@@ -57,4 +77,18 @@ bool controllerOutOfTreeTest(void);
+@@ -57,4 +87,25 @@ bool controllerOutOfTreeTest(void);
  void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
  #endif
  
@@ -47,12 +57,19 @@ index 4854009b..4f5c07ba 100644
 +void controllerOutOfTree3(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
 +#endif
 +
++#ifdef CONFIG_CONTROLLER_OOT4
++// fourth OOT slot -- see ControllerTypeOot4 above (supervisor's INDI, literal C copy)
++void controllerOutOfTree4Init(void);
++bool controllerOutOfTree4Test(void);
++void controllerOutOfTree4(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
  #endif //__CONTROLLER_H__
 diff --git a/src/modules/src/Kconfig b/src/modules/src/Kconfig
-index 0a5b4a9e..25ebc251 100644
+index 0a5b4a9e..6ed44bdd 100644
 --- a/src/modules/src/Kconfig
 +++ b/src/modules/src/Kconfig
-@@ -53,6 +53,28 @@ config CONTROLLER_OOT
+@@ -53,6 +53,42 @@ config CONTROLLER_OOT
      bool "Out-of-tree controller"
      default n
  
@@ -78,14 +95,37 @@ index 0a5b4a9e..25ebc251 100644
 +        CONTROLLER_OOT2 are also enabled). NOT YET NUMERICALLY VERIFIED against the
 +        reference's own compiled C -- do not fly. See firmware_app/host/LOCAL_MODIFICATIONS.md.
 +
++config CONTROLLER_OOT4
++    bool "Fourth out-of-tree controller (2026-09-22: supervisor's INDI, byte-for-byte C port)"
++    default n
++    help
++        A fourth, independent out-of-tree controller slot, kept separate from
++        CONTROLLER_OOT/OOT2/OOT3. A literal, unmodified-logic C copy of the supervisor's own
++        controller_lee.c (crazyflie-firmware-omar) -- NOT a Rust re-implementation, so it
++        cannot silently diverge from his source the way a port could. Only identifier names
++        were renamed to avoid linking against our own stock controller_lee.c (ControllerTypeLee)
++        -- zero control-law lines touched. Selects ControllerTypeOot4 (stabilizer.controller=9,
++        assuming CONTROLLER_OOT/OOT2/OOT3 are also enabled). NEVER FLOWN, NOT NUMERICALLY
++        VERIFIED against his compiled build -- do not fly. See
++        firmware_app/host/LOCAL_MODIFICATIONS.md and docs/41_Pure_INDI_Implementation_Comparison.md.
++
  config ESTIMATOR_KALMAN_ENABLE
      bool "Enable Kalman Estimator"
      default y
+diff --git a/src/modules/src/controller/Kbuild b/src/modules/src/controller/Kbuild
+index 33401b23..cc518911 100644
+--- a/src/modules/src/controller/Kbuild
++++ b/src/modules/src/controller/Kbuild
+@@ -7,3 +7,4 @@ obj-y += controller_brescianini.o
+ obj-y += position_controller_indi.o
+ obj-y += position_controller_pid.o
+ obj-y += controller_lee.o
++obj-$(CONFIG_CONTROLLER_OOT4) += controller_omar_indi.o
 diff --git a/src/modules/src/controller/controller.c b/src/modules/src/controller/controller.c
-index e260ae8f..c05862f5 100644
+index e260ae8f..8055e51b 100644
 --- a/src/modules/src/controller/controller.c
 +++ b/src/modules/src/controller/controller.c
-@@ -33,6 +33,14 @@ static ControllerFcns controllerFunctions[] = {
+@@ -33,6 +33,18 @@ static ControllerFcns controllerFunctions[] = {
    #ifdef CONFIG_CONTROLLER_OOT
    {.init = controllerOutOfTreeInit, .test = controllerOutOfTreeTest, .update = controllerOutOfTree, .name = "OutOfTree"},
    #endif
@@ -96,6 +136,10 @@ index e260ae8f..c05862f5 100644
 +  #ifdef CONFIG_CONTROLLER_OOT3
 +  // 2026-09-16: third OOT slot, see ControllerTypeOot3 in controller.h
 +  {.init = controllerOutOfTree3Init, .test = controllerOutOfTree3Test, .update = controllerOutOfTree3, .name = "OutOfTree3"},
++  #endif
++  #ifdef CONFIG_CONTROLLER_OOT4
++  // 2026-09-22: fourth OOT slot, see ControllerTypeOot4 in controller.h (supervisor's INDI)
++  {.init = controllerOutOfTree4Init, .test = controllerOutOfTree4Test, .update = controllerOutOfTree4, .name = "OutOfTree4"},
 +  #endif
  };
  
