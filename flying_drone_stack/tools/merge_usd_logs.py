@@ -348,7 +348,9 @@ def main():
     ap.add_argument("--archive-t1", default=None, help="THESIS1 (or cf5-card) archive dir")
     ap.add_argument("--archive-t2", default=None, help="THESIS2 (or top-card) archive dir")
     ap.add_argument("--tag-quality-only", action="store_true",
-                    help="with --run-tag: print RMS from --meta but never refuse merge on RMS")
+                    help="do not refuse merge when alignment RMS >= 15 cm (still printed). "
+                         "Use with --run-tag auto-pairing, or human accept e.g. A1 close-stack "
+                         "where bottom tracking error vs nominal command is expected downwash.")
     a = ap.parse_args()
 
     if a.self_test:

@@ -1,6 +1,8 @@
 # 37 — 2026-09-21 C.1 flight-analysis desk pack (dashboards, docs/24, C.4 prep, root cause, coverage, RPM, Ch.5)
 
-**Status:** **executed 2026-09-21 (desk).** Task 4 corrected same day: unified
+**Status:** **executed 2026-09-21 (desk).** C.1 coverage grid in this doc is a **21 Sep snapshot** —
+current plan status · [`25`](25_C1_Data_Collection_Plan.md) top table + [`lab_sessions/2026-09-23.md`](lab_sessions/2026-09-23.md).
+Task 4 corrected same day: unified
 `commanded_trajectory()` + `find_offset()` for healthy and archive paths; afternoon bins
 thesis16–18 per pairing (not reused midday files). Tasks 1–8 complete — suite
 `run_c1_2026_09_21_suite.py`, `experiments/analysis/out/c1_2026-09-21/`, docs/24 catalog,

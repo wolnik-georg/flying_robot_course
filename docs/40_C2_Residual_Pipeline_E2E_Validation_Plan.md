@@ -223,9 +223,11 @@ Copy everything below into a new Cursor agent session.
 
 ---
 
-**Context.** `flying_robot_course` is a Crazyflie multi-drone thesis project. `experiments/logs/
-c1_2026-09-21_merged/manifest_2026-09-21_c1.json` lists 8 verified merged uSD flights; 5 are
-C.1 training-eligible (A8×3 are QA-only, neighbour-gated out of training). The residual-force
+**Context.** `flying_robot_course` is a Crazyflie multi-drone thesis project. **Historical note
+(2026-09-21 prompt below):** at first E2E, `manifest_2026-09-21_c1.json` had 8 merges (5 C.1
+training + 3 A8 QA — see `training_eligible_crosswalk.json`). **As of 2026-09-23:** **24**
+training merges (`manifest_2026-09-23_c1.json` + 21 Sep crosswalk). Extend validation to the full
+bank after **A4** lands. Original 21 Sep wording: The residual-force
 model (`flying_drone_stack/tools/residual/{dataset,model,train,eval_model}.py`, firmware
 counterpart `firmware_app/src/residual_nn.rs`) is meant to learn `a_res_z` (measured downwash
 disturbance) from relative multi-drone state. **Important, verified fact, do not re-derive:**

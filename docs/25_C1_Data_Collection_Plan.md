@@ -5,32 +5,35 @@ its own, so stopping early still yields a trainable set.
 
 ---
 
-## Progress — 2026-09-21 lab (verified merges)
+## Progress — 2026-09-23 lab (+ 21 Sep bank)
 
-Training-eligible uSD only: `experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json`
-(8 flights; **5** count toward C.1 training, **3** A8 QA-only). Re-verified with
-`experiments/analysis/verify_c1_2026_09_21.py`. Compare-downwash catalog:
-[`24_Downwash_Compensation_Comparison.md`](24_Downwash_Compensation_Comparison.md) § 2026-09-21.
+Training-eligible uSD: `experiments/logs/c1_2026-09-23_merged/manifest_2026-09-23_c1.json`
+(**19** merges on 23 Sep) plus `experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json`
+(**5** training + 3 A8 QA — training/QA split for 21 Sep is **not** in that manifest JSON; see
+`experiments/logs/c1_2026-09-21_merged/training_eligible_crosswalk.json`). Session log:
+`docs/lab_sessions/2026-09-23.md`.
 
 | Plan row | Status | Manifest / note |
 |---|---|---|
-| A-1 **A7** | **Not flown** (failed attempt) | Refly |
-| A-2 **A1** dz 0.20 ×2 | **1/2** | `13-25-10` |
-| A-3 **A1** dz 0.30 ×2 | **0/2** | Refly (archive unmergeable) |
-| A-4 **A1** dz 0.50 ×2 | **0/2** | Refly |
-| A-5 **A1** dz 0.75 ×1 | **1/1** | `12-51-16` |
-| B-1 **A3** 0.30 ×2 | **2/2** | `13-00-57`, `13-02-56` |
-| B-2 **A3** 0.50 ×2 | **1/2** | `13-04-34`; 2nd rep missing cf5 uSD |
-| B-3 **A3** 0.40 ×1 | **Not flown** | Refly B-3 |
-| B-4 **A2** | **Not flown** | — |
-| C-1/C-2 **A4** | **Not flown** | — |
-| D-1…D-3 **C5** | **Not flown** | — |
+| A-1 **A7** | **3/3** | 23 Sep `19-11-19` … `19-13-55` |
+| A-2 **A1** dz 0.20 ×2 | **1/2** | 21 Sep `13-25-10` — optional 2nd rep |
+| A-3 **A1** dz 0.30 ×2 | **2/2** | 23 Sep `17-17-26`, `17-18-48` |
+| A-4 **A1** dz 0.50 ×2 | **2/2** | 23 Sep `17-36-06`, `17-37-26` |
+| A-5 **A1** dz 0.75 ×1 | **1/1** | 21 Sep `12-51-16` |
+| B-1 **A3** 0.30 ×2 | **2/2** | 21 Sep |
+| B-2 **A3** 0.50 ×2 | **2/2** | 21 Sep + 23 Sep B-2 reps |
+| B-3 **A3** 0.40 ×1+ | **2/2** | 23 Sep (extra rep OK) |
+| B-4 **A2** | **2/2 merged** | 23 Sep `19-21-05`, `19-27-03` (legacy circle profile) |
+| C-1/C-2 **A4** | **Not flown** | Next lab priority |
+| D-1…D-3 **C5** | **Done** | 23 Sep — use CLI **`--height`**, not `--z` |
 
-A8 shakedown flights are in the manifest for QA/demos only — **not** counted toward C.1
-(neighbour gate). Next lab priorities: **A1 @ 0.30 & 0.50**, **A3 B-2 rep + B-3**, **C5 block**,
-then **A7**, **A2**, **A4**. See `docs/next_flight_card.html`.
+Next lab: **A4 ×4** → optional **A1 @ 0.20** 2nd rep. Pull/rebuild
+**crazyswarm2** for **A2 lab defaults** (`height 0.45`, `radius 0.40`, `rotate 90°`). See
+`docs/next_flight_card.html`.
 
-**Coverage grid (2026-09-21 desk).** Compare-downwash catalog:
+**Coverage grid (2026-09-21 desk) — ⚠️ SUPERSEDED by the "Progress" table above.** Kept verbatim
+as a dated snapshot (do not edit its rows); every "Not flown"/"Unmergeable" cell below was
+resolved on 23 Sep — see the current status in the table at the top of this file instead. Compare-downwash catalog:
 [`24_Downwash_Compensation_Comparison.md`](24_Downwash_Compensation_Comparison.md) § Catalog —
 2026-09-21. Figure:
 `experiments/analysis/out/c1_2026-09-21/c1_coverage_2026-09-21.png`.

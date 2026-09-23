@@ -1,0 +1,46 @@
+{
+  "manifest": "experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json",
+  "note": "Read-only schema bridge: the 21-Sep manifest has no training_eligible field. Use this file with the manifest for C.1 vs QA splits. 23-Sep bank uses training_eligible inside manifest_2026-09-23_c1.json.",
+  "entries": {
+    "12-11-05": {
+      "scenario": "A8",
+      "training_eligible": false,
+      "reason": "QA / shakedown only — neighbour gate excludes A8 from C.1 training (docs/25, docs/28)."
+    },
+    "12-11-46": {
+      "scenario": "A8",
+      "training_eligible": false,
+      "reason": "QA / shakedown only — not counted toward C.1 training."
+    },
+    "13-14-36": {
+      "scenario": "A8",
+      "training_eligible": false,
+      "reason": "QA / demo — not C.1 training (wide span, gate)."
+    },
+    "12-51-16": {
+      "scenario": "A1",
+      "training_eligible": true,
+      "reason": "C.1 Block A-5 — A1 dz 0.75 ×1 rep."
+    },
+    "13-00-57": {
+      "scenario": "A3",
+      "training_eligible": true,
+      "reason": "C.1 Block B-1 — A3 dz 0.25, speed 0.30 ×2 (rep 1)."
+    },
+    "13-02-56": {
+      "scenario": "A3",
+      "training_eligible": true,
+      "reason": "C.1 Block B-1 — A3 dz 0.25, speed 0.30 ×2 (rep 2)."
+    },
+    "13-04-34": {
+      "scenario": "A3",
+      "training_eligible": true,
+      "reason": "C.1 Block B-2 — A3 dz 0.25, speed 0.50 (rep 1 of 2; rep 2 from 23 Sep)."
+    },
+    "13-25-10": {
+      "scenario": "A1",
+      "training_eligible": true,
+      "reason": "C.1 Block A-2 — A1 dz 0.20 (1/2 reps; optional 2nd rep still open)."
+    }
+  }
+}

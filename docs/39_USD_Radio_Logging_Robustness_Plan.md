@@ -286,8 +286,9 @@ flight validates cleanly.
 
 **Task 5 — independently double-check 2026-09-21's pairs and merges (do not just trust the
 manifest — verify it).**
-`experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json` lists 8 merges already
-produced by `experiments/analysis/merge_c1_2026_09_21.py`'s grid search. Before relying on it,
+`experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json` lists 8 merges (Task 5,
+2026-09-21). **Update 2026-09-23:** C.1 bank is **24 training merges** — add
+`manifest_2026-09-23_c1.json` and `training_eligible_crosswalk.json` for the 21 Sep split. Before relying on any manifest,
 independently confirm each entry:
 - For every manifest entry, re-run `merge_usd_logs.py` on the exact `bottom_idx`/`top_idx`
   pair recorded (via the symlinks already in each

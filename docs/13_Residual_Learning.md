@@ -17,20 +17,20 @@
 > | Hardware open-loop `rnn.en=0` | ⬜ Not flown yet |
 >
 > **Honest takeaway:** Software chain is trustworthy enough to integrate cautiously; the **learned
-> model is not trustworthy off the A3 training manifold** until more C.1 coverage (see
-> `next_flight_card.html`). Collect under **geometric** (§6 banner rationale unchanged).
+> model is not trustworthy off the A3 training manifold** until **A4 ×4** is in the bank (see
+> `next_flight_card.html`; **24 training merges** after 23 Sep). Collect under **geometric** (§6 banner rationale unchanged).
 >
 > **Where this sits in the Core Thesis Workflow** ([`07`](07_Thesis_Progress_Checklist.md)):
 >
 > | Step | This document's role |
 > |---|---|
-> | **C.0 Hardware Gate** ⬅️ next | Must clear `rnn.en` — §7 "The control-law change". **Unflown** |
-> | **C.1 Residual Data Collection** | **Unblocked, in progress.** Produces the training set — geometric only (see banner above). §7 says why A4/A7 are mandatory |
-> | **C.2 Train the Residual Model** | Desk-validated 2026-09-21 on 4 flights; needs more C.1 before deploy |
+> | **C.0 Hardware Gate** | Closed enough for C.1; hardware open-loop `rnn.en=0` still unflown |
+> | **C.1 Residual Data Collection** | **~24 merges banked** — **A4 (C-1/C-2) ×4** remains required (`docs/25`) |
+> | **C.2 Train the Residual Model** | Desk-validated 2026-09-21 on 4 usable rows; re-run on full **24** after A4 |
 > | **C.3 Integrate the Strategies** | Compared set 0–3; Strategies 2–3 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
-**Last updated:** 21 September 2026
+**Last updated:** 23 September 2026 (C.1 bank count; E2E table still documents 21 Sep run)
 
 The **predictive strategies in the compared set (Strategy 2; Strategy 3 when FBL arrives)** need a
 model that predicts the interaction force one vehicle is about to feel from the others. This
@@ -416,7 +416,7 @@ Executed per [`40`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md). Scripts:
 
 | Stage | Result |
 |---|---|
-| **A** | 5 C.1-eligible merges → **4** usable (`A1_13-25-10`: all-zero `a_res`) |
+| **A** | 5 C.1-eligible merges (21 Sep) → **4** usable (`A1_13-25-10`: all-zero `a_res`). **Bank now 24** training merges after 23 Sep — re-run Stage A on full manifest set when extending C.2. |
 | **B LOO** | A3 folds: RMSE ↓ vs predict-zero (~33–71%). **A1 hold-out: RMSE 5.66 vs baseline 1.79 (−216%)** |
 | **B cross** | Train A3 → test A1: same failure; train A1 → test A3: RMSE ~9–10 vs baseline ~0.74 |
 | **C** | Path A (positions, NumPy peer dv=0): max \|Δ\| ≈ 6.6×10⁻⁷ m/s². Path B (differenced `oot_set_peer`, measured `rel` vel): ≈ 6×10⁻⁶ m/s². Path A alone does not prove the \|dvx\| gate; Path B does. Sign sanity OK |

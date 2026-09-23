@@ -169,7 +169,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 21 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 23 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Systematic comparison of reactive, predictive and hybrid strategies for downwash-aware
@@ -187,14 +187,14 @@ footer{
   <div class="stat"><span class="n">17</span><span class="t">papers in library, all cited</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
   <div class="stat"><span class="n">7</span><span class="t">A8 uSD packages archived (19&nbsp;Sep)</span></div>
-  <div class="stat"><span class="n">8</span><span class="t">C.1 merges verified (21&nbsp;Sep); gaps remain</span></div>
+  <div class="stat"><span class="n">~24</span><span class="t">C.1 training merges (21+23&nbsp;Sep)</span></div>
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — 21 September 2026</h2></div>
+  <div class="sec-head"><h2>Snapshot — 23 September 2026</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
-    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-21.md</code>.
+    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-23.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
@@ -203,8 +203,10 @@ footer{
       — A8 sequence flown and logged; geo vs INDI on cf5 is ~tie on z (n=2), not the old cf231 gap.</li>
     <li><strong>Desk parallel track (§1–12):</strong> <strong>complete</strong> — audited 21&nbsp;Sep;
       C.4 grouping fix (geo n=2 vs INDI n=2 on 19&nbsp;Sep A8). See <code>docs/35</code>.</li>
-    <li><strong>C.1 (partial):</strong> 8 verified merges on 21&nbsp;Sep (4 usable for C.2 training);
-      refly gaps per flight card / <code>docs/25</code> grid — not a complete scenario matrix yet.</li>
+    <li><strong>C.1 (major session 23&nbsp;Sep):</strong> ~24 training-eligible merges across manifests
+      (19 on 23&nbsp;Sep + 5 on 21&nbsp;Sep, verified against both manifests);
+      Block A (A7, A1 grid), B (A2/A3), D (C5) largely closed; <strong>A4</strong> (C-1/C-2) remains;
+      21&nbsp;Sep bank still contributes A-5, B-1, partial A-2. Tracker · <code>docs/next_flight_card.html</code>.</li>
     <li><strong>C.2 (desk):</strong> E2E on 4 flights — LOO: A3 beats predict-zero; A1 hold-out and
       A1↔A3 cross fail; loader↔firmware ~1e-6&nbsp;m/s² (pos + measured rel-vel paths); SIL Stage E
       closed-loop pass with <em>vacuous</em> sim EKF gate (ground-truth passthrough —
@@ -225,8 +227,9 @@ footer{
   <div class="sec-head"><h2>The two tracks</h2></div>
   <p class="note" style="margin-bottom:20px">
     Chapters&nbsp;6–9 need the <strong>C.4 comparison campaign</strong>, so the writing track cannot
-    finish without lab data. The lab track’s bottleneck is <strong>C.1 flight volume</strong>, not
-    missing software. Between lab sessions, a <strong>third lane — desk prep for C.4</strong> —
+    finish without lab data. The lab track’s bottleneck is now <strong>A4 (C-1/C-2) ×4</strong> plus
+    C.4 campaign execution — not missing merge/analysis software. Between lab sessions, a
+    <strong>third lane — desk prep for C.4</strong> —
     is deliberately parallel: it improves the comparative study without replacing flying.
   </p>
 
@@ -261,11 +264,11 @@ footer{
         <li><strong>Mocap</strong> — 4-point <code>active_deck</code> restored; tracking stable at close range</li>
         <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
         <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; hardware hover still gated</li>
-        <li class="pending"><strong>C.1</strong> — fly scenario matrix under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>; A4 mandatory, A7 high value <em>docs/25, flight card</em></li>
+        <li class="pending"><strong>C.1</strong> — <strong>A4 lemniscate ×4</strong> only (C-1/C-2); rest of plan banked (~24 training merges) <em>docs/25, flight card</em></li>
         <li><strong>C.2 desk</strong> — trained/validated on 21&nbsp;Sep C.1 merges; report
           <code>out/c2_e2e_2026-09-21/</code>, plan <code>docs/40</code> <em>docs/13</em></li>
         <li class="pending"><strong>C.3</strong> — hardware: open-loop <code>rnn.en=0</code>, then
-          compensated flight; needs <code>residual_nn</code> build + more C.1 coverage before trusting deploy</li>
+          compensated flight; needs <code>residual_nn</code> build + <strong>A4</strong> in the training bank before trusting deploy</li>
         <li class="pending"><strong>C.4</strong> — systematic head-to-head on matched scenarios with repeats and statistics <em>thesis result; docs/24 living table → docs/27 metrics</em></li>
         <li><em>Earlier lab history (Sep 7–14 validation, notch abandoned, first 2-drone bugs):</em> <code>docs/07</code> History, <code>docs/lab_sessions/</code></li>
       </ul>
@@ -323,8 +326,8 @@ footer{
   </p>
   <p>
     <strong>Strategy&nbsp;2</strong> (geometric + NS2) has a <strong>desk-validated</strong> training/upload path
-    on partial C.1 data; the predictive arm still needs <strong>more C.1 coverage</strong> and <strong>hardware C.3</strong>
-    before it is a fair C.4 row. Strategies&nbsp;0–1 (and later 4) remain flyable meanwhile.
+    on the 21 Sep subset; **24 training merges** banked after 23 Sep — still needs <strong>A4 ×4</strong> and
+    <strong>hardware C.3</strong> before a fair C.4 row. Strategies&nbsp;0–1 (and later 4) remain flyable meanwhile.
   </p>
   <p>
     <strong>INDI baseline</strong> for Strategy&nbsp;1 is not fully settled: our full INDI flies
@@ -456,7 +459,7 @@ footer{
 </section>
 
 <footer>
-  Updated 21&nbsp;Sep (C.1 partial + C.2 desk E2E + doc renumber 39/40) · SSOT: <code>docs/07</code> ·
+  Updated 23&nbsp;Sep (C.1 lab session + manifest) · SSOT: <code>docs/07</code> ·
   Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
   C.2: <code>docs/40</code>, <code>docs/13</code> ·
   Analysis: <code>docs/28</code>, <code>docs/27</code> ·

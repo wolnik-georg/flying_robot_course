@@ -45,7 +45,7 @@ indi **~36.9 mm** (n=2) — indicative, not statistical.
 
 ## Does not block lab
 
-- **C.1 next:** geometric on **cf5**, reset yaml `controller: 6`, `ctrl_mode: 0` before collection.
+- **C.1 (updated 2026-09-23):** ~24 training merges banked; **A4 ×4** only required next. Before flying: geometric on **cf5**, yaml `controller: 6`, `ctrl_mode: 0`.
 - **Desk track:** no open items; re-run suite after new flight days only.
 
 ---
