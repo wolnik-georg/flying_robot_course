@@ -200,6 +200,29 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 </header>
 
 <section>
+  <div class="pcard o">
+    <p style="margin-top:0"><strong>⚠️ Status update, 2026-09-23 — the §08/§09 findings below are
+    superseded; the ported controller now flies clean in sim.</strong> §§1–7's algebra
+    (bitmask table, method comparison, residual-equation equivalence, RPM-dependency table) are
+    timeless and still correct as written. But the port (<code>stabilizer.controller=7</code>)
+    was later found crashing in CS2 SIL (2026-09-16), then root-caused 2026-09-17/18 to a real
+    <em>simulator</em> bug — <code>crazyflie_sil.py</code> never populated <code>state.acc</code>,
+    not a port or algebra bug — and fixed. It is now sim-clean single/2/3-drone under both
+    interaction backends, still never flown. A sibling <code>controller=8</code> (same port +
+    <code>use_nn</code>) was also built and verified, and a fourth, independent implementation —
+    <code>controller=9</code>, a literal C port of the supervisor's own INDI — was built,
+    numerically verified, and sim-validated 2026-09-22/23. §06's "consider/investigate" verdicts
+    on torque conditioning, yaw filtering, gyro source and <code>dt</code> resolution were later
+    tested to exhaustion (2026-09-16): 6/7 null, one (per-axis yaw filtering) measurably
+    <em>worsened</em> oscillation and was reverted. §09's notch-filter line was closed negatively
+    (2026-09-13 bode/phase analysis: the loop's own ωₙ sits inside the notch's rejection band —
+    structurally doomed, not a tuning problem). Current canonical status:
+    <code>docs/41_Pure_INDI_Implementation_Comparison.md</code> §8 (now a four-way comparison,
+    not two) and <code>docs/07_Thesis_Progress_Checklist.md</code>.</p>
+  </div>
+</section>
+
+<section>
   <div class="sec-head"><span class="sec-n">01</span><h2>What is in their firmware</h2></div>
   <p>
     There is <strong>no new controller</strong>. No new <code>ControllerType</code>, no

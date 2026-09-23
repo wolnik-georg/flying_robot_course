@@ -172,7 +172,7 @@ footer{
       new architecture and passing — 19 + 13 checks, verified against the <em>compiled firmware</em>
       (torch, the NumPy reference and the real controller agree to ~1e-6&nbsp;m/s²). Weights that
       train will now behave on the drone exactly as they did in training.</p>
-    <div class="ask"><strong>Needs:</strong> <code>dataset.py</code> (logs → training tensors) is still blocked, on two decisions rather than effort — the architecture predicts <strong>vertical residual only</strong>, and <code>--z-floor</code> now contradicts a network that models ground effect explicitly. Blocks C.2, not C.1.</div>
+    <div class="ask"><strong>Needs:</strong> <code>dataset.py</code> (logs → training tensors) is still blocked, on two decisions rather than effort — the architecture predicts <strong>vertical residual only</strong>, and <code>--z-floor</code> now contradicts a network that models ground effect explicitly. Blocks C.2, not C.1. <em>Update 2026-09-23: unblocked the next day (2026-09-16) — rewritten and verified end-to-end against real A8 uSD data. This "Needs" line is historical.</em></div>
   </div>
 
   <div class="card go">
@@ -196,6 +196,12 @@ footer{
       deliberately reverted: <strong>one main draft</strong>, permanently scoped to the four
       strategies the comparative study will include — Pure INDI, Geometric+NN, FBL+NN,
       Hybrid/NA-INDI, plus the uncompensated baseline. 41 pages, builds clean.</p>
+    <p><em>Update 2026-09-23: the compared set changed again since this entry — NA-INDI/LINDI/
+      hybrid is now explicitly <strong>not</strong> in the compared set (supervisor decision,
+      Sep 2026 meeting; see <code>docs/07</code>'s current banner and
+      <code>docs/34_NA_INDI_Decision_Memo.md</code>). Current set: Strategies 0–3
+      (geometric baseline, pure INDI, geometric+NN, FBL+NN — the last blocked on author code).
+      This entry's "four strategies" description is historical.</em></p>
     <p>Nothing was thrown away. The drafted prose for Residual RL, Learning-based MPC and
       Geometric+Residual RL sits verbatim in
       <code>docs/thesis/reserve/advanced_strategies_reserve.tex</code> — never built, six labelled

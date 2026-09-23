@@ -165,6 +165,20 @@ footer code{background:none;padding:0}
         (the reference's own attitude gains vs. this project's real, larger inertia) remains
         open. <b>Do not fly either controller.</b></p>
     </div>
+    <div class="call go">
+      <h3>Update, 2026-09-23 — the sim crash is resolved; a fourth implementation exists</h3>
+      <p>The "do not fly" line above is <b>stale</b>. 2026-09-17/18 found the second cause: a
+        real <code>crazyflie_sil.py</code> bug (<code>state.acc</code> never populated, not a
+        controller/gain problem), fixed and re-verified. Both <code>controller=7</code> and
+        <code>controller=8</code> are now <b>sim-clean single/2/3-drone, both interaction
+        backends</b> — still <b>never flown</b>, ready for the normal C.0 hardware-validation
+        ladder (single-drone hover first), not held back any more. A fourth independent
+        implementation, <code>controller=9</code> — a literal C port of the supervisor's own
+        INDI (<code>ControllerTypeOot4</code>) — was built, numerically verified (6/6 to
+        <code>d=0.00e+00</code>), and sim-validated the same way 2026-09-22/23. See
+        <code>docs/41_Pure_INDI_Implementation_Comparison.md</code> §8 and
+        <code>docs/07_Thesis_Progress_Checklist.md</code> for current status.</p>
+    </div>
   </section>
 
   <section>
@@ -220,12 +234,13 @@ footer code{background:none;padding:0}
           <td class="num">1</td>
           <td><span class="strategy-name">Pure INDI</span></td>
           <td class="paper">Tal &amp; Karaman; Smeur — <em>or</em> Cobo-Briesewitz et al.
-            (their INDI baseline)</td>
+            (their INDI baseline) — <em>or</em> the supervisor's own ("Omar")</td>
           <td class="mono">
             <span class="ctrl-tag ctrl-ours">controller=6</span> ours, <code style="background:none">ctrl_mode=3</code><br>
-            <span class="ctrl-tag ctrl-theirs">controller=7</span> Cobo-Briesewitz, <code style="background:none">use_nn=0</code>
+            <span class="ctrl-tag ctrl-theirs">controller=7</span> Cobo-Briesewitz, <code style="background:none">use_nn=0</code><br>
+            <span class="ctrl-tag ctrl-theirs">controller=9</span> Omar, literal C port
           </td>
-          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-hold" style="margin-top:4px">7: verified vs C, unstable in sim</span></td>
+          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-go" style="margin-top:4px">7: sim-clean 1/2/3-drone, never flown</span><br><span class="pill pill-go" style="margin-top:4px">9: sim-clean, verified, never flown (2026-09-23)</span></td>
         </tr>
         <tr>
           <td class="num">2</td>
@@ -243,10 +258,10 @@ footer code{background:none;padding:0}
         </tr>
         <tr>
           <td class="num">4</td>
-          <td><span class="strategy-name">Hybrid — NA-INDI</span></td>
+          <td><span class="strategy-name">Hybrid — NA-INDI</span> <span style="color:var(--hold);font-weight:600;font-size:.78rem">— not in the compared set</span></td>
           <td class="paper">Cobo-Briesewitz et al., <code style="background:none">use_nn=1</code></td>
-          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">verified ~1e-9, unstable in sim</span></td>
-          <td><span class="pill pill-hold">verified vs C, crashes in closed-loop sim</span></td>
+          <td class="mono"><span class="ctrl-tag ctrl-theirs">controller=8</span><br><span style="color:var(--muted);font-size:.78rem">verified ~1e-9, sim-clean 2026-09-18, never flown</span></td>
+          <td><span class="pill pill-open">out of scope — supervisor decision, Sep 2026 (docs/07, docs/34)</span></td>
         </tr>
         <tr>
           <td class="num">5</td>

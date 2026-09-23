@@ -212,17 +212,22 @@ parameter combinations, 0 failures**, with the extreme scenarios correctly refus
 
 ### ROS-sim verification status
 
+> ⚠️ **Update (2026-09-23):** the table below predates matrix completion — it's stale. Per
+> `docs/12_Sim_Formation_Validation_Report.md` (status line, unchanged for some time now): **complete
+> — 34 of 34 cases, 33 pass, 1 expected deviation, 0 defects.** The "31 vs 20/20 combinations"
+> mismatch between this section's prose above and its own table two lines below predates this
+> note too and has not been separately chased down — flagging rather than silently reconciling one
+> number into the other.
+
 | Layer | Status |
 |---|---|
 | Geometry vs each scenario's own spec (offline, through the written CSV) | ✅ 38/38 parameter cases |
 | Safety gate (speed, accel, separation, geofence, extreme gating) | ✅ 20/20 combinations |
-| **ROS-sim end-to-end, geometric** | 🔄 matrix running |
-| **ROS-sim end-to-end, full INDI** | 🔄 matrix running |
-| 3-robot scenarios (B1/B2/B3, C1–C3) | 🔄 unblocked by `crazyflies_sim3.yaml`, in the matrix |
+| **ROS-sim end-to-end, geometric + full INDI, all scenarios (incl. 3-robot)** | ✅ **complete — 34/34 cases, 33 pass, 1 expected deviation, 0 defects** (see note above) |
 | Hardware | ⬜ nothing has flown |
 
-Live results: `experiments/sim_validation/matrix_results.md`. Full write-up when the matrix
-finishes: `docs/12_Sim_Formation_Validation_Report.md`.
+Live results: `experiments/sim_validation/matrix_results.md`. Full write-up:
+`docs/12_Sim_Formation_Validation_Report.md`.
 
 **Pass criteria:** mean |Δz error| < 50 mm, mean horizontal error < 80 mm, no divergence
 (automatic fail above 60° tilt), and the fraction of the trajectory actually recorded is
