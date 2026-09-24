@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 23 Sep 2026 · next lab: A4 only (A2 done 23 Sep)</div>
+  <div class="eyebrow">Flight readiness — updated 24 Sep 2026 · today: A4 ×4 closes C.1, then Omar (c=9) hardware ladder if time allows</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -395,6 +395,59 @@ footer{
       Session · <code>docs/lab_sessions/2026-09-23.md</code> · pairing ·
       <code>experiments/logs/usd_raw/2026-09-23_PAIRING.md</code>
     </p>
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Omar INDI (<code>c=9</code>) hardware ladder — after A4, same session OK</h3>
+  <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 .6em">
+      <strong>Sequencing: finish A4 ×4 first, cf5 stays on <code>controller: 6</code> until then.</strong>
+      Everything below is prepared (firmware built/verified, RPM deck confirmed attached, yaml
+      still correctly on 6) — the only thing not yet physically done is the uSD card swap.
+      Full audit: <code>docs/44_Controller9_Omar_Hardware_Validation_Prompt.md</code>.</p>
+    <table class="compact">
+      <thead><tr><th>Step</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1 — uSD card</td>
+          <td>Pull <strong>cf5's card only</strong> (cf_second stays Lee, keeps its normal config), mount it, then:<br>
+            <code>cp flying_drone_stack/tools/usd_omar_indi_config.txt /media/&lt;sd&gt;/config.txt</code><br>
+            Remount on the drone before flying.</td>
+        </tr>
+        <tr>
+          <td>2 — yaml</td>
+          <td>Per-robot override on <strong>cf5 only</strong>: <code>controller: 9</code>. Do not touch
+            the shared <code>all:</code> block or <code>cf_second</code> (<code>controller: 5</code>).
+            Lab-side override only — not committed.</td>
+        </tr>
+        <tr>
+          <td>3 — inertia</td>
+          <td>Fly Omar's default <code>J</code> first (no change needed — already compiled in).
+            If a hop shows unexplained oscillation, quick fallback with <strong>no reflash</strong>:
+            write <code>ctrlOmarIndi.J_x/J_y/J_z</code> via cfclient to
+            <code>23.951e-6 / 23.951e-6 / 32.347e-6</code> (this airframe's real measured inertia).</td>
+        </tr>
+        <tr>
+          <td>4 — ladder</td>
+          <td>Single-drone <code>simple_flight --pin-controller</code>: hover → figure8/circle,
+            conservative speed/height. If clean → 2-drone <strong>A8 only</strong>
+            (<code>dz</code> 0.20–0.25&nbsp;m, fixed-<code>dz</code> vertical swap) — one scenario is
+            enough for this pass. Abort on growing roll/pitch oscillation within ~1&nbsp;s of
+            trajectory start, same discipline as <code>c=7/8</code>.</td>
+        </tr>
+        <tr>
+          <td>5 — restore</td>
+          <td><strong>Mandatory before any further C.1 flying:</strong> cf5 yaml back to
+            <code>controller: 6, ctrl_mode: 0</code>, and cf5's card back to
+            <code>cp flying_drone_stack/tools/usd_thesis_config.txt /media/&lt;sd&gt;/config.txt</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note"><strong>Logging note:</strong> the standing thesis uSD config's
+      <code>indi.*</code>/<code>rnn.*</code> channels go stale under <code>c=9</code> — it has its
+      own <code>ctrlOmarIndi.*</code> log group. <code>usd_omar_indi_config.txt</code> swaps those
+      17 dead slots for his own thrust/torque/error/residual-equivalent fields
+      (<code>a_rpm_f*</code> − <code>a_imu_f*</code> = his INDI residual), same 48-channel budget,
+      500&nbsp;Hz, same shared state/gyro/acc/RPM channels as always.</p>
   </div>
 
   <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Desk window (before next lab)</h3>
