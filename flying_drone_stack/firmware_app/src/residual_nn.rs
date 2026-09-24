@@ -69,10 +69,19 @@
 //!    longer to upload a full weight set — worth revisiting before this is actually used.
 //! 2. RAM: `[f32; 19297]` is ~77 KB, versus the previous ~4 KB. Free RAM at last build was
 //!    ~33-34 KB (see `firmware_app/CLAUDE.md` build output) — **this will not fit as-is** and
-//!    must be resolved (e.g. dropping the unused `phi_L`/`rho_L` weights for this project's
-//!    homogeneous fleet, or moving the array to CCM/flash-backed storage) before this compiles
-//!    for the actual target, let alone flies. Flagged here rather than worked around, since the
-//!    resolution changes what "the exact architecture" means for an unused sub-network.
+//!    must be resolved before this compiles for the actual target, let alone flies. Flagged here
+//!    rather than worked around, since the resolution changes what "the exact architecture" means
+//!    for an unused sub-network.
+//!
+//!    **Update 2026-09-14, same day (`docs/07` History (29)): operator's explicit, standing
+//!    decision — the network is never modified to fix this. No dropping `phi_L`/`rho_L`, no
+//!    quantization, no layer-size changes.** "Leave the architecture exactly as ported... it
+//!    should work out of the box as it is." Whatever resolves the RAM overflow has to come from
+//!    elsewhere in the firmware (moving other data to CCM, flash-resident weights read-only at
+//!    inference, subsystem trimming) — not from this file. An earlier draft of this paragraph
+//!    listed "dropping phi_L/rho_L" as an example fix; that predates and is superseded by this
+//!    decision. See `docs/07`'s "Investigation" entries (2026-09-24) for a full ranked survey of
+//!    non-network approaches — confirmed real-firmware overflow: 40732 bytes.
 
 #![allow(dead_code)]
 
