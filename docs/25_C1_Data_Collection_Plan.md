@@ -27,9 +27,11 @@ Training-eligible uSD: `experiments/logs/c1_2026-09-23_merged/manifest_2026-09-2
 | C-1/C-2 **A4** | **Not flown** | Next lab priority |
 | D-1…D-3 **C5** | **Done** | 23 Sep — use CLI **`--height`**, not `--z` |
 
-Next lab: **A4 ×4** → optional **A1 @ 0.20** 2nd rep. Pull/rebuild
-**crazyswarm2** for **A2 lab defaults** (`height 0.45`, `radius 0.40`, `rotate 90°`). See
-`docs/next_flight_card.html`.
+Next lab: **A4 ×4** → optional **A1 @ 0.20** 2nd rep. **A2 (B-4) already 2/2 merged** on 23 Sep
+(legacy 1.0 m / r=0.75); optional refly only if you want tighter track — after **`git pull` +
+`colcon build`** in **crazyswarm2**, A2 circle auto-uses **`height 0.45`, `radius 0.40`,
+`rotate 90°`** (fixes the bug where only `radius is None` was patched while `scenarios.A2`
+still defaulted to **0.75 m**). See `docs/next_flight_card.html`.
 
 **Coverage grid (2026-09-21 desk) — ⚠️ SUPERSEDED by the "Progress" table above.** Kept verbatim
 as a dated snapshot (do not edit its rows); every "Not flown"/"Unmergeable" cell below was
