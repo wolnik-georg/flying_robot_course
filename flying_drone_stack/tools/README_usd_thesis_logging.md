@@ -18,6 +18,16 @@ Requires the **Micro SD card deck** on each drone.
 sudo mkfs.vfat -F 32 -n THESIS /dev/<sd>1
 cp flying_drone_stack/tools/usd_thesis_config.txt /media/<sd>/config.txt
 
+# Diagnostic variant (2026-09-24, mocap/EKF investigation): swaps the currently-unused
+# rnn.pred_*/rnn.clamped slots (rnn.en=0, no trained weights on any drone right now, so this
+# costs nothing) for locSrv.x/y/z + locSrvZ.tick -- the RAW external pose the firmware receives
+# via send_extpose, and how stale it is, logged independently of stateEstimate.* (the EKF's own
+# fused output). The standing config only ever showed the fused result, so a bad-pose incident
+# could never be told apart from a bad-fusion incident after the fact. Use this one instead of
+# usd_thesis_config.txt for any session investigating position/attitude anomalies:
+#   cp flying_drone_stack/tools/usd_mocap_diagnostic_config.txt /media/<sd>/config.txt
+# Swap back to usd_thesis_config.txt before resuming normal C.1 collection.
+
 # 2. card into the deck, power-cycle the drone, then confirm the deck came up.
 #    Safe to run as many times as you like -- reads two read-only status params
 #    (usd.bcUSD, usd.canLog) and never touches usd.logging, so it cannot contaminate

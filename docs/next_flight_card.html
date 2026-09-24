@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 24 Sep 2026 · today: A4 ×4 closes C.1, then Omar (c=9) hardware ladder if time allows</div>
+  <div class="eyebrow">Flight readiness — updated 24 Sep 2026 · ⚠️ HOLD on formation flights — root-cause test required first</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -124,6 +124,46 @@ footer{
     uSD dual-RPM · <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code>
   </p>
 </header>
+
+<section>
+  <h2>⚠️ Do this first — 24 Sep regression, before any more C.1</h2>
+  <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
+      <strong>24 Sep A4/A1 flights showed real, physical instability</strong> — confirmed from raw
+      IMU (gyro/accel), not just a logging artifact. <strong>cf5</strong>: calm attitude
+      (&lt;1.5°) but its position estimate ran away smoothly (dead-reckoning-style drift).
+      <strong>cf_second</strong>: genuine attitude tumbles (roll to 148°+, confirmed by real
+      sustained gyro rates 200–735°/s, not an estimate glitch). Leading suspect: a same-day
+      geofence tightening (1.70→1.30 m) plus a new auto-height-clamp silently moved A1/A4 flights
+      to a height (0.77 m) that has <strong>never been flight-tested</strong> — the config that
+      worked on 23 Sep used 1.0 m. Not proven yet — root-cause investigation, not a confirmed
+      fix. Full account: this session's conversation record; a dated writeup
+      (<code>docs/lab_sessions/2026-09-24.md</code>) should be created once this resolves.</p>
+    <table class="compact">
+      <thead><tr><th>Step</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>0 — logging</td><td>Copy <code>usd_mocap_diagnostic_config.txt</code> to
+          <strong>both</strong> cards before any test flight — logs raw external pose
+          (<code>locSrv.*</code>) alongside the EKF's fused output, so this can be told apart
+          from a fusion bug if it recurs. Swap back to <code>usd_thesis_config.txt</code> once
+          resolved.</td></tr>
+        <tr><td>1 — baseline</td><td><code>--scenario A1 --dz 0.30 --hold 15</code> — confirmed
+          byte-identical to 23 Sep, should be clean. Confirms nothing else broke.</td></tr>
+        <tr><td>2 — reproduce</td><td><code>--scenario A1 --dz 0.50 --hold 15</code> — the exact
+          clamped (0.77 m) config from yesterday's bad flights. Watch closely.</td></tr>
+        <tr><td>3 — decisive test</td><td>Temporarily bypass <code>clamp_height_for_mocap_z</code>
+          in <code>run_formation.py</code> (one-line, scripted, revert immediately after — see
+          conversation record for the exact <code>sed</code>/<code>git checkout</code> pair), fly
+          the same A1@dz=0.50 at the old 1.0 m height. Clean here + bad at 0.77 m ⇒ height theory
+          confirmed. Bad at both ⇒ look elsewhere (firmware/gains/hardware).</td></tr>
+        <tr><td>4 — mocap check</td><td>Single-drone <code>simple_flight</code> hover at exactly
+          0.77 m and 1.27 m, watching Motive directly for marker dropout at those heights.</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><strong>Do not resume A4/C.1 formation flights until this is resolved</strong> —
+      today's clamped-height flights should not be merged into C.1 training data.</p>
+  </div>
+</section>
 
 <section>
   <h2>Meeting follow-up — next ~week</h2>
