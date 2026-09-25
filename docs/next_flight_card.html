@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 24 Sep 2026 · ⚠️ HOLD on formation flights — root-cause test required first</div>
+  <div class="eyebrow">Flight readiness — updated 25 Sep 2026 · fix landed (crazyswarm2 32b6e5e) — confirm clean, then resume C.1</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -126,7 +126,7 @@ footer{
 </header>
 
 <section>
-  <h2>⚠️ Do this first — 24 Sep regression, before any more C.1</h2>
+  <h2>⚠️ Do this first — confirm the 25 Sep fix, before any more C.1</h2>
   <div class="panel warn">
     <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
       <strong>24 Sep A4/A1 flights showed real, physical instability</strong> — confirmed from raw
@@ -135,33 +135,43 @@ footer{
       <strong>cf_second</strong>: genuine attitude tumbles (roll to 148°+, confirmed by real
       sustained gyro rates 200–735°/s, not an estimate glitch). Leading suspect: a same-day
       geofence tightening (1.70→1.30 m) plus a new auto-height-clamp silently moved A1/A4 flights
-      to a height (0.77 m) that has <strong>never been flight-tested</strong> — the config that
-      worked on 23 Sep used 1.0 m. Not proven yet — root-cause investigation, not a confirmed
-      fix. Full account: this session's conversation record; a dated writeup
-      (<code>docs/lab_sessions/2026-09-24.md</code>) should be created once this resolves.</p>
+      to a height (0.77 m) that had <strong>never been flight-tested</strong> — the config that
+      worked on 23 Sep used 1.0 m.</p>
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
+      <strong>25 Sep: fixed, not just diagnosed.</strong> <code>crazyswarm2</code>
+      <code>32b6e5e</code> reverts <code>FLIGHT_SPACE</code> z back to the tape-measured
+      <strong>(0.0, 1.70)</strong>, and turns the auto-height-clamp
+      (<code>clamp_height_for_mocap_z</code>, plus A2's own equivalent) from a silent
+      substitution into a <strong>hard refuse-to-launch</strong> — every height that flies from
+      now on is one a human chose, never one code picked silently. Re-verified end to end: A1/A3/
+      A4/A7/A8 at their real C.1 parameters all recompute back to <strong>height=1.0</strong>
+      (no clamp needed at all) under the restored ceiling — exactly what flew clean on 23 Sep. A
+      deliberately-too-tall request now refuses with a clear message instead of substituting
+      (tested). Root cause of *why* 0.77m specifically caused real instability is still not
+      proven — but the untested-silent-substitution design is gone regardless of the ultimate
+      cause.</p>
     <table class="compact">
       <thead><tr><th>Step</th><th>Action</th></tr></thead>
       <tbody>
-        <tr><td>0 — logging</td><td>Copy <code>usd_mocap_diagnostic_config.txt</code> to
-          <strong>both</strong> cards before any test flight — logs raw external pose
-          (<code>locSrv.*</code>) alongside the EKF's fused output, so this can be told apart
-          from a fusion bug if it recurs. Swap back to <code>usd_thesis_config.txt</code> once
-          resolved.</td></tr>
-        <tr><td>1 — baseline</td><td><code>--scenario A1 --dz 0.30 --hold 15</code> — confirmed
-          byte-identical to 23 Sep, should be clean. Confirms nothing else broke.</td></tr>
-        <tr><td>2 — reproduce</td><td><code>--scenario A1 --dz 0.50 --hold 15</code> — the exact
-          clamped (0.77 m) config from yesterday's bad flights. Watch closely.</td></tr>
-        <tr><td>3 — decisive test</td><td>Temporarily bypass <code>clamp_height_for_mocap_z</code>
-          in <code>run_formation.py</code> (one-line, scripted, revert immediately after — see
-          conversation record for the exact <code>sed</code>/<code>git checkout</code> pair), fly
-          the same A1@dz=0.50 at the old 1.0 m height. Clean here + bad at 0.77 m ⇒ height theory
-          confirmed. Bad at both ⇒ look elsewhere (firmware/gains/hardware).</td></tr>
-        <tr><td>4 — mocap check</td><td>Single-drone <code>simple_flight</code> hover at exactly
-          0.77 m and 1.27 m, watching Motive directly for marker dropout at those heights.</td></tr>
+        <tr><td>0 — sync</td><td><code>git pull</code> both repos on the lab PC; confirm
+          <code>crazyswarm2</code> HEAD includes <code>32b6e5e</code> or later; rebuild
+          (<code>colcon build --packages-select crazyflie_examples --symlink-install</code>).</td></tr>
+        <tr><td>1 — logging</td><td>Copy <code>usd_mocap_diagnostic_config.txt</code> to
+          <strong>both</strong> cards before the confirmation flights — logs raw external pose
+          (<code>locSrv.*</code>) alongside the EKF's fused output, so a repeat incident can be
+          told apart from a pure fusion bug. Swap back to <code>usd_thesis_config.txt</code>
+          once confirmed clean.</td></tr>
+        <tr><td>2 — single-drone</td><td><code>simple_flight</code> hover, one drone,
+          <code>--pin-controller</code> — cheapest sanity check first.</td></tr>
+        <tr><td>3 — confirm the fix</td><td><code>--scenario A1 --dz 0.30 --hold 15</code> then
+          <code>--scenario A1 --dz 0.50 --hold 15</code> — both now fly at height=1.0
+          automatically (no clamp, no manual override needed). Both should be clean; the second
+          is the exact config that misbehaved on 24 Sep.</td></tr>
       </tbody>
     </table>
-    <p class="note"><strong>Do not resume A4/C.1 formation flights until this is resolved</strong> —
-      today's clamped-height flights should not be merged into C.1 training data.</p>
+    <p class="note"><strong>Do not resume A4/C.1 formation flights until step 3 is confirmed
+      clean</strong> — 24 Sep's clamped-height flights should not be merged into C.1 training
+      data.</p>
   </div>
 </section>
 
