@@ -481,11 +481,12 @@ Lag sweep ±10 samples @ 100 Hz on in-air rows: corr rises smoothly from **0.395
 are sampled from the same controller pass in SIL (`crazyflie_sil.py`); residual CSV is 100 Hz
 decimation of that state. At most ~100 ms lead — **not** an off-by-one-tick logging bug.
 
-### 2. Aggregate correlation artifact — **partially yes**
+### 2. Aggregate correlation — **do not use in-air 0.466 as “model quality”**
 
-Including ground/spawn rows ( `z ≤ 0.05` ) mixes zeros and produces **corr ≈ 0.16** on all **5205**
-rows. **In-air only (`n=4046`): corr ≈ 0.47** (cf231_active) — still poor RMSE because predictions
-sit on the clamp.
+Including ground/spawn rows (`z ≤ 0.05`) mixes zeros and produces **corr ≈ 0.16** on all rows.
+**In-air aggregate (`n=4046`): corr ≈ 0.466** — but that number is **not** representative of general
+behavior in this run (see §4); it is dominated by a small close-encounter subset while most
+in-air ticks show no usable correlation.
 
 ### 3. Clamp saturation + label scale mismatch — **primary**
 
@@ -499,27 +500,44 @@ The network’s **unclamped** output is far above **8 m/s²** for nearly every i
 logged prediction is the safety limiter, not the learned function. Training targets are mostly
 **−1…−3 m/s²** downwash; SIL `a_res_z` under `backend=neuralswarm` is **much smaller in magnitude**
 (simulation geometric residual vs. physics downwash already in the backend) — comparing clamped
-multi‑m/s² predictions to ~0.1 m/s² residuals yields high RMSE but moderate correlation when
-horizontally close (**corr ≈ 0.47** in the closest horizontal tertile).
+multi‑m/s² predictions to ~0.1 m/s² residuals yields high RMSE; any apparent correlation is
+confined to close-encounter subsets (§4), not the bulk of the trajectory.
 
 Gated input features in SIL are **in-family** (dx/dy/dz/dvx quantiles overlap training) — not a
 clean “out of training hypercube” shift; the dominant issue is **output scale / semantic mismatch
 of a_res in this SIL setup**, not missing neighbours.
 
-### 4. Per-phase
+### 4. Per-phase (from `sil_predict_diagnosis.json`, in-air rows)
 
-Clamp rate **≈100%** in all horizontal tertiles; correlation is meaningful only when horizontally
-close; far tertile has near-constant clamped pred → corr undefined/NaN.
+Clamp rate **≈100%** in all horizontal tertiles. Correlation vs `a_res_z` **only when peers are
+close enough to matter**:
 
-**Conclusion:** **Not a timing bug.** **Not “model useless” on offline val** (full-bank RMSE 0.28
-m/s² on real logs). The open-loop SIL metric was **dominated by OUT_CLAMP saturation** and
-**comparing training-scale downwash labels to sim-scale `a_res`**. Follow-up (out of scope here):
-SIL collect with `backend=np` to match C.1 lab physics, or evaluate predict-vs-measured only on
-hardware logs; do **not** interpret clamp-saturated SIL RMSE as offline generalization failure.
+| Slice | n (in-air) | corr(`a_res_z`, `rnn_pred_z`) | clamp fraction |
+|-------|----------:|------------------------------:|---------------:|
+| **close_horiz** (closest tertile) | 1335 | **0.473** | ~100% |
+| **mid_horiz** | 1335 | **0.039** | ~100% |
+| **far_horiz** | 1376 | **NaN** (undefined) | ~100% |
+| **gated_true** (firmware gate: &#124;dx&#124;,&#124;dy&#124;&lt;0.2 m, &#124;dvx&#124;&lt;1.5 m/s) | 400 (~10%) | **0.177** | ~99.8% |
+| **gated_false** | 3646 (~90%) | **0.017** | ~99.97% |
 
-**Stage E implication:** Closed-loop **go/no-fly** (`rnn.en=1`) can still pass stability while
-predictions are clamp-saturated — same as 21 Sep pattern. Compensation is **not** validated as
-physically correct from this SIL run.
+**far_horiz** correlation is **NaN** because predictions are ~100% clamped at ±8 m/s² — no variance
+left to correlate. **gated_false** corr **0.017** is effectively zero for ~90% of in-air samples.
+
+**One-line conclusion (correlation):** In this SIL run, alignment with measured `a_res_z` appears
+**only when the neighbour is close enough to pass the firmware influence gate**; elsewhere the
+logged prediction is clamp-saturated and uncorrelated with the residual — **do not cite in-air
+corr ≈ 0.47 as general model behavior** (that figure is dominated by the close_horiz tertile, not
+the gated_true/false split above).
+
+**Conclusion (overall):** **Not a timing bug.** **Not “model useless” on offline val** (full-bank
+RMSE 0.28 m/s² on real logs). The open-loop SIL metric was **dominated by OUT_CLAMP saturation**
+and **comparing training-scale downwash labels to sim-scale `a_res`**. Follow-up (out of scope
+here): SIL with `backend=np` to match C.1 lab physics, or hardware `rnn.en=0` logs at training
+scale; do **not** interpret clamp-saturated SIL RMSE as offline generalization failure.
+
+**Stage E implication:** A tilt-only **pass** does **not** mean safe closed-loop flight — see §
+Stage D/E altitude finding below. Predictions remain clamp-saturated; compensation is **not**
+validated as physically correct from this SIL run.
 
 ---
 
@@ -549,3 +567,18 @@ Per `docs/40` § Stage E: **stability gate**, not quality. A3 dz=0.30, neuralswa
 
 **pass: true** (`c2_fullbank_stage_e.json`). Predict/compensate both show `rnn_pred_z_rms ≈ 7.7`
 (clamp-saturated — consistent with § Diagnosis above).
+
+#### Finding — Stage E gate is tilt-only; altitude overshoot under `rnn.en=1`
+
+`c2_stage_e_summary.py` sets **`diverged`** from formation verification’s **`max_tilt > 60°`**
+check only — it does **not** evaluate position, altitude, or tracking error. A run can **pass**
+Stage E while a drone overshoots height by tens of centimetres.
+
+**Measured (compensate arm, full-bank weights):** **`cf_second.z_max = 1.772656 m`** vs
+**`cmd_z_max = 1.300008 m`** — roughly **0.47 m altitude overshoot** with **`rnn.en=1`**. This
+still reported **`diverged: false`** because tilt stayed below threshold.
+
+**Do not fly closed-loop (`rnn.en=1`) on hardware yet** based on this Stage E pass alone. Treat
+the overshoot as an **open safety concern** until it is explained (e.g. A3 dz=0.30 + neuralswarm
+backend-specific vs general) or the Stage E gate adds an explicit position/altitude criterion.
+This pass documents the finding only — no overshoot fix or gate change here.
