@@ -37,6 +37,8 @@ Two failure modes carried over from the old suite, still worth catching:
 
 Run:  python3 host/test_residual_nn.py
 
+Flash-resident parity (upload vs `residual_nn_flash`): `../tools/residual/test_flash_vs_upload.py`.
+
 Needs the SIL bindings built *with the residual_nn feature*, which is OFF by default (it costs
 ~77 KB of .bss and overflows real firmware RAM):
 
