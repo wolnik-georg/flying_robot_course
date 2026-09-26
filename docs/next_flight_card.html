@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 26 Sep 2026 · ⚠️ BLOCKED — facility mocap fault (not software); software fix ready, unconfirmed</div>
+  <div class="eyebrow">Flight readiness — updated 26 Sep 2026 · ⚠️ FULLY BLOCKED — lab (facility mocap fault) AND desk (all C.2/RPM/z-tracking work closed out, nothing left to do without flight data)</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -136,6 +136,16 @@ footer{
       everything below. <strong>This needs someone to fix the mocap rigid-body setup — it is not
       a desk task.</strong> Nothing flies again until it's resolved. Full account:
       <code>docs/lab_sessions/2026-09-24_to_26.md</code>.</p>
+    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
+      <strong>Desk work is now also exhausted (26 Sep).</strong> Every desk-actionable item on the
+      current critical path is done and independently re-verified: RPM dual-source quality
+      (<code>docs/43</code>), the 21 Sep z-tracking merge gap (closed by the 23 Sep reflies), the
+      C.2 residual pipeline + flash-resident RNN + its gap-closure follow-up (<code>docs/40</code>,
+      <code>docs/45</code>), and <code>controller=9</code> (Omar's literal INDI port, sim-validated,
+      never flown). What's left in each of these — A4 data, hardware RPM validation at real gains,
+      SIL model-quality/altitude-overshoot open findings, and every unflown controller
+      (<code>c=7/8/9</code>) — all require actual flight time, not more desk work. There is
+      currently nothing queued that doesn't wait on this mocap fix.</p>
   </div>
 </section>
 
@@ -214,7 +224,7 @@ footer{
       <li><strong>RPM source quality (desk done 2026-09-23)</strong> — deck vs DShot on all 29 C.1 merges: <a href="43_RPM_Source_Quality.html">page</a> · <a href="43_RPM_Source_Quality.md"><code>docs/43_RPM_Source_Quality.md</code></a> + <code>experiments/analysis/out/rpm_source_quality/</code>. Keep dual logging on card; C.1 training still uses <code>a_res</code> from DShot path.</li>
       <li><strong>Z tracking</strong> — the 21 Sep A1 z-tracking gaps this diagnostic chased are now closed by the 23 Sep reflies (A-3/A-4 done, tag-paired) — no longer an open desk item. Historical account: <code>experiments/analysis/c1_a1_z_diagnostic_2026_09_21.py</code> → <code>a1_z_diagnostic.json</code>.</li>
       <li><strong>C.1 — Neural-Swarm2 data collection</strong> — geometric on <code>cf5</code>; only <strong>A4 (C-1/C-2, ×4)</strong> remains — see plan tracker below (<code>docs/25</code>).</li>
-      <li><strong>C.2 desk (2026-09-26)</strong> — 18-file bank LOO, Stage C pass, SIL predict with <code>full_bank_40.npz</code>; flash-resident onboard path links (<code>docs/40</code>, <code>docs/45</code>). <strong>A4 ×4</strong> still required before deploy trust.</li>
+      <li><strong>C.2 desk — CLOSED, all-clear (2026-09-26)</strong> — 17-fold LOO, Stage C pass, full-bank Stage D/E, SIL diagnosis, flash-resident onboard path (<code>docs/40</code>, <code>docs/45</code>), plus a verified gap-closure follow-up (sharper gated correlation breakdown; <strong>cf_second ~0.47m altitude overshoot</strong> under closed-loop <code>rnn.en=1</code> flagged as an open safety concern, tilt-only Stage E gate doesn't catch it). <strong>Do not fly <code>rnn.en=1</code> on hardware</strong> until that's explained. <strong>A4 ×4</strong> still required before deploy trust; nothing further is desk-actionable here.</li>
       <li><strong>Finalize INDI baseline</strong> (parallel, before large C.4) — our geo + our full INDI; stock INDI; Briesewitz <code>c=7</code>. <strong>Supervisor's own INDI (<code>c=9</code>)</strong> is now a literal C port, numerically verified and sim-validated end to end (<code>docs/41</code> §8) — same never-flown status as <code>c=7</code>/<code>8</code>, ready for the same hardware ladder whenever prioritized.</li>
     </ul>
   </div>
