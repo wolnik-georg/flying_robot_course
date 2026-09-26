@@ -130,6 +130,41 @@ Progress vs collection plan: [`25_C1_Data_Collection_Plan.md`](25_C1_Data_Collec
 
 ---
 
+## Catalog — 2026-09-23 (A1/A2/A3/A7/C5, geometric)
+
+**Geometric only on cf5** (`controller: 6`, `ctrl_mode: 0`) — C.1 collection flights, not a
+geo-vs-INDI comparison. Scenario-window metrics from
+`experiments/analysis/out/c1_2026-09-23/c1_2026-09-23_phase_metrics_all.csv` (phase=`scenario`,
+`vehicle_id=cf5`); produced by `experiments/analysis/run_c1_2026_09_23_suite.py` (2026-09-26 desk
+run). Attitude/gyro columns **n/a** (same compare-path limitation as the 21 Sep block).
+
+| Strategy / controller | pos RMS x | pos RMS y | pos RMS z | **pos RMS ‖e‖** | max ‖e‖ | roll std | pitch std | yaw std | gyro std x | `a_res_z` peak | run |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Geometric** A1 | 54.5 mm | 58.9 mm | 178.1 mm | **195.3 mm** | 260.7 mm | — | — | — | — | — | 2026-09-23_17-17-26 |
+| **Geometric** A1 | 49.2 mm | 53.3 mm | 199.7 mm | **212.5 mm** | 257.2 mm | — | — | — | — | — | 2026-09-23_17-18-48 |
+| **Geometric** A1 | 45.1 mm | 32.3 mm | 166.5 mm | **175.5 mm** | 223.0 mm | — | — | — | — | — | 2026-09-23_17-36-06 |
+| **Geometric** A1 | 45.7 mm | 31.5 mm | 163.4 mm | **172.5 mm** | 225.4 mm | — | — | — | — | — | 2026-09-23_17-37-26 |
+| **Geometric** A2 | 34.9 mm | 25.8 mm | 85.6 mm | **96.0 mm** | 217.6 mm | — | — | — | — | — | 2026-09-23_19-21-05 |
+| **Geometric** A2 | 30.7 mm | 27.6 mm | 85.1 mm | **94.6 mm** | 217.6 mm | — | — | — | — | — | 2026-09-23_19-27-03 |
+| **Geometric** A3 | 34.2 mm | 7.3 mm | 40.1 mm | **53.2 mm** | 182.9 mm | — | — | — | — | — | 2026-09-23_17-45-03 |
+| **Geometric** A3 | 34.0 mm | 8.0 mm | 41.4 mm | **54.2 mm** | 181.1 mm | — | — | — | — | — | 2026-09-23_17-46-43 |
+| **Geometric** A3 | 34.7 mm | 8.8 mm | 46.4 mm | **58.6 mm** | 226.7 mm | — | — | — | — | — | 2026-09-23_17-54-32 |
+| **Geometric** A3 | 35.9 mm | 10.9 mm | 46.2 mm | **59.5 mm** | 237.1 mm | — | — | — | — | — | 2026-09-23_17-57-32 |
+| **Geometric** A7 | 27.5 mm | 35.3 mm | 99.3 mm | **108.9 mm** | 192.6 mm | — | — | — | — | — | 2026-09-23_19-11-19 |
+| **Geometric** A7 | 30.7 mm | 33.5 mm | 102.6 mm | **112.2 mm** | 199.7 mm | — | — | — | — | — | 2026-09-23_19-12-38 |
+| **Geometric** A7 | 26.1 mm | 33.2 mm | 100.3 mm | **108.9 mm** | 202.0 mm | — | — | — | — | — | 2026-09-23_19-13-55 |
+| **Geometric** C5 | 25.7 mm | 1.4 mm | 22.7 mm | **34.3 mm** | 40.0 mm | — | — | — | — | — | 2026-09-23_18-06-27 |
+| **Geometric** C5 | 7.0 mm | 2.8 mm | 23.3 mm | **24.5 mm** | 28.4 mm | — | — | — | — | — | 2026-09-23_18-08-14 |
+| **Geometric** C5 | 7.0 mm | 4.0 mm | 25.0 mm | **26.3 mm** | 30.4 mm | — | — | — | — | — | 2026-09-23_18-16-49 |
+| **Geometric** C5 | 6.4 mm | 4.8 mm | 25.0 mm | **26.3 mm** | 31.9 mm | — | — | — | — | — | 2026-09-23_18-17-45 |
+| **Geometric** C5 | 7.2 mm | 3.5 mm | 24.1 mm | **25.4 mm** | 29.5 mm | — | — | — | — | — | 2026-09-23_18-18-41 |
+| **Geometric** C5 | 7.6 mm | 4.1 mm | 20.0 mm | **21.8 mm** | 27.4 mm | — | — | — | — | — | 2026-09-23_18-21-19 |
+
+Manifest: `experiments/logs/c1_2026-09-23_merged/manifest_2026-09-23_c1.json` (**19** training
+merges). Combined with the 21 Sep block above → **24** banked C.1 training merges before A4.
+
+---
+
 ## Reproducing the numbers
 
 Logs live in `experiments/logs/` as `A8_<drone>_<date>_<time>.csv` with an

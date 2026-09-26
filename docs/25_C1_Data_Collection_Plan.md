@@ -5,6 +5,18 @@ its own, so stopping early still yields a trainable set.
 
 ---
 
+**Update — 2026-09-26 (desk):** **Lab blocked on facility mocap attitude** — single-drone tests
+show ~**154°** / **−3.14 rad** roll while the craft is **physically level**; **position centroid
+stable**. Leading theory: **OptiTrack rigid-body / marker–`active_deck` mismatch**, not application
+code. **Distinct from the 24 Sep software regression**, which is **closed in repo**
+(`crazyswarm2` **`32b6e5e`**: geofence z restored, silent height clamp → hard refuse) — that fix
+is **not yet re-flown** because of this **separate** mocap fault. **Do not merge 24 Sep uSD into
+C.1 training.** Session narrative: [`lab_sessions/2026-09-24_to_26.md`](lab_sessions/2026-09-24_to_26.md).
+**Desk while blocked:** 23 Sep C.1 analysis suite, `docs/24` catalog, C.2 full-bank validation
+(`docs/40`).
+
+---
+
 ## Progress — 2026-09-23 lab (+ 21 Sep bank)
 
 Training-eligible uSD: `experiments/logs/c1_2026-09-23_merged/manifest_2026-09-23_c1.json`
@@ -24,10 +36,11 @@ Training-eligible uSD: `experiments/logs/c1_2026-09-23_merged/manifest_2026-09-2
 | B-2 **A3** 0.50 ×2 | **2/2** | 21 Sep + 23 Sep B-2 reps |
 | B-3 **A3** 0.40 ×1+ | **2/2** | 23 Sep (extra rep OK) |
 | B-4 **A2** | **2/2 merged** | 23 Sep `19-21-05`, `19-27-03` (legacy circle profile) |
-| C-1/C-2 **A4** | **Not flown** | Next lab priority |
+| C-1/C-2 **A4** | **Not flown** | **Blocked:** facility mocap (26 Sep) — then next lab priority |
 | D-1…D-3 **C5** | **Done** | 23 Sep — use CLI **`--height`**, not `--z` |
 
-Next lab: **A4 ×4** → optional **A1 @ 0.20** 2nd rep. **A2 (B-4) already 2/2 merged** on 23 Sep
+Next lab (after mocap restored + flight-card regression confirm): **A4 ×4** → optional **A1 @ 0.20**
+2nd rep. **A2 (B-4) already 2/2 merged** on 23 Sep
 (legacy 1.0 m / r=0.75); optional refly only if you want tighter track — after **`git pull` +
 `colcon build`** in **crazyswarm2**, A2 circle auto-uses **`height 0.45`, `radius 0.40`,
 `rotate 90°`** (fixes the bug where only `radius is None` was patched while `scenarios.A2`

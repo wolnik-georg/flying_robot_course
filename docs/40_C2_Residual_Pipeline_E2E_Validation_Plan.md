@@ -1,8 +1,10 @@
 # 40 — C.2 Neural-Swarm2 residual pipeline: end-to-end validation plan (with real 2026-09-21 data)
 
-**Status:** **executed 2026-09-21** (Stages A–E desk/SIL). Artifacts:
+**Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Extended
+2026-09-26 (desk):** full **24-path** bank train — see § **Full bank — 2026-09-26** below. Artifacts:
 `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
-`C2_VALIDATION_REPORT.md`, `loo_weights/`). Docs updated: `13`, `07` C.2, `CLAUDE.md`,
+`C2_VALIDATION_REPORT.md`, `loo_weights/`). **2026-09-26:** `experiments/analysis/out/c2_e2e_2026-09-26/`.
+Docs updated: `13`, `07` C.2, `CLAUDE.md`,
 `tools/residual/README.md`. **Stage E re-run 2026-09-21 (evening): pass** after SIL plumbing fix
 (`docs/38`, `crazyswarm2` `crazyflie_sim`) — see
 `experiments/sim_validation/c2_e2e_stage_e.json` (`meaningful_flight: true`, 5k+ rows each arm).
@@ -316,3 +318,61 @@ person reads a confidently wrong blocker and re-derives this same investigation 
 
 Do not modify `experiments/logs/c1_2026-09-21_merged/` or its manifest — this validation reads
 that data, it does not change it. Do not fly anything — every stage here is desk/SIL-only.
+
+---
+
+## Full bank — 2026-09-26 (desk, lab blocked on mocap)
+
+**Inputs:** all **24** C.1 training merge paths (19× `manifest_2026-09-23_c1.json` +
+5× `training_eligible_crosswalk.json` on 21 Sep). **Read-only** on merged CSVs.
+
+### Stage A — row audit
+
+Artifact: `experiments/analysis/out/c2_e2e_2026-09-26/stage_a_full_bank.json`
+
+| Result | Detail |
+|--------|--------|
+| **18** files contribute rows | **181 489** training samples |
+| **6× C5** solo | skipped by `dataset.build` (no neighbour — expected) |
+| **A1 `13-25-10` (21 Sep)** | **0** kept rows (`a_res` zero — same as 2026-09-21 Stage A) |
+
+### Stage B — single full-bank train (40 epochs)
+
+```bash
+python3 flying_drone_stack/tools/residual/train.py <all 24 paths> --epochs 40 \
+  -o experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz
+```
+
+Log: `full_bank_train.log`. **Results (measured):**
+
+| Metric | Value |
+|--------|------:|
+| Val RMSE | **0.2806 m/s²** |
+| Predict-zero baseline | 1.2900 m/s² |
+| Reduction vs zero | **78.2%** |
+| Fold check max &#124;trained − exported&#124; | **1.17×10⁻⁶ m/s²** |
+
+**Not re-run:** full **leave-one-flight-out** on 18 files (would be 18× train jobs) — prior 21 Sep
+LOO remains the generalization reference until operator requests a long desk batch.
+
+### Stage C — loader ↔ firmware on **23 Sep** data
+
+```bash
+python3 flying_drone_stack/tools/residual/test_real_data_pipeline.py \
+  --weights experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz \
+  --csv experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/..._merged_usd.csv
+```
+
+| Check | Result |
+|-------|--------|
+| Sign sanity (peer above → `rel_z` > 0) | **PASS** |
+| NumPy vs firmware on real rows | **BLOCKED** — `FwHarness.upload()` returned **0** on this desk
+  (**2026-09-26**), including with the **2026-09-21 LOO weights** that passed Stage C when first run.
+  Likely **host `cffirmware` / `residual_nn` build drift**, not the new weights (fold check passed).
+  Rebuild per `test_pipeline.py` header before trusting a re-run. Log:
+  `stage_c_23sep_A3.log`. |
+
+Summary JSON: `experiments/analysis/out/c2_e2e_2026-09-26/c2_full_bank_report.json`.
+
+**Stages D–E:** not re-executed on the full bank in this pass (21 Sep SIL Stage E remains the
+closed-loop reference). After mocap returns, priority is lab regression — not SIL re-run.
