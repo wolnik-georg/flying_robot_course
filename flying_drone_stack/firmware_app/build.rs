@@ -79,4 +79,29 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Could not write bindings.rs");
+
+    // Flash-resident weights (`residual_nn_flash`): embed a trained .npz at compile time.
+    println!("cargo:rerun-if-env-changed=CF_RNN_WEIGHTS_NPZ");
+    println!("cargo:rerun-if-changed=../tools/residual/export_weights_rs.py");
+    if env::var("CARGO_FEATURE_RESIDUAL_NN_FLASH").is_ok() {
+        let npz = env::var("CF_RNN_WEIGHTS_NPZ").unwrap_or_else(|_| {
+            panic!(
+                "residual_nn_flash requires CF_RNN_WEIGHTS_NPZ pointing at a trained .npz \
+                 (19297 float32 weights)"
+            );
+        });
+        let out_rs = out_path.join("rnn_weights_embedded.rs");
+        let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let exporter = manifest_dir.join("../tools/residual/export_weights_rs.py");
+        let status = std::process::Command::new("python3")
+            .arg(&exporter)
+            .arg(&npz)
+            .arg(&out_rs)
+            .status()
+            .unwrap_or_else(|e| panic!("failed to run export_weights_rs.py: {e}"));
+        if !status.success() {
+            panic!("export_weights_rs.py failed for {npz}");
+        }
+        println!("cargo:rerun-if-changed={npz}");
+    }
 }

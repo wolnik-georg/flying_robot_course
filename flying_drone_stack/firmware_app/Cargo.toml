@@ -17,6 +17,10 @@ crate-type = ["staticlib"]
 # is allocated in THIS build's .bss.
 default = []
 residual_nn = []
+# Flash-resident weights (~77KB in .rodata, not .bss). Mutually exclusive with using
+# residual_nn alone for RAM upload — pass only one of {residual_nn, residual_nn_flash}.
+# Requires CF_RNN_WEIGHTS_NPZ pointing at a trained .npz at build time (build.rs).
+residual_nn_flash = []
 
 [dependencies]
 # Panic handler for bare-metal: halts CPU on panic (required for no_std).

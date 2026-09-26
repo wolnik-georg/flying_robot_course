@@ -769,7 +769,7 @@ static mut CTRL: State = State::zero();
 /// Neural-Swarm2 architecture port's weight array alone is ~77 KB and overflows real firmware
 /// RAM. This is a build-time toggle only -- residual_nn.rs itself is completely untouched, the
 /// feature just decides whether this static is allocated in THIS build's .bss.
-#[cfg(feature = "residual_nn")]
+#[cfg(any(feature = "residual_nn", feature = "residual_nn_flash"))]
 static mut RNN: ResidualNet = ResidualNet::new();
 
 /// Evaluate the learned residual from the peers the firmware already knows about.
@@ -784,7 +784,7 @@ static mut RNN: ResidualNet = ResidualNet::new();
 /// against measured residual IS the evaluation of every learned method here, and that
 /// comparison is only possible if the prediction is recorded on flights where it is not being
 /// used -- including flights under the geometric controller.
-#[cfg(feature = "residual_nn")]
+#[cfg(any(feature = "residual_nn", feature = "residual_nn_flash"))]
 unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
     const M: usize = residual_nn::MAX_NEIGHBOURS;
     let (mut xs, mut ys, mut zs) = ([0.0f32; M], [0.0f32; M], [0.0f32; M]);
@@ -814,7 +814,7 @@ unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
 
 /// Stub for builds without the `residual_nn` feature -- unreachable in practice since
 /// `rnn_service` above never sets `g_rnn_ready`, but the call site isn't itself cfg-gated.
-#[cfg(not(feature = "residual_nn"))]
+#[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
 unsafe fn rnn_predict(_s: &mut State, _own_pos: Vec3, _own_vel: Vec3) -> Vec3 {
     Vec3::zero()
 }
@@ -825,7 +825,7 @@ unsafe fn rnn_predict(_s: &mut State, _own_pos: Vec3, _own_vel: Vec3) -> Vec3 {
 ///
 /// Kept entirely separate from the control path: uploading weights mid-flight changes nothing
 /// until `rnn.en` is set, and an incomplete upload leaves `ready` at 0.
-#[cfg(feature = "residual_nn")]
+#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
 unsafe fn rnn_service() {
     if g_rnn_begin != 0 {
         RNN.begin_upload(g_rnn_n);
@@ -842,10 +842,14 @@ unsafe fn rnn_service() {
     }
 }
 
-/// Stub for builds without the `residual_nn` feature (see Cargo.toml / the `RNN` static's
-/// doc comment): an upload attempt is simply ignored rather than silently discarded weight-
-/// by-weight, which would look identical to a working upload that happened to fail.
-#[cfg(not(feature = "residual_nn"))]
+/// Flash-resident weights: no CRTP upload path; network is ready from boot.
+#[cfg(feature = "residual_nn_flash")]
+unsafe fn rnn_service() {
+    g_rnn_ready = 1;
+}
+
+/// Stub for builds without residual network features.
+#[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
 unsafe fn rnn_service() {}
 
 /// Run one pass of the weight-upload protocol, for the host simulator ONLY.

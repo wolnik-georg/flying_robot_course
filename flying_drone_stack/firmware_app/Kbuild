@@ -21,9 +21,12 @@ $(obj)/traj_iface.o: $(src)/traj_iface.c FORCE
 EXTRA_LDFLAGS += -Wl,--whole-archive -z noexecstack
 
 # Always rebuild the Rust crate; copy the resulting .a as app.o
+# Optional: CF_CARGO_FEATURES="--features residual_nn" or residual_nn_flash (mutually exclusive).
+# Flash build also requires CF_RNN_WEIGHTS_NPZ=/path/to/trained.npz (see build.rs).
 $(obj)/app.o: FORCE
 	cd $(src) && CRAZYFLIE_BASE=$(CRAZYFLIE_BASE) LIBCLANG_PATH=/usr/lib/llvm-14/lib \
-		cargo build --release --target thumbv7em-none-eabihf
+		CF_RNN_WEIGHTS_NPZ="$(CF_RNN_WEIGHTS_NPZ)" \
+		cargo build --release --target thumbv7em-none-eabihf $(CF_CARGO_FEATURES)
 	cp $(src)/target/thumbv7em-none-eabihf/release/lib$(CRATE_NAME).a $@
 
 FORCE:

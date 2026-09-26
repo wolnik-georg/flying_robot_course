@@ -139,7 +139,13 @@ const GRAMS_TO_NEWTONS: f32 = 9.81 / 1000.0; // neuralswarm.py: f_a / 1000 * 9.8
 const GATE_DXY: f32 = 0.2;
 const GATE_DVX: f32 = 1.5;
 
+#[cfg(feature = "residual_nn_flash")]
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/rnn_weights_embedded.rs"));
+}
+
 pub struct ResidualNet {
+    #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
     w: [f32; N_WEIGHTS],
     pub loaded: bool,
     pub expected: u16,
@@ -148,10 +154,43 @@ pub struct ResidualNet {
 }
 
 impl ResidualNet {
+    #[inline]
+    fn weights(&self) -> &[f32] {
+        #[cfg(feature = "residual_nn_flash")]
+        {
+            return &embedded::EMBEDDED_RNN_WEIGHTS;
+        }
+        #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
+        {
+            return &self.w;
+        }
+        #[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+        {
+            &[]
+        }
+    }
+
+    #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
     pub const fn new() -> Self {
         Self { w: [0.0; N_WEIGHTS], loaded: false, expected: 0, written: 0, clamped: false }
     }
 
+    #[cfg(feature = "residual_nn_flash")]
+    pub const fn new() -> Self {
+        Self {
+            loaded: true,
+            expected: N_WEIGHTS as u16,
+            written: N_WEIGHTS as u16,
+            clamped: false,
+        }
+    }
+
+    #[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+    pub const fn new() -> Self {
+        Self { loaded: false, expected: 0, written: 0, clamped: false }
+    }
+
+    #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
     pub fn set_weight(&mut self, idx: usize, value: f32) -> bool {
         if idx >= N_WEIGHTS || !value.is_finite() {
             return false;
@@ -161,6 +200,17 @@ impl ResidualNet {
         true
     }
 
+    #[cfg(feature = "residual_nn_flash")]
+    pub fn set_weight(&mut self, _idx: usize, _value: f32) -> bool {
+        false
+    }
+
+    #[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+    pub fn set_weight(&mut self, _idx: usize, _value: f32) -> bool {
+        false
+    }
+
+    #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
     pub fn begin_upload(&mut self, expected: u16) {
         self.loaded = false;
         self.written = 0;
@@ -168,11 +218,28 @@ impl ResidualNet {
         self.w = [0.0; N_WEIGHTS];
     }
 
+    #[cfg(feature = "residual_nn_flash")]
+    pub fn begin_upload(&mut self, _expected: u16) {}
+
+    #[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+    pub fn begin_upload(&mut self, _expected: u16) {}
+
+    #[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
     pub fn finish_upload(&mut self) -> bool {
         self.loaded = self.expected as usize == N_WEIGHTS
             && self.written >= N_WEIGHTS as u16
             && self.w.iter().all(|v| v.is_finite());
         self.loaded
+    }
+
+    #[cfg(feature = "residual_nn_flash")]
+    pub fn finish_upload(&mut self) -> bool {
+        true
+    }
+
+    #[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+    pub fn finish_upload(&mut self) -> bool {
+        false
     }
 
     /// Residual acceleration, world frame, from up to `MAX_NEIGHBOURS` relative states plus the
@@ -190,7 +257,8 @@ impl ResidualNet {
 
         // Ground interaction -- unconditional, every tick, regardless of neighbours.
         let ground_x = [0.0 - own_z, -own_vel.x, -own_vel.y, -own_vel.z];
-        let phi_g = phi_forward(&self.w, OFF_PHI_G, &ground_x);
+        let w = self.weights();
+        let phi_g = phi_forward(w, OFF_PHI_G, &ground_x);
         for (acc, v) in rho_input.iter_mut().zip(phi_g.iter()) {
             *acc += *v;
         }
@@ -205,13 +273,13 @@ impl ResidualNet {
                 continue;
             }
             let x = [dp.x, dp.y, dp.z, dv.x, dv.y, dv.z];
-            let phi_s = phi_forward(&self.w, OFF_PHI_S, &x);
+            let phi_s = phi_forward(w, OFF_PHI_S, &x);
             for (acc, v) in rho_input.iter_mut().zip(phi_s.iter()) {
                 *acc += *v;
             }
         }
 
-        let faz_grams = rho_forward(&self.w, OFF_RHO_S, &rho_input);
+        let faz_grams = rho_forward(w, OFF_RHO_S, &rho_input);
         let mass = unsafe { g_indi_mass };
         let faz_accel = (faz_grams * GRAMS_TO_NEWTONS) / mass;
 

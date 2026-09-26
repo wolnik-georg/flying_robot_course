@@ -21,6 +21,8 @@ by choice.
 
 Run:  python3 test_pipeline.py
 
+Flash vs upload parity (separate script): `test_flash_vs_upload.py` (rebuilds bindings twice).
+
 Needs torch, and the SIL bindings built *with the residual_nn feature* (off by default):
 
     cd firmware_app && DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" \\
