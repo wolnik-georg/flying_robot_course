@@ -16,6 +16,8 @@ Outputs (overwritten each run):
 | `per_flight.csv` | One row per scenario / stamp / vehicle prefix / motor |
 | `summary_by_scenario_vehicle.csv` | Aggregated by scenario and vehicle role (`bottom` / `top`) |
 | `overview_lag_bias_by_role.png` | Boxplots of lag and \|bias\| by role |
+| `overlay_*.png` | Deck vs DShot time series (representative flights; see docs/43 § 2026-09-26) |
+| `rolling_lag_*.png` | 2.0 s / 0.5 s stepped rolling cross-correlation lag |
 
 **Input:** only `experiments/logs/c1_*_merged/*/*_merged_usd.csv` (not raw `.bin` — see `experiments/logs/usd_raw/*_PAIRING.md`).
 
