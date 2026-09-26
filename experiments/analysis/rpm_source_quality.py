@@ -361,15 +361,15 @@ def plot_rpm_grid4(
     stamp: str,
     vehicle_role_name: str,
 ) -> None:
-    """4 rows × 2 cols: RPM overlay (left) and DShot−deck delta (right) per motor."""
+    """8 rows × 1 col: RPM overlay then DShot−deck delta, stacked, per motor."""
     csv_path = REPO / merge_rel
     t, arrays = load_merged_csv(csv_path)
     tt = t - t[0]
-    fig, axes = plt.subplots(4, 2, figsize=(14, 16), sharex="col")
+    fig, axes = plt.subplots(8, 1, figsize=(12, 24), sharex=True)
     legend_lines = None
     for motor in range(1, 5):
-        row = motor - 1
-        ax_rpm, ax_delta = axes[row, 0], axes[row, 1]
+        row = (motor - 1) * 2
+        ax_rpm, ax_delta = axes[row], axes[row + 1]
         rd = arrays[f"{prefix}.rpm_m{motor}"]
         rs = arrays[f"{prefix}.motor_m{motor}_rpm"]
         meta = next(
