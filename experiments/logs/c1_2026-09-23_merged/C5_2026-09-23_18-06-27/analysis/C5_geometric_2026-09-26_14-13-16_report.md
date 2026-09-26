@@ -1,0 +1,8 @@
+# C5 / geometric -- 2026-09-26_14-13-16
+
+**HARDWARE** -- label taken from --source, never inferred or claimed beyond what was given.
+
+| scenario | controller | n_robots | vehicle_id | t_start | t_end | n_samples | n_raw | rate_hz_est | nan_fraction | pos_rmse_m | pos_rmse_x | pos_rmse_y | pos_rmse_z | pos_peak_m | pos_peak_z | dz_cmd_m | dz_mean_m | dz_err_mean_m | dz_err_rms_m | a_res_rms | a_res_z_mean | a_res_z_rms | a_hat_res_rms | a_hat_vs_a_res_rmse | e_R_rmse | e_R_peak | notes | effort_proxy | fs_hz | gyro_band_frac | gyro_x_band_pow | gyro_x_dom_hz | gyro_y_band_pow | gyro_y_dom_hz | gyro_z_band_pow | gyro_z_dom_hz | motor_mean_ratio | motor_rms_ratio | motor_sat_frac | motor_spread_mean | spectrum_ok | tau_peak | tau_rms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| C5 | geometric | 1 | cf5 | 0.0 | 21.978 | 10990 | 10990 | 499.99999999999994 | 0.0 | 0.03442144005577329 | 0.025793251658744024 | 0.0014172999134540929 | 0.022749394834527266 | 0.03998243615639246 | 0.025263000000000008 |  |  |  |  | 0.18327367823645233 | -0.047295754413102825 | 0.11376053574903895 | 0.0 | 0.18327367823645233 | 0.09406869078928977 | 0.1250581918748228 |  | nan | nan | nan | nan | nan | nan | nan | nan | nan | nan | nan | nan | nan | 0 | nan | nan |
+| C5 | geometric | 1 | __formation__ |  |  |  |  |  |  |  |  |  |  |  |  | nan | nan | nan | nan |  |  |  |  |  |  |  | not stacked / dz_cmd not given / fewer than 2 vehicles with data |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
