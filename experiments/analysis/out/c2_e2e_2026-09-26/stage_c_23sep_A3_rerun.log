@@ -1,0 +1,9 @@
+dataset: 10969 samples from 1 file(s)
+  experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10969 kept
+  dropped_zero_a_res: 10969 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 8923
+loaded 10969 rows from A3_2026-09-23_17-45-03_merged_usd.csv
+sign sanity (peer above -> rel_z > 0): {'ok': True, 'samples': [{'row': 1101, 'rel_z': 0.20289599895477295, 'y': -0.026187000796198845}, {'row': 1102, 'rel_z': 0.2029699981212616, 'y': -0.06879899650812149}, {'row': 1103, 'rel_z': 0.20288699865341187, 'y': -0.08579500019550323}]}
+max |NumPy firmware_forward - compiled| = 5.80e-07 m/s^2  (PASS tol 0.0002)  [peer dv forced zero in NumPy]
+max |NumPy firmware_forward - compiled| = 2.06e-06 m/s^2  (PASS tol 0.0002)  [differenced peer velocity, dt=0.1s]
+overall: PASS

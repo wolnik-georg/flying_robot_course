@@ -214,7 +214,7 @@ footer{
       <li><strong>RPM source quality (desk done 2026-09-23)</strong> — deck vs DShot on all 29 C.1 merges: <a href="43_RPM_Source_Quality.html">page</a> · <a href="43_RPM_Source_Quality.md"><code>docs/43_RPM_Source_Quality.md</code></a> + <code>experiments/analysis/out/rpm_source_quality/</code>. Keep dual logging on card; C.1 training still uses <code>a_res</code> from DShot path.</li>
       <li><strong>Z tracking</strong> — the 21 Sep A1 z-tracking gaps this diagnostic chased are now closed by the 23 Sep reflies (A-3/A-4 done, tag-paired) — no longer an open desk item. Historical account: <code>experiments/analysis/c1_a1_z_diagnostic_2026_09_21.py</code> → <code>a1_z_diagnostic.json</code>.</li>
       <li><strong>C.1 — Neural-Swarm2 data collection</strong> — geometric on <code>cf5</code>; only <strong>A4 (C-1/C-2, ×4)</strong> remains — see plan tracker below (<code>docs/25</code>).</li>
-      <li><strong>C.2 desk</strong> — <strong>24</strong> C.1 training-eligible merges banked (19 on 23 Sep + 5 on 21 Sep, independently verified — see <code>docs/41</code>). C.2 E2E already run on the 21 Sep subset (<code>docs/40</code>); re-run/extend against the full 24 once A4 lands.</li>
+      <li><strong>C.2 desk (2026-09-26)</strong> — 18-file bank LOO, Stage C pass, SIL predict with <code>full_bank_40.npz</code>; flash-resident onboard path links (<code>docs/40</code>, <code>docs/45</code>). <strong>A4 ×4</strong> still required before deploy trust.</li>
       <li><strong>Finalize INDI baseline</strong> (parallel, before large C.4) — our geo + our full INDI; stock INDI; Briesewitz <code>c=7</code>. <strong>Supervisor's own INDI (<code>c=9</code>)</strong> is now a literal C port, numerically verified and sim-validated end to end (<code>docs/41</code> §8) — same never-flown status as <code>c=7</code>/<code>8</code>, ready for the same hardware ladder whenever prioritized.</li>
     </ul>
   </div>
@@ -548,7 +548,7 @@ footer{
     <ul class="plain">
       <li><strong>Controller 6</strong> — our geometric + full INDI (<code>ctrl_mode</code> 0 / 3): <strong>OK to fly</strong>.</li>
       <li><strong>Controller 7 / 8</strong> — Briesewitz / NA-INDI ports: <strong>not in the compared set</strong> (Sep 2026). Reference/sim only — do not schedule as C.4 modes.</li>
-      <li><strong>Neural-Swarm2 residual</strong> — verified, disabled, no trained weights (blocks C.2, not lab today).</li>
+      <li><strong>Neural-Swarm2 residual</strong> — trained full-bank weights exist; fly path needs <code>residual_nn_flash</code> build + reflash (or SIL upload path). Lab blocked on mocap, not C.2 desk.</li>
     </ul>
   </div>
 </section>

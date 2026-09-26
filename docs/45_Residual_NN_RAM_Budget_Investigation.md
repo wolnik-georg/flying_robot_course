@@ -1,10 +1,9 @@
 # 45 — Neural-Swarm2 onboard RAM budget: investigation, findings, and a plan for later
 
-**Status: investigation and planning only. Nothing implemented, nothing flown, nothing changed
-in any file that affects current flight builds or the next lab session.** `residual_nn` stays
-exactly as it is today — a Cargo feature, default off, never enabled in any build that flies.
-This document exists so the work already done (three sessions: initial scoping, a Cursor
-investigation, and independent re-verification) isn't lost and doesn't need repeating.
+**Status: investigation complete; flash-resident delivery implemented 2026-09-26 (desk).** Default
+flight builds unchanged (`residual_nn` / `residual_nn_flash` both off unless explicitly enabled).
+See § **Implementation — flash-resident weights — 2026-09-26** below. Prior sections §1–§8 are
+unchanged investigation history.
 
 **Date:** 2026-09-24 (desk-only, parallel to the C.1/A4 lab session).
 
@@ -236,10 +235,56 @@ nothing in this document changes what gets flashed to `cf5` or `cf_second` today
 
 ---
 
+## Implementation — flash-resident weights — 2026-09-26 (desk)
+
+**Operator sign-off (2026-09-26):** storage/delivery change only — not a network math change.
+
+### Mechanism
+
+| Piece | Choice |
+|--------|--------|
+| Cargo feature | **`residual_nn_flash`** (mutually exclusive with RAM **`residual_nn`** upload path in practice) |
+| Build-time embed | `build.rs` reads **`CF_RNN_WEIGHTS_NPZ`**, runs `tools/residual/export_weights_rs.py` → `OUT_DIR/rnn_weights_embedded.rs`, included from `residual_nn.rs` |
+| Runtime | `ResidualNet::weights()` → `&'static [f32]`; upload API no-ops; `rnn_service()` sets `g_rnn_ready=1` |
+| Kbuild | Optional **`CF_CARGO_FEATURES="--features residual_nn_flash"`** + **`CF_RNN_WEIGHTS_NPZ=...`** (see `firmware_app/Kbuild`) |
+
+**Why build.rs + generated `.rs`:** keeps the 77 KB literal out of hand-edited source, reruns when the `.npz` changes, matches this repo's existing bindgen-at-build pattern.
+
+### Verified link (CF21BL, `make DRONE=bl`, flash feature + `full_bank_40.npz`)
+
+| Region | Baseline (no RNN) | `residual_nn` (RAM upload) | `residual_nn_flash` |
+|--------|------------------:|---------------------------:|--------------------:|
+| RAM used | 94304 | **overflow +40732 B** | **94312** (36760 free) |
+| RAM `.bss` | 84004 | +~78 KB weight buffer | **84004** (unchanged) |
+| Flash used | 393140 | (link fails) | **475972** (+~83 KB text) |
+
+Symbol check (linked `cf21bl.elf`):
+
+```
+0805b084 00012d84 T EMBEDDED_RNN_WEIGHTS
+```
+
+Address **`0x0805…`** = flash/rodata, **not** `0x200…` RAM.
+
+Host parity: `tools/residual/test_flash_vs_upload.py` — upload vs flash build, **|Δz| = 0** on identical random weights.
+
+### Deployment workflow tradeoff
+
+| Variant | After retrain | Reflash? |
+|---------|---------------|----------|
+| **`residual_nn`** (RAM) | Upload over CRTP / ROS uploader | **No** |
+| **`residual_nn_flash`** | Set `CF_RNN_WEIGHTS_NPZ`, rebuild firmware, reflash | **Yes** |
+
+For a thesis with a handful of frozen weight sets, flash is acceptable; for rapid weight iteration in the lab, keep the upload build on **host/SIL** (or accept reflash cost on hardware).
+
+**Default `make DRONE=bl` restored** after verification (no RNN features) — same discipline as §8.
+
+---
+
 ## Related
 
 - `docs/07_Thesis_Progress_Checklist.md` — History (29) for the original operator decision;
-  History (51) for this investigation's summary entry.
+  History (51) for this investigation's summary entry; History (56) for implementation.
 - `flying_drone_stack/firmware_app/src/residual_nn.rs` — module docstring, corrected 2026-09-24
   to remove a stale example-fix that contradicted the standing decision.
 - `docs/13_Residual_Learning.md` — the residual-learning design doc this feeds into.

@@ -1,6 +1,6 @@
 # Residual Learning — Onboard Inference and Offline Training
 
-> ## ✅ Pipeline complete; **2026-09-21 desk validation on 4 real C.1 flights** — deploy trust still data-limited
+> ## ✅ Pipeline complete; **2026-09-26: full 18-file bank LOO + Stage C + SIL predict** — deploy trust still A4-limited
 >
 > **Revised 2026-09-21** after [`40_C2_Residual_Pipeline_E2E_Validation_Plan.md`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md).
 > Report: `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
@@ -12,8 +12,10 @@
 > | `model.py` / `test_pipeline.py` | ✅ vs compiled firmware ~1e-6 m/s² (synthetic tensors) |
 > | `dataset.py` + `train.py` on real merges | ✅ 53644 samples pooled; **4 usable flights** (`A1_13-25-10` → 0 rows) |
 > | **`test_real_data_pipeline.py` (Stage C)** | ✅ Path A: positions, NumPy peer dv=0 → ~**6.6×10⁻⁷** m/s². Path B: measured `rel` velocity via two `oot_set_peer` samples (100 ms) → ~**6×10⁻⁶** m/s². See script docstring — Path A does not exercise \|dvx\| gate alone |
-> | **LOO generalisation (Stage B)** | 🟡 A3 held-out beats predict-zero; **A1 held-out worse than zero**; A1↔A3 cross-scenario fails |
-> | **SIL closed-loop gate (Stage E)** | ✅ **Pass (desk/SIL)** — real A3 sim flight + 5k+ rows (`c2_e2e_stage_e.json`); sim publishes **ground truth** on both `/state` and `/pose` so the 150 mm EKF gate is vacuous there (`docs/38`); go/no-fly for **closed-loop stability**, not model quality or SIL estimator fidelity |
+> | **LOO generalisation** | ✅ **17-fold** on 18-file bank (`docs/40` § Extension 2026-09-26); weakest: A1_12-51-16 hold-out; A3 hold-outs ~0.15–0.25 m/s² |
+> | **Stage C on 23 Sep + full-bank weights** | ✅ **Pass** after host rebuild with `--features residual_nn` (~2×10⁻⁶ m/s²) |
+> | **SIL predict, full-bank weights** | ✅ **First run** 5206 rows (`c2_fullbank_sim_inference.json`); 21 Sep Stage E still closed-loop reference |
+> | **SIL closed-loop gate (Stage E, 21 Sep LOO weights)** | ✅ **Pass** — `c2_e2e_stage_e.json`; go/no-fly for **closed-loop stability**, not model quality |
 > | Hardware open-loop `rnn.en=0` | ⬜ Not flown yet |
 >
 > **Honest takeaway:** Software chain is trustworthy enough to integrate cautiously; the **learned
@@ -26,11 +28,11 @@
 > |---|---|
 > | **C.0 Hardware Gate** | Closed enough for C.1; hardware open-loop `rnn.en=0` still unflown |
 > | **C.1 Residual Data Collection** | **~24 merges banked** — **A4 (C-1/C-2) ×4** remains required (`docs/25`) |
-> | **C.2 Train the Residual Model** | Desk-validated 2026-09-21 on 4 usable rows; re-run on full **24** after A4 |
+> | **C.2 Train the Residual Model** | Full **18-file** bank trained + LOO 2026-09-26; **A4 ×4** still required before claiming deployable coverage |
 > | **C.3 Integrate the Strategies** | Compared set 0–3; Strategies 2–3 consume this prediction; only Strategy 2 is wired |
 > | **C.4 Systematic Comparison** | §4's logged prediction vs measurement is the evaluation |
 
-**Last updated:** 23 September 2026 (C.1 bank count; E2E table still documents 21 Sep run)
+**Last updated:** 26 September 2026 (full-bank C.2 extension; flash-resident weight variant — §3.1)
 
 The **predictive strategies in the compared set (Strategy 2; Strategy 3 when FBL arrives)** need a
 model that predicts the interaction force one vehicle is about to feel from the others. This
@@ -126,10 +128,16 @@ trained model. There are now **two** first layers to fold into — `phi_S`'s (6 
 `phi_G`'s (4 inputs) — and they need separate statistics, since a neighbour's relative state and a
 vehicle's own height are not the same distribution.
 
-**RAM.** The weight array alone overflows real firmware RAM, so it sits behind a `residual_nn`
-Cargo feature, **off by default**. This is a build-time toggle over the `static mut RNN`
-allocation only — `residual_nn.rs` is not touched by it. Any host build that needs to evaluate
-the network (both test suites do) must pass `--features residual_nn`.
+**RAM.** The **RAM-upload** weight buffer (~77 KB `.bss`) overflows real firmware RAM unless
+weights live in flash. Two Cargo features, **both off by default**:
+
+| Feature | Weights | Hardware fit |
+|---------|---------|--------------|
+| `residual_nn` | CRTP/ROS upload into `[f32; N_WEIGHTS]` | **Link fails** (+40732 B RAM on CF21BL) — fine for **host/SIL** |
+| `residual_nn_flash` | `CF_RNN_WEIGHTS_NPZ` embedded at build → flash `.rodata` | **Links** on CF21BL (see `docs/45` § Implementation 2026-09-26) |
+
+Host/SIL tests use `--features residual_nn` unless exercising flash parity
+(`tools/residual/test_flash_vs_upload.py`).
 
 ### Where the neighbour states come from
 
@@ -159,7 +167,14 @@ leave the ground in simulation; see [`09_Simulation.md`](09_Simulation.md).)
 
 ---
 
-## 3. Weight upload
+## 3. Getting weights onto the drone
+
+### 3.1 Flash-resident build (`residual_nn_flash`)
+
+Trained `.npz` → `build.rs` / `export_weights_rs.py` → `EMBEDDED_RNN_WEIGHTS` in flash. No upload;
+`rnn.ready` is true from boot. **Retrain ⇒ rebuild ⇒ reflash.** Details: `docs/45`.
+
+### 3.2 CRTP upload build (`residual_nn`)
 
 Parameter group `rnn`, serviced once per 500 Hz control tick — **before the arming check**, so the
 network can be loaded while the drone is on the ground.

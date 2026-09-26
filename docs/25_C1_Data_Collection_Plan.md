@@ -12,7 +12,8 @@ code. **Distinct from the 24 Sep software regression**, which is **closed in rep
 (`crazyswarm2` **`32b6e5e`**: geofence z restored, silent height clamp → hard refuse) — that fix
 is **not yet re-flown** because of this **separate** mocap fault. **Do not merge 24 Sep uSD into
 C.1 training.** Session narrative: [`lab_sessions/2026-09-24_to_26.md`](lab_sessions/2026-09-24_to_26.md).
-**Desk while blocked:** 23 Sep C.1 analysis suite, `docs/24` catalog, C.2 full-bank validation
+**Desk while blocked:** 23 Sep C.1 analysis suite, `docs/24` catalog; C.2 **18-file** LOO + Stage C +
+SIL predict + flash-resident RNN (`docs/40`, `docs/45`, `docs/07` History 56)
 (`docs/40`).
 
 ---

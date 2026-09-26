@@ -1,7 +1,9 @@
 # 40 — C.2 Neural-Swarm2 residual pipeline: end-to-end validation plan (with real 2026-09-21 data)
 
 **Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Extended
-2026-09-26 (desk):** full **24-path** bank train — see § **Full bank — 2026-09-26** below. Artifacts:
+2026-09-26 (desk):** full **18-file** training bank train + **17-fold LOO**, Stage C **pass** after
+`residual_nn` host rebuild, **first SIL inference with full-bank weights** — see § **Full bank —
+2026-09-26** (historical) and § **Extension — LOO, Stage C, SIL — 2026-09-26** below. Artifacts:
 `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
 `C2_VALIDATION_REPORT.md`, `loo_weights/`). **2026-09-26:** `experiments/analysis/out/c2_e2e_2026-09-26/`.
 Docs updated: `13`, `07` C.2, `CLAUDE.md`,
@@ -376,3 +378,86 @@ Summary JSON: `experiments/analysis/out/c2_e2e_2026-09-26/c2_full_bank_report.js
 
 **Stages D–E:** not re-executed on the full bank in this pass (21 Sep SIL Stage E remains the
 closed-loop reference). After mocap returns, priority is lab regression — not SIL re-run.
+
+---
+
+## Extension — LOO, Stage C, SIL — 2026-09-26 (desk)
+
+**Does not replace** § **Full bank — 2026-09-26** above (that section stays the record of the first
+full-bank train and the initial Stage C failure).
+
+### A.1 — 17-fold leave-one-flight-out (18-file bank)
+
+Script: `experiments/analysis/run_c2_loo_18fold_2026_09_26.py`  
+Artifacts: `experiments/analysis/out/c2_e2e_2026-09-26/loo_weights_18fold/`, `loo_18fold_results.json`
+
+| Scope | Detail |
+|--------|--------|
+| Training-eligible paths | **24** manifest entries → **18** files with `dataset.build` rows (6× C5 solo excluded; **A1 `13-25-10`** → **0** rows) |
+| LOO folds executed | **17** — no fold for `A1_2026-09-21_13-25-10` (nothing to hold out) |
+| A2 @ dz 0.30 | **Kept** despite `top_align_rms_high` (~28 cm on cf_second): scenario is circle r=0.75, h=1.0 — expected Lee-on-circle tracking under downwash, not a merge defect |
+
+**Per-flight held-out RMSE (m/s²):**
+
+| Flight | RMSE | vs predict-zero |
+|--------|-----:|----------------:|
+| A1_12-51-16 | 0.797 | 55% reduction |
+| A1_17-17-26 | 0.441 | 75% |
+| A1_17-18-48 | 0.341 | 81% |
+| A1_17-36-06 | 0.381 | 82% |
+| A1_17-37-26 | 0.382 | 81% |
+| A2_19-21-05 | 0.499 | 56% |
+| A2_19-27-03 | 0.432 | 60% |
+| A3_13-00-57 | 0.184 | 76% |
+| A3_13-02-56 | 0.187 | 75% |
+| A3_13-04-34 | 0.251 | 66% |
+| A3_17-45-03 | 0.174 | 74% |
+| A3_17-46-43 | 0.164 | 75% |
+| A3_17-54-32 | 0.161 | 80% |
+| A3_17-57-32 | 0.151 | 80% |
+| A7_19-11-19 | 0.453 | 71% |
+| A7_19-12-38 | 0.413 | 74% |
+| A7_19-13-55 | 0.431 | 75% |
+
+Weakest hold-outs: **A1_12-51-16** (single 21 Sep A1 dz 0.75 flight); **A2** pair and **A7** triplet
+generalise moderately vs A3-heavy training mass.
+
+### A.2 — Stage C (23 Sep A3, full-bank weights) — **PASS**
+
+Root cause of the § **Full bank** failure: host `cffirmware` built **without** `--features residual_nn`
+so `rnn_service()` was compiled out and `g_rnn_ready` never set.
+
+Rebuild (same as `test_pipeline.py` header):
+
+```bash
+cd flying_drone_stack/firmware_app
+DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" cargo build --release \
+  --target x86_64-unknown-linux-gnu --features residual_nn
+cd ~/Desktop/crazyflie-firmware && make bindings_python
+```
+
+Re-run log: `experiments/analysis/out/c2_e2e_2026-09-26/stage_c_23sep_A3_rerun.log`
+
+| Path | Max &#124;NumPy − compiled&#124; |
+|------|--------------------------------:|
+| Positions, peer dv forced 0 in NumPy | **5.80×10⁻⁷ m/s²** |
+| Differenced peer velocity (100 ms) | **2.06×10⁻⁶ m/s²** |
+| Overall | **PASS** (tol 2×10⁻⁴) |
+
+### A.3 — Live CS2 SIL inference (full-bank weights, predict-only)
+
+First run with **`full_bank_40.npz`** (not 21-Sep LOO subset):  
+`experiments/analysis/c2_fullbank_sim_predict.sh` → `server_c2_fullbank_predict.yaml`  
+(`rnn.en=0`, `backend=neuralswarm`, A3 dz 0.30).
+
+Summary: `experiments/sim_validation/c2_fullbank_sim_inference.json` (**5206** log rows).
+
+| Check | Result |
+|--------|--------|
+| Weights upload + `rnn.ready` | Log: 19297 weights, val RMSE 0.2806, `rnn.en=0` |
+| `rnn.pred_*` finite, non-NaN | ✅ |
+| `rnn.pred_z` non-zero | RMS **~7.1 m/s²** (clamp **±8** active ~20% of samples — safety limiter, not missing network) |
+| Corr(`a_res_z`, `rnn_pred_z`) on cf231_active | **0.16** (open-loop predict — not claiming closed-loop quality) |
+
+**21 Sep Stage E** remains the closed-loop stability reference; this extension adds **trained-weight**
+SIL predict logging on the **full bank** model.

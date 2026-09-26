@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-26",
+  "weights": "experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz",
+  "config": "experiments/sim_validation/server_c2_fullbank_predict.yaml",
+  "scenario": "A3 dz=0.30 predict-only rnn.en=0 backend=neuralswarm",
+  "rows": 5206,
+  "log": "experiments/sim_validation/c2_fullbank_predict.log",
+  "csv": "experiments/sim_validation/c2_fullbank_predict.csv",
+  "cf231_active": {
+    "rnn_pred_z_rms": 7.130394533280564,
+    "rnn_pred_z_min": -8.0,
+    "rnn_pred_z_max": 8.0,
+    "rnn_pred_z_zero_fraction": 0.2053794428434198,
+    "corr_a_res_z_vs_rnn_pred_z": 0.1590135505800262
+  },
+  "cf_second": {
+    "rnn_pred_z_rms": 7.130745720946651
+  },
+  "notes": "First SIL run with full-bank trained weights (not 21-Sep LOO subset). X/Y predictions identically zero (architecture). Z hits OUT_CLAMP 8 m/s² on ~20% of samples — clamp engaged, not NaN."
+}
