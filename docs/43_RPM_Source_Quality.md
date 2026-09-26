@@ -78,6 +78,38 @@ During C.1 data collection, onboard uSD logging recorded **both** optical-deck R
 
 ---
 
+## Extension — 2026-09-26: raw overlays + rolling lag
+
+**Reproduce:** re-run `experiments/analysis/rpm_source_quality.py` (same entry point as above; writes additive PNGs only).
+
+### Metric definitions (plots)
+
+- **Deck RPM (blue):** optical-deck-derived rotor speed (`<role>.rpm_m1`–`m4`), logged at **500 Hz** on the merged uSD CSV.
+- **DShot RPM (orange):** ESC bidirectional-telemetry rotor speed (`<role>.motor_m1_rpm`–`m4_rpm`), **same drone, same `t` column**. The overlay is both raw traces on one clock — gaps, dropouts, and tracking differences are visible without a summary statistic.
+- **Deck ≤ 0 shading / markers:** where the deck reads zero, the plot shades that time range (and marks samples at **y = 0**) so dropout shape (sustained vs intermittent) is visible.
+
+- **Rolling lag:** the existing **`lag_ms`** is **one** cross-correlation over the **entire** flight (valid samples only, ±50 ms search, same as `cross_corr_lag()`). **Rolling lag** repeats that same function on **2.0 s** windows stepped every **0.5 s** (`rolling_cross_corr_lag()` in `rpm_source_quality.py`); the x-axis is **window center time**. A flat rolling curve means timing is stable; a drifting x-axis trend would mean relative delay changes during the flight.
+
+### New figures
+
+| File | What it shows |
+|------|----------------|
+| [`overlay_A2_19-27-03_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A2_19-27-03_m3.png) | **A2 top, m3** — intermittent deck zeros (~54% flight) while DShot stays non-zero; dropout pattern visible. |
+| [`overlay_A3_13-00-57_cf5_m2.png`](../experiments/analysis/out/rpm_source_quality/overlay_A3_13-00-57_cf5_m2.png) | **Clean baseline** — A3 bottom **m2**, ~0% deck zero, deck/DShot track together. |
+| [`overlay_A1_17-17-26_cf_second_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A1_17-17-26_cf_second_m3.png) | A1 top **m3** (flight-wide **lag_ms = 44** in table). |
+| [`overlay_A7_19-11-19_cf_second_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A7_19-11-19_cf_second_m3.png) | A7 top **m3** (flight-wide **lag_ms = 36**). |
+| `rolling_lag_*` PNGs (same stems) | Rolling lag vs time for the same four cases; dashed line = flight-wide **`lag_ms`**. |
+
+### Rolling lag vs single-number `lag_ms`
+
+On **A3 13-00-57 cf5 m2** (clean), rolling lag stays near **0–4 ms** (median **~2 ms**), consistent with the flight-wide **4 ms** — **no meaningful drift**.
+
+On **A1 top m3** and **A7 top m3**, rolling lag spends most windows near **±2 ms** (500 Hz quantization) with **occasional ±24–50 ms spikes**; the flight-wide **44 ms / 36 ms** values are **not** a sustained offset visible across the whole timeline — they are **extrema from one global correlation**, not a phase where DShot systematically lags by tens of ms. **Do not reinterpret those peaks as actuator delay without further checks.**
+
+On **A2 top m3**, many windows lack enough valid deck samples; finite rolling values jump between correlation-window limits — **lag plots are not interpretable** where deck dropout dominates (same caveat as § open finding).
+
+---
+
 ## Related
 
 - Planning prompt: [`42_RPM_Source_Quality_Desk_Prompt.md`](42_RPM_Source_Quality_Desk_Prompt.md)

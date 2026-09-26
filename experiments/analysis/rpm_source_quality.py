@@ -187,6 +187,203 @@ def load_manifest_flights() -> list[dict]:
     return out
 
 
+def rolling_cross_corr_lag(
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    t: np.ndarray,
+    fs: float = FS,
+    window_s: float = 2.0,
+    step_s: float = 0.5,
+) -> np.ndarray:
+    """Windowed cross-correlation lags; each row is (window_center_time_s, lag_ms).
+
+    Uses the same valid mask and cross_corr_lag() as metrics_one_motor(), applied
+    independently per window (default 2.0 s window, 0.5 s step at 500 Hz).
+    """
+    n = len(deck)
+    win_n = max(int(round(window_s * fs)), 1)
+    step_n = max(int(round(step_s * fs)), 1)
+    t0 = float(t[0]) if n else 0.0
+    rows: list[tuple[float, float]] = []
+    for start in range(0, max(n - win_n + 1, 0), step_n):
+        end = start + win_n
+        rd = deck[start:end]
+        rs = dshot[start:end]
+        valid = (rd > 0) & (rs > 0) & (rs < 60000)
+        center = float(t[start + win_n // 2] - t0)
+        if int(valid.sum()) < 50:
+            rows.append((center, float("nan")))
+            continue
+        lag = float(cross_corr_lag(rd[valid].astype(float), rs[valid].astype(float), fs))
+        rows.append((center, lag))
+    if not rows:
+        return np.zeros((0, 2))
+    return np.array(rows, dtype=float)
+
+
+def plot_rpm_overlay(
+    t: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    out_path: Path,
+    *,
+    title: str,
+    motor_label: str,
+) -> None:
+    """Deck vs DShot RPM on shared time base; highlight deck<=0 samples."""
+    t = t - t[0]
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ymax = float(np.nanmax(dshot[dshot > 0])) if np.any(dshot > 0) else 1.0
+    ymax = max(ymax, float(np.nanmax(deck[deck > 0])) if np.any(deck > 0) else ymax)
+    deck_zero = deck <= 0
+    if np.any(deck_zero):
+        ax.fill_between(
+            t,
+            0,
+            ymax * 1.05,
+            where=deck_zero,
+            color="0.85",
+            alpha=0.55,
+            label="deck ≤ 0 (shaded)",
+            zorder=0,
+        )
+        ax.plot(
+            t[deck_zero],
+            np.zeros(deck_zero.sum()),
+            "x",
+            color="0.45",
+            ms=2,
+            alpha=0.35,
+            label="deck zero samples",
+            zorder=1,
+        )
+    ax.plot(t, deck, lw=0.7, color="C0", alpha=0.9, label="deck RPM")
+    ax.plot(t, dshot, lw=0.7, color="C1", alpha=0.85, label="DShot RPM")
+    ax.set_xlabel("time since flight start (s)")
+    ax.set_ylabel("RPM")
+    ax.set_title(f"{title} — {motor_label}")
+    ax.legend(loc="upper right", fontsize=8)
+    ax.set_xlim(t[0], t[-1])
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def plot_rolling_lag(
+    t: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    out_path: Path,
+    *,
+    title: str,
+    motor_label: str,
+    global_lag_ms: float | None = None,
+    window_s: float = 2.0,
+    step_s: float = 0.5,
+) -> None:
+    roll = rolling_cross_corr_lag(deck, dshot, t, FS, window_s, step_s)
+    fig, ax = plt.subplots(figsize=(12, 3.5))
+    if roll.size:
+        ax.plot(roll[:, 0], roll[:, 1], "o-", ms=3, lw=1, color="C2", label="rolling lag")
+    if global_lag_ms is not None and np.isfinite(global_lag_ms):
+        ax.axhline(
+            global_lag_ms,
+            color="C3",
+            ls="--",
+            lw=1,
+            label=f"flight-wide lag_ms = {global_lag_ms:.1f}",
+        )
+    ax.axhline(0, color="0.7", lw=0.5)
+    ax.set_xlabel("window center time (s)")
+    ax.set_ylabel("lag (ms)\n(+ = DShot lags deck)")
+    ax.set_title(f"Rolling lag ({window_s}s window, {step_s}s step) — {title} — {motor_label}")
+    ax.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def write_extended_visualizations(out_dir: Path, per_flight_rows: list[dict]) -> None:
+    """Overlay + rolling-lag plots for representative flights (additive outputs)."""
+
+    def row_key(scenario: str, stamp: str, role: str, motor: int) -> dict | None:
+        for r in per_flight_rows:
+            if (
+                r["scenario"] == scenario
+                and r["stamp"] == stamp
+                and r["vehicle_role"] == role
+                and r["motor"] == motor
+            ):
+                return r
+        return None
+
+    def run_case(
+        merge_rel: str,
+        prefix: str,
+        motor: int,
+        overlay_name: str,
+        rolling_name: str,
+        title: str,
+    ) -> None:
+        csv_path = REPO / merge_rel
+        t, arrays = load_merged_csv(csv_path)
+        rd_col = f"{prefix}.rpm_m{motor}"
+        rs_col = f"{prefix}.motor_m{motor}_rpm"
+        rd = arrays[rd_col]
+        rs = arrays[rs_col]
+        motor_label = f"{prefix} motor m{motor}"
+        plot_rpm_overlay(t, rd, rs, out_dir / overlay_name, title=title, motor_label=motor_label)
+        meta = row_key(title.split()[0], title.split()[1], vehicle_role(prefix), motor)
+        glag = meta["lag_ms"] if meta else float("nan")
+        plot_rolling_lag(
+            t,
+            rd,
+            rs,
+            out_dir / rolling_name,
+            title=title,
+            motor_label=motor_label,
+            global_lag_ms=glag,
+        )
+
+    # (a) A2 top dropout — m3 worst deck-zero % on 19-27-03
+    run_case(
+        "experiments/logs/c1_2026-09-23_merged/A2_2026-09-23_19-27-03/A2_2026-09-23_19-27-03_merged_usd.csv",
+        "cf_second",
+        3,
+        "overlay_A2_19-27-03_m3.png",
+        "rolling_lag_A2_19-27-03_cf_second_m3.png",
+        "A2 19-27-03",
+    )
+    # (b) clean baseline — A3 bottom, near-zero bias on m2
+    run_case(
+        "experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv",
+        "cf5_A3_13-00-57",
+        2,
+        "overlay_A3_13-00-57_cf5_m2.png",
+        "rolling_lag_A3_13-00-57_cf5_m2.png",
+        "A3 13-00-57",
+    )
+    # Large global lag cases from existing table
+    run_case(
+        "experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv",
+        "cf_second",
+        3,
+        "overlay_A1_17-17-26_cf_second_m3.png",
+        "rolling_lag_A1_17-17-26_cf_second_m3.png",
+        "A1 17-17-26",
+    )
+    run_case(
+        "experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv",
+        "cf_second",
+        3,
+        "overlay_A7_19-11-19_cf_second_m3.png",
+        "rolling_lag_A7_19-11-19_cf_second_m3.png",
+        "A7 19-11-19",
+    )
+
+
 def infer_scenario_stamp(path: Path) -> tuple[str, str]:
     # A3_2026-09-23_17-54-32
     parts = path.parent.name.split("_")
@@ -314,9 +511,12 @@ def main() -> int:
     fig.savefig(plot_path, dpi=130)
     plt.close(fig)
 
+    write_extended_visualizations(out_dir, per_flight_rows)
+
     print(f"Wrote {per_path} ({len(per_flight_rows)} motor-rows)")
     print(f"Wrote {summary_path}")
     print(f"Wrote {plot_path}")
+    print(f"Wrote extended overlay + rolling-lag PNGs under {out_dir}/")
     return 0
 
 
