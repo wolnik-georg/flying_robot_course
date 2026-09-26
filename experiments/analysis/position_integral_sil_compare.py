@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """SIL hover: geometric controller (oot mode 0) with position integral on vs off.
 
-Desk-only — expects two pre-built cffirmware .so files:
-  OFF (default): crazyflie-firmware/build/_cffirmware*.so
-  ON:  /tmp/cffirmware_posint_on/_cffirmware*.so  (build via --rebuild-on)
+Desk-only. Rebuilds host libcf_controller_rs.a with RUSTFLAGS=-C panic=abort (required),
+then make bindings_python. Restores lib.rs to integral=false after every rebuild.
 
-Does not modify committed lib.rs when run normally; --rebuild-on patches locally, rebuilds, restores.
+    python3.10 experiments/analysis/position_integral_sil_compare.py --full-suite
 """
 from __future__ import annotations
 
 import argparse
-import glob
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -18,15 +18,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-import numpy as np
-
 ROOT = Path(__file__).resolve().parents[2]
-LIB_RS = ROOT / "flying_drone_stack/firmware_app/src/lib.rs"
+FW_APP = ROOT / "flying_drone_stack/firmware_app"
+LIB_RS = FW_APP / "src/lib.rs"
 FW = Path("/home/georg/Desktop/crazyflie-firmware")
 BUILD = FW / "build"
+ARTIFACT_DIR = Path("/tmp/cffirmware_posint_on")
+DEFAULT_JSON = ROOT / "experiments/analysis/out/position_integral_sil_2026-09-26.json"
+
+# Disturbances (N, downward) chosen after OFF-only calibration to bracket log-scale Z bias.
+DISTURBANCE_SUITE_N = [
+    0.0,
+    -0.008,
+    -0.040,
+    -0.120,
+    -0.200,
+]
 
 
-def rebuild_with_integral(enabled: bool) -> Path:
+def host_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("DRONE_PLATFORM", "bl")
+    env["RUSTFLAGS"] = "-C panic=abort"
+    env.setdefault("CRAZYFLIE_BASE", str(FW))
+    return env
+
+
+def patch_integral(enabled: bool) -> tuple[str, str]:
     text = LIB_RS.read_text()
     new_val = "true" if enabled else "false"
     patched, n = re.subn(
@@ -37,34 +55,47 @@ def rebuild_with_integral(enabled: bool) -> Path:
     )
     if n != 1:
         raise SystemExit("ENABLE_POSITION_INTEGRAL not found in lib.rs")
+    return text, patched
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def rebuild_with_integral(enabled: bool) -> Path:
+    """Patch lib.rs, cargo host build, bindings_python; always restore lib.rs."""
+    original, patched = patch_integral(enabled)
     LIB_RS.write_text(patched)
     try:
+        subprocess.run(
+            [
+                "cargo",
+                "build",
+                "--release",
+                "--target",
+                "x86_64-unknown-linux-gnu",
+            ],
+            cwd=FW_APP,
+            check=True,
+            env=host_env(),
+        )
         subprocess.run(
             ["make", "bindings_python"],
             cwd=FW,
             check=True,
-            env={**os.environ, "PYTHON": sys.executable},
+            env=host_env(),
         )
     finally:
-        LIB_RS.write_text(text)
-    so = glob.glob(str(BUILD / "_cffirmware*.so"))
-    if not so:
-        raise SystemExit("bindings build produced no .so")
-    return Path(so[0])
+        LIB_RS.write_text(original)
 
-
-def _mock_ros_imports() -> None:
-    """np.py imports rclpy at module load; desk SIL only needs Quadrotor."""
-    from unittest.mock import MagicMock
-
-    for name in (
-        "rclpy",
-        "rclpy.node",
-        "rclpy.time",
-        "rosgraph_msgs",
-        "rosgraph_msgs.msg",
-    ):
-        sys.modules.setdefault(name, MagicMock())
+    so_candidates = sorted(BUILD.glob("_cffirmware.cpython-310*.so"))
+    if not so_candidates:
+        raise SystemExit("bindings build produced no python3.10 .so")
+    return so_candidates[-1]
 
 
 def run_hover(
@@ -75,6 +106,8 @@ def run_hover(
     f_ext_z: float = -0.008,
 ) -> dict:
     cs2_sim = Path("/home/georg/Desktop/crazyswarm2/crazyflie_sim")
+    use_force = "True" if f_ext_z != 0.0 else "False"
+    fval = float(f_ext_z)
     code = f'''
 import sys
 from unittest.mock import MagicMock
@@ -110,76 +143,145 @@ q = Quadrotor(sim_data_types.State(pos=p0.copy()), PH)
 cf.takeoff({height}, 3.0)
 dt = 1e-3
 T = {duration}
-zs, rolls, pitchs, thrusts = [], [], [], []
+USE_F = {use_force}
+F = {fval}
+zs, rolls, pitchs, rpms = [], [], [], []
+roll_all, pitch_all = [], []
 for k in range(1, int(T / dt) + 1):
     t[0] = k * dt
     cf.setState(q.state)
     cf.getSetpoint()
     act = cf.executeController()
-    fa = np.array([0.0, 0.0, {f_ext_z}]) if t[0] > 5.0 else np.zeros(3)
+    fa = np.array([0.0, 0.0, F]) if (USE_F and t[0] > 5.0) else np.zeros(3)
     q.step(act, dt, fa)
+    r, p, _ = rowan.to_euler(q.state.quat, convention="xyz")
+    roll_all.append(abs(np.degrees(r)))
+    pitch_all.append(abs(np.degrees(p)))
     if t[0] > 8.0:
         zs.append(q.state.pos[2])
-        r, p, _ = rowan.to_euler(q.state.quat, convention="xyz")
         rolls.append(np.degrees(r))
         pitchs.append(np.degrees(p))
-        thrusts.append(float(np.mean(act.rpm)))
+        rpms.append(float(np.mean(act.rpm)))
 z = np.array(zs)
 print("LABEL", "{label}")
-print("Z_MEAN", float(np.mean(z)))
-print("Z_STD", float(np.std(z)))
 print("Z_ERR_MEAN", float(np.mean(z - {height})))
 print("Z_ERR_RMSE", float(np.sqrt(np.mean((z - {height})**2))))
+print("Z_STD", float(np.std(z)))
 print("ROLL_RMS", float(np.sqrt(np.mean(np.array(rolls)**2))))
 print("PITCH_RMS", float(np.sqrt(np.mean(np.array(pitchs)**2))))
-print("RPM_MEAN_STD", float(np.std(thrusts)))
+print("ROLL_MAX_ALL", float(np.max(roll_all)))
+print("PITCH_MAX_ALL", float(np.max(pitch_all)))
+print("RPM_MEAN_STD", float(np.std(rpms)))
 '''
-    py = shutil.which("python3.10") or sys.executable
+    py = "/usr/bin/python3.10" if Path("/usr/bin/python3.10").is_file() else sys.executable
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{so_path.parent}:{cs2_sim}"
     out = subprocess.check_output([py, "-c", code], env=env, text=True)
-    metrics = {}
+    metrics: dict = {}
     for line in out.strip().splitlines():
-        if " " in line:
-            k, v = line.split(" ", 1)
-            metrics[k] = float(v) if k != "LABEL" else v
+        if " " not in line:
+            continue
+        k, v = line.split(" ", 1)
+        metrics[k] = float(v) if k != "LABEL" else v
     return metrics
+
+
+def full_suite(forces: list[float], json_path: Path, *, skip_rebuild: bool = False) -> dict:
+    ARTIFACT_DIR.mkdir(exist_ok=True)
+    off_dir = ARTIFACT_DIR / "off"
+    on_dir = ARTIFACT_DIR / "on"
+    if skip_rebuild and off_dir.is_dir() and on_dir.is_dir():
+        off_so = next(off_dir.glob("_cffirmware*.so"))
+        on_so = next(on_dir.glob("_cffirmware*.so"))
+        off_copy, on_copy = off_so, on_so
+        for d in (off_dir, on_dir):
+            if not (d / "cffirmware.py").is_file():
+                shutil.copy2(BUILD / "cffirmware.py", d / "cffirmware.py")
+    else:
+        print("Building integral OFF (host cargo + bindings)...")
+        off_so = rebuild_with_integral(False)
+        off_dir.mkdir(parents=True, exist_ok=True)
+        on_dir.mkdir(parents=True, exist_ok=True)
+        off_copy = off_dir / off_so.name
+        shutil.copy2(off_so, off_copy)
+        shutil.copy2(BUILD / "cffirmware.py", off_dir / "cffirmware.py")
+
+        print("Building integral ON...")
+        on_so = rebuild_with_integral(True)
+        on_copy = on_dir / on_so.name
+        shutil.copy2(on_so, on_copy)
+        shutil.copy2(BUILD / "cffirmware.py", on_dir / "cffirmware.py")
+
+    off_hash = sha256_file(off_copy)
+    on_hash = sha256_file(on_copy)
+    if off_hash == on_hash:
+        raise SystemExit(f"OFF and ON .so still identical: {off_hash}")
+
+    results = {
+        "build": {
+            "off_sha256": off_hash,
+            "on_sha256": on_hash,
+            "distinct": True,
+            "host_cargo": "DRONE_PLATFORM=bl RUSTFLAGS=-C panic=abort cargo build --release --target x86_64-unknown-linux-gnu",
+        },
+        "runs": [],
+    }
+
+    for f in forces:
+        row = {"f_ext_z_N": f, "integral_off": run_hover(off_copy, "off", f_ext_z=f),
+               "integral_on": run_hover(on_copy, "on", f_ext_z=f)}
+        d_mean = row["integral_on"]["Z_ERR_MEAN"] - row["integral_off"]["Z_ERR_MEAN"]
+        row["delta_z_err_mean_m"] = d_mean
+        results["runs"].append(row)
+        print(
+            f"  f_ext={f:+.3f} N  dZ_mean={d_mean*1000:+.2f} mm  "
+            f"off={row['integral_off']['Z_ERR_MEAN']*1000:+.2f} mm  "
+            f"on={row['integral_on']['Z_ERR_MEAN']*1000:+.2f} mm  "
+            f"roll_max off/on={row['integral_off']['ROLL_MAX_ALL']:.2f}/"
+            f"{row['integral_on']['ROLL_MAX_ALL']:.2f} deg"
+        )
+
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(results, indent=2))
+    print(f"wrote {json_path}")
+    return results
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--rebuild-on", action="store_true", help="temporarily patch lib.rs, rebuild ON .so")
-    ap.add_argument("--on-so", type=Path, default=None)
+    ap.add_argument(
+        "--full-suite",
+        action="store_true",
+        help="rebuild OFF+ON with host cargo, run disturbance suite, write JSON",
+    )
+    ap.add_argument("--json", type=Path, default=DEFAULT_JSON)
+    ap.add_argument(
+        "--forces",
+        type=str,
+        default="",
+        help="comma-separated f_ext_z in N (default: built-in suite)",
+    )
+    ap.add_argument(
+        "--skip-rebuild",
+        action="store_true",
+        help="use /tmp/cffirmware_posint_on/{off,on} artifacts only",
+    )
     args = ap.parse_args()
 
-    off_candidates = sorted(BUILD.glob("_cffirmware.cpython-310*.so"))
-    if not off_candidates:
-        sys.exit("missing default cffirmware build (python3.10)")
-    off_path = off_candidates[-1]
+    if not args.full_suite:
+        ap.print_help()
+        sys.exit("Use --full-suite for the complete ON/OFF rebuild and comparison.")
 
-    on_path = args.on_so
-    if args.rebuild_on:
-        dest = Path("/tmp/cffirmware_posint_on")
-        dest.mkdir(exist_ok=True)
-        off_backup = dest / off_path.name
-        if not off_backup.is_file():
-            shutil.copy2(off_path, off_backup)
-        built = rebuild_with_integral(True)
-        on_path = dest / built.name
-        shutil.copy2(built, on_path)
-        subprocess.run(["make", "bindings_python"], cwd=FW, check=True)
+    forces = DISTURBANCE_SUITE_N
+    if args.forces.strip():
+        forces = [float(x.strip()) for x in args.forces.split(",")]
 
-    if on_path is None or not on_path.is_file():
-        sys.exit("provide --on-so or run with --rebuild-on")
+    full_suite(forces, args.json, skip_rebuild=args.skip_rebuild)
 
-    off_so = off_path
-    if args.rebuild_on and (Path("/tmp/cffirmware_posint_on") / off_path.name).is_file():
-        off_so = Path("/tmp/cffirmware_posint_on") / off_path.name
-    off = run_hover(off_so, "integral_off")
-    on = run_hover(on_path, "integral_on")
-    print("=== position integral SIL hover (oot geometric, z=1.0 m, f_ext after t=5s, stats t>8s) ===")
-    for key in ("Z_ERR_MEAN", "Z_ERR_RMSE", "Z_STD", "ROLL_RMS", "PITCH_RMS", "RPM_MEAN_STD"):
-        print(f"  {key:12}  off={off[key]:+.5f}  on={on[key]:+.5f}  delta={on[key]-off[key]:+.5f}")
+    restored = LIB_RS.read_text()
+    if "const ENABLE_POSITION_INTEGRAL: bool = false;" not in restored:
+        raise SystemExit("lib.rs not restored to ENABLE_POSITION_INTEGRAL=false")
+    print("lib.rs verified: ENABLE_POSITION_INTEGRAL=false")
 
 
 if __name__ == "__main__":

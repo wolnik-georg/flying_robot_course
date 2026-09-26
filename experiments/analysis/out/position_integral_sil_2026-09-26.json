@@ -1,34 +1,140 @@
 {
-  "with_f_ext_-8mN": {
-    "integral_off": {
-      "Z_ERR_MEAN": -0.004064518165221596,
-      "Z_ERR_RMSE": 0.004064518418070587,
-      "ROLL_RMS": 0.0,
-      "PITCH_RMS": 0.0,
-      "Z_MIN_TAKEOFF": 0.9959359777839373
-    },
-    "integral_on": {
-      "Z_ERR_MEAN": -0.004064518165221596,
-      "Z_ERR_RMSE": 0.004064518418070587,
-      "ROLL_RMS": 0.0,
-      "PITCH_RMS": 0.0,
-      "Z_MIN_TAKEOFF": 0.9959359777839373
-    }
+  "build": {
+    "off_sha256": "9a167c55b7a23e8fb360ce577f9352563fb5e94608bbf517ddfdbee90b1f3521",
+    "on_sha256": "6ec51b5e6a6a4c36dd0da17f3e7aa8b721b08d2d10c27863666344441fd3ae6d",
+    "distinct": true,
+    "host_cargo": "DRONE_PLATFORM=bl RUSTFLAGS=-C panic=abort cargo build --release --target x86_64-unknown-linux-gnu"
   },
-  "nominal_no_disturbance": {
-    "integral_off": {
-      "Z_ERR_MEAN": -1.0493235746950418e-06,
-      "Z_ERR_RMSE": 1.0493441318684393e-06,
-      "ROLL_RMS": 0.0,
-      "PITCH_RMS": 0.0,
-      "Z_MIN_TAKEOFF": 0.9999989560200097
+  "runs": [
+    {
+      "f_ext_z_N": 0.0,
+      "integral_off": {
+        "LABEL": "off",
+        "Z_ERR_MEAN": -1.0493235746950418e-06,
+        "Z_ERR_RMSE": 1.0493441318684393e-06,
+        "Z_STD": 6.568308454073809e-09,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.11844013882797502
+      },
+      "integral_on": {
+        "LABEL": "on",
+        "Z_ERR_MEAN": 2.8537010557924423e-05,
+        "Z_ERR_RMSE": 2.8537059185594595e-05,
+        "Z_STD": 5.268186631965661e-08,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.11846272101569591
+      },
+      "delta_z_err_mean_m": 2.9586334132619465e-05
     },
-    "integral_on": {
-      "Z_ERR_MEAN": -1.0493235746950418e-06,
-      "Z_ERR_RMSE": 1.0493441318684393e-06,
-      "ROLL_RMS": 0.0,
-      "PITCH_RMS": 0.0,
-      "Z_MIN_TAKEOFF": 0.9999989560200097
+    {
+      "f_ext_z_N": -0.008,
+      "integral_off": {
+        "LABEL": "off",
+        "Z_ERR_MEAN": -0.004064518165221596,
+        "Z_ERR_RMSE": 0.004064518418070587,
+        "Z_STD": 1.4336731468799363e-06,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.07295174205172711
+      },
+      "integral_on": {
+        "LABEL": "on",
+        "Z_ERR_MEAN": -0.004010609043719866,
+        "Z_ERR_RMSE": 0.004010617332129118,
+        "Z_STD": 8.153723499224362e-06,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.07295174205172711
+      },
+      "delta_z_err_mean_m": 5.3909121501730106e-05
+    },
+    {
+      "f_ext_z_N": -0.04,
+      "integral_off": {
+        "LABEL": "off",
+        "Z_ERR_MEAN": -0.02032746723541262,
+        "Z_ERR_RMSE": 0.0203274672719556,
+        "Z_STD": 1.2188733944451412e-06,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.10121663340500565
+      },
+      "integral_on": {
+        "LABEL": "on",
+        "Z_ERR_MEAN": -0.02017647069208081,
+        "Z_ERR_RMSE": 0.020176502822262406,
+        "Z_STD": 3.60076154020841e-05,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.10125467327554309
+      },
+      "delta_z_err_mean_m": 0.0001509965433318071
+    },
+    {
+      "f_ext_z_N": -0.12,
+      "integral_off": {
+        "LABEL": "off",
+        "Z_ERR_MEAN": -0.06097591161941316,
+        "Z_ERR_RMSE": 0.060975911676205016,
+        "Z_STD": 2.6317048688236235e-06,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.10611688192090452
+      },
+      "integral_on": {
+        "LABEL": "on",
+        "Z_ERR_MEAN": -0.060581931494051694,
+        "Z_ERR_RMSE": 0.06058203212664649,
+        "Z_STD": 0.0001104221176025401,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.10625348031524412
+      },
+      "delta_z_err_mean_m": 0.00039398012536146637
+    },
+    {
+      "f_ext_z_N": -0.2,
+      "integral_off": {
+        "LABEL": "off",
+        "Z_ERR_MEAN": -0.10162859175353908,
+        "Z_ERR_RMSE": 0.10162859182321236,
+        "Z_STD": 3.7631893562199945e-06,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.1394851637587017
+      },
+      "integral_on": {
+        "LABEL": "on",
+        "Z_ERR_MEAN": -0.10099161838264141,
+        "Z_ERR_RMSE": 0.10099178304683891,
+        "Z_STD": 0.0001823716938061657,
+        "ROLL_RMS": 0.0,
+        "PITCH_RMS": 0.0,
+        "ROLL_MAX_ALL": 0.0,
+        "PITCH_MAX_ALL": 0.0,
+        "RPM_MEAN_STD": 0.13945916197966984
+      },
+      "delta_z_err_mean_m": 0.0006369733708976727
     }
-  }
+  ]
 }

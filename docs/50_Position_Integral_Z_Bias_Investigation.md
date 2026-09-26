@@ -67,45 +67,72 @@ controller bias integrator would remove everywhere.
 
 ## Task 2 — SIL (integral ON vs OFF)
 
-**Method:** `experiments/analysis/position_integral_sil_compare.py` + desk rebuild of
-host `cffirmware` with `ENABLE_POSITION_INTEGRAL` toggled ( **`lib.rs` restored to
-`false`** after runs; **not** a flight config change).
+**Method:** `experiments/analysis/position_integral_sil_compare.py --full-suite`
+(geometric `oot`, hover 1 m, np plant, stats for **t &gt; 8 s**, constant downward
+`f_ext_z` after **t = 5 s**). Host rebuild ( **`lib.rs` restored to `false`** after each
+build):
 
-**Caveat:** Host `cargo build --target x86_64-unknown-linux-gnu` for
-`libcf_controller_rs.a` **failed** in this environment (`unwinding panics are not
-supported without std`). `make bindings_python` therefore **relinked an unchanged
-archive** — OFF vs ON `.so` files were **SHA256-identical**. Reported ON/OFF metrics
-match for that reason, not because the compiler proved the branch dead.
+```bash
+cd flying_drone_stack/firmware_app
+DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" cargo build --release --target x86_64-unknown-linux-gnu
+cd ~/Desktop/crazyflie-firmware && make bindings_python
+```
 
-**Observed (identical binaries, geometric `oot`, hover 1 m, np plant):**
+**First-pass bug (fixed 2026-09-26 evening):** the script called **`make bindings_python`
+only**, without the **host `cargo` step** and without **`RUSTFLAGS="-C panic=abort"`**.
+`cargo` then failed (`unwinding panics are not supported without std`) and bindings
+relinked a **stale** `libcf_controller_rs.a` — OFF/ON `.so` were SHA256-identical
+(tooling artifact).
 
-| Condition | Z error mean (t &gt; 8 s) | Roll RMS |
-|-----------|-------------------------:|---------:|
-| Nominal (no disturbance) | ≈ **0 mm** | **0°** |
-| Constant **−8 mN** after t = 5 s | ≈ **−4.1 mm** | **0°** |
+**Verified distinct binaries (2026-09-26):**
 
-No takeoff/landing **instability** or attitude growth in this script; **cannot** claim
-integral **helps or hurts** until a successful host Rust rebuild produces **distinct**
-ON/OFF binaries. (Consistent with **08-22** “bit-identical” in the *other* SIL fixture.)
+| Arm | SHA256 |
+|-----|--------|
+| OFF | `9a167c55…b1f3521` |
+| ON | `6ec51b5e…fd3ae6d` |
+
+Full table: `experiments/analysis/out/position_integral_sil_2026-09-26.json`.
+
+**Disturbance calibration (integral OFF):** in this SIL plant, steady **|Z error|** scales
+roughly linearly with **|f_ext|** (~**5 mm per 10 mN**): **−40 mN → ~20 mm** (order of
+**C5** log bias), **−120 mN → ~61 mm** (**A2/A3**), **−200 mN → ~102 mm** (mid **A1**
+range, not full 17 cm).
+
+**ON vs OFF (Δ = ON − OFF mean Z error, positive = ON flies higher):**
+
+| f_ext (N) | OFF Z err mean | ON Z err mean | Δ (mm) | Roll max (off/on) |
+|----------:|---------------:|--------------:|-------:|------------------:|
+| 0 | ≈ 0 mm | ≈ 0 mm | **+0.03** | 0° / 0° |
+| −0.008 | **−4.06 mm** | −4.01 mm | **+0.05** | 0° / 0° |
+| −0.040 | **−20.33 mm** | −20.18 mm | **+0.15** | 0° / 0° |
+| −0.120 | **−60.98 mm** | −60.58 mm | **+0.39** | 0° / 0° |
+| −0.200 | **−101.63 mm** | −100.99 mm | **+0.64** | 0° / 0° |
+
+Integral **ON** trims the sag by **sub-millimetre to &lt;1 mm** across this range — far
+short of closing **2–20 cm** log biases. **No** roll/pitch growth or oscillation observed
+(**ROLL_MAX_ALL = 0°** throughout); **KI_LIMIT = 2.0** did not show windup pathology in
+this hover fixture (integral action is **weak**, not aggressively fighting the P loop).
 
 ---
 
 ## Task 3 — Recommendation
 
-**Do not enable `ENABLE_POSITION_INTEGRAL` on hardware now.**
+**Do not enable `ENABLE_POSITION_INTEGRAL` on hardware now.** (Unchanged headline; now
+**supported by valid SIL**, not “inconclusive”.)
 
-- **Partial bias:** Logs show a **real, same-sign** “below ctrltarget” tendency on **cf5**,
-  but **not** a single ~cm bias an integrator would uniformly erase (**2 cm** solo C5 vs
-  **~17 cm** A1).
-- **A1-scale offsets** are likely **downwash / formation physics**, not a missing **2 cm**
-  trim — turning on **XY+Z** integral at **KI_P = 0.05** is a blunt tool and couples axes.
-- **SIL A/B inconclusive** here due to stale host link; any future test needs a verified
-  ON/OFF binary diff **plus** disturbances matched to log-scale biases (cm–decimeter), not
-  only the stability-wall setup in `docs/09`.
+- **Flight data (Task 1):** real, scenario-scaled **below-setpoint** bias — still valid.
+- **SIL (Task 2):** with **working ON/OFF binaries**, existing **KI_P = 0.05 / KI_LIMIT =
+  2.0** integral **does not materially reduce** steady Z error at disturbance levels that
+  reproduce **cm–decimetre** sag in sim — it adds at most **~0.6 mm** improvement at
+  **−200 mN**. That is **not** a credible fix for **2 cm** C5 offsets, let alone **A1**
+  downwash-scale gaps.
+- **Joint XY+Z** gate remains a blunt coupling; **no windup** seen here, but also **no
+  benefit** at the magnitudes that matter.
 
-**If revisited after lab unblock:** C.0-gated **solo C5 hover** first (smallest, most
-integral-like offset); compare `rnn.en=0` logs before touching integral; consider **Z-only
-or anti-windup** design rather than flipping the existing joint gate.
+**If revisited:** do **not** flip the current gate expecting log bias to disappear — would
+need **much larger Z-only integral authority** (and anti-windup design), or address
+formation/downwash physics directly. C.0 **solo C5** could still **confirm** flight bias
+isn't already explained by this weak integral path.
 
 ---
 
@@ -116,4 +143,4 @@ or anti-windup** design rather than flipping the existing joint gate.
 | `experiments/analysis/position_integral_z_bias.py` | Log analysis |
 | `experiments/analysis/out/position_integral_z_bias_2026-09-26.json` | Per-flight table + summary |
 | `experiments/analysis/position_integral_sil_compare.py` | SIL harness (desk) |
-| `experiments/analysis/out/position_integral_sil_2026-09-26.json` | SIL metrics (stale-.a caveat) |
+| `experiments/analysis/out/position_integral_sil_2026-09-26.json` | SIL ON/OFF suite (distinct `.so`, disturbance sweep) |
