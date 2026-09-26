@@ -110,6 +110,62 @@ On **A2 top m3**, many windows lack enough valid deck samples; finite rolling va
 
 ---
 
+## Extension — 2026-09-26 (2): 4-motor grids + flight summary table
+
+**Reproduce:** `rpm_source_quality.py` also writes `grid4_*.png` and `flight_summary_table.md`.
+
+### 4-motor overlay grids (top-3 |lag|, A2 excluded)
+
+Full-flight **2×2** deck vs DShot on the **top** vehicle (`cf_second` / suffixed prefix), subplot titles show that motor’s **`bias_pct`** and **`lag_ms`** from `per_flight.csv`.
+
+| Plot | Flight (max |lag| motor) |
+|------|-------------------------|
+| [`grid4_A1_17-17-26.png`](../experiments/analysis/out/rpm_source_quality/grid4_A1_17-17-26.png) | A1 top **m3**, **44 ms** |
+| [`grid4_A7_19-11-19.png`](../experiments/analysis/out/rpm_source_quality/grid4_A7_19-11-19.png) | A7 top **m3**, **36 ms** |
+| [`grid4_A3_13-04-34.png`](../experiments/analysis/out/rpm_source_quality/grid4_A3_13-04-34.png) | A3 top **m4**, **24 ms** |
+
+Figure legend (once per plot): **deck RPM** = optical deck; **DShot RPM** = ESC telemetry; same **500 Hz** clock as § above.
+
+### Successful flights — deck vs DShot (A2 excluded)
+
+One row per merged flight; metrics are **means/maxes over all motor rows** in that CSV (4 on solo C5, 8 on dual-vehicle merges). Source: `per_flight.csv` only (no recomputation).
+
+**Headline (27 flights, A2 omitted):** median **|bias| ≈ 0.115%**, median **lag ≈ 2.0 ms** — sub-percent bias and ~one sample period lag for typical sessions; larger **max |lag|** peaks (24–44 ms) appear on individual motor-rows, not as fleet-wide medians.
+
+| Scenario | Flight | Mean |bias| % | Mean lag (ms) | Max |lag| (ms) | Deck dropout % | DShot dropout % |
+|----------|--------|---------------|---------------|----------------|-----------------|-----------------|
+| A1 | 12-51-16 | 0.064 | 2.2 | 6.0 | 0.0 | 0.0 |
+| A1 | 13-25-10 | 0.123 | -1.8 | 10.0 | 0.0 | 0.0 |
+| A1 | 17-17-26 | 0.094 | 8.5 | 44.0 | 0.0 | 0.0 |
+| A1 | 17-18-48 | 0.095 | 3.5 | 24.0 | 0.0 | 0.0 |
+| A1 | 17-36-06 | 0.083 | 2.8 | 8.0 | 0.0 | 0.0 |
+| A1 | 17-37-26 | 0.078 | 0.8 | 4.0 | 0.0 | 0.0 |
+| A3 | 13-00-57 | 0.131 | 2.0 | 4.0 | 0.0 | 0.0 |
+| A3 | 13-02-56 | 0.115 | 2.0 | 4.0 | 0.0 | 0.0 |
+| A3 | 13-04-34 | 0.085 | 4.0 | 24.0 | 0.0 | 0.0 |
+| A3 | 17-45-03 | 0.081 | 1.2 | 6.0 | 0.0 | 0.0 |
+| A3 | 17-46-43 | 0.078 | 4.2 | 16.0 | 0.0 | 0.0 |
+| A3 | 17-54-32 | 0.108 | 1.8 | 4.0 | 0.0 | 0.0 |
+| A3 | 17-57-32 | 0.090 | 0.5 | 4.0 | 0.0 | 0.0 |
+| A7 | 19-11-19 | 0.099 | 7.0 | 36.0 | 0.0 | 0.0 |
+| A7 | 19-12-38 | 0.073 | 0.5 | 4.0 | 0.0 | 0.0 |
+| A7 | 19-13-55 | 0.094 | 3.0 | 16.0 | 0.0 | 0.0 |
+| A8 | 12-11-05 | 0.133 | 1.8 | 10.0 | 0.0 | 0.0 |
+| A8 | 12-11-46 | 0.165 | 1.0 | 2.0 | 0.0 | 0.0 |
+| A8 | 13-14-36 | 0.128 | 0.5 | 8.0 | 0.0 | 0.0 |
+| C5 | 18-02-55 | 0.164 | 1.5 | 6.0 | 0.0 | 0.0 |
+| C5 | 18-03-53 | 0.172 | 4.0 | 8.0 | 0.0 | 0.0 |
+| C5 | 18-06-27 | 0.229 | 3.5 | 10.0 | 0.0 | 0.0 |
+| C5 | 18-08-14 | 0.196 | 0.0 | 8.0 | 0.0 | 0.0 |
+| C5 | 18-16-49 | 0.149 | 9.5 | 24.0 | 0.0 | 0.0 |
+| C5 | 18-17-45 | 0.210 | 0.0 | 4.0 | 0.0 | 0.0 |
+| C5 | 18-18-41 | 0.194 | 0.5 | 4.0 | 0.0 | 0.0 |
+| C5 | 18-21-19 | 0.144 | 2.0 | 4.0 | 0.0 | 0.0 |
+| **All flights (mean)** | — | **0.125** | **2.5** | **11.2** | — | — |
+| **All flights (median)** | — | **0.115** | **2.0** | **8.0** | — | — |
+
+---
+
 ## Related
 
 - Planning prompt: [`42_RPM_Source_Quality_Desk_Prompt.md`](42_RPM_Source_Quality_Desk_Prompt.md)

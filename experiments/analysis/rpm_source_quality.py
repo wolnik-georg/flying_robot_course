@@ -305,6 +305,160 @@ def plot_rolling_lag(
     plt.close(fig)
 
 
+# Top-3 |lag_ms| flights excluding A2 (from per_flight.csv); grid uses top vehicle.
+GRID4_LAG_FLIGHTS = (
+    ("A1", "17-17-26", "experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv", "cf_second"),
+    ("A7", "19-11-19", "experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv", "cf_second"),
+    ("A3", "13-04-34", "experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv", "cf_second_A3_13-04-34"),
+)
+
+
+def _plot_rpm_pair_on_ax(
+    ax,
+    t: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    *,
+    subplot_title: str,
+) -> tuple:
+    """Draw deck/DShot on ax; return line artists for figure legend."""
+    t = t - t[0]
+    ymax = float(np.nanmax(dshot[dshot > 0])) if np.any(dshot > 0) else 1.0
+    ymax = max(ymax, float(np.nanmax(deck[deck > 0])) if np.any(deck > 0) else ymax)
+    deck_zero = deck <= 0
+    if np.any(deck_zero):
+        ax.fill_between(
+            t, 0, ymax * 1.05, where=deck_zero, color="0.85", alpha=0.45, zorder=0,
+        )
+    line_deck, = ax.plot(t, deck, lw=0.6, color="C0", alpha=0.9)
+    line_dshot, = ax.plot(t, dshot, lw=0.6, color="C1", alpha=0.85)
+    ax.set_title(subplot_title, fontsize=9)
+    ax.set_xlim(t[0], t[-1])
+    ax.tick_params(labelsize=7)
+    return line_deck, line_dshot
+
+
+def plot_rpm_grid4(
+    merge_rel: str,
+    prefix: str,
+    out_path: Path,
+    per_flight_rows: list[dict],
+    scenario: str,
+    stamp: str,
+    vehicle_role_name: str,
+) -> None:
+    """2×2 deck vs DShot for m1–m4 on one vehicle."""
+    csv_path = REPO / merge_rel
+    t, arrays = load_merged_csv(csv_path)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7), sharex=True)
+    legend_lines = None
+    for motor, ax in zip(range(1, 5), axes.flat):
+        rd = arrays[f"{prefix}.rpm_m{motor}"]
+        rs = arrays[f"{prefix}.motor_m{motor}_rpm"]
+        meta = next(
+            (
+                r
+                for r in per_flight_rows
+                if r["scenario"] == scenario
+                and r["stamp"] == stamp
+                and r["vehicle_role"] == vehicle_role_name
+                and int(r["motor"]) == motor
+            ),
+            None,
+        )
+        if meta:
+            st = (
+                f"m{motor}: bias {meta['bias_pct']:+.2f}%  "
+                f"lag {meta['lag_ms']:+.1f} ms"
+            )
+        else:
+            st = f"m{motor}"
+        lines = _plot_rpm_pair_on_ax(ax, t, rd, rs, subplot_title=st)
+        if legend_lines is None:
+            legend_lines = lines
+        if motor in (3, 4):
+            ax.set_xlabel("time since flight start (s)", fontsize=8)
+        if motor in (1, 3):
+            ax.set_ylabel("RPM", fontsize=8)
+    fig.suptitle(f"{scenario} {stamp} — {prefix} (deck vs DShot, 500 Hz)", fontsize=11)
+    fig.legend(
+        legend_lines,
+        ["deck RPM", "DShot RPM"],
+        loc="upper center",
+        ncol=2,
+        fontsize=9,
+        bbox_to_anchor=(0.5, 1.02),
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def flight_summary_table_md(per_flight_rows: list[dict]) -> str:
+    """Markdown table: one row per flight (all motors), A2 excluded."""
+    from statistics import median
+
+    groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for r in per_flight_rows:
+        if r["scenario"] == "A2":
+            continue
+        groups[(r["scenario"], r["stamp"])].append(r)
+
+    rows_out = []
+    for (scenario, stamp), motors in sorted(groups.items()):
+        abs_bias = [abs(float(m["bias_pct"])) for m in motors if np.isfinite(m["bias_pct"])]
+        lags = [float(m["lag_ms"]) for m in motors if np.isfinite(m["lag_ms"])]
+        abs_lags = [abs(x) for x in lags]
+        rows_out.append(
+            {
+                "scenario": scenario,
+                "flight": stamp,
+                "mean_abs_bias": float(np.mean(abs_bias)) if abs_bias else float("nan"),
+                "mean_lag": float(np.mean(lags)) if lags else float("nan"),
+                "max_abs_lag": float(np.max(abs_lags)) if abs_lags else float("nan"),
+                "deck_drop": float(np.max([m["deck_zero_pct"] for m in motors])),
+                "dshot_drop": float(np.max([m["dshot_zero_pct"] for m in motors])),
+            }
+        )
+
+    def fmt(x, nd=2):
+        return f"{x:.{nd}f}" if np.isfinite(x) else "—"
+
+    lines = [
+        "| Scenario | Flight | Mean |bias| % | Mean lag (ms) | Max |lag| (ms) | Deck dropout % | DShot dropout % |",
+        "|----------|--------|---------------|---------------|----------------|-----------------|-----------------|",
+    ]
+    for r in rows_out:
+        lines.append(
+            f"| {r['scenario']} | {r['flight']} | {fmt(r['mean_abs_bias'], 3)} | "
+            f"{fmt(r['mean_lag'], 1)} | {fmt(r['max_abs_lag'], 1)} | "
+            f"{fmt(r['deck_drop'], 1)} | {fmt(r['dshot_drop'], 1)} |"
+        )
+    mb = [r["mean_abs_bias"] for r in rows_out]
+    ml = [r["mean_lag"] for r in rows_out]
+    mal = [r["max_abs_lag"] for r in rows_out]
+    lines.append(
+        f"| **All flights (mean)** | — | **{fmt(np.mean(mb), 3)}** | "
+        f"**{fmt(np.mean(ml), 1)}** | **{fmt(np.mean(mal), 1)}** | — | — |"
+    )
+    lines.append(
+        f"| **All flights (median)** | — | **{fmt(median(mb), 3)}** | "
+        f"**{fmt(median(ml), 1)}** | **{fmt(median(mal), 1)}** | — | — |"
+    )
+    return "\n".join(lines)
+
+
+def write_grid_and_flight_summary(out_dir: Path, per_flight_rows: list[dict]) -> str:
+    for scenario, stamp, merge_rel, prefix in GRID4_LAG_FLIGHTS:
+        role = vehicle_role(prefix)
+        out = out_dir / f"grid4_{scenario}_{stamp}.png"
+        plot_rpm_grid4(merge_rel, prefix, out, per_flight_rows, scenario, stamp, role)
+    md = flight_summary_table_md(per_flight_rows)
+    (out_dir / "flight_summary_table.md").write_text(md + "\n")
+    return md
+
+
 def write_extended_visualizations(out_dir: Path, per_flight_rows: list[dict]) -> None:
     """Overlay + rolling-lag plots for representative flights (additive outputs)."""
 
@@ -512,11 +666,13 @@ def main() -> int:
     plt.close(fig)
 
     write_extended_visualizations(out_dir, per_flight_rows)
+    write_grid_and_flight_summary(out_dir, per_flight_rows)
 
     print(f"Wrote {per_path} ({len(per_flight_rows)} motor-rows)")
     print(f"Wrote {summary_path}")
     print(f"Wrote {plot_path}")
     print(f"Wrote extended overlay + rolling-lag PNGs under {out_dir}/")
+    print(f"Wrote grid4_*.png and flight_summary_table.md under {out_dir}/")
     return 0
 
 
