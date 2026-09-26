@@ -394,7 +394,7 @@ Artifacts: `experiments/analysis/out/c2_e2e_2026-09-26/loo_weights_18fold/`, `lo
 
 | Scope | Detail |
 |--------|--------|
-| Training-eligible paths | **24** manifest entries → **18** files with `dataset.build` rows (6× C5 solo excluded; **A1 `13-25-10`** → **0** rows) |
+| Training-eligible paths | **24** manifest entries → **18** pair flights (6× C5 solo excluded) → **17** files with `dataset.build` rows (**A1 `13-25-10`** → **0** rows) |
 | LOO folds executed | **17** — no fold for `A1_2026-09-21_13-25-10` (nothing to hold out) |
 | A2 @ dz 0.30 | **Kept** despite `top_align_rms_high` (~28 cm on cf_second): scenario is circle r=0.75, h=1.0 — expected Lee-on-circle tracking under downwash, not a merge defect |
 
