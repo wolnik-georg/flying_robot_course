@@ -1,0 +1,20 @@
+/crazyflie_server:
+  ros__parameters:
+    warnings:
+      frequency: 1.0
+    firmware_params:
+      query_all_values_on_connect: False
+    sim:
+      max_dt: 0
+      rnn_weights: "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz"
+      rnn_enable: true
+      residual_log: "/home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_compensate.csv"
+      residual_log_hz: 100.0
+      backend: neuralswarm
+      visualizations:
+        rviz: {enabled: false}
+        pdf: {enabled: false}
+        record_states: {enabled: false}
+        blender: {enabled: false}
+      controller: oot
+      oot_ctrl_mode: 0

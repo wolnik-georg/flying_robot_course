@@ -1,7 +1,8 @@
 # 40 — C.2 Neural-Swarm2 residual pipeline: end-to-end validation plan (with real 2026-09-21 data)
 
 **Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Extended
-2026-09-26 (desk):** full **18-file** training bank train + **17-fold LOO**, Stage C **pass** after
+2026-09-26 (desk):** full bank train (**24 manifest paths → 18 pair flights → 17 files with rows**)
++ **17-fold LOO**, Stage C **pass**; **Stage D/E on full-bank weights** + SIL predict diagnosis — see
 `residual_nn` host rebuild, **first SIL inference with full-bank weights** — see § **Full bank —
 2026-09-26** (historical) and § **Extension — LOO, Stage C, SIL — 2026-09-26** below. Artifacts:
 `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
@@ -386,7 +387,7 @@ closed-loop reference). After mocap returns, priority is lab regression — not 
 **Does not replace** § **Full bank — 2026-09-26** above (that section stays the record of the first
 full-bank train and the initial Stage C failure).
 
-### A.1 — 17-fold leave-one-flight-out (18-file bank)
+### A.1 — 17-fold leave-one-flight-out (24 paths → 18 pair flights → 17 files with rows)
 
 Script: `experiments/analysis/run_c2_loo_18fold_2026_09_26.py`  
 Artifacts: `experiments/analysis/out/c2_e2e_2026-09-26/loo_weights_18fold/`, `loo_18fold_results.json`
@@ -457,7 +458,94 @@ Summary: `experiments/sim_validation/c2_fullbank_sim_inference.json` (**5206** l
 | Weights upload + `rnn.ready` | Log: 19297 weights, val RMSE 0.2806, `rnn.en=0` |
 | `rnn.pred_*` finite, non-NaN | ✅ |
 | `rnn.pred_z` non-zero | RMS **~7.1 m/s²** (clamp **±8** active ~20% of samples — safety limiter, not missing network) |
-| Corr(`a_res_z`, `rnn_pred_z`) on cf231_active | **0.16** (open-loop predict — not claiming closed-loop quality) |
+| Corr(`a_res_z`, `rnn_pred_z`) on cf231_active | **0.16** on all rows — **misleading**; see § Diagnosis below (**0.47** in-air only) |
 
-**21 Sep Stage E** remains the closed-loop stability reference; this extension adds **trained-weight**
-SIL predict logging on the **full bank** model.
+**21 Sep Stage E** (LOO weights) remains historical; **full-bank Stage E** added § **Stage D/E — full bank — 2026-09-26**.
+
+---
+
+## SIL predict diagnosis — 2026-09-26 (desk)
+
+**Question:** Why weak aggregate correlation and ~20% (misnamed) “zero” fraction in the first summary?
+
+**Artifacts:** `experiments/analysis/c2_sil_predict_diagnosis.py` →
+`experiments/analysis/out/c2_e2e_2026-09-26/sil_predict_diagnosis.json`; CSV
+`experiments/sim_validation/c2_fullbank_predict.csv`; summary
+`summarize_c2_fullbank_predict.py` → `c2_fullbank_sim_inference.json` (field
+`rnn_pred_z_clamp_fraction`).
+
+### 1. Timing / alignment — **not the primary cause**
+
+Lag sweep ±10 samples @ 100 Hz on in-air rows: corr rises smoothly from **0.395** (lag +10) to
+**0.484** (lag −10) vs **0.466** at lag 0 — no sharp peak at ±1–2 ticks. `a_res` and `rnn_pred`
+are sampled from the same controller pass in SIL (`crazyflie_sil.py`); residual CSV is 100 Hz
+decimation of that state. At most ~100 ms lead — **not** an off-by-one-tick logging bug.
+
+### 2. Aggregate correlation artifact — **partially yes**
+
+Including ground/spawn rows ( `z ≤ 0.05` ) mixes zeros and produces **corr ≈ 0.16** on all **5205**
+rows. **In-air only (`n=4046`): corr ≈ 0.47** (cf231_active) — still poor RMSE because predictions
+sit on the clamp.
+
+### 3. Clamp saturation + label scale mismatch — **primary**
+
+| Quantity | Training bank (17 files, gated samples) | SIL in-air (A3 dz=0.30) |
+|----------|----------------------------------------|-------------------------|
+| &#124;y&#124; (a_res_z) p99 | **0.21 m/s²** | **0.36 m/s²** |
+| y p50 | **−1.32 m/s²** | **−0.13 m/s²** |
+| `rnn_pred_z` at OUT_CLAMP ±8 | — | **99.95%** of in-air samples |
+
+The network’s **unclamped** output is far above **8 m/s²** for nearly every in-air tick, so the
+logged prediction is the safety limiter, not the learned function. Training targets are mostly
+**−1…−3 m/s²** downwash; SIL `a_res_z` under `backend=neuralswarm` is **much smaller in magnitude**
+(simulation geometric residual vs. physics downwash already in the backend) — comparing clamped
+multi‑m/s² predictions to ~0.1 m/s² residuals yields high RMSE but moderate correlation when
+horizontally close (**corr ≈ 0.47** in the closest horizontal tertile).
+
+Gated input features in SIL are **in-family** (dx/dy/dz/dvx quantiles overlap training) — not a
+clean “out of training hypercube” shift; the dominant issue is **output scale / semantic mismatch
+of a_res in this SIL setup**, not missing neighbours.
+
+### 4. Per-phase
+
+Clamp rate **≈100%** in all horizontal tertiles; correlation is meaningful only when horizontally
+close; far tertile has near-constant clamped pred → corr undefined/NaN.
+
+**Conclusion:** **Not a timing bug.** **Not “model useless” on offline val** (full-bank RMSE 0.28
+m/s² on real logs). The open-loop SIL metric was **dominated by OUT_CLAMP saturation** and
+**comparing training-scale downwash labels to sim-scale `a_res`**. Follow-up (out of scope here):
+SIL collect with `backend=np` to match C.1 lab physics, or evaluate predict-vs-measured only on
+hardware logs; do **not** interpret clamp-saturated SIL RMSE as offline generalization failure.
+
+**Stage E implication:** Closed-loop **go/no-fly** (`rnn.en=1`) can still pass stability while
+predictions are clamp-saturated — same as 21 Sep pattern. Compensation is **not** validated as
+physically correct from this SIL run.
+
+---
+
+## Stage D/E — full bank — 2026-09-26 (desk)
+
+**Weights:** `experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz`  
+**Script:** `experiments/analysis/run_c2_stage_de_fullbank_2026_09_26.py`  
+**JSON:** `experiments/analysis/out/c2_e2e_2026-09-26/stage_de_fullbank_2026_09_26.json`  
+**Stage E:** `experiments/analysis/c2_stage_e_fullbank_dryrun.sh` →
+`experiments/sim_validation/c2_fullbank_stage_e.json`
+
+### Stage D (physical plausibility)
+
+| Check | Result |
+|--------|--------|
+| Synthetic overhead dz sweep (unclamped) | **Non-monotonic** in &#124;a&#124; vs dz; `abs_larger_at_small_dz`: **false**; corr(&#124;a&#124;, dz) **−0.17** — **does not match** “stronger wash at smaller dz” sanity (same caveat as 21 Sep: thin data / wrong sign in grid) |
+| Full-bank binned error (181 489 samples) | RMSE **0.227**; dz/dy bins show structured error (not pure noise) |
+
+### Stage E (closed-loop SIL, `rnn.en=1` feeds compensation)
+
+Per `docs/40` § Stage E: **stability gate**, not quality. A3 dz=0.30, neuralswarm backend.
+
+| Arm | Rows | meaningful_flight | diverged |
+|-----|-----:|:-----------------:|:--------:|
+| predict (`rnn.en=0`) | 5194 | true | false |
+| compensate (`rnn.en=1`) | 5179 | true | false |
+
+**pass: true** (`c2_fullbank_stage_e.json`). Predict/compensate both show `rnn_pred_z_rms ≈ 7.7`
+(clamp-saturated — consistent with § Diagnosis above).

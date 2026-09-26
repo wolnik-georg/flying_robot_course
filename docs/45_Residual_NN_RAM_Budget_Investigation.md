@@ -277,6 +277,9 @@ Host parity: `tools/residual/test_flash_vs_upload.py` — upload vs flash build,
 
 For a thesis with a handful of frozen weight sets, flash is acceptable; for rapid weight iteration in the lab, keep the upload build on **host/SIL** (or accept reflash cost on hardware).
 
+**Flash link ≠ model quality.** SIL predict diagnosis (2026-09-26, `docs/40` § Diagnosis) is separate —
+deployment fits RAM; whether `rnn.en=1` improves flight is still an empirical question on hardware logs.
+
 **Default `make DRONE=bl` restored** after verification (no RNN features) — same discipline as §8.
 
 ---

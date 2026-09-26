@@ -1,0 +1,201 @@
+{
+  "date": "2026-09-26",
+  "weights": "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz",
+  "n_training_files_with_rows": 17,
+  "stage_d_synthetic_overhead_sweep": {
+    "weights": "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz",
+    "dz_separation_m": [
+      0.05,
+      0.09791666666666667,
+      0.14583333333333331,
+      0.19374999999999998,
+      0.24166666666666664,
+      0.2895833333333333,
+      0.33749999999999997,
+      0.38541666666666663,
+      0.4333333333333333,
+      0.48124999999999996,
+      0.5291666666666667,
+      0.5770833333333334,
+      0.625,
+      0.6729166666666666,
+      0.7208333333333333,
+      0.76875,
+      0.8166666666666667,
+      0.8645833333333333,
+      0.9125,
+      0.9604166666666667,
+      1.0083333333333333,
+      1.05625,
+      1.1041666666666667,
+      1.1520833333333333,
+      1.2
+    ],
+    "a_res_z_mps2_unclamped": [
+      -1.1134490368130445,
+      -1.6716549569433863,
+      -2.016750813709511,
+      -2.221171914614164,
+      -2.435733115542066,
+      -2.6334787523353493,
+      -2.7241686815743917,
+      -2.7550257879299123,
+      -2.7821841127269873,
+      -2.8064440177037167,
+      -2.7418794479998914,
+      -2.6724081005368916,
+      -2.593355544058831,
+      -2.4896107741764615,
+      -2.3808638719411994,
+      -2.2769566651229023,
+      -2.192905831598974,
+      -2.122091038148482,
+      -2.0735857498514783,
+      -2.025080333044241,
+      -1.9765750447472374,
+      -1.9266427788105642,
+      -1.9011919694942432,
+      -1.8764110840283907,
+      -1.857727366620368
+    ],
+    "abs_larger_at_small_dz": false,
+    "correlation_abs_a_vs_dz": -0.16790722920344126
+  },
+  "stage_d_binned_full_bank_eval": {
+    "weights": "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-26/full_bank_40.npz",
+    "n_samples": 181489,
+    "binned_error_dy": [
+      {
+        "bin": "0.00-0.05",
+        "axis": "dy",
+        "n": 55819,
+        "rmse_mps2": 0.30297793362102354
+      },
+      {
+        "bin": "0.05-0.10",
+        "axis": "dy",
+        "n": 36659,
+        "rmse_mps2": 0.29354655689238074
+      },
+      {
+        "bin": "0.10-0.15",
+        "axis": "dy",
+        "n": 8004,
+        "rmse_mps2": 0.18919014669082787
+      },
+      {
+        "bin": "0.15-0.20",
+        "axis": "dy",
+        "n": 2994,
+        "rmse_mps2": 0.09683276047464202
+      },
+      {
+        "bin": "0.20-0.25",
+        "axis": "dy",
+        "n": 52,
+        "rmse_mps2": 0.10011746773942069
+      }
+    ],
+    "binned_error_dz": [
+      {
+        "bin": "0.05-0.19",
+        "axis": "dz",
+        "n": 6767,
+        "rmse_mps2": 0.26863217645124976
+      },
+      {
+        "bin": "0.19-0.32",
+        "axis": "dz",
+        "n": 10259,
+        "rmse_mps2": 0.28975422806841616
+      },
+      {
+        "bin": "0.32-0.46",
+        "axis": "dz",
+        "n": 28112,
+        "rmse_mps2": 0.3197857908675708
+      },
+      {
+        "bin": "0.46-0.59",
+        "axis": "dz",
+        "n": 13049,
+        "rmse_mps2": 0.3154567458650238
+      },
+      {
+        "bin": "0.59-0.73",
+        "axis": "dz",
+        "n": 13830,
+        "rmse_mps2": 0.33183495668480817
+      },
+      {
+        "bin": "0.73-0.86",
+        "axis": "dz",
+        "n": 943,
+        "rmse_mps2": 0.3364192894950267
+      },
+      {
+        "bin": "0.86-1.00",
+        "axis": "dz",
+        "n": 1168,
+        "rmse_mps2": 0.33548416319266056
+      }
+    ],
+    "rmse_all": 0.22719283235294693
+  },
+  "stage_e": {
+    "note": "Desk/SIL go-no-fly gate \u2014 not evidence the model is good.",
+    "weights": "full_bank_40.npz (17-file bank, 181489 samples)",
+    "scenario": "A3 dz=0.30 neuralswarm backend",
+    "predict": {
+      "label": "predict_rnn_en_0",
+      "n_rows": 5194,
+      "drones": {
+        "cf231_active": {
+          "z_min": 0.0,
+          "z_max": 1.007471,
+          "cmd_z_max": 1.000007,
+          "rnn_pred_z_rms": 7.734924355260794,
+          "rmse_pred_vs_a_res": 7.811006133659055
+        },
+        "cf_second": {
+          "z_min": 0.0,
+          "z_max": 1.299298,
+          "cmd_z_max": 1.300006,
+          "rnn_pred_z_rms": 7.735281266456084,
+          "rmse_pred_vs_a_res": 7.756083575578481
+        }
+      },
+      "diverged": false,
+      "meaningful_flight": true
+    },
+    "compensate": {
+      "label": "compensate_rnn_en_1",
+      "n_rows": 5179,
+      "drones": {
+        "cf231_active": {
+          "z_min": 0.0,
+          "z_max": 1.307998,
+          "cmd_z_max": 1.000007,
+          "rnn_pred_z_rms": 7.726972238125994,
+          "rmse_pred_vs_a_res": 7.670523174488111
+        },
+        "cf_second": {
+          "z_min": 0.0,
+          "z_max": 1.772656,
+          "cmd_z_max": 1.300008,
+          "rnn_pred_z_rms": 7.726997695943815,
+          "rmse_pred_vs_a_res": 8.658422524819853
+        }
+      },
+      "diverged": false,
+      "meaningful_flight": true
+    },
+    "meaningful_flight": true,
+    "pass": true,
+    "inconclusive_reason": null
+  },
+  "stage_e_run": {
+    "exit_code": 0,
+    "note": "c2_stage_e_fullbank_dryrun.sh"
+  }
+}

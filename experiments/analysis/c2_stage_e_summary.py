@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--predict", type=Path, required=True)
     ap.add_argument("--compensate", type=Path, required=True)
     ap.add_argument("-o", type=Path, required=True)
+    ap.add_argument("--weights", type=str, default="")
     args = ap.parse_args()
 
     pred = summarise("predict_rnn_en_0", load(args.predict))
@@ -63,7 +64,7 @@ def main():
     flew = pred["meaningful_flight"] and comp["meaningful_flight"]
     gate = {
         "note": "Desk/SIL go-no-fly gate — not evidence the model is good.",
-        "weights": "train_without_A1_12-51-16.npz (LOO, trained on A3×3)",
+        "weights": args.weights or "train_without_A1_12-51-16.npz (LOO, trained on A3×3)",
         "scenario": "A3 dz=0.30 neuralswarm backend",
         "predict": pred,
         "compensate": comp,

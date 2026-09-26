@@ -1,6 +1,6 @@
 # Residual Learning — Onboard Inference and Offline Training
 
-> ## ✅ Pipeline complete; **2026-09-26: full 18-file bank LOO + Stage C + SIL predict** — deploy trust still A4-limited
+> ## ✅ Pipeline + flash deploy proven; **predictive quality in SIL is an open finding** (A4 still required for coverage)
 >
 > **Revised 2026-09-21** after [`40_C2_Residual_Pipeline_E2E_Validation_Plan.md`](40_C2_Residual_Pipeline_E2E_Validation_Plan.md).
 > Report: `experiments/analysis/out/c2_e2e_2026-09-21/` (`c2_validation_report.json`,
@@ -12,15 +12,16 @@
 > | `model.py` / `test_pipeline.py` | ✅ vs compiled firmware ~1e-6 m/s² (synthetic tensors) |
 > | `dataset.py` + `train.py` on real merges | ✅ 53644 samples pooled; **4 usable flights** (`A1_13-25-10` → 0 rows) |
 > | **`test_real_data_pipeline.py` (Stage C)** | ✅ Path A: positions, NumPy peer dv=0 → ~**6.6×10⁻⁷** m/s². Path B: measured `rel` velocity via two `oot_set_peer` samples (100 ms) → ~**6×10⁻⁶** m/s². See script docstring — Path A does not exercise \|dvx\| gate alone |
-> | **LOO generalisation** | ✅ **17-fold** on 18-file bank (`docs/40` § Extension 2026-09-26); weakest: A1_12-51-16 hold-out; A3 hold-outs ~0.15–0.25 m/s² |
+> | **LOO generalisation** | ✅ **17-fold** on bank (**24 paths → 18 pair flights → 17 files with rows**); weakest: A1_12-51-16; A3 hold-outs ~0.15–0.25 m/s² |
 > | **Stage C on 23 Sep + full-bank weights** | ✅ **Pass** after host rebuild with `--features residual_nn` (~2×10⁻⁶ m/s²) |
-> | **SIL predict, full-bank weights** | ✅ **First run** 5206 rows (`c2_fullbank_sim_inference.json`); 21 Sep Stage E still closed-loop reference |
-> | **SIL closed-loop gate (Stage E, 21 Sep LOO weights)** | ✅ **Pass** — `c2_e2e_stage_e.json`; go/no-fly for **closed-loop stability**, not model quality |
+> | **SIL predict, full-bank weights** | ⚠️ Plumbing OK; **99.95% OUT_CLAMP**, sim `a_res` scale ≪ training — see `docs/40` § Diagnosis 2026-09-26 |
+> | **SIL closed-loop gate (Stage E)** | ✅ **Pass** full-bank (`c2_fullbank_stage_e.json`) + 21 Sep LOO (`c2_e2e_stage_e.json`) — **stability only**, not quality |
 > | Hardware open-loop `rnn.en=0` | ⬜ Not flown yet |
 >
-> **Honest takeaway:** Software chain is trustworthy enough to integrate cautiously; the **learned
-> model is not trustworthy off the A3 training manifold** until **A4 ×4** is in the bank (see
-> `next_flight_card.html`; **24 training merges** after 23 Sep). Collect under **geometric** (§6 banner rationale unchanged).
+> **Honest takeaway:** Loader/firmware/flash/upload path is verified; **offline val on real logs is
+> strong**; **open-loop SIL predict with neuralswarm backend is not a fair quality read** (clamp +
+> label semantics). Do not fly `rnn.en=1` expecting measured downwash cancellation until hardware
+> `rnn.en=0` logs agree with training scale. **A4 ×4** still required for coverage.
 >
 > **Where this sits in the Core Thesis Workflow** ([`07`](07_Thesis_Progress_Checklist.md)):
 >
