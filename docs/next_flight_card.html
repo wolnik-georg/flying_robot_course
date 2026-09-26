@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 25 Sep 2026 · fix landed (crazyswarm2 32b6e5e) — confirm clean, then resume C.1</div>
+  <div class="eyebrow">Flight readiness — updated 26 Sep 2026 · ⚠️ BLOCKED — facility mocap fault (not software); software fix ready, unconfirmed</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -126,8 +126,22 @@ footer{
 </header>
 
 <section>
-  <h2>⚠️ Do this first — confirm the 25 Sep fix, before any more C.1</h2>
+  <h2>⚠️ Lab blocked — facility mocap fault (26 Sep), separate from the software fix</h2>
   <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
+      <strong>26 Sep: solo cf5 hover, physically level on the pad, reports roll ≈154°/−π rad;
+      position centroid stable</strong> (not the 24 Sep drift signature). Leading theory:
+      <strong>OptiTrack rigid-body orientation / marker↔<code>active_deck</code> mismatch</strong>
+      — a facility/hardware issue, not an application-code regression, and orthogonal to
+      everything below. <strong>This needs someone to fix the mocap rigid-body setup — it is not
+      a desk task.</strong> Nothing flies again until it's resolved. Full account:
+      <code>docs/lab_sessions/2026-09-24_to_26.md</code>.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Software fix — ready, unconfirmed (blocked behind the mocap fault above)</h2>
+  <div class="panel next">
     <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
       <strong>24 Sep A4/A1 flights showed real, physical instability</strong> — confirmed from raw
       IMU (gyro/accel), not just a logging artifact. <strong>cf5</strong>: calm attitude
@@ -144,17 +158,28 @@ footer{
       (<code>clamp_height_for_mocap_z</code>, plus A2's own equivalent) from a silent
       substitution into a <strong>hard refuse-to-launch</strong> — every height that flies from
       now on is one a human chose, never one code picked silently. Re-verified end to end: A1/A3/
-      A4/A7/A8 at their real C.1 parameters all recompute back to <strong>height=1.0</strong>
+      A4/A8 at their real C.1 parameters all recompute back to <strong>height=1.0</strong>
       (no clamp needed at all) under the restored ceiling — exactly what flew clean on 23 Sep. A
       deliberately-too-tall request now refuses with a clear message instead of substituting
       (tested). Root cause of *why* 0.77m specifically caused real instability is still not
       proven — but the untested-silent-substitution design is gone regardless of the ultimate
       cause.</p>
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
+      <strong>26 Sep: A7-specific follow-up fix.</strong> <code>crazyswarm2</code>
+      <code>782cea0</code> — A7 has its own documented mocap-tracking constraint (top vehicle
+      loses track above ≈1.25–1.30m) that its own <code>apply_a7_lab_defaults</code> was
+      deriving from the just-restored general ceiling, silently pushing it back to an
+      untested 1.60m top. Fixed with a fixed, scenario-specific <code>A7_TOP_MAX=1.20</code>,
+      independent of the general geofence. <strong>Checked every scenario's logged flight
+      history — A7 is the only one that has ever needed a tighter constraint than the general
+      1.70m default.</strong> Policy: keep the general geofence at its proven-good default;
+      any scenario that genuinely needs tighter constraints gets its own fixed override, same
+      pattern as C5's <code>--z-floor</code> — never a blanket change again.</p>
     <table class="compact">
       <thead><tr><th>Step</th><th>Action</th></tr></thead>
       <tbody>
         <tr><td>0 — sync</td><td><code>git pull</code> both repos on the lab PC; confirm
-          <code>crazyswarm2</code> HEAD includes <code>32b6e5e</code> or later; rebuild
+          <code>crazyswarm2</code> HEAD includes <code>782cea0</code> or later; rebuild
           (<code>colcon build --packages-select crazyflie_examples --symlink-install</code>).</td></tr>
         <tr><td>1 — logging</td><td>Copy <code>usd_mocap_diagnostic_config.txt</code> to
           <strong>both</strong> cards before the confirmation flights — logs raw external pose
@@ -162,11 +187,16 @@ footer{
           told apart from a pure fusion bug. Swap back to <code>usd_thesis_config.txt</code>
           once confirmed clean.</td></tr>
         <tr><td>2 — single-drone</td><td><code>simple_flight</code> hover, one drone,
-          <code>--pin-controller</code> — cheapest sanity check first.</td></tr>
-        <tr><td>3 — confirm the fix</td><td><code>--scenario A1 --dz 0.30 --hold 15</code> then
-          <code>--scenario A1 --dz 0.50 --hold 15</code> — both now fly at height=1.0
+          <code>--pin-controller</code> — cheapest sanity check first, and the one that
+          directly re-tests the mocap fix once it lands.</td></tr>
+        <tr><td>3 — confirm the geofence fix</td><td><code>--scenario A1 --dz 0.30 --hold 15</code>
+          then <code>--scenario A1 --dz 0.50 --hold 15</code> — both now fly at height=1.0
           automatically (no clamp, no manual override needed). Both should be clean; the second
           is the exact config that misbehaved on 24 Sep.</td></tr>
+        <tr><td>4 — confirm the A7 fix</td><td><code>--scenario A7 --dz-start 1.10 --dz-end 0.10
+          --speed 0.30</code> — should compute height=0.1/top≈1.20 (see the printed
+          <code>[formation] A7: --height -&gt;</code> line); A7 has never been flown under this
+          exact fix, treat as a fresh data point.</td></tr>
       </tbody>
     </table>
     <p class="note"><strong>Do not resume A4/C.1 formation flights until step 3 is confirmed
