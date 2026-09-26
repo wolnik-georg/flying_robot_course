@@ -415,7 +415,7 @@ def flight_summary_table_md(per_flight_rows: list[dict]) -> str:
                 "scenario": scenario,
                 "flight": stamp,
                 "mean_abs_bias": float(np.mean(abs_bias)) if abs_bias else float("nan"),
-                "mean_lag": float(np.mean(lags)) if lags else float("nan"),
+                "mean_lag": float(np.mean(abs_lags)) if abs_lags else float("nan"),
                 "max_abs_lag": float(np.max(abs_lags)) if abs_lags else float("nan"),
                 "deck_drop": float(np.max([m["deck_zero_pct"] for m in motors])),
                 "dshot_drop": float(np.max([m["dshot_zero_pct"] for m in motors])),
@@ -426,7 +426,7 @@ def flight_summary_table_md(per_flight_rows: list[dict]) -> str:
         return f"{x:.{nd}f}" if np.isfinite(x) else "—"
 
     lines = [
-        "| Scenario | Flight | Mean |bias| % | Mean lag (ms) | Max |lag| (ms) | Deck dropout % | DShot dropout % |",
+        "| Scenario | Flight | Mean |bias| % | Mean |lag| (ms) | Max |lag| (ms) | Deck dropout % | DShot dropout % |",
         "|----------|--------|---------------|---------------|----------------|-----------------|-----------------|",
     ]
     for r in rows_out:
