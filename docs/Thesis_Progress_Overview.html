@@ -179,7 +179,7 @@ footer{
     <span class="pill blocked"><span class="dot"></span>Lab · <strong>blocked</strong> — facility mocap attitude (~154°/−π roll, level craft)</span>
     <span class="pill"><span class="dot"></span>Software · 24&nbsp;Sep regression <strong>fixed</strong> (<code>32b6e5e</code>) — not re-flown yet</span>
     <span class="pill"><span class="dot"></span>C.1 · ~24 merges banked; <strong>A4 ×4</strong> after mocap + confirm</span>
-    <span style="color:var(--muted)">Mocap attitude blocker open; desk: C.2 LOO + Stage C + SIL predict + flash RNN (<code>docs/40</code>, <code>docs/45</code>). <code>lab_sessions/2026-09-24_to_26.md</code></span>
+    <span style="color:var(--muted)">Mocap blocker open; desk work now ALSO exhausted — C.2 pipeline + flash RNN + gap-closure follow-up, RPM dual-source quality, position-integral Z-bias investigation all closed (<code>docs/40</code>, <code>docs/45</code>, <code>docs/43</code>, <code>docs/50</code>). <code>lab_sessions/2026-09-24_to_26.md</code></span>
   </div>
 </header>
 
@@ -192,10 +192,11 @@ footer{
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — 23 September 2026</h2></div>
+  <div class="sec-head"><h2>Snapshot — 23 September 2026 (updated 26 Sep, see bullets below)</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
-    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-23.md</code>.
+    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-23.md</code> /
+    <code>2026-09-24_to_26.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
@@ -208,11 +209,26 @@ footer{
       (19 on 23&nbsp;Sep + 5 on 21&nbsp;Sep, verified against both manifests);
       Block A (A7, A1 grid), B (A2/A3), D (C5) largely closed; <strong>A4</strong> (C-1/C-2) remains;
       21&nbsp;Sep bank still contributes A-5, B-1, partial A-2. Tracker · <code>docs/next_flight_card.html</code>.</li>
-    <li><strong>C.2 (desk, 26 Sep):</strong> 18-file bank — 17-fold LOO, Stage C pass, SIL predict with
-      <code>full_bank_40.npz</code>; flash RNN links on CF21BL. Prior 4-flight run: A3 beats predict-zero; A1 hold-out and
-      A1↔A3 cross fail; loader↔firmware ~1e-6&nbsp;m/s² (pos + measured rel-vel paths); SIL Stage E
-      closed-loop pass with <em>vacuous</em> sim EKF gate (ground-truth passthrough —
-      <code>docs/38</code>, <code>docs/40</code>). Hardware open-loop still open.</li>
+    <li><strong>C.2 desk — CLOSED, all-clear (26 Sep):</strong> 17-fold LOO on the 17-usable-file
+      bank, Stage C pass, full-bank Stage D/E, SIL predict/compensate diagnosis, flash-resident
+      onboard RNN (<code>residual_nn_flash</code>, CF21BL links, RAM no longer overflows) — all
+      independently re-verified. Real open finding, not yet explained: predicted-vs-measured
+      correlation is near zero outside close encounters (clamp-saturated ~100% of in-air samples),
+      and closed-loop <code>rnn.en=1</code> showed a <strong>~0.47&nbsp;m altitude overshoot</strong>
+      on <code>cf_second</code> that the existing (tilt-only) Stage E gate doesn't catch —
+      <strong>do not fly <code>rnn.en=1</code></strong> until this is resolved. Needs A4 data or real
+      hardware <code>rnn.en=0</code> logs, not more desk work. See <code>docs/40</code>, <code>docs/45</code>.</li>
+    <li><strong>RPM dual-source quality (desk, 23 Sep):</strong> deck vs DShot on all 29 C.1 merges,
+      isolated per drone role — sub-1% bias almost everywhere; one real anomaly, A2's top vehicle
+      shows the optical deck reading zero on 54–70% of samples (all 4 motors, both A2 flights) while
+      DShot stays clean. <code>docs/43</code>.</li>
+    <li><strong>Position-integral Z-bias investigation (desk, 26 Sep):</strong> real logs show a
+      consistent, scenario-scaled below-setpoint Z bias on <code>cf5</code> (~2&nbsp;cm solo C5 up to
+      ~17–20&nbsp;cm A1 under top) — but a working SIL ON/OFF comparison (verified distinct binaries)
+      shows the existing joint XY+Z integral (<code>KI_P=0.05</code>) trims &lt;1&nbsp;mm even at
+      disturbance levels matched to that range. <strong>Recommendation: do not enable on hardware</strong>
+      — the bias looks like downwash/formation physics, not a controller offset an integral term fixes.
+      <code>docs/50</code>.</li>
     <li><strong>Not started:</strong> C.4 repeats + statistics.</li>
     <li><strong>C.1 rule:</strong> collect under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>
       — not full INDI on the study drone (<code>docs/25</code>, <code>docs/13</code>).</li>
@@ -221,9 +237,11 @@ footer{
       crazyswarm2 yaml reset for C.1 (cf5 geometric) — sync lab PC from git.
       <em>(Correction 23&nbsp;Sep: <code>docs/24</code>'s protocol already reads <code>cf5</code>
       since 19&nbsp;Sep, cf231 rows explicitly labelled historical — that item is closed.)</em></li>
-    <li><strong>Strategy&nbsp;2 in flight:</strong> train/upload path verified; onboard net still
-      RAM-gated (<code>docs/13</code>) — C.3 is not “flip a switch” until build enables
-      <code>residual_nn</code>.</li>
+    <li><strong>Strategy&nbsp;2 in flight:</strong> train/upload path verified; onboard RAM overflow
+      is now <strong>fixed</strong> via flash-resident weight storage
+      (<code>residual_nn_flash</code>, 26&nbsp;Sep, <code>docs/45</code>) — C.3 is closer to "flip a
+      switch" than before, but predictive quality is an open finding (see C.2 bullet above) and
+      <code>rnn.en=1</code> should not fly yet.</li>
     <li><strong>Not in the compared set:</strong> <code>stabilizer.controller=9</code> (literal C port
       of the supervisor's own INDI) — sim-validated end to end 22–23&nbsp;Sep, never flown, parallel
       track only. Same-day (23&nbsp;Sep) follow-up reversed its mass to Omar's own brushless-established
@@ -272,12 +290,15 @@ footer{
         <li><strong>Study pair now</strong> — <code>cf5</code> bottom / <code>cf_second</code> stock Lee top; <code>cf231_active</code> bench-only <em>19 Sep</em></li>
         <li><strong>Mocap</strong> — 4-point <code>active_deck</code> restored; tracking stable at close range</li>
         <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
-        <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; hardware hover still gated</li>
+        <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; Omar's literal INDI port <code>c=9</code> also sim-validated end to end (26&nbsp;Sep); hardware hover still gated on all three</li>
         <li class="pending"><strong>C.1</strong> — <strong>A4 lemniscate ×4</strong> only (C-1/C-2); rest of plan banked (~24 training merges) <em>docs/25, flight card</em></li>
-        <li><strong>C.2 desk</strong> — trained/validated on 21&nbsp;Sep C.1 merges; report
-          <code>out/c2_e2e_2026-09-21/</code>, plan <code>docs/40</code> <em>docs/13</em></li>
-        <li class="pending"><strong>C.3</strong> — hardware: open-loop <code>rnn.en=0</code>, then
-          compensated flight; needs <code>residual_nn</code> build + <strong>A4</strong> in the training bank before trusting deploy</li>
+        <li><strong>C.2 desk — CLOSED, all-clear (26&nbsp;Sep)</strong> — full pipeline (LOO, Stage C,
+          full-bank Stage D/E) trained/validated on the 17-usable-file bank, plus flash-resident
+          onboard RAM fix; open finding: weak SIL predictive correlation + a ~0.47&nbsp;m altitude
+          overshoot under closed-loop compensation, not yet explained <code>docs/40, docs/45</code></li>
+        <li class="pending"><strong>C.3</strong> — hardware: open-loop <code>rnn.en=0</code> first;
+          <strong>A4</strong> still needed in the training bank, and the C.2 open finding above should
+          be resolved before trusting <code>rnn.en=1</code> compensated flight</li>
         <li class="pending"><strong>C.4</strong> — systematic head-to-head on matched scenarios with repeats and statistics <em>thesis result; docs/24 living table → docs/27 metrics</em></li>
         <li><em>Earlier lab history (Sep 7–14 validation, notch abandoned, first 2-drone bugs):</em> <code>docs/07</code> History, <code>docs/lab_sessions/</code></li>
       </ul>
@@ -370,9 +391,10 @@ footer{
     </li>
     <li>
       <h3>C.3 — Integrate strategies</h3>
-      <p class="why">After C.2: upload weights and fly Strategy&nbsp;2 — needs onboard
-      <code>residual_nn</code> build/RAM path, not only training. NA-INDI / <code>c=8</code> parallel
-      once baseline and supervisor strategy are fixed.</p>
+      <p class="why">Onboard RAM path is now fixed (<code>residual_nn_flash</code>, 26&nbsp;Sep) — the
+      remaining gate is A4 data plus resolving the open predictive-quality/overshoot finding from
+      C.2, not a build blocker. NA-INDI / <code>c=8</code> parallel once baseline and supervisor
+      strategy are fixed.</p>
     </li>
     <li>
       <h3>C.4 — Systematic comparison</h3>
@@ -425,9 +447,21 @@ footer{
         <td><code>docs/24</code>, <code>docs/25</code></td>
       </tr>
       <tr>
-        <td><strong>C.2 desk E2E — done (21&nbsp;Sep)</strong></td>
-        <td>LOO/cross-scenario limits documented; Stage E SIL go/no-fly only</td>
-        <td><code>docs/40</code>, <code>docs/13</code>, <code>out/c2_e2e_2026-09-21/</code></td>
+        <td><strong>C.2 desk E2E — CLOSED, all-clear (26&nbsp;Sep)</strong></td>
+        <td>17-fold LOO, Stage C, full-bank Stage D/E, flash RNN; open finding: weak SIL correlation +
+          altitude overshoot under <code>rnn.en=1</code>, needs A4/hardware data to resolve</td>
+        <td><code>docs/40</code>, <code>docs/45</code>, <code>docs/13</code>, <code>out/c2_e2e_2026-09-26/</code></td>
+      </tr>
+      <tr>
+        <td><strong>RPM dual-source quality — done (23&nbsp;Sep)</strong></td>
+        <td>Deck vs DShot bias/lag/dropout, isolated per drone role, all 29 C.1 merges</td>
+        <td><code>docs/43</code></td>
+      </tr>
+      <tr>
+        <td><strong>Position-integral Z-bias — done (26&nbsp;Sep)</strong></td>
+        <td>Real scenario-scaled Z bias confirmed in logs; SIL shows existing integral doesn't fix it
+          (&lt;1&nbsp;mm at log-relevant disturbance) — do not enable on hardware</td>
+        <td><code>docs/50</code></td>
       </tr>
       <tr>
         <td><strong>INDI baseline desk</strong></td>
