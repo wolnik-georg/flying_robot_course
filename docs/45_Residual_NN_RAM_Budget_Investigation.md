@@ -1,6 +1,8 @@
 # 45 — Neural-Swarm2 onboard RAM budget: investigation, findings, and a plan for later
 
-**Status: investigation complete; flash-resident delivery implemented 2026-09-26 (desk).** Default
+**Status: investigation complete; flash-resident delivery implemented 2026-09-26 (desk). Flash
+parity re-confirmed 2026-09-27 after SIL upload-protocol fix — no remaining RAM/delivery desk work
+(2026-09-27).** Default
 flight builds unchanged (`residual_nn` / `residual_nn_flash` both off unless explicitly enabled).
 See § **Implementation — flash-resident weights — 2026-09-26** below. Prior sections §1–§8 are
 unchanged investigation history.

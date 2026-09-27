@@ -12,6 +12,11 @@ flown on cf5) and **`controller`** (metrics label). Stock-Lee-on-both baselines 
 `stock_lee` — never `geometric`. C.4 summarise/plots use the compare subset only
 (`run_c4_desk_prep.py` → `phase_metrics_c4_compare.csv`). Details: [`35`](35_Desk_Parallel_Audit_Closeout.md).
 
+**C.4 desk toolchain (2026-09-27):** P1 effort/spectrum on **merged uSD CSVs** fixed via
+`load_merged_csv()` (**commit `0608911`**); desk prep re-validated on real C.1 merges. **No further
+metrics-desk backlog** until C.4 flight data — regenerate any phase CSVs built from merged logs
+**before 2026-09-27** if P1 columns were empty.
+
 ---
 
 **Operational workflow (match → package → suite):** `docs/28_USD_Radio_Matching_and_Session_Analysis.md`.

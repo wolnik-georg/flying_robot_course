@@ -1,6 +1,9 @@
 # 40 — C.2 Neural-Swarm2 residual pipeline: end-to-end validation plan (with real 2026-09-21 data)
 
-**Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Extended
+**Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Desk
+NS2/C.2 work closed 2026-09-27** — SIL upload-protocol fix, Stage E re-validated, flash parity,
+multi-scenario backend scale characterized; **hardware** `rnn.en=0/1` and C.3/C.4 **blocked on lab
+mocap** (see § Neural-Swarm2 SIL closure — 2026-09-27, § NS2 final desk pass — 2026-09-27). **Extended
 2026-09-26 (desk):** full bank train (**24 manifest paths → 18 pair flights → 17 files with rows**)
 + **17-fold LOO**, Stage C **pass**; **Stage D/E on full-bank weights** + SIL predict diagnosis — see
 `residual_nn` host rebuild, **first SIL inference with full-bank weights** — see § **Full bank —

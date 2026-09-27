@@ -18,7 +18,7 @@ bottom.
 
 ## ▶ WHERE WE ARE
 
-> ### 🏁 **C.1 nearly complete — 24 training merges banked; lab blocked on facility mocap (2026-09-26)**
+> ### 🏁 **Desk work closed (2026-09-27) · Lab blocked on facility mocap · Writing = only active track**
 >
 > **Collection:** **A4 ×4** still required after lab resumes — see [`docs/25`](25_C1_Data_Collection_Plan.md).
 > **24 Sep software regression:** **fixed in repo** (`crazyswarm2` **`32b6e5e`**, not re-flown yet).
@@ -34,8 +34,19 @@ bottom.
 > - Remaining scale-mismatch question — **checked across 5 scenarios**, not just one.
 >   - Not a universal problem — SIL trustworthiness depends on which scenario is used.
 > - **No desk work left on NS2.** Only real flight data (blocked on mocap) can close what remains.
+> - **Other desk tracks closed same day:** RPM quality (`docs/43`, spike root-cause 27 Sep); position
+>   integral Z-bias (`docs/50`, do not enable); **C.4 analysis** P1 metrics — `load_merged_csv()`
+>   bug fixed (**0608911**), pipeline re-validated on real merges; **thesis Ch. 6–9** `.tex`
+>   skeletons (**5a3fa35**, `\todo` placeholders, 50 pp combined build).
+> - **Writing (only queued work):** Ch. 1–5 **frozen** (operator hand-edit 27 Sep); Ch. 6–9
+>   **structure only** until C.4 data; remainder is **manual proofreading**, not desk engineering.
+> - **Pattern (27 Sep):** twice, work marked “done” silently failed on **real** data until the
+>   pipeline was re-run (NS2 SIL upload flags; merged-CSV effort/spectrum loader) — status labels
+>   are not substitutes for execution on flight logs.
+> - **Explicitly not chased:** `run_a8_2026_09_19_suite.py` vs `stock_lee` (`run_analysis.py` ctrl
+>   gap); A2 top-deck dropout root cause (needs physical inspection, not more log analysis).
 >
-> See History (57)–(62) for the full trail.
+> See History (57)–(65) for the full trail.
 >
 > ⚠️ **Superseded headline (2026-09-18):** “Critical path is C.1 from scratch; EKF fix is first action
 > of next session” — see [`lab_sessions/2026-09-18.md`](lab_sessions/2026-09-18.md) and History (43–46).
@@ -57,7 +68,7 @@ bottom.
 | **Reference implementations acquired** | **2026-09-10: the NA-INDI authors' code and firmware.** We now hold working **INDI, IL-NDI and NA-INDI** implementations (`~/Desktop/NA-INDI`, `~/Desktop/NA-INDI-firmware`, read-only). Their INDI is **algebraically identical to ours** — both reduce to `J·α_ref + ω×Jω − τ_dist`; ours is faithful Tal & Karaman, theirs the disturbance-observer arrangement. **Ours is not wrong.** Seven implementation differences enumerated in [`22`](22_NA_INDI_Repo_Survey.md) §2e. Headline: **our attitude INDI is carefully conditioned, our position INDI is not conditioned at all** — and `ctrl_mode=3` (position loop live) is what crashed on 09-09. Post-validation candidates, one at a time: condition `a_res` (adopt), `dt` resolution + gyro source (investigate), per-axis yaw filtering (consider). **Do not adopt their subtractive form** — same law, and it would change what INDI denotes in the comparison |
 | **NA-INDI faithful port — BUILT + NUMERICALLY VERIFIED, unflown** | **2026-09-14, supervisor-driven decision to fix the unacceptable INDI oscillation by porting their code bit-for-bit rather than continuing to iterate on ours.** New, fully independent controller slot `stabilizer.controller=7` (`ControllerTypeOot2`) alongside the existing `=6` (our geometric/INDI, `ctrl_mode` 0–3) — same enum/dispatch/Kconfig pattern as the existing OOT hook, patch-preserved in `firmware_app/host/naindi_controller_slot.patch`. Implemented in a new sibling Rust module (`firmware_app/src/naindi.rs`); required one further local `crazyflie-firmware` change (`gyroNoLpf`, ported verbatim into `stabilizer_types.h`/`sensors_bmi088_bmp3xx.c`, patch `naindi_gyro_no_lpf.patch`) so the port reads the exact same unfiltered gyro signal the reference does, per the operator's explicit "no exceptions apart from mass/inertia/kt" instruction. **Numerically verified against the reference's own compiled C**: built a throwaway, never-modified copy of `~/Desktop/NA-INDI-firmware` with its own bindings and ran 5 hand-picked non-trivial states (hover, position error, roll+velocity error, 90° yaw with asymmetric RPM, a fully aggressive multi-axis case) through both — **all 5 match thrust and torque to ~1e-9** (`firmware_app/host/test_naindi_reference.py`, build notes in `naindi_reference_build_notes.md`). Exactly 4 documented deviations, all physically/architecturally necessary (mass/J, `use_nn` omitted as dead code upstream, RPM→thrust source, yaw-mode dispatch limited to `modeAbs` — consistent with this project's existing Mode E/HLC convention). Builds clean on all three platforms (`bl`/`std`/`upgrade`). Switchable via a plain `controller: 7` in `crazyflies.yaml`, exactly like any other controller — no crazyswarm2-side change needed, and controller=6/everything else is bit-for-bit untouched. **Never flown** — must clear the same hardware-validation discipline as any other new control law before it counts as data. |
 | **Neural-Swarm2 exact-architecture port — IMPLEMENTED, RAM overflow, not to be fixed by touching the network** | **2026-09-14, same supervisor-driven pass.** `residual_nn.rs` replaced with a direct port of `phi_Net`/`rho_Net` from the vendored reference (`crazyswarm2/.../neuralswarm.py`) — see History (29). 19297 weights, ~77 KB, overflows real firmware RAM by ~39 KB (confirmed via a real link). **Operator's explicit, standing decision: the network must never be modified to fix this** — whatever eventually resolves the build has to come from elsewhere. Test suites and the training pipeline still target the old 987-weight shape and need a rewrite before any of their output can be trusted. |
-| **Blocking** | **Lab:** **facility mocap attitude** (26 Sep) — blocks regression re-fly, **A4 ×4**, all formation work until Motive/rigid-body fixed. **Not** the 24 Sep height-clamp regression (software fix landed **`32b6e5e`**). **Writing:** Ch. 6–9 **structure done**; **numbers/interpretation** need **C.4**. **Desk:** **CLOSED, all-clear (2026-09-26)** — C.2 pipeline (17-fold LOO, Stage C, full-bank Stage D/E, SIL diagnosis) and **`residual_nn_flash`** onboard RAM path both done and re-verified; only remaining C.2 items need lab data (A4) or hardware, not desk work. INDI / **c=7/8/9 hardware** parallel once mocap returns |
+| **Blocking** | **Lab:** **facility mocap attitude** (26 Sep) — blocks **A4 ×4**, confirmation flights, **NS2** `rnn.en=0/1`, **c=7/8/9** hardware validation, and real **C.4** repeats until Motive/rigid-body fixed (**not** the 24 Sep height-clamp regression — **`32b6e5e`** landed, unconfirmed in air). **Desk:** **work-wise done (2026-09-27)** — nothing further queued (NS2, RPM, position integral, C.4 metrics toolchain, thesis Ch. 6–9 skeleton). **Writing:** **only active track** — Ch. 1–5 proofread; Ch. 6–9 content blocked on **C.4** flight data |
 | **⚠️ Must clear in C.0** | **Superseded 2026-09-09 — all three unflown changes are now PARKED at the frozen behaviour, not pending.** The residual sign fix flew (2026-08-23 → 09-09) and every `ctrl_mode=3` flight crashed; it is now behind `indi_gains.res_sign`, default **+1** = the flight-proven `.add`. `rnn.en` residual compensation stays off (`rnn.ready=0` on any flight without a deliberate weight upload). The `a_res` gating fix is retained — it is logging-only and provably outside the control path (toggling `res_sign` changes 0/100 samples at `ctrl_mode=0`). **What must now clear C.0 is the reverse: prove the RESTORED frozen behaviour still flies, then re-introduce the sign fix one flight at a time via `res_sign=-1`.** |
 
 ### What is complete
@@ -113,8 +124,8 @@ work on one should never be reported as progress on the other.
 |---|---|---|
 | **What** | Hardware gate, data collection, the comparison campaign | The theoretical backbone of the thesis |
 | **Plan** | ★ Core Thesis Workflow, C.0 → C.4 (below) | ✍️ Writing Track plan (below) |
-| **Blocked by** | **Lab access.** No software work blocks it | Nothing |
-| **Next** | **A4 ×4** (close C.1); desk parallel [`31`](31_Desk_Parallel_Track.md) | Ch. 6–9 **skeleton drafted**; populate after **C.4** |
+| **Blocked by** | **Facility mocap fault** (26 Sep) — no flying until fixed | Ch. 6–9 **numbers** need **C.4** (structure exists) |
+| **Next** | **A4 ×4** when mocap returns — then C.4 campaign | **Proofread Ch. 1–5**; fill Ch. 6–9 after **C.4** |
 | **Rule** | Nothing here is a desk task | Nothing here touches flight code |
 
 The writing track exists so that time without lab access is not idle time, and so that the
@@ -931,6 +942,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-09-27 (65) | **Documentation consistency pass (2026-09-27 end state):** Aligned `docs/07`, `docs/00`, `next_flight_card.html`, `Thesis_Progress_Overview.html`, and spot-checks on `docs/27`/`40`/`43`/`45`/`50` — **desk work closed project-wide**, **lab blocked on mocap only**, **writing = sole active track** (Ch. 1–5 proofread; Ch. 6–9 await C.4). Stated plainly: two “done” labels failed until real-data re-runs (NS2 SIL upload; merged-CSV P1 loader). Leftovers not chased: A8 `stock_lee` suite argparse; A2 deck physical inspection. |
 | 2026-09-27 (64) | **C.4 analysis toolchain — `load_merged_csv()` fix (`metrics.py`):** merged uSD CSVs had `tau`/`gyro`/`motor` columns but loader never passed them to `VehicleLog` → P1 effort/spectrum **100% empty** on real C.1 phase-metrics until regen. Fixed; re-ran `run_c1_2026_09_21/23_suite.py`, desk prep + `plot_comparison` on 23-Sep + A8 geo/indi. **`min_sep_m` only on `__formation__` rows (expected).** C.4 pipeline validated on real merged uSD; **`run_a8_2026_09_19_suite.py` still fails on `stock_lee` flights** (pre-existing `run_analysis.py` ctrl choice — geo/indi rows regen OK). |
 | 2026-09-27 (63) | **Writing track: Ch. 6–9 LaTeX skeletons** (`ch6_results_2robot.tex` … `ch9_conclusion.tex`, wired in `thesis_draft.tex`). Structure + `\todo` placeholders only; combined build **50 pp**, no undefined refs. Updated `docs/30` RQ mapping to match `ch1` §`\ref{sec:intro-rq}` (not stale docs/15 hybrid/superposition wording). |
 | 2026-09-27 (62) | **NS2 final desk pass (flash parity + SIL backend sweep, `docs/40` § NS2 final desk pass 2026-09-27):** Re-ran **`test_flash_vs_upload.py`** after 27-Sep `lib.rs` edit — **PASS**, **\|diff\|=0.000e+00**. Multi-scenario predict-only **`backend=np` vs `backend=neuralswarm`** (A1 dz 0.30/0.50, A2, A7, A3 via existing full-bank CSVs): **`np` → `a_res_z` ≈ 0 everywhere**; **neuralswarm scale vs training bank is scenario-dependent** (A3 ~10× short on \|p50\| remains worst; A2 exceeds bank; A1 dz=0.50 ~0.8×). Tools: `c2_sil_backend_scenario_sweep.sh/.py`, JSON `sil_backend_scenario_sweep.json`. **No remaining desk-actionable NS2 items — blocked on lab/hardware.** |

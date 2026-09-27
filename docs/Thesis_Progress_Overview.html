@@ -169,7 +169,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 26 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 27 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Systematic comparison of reactive, predictive and hybrid strategies for downwash-aware
@@ -179,12 +179,14 @@ footer{
     <span class="pill blocked"><span class="dot"></span>Lab · <strong>blocked</strong> — facility mocap attitude (~154°/−π roll, level craft)</span>
     <span class="pill"><span class="dot"></span>Software · 24&nbsp;Sep regression <strong>fixed</strong> (<code>32b6e5e</code>) — not re-flown yet</span>
     <span class="pill"><span class="dot"></span>C.1 · ~24 merges banked; <strong>A4 ×4</strong> after mocap + confirm</span>
-    <span style="color:var(--muted)">Mocap blocker open; desk work now ALSO exhausted — C.2 pipeline + flash RNN + gap-closure follow-up, RPM dual-source quality, position-integral Z-bias investigation all closed (<code>docs/40</code>, <code>docs/45</code>, <code>docs/43</code>, <code>docs/50</code>). <code>lab_sessions/2026-09-24_to_26.md</code></span>
+    <span class="pill"><span class="dot"></span>Desk · <strong>closed</strong> (27 Sep) — NS2, RPM, position integral, C.4 metrics toolchain, Ch. 6–9 skeleton</span>
+    <span class="pill"><span class="dot"></span>Writing · <strong>only active track</strong> — proofread Ch. 1–5; Ch. 6–9 await C.4 data</span>
+    <span style="color:var(--muted)"><code>lab_sessions/2026-09-24_to_26.md</code> · full trail <code>docs/07</code> History (57)–(65)</span>
   </div>
 </header>
 
 <div class="stats">
-  <div class="stat"><span class="n">41</span><span class="t">pages drafted, Ch.&nbsp;1–5</span></div>
+  <div class="stat"><span class="n">50</span><span class="t">pages combined build, Ch.&nbsp;1–9 skeleton</span></div>
   <div class="stat"><span class="n">17</span><span class="t">papers in library, all cited</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
   <div class="stat"><span class="n">7</span><span class="t">A8 uSD packages archived (19&nbsp;Sep)</span></div>
@@ -192,13 +194,21 @@ footer{
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — 23 September 2026 (updated 26 Sep, see bullets below)</h2></div>
+  <div class="sec-head"><h2>Snapshot — executive summary (updated 27 Sep 2026)</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
     <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-23.md</code> /
     <code>2026-09-24_to_26.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
+    <li><strong>27 Sep end state:</strong> <strong>desk engineering closed</strong> (nothing queued);
+      <strong>lab fully blocked</strong> on facility mocap (26 Sep OptiTrack rigid-body fault);
+      <strong>writing only active</strong> — Ch.&nbsp;1–5 frozen for proofreading; Ch.&nbsp;6–9
+      skeleton in <code>thesis/</code> (<code>\todo</code>), content blocked on C.4 flights.
+      Same-day closures: NS2 SIL upload fix + re-validation; C.4 <code>load_merged_csv()</code>
+      P1 fix (<code>0608911</code>); RPM (<code>docs/43</code>); position integral
+      (<code>docs/50</code>). <strong>Pattern:</strong> two “done” labels failed silently on real data
+      until re-run (NS2 upload flags; merged-CSV loader).</li>
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
       4-point mocap; DShot RPM; uSD match → merge → analysis working on 19&nbsp;Sep archive.</li>
     <li><strong>2-drone controllers on cf5:</strong> stock Lee (top), our geometric + full INDI (bottom)
@@ -229,7 +239,13 @@ footer{
       disturbance levels matched to that range. <strong>Recommendation: do not enable on hardware</strong>
       — the bias looks like downwash/formation physics, not a controller offset an integral term fixes.
       <code>docs/50</code>.</li>
-    <li><strong>Not started:</strong> C.4 repeats + statistics.</li>
+    <li><strong>C.4 repeats + statistics:</strong> desk prep/metrics toolchain ready (27 Sep);
+      <strong>flight campaign not started</strong> — blocked on mocap + lab access.</li>
+    <li><strong>Correction (27 Sep) — supersedes 26 Sep C.2 “open finding” bullets above:</strong>
+      ~0.47&nbsp;m Stage&nbsp;E overshoot and near-zero SIL correlation were <strong>SIL upload-protocol
+      bugs</strong> (fixed <code>256fc22</code>), not model failure — re-validated corr ≈0.83, overshoot
+      ~0.038&nbsp;m. Remaining NS2 gap is <strong>hardware flight + scenario-dependent SIL scale</strong>, not
+      desk backlog.</li>
     <li><strong>C.1 rule:</strong> collect under <strong>geometric on cf5</strong>, <code>rnn.en=0</code>
       — not full INDI on the study drone (<code>docs/25</code>, <code>docs/13</code>).</li>
     <li><strong>Open / backlog:</strong> <code>cf231_active</code> hardware; clean 2-drone A1 after Sep
@@ -237,11 +253,9 @@ footer{
       crazyswarm2 yaml reset for C.1 (cf5 geometric) — sync lab PC from git.
       <em>(Correction 23&nbsp;Sep: <code>docs/24</code>'s protocol already reads <code>cf5</code>
       since 19&nbsp;Sep, cf231 rows explicitly labelled historical — that item is closed.)</em></li>
-    <li><strong>Strategy&nbsp;2 in flight:</strong> train/upload path verified; onboard RAM overflow
-      is now <strong>fixed</strong> via flash-resident weight storage
-      (<code>residual_nn_flash</code>, 26&nbsp;Sep, <code>docs/45</code>) — C.3 is closer to "flip a
-      switch" than before, but predictive quality is an open finding (see C.2 bullet above) and
-      <code>rnn.en=1</code> should not fly yet.</li>
+    <li><strong>Strategy&nbsp;2 (27 Sep):</strong> desk/SIL path <strong>closed</strong> — train/upload, flash
+      RAM, upload-protocol fix, Stage E re-pass. <strong>C.3 hardware</strong> (<code>rnn.en=0/1</code>, A4 in
+      bank) waits on <strong>mocap + flight time</strong>, not desk work.</li>
     <li><strong>Not in the compared set:</strong> <code>stabilizer.controller=9</code> (literal C port
       of the supervisor's own INDI) — sim-validated end to end 22–23&nbsp;Sep, never flown, parallel
       track only. Same-day (23&nbsp;Sep) follow-up reversed its mass to Omar's own brushless-established
@@ -253,18 +267,17 @@ footer{
 <section>
   <div class="sec-head"><h2>The two tracks</h2></div>
   <p class="note" style="margin-bottom:20px">
-    Chapters&nbsp;6–9 need the <strong>C.4 comparison campaign</strong>, so the writing track cannot
-    finish without lab data. The lab track’s bottleneck is now <strong>A4 (C-1/C-2) ×4</strong> plus
-    C.4 campaign execution — not missing merge/analysis software. Between lab sessions, a
-    <strong>third lane — desk prep for C.4</strong> —
-    is deliberately parallel: it improves the comparative study without replacing flying.
+    Chapters&nbsp;6–9 need the <strong>C.4 comparison campaign</strong> for <strong>content</strong>; skeleton
+    structure exists (27 Sep). The lab track is <strong>blocked on facility mocap</strong> — when it resumes,
+    bottleneck is <strong>A4 (C-1/C-2) ×4</strong> then C.4 execution. <strong>Desk engineering is
+    closed (27 Sep)</strong>; merge/analysis/metrics prep for C.4 is validated on real logs.
   </p>
 
   <div class="lanes">
     <div class="lane">
       <div class="lane-head">
         <h2>Literature &amp; writing</h2>
-        <span class="lbl" style="color:var(--warn)">Waiting on data</span>
+        <span class="lbl" style="color:var(--accent)">Active — proofreading</span>
       </div>
       <ul>
         <li>Problem statement + 4 research questions, each with a falsifiable hypothesis</li>
@@ -274,14 +287,15 @@ footer{
         <li>Claim ledger: every citable number in the source's own words</li>
         <li>Chapters 1–5 drafted, revised and accuracy-audited</li>
         <li>Seven strategies described, implementation separated from reference method</li>
-        <li class="pending"><strong>Blocked on flight data</strong> — Ch. 6–9 are results, discussion and conclusion; they cannot be written before the campaign exists</li>
+        <li>Ch.&nbsp;6–9 <strong>LaTeX skeleton</strong> wired (<code>\todo</code> placeholders, 50&nbsp;pp build)</li>
+        <li class="pending"><strong>Ch. 6–9 content</strong> blocked on C.4 flight data; Ch.&nbsp;1–5 proofreading is the queued writing work</li>
       </ul>
     </div>
 
     <div class="lane lab">
       <div class="lane-head">
         <h2>Code, sim &amp; flight</h2>
-        <span class="lbl" style="color:var(--warn)">Core workflow C.0 → C.4</span>
+        <span class="lbl" style="color:var(--warn)">Blocked — mocap</span>
       </div>
       <ul>
         <li><strong>Software preparation complete</strong> — formation library, sim validation, residual path, NS2 architecture port; <code>dataset.py</code> / <code>train.py</code> verified on real merged CSV <em>docs/13</em></li>
@@ -292,13 +306,11 @@ footer{
         <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
         <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; Omar's literal INDI port <code>c=9</code> also sim-validated end to end (26&nbsp;Sep); hardware hover still gated on all three</li>
         <li class="pending"><strong>C.1</strong> — <strong>A4 lemniscate ×4</strong> only (C-1/C-2); rest of plan banked (~24 training merges) <em>docs/25, flight card</em></li>
-        <li><strong>C.2 desk — CLOSED, all-clear (26&nbsp;Sep)</strong> — full pipeline (LOO, Stage C,
-          full-bank Stage D/E) trained/validated on the 17-usable-file bank, plus flash-resident
-          onboard RAM fix; open finding: weak SIL predictive correlation + a ~0.47&nbsp;m altitude
-          overshoot under closed-loop compensation, not yet explained <code>docs/40, docs/45</code></li>
-        <li class="pending"><strong>C.3</strong> — hardware: open-loop <code>rnn.en=0</code> first;
-          <strong>A4</strong> still needed in the training bank, and the C.2 open finding above should
-          be resolved before trusting <code>rnn.en=1</code> compensated flight</li>
+        <li><strong>C.2 desk — CLOSED (27&nbsp;Sep)</strong> — LOO, Stage C/D/E, flash RNN, SIL
+          upload-protocol fix + re-validation (<code>docs/40</code>, <code>docs/45</code>); no desk
+          backlog on NS2</li>
+        <li class="pending"><strong>C.3</strong> — hardware <code>rnn.en=0/1</code>, flash deploy,
+          <strong>A4 ×4</strong> — <strong>lab/mocap</strong>, not desk</li>
         <li class="pending"><strong>C.4</strong> — systematic head-to-head on matched scenarios with repeats and statistics <em>thesis result; docs/24 living table → docs/27 metrics</em></li>
         <li><em>Earlier lab history (Sep 7–14 validation, notch abandoned, first 2-drone bugs):</em> <code>docs/07</code> History, <code>docs/lab_sessions/</code></li>
       </ul>
@@ -319,13 +331,13 @@ footer{
       <tr><td class="ch">3</td><td>System Modelling</td><td>The residual-force formulation; verified line by line against the firmware</td><td class="num">2,443</td></tr>
       <tr><td class="ch">4</td><td>Control Architectures</td><td>Seven strategies as settings of one control law — and where that stops holding</td><td class="num">3,178</td></tr>
       <tr><td class="ch">5</td><td>Experimental Setup</td><td>Scenarios, protocol, frozen gains, what would falsify each hypothesis</td><td class="num">2,670</td></tr>
-      <tr><td class="ch">6–9</td><td style="color:var(--muted)">Results, discussion, conclusion</td><td style="color:var(--muted)">Waiting on C.4 comparison campaign — not started</td><td class="num" style="color:var(--muted)">—</td></tr>
+      <tr><td class="ch">6–9</td><td>Results, discussion, conclusion</td><td>Skeleton + <code>\todo</code> placeholders (27 Sep); tables/figures after C.4</td><td class="num" style="color:var(--muted)">struct.</td></tr>
     </tbody>
   </table>
   </div>
   <p class="note">
-    Chapter&nbsp;5 turns to past tense as the C.1/C.4 protocol is executed. Chapters&nbsp;6–9 stay
-    empty until C.4 produces defensible numbers.
+    Chapter&nbsp;5 turns to past tense as the C.1/C.4 protocol is executed. Chapters&nbsp;6–9 have
+    structure only until C.4 produces defensible numbers.
   </p>
 </section>
 
@@ -355,9 +367,9 @@ footer{
     feasibility; they are not yet a comparison result.
   </p>
   <p>
-    <strong>Strategy&nbsp;2</strong> (geometric + NS2) has a <strong>desk-validated</strong> training/upload path
-    on the 21 Sep subset; <strong>24 training merges</strong> banked after 23 Sep — still needs <strong>A4 ×4</strong> and
-    <strong>hardware C.3</strong> before a fair C.4 row. Strategies&nbsp;0–1 (and later 4) remain flyable meanwhile.
+    <strong>Strategy&nbsp;2</strong> (geometric + NS2): <strong>desk closed 27 Sep</strong>; <strong>24 training merges</strong>
+    banked — still needs <strong>A4 ×4</strong> and <strong>hardware C.3</strong> before a fair C.4 row (mocap-gated).
+    Strategies&nbsp;0–1 (and later 4) remain flyable when lab resumes.
   </p>
   <p>
     <strong>INDI baseline</strong> for Strategy&nbsp;1 is not fully settled: our full INDI flies
@@ -386,15 +398,14 @@ footer{
     </li>
     <li class="done">
       <h3>C.2 — Train &amp; desk-validate NS2</h3>
-      <p class="why">2026-09-21: 4 usable merges, LOO + loader/firmware + SIL Stage E (honest sim
-      caveats in <code>docs/40</code>). Model not trustworthy off A3 manifold; refly C.1 before deploy claims.</p>
+      <p class="why">Full bank + LOO + SIL closure 26–27 Sep (<code>docs/40</code>). Desk complete;
+      hardware C.3 blocked on mocap.</p>
     </li>
     <li>
       <h3>C.3 — Integrate strategies</h3>
-      <p class="why">Onboard RAM path is now fixed (<code>residual_nn_flash</code>, 26&nbsp;Sep) — the
-      remaining gate is A4 data plus resolving the open predictive-quality/overshoot finding from
-      C.2, not a build blocker. NA-INDI / <code>c=8</code> parallel once baseline and supervisor
-      strategy are fixed.</p>
+      <p class="why">Flash path + SIL upload fix landed 26–27 Sep. Remaining gate: <strong>flight logs</strong>
+      (A4, <code>rnn.en=0/1</code>, mocap). NA-INDI / <code>c=8</code> parallel once baseline and
+      supervisor strategy are fixed.</p>
     </li>
     <li>
       <h3>C.4 — Systematic comparison</h3>
@@ -405,10 +416,11 @@ footer{
 </section>
 
 <section>
-  <div class="sec-head"><h2>Desk work in parallel with lab</h2></div>
+  <div class="sec-head"><h2>Desk work — closed 27 Sep 2026</h2></div>
   <p class="note" style="margin-bottom:18px">
-    These advance the <strong>comparative study</strong> without substituting for C.1 flights.
-    When the lab is unavailable, prefer this list over re-tuning prose or extra exploratory A8.
+    Index §1–12, C.2/NS2, RPM quality, position-integral study, and C.4 metrics toolchain are
+    <strong>complete</strong> — nothing queued without flight data. Table kept for audit trail; do not read as an
+    active backlog.
   </p>
   <div class="scroll">
   <table>
@@ -447,9 +459,8 @@ footer{
         <td><code>docs/24</code>, <code>docs/25</code></td>
       </tr>
       <tr>
-        <td><strong>C.2 desk E2E — CLOSED, all-clear (26&nbsp;Sep)</strong></td>
-        <td>17-fold LOO, Stage C, full-bank Stage D/E, flash RNN; open finding: weak SIL correlation +
-          altitude overshoot under <code>rnn.en=1</code>, needs A4/hardware data to resolve</td>
+        <td><strong>C.2 desk E2E — CLOSED (27&nbsp;Sep)</strong></td>
+        <td>LOO, Stage C/D/E, flash RNN, SIL upload fix + re-validation; hardware C.3 waits on mocap</td>
         <td><code>docs/40</code>, <code>docs/45</code>, <code>docs/13</code>, <code>out/c2_e2e_2026-09-26/</code></td>
       </tr>
       <tr>
@@ -469,9 +480,9 @@ footer{
         <td><code>docs/22</code>, firmware host notes</td>
       </tr>
       <tr>
-        <td><strong>Writing</strong> — Ch.&nbsp;5 past tense; results skeleton</td>
-        <td>Reduces deadline risk; not a substitute for C.4 data</td>
-        <td><code>docs/thesis/ch5_experimental_setup.tex</code>, <code>docs/30</code></td>
+        <td><strong>Writing — active track</strong></td>
+        <td>Ch.&nbsp;1–5 proofread; Ch.&nbsp;6–9 skeleton in repo; fill after C.4</td>
+        <td><code>docs/thesis/</code>, <code>docs/30</code>, <code>docs/07</code></td>
       </tr>
       <tr>
         <td><strong>P5 residual eval</strong>, <strong>C.4 budget</strong>, <strong>NA-INDI memo</strong></td>
@@ -495,14 +506,14 @@ footer{
 <section>
   <div class="sec-head"><h2>Writing track</h2></div>
   <p>
-    Chapters&nbsp;1–5 are drafted and frozen to the data boundary. Chapters&nbsp;6–9 need
-    <strong>C.4</strong>. Minimum contribution scope remains <strong>Strategies&nbsp;0–4</strong>
+    Chapters&nbsp;1–5 are drafted and frozen (operator hand-edit 27 Sep). Chapters&nbsp;6–9 are
+    <strong>structure-only</strong> until <strong>C.4</strong> data. Minimum contribution scope remains <strong>Strategies&nbsp;0–4</strong>
     (<code>docs/01</code>); Strategies&nbsp;5–7 are advanced / stretch.
   </p>
 </section>
 
 <footer>
-  Updated 23&nbsp;Sep (C.1 lab session + manifest) · SSOT: <code>docs/07</code> ·
+  Updated 27&nbsp;Sep (desk closed, mocap blocker, writing active) · SSOT: <code>docs/07</code> History (57)–(65) ·
   Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
   C.2: <code>docs/40</code>, <code>docs/13</code> ·
   Analysis: <code>docs/28</code>, <code>docs/27</code> ·

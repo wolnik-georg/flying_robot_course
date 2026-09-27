@@ -7,19 +7,21 @@ Georg Wolnik, supervised by Prof. Wolfgang Hönig.
 it is the single source of truth for what is done, where we are, and what comes next. Everything
 else is detail hanging off it.
 
-**Desk work (no lab):** [`31_Desk_Parallel_Track.md`](31_Desk_Parallel_Track.md) indexes §1–12
-(**COMPLETE** 21 Sep — [`35`](35_Desk_Parallel_Audit_Closeout.md)). Lab critical path: **C.1**.
+**Desk engineering (2026-09-27):** **closed** — nothing queued. [`31`](31_Desk_Parallel_Track.md) §1–12
+complete; NS2, RPM (`43`), position integral (`50`), C.4 metrics toolchain (`27`), thesis Ch. 6–9
+skeleton all landed 27 Sep. **Lab:** blocked on **facility mocap** (26 Sep). **Writing:** only active
+work — proofread Ch. 1–5; fill Ch. 6–9 after **C.4**.
 
-> ### ⇄ Two parallel tracks
+> ### ⇄ Two parallel tracks (27 Sep 2026)
 >
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
-> | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.1** — residual data (geometric on cf5) | Ch. 6–9 **skeleton in** `thesis/`; **content** after **C.4** |
-> | Blocked by | Lab access for flying | C.4 data to replace `\todo` placeholders in Ch. 6–9 |
+> | Plan | C.0 → C.4 (below) | Ch. 1–5 done; Ch. 6–9 skeleton in `thesis/` |
+> | Next | **A4 ×4** when mocap fixed → **C.4** campaign | **Proofreading**; populate Ch. 6–9 after **C.4** |
+> | Blocked by | **Facility mocap fault** — no flying | C.4 **flight data** for results chapters |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
-> **Software preparation is FINISHED. Critical path: C.1 → C.2 → C.3 → C.4.**
+> **Software preparation FINISHED. C.1 ~24 merges banked; A4 ×4 + C.4 flights wait on mocap.**
 >
 > | # | Phase | Detail |
 > |---|---|---|

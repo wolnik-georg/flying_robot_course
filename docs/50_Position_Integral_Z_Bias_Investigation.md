@@ -13,6 +13,10 @@ vs firmware `ctrltarget_z`.
 **Attitude integral** (`ENABLE_ATTITUDE_INTEGRAL`) — out of scope (known pre-takeoff
 windup risk).
 
+**Status (2026-09-27):** **Closed (desk).** Working SIL ON/OFF comparison path validated; **do not
+enable** position integral on hardware — bias reads as formation/downwash physics, not an integral
+fix. No queued follow-up without new flight data.
+
 ---
 
 ## Task 1 — Flight data (merged C.1 CSVs)
