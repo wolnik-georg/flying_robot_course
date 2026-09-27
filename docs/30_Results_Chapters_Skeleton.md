@@ -68,9 +68,16 @@ Thesis `.tex` lives in the local tree (`docs/thesis/`); this file is the repo-vi
 
 ## Research questions mapping
 
-| RQ | Section |
-|---|---|
-| RQ1 Reactive vs predictive vs hybrid | 6.2–6.5 + 6.6 |
-| RQ2 Regime dependence | Scenario breakdown in 6.6; train/test by scenario class |
-| RQ3 … | Per [`15`](15_Problem_Statement_and_Research_Questions.md) |
-| RQ4 Cost of each strategy | 6.3 + data/compute notes in 6.4–6.5 |
+**Source of truth for RQ wording:** `docs/thesis/ch1_introduction.tex`, `\label{sec:intro-rq}` (not
+docs/15 alone — doc 15 still mentions hybrid in RQ1 and an older RQ3 superposition framing; the
+thesis text is narrower and matches the compared Strategies~0–3).
+
+| RQ | Wording (abbrev.) | Primary `.tex` / section |
+|---|---|---|
+| **RQ1** | Reactive vs predictive vs baseline under identical conditions (tracking + residual rejection) | Ch.~6 §6.2–6.4, §6.6; Ch.~8 §RQ1 |
+| **RQ2** | Advantage depends on regime (separation, relative velocity, quasi-static vs transient) | Ch.~6 §6.6; train/test by scenario class; Ch.~8 §RQ2 |
+| **RQ3** | Transfer penalty: 2-robot-trained summed model on 3-robot formations (magnitude, not “does superposition hold”) | Ch.~7; Ch.~8 §RQ3 |
+| **RQ4** | Sensing, onboard compute, training data vs tracking/rejection | Ch.~6 §6.3–6.4; Ch.~8 §RQ4; Ch.~9 engineering takeaway |
+
+LaTeX labels: `\label{ch:results2}` … `\label{ch:conclusion}` in `ch6_results_2robot.tex` …
+`ch9_conclusion.tex`.

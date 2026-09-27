@@ -15,8 +15,8 @@ else is detail hanging off it.
 > | | 🔬 **Lab track** | ✍️ **Writing track** |
 > |---|---|---|
 > | Plan | C.0 → C.4 (below) | W.1 → W.7, [`07`](07_Thesis_Progress_Checklist.md) § Writing Track |
-> | Next | **C.1** — residual data (geometric on cf5) | Ch. 6–9 after **C.4** data |
-> | Blocked by | Lab access for flying | C.4 results for results chapters |
+> | Next | **C.1** — residual data (geometric on cf5) | Ch. 6–9 **skeleton in** `thesis/`; **content** after **C.4** |
+> | Blocked by | Lab access for flying | C.4 data to replace `\todo` placeholders in Ch. 6–9 |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
 > **Software preparation is FINISHED. Critical path: C.1 → C.2 → C.3 → C.4.**

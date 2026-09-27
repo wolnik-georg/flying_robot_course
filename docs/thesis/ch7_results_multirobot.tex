@@ -1,0 +1,89 @@
+% =====================================================================================
+%  Chapter 7 — Multi-Robot and Scaling Results
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  Sources: docs/30_Results_Chapters_Skeleton.md (Chapter 7), docs/36_Four_Five_Robot_Formation_Sketch.md,
+%           Chapter~\ref{ch:setup} (three-robot scenarios B1--B3).
+%
+%  HONESTY NOTE. Three-robot C.4 data may be partial or absent; the fallback paragraph in
+%  Section~\ref{sec:res3-limitation} is written now as the contingency narrative. n$\geq$4 content
+%  is explicitly future work, not a claim of results.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Multi-Robot and Scaling Results}
+\label{ch:results3}
+
+RQ3 (Section~\ref{sec:intro-rq}) asks for the transfer penalty when a summed per-neighbour
+residual model trained on two-vehicle data is applied to three-vehicle formations. This chapter
+reports that penalty on the B-series scenarios if three-robot comparison flights are flown, and
+states how an extension to four or five vehicles would be structured without treating that extension
+as part of the primary thesis gate.
+
+% -------------------------------------------------------------------------------------
+\section{Three-robot comparison campaign}
+\label{sec:res3-campaign}
+
+Three-robot flights require the third brushless vehicle in the roster and scenarios B1, B2 and/or
+B3 from the frozen library (I-stack, V-stack, and merge geometries). The metric pipeline is
+intentionally identical to Chapter~\ref{ch:results2}: phase metrics, separation error, effort
+proxies, and residual logging under Strategy~0 versus compensating strategies where implemented
+for $N=3$.
+
+\todo[color=red!25]{PLACEHOLDER: Table --- B1/B2/B3 (subset as flown) $\times$ Strategy~0--3;
+same column headers as Table~\ref{tab:res2-tracking}; $n$ repeats per cell.}
+
+% -------------------------------------------------------------------------------------
+\section{Transfer penalty for the summed predictor}
+\label{sec:res3-transfer}
+
+RQ3 is not a test of whether aerodynamic interactions superpose; the literature already reports that
+they do not. The engineering question is how large the penalty is when the same onboard predictor
+trained on two-robot C.1 data is evaluated on three-robot relative configurations, and whether that
+penalty is small enough to keep the summed architecture.
+
+\todo[color=red!25]{PLACEHOLDER: Figure/table --- open-loop prediction error on three-robot logs
+vs two-robot training distribution; per-neighbour vs summed prediction; scenario-resolved breakdown.
+Source: C.1/C.2 artifacts and merged three-robot uSD.}
+
+\todo[color=red!25]{PLACEHOLDER: Closed-loop block --- if Strategy~2/3 flown on B-series, compare
+tracking/residual metrics to Strategy~0 on the same scenarios.}
+
+% -------------------------------------------------------------------------------------
+\section{Extension to four and five vehicles}
+\label{sec:res3-n4sketch}
+
+A Priority~D/E scenario sketch (proposed IDs F4a, D1, E1, etc.) describes how n$\geq$4 formations
+would stress superposition and asymmetric wash without replacing the frozen A--C library. That sketch
+is a validation template only: geometries must pass \texttt{run\_formation --check} and supervisor
+sign-off before any sim or hardware run. No results from Tier~1 smoke matrices are claimed here.
+
+The primary thesis comparison remains two- and three-robot; n$\geq$4 is documented so a future
+campaign can reuse the same logging, merge, and \texttt{plot\_comparison.py} tooling.
+
+% -------------------------------------------------------------------------------------
+\section{Limitation if three-robot data are incomplete}
+\label{sec:res3-limitation}
+
+\paragraph{Fallback narrative (primary path if B-series C.4 is not completed).}
+If three-robot comparison flights are not obtained in time, RQ3 is answered from \emph{logged}
+three-robot data only: open-loop prediction and residual statistics on B1/B2/B3 (or a subset) under
+Strategy~0 collection, without requiring a working three-robot compensating controller in the loop.
+The transfer penalty is then reported as a modelling error on held-out relative geometries, not as
+a closed-loop ranking. This matches the project note that RQ3 can be resolved from C.1 logs plus
+offline evaluation even when the three-robot control campaign is descoped.
+
+The limitation is stated plainly: without repeated three-robot compensated flights, the thesis
+cannot rank Strategies~1--3 at $N=3$ with the same confidence as at $N=2$; the summed-architecture
+decision rests on the magnitude of open-loop penalty and simulation sanity checks, and generalisation
+to larger teams remains future work (Section~\ref{sec:conclusion-future}).
+
+% -------------------------------------------------------------------------------------
+\section{Chapter summary}
+\label{sec:res3-summary}
+
+\todo[color=red!25]{PLACEHOLDER: One paragraph summarising RQ3 answer once metrics exist --- penalty
+size, whether summed predictor remains defensible, link back to Section~\ref{sec:res2-summary} for
+two-robot vs three-robot consistency.}

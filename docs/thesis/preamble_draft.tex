@@ -24,8 +24,7 @@
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}
 \usepackage[textsize=small]{todonotes}
 \presetkeys{todonotes}{inline,backgroundcolor=yellow!30}{}
-% Chapters 1-5 are cross-referenced with plain \ref and resolve normally. Chapters 6-9 do not
-% exist yet and are referred to by name in the text rather than by a reference that cannot
-% resolve; convert those to \ref once the chapters are written.
+% Chapters 1-9 are cross-referenced with plain \ref in the combined thesis_draft build.
+% Chapters 6-9 are skeletons (placeholders via \todo) until C.4 data populate the results.
 % \chapref is retained only so that any stale usage fails loudly rather than silently.
 \newcommand{\chapref}[1]{\textbf{[UNRESOLVED: #1]}}

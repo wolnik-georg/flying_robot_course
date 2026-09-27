@@ -1,0 +1,181 @@
+% =====================================================================================
+%  Chapter 6 — Two-Robot Experimental Results
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  Sources: docs/30_Results_Chapters_Skeleton.md (§6.1--6.6), docs/05, docs/10, docs/25,
+%           Chapter~\ref{ch:setup} (platform and protocol).
+%
+%  HONESTY NOTE. This file is structure and framing only. No C.4 comparison numbers, figures,
+%  or rankings appear here. Every slot for measured outcomes is marked with \todo so the compiled
+%  PDF cannot be read as reporting results that do not yet exist.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Two-Robot Experimental Results}
+\label{ch:results2}
+
+This chapter reports the systematic comparison on the two-vehicle team once the C.4 campaign is
+complete. Chapter~\ref{ch:setup} fixed the platform, scenarios and protocol; Chapter~\ref{ch:control}
+defined Strategies~0--3 compared against the baseline. The sections below follow the analysis
+pipeline from aggregate tracking metrics through control effort, the predictive residual path, and a
+summary of when each strategy is preferable. Research questions RQ1, RQ2 and RQ4
+(Section~\ref{sec:intro-rq}) are answered primarily here; RQ3 is deferred to
+Chapter~\ref{ch:results3}.
+
+% -------------------------------------------------------------------------------------
+\section{Experimental campaign overview}
+\label{sec:res2-overview}
+
+The comparison flights use the brushless pair \textbf{cf5} (study vehicle, bottom role in vertical
+stacks) and \textbf{cf\_second} (top), with external pose from a four-camera OptiTrack system and
+onboard logging at \SI{500}{\hertz} on micro-SD as the source of record (Section~\ref{sec:setup-platform}).
+Radio telemetry is for monitoring only; thesis metrics are computed from merged uSD logs after role
+alignment, using the same pipeline documented in Chapter~\ref{ch:setup}.
+
+Scenarios are drawn from the frozen formation library (Chapter~\ref{ch:setup}, Section~\ref{sec:setup-scenarios}):
+the C.1/C.4 matrix prioritises vertical separation and downwash-dominated geometries (e.g.\ A1,
+A3, A4, A7) together with null coplanar controls (C1--C3) that bound the measurement floor. Each
+(scenario, strategy) cell is intended to be repeated $n$ times under interleaved runtime controller
+selection so session effects do not align with strategy choice (Table~\ref{tab:setup-threats}).
+
+The compared set follows Chapter~\ref{ch:control}: Strategy~0 (uncompensated geometric baseline),
+Strategy~1 (pure INDI), Strategy~2 (geometric position loop with onboard Neural-Swarm2-style
+residual prediction), and Strategy~3 (feedback linearisation with the same predictor), each flown
+with gains frozen after the hardware gate. Indicative single flights and partial C.1 collection
+exist; the tables and figures in the following sections are reserved for the completed C.4 repeats.
+
+% -------------------------------------------------------------------------------------
+\section{Tracking and attitude}
+\label{sec:res2-tracking}
+
+This section answers the tracking half of RQ1: whether compensating strategies reduce position and
+separation error relative to Strategy~0 under identical trajectories, and how reactive versus
+predictive families rank. Attitude excursions matter for safety and for interpreting residual
+magnitude; they are reported alongside position error rather than as a separate optimisation target.
+
+\todo[color=red!25]{PLACEHOLDER: Table~\ref{tab:res2-tracking} populated once C.4 flights complete.
+Columns: scenario, strategy, RMSE $x$/ $y$/ $z$/ $\|\mathbf{e}\|$, peak position error, peak
+separation error, attitude peak (roll/pitch), $n$ repeats. Rows: all (scenario, strategy) cells in
+the comparison matrix. Statistics: mean $\pm$ std across repeats.}
+
+\begin{table}[t]
+  \centering
+  \caption{Tracking error summary (two-robot C.4 campaign).}
+  \label{tab:res2-tracking}
+  \small
+  \begin{tabular}{@{}llrrrrr@{}}
+    \toprule
+    Scenario & Strategy & RMSE $x$ & RMSE $y$ & RMSE $z$ & Peak $\|\mathbf{e}\|$ & $n$ \\
+    \midrule
+    \multicolumn{7}{@{}l@{}}{\textit{--- populated from phase metrics / \texttt{plot\_comparison.py} ---}} \\
+    \makecell{Placeholder} & S0 & --- & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\todo[color=red!25]{PLACEHOLDER: Figure (grouped bars) --- controllers $\times$ metrics with SEM
+error bars; source \texttt{plot\_comparison.py} on phase CSV. One panel per metric family (position
+RMSE, peak error).}
+
+\todo[color=red!25]{PLACEHOLDER: Figure (time series) --- commanded vs achieved position or
+separation for one representative scenario (e.g.\ A8 or A4), overlay Strategies~0--3 on the same
+axes; source \texttt{plot\_flight.py} or dashboard export.}
+
+A short subsection will contrast geometric tracking (Strategy~0), our INDI implementation
+(Strategy~1), and any reference INDI flights included for context, without treating reference
+controllers as part of the primary hypothesis test unless explicitly added to the C.4 matrix.
+
+% -------------------------------------------------------------------------------------
+\section{Control effort and safety}
+\label{sec:res2-effort}
+
+Better tracking is not automatically preferable if it requires sustained saturation or leaves less
+margin on separation. This section supports RQ4 by pairing performance with effort proxies and
+closest-approach statistics.
+
+\todo[color=red!25]{PLACEHOLDER: Table~\ref{tab:res2-effort} --- thrust/torque proxies, motor
+saturation fraction (\texttt{effort\_proxy}, \texttt{motor\_*} from phase metrics), minimum
+horizontal separation (\texttt{min\_sep\_m}), minimum vertical offset (\texttt{min\_dz\_m}), mean
+$\pm$ std, $n$.}
+
+\begin{table}[t]
+  \centering
+  \caption{Control effort and safety margins (two-robot C.4 campaign).}
+  \label{tab:res2-effort}
+  \small
+  \begin{tabular}{@{}llrrrr@{}}
+    \toprule
+    Scenario & Strategy & Effort proxy & Sat.\ fraction & Min sep.\ (\si{\metre}) & $n$ \\
+    \midrule
+    \makecell{Placeholder} & S0 & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The prose here will state explicitly when a strategy trades higher effort for lower tracking error,
+and when reduced separation margin disqualifies a configuration despite good RMSE.
+
+% -------------------------------------------------------------------------------------
+\section{Predictive strategy (Neural-Swarm2)}
+\label{sec:res2-nn}
+
+Strategy~2 is evaluated in two layers: open-loop agreement between predicted and measured
+$a_{\mathrm{res}}$ on the C.1 training distribution, and closed-loop C.4 flights with prediction
+enabled versus Strategy~0 on matched scenarios. RQ1 and RQ2 both depend on the second; the first
+documents model quality independent of loop gain.
+
+\todo[color=red!25]{PLACEHOLDER: Figure --- predicted vs measured $a_{\mathrm{res}}$ (scatter,
+$R^2$ or correlation); second panel error vs relative geometry (distance, $\Delta z$, gated flag).
+Source: merged uSD + \texttt{firmware\_forward} replay where applicable.}
+
+\todo[color=red!25]{PLACEHOLDER: Table --- Strategy~2 vs S0 on matched scenarios (same columns as
+Table~\ref{tab:res2-tracking}) for in-flight enable; note training scenarios and weight checkpoint
+(\texttt{full\_bank\_*.npz} provenance).}
+
+% -------------------------------------------------------------------------------------
+\section{Hybrid (NA-INDI), if in scope}
+\label{sec:res2-hybrid}
+
+The primary compared set in Chapter~\ref{ch:control} is Strategies~0--3. A NA-INDI / LINDI hybrid
+(Strategy~4 in the wider project numbering) is \emph{not} in that set unless explicitly restored to
+the C.4 matrix. This section remains as a structured slot: if hybrid flights are flown, they use
+the same metric tables as Sections~\ref{sec:res2-tracking}--\ref{sec:res2-effort} for fair
+comparison.
+
+\todo[color=red!25]{PLACEHOLDER (conditional): Configuration block --- $c$ parameter, weight source
+(retrain vs reference port). Table shell identical to §\ref{sec:res2-tracking}. Omit section from
+final PDF if hybrid remains out of scope.}
+
+% -------------------------------------------------------------------------------------
+\section{Summary --- when which strategy}
+\label{sec:res2-summary}
+
+This section closes the two-robot story for RQ1 and RQ2: a scenario-class breakdown (vertical stack,
+lateral crossing, near-ground, fast transient) with both qualitative ranking and the quantitative
+backing from Tables~\ref{tab:res2-tracking}--\ref{tab:res2-effort}.
+
+\todo[color=red!25]{PLACEHOLDER: Summary table --- rows: strategies; columns: scenario classes;
+cells: best tracking / effort trade-off / data \& compute cost (RQ4 pointers). No invented
+rankings until C.4 data exist.}
+
+\begin{table}[t]
+  \centering
+  \caption{Strategy suitability by scenario class (to be filled after C.4).}
+  \label{tab:res2-when-which}
+  \small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    Strategy & Vertical stack & Lateral traverse & Near-ground & Fast transient \\
+    \midrule
+    S0 (baseline) & --- & --- & --- & --- \\
+    S1 (INDI) & --- & --- & --- & --- \\
+    S2 (pred.\ + geo) & --- & --- & --- & --- \\
+    S3 (pred.\ + FBL) & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Train/test splits by scenario class (Section~\ref{sec:setup-validity}) feed RQ2 directly: a crossover
+in favour of reactive or predictive compensation should appear here if it exists in the data.

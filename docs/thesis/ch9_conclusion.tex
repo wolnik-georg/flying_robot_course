@@ -1,0 +1,85 @@
+% =====================================================================================
+%  Chapter 9 — Conclusion
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  Sources: Section~\ref{sec:intro-rq}, Chapter~\ref{ch:discussion}, project workflow docs.
+%
+%  HONESTY NOTE. Headline answers per RQ are placeholders until results chapters are filled.
+%  The future-work section contains real, already-planned items (not fabricated outcomes).
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+% -------------------------------------------------------------------------------------
+\section{Summary}
+\label{sec:conclusion-summary}
+
+This thesis set out to compare interaction-force compensation strategies for tight multirotor
+formation flight on a common platform, trajectory set and logging pipeline, holding reactive and
+predictive families under the same residual definition and null-flight measurement floor. Strategies~0--3
+were implemented and specified in Chapters~\ref{ch:model}--\ref{ch:control}; the experimental
+campaign is described in Chapter~\ref{ch:setup} and reported in Chapters~\ref{ch:results2}
+and~\ref{ch:results3}. The comparison is deliberately conditional: the useful outcome is guidance
+on when to pay for prediction, measurement, or neither, not a claim of universal superiority.
+
+% -------------------------------------------------------------------------------------
+\section{Answers to the research questions}
+\label{sec:conclusion-rq}
+
+\todo[color=red!25]{PLACEHOLDER (RQ1): One-sentence headline answer --- reactive vs predictive vs
+baseline under identical conditions, once Chapter~\ref{sec:res2-tracking} is populated.}
+
+\todo[color=red!25]{PLACEHOLDER (RQ2): One-sentence headline --- regime dependence or absence thereof,
+referencing Section~\ref{sec:res2-summary}.}
+
+\todo[color=red!25]{PLACEHOLDER (RQ3): One-sentence headline --- transfer penalty magnitude and
+whether summed architecture remains justified, referencing Chapter~\ref{sec:res3-transfer}.}
+
+\todo[color=red!25]{PLACEHOLDER (RQ4): One-sentence headline --- cost vs performance trade-off across
+strategies (sensing, compute, data).}
+
+% -------------------------------------------------------------------------------------
+\section{Engineering takeaway}
+\label{sec:conclusion-engineering}
+
+The engineering reader should leave with a decision rule, not only a ranking. RQ4 frames that rule:
+given brushless Crazyflies with RPM sensing and offline-trained predictors, which strategy family
+delivers acceptable tracking and residual rejection per unit of tuning effort, flight time for data
+collection, and onboard resource? The filled discussion (Section~\ref{sec:disc-rq4}) will state that
+rule explicitly; until C.4 completes, no rule is asserted here.
+
+% -------------------------------------------------------------------------------------
+\section{Future work}
+\label{sec:conclusion-future}
+
+Several extensions are already scoped in project documentation and do not depend on the C.4 outcome:
+
+\begin{itemize}
+  \item \textbf{C.1 coverage and C.4 repeats.} Complete the planned dz/speed grid under geometric
+    collection on cf5; run the systematic comparison matrix with frozen gains and documented $n$
+    per cell.
+  \item \textbf{Three-robot scaling.} Fly or analyse B1/B2/B3 under the fallback protocol in
+    Section~\ref{sec:res3-limitation}; optional Priority~D/E sketches (docs/36) for n$\geq$4 remain
+    smoke-tier only until core A--C library and C.4 close.
+  \item \textbf{Retrained NA-INDI / LINDI reference.} Related-work and desk notes (docs/26) describe
+    a retrain path for the Cobo-Briesewitz hybrid; it is out of the primary compared set but remains
+    a candidate extension if hardware budget allows.
+  \item \textbf{Residual RL strategies (Strategy~5/7).} Explicitly deferred in the project convention:
+    reinforcement-learning residual policies are not part of this comparison and would require a
+    separate safety and data budget before any flight claim.
+  \item \textbf{Hardware validation of onboard prediction.} SIL and desk parity do not substitute for
+    \texttt{rnn.en=1} flight logs on the brushless pair; flash-resident vs upload deployment trades
+    reflash cost against lab iteration speed (docs/45).
+\end{itemize}
+
+% -------------------------------------------------------------------------------------
+\section{Closing remark}
+\label{sec:conclusion-close}
+
+Whether compensation families separate sharply or collapse to ``any compensation helps,'' the thesis
+is designed so either outcome is informative. The remaining work is to replace the placeholders in
+Chapters~\ref{ch:results2}--\ref{ch:discussion} with measured outcomes from the lab campaign.

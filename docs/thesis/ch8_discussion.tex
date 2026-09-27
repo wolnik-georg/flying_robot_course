@@ -1,0 +1,124 @@
+% =====================================================================================
+%  Chapter 8 — Discussion
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  Sources: Section~\ref{sec:intro-rq}, Section~\ref{sec:intro-contrib}, Section~\ref{sec:setup-validity},
+%           Chapters~\ref{ch:results2}--\ref{ch:results3}.
+%
+%  HONESTY NOTE. Interpretation of results is deferred until C.4/C.3-robot data exist. Each
+%  subsection states what evidence would answer the question and what a negative result would mean,
+%  following Chapter~\ref{ch:intro}'s falsifiability framing.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Discussion}
+\label{ch:discussion}
+
+Chapters~\ref{ch:results2} and~\ref{ch:results3} report measurements; this chapter interprets them
+against the research questions in Section~\ref{sec:intro-rq}, checks the intended contributions in
+Section~\ref{sec:intro-contrib}, and revisits the threats to validity flagged in
+Section~\ref{sec:setup-validity}. A negative answer to any question is treated as a result, not as
+a failed experiment.
+
+% -------------------------------------------------------------------------------------
+\section{RQ1 --- Reactive versus predictive compensation under identical conditions}
+\label{sec:disc-rq1}
+
+RQ1 asks, under identical hardware, trajectories, formations and separations, how reactive and
+predictive interaction-force compensation compare to the uncompensated baseline in trajectory-tracking
+accuracy and residual-force rejection. Evidence comes from Chapter~\ref{sec:res2-tracking} and
+residual magnitudes on the same flights. If compensating strategies do not separate from one another
+but all beat Strategy~0, the practical conclusion shifts toward ``compensation matters; family
+matters less,'' and RQ4 dominates the engineering decision. If they separate strongly, this chapter
+must explain whether the gap is robust across repeats or driven by a single scenario class.
+
+\todo[color=red!25]{PLACEHOLDER: Interpretation paragraph once C.4 tables exist --- ranking S0--3,
+residual rejection, statistical spread across $n$.}
+
+% -------------------------------------------------------------------------------------
+\section{RQ2 --- Regime dependence}
+\label{sec:disc-rq2}
+
+RQ2 asks whether the relative advantage of reactive versus predictive compensation depends on
+separation, relative velocity, and quasi-static versus transient interaction. The scenario library
+was designed to isolate these regimes (Section~\ref{sec:res2-summary}); a crossover supports
+conditional guidance (``use predictive in static stacks, reactive in fast crossings''). If no crossover
+appears, the discussion must say so and attribute flat rankings to measurement floor, tuning, or
+insufficient excitation rather than silently claiming regime independence.
+
+\todo[color=red!25]{PLACEHOLDER: Scenario-class breakdown referencing Table~\ref{tab:res2-when-which}
+and train/test splits across classes.}
+
+% -------------------------------------------------------------------------------------
+\section{RQ3 --- Two-robot training on three-robot formations}
+\label{sec:disc-rq3}
+
+RQ3 asks how large the transfer penalty is for a summed per-neighbour model trained on two-vehicle
+data when used on three-vehicle formations, and whether that penalty is small enough to keep the
+summed architecture. The question presupposes non-superposition; the contribution is quantitative.
+Chapter~\ref{sec:res3-transfer} supplies the numbers; here they are interpreted against deployment
+cost (single weight set, permutation invariance) versus retraining or per-formation models.
+
+\todo[color=red!25]{PLACEHOLDER: Interpret open-loop and (if available) closed-loop three-robot
+penalty; tie to Section~\ref{sec:res3-limitation} if only logs exist.}
+
+% -------------------------------------------------------------------------------------
+\section{RQ4 --- Cost versus performance}
+\label{sec:disc-rq4}
+
+RQ4 asks, for each compared strategy, what sensing, onboard compute and training data are required,
+and how those costs sit next to tracking and rejection. Chapter~\ref{sec:res2-effort} and the
+predictive-path subsection supply performance-side numbers; cost includes RPM sourcing, SD logging,
+upload vs flash-resident weights, tuning time per strategy (Table~\ref{tab:setup-threats}), and
+C.1 collection burden for Strategy~2/3.
+
+\todo[color=red!25]{PLACEHOLDER: Cost--performance synthesis table (qualitative + quantitative
+where measured); no invented rankings.}
+
+% -------------------------------------------------------------------------------------
+\section{Contributions revisited}
+\label{sec:disc-contrib}
+
+Section~\ref{sec:intro-contrib} listed three intended contributions: a controlled comparison,
+a quantification of the summed-model transfer penalty, and an engineering account of cost alongside
+performance. The apparatus (scenario library, residual path, training pipeline) was explicitly
+excluded as a scientific claim. For each item below, this section will state whether the C.4/C.3
+campaign achieved it, partially achieved it, or could not be tested, without upgrading apparatus
+description into a result.
+
+\todo[color=red!25]{PLACEHOLDER: Contribution (1) --- controlled comparison achieved? cite
+Chapter~\ref{ch:results2} scope and null scenarios.}
+
+\todo[color=red!25]{PLACEHOLDER: Contribution (2) --- transfer penalty quantified? cite
+Chapter~\ref{ch:results3}.}
+
+\todo[color=red!25]{PLACEHOLDER: Contribution (3) --- cost account complete? cite RQ4 subsection.}
+
+% -------------------------------------------------------------------------------------
+\section{Threats to validity, revisited}
+\label{sec:disc-validity}
+
+Chapter~\ref{sec:setup-validity} and Table~\ref{tab:setup-threats} listed threats and mitigations
+at design time. After flights, the discussion closes the loop: which mitigations held in practice,
+which residual risks materialised, and which limitations remain unavoidable.
+
+\paragraph{Tuning and fairness.} Per-strategy tuning followed by frozen gains is necessary for RQ1;
+the discussion will report whether any comparison flight required ad-hoc gain changes and, if so,
+exclude or flag those cells.
+
+\paragraph{Measurement floor and null scenarios.} C1--C3 bound how small a reported improvement can
+be before it is indistinguishable from noise; revisiting this prevents over-interpreting marginal
+RMSE gaps.
+
+\paragraph{Single airframe and session effects.} These were not mitigated by design; results are
+scoped to the Crazyflie brushless configuration flown. Interleaving reduces but does not remove
+session effects; repeat variance in Chapter~\ref{ch:results2} quantifies what remains.
+
+\paragraph{Simulation.} No thesis claim rests on simulation (Section~\ref{sec:setup-validity});
+any sim-only diagnosis (e.g.\ backend choice for SIL) is mentioned only as implementation context,
+not as validation of a strategy.
+
+\todo[color=red!25]{PLACEHOLDER: Short paragraph per threat row in Table~\ref{tab:setup-threats} ---
+``after data: mitigated / observed / not testable'' once C.4 complete.}
