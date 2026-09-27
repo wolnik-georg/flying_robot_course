@@ -74,11 +74,10 @@ Strategies whose author code has not yet arrived stay unimplemented rather than 
 \section{The position and attitude loop}
 \label{sec:ctrl-common}
 
-Strategies~0, 1 and~2 (the geometric baseline, pure INDI and geometric+NN) each use a geometric
-position loop and an attitude law realising the corresponding thrust direction; Strategy~1 replaces
-the attitude law's inner term with an incremental one. This is stated once here, in its own section,
-purely to avoid repeating the same equation three times. Strategy~3 uses a different published
-structure entirely, feedback linearisation, described in its own section instead.
+Strategies~0, 1 and~2 (the geometric baseline, pure INDI and geometric+NN) share one geometric
+position loop and an attitude law for the commanded thrust direction. Strategy~1 replaces the
+attitude law's inner term with an incremental one. The shared equations are stated once in this
+section. Strategy~3 uses feedback linearisation instead; it has its own section.
 
 \subsection{Position loop}
 
@@ -288,13 +287,13 @@ quadrotor; the hardware demonstration is Hsieh et al.'s.
 
 Its relevance to this comparison is that it is the strongest published counter-argument to treating
 ``predictive compensation'' as one method. Hsieh et al.'s abstract reports a \SI{31}{\percent}
-reduction in average tracking error; on hardware the body reports \SI{24}{\percent} RMSE for
-ROM-FBL over nominal FBL and a further \SI{29}{\percent} for learned FBL over ROM-FBL, matching
-the tracking error published by Chee et al.\ for nonlinear model predictive control, at an order
-of magnitude less computation in simulation, from under \SI{30}{\second} of training data, and
-at a \SI{5}{\milli\second} loop rate obtained \emph{off-board}~\cite{hsieh2026flatness}. Those are
-the figures a predictive strategy in this class should be measured against, with the caveat that
-none of them was produced by a controller running on the vehicle.
+reduction in average tracking error. On hardware the body reports \SI{24}{\percent} RMSE for
+ROM-FBL over nominal FBL and a further \SI{29}{\percent} for learned FBL over ROM-FBL.
+In simulation they match the tracking error published by Chee et al.\ for nonlinear model
+predictive control at an order of magnitude less computation, from under \SI{30}{\second} of
+training data, at a \SI{5}{\milli\second} loop rate obtained \emph{off-board}~\cite{hsieh2026flatness}.
+Those are the figures a predictive strategy in this class should be measured against. None of them
+was produced by a controller running on the vehicle.
 
 \paragraph{Requirements.} Neighbour relative states; training data. No rotor-speed sensing.
 
@@ -312,14 +311,13 @@ is exempted or held to a looser standard on the tasks or the measurement pipelin
 \paragraph{What this does not guarantee.} Two limitations are worth stating before results are
 presented rather than after.
 
-Every strategy follows a published \emph{family}, not a specific paper reproduced exactly; the
-deviations from each source are listed in that strategy's own section. Strategies whose author code
-has not yet arrived stay unimplemented rather than guessed. Because each strategy is its own
-controller, ``identical conditions'' means identical trajectories, formations, hardware and
-separations — not identical control structure or one gain set imposed on every law. A difference
-in outcome could in principle be attributable to a
-controller's own structure rather than to how it uses the interaction-force information, and this
-is true of every strategy, not a caveat limited to some of them.
+Every strategy follows a published \emph{family}, not a paper reproduced exactly. The deviations
+from each source are listed in that strategy's section. Strategies whose author code has not yet
+arrived stay unimplemented rather than guessed. Each strategy is its own controller. ``Identical
+conditions'' therefore means identical trajectories, formations, hardware and separations. It does
+not mean identical control structure or one gain set on every law. A difference in outcome could
+reflect the controller structure itself, not only how it uses interaction-force information. That
+applies to every strategy.
 
 Geometric tracking, INDI and feedback linearisation are different laws and are tuned separately.
 After that tuning, every strategy's gains are frozen for the comparison flights so a later gap is

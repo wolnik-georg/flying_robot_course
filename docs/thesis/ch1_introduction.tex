@@ -69,8 +69,8 @@ before. But the estimate exists only after the disturbance has begun to act, and
 form it depends on rotor-speed sensing.
 
 Or it can \textbf{predict} the residual before it acts, from the relative states of its neighbours,
-using a model learned offline. This can compensate ahead of the disturbance rather than after it,
-but the model is only valid over the configurations its training data covered, and outside them its
+using a model learned offline. This can compensate ahead of the disturbance rather than after it.
+The model is only valid over the configurations its training data covered. Outside them its
 behaviour is not merely degraded but unconstrained.
 
 The two sources are complementary. Measurement is late but not tied to a training set. Prediction
@@ -104,14 +104,13 @@ convention of the field. It is a property of the literature taken as a whole: th
 designed to compose, and establishing a ranking requires an experiment built for that purpose.
 
 Two narrower gaps follow. The hybrid has been demonstrated only where the residual is
-\emph{self-induced}, a single vehicle, with effects such as blade flapping, drag and ground
-forces, optionally carrying a slung payload, and not
-where it is produced by other vehicles and is therefore a function of a measurable relative state,
-which is where the predictive component has the most to contribute; multi-robot evaluation of such
-hybrids is not in the scope of this thesis. And the summation that
-predictive architectures use to aggregate per-neighbour contributions is known to be an
-approximation~\cite{shi2020neuralswarm,gielis2023aggregate}, yet the size of the penalty it carries
-for a deployed model is not reported.
+\emph{self-induced}: a single vehicle, with blade flapping, drag, ground forces, or an optional
+slung payload. It has not been shown where other vehicles produce the residual and relative state
+is measurable. That is where the predictive component has the most to contribute. Multi-robot
+evaluation of such hybrids is outside this thesis. The summation that predictive architectures use
+to aggregate per-neighbour contributions is known to be an
+approximation~\cite{shi2020neuralswarm,gielis2023aggregate}. The size of the penalty on a deployed
+model is not reported.
 
 % -------------------------------------------------------------------------------------
 \section{Research questions}
@@ -192,9 +191,8 @@ strategy is claimed to be best in general, the useful outcome is conditional, wh
 
 \paragraph{A negative result would also be a contribution.} If the strategies do not separate, the
 conclusion is that the choice of compensation family matters less than whether compensation is
-present at all, and the engineering question becomes one of cost. The experimental design is built
-so that this outcome is distinguishable from a failed experiment, which is what the null conditions
-and gains frozen after each strategy is tuned are for.
+present at all, and the engineering question becomes one of cost. The experimental design is built so that this outcome is distinguishable from a failed experiment.
+The null conditions and gains frozen after each strategy is tuned serve that purpose.
 
 \todo[color=green!25]{\textbf{Provenance, not pending work.} ``To the best of our knowledge'' is supported by two audits: an arXiv keyword
 sweep and a cross-database sweep including a citation-graph scan. Both found adjacent comparisons, cited in §\ref{sec:rw-existing-comparisons},
@@ -230,14 +228,13 @@ degree of freedom left open is an alternative explanation for an observed differ
 \section{Outline}
 \label{sec:intro-outline}
 
-\textbf{Chapter~\ref{ch:related}} surveys the field as an argument rather than a catalogue:
-what the disturbance is, the two ways of obtaining information about it, why the injection point
-into the control law matters, and why the individual results do not compose into a comparison.
+\textbf{Chapter~\ref{ch:related}} surveys what the disturbance is, how controllers measure or
+predict it, where a prediction enters the law, and why published results do not compose into one
+comparison.
 
-\textbf{Chapter~\ref{ch:model}} defines the residual this stack measures and logs. Strategies that
-consume a force residual use that number. It gives
-both routes to it in one notation, and states the assumptions the formulation makes together with
-where each is expected to fail.
+\textbf{Chapter~\ref{ch:model}} defines the residual this stack measures and logs. Strategy~0
+records it without consuming it; Strategies~1--3 use the same definition where they apply. The
+chapter gives both routes in one notation and states the assumptions, with where each may fail.
 
 \textbf{Chapter~\ref{ch:control}} describes Strategies~0--3 (the uncompensated baseline, pure INDI,
 geometric+NN and FBL+NN), and the point at which each

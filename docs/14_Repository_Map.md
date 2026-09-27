@@ -110,6 +110,10 @@ simulator, so simulation runs the controller that flies, not a re-implementation
 | Score a simulated formation run | `experiments/analysis/verify_formation_sim.py` |
 | Everything else | [`experiments/README.md`](../experiments/README.md) |
 
+### Thesis folder (`docs/thesis/`)
+
+- Writing rules (style + campaign doctrine): [`docs/thesis/WRITING_RULES.md`](thesis/WRITING_RULES.md)
+
 ### Instruction files for working in a directory
 
 `CLAUDE.md` files carry the local rules and gotchas:

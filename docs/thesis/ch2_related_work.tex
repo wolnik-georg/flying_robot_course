@@ -38,23 +38,17 @@ formation flight possible, and doing so requires a controller that accounts for 
 rather than avoiding it.
 
 This chapter surveys how that has been attempted. It is organised as an argument rather than a
-catalogue. Section~\ref{sec:rw-physics} establishes what the disturbance is; \ref{sec:rw-reactive}
-and \ref{sec:rw-predictive} describe the two sources of information a controller can have about it,
-namely online measurement and offline prediction; \ref{sec:rw-inject} shows that a prediction is
-only useful once it enters a control law, and that how it enters differs by controller family;
-\ref{sec:rw-rl} covers the alternative of learning the corrective action directly;
-\ref{sec:rw-hybrid} covers combining measurement and prediction. Section~\ref{sec:rw-eval} then
-examines how these methods are evaluated, and argues that the field's reporting conventions make
-the individual results impossible to compose into a comparison. That observation is the gap this
-thesis addresses.
+catalogue. Section~\ref{sec:rw-physics} establishes what the disturbance is.
+Sections~\ref{sec:rw-reactive} and~\ref{sec:rw-predictive} cover online measurement and offline
+prediction. Section~\ref{sec:rw-inject} treats where a prediction enters the control law;
+Section~\ref{sec:rw-rl} treats learning a corrective action without an explicit force estimate;
+Section~\ref{sec:rw-hybrid} treats combining measurement and prediction.
+Section~\ref{sec:rw-eval} examines how these methods are evaluated. The field's reporting
+conventions make the individual results impossible to compose into a comparison.
 
-The survey covers the field as a whole, including families this thesis does not itself implement.
-Where a family falls outside the strategies evaluated here --- learning the corrective action
-directly (Section~\ref{sec:rw-rl}) and embedding the residual in a predictive-control horizon
-(Section~\ref{sec:rw-inject}) --- it is described briefly rather than in depth. The omission is one
-of scope, not of relevance: those families are part of the landscape the gap argument of
-Section~\ref{sec:rw-eval} rests on, and Chapter~\ref{ch:control} states where the boundary of this
-thesis's own comparison falls and why.
+Families this thesis does not implement --- direct action learning (Section~\ref{sec:rw-rl}) and
+residuals inside a predictive horizon (Section~\ref{sec:rw-inject}) --- are described briefly.
+Chapter~\ref{ch:control} states where this thesis's compared strategies end.
 
 % -------------------------------------------------------------------------------------
 \section{Multirotor dynamics and baseline control}
@@ -152,9 +146,8 @@ and outdoors taking off and holding position on a consumer GNSS module in roughl
 \SI{5.1}{\metre\per\second} wind. Tal and Karaman~\cite{tal2018indi} use INDI for robust tracking of
 linear and angular accelerations in aggressive flight on a single custom \SI{609}{\gram} vehicle,
 and state the property that defines the family: no parametric model of the aerodynamic effects is
-required. That is narrower than it sounds, mass, inertia, motor time constant, control
-effectiveness and the throttle map are all still identified; it is the \emph{drag} model that is
-dispensed with.
+required. That claim is narrower than it sounds. Mass, inertia, the motor time constant, control
+effectiveness and the throttle map are still identified. What is dropped is the drag model.
 
 The same work also exposes the family's cost. Tracking snap requires direct control of body torque,
 which those authors achieve using closed-loop motor speed control based on optical encoders on
@@ -402,21 +395,22 @@ Two features of this setting bear on whether the result transfers. The residual 
 self-induced, blade flapping, drag, the swing of a payload, and is predicted from the
 vehicle's own state. In a multi-robot team the residual is produced by other vehicles and is a
 function of a measurable relative state, which gives the predictive component an input the
-single-vehicle setting does not provide. Whether that turns a small margin into a decisive one is
-untested, and is one of the questions this thesis addresses.
+single-vehicle setting does not provide. Whether that turns a small margin into a decisive one is untested on teams. This thesis does not
+fly such hybrids in the multi-robot campaign.
 
 % -------------------------------------------------------------------------------------
 \section{How these methods are evaluated}
 \label{sec:rw-eval}
 
-The preceding sections describe a field with strong results. Reported improvements include a
-factor of two or better, up to four, in worst-case height error~\cite{shi2020neuralswarm},
-up to a threefold reduction in worst-case tracking error against a zero-interaction
-baseline~\cite{shi2022neuralswarm2}, \SI{36}{\percent} and \SI{56}{\percent} improvements in
-three-dimensional and vertical tracking~\cite{smith2023so2equivariant}, \SI{31}{\percent} against
-nominal baselines as stated in the abstract~\cite{hsieh2026flatness}, and roughly
-\SI{40}{\percent} for residual compensation without a payload~\cite{cobobriesewitz2026lindi}.
-Taken individually, each is credible and internally validated.
+The preceding sections describe a field with strong results. Shi et al.~\cite{shi2020neuralswarm}
+report up to a fourfold reduction in worst-case height error. Neural-Swarm2~\cite{shi2022neuralswarm2}
+reports up to a threefold reduction in worst-case tracking error against a zero-interaction
+baseline in one experiment; the sixteen-robot flight is a separate report.
+Smith et al.~\cite{smith2023so2equivariant} report \SI{36}{\percent} three-dimensional and
+\SI{56}{\percent} vertical tracking improvements. Hsieh et al.~\cite{hsieh2026flatness} state
+\SI{31}{\percent} against nominal baselines in the abstract; the hardware body gives other figures.
+Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} report roughly \SI{40}{\percent} for
+residual compensation without a payload. Taken individually, each result is credible.
 
 They cannot, however, be composed. Table~\ref{tab:rw-conditions} lists the conditions under which
 they were obtained.
@@ -470,8 +464,8 @@ easier to obtain.
 This is not a criticism of any individual work. Each is internally valid, and there is no
 convention in the field that any of them violated. It is a limitation of the literature taken as a
 whole: the results are not designed to compose, and no amount of careful reading assembles them
-into a ranking. Establishing one requires an experiment built for the purpose, which is what
-distinguishes a comparison from a survey.
+into a ranking. A ranking requires an experiment built for that purpose. That is what distinguishes
+a comparison from a survey.
 
 \label{sec:rw-existing-comparisons}
 \paragraph{Comparisons that do exist}
@@ -497,13 +491,14 @@ component is the learning modules executing on an embedded computer in the loop 
 which measures latency rather than flight, and the authors list validation on a real quadrotor as
 future work.
 
-Its approach to fairness is nonetheless directly relevant, and is the opposite of the one taken
-here. They tune the parametric models --- the extreme learning machine, the radial-basis-function
-network and the echo state network --- to their own optima by Bayesian optimisation under
-otherwise consistent conditions, so that each operates near its best achievable performance; this
-thesis freezes a shared gain set instead. Both answer the same objection --- that an observed difference
-might reflect tuning effort rather than method --- and Section~\ref{sec:ctrl-fairness} returns to
-why the choice is genuinely open.
+Its approach to fairness is nonetheless directly relevant. They tune the parametric models --- the
+extreme learning machine, the radial-basis-function network and the echo state network --- to their
+own optima by Bayesian optimisation under otherwise consistent conditions, so that each operates
+near its best achievable performance. This thesis tunes each compared strategy on the hardware gate
+and then freezes those gains before the comparison and training-collection flights; gains are not
+required to be identical across families. Both answer the same objection --- that an observed
+difference might reflect tuning effort rather than method --- and Section~\ref{sec:ctrl-fairness}
+returns to why the choice is genuinely open.
 
 Abro et al.~\cite{abro2025fractional} compare fractional-order PID, fractional-order LQR and
 integral state feedback on close-proximity flight, explicitly motivated by downwash and by the
@@ -521,9 +516,9 @@ obtain information about the interaction force}, measure it, predict it, or both
 been placed under common conditions.
 
 Such an experiment has requirements that follow directly from the failure modes above: a single
-airframe; identical trajectories and formations across all methods; gains frozen before data
-collection and shared wherever the architecture permits, so that a difference cannot be a tuning
-artefact; a single definition of the residual, measured identically under every controller
+airframe; identical trajectories and formations across all methods; per-strategy gains frozen after
+tuning before data collection, so that a difference cannot be a tuning artefact; a single definition
+of the residual, measured identically under every controller
 including those that do not use it; and a null condition in which no interaction is present, to
 establish the measurement floor and so distinguish a real effect from noise. Chapter~\ref{ch:setup}
 describes the resulting design.
@@ -550,7 +545,10 @@ regulators for close-proximity swarms (Section~\ref{sec:rw-existing-comparisons}
 spans the families distinguished by how they obtain the interaction force. The individual results are strong; what the field lacks is not strong results
 but comparable ones, and its reporting conventions --- improvements against each work's own
 baseline, on its own platform, at its own separations --- make the comparison impossible to
-assemble after the fact.
+assemble after the fact. This thesis compares the uncompensated baseline, reactive compensation
+(INDI) and predictive compensation (geometric+NN, and FBL+NN if implemented). Multi-robot
+evaluation of a reactive--predictive hybrid is outside the scope of this thesis, as already stated
+above.
 
 Second, the hybrid of measurement and prediction has been demonstrated only for a single vehicle,
 where the residual is self-induced and its advantage was described as small without a payload and

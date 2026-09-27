@@ -18,11 +18,9 @@
 \chapter{Experimental Setup and Protocol}
 \label{ch:setup}
 
-Chapter~\ref{ch:control} described Strategies~0--3 (the uncompensated baseline, pure INDI,
-geometric+NN and FBL+NN), each treated as its own controller. This chapter describes the platform,
-the scenarios, the measurement chain and the protocol, and
-in each case the reasoning is the same: the design exists to remove alternative explanations for an
-observed difference.
+Chapter~\ref{ch:control} described Strategies~0--3, each as its own controller. This chapter
+describes the platform, scenarios, measurement chain and protocol. The design removes alternative
+explanations for an observed difference.
 
 Section~\ref{sec:setup-validity} states the threats this design is built against, and which of
 them it does not eliminate.
@@ -201,11 +199,9 @@ $\hat{a}_{\mathrm{res}}$ and its saturation flag; the commanded setpoint; and th
 commands.
 
 Two of these deserve comment. The measured residual is recorded \emph{in every controller mode},
-including those that make no use of it, because the training data is collected under the
-uncompensated baseline. And the network prediction is recorded \emph{whether it is enabled or not},
-because comparing prediction against measurement is how a learned model is evaluated, and that
-comparison is only meaningful on a flight where the prediction is not also changing the vehicle's
-behaviour.
+including those that make no use of it. Training data is collected under the uncompensated baseline.
+The network prediction is recorded \emph{whether it is enabled or not}. Comparing prediction to
+measurement requires both on the same flight without the prediction driving the loop.
 
 The logging configuration is fixed before data collection and shared by the collection and
 evaluation flights. A configuration change between the two would silently make the two halves of

@@ -113,3 +113,5 @@ measurement remain separate.
 | 2026-09-22 | ch4, ch5 | — | — | — | Ch.4/5 fairness = per-strategy tune then freeze. |
 | 2026-09-22 | ch1, ch2, ch4, ch5 | — | — | — | Removed campaign hybrid / NA-INDI (Strategy 4). Cobo remains literature only. Compared set 0–3. |
 | 2026-09-22 | docs/07, 13, kick-off, C0, 05, 34, reserve | — | — | — | Planning docs: campaign hybrid removed; set 0–3; per-strategy tune-then-freeze. |
+| 2026-09-27 | ch2 | — | — | — | Ch.2: shared-gain wording → per-strategy freeze; first gap does not promise a hybrid campaign cell. |
+| 2026-09-27 | ch1–ch5 | — | — | — | Style pass ch1–ch5; ch3 Strategy 4 leftover → 1–2 (+ Strategy 0 logs); no claim numbers changed. |

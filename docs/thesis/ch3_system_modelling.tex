@@ -29,10 +29,10 @@ learn a corrective action with no force estimate at all. Those families are comp
 compute the same internal quantity.
 
 This chapter defines the residual acceleration $a_{\mathrm{res}}$ that \emph{this} stack measures
-and logs. Two things follow. Strategies~1, 2 and~4, and any other method that consumes a force
-residual, then refer to one number rather than to several differently-defined ones. And a predicted
-residual can be checked against a measured one on the same flight, which is how a learned model is
-evaluated here.
+and logs. Strategy~0 records it but does not consume it. Strategies~1 and~2, and Strategy~3 if it
+is implemented with the same logged quantity, then refer to one number rather than to several
+differently-defined ones. A predicted residual can also be checked against a measured one on the
+same flight. That is how a learned model is evaluated here.
 
 The chapter also states the assumptions the formulation rests on, and where each one is expected
 to fail. Several are known to be imperfect, the summation in
@@ -124,10 +124,10 @@ $f_i = \sum_{k=1}^{4} k_{t,k}\varpi_k^2$.
 
 The implementation evaluates \eqref{eq:model-ares} at every control step and logs it as
 $a_{\mathrm{res}}$, in every controller mode, including modes that make no use of it. This is
-deliberate. The training data for every predictive strategy is collected under the
-\emph{uncompensated} geometric controller, so the measurement must exist when no INDI term is
-active; and the comparison of a predicted residual against a measured one, which is how a learned
-model is evaluated, requires both quantities on the same flight.
+deliberate. The training data for every predictive strategy is collected under the \emph{uncompensated}
+geometric controller, so the measurement must exist when no INDI term is active. Comparing a
+predicted residual to a measured one on the same flight requires both quantities in the log.
+That is how a learned model is evaluated.
 
 \subsection{What this measurement requires, and how it fails}
 \label{sec:model-measure-fail}
@@ -172,12 +172,11 @@ $-f_{\mathrm{res},i}/m$. The residual is \emph{subtracted}, whether it was measu
 Adding it instead does not merely fail to compensate: it doubles the disturbance, because the
 controller then commands a thrust error equal and opposite to the correction it should have made.
 The resulting behaviour is a stable, well-controlled vehicle that tracks slightly worse in
-formation, which is what an uncompensated vehicle also looks like. In single-vehicle flight the
-error is invisible altogether, since $f_{\mathrm{res}} \approx 0$ with no neighbour present. This is
-recorded here because it is a property of the formulation rather than a coding detail, and because
-it establishes a specific prediction that the two-robot results chapter can check: with the sign
-correct, position-INDI compensation must \emph{reduce} the formation-induced displacement, and with
-it inverted the displacement must be approximately twice the uncompensated value.
+formation. An uncompensated vehicle can look the same. In single-vehicle flight the error is
+invisible altogether, since $f_{\mathrm{res}} \approx 0$ with no neighbour present. With the sign
+correct, position-INDI compensation must \emph{reduce} the formation-induced displacement. With
+the sign inverted, the displacement must be approximately twice the uncompensated value. The
+two-robot results chapter can check that prediction.
 
 % -------------------------------------------------------------------------------------
 \section{Predicting the residual from relative state}
@@ -252,9 +251,9 @@ aggregate forces.
 The assumption is retained here for two reasons. It is what makes one trained model applicable to
 teams of two and three without retraining, which the comparison requires. And a controller does not
 need an exact model: it needs one whose residual after compensation is smaller than the residual
-before it. The relevant question is therefore not whether \eqref{eq:model-deepsets} is exact, which
-it is not, but how large the resulting error is on a deployed model, which is what
-the multi-robot results chapter measures.
+before it. The relevant question is therefore not whether \eqref{eq:model-deepsets} is exact. It is not.
+The question is how large the resulting error is on a deployed model. The multi-robot results
+chapter measures that.
 
 \subsection{Input conditioning}
 \label{sec:model-guards}
@@ -361,8 +360,8 @@ the circular trajectory to its being out of distribution relative to the trainin
 \label{sec:model-summary}
 
 The residual of \eqref{eq:model-trans}--\eqref{eq:model-rot} is what this stack measures and logs.
-Strategies~1, 2 and~4 consume it. The
-residual can be recovered online from
+Strategy~0 logs it without consuming it; Strategies~1 and~2 consume it, and Strategy~3 does the
+same if implemented. The residual can be recovered online from
 \eqref{eq:model-ares}, which needs no model of the interaction but requires rotor-speed sensing and
 is available only after the disturbance acts; or predicted from \eqref{eq:model-deepsets}, which
 acts ahead of the disturbance but is valid only within its training distribution and assumes an

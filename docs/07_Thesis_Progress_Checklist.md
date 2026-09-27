@@ -118,6 +118,8 @@ The writing track exists so that time without lab access is not idle time, and s
 theoretical chapters are not written under deadline after the experiments finish. Chapters that
 depend on results (6–8) wait; everything else does not.
 
+Prose rules: `docs/thesis/WRITING_RULES.md`
+
 ---
 
 ## ★ CORE THESIS WORKFLOW — the master plan
