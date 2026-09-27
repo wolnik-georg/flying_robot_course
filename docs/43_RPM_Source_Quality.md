@@ -184,6 +184,30 @@ already absolute-value. Table below regenerated with the fix; median lag moved f
 
 ---
 
+## Extension — 2026-09-27 (4): RMSE vs `max_abs_err_rpm` (DShot telemetry spikes)
+
+**Context:** On `per_flight.csv` (200 motor-rows, same valid mask as `metrics_one_motor()`: `deck > 0`, `DShot > 0`, `DShot < 60 000`), median **`rmse_rpm` ≈ 771 RPM** sits next to median **`max_abs_err_rpm` ≈ 40 507 RPM** (fleet max ≈ 47 794 RPM). That pairing is real but easy to misread: the two columns summarize different parts of the error distribution.
+
+**What the spikes are:** Worst-sample errors are dominated by **rare DShot-side telemetry spikes** (often **~50–59k RPM**, still passing **`rs < 60 000`**) while **deck RPM at the same instant stays in the normal hover band (~12–16k)**. This is **not** deck dropout, **not** a sustained deck/DShot disagreement (median **`bias_rpm`** remains small), and **not** “motor RPM actually reached ~45k.” Example (worst row in the table): **A3 `13-04-34` bottom m1** at **t ≈ 18.268 s** — deck **11 569**, DShot **59 363**, **|err| ≈ 47 794**; adjacent 500 Hz samples track normally.
+
+**Fleet counts (merged CSVs reloaded, valid mask unchanged):**
+
+| Quantity | Value |
+|----------|--------|
+| Valid samples (all motor-rows) | **2 019 397** |
+| Samples with **\|err\| > 10 000 RPM** | **1 540** (**0.076%** of valid) |
+| Share of **total MSE** from those samples | **~96.2%** |
+| Motor-rows where **DShot** (not deck) is higher at **argmax \|err\|** | **198 / 200** |
+| Motor-rows with **exactly one** sample **\|err\| > 10 000** | **6 / 200** |
+| Typical **\|err\| > 10 000** count per motor-row (median) | **~7** |
+| Burst structure (**\|err\| > 10 000** runs) | Mostly **1–2 consecutive** samples (**2–4 ms** at 500 Hz); isolated single-point glitches are **uncommon** |
+
+**“Single corrupted packet”:** Directionally right (telemet garbage, not deck failure), but **too narrow** as the whole story — most affected rows show **several** large-error samples per flight, often in **short bursts**, not one lone index every time.
+
+**How to read the headline metrics:** Agreement is **excellent for the vast majority of samples** — desk check with large errors excluded (e.g. **\|err\| > 5 000 RPM** dropped) gives **RMSE ≈ 100 RPM** (median across motor-rows), consistent with sub-percent bias. **`max_abs_err_rpm` as currently reported** is dominated by the rare DShot spikes above and **must not** be taken as representative of typical deck/DShot tracking quality. Tightening the validity mask or adding robust summary columns remains an **open design choice**; this note does not change `rpm_source_quality.py` or any computed column.
+
+---
+
 ## Related
 
 - Planning prompt: [`42_RPM_Source_Quality_Desk_Prompt.md`](42_RPM_Source_Quality_Desk_Prompt.md)
