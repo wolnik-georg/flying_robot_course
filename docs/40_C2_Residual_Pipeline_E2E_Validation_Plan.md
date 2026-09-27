@@ -582,3 +582,108 @@ still reported **`diverged: false`** because tilt stayed below threshold.
 the overshoot as an **open safety concern** until it is explained (e.g. A3 dz=0.30 + neuralswarm
 backend-specific vs general) or the Stage E gate adds an explicit position/altitude criterion.
 This pass documents the finding only — no overshoot fix or gate change here.
+
+---
+
+## Root-cause follow-up — 2026-09-27 (desk)
+
+**Scope:** Task the 26-Sep diagnosis left open — backend mismatch (`backend=np`), OUT_CLAMP
+calibration vs training labels, Stage D dz-sign sanity — **without changing `residual_nn.rs`**
+(weights, architecture, or `OUT_CLAMP=8.0`).
+
+**Artifacts:** `experiments/sim_validation/server_c2_fullbank_predict_np.yaml`,
+`c2_fullbank_predict_np.csv`; `experiments/analysis/c2_sil_backend_compare.py`,
+`c2_stage_d_sign_audit.py`; JSON under `experiments/analysis/out/c2_e2e_2026-09-26/`:
+`sil_predict_backend_compare.json`, `sil_predict_offline_by_backend.json`,
+`stage_d_sign_audit.json`. Offline replay helper: `c2_sil_offline_replay_check.py`.
+
+### 1. Backend hypothesis (`backend=np` vs `neuralswarm`, A3 dz=0.30, full bank, predict-only)
+
+Re-ran the same SIL scenario with **`backend: np`** (`server_c2_fullbank_predict_np.yaml`).
+**2026-09-27 note:** live weight upload to the SIL firmware failed on this desk session
+(`rnn.ready=0`, same on a neuralswarm smoke launch) — logged `rnn_pred_z` was **all zero** in
+the np CSV; **do not** compare on-board logged predictions for np from that run. Use **`a_res_z`**
+and **NumPy `firmware_forward` replay** on logged states instead.
+
+| Quantity | `backend=neuralswarm` (26-Sep CSV) | `backend=np` (2026-09-27 CSV) | Training bank (gated labels) |
+|----------|-----------------------------------:|------------------------------:|-----------------------------:|
+| **`a_res_z` p50 (in-air)** | **−0.13 m/s²** | **+0.00063 m/s²** | **−1.32 m/s²** |
+| **`a_res_z` p99** | **0.36 m/s²** | **0.0045 m/s²** | **0.21 m/s²** |
+| Logged **`rnn_pred_z` clamp @ ±8** | **~99.95%** | **0%** (upload failed → zeros) | — |
+
+**Offline replay** (same `full_bank_40.npz`, `firmware_forward` on each CSV’s logged geometry;
+`sil_predict_offline_by_backend.json`):
+
+| Backend CSV | corr(`a_res`, offline pred) all in-air | corr gated_true | Offline clamp @ ±8 |
+|-------------|---------------------------------------:|----------------:|-------------------:|
+| neuralswarm | **0.826** | **0.941** | **0%** |
+| np | **0.106** | **−0.007** | **0%** |
+
+**Conclusion:** Switching SIL to **`backend=np` does not** bring measured `a_res_z` toward the
+training-bank shape — it removes almost all residual signal (**~mN-scale `a_res`**, not **~1 m/s²
+downwash**). That matches expectations: C.1 hardware logs were collected under **real**
+aerodynamic interaction, not “np = no interaction” SIL physics. **`backend=neuralswarm`** still
+does **not** match training magnitude (**~10× smaller `a_res`** than label p50), so the 26-Sep
+scale mismatch is **not** fixed by np; it is **two different wrong tests** (synthetic downwash vs
+none). The **strong** result from this pass: on neuralswarm states, **NumPy replay correlates
+~0.94 gated_true with `a_res` at zero clamp hits**, while the **26-Sep SIL log** was **~100%
+clamp-saturated** — the open-loop SIL **logging path** (firmware forward vs replay) is implicated,
+not “the network only works offline.” Root cause of firmware vs NumPy divergence is **still open**
+(host build, feature inputs, or upload state) — **out of scope to patch in `residual_nn.rs`**.
+
+### 2. OUT_CLAMP calibration (diagnostic only — not changed)
+
+Training bank gated-neighbour **`a_res_z`** (17-file `dataset.build()`):
+
+| Stat | Value |
+|------|------:|
+| p50 | **−1.32 m/s²** |
+| p99 | **0.21 m/s²** |
+| p1 | **−3.61 m/s²** |
+| **max &#124;y&#124;** | **5.80 m/s²** |
+
+**`OUT_CLAMP = 8.0 m/s²`** is therefore **far above** anything the network was trained to emit:
+labels never approach ±8, so the clamp **does not** act as a “stay near training distribution”
+limiter — it only caps **catastrophic blow-up**. Unclamped Stage D sweep magnitudes stay **~1–3
+m/s²** (in family). The 26-Sep SIL issue is **firmware producing OOD multi‑m/s² values** that
+then **snap to ±8**, not a miscalibrated bound relative to **training labels**.
+
+**Recommendation (deployment/config, not applied):** If SIL or hardware ever show runaway forward
+passes, **tightening** OUT_CLAMP toward **~6 m/s²** (still above label max **5.8**) might trim
+worst-case compensation — but it **would not** fix the neuralswarm **`a_res` / label scale
+mismatch** or the **logged-vs-NumPy SIL divergence** above. Discuss before any firmware constant
+change.
+
+### 3. Stage D dz sign / convention
+
+`c2_stage_d_sign_audit.py` re-ran the synthetic overhead grid with:
+
+- **A (correct):** `dp = peer − own`, `dp_z = dz > 0` (matches `dataset.py` / firmware).
+- **B (bug hypothesis):** `dp_z = −dz` (own − peer).
+
+| Sweep | corr(&#124;a&#124;, dz) | &#124;a&#124; at dz=0.05 vs 1.2 m |
+|--------|-------------------------:|----------------------------------|
+| **A (correct)** | **−0.168** | **1.11 &lt; 1.86** (`abs_larger_at_small_dz`: **false**) |
+| **B (flipped sign)** | **+0.943** | near-zero wash (wrong units/sign) |
+
+Training gated-overhead bins (**same dz sign**) show **weaker &#124;y&#124; at dz≈0.05–0.15 m**
+(**~0.80 m/s²**) than mid-formation bins (**~1.75 m/s²** at dz≈0.34–0.43 m) — the crude sanity
+“always stronger when dz→0” is **not** what real C.1 data show either (formation nominal **dz≈0.30
+m**, not 5 cm). **No script sign bug:** the −0.17 correlation is a **weak / non-monotonic
+unclamped network + grid** finding, not a reversed axis in the sweep code.
+
+### 4. Flight readiness — `rnn.en=1`
+
+**Still standing — strengthen wording, not relax:**
+
+- **Do not fly `rnn.en=1` on hardware** based on Stage E tilt-only pass or full-bank offline RMSE
+  alone.
+- **New:** Open-loop SIL predict metrics on **26-Sep neuralswarm** are **not trustworthy** until
+  **logged `rnn_pred_*` matches `c2_sil_offline_replay_check.py`** on the same CSV (26-Sep run:
+  **corr(logged, offline) ≈ 0.48**, offline **0%** clamp vs logged **~100%** clamp).
+- **`backend=np` SIL** is **not** a substitute validation target for C.1-trained weights.
+- Stage E **~0.47 m altitude overshoot** on **`cf_second`** under compensation remains an **open
+  safety concern**.
+
+**Desk validation path going forward:** hardware **`rnn.en=0`** logs at training scale, plus offline
+`firmware_forward` / Stage C parity — not clamp-saturated SIL CSV correlation alone.

@@ -1,0 +1,196 @@
+{
+  "training_bank_y_gated": {
+    "quantiles": {
+      "p1": -3.608984439373016,
+      "p5": -3.023663115501404,
+      "p50": -1.3229259848594666,
+      "p95": 0.06158195026218889,
+      "p99": 0.20792836099862957
+    },
+    "abs_max": 5.804009914398193
+  },
+  "neuralswarm": {
+    "label": "backend=neuralswarm",
+    "csv": "/home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_predict.csv",
+    "n_in_air": 4046,
+    "corr_lag0_in_air": 0.46610393166734376,
+    "a_res_z_in_air": {
+      "p1": -1.75855325,
+      "p5": -0.38163,
+      "p50": -0.126296,
+      "p95": 0.358405,
+      "p99": 0.36114615
+    },
+    "rnn_pred_z_clamp_fraction_in_air": 0.9995056846267919,
+    "rnn_pred_z_in_air": {
+      "p1": -8.0,
+      "p5": 8.0,
+      "p50": 8.0,
+      "p95": 8.0,
+      "p99": 8.0
+    },
+    "per_phase": [
+      {
+        "phase": "gated_true",
+        "n": 400,
+        "corr": 0.1770431216212414,
+        "clamp_fraction": 0.9975
+      },
+      {
+        "phase": "gated_false",
+        "n": 3646,
+        "corr": 0.01726801712643637,
+        "clamp_fraction": 0.9997257268239166
+      }
+    ],
+    "lag_sweep_in_air": [
+      {
+        "lag_samples": -5,
+        "corr": 0.4778065138581067,
+        "n": 4041
+      },
+      {
+        "lag_samples": -4,
+        "corr": 0.47612939928150816,
+        "n": 4042
+      },
+      {
+        "lag_samples": -3,
+        "corr": 0.47420362734256083,
+        "n": 4043
+      },
+      {
+        "lag_samples": -2,
+        "corr": 0.4719392902426155,
+        "n": 4044
+      },
+      {
+        "lag_samples": -1,
+        "corr": 0.4692866823945293,
+        "n": 4045
+      },
+      {
+        "lag_samples": 0,
+        "corr": 0.46610393166734376,
+        "n": 4046
+      },
+      {
+        "lag_samples": 1,
+        "corr": 0.46174198390967186,
+        "n": 4045
+      },
+      {
+        "lag_samples": 2,
+        "corr": 0.45798689292329825,
+        "n": 4044
+      },
+      {
+        "lag_samples": 3,
+        "corr": 0.45252454770109,
+        "n": 4043
+      },
+      {
+        "lag_samples": 4,
+        "corr": 0.4463454700348311,
+        "n": 4042
+      },
+      {
+        "lag_samples": 5,
+        "corr": 0.4394773426940656,
+        "n": 4041
+      }
+    ]
+  },
+  "np": {
+    "label": "backend=np",
+    "csv": "/home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_predict_np.csv",
+    "n_in_air": 4072,
+    "corr_lag0_in_air": NaN,
+    "a_res_z_in_air": {
+      "p1": -0.0007602900000000001,
+      "p5": 3.4550000000000006e-05,
+      "p50": 0.000626,
+      "p95": 0.0010223499999999993,
+      "p99": 0.004798109999999994
+    },
+    "rnn_pred_z_clamp_fraction_in_air": 0.0,
+    "rnn_pred_z_in_air": {
+      "p1": 0.0,
+      "p5": 0.0,
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0
+    },
+    "per_phase": [
+      {
+        "phase": "gated_true",
+        "n": 401,
+        "corr": NaN,
+        "clamp_fraction": 0.0
+      },
+      {
+        "phase": "gated_false",
+        "n": 3671,
+        "corr": NaN,
+        "clamp_fraction": 0.0
+      }
+    ],
+    "lag_sweep_in_air": [
+      {
+        "lag_samples": -5,
+        "corr": NaN,
+        "n": 4067
+      },
+      {
+        "lag_samples": -4,
+        "corr": NaN,
+        "n": 4068
+      },
+      {
+        "lag_samples": -3,
+        "corr": NaN,
+        "n": 4069
+      },
+      {
+        "lag_samples": -2,
+        "corr": NaN,
+        "n": 4070
+      },
+      {
+        "lag_samples": -1,
+        "corr": NaN,
+        "n": 4071
+      },
+      {
+        "lag_samples": 0,
+        "corr": NaN,
+        "n": 4072
+      },
+      {
+        "lag_samples": 1,
+        "corr": NaN,
+        "n": 4071
+      },
+      {
+        "lag_samples": 2,
+        "corr": NaN,
+        "n": 4070
+      },
+      {
+        "lag_samples": 3,
+        "corr": NaN,
+        "n": 4069
+      },
+      {
+        "lag_samples": 4,
+        "corr": NaN,
+        "n": 4068
+      },
+      {
+        "lag_samples": 5,
+        "corr": NaN,
+        "n": 4067
+      }
+    ]
+  }
+}
