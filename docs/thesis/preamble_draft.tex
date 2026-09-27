@@ -9,6 +9,7 @@
 % without texlive-science. The real thesis preamble should require siunitx properly.
 \IfFileExists{siunitx.sty}{\usepackage{siunitx}}{%
   \providecommand{\SI}[2]{##1\,##2}%
+  \providecommand{\si}[1]{##1}%
   \providecommand{\num}[1]{##1}%
   \providecommand{\SIrange}[3]{##1--##2\,##3}%
   \providecommand{\percent}{\%}%
