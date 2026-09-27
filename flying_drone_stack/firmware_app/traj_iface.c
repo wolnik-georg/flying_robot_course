@@ -162,6 +162,36 @@ void rnn_pred_write(float x, float y, float z, uint8_t clamped)
   g_rnn_pred_x = x; g_rnn_pred_y = y; g_rnn_pred_z = z; g_rnn_clamped = clamped;
 }
 
+/* Weight-upload protocol — runs in C so g_rnn_* live in this TU (traj_iface.c), the same
+ * objects SWIG / CRTP / the host simulator write. Rust only mutates ResidualNet::w via
+ * cf_rnn_* below; an earlier version cleared duplicate Rust-linked copies of these flags,
+ * which left g_rnn_ready stuck while weights never loaded (SIL rnn_pred_z saturated at ±8). */
+extern void cf_rnn_begin_upload(uint16_t expected);
+extern uint8_t cf_rnn_set_weight(uint16_t idx, float value);
+extern uint8_t cf_rnn_finish_upload(void);
+
+void rnn_protocol_service(void)
+{
+  if (g_rnn_begin) {
+    cf_rnn_begin_upload(g_rnn_n);
+    g_rnn_begin = 0;
+    g_rnn_ready = 0;
+  }
+  if (g_rnn_wc) {
+    (void)cf_rnn_set_weight(g_rnn_wi, g_rnn_wv);
+    g_rnn_wc = 0;
+  }
+  if (g_rnn_end) {
+    g_rnn_ready = cf_rnn_finish_upload();
+    g_rnn_end = 0;
+  }
+}
+
+void oot_rnn_service(void)
+{
+  rnn_protocol_service();
+}
+
 PARAM_GROUP_START(rnn)
   PARAM_ADD(PARAM_UINT16, wi,    &g_rnn_wi)
   PARAM_ADD(PARAM_FLOAT,  wv,    &g_rnn_wv)

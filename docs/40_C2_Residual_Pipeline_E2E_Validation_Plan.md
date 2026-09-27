@@ -687,3 +687,76 @@ unclamped network + grid** finding, not a reversed axis in the sweep code.
 
 **Desk validation path going forward:** hardware **`rnn.en=0`** logs at training scale, plus offline
 `firmware_forward` / Stage C parity — not clamp-saturated SIL CSV correlation alone.
+
+---
+
+## Neural-Swarm2 SIL closure — 2026-09-27 (desk)
+
+**Scope:** Close the 26-Sep **logged `rnn_pred_z` vs NumPy replay** gap (Task 1–3), fix outside
+`residual_nn.rs`, re-run predict + Stage E on a trustworthy host build.
+
+### Root cause (exact)
+
+**Weight-upload protocol flags (`g_rnn_begin` / `g_rnn_wc` / `g_rnn_end` / `g_rnn_ready`) lived in
+`traj_iface.c`, but Rust `rnn_service()` in `lib.rs` read and wrote them through `extern "C"`
+statics that did not reliably alias those objects in the host `cffirmware` shared library** (duplicate
+BSS / linkage under the patched `-Bsymbolic-functions` link). Python/SWIG and CRTP updated the
+*C* globals; Rust often saw stale zeros, skipped `begin_upload`, yet still drove
+`g_rnn_ready=1` on incomplete state. **`RNN.eval()` then ran with `loaded=true` and a zeroed or
+partial weight buffer**, producing OOD magnitudes that **snapped to `OUT_CLAMP` ±8 m/s²** — which
+is why the 26-Sep log looked ~**100% clamp-saturated** while **`firmware_forward` replay on the
+same CSV geometry showed ~0% clamp and gated_true corr ≈ 0.94**.
+
+**Operational footgun (same session):** `make bindings_python` used system **Python 3.10** while desk
+SIL/tests used **pyenv 3.12**, so `_cffirmware.cpython-312-*.so` stayed stale until
+`PYTHON=/path/to/pyenv/python3 make bindings_python`.
+
+This was **not** a peer-input / `peer_prev` / logging off-by-one bug on the re-validated run; it was
+**upload + host linkage** before any neighbour feature is trusted.
+
+### Fix (minimal, outside network math)
+
+| Location | Change |
+|----------|--------|
+| `firmware_app/traj_iface.c` | Added `rnn_protocol_service()` + moved `oot_rnn_service()` here — protocol flags cleared on **these** globals; Rust mutates weights only via `cf_rnn_*`. |
+| `firmware_app/src/lib.rs` | `rnn_service()` calls `rnn_protocol_service()`; exported `cf_rnn_begin_upload` / `cf_rnn_set_weight` / `cf_rnn_finish_upload`; removed Rust `oot_rnn_service`. |
+
+**Host rebuild:** `DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" cargo build --release --target
+x86_64-unknown-linux-gnu --features residual_nn` then
+`PYTHON=$PYENV_PYTHON make bindings_python` in `crazyflie-firmware`.
+
+**Sanity:** `firmware_app/host/test_residual_nn.py` — **all checks passed**; compiled vs NumPy
+**~5×10⁻⁸ m/s²** on ground-effect probe after fix.
+
+### Re-validated numbers (A3 dz=0.30, full bank `full_bank_40.npz`, neuralswarm, 2026-09-27 CSVs)
+
+| Metric | 26-Sep (broken log) | 2026-09-27 (fixed) |
+|--------|--------------------:|-------------------:|
+| Logged clamp fraction (in-air) | **~99.95%** | **0%** |
+| corr(logged, offline replay) | **~0.48** | **≈ 1.000** |
+| corr(`a_res_z`, offline) gated_true | **~0.94** | **0.941** |
+| corr(`a_res_z`, logged) in-air | **~0.47** | **0.826** |
+| gated_true corr (diagnosis) | — | **0.943** |
+| Stage E `pass` | tilt-only pass, pred RMS ~7.7 | **`pass: true`**, pred RMS **~0.38 / ~0.12** (cf231 / cf_second) |
+| **`cf_second` max(z − cmd_z)` in-air (compensate)** | **~0.47 m** (broken pred) | **~0.038 m** |
+
+**OUT_CLAMP relevance (post-fix):** typical logged `|rnn_pred_z|` p50 **~0.04 m/s²**, p95 **~0.55**,
+max in-air **~2.7** — still **below** training label max **~5.8 m/s²** and **well below ±8**; clamp
+remains a **catastrophe fuse**, not the active limiter on normal SIL predictions.
+
+### Model quality (desk verdict)
+
+- **Architecture + weights (NumPy / Stage C contract):** **good** on gated_true physics — offline
+  replay **corr ≈ 0.94** with measured `a_res_z` on neuralswarm states matches pre-fix replay; the
+  26-Sep “weak model” read was **invalid** (broken SIL forward path).
+- **SIL open-loop logging path:** **validated** after fix — logged predictions match replay
+  (**corr ≈ 1.0**, **0% clamp**).
+- **Closed-loop Stage E (SIL):** **passes** desk gate; **~0.47 m overshoot gone** once predictions
+  are sane; remaining **`a_res` scale vs training bank (~10×)** is still a **physics/dataset** issue,
+  not upload/logging.
+- **Hardware `rnn.en=1`:** **not cleared here** — needs **`rnn.en=0` hardware logs** with the same
+  upload fix flashed; SIL alone does not sign off flight.
+
+**Neural-Swarm2 (Strategy 2) is fully validated for desk/SIL open-loop predict and Stage E on the
+fixed host build; hardware closed-loop with `rnn.en=1` remains open until flash + flight logs match
+this parity.**

@@ -192,7 +192,7 @@ def main() -> int:
         "per_phase": phases,
     }
 
-    out_path = ROOT / "experiments/analysis/out/c2_e2e_2026-09-26/sil_predict_diagnosis.json"
+    out_path = ROOT / "experiments/analysis/out/c2_e2e_2026-09-27/sil_predict_diagnosis.json"
     out_path.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     return 0

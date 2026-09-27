@@ -825,21 +825,8 @@ unsafe fn rnn_predict(_s: &mut State, _own_pos: Vec3, _own_vel: Vec3) -> Vec3 {
 ///
 /// Kept entirely separate from the control path: uploading weights mid-flight changes nothing
 /// until `rnn.en` is set, and an incomplete upload leaves `ready` at 0.
-#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
-unsafe fn rnn_service() {
-    if g_rnn_begin != 0 {
-        RNN.begin_upload(g_rnn_n);
-        g_rnn_begin = 0;
-        g_rnn_ready = 0;
-    }
-    if g_rnn_wc != 0 {
-        RNN.set_weight(g_rnn_wi as usize, g_rnn_wv);
-        g_rnn_wc = 0;
-    }
-    if g_rnn_end != 0 {
-        g_rnn_ready = if RNN.finish_upload() { 1 } else { 0 };
-        g_rnn_end = 0;
-    }
+extern "C" {
+    fn rnn_protocol_service();
 }
 
 /// Flash-resident weights: no CRTP upload path; network is ready from boot.
@@ -848,21 +835,50 @@ unsafe fn rnn_service() {
     g_rnn_ready = 1;
 }
 
-/// Stub for builds without residual network features.
-#[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
-unsafe fn rnn_service() {}
+/// Upload path and no-op stub: protocol flags live in traj_iface.c (see rnn_protocol_service).
+#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
+unsafe fn rnn_service() {
+    rnn_protocol_service();
+}
 
-/// Run one pass of the weight-upload protocol, for the host simulator ONLY.
-///
-/// On the drone `rnn_service` is called from `controllerOutOfTree` on every tick, before the
-/// arming check, so weights load while the vehicle is on the ground. The simulator's SIL layer
-/// returns early when a vehicle is idle and never calls the controller at all, so piggybacking
-/// there would stall the upload until takeoff and then load weights mid-flight. This exists so
-/// the simulator can drive the SAME protocol on the SAME state at the same point in the run.
-/// It adds no second code path: it calls `rnn_service` and nothing else.
+#[cfg(not(any(feature = "residual_nn", feature = "residual_nn_flash")))]
+unsafe fn rnn_service() {
+    rnn_protocol_service();
+}
+
+/// Mutate the process-global RNN buffer only — g_rnn_* protocol is handled in C.
+#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
 #[no_mangle]
-pub extern "C" fn oot_rnn_service() {
-    unsafe { rnn_service() }
+pub unsafe extern "C" fn cf_rnn_begin_upload(expected: u16) {
+    RNN.begin_upload(expected);
+}
+
+#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
+#[no_mangle]
+pub unsafe extern "C" fn cf_rnn_set_weight(idx: u16, value: f32) -> u8 {
+    if RNN.set_weight(idx as usize, value) { 1 } else { 0 }
+}
+
+#[cfg(all(feature = "residual_nn", not(feature = "residual_nn_flash")))]
+#[no_mangle]
+pub unsafe extern "C" fn cf_rnn_finish_upload() -> u8 {
+    if RNN.finish_upload() { 1 } else { 0 }
+}
+
+#[cfg(not(all(feature = "residual_nn", not(feature = "residual_nn_flash"))))]
+#[no_mangle]
+pub extern "C" fn cf_rnn_begin_upload(_expected: u16) {}
+
+#[cfg(not(all(feature = "residual_nn", not(feature = "residual_nn_flash"))))]
+#[no_mangle]
+pub extern "C" fn cf_rnn_set_weight(_idx: u16, _value: f32) -> u8 {
+    0
+}
+
+#[cfg(not(all(feature = "residual_nn", not(feature = "residual_nn_flash"))))]
+#[no_mangle]
+pub extern "C" fn cf_rnn_finish_upload() -> u8 {
+    0
 }
 
 // Address and size of the controller state, for the host simulator ONLY.

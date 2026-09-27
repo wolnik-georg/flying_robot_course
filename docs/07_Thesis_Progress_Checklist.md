@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 26 September 2026
+**Last updated:** 27 September 2026
 
 > **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
 > pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
@@ -927,6 +927,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-09-27 (61) | **C.2 Neural-Swarm2 SIL closure (desk, `docs/40` § Neural-Swarm2 SIL closure 2026-09-27):** Root cause = **host `g_rnn_*` upload flags not aliasing `traj_iface.c` in Rust `rnn_service()`** → `rnn.ready` with empty/partial weights → **±8 clamp-saturated log** while NumPy replay **~0% clamp / gated_true corr ≈ 0.94**. Fix: **`rnn_protocol_service()` in C** + **`cf_rnn_*` in `lib.rs`**; rebuild **`cffirmware` with same Python as SIL**. Re-run A3 predict + Stage E: **logged clamp 0%**, **corr(logged, offline) ≈ 1.0**, **gated_true corr 0.943**, Stage E **pass**, **`cf_second` overshoot ~0.038 m** (was ~0.47 m). **`test_residual_nn.py` all PASS.** Hardware **`rnn.en=1` still open.** |
 | 2026-09-27 (60) | **C.2 SIL predict root-cause follow-up (desk, `docs/40` § Root-cause 2026-09-27):** Re-ran A3 predict-only with **`backend=np`** — **`a_res_z` ~0** (does not match training **−1.32 m/s²** p50); **`backend=neuralswarm`** still **~10× short** on `a_res`. **NumPy `firmware_forward` replay** on 26-Sep neuralswarm CSV: **gated_true corr ≈ 0.94**, **0% clamp** vs logged **~100% clamp** — SIL log path diverges from replay (open). OUT_CLAMP **8.0** diagnostic: label **max &#124;y&#124; ≈ 5.8** — clamp is blow-up-only, not in-distribution. Stage D sign audit: **no dz sign bug** in sweep script. **`rnn.en=1` hardware: still do not fly** (stronger). Tools: `c2_sil_backend_compare.py`, `c2_stage_d_sign_audit.py`, `c2_sil_offline_replay_check.py`. |
 | 2026-09-26 (59) | **Position integral SIL ON/OFF fixed + re-run (`docs/50` Task 2).** Host rebuild bug: script skipped `RUSTFLAGS=-C panic=abort` + host `cargo` → stale `.a`; fixed in `position_integral_sil_compare.py`. Distinct OFF/ON `.so` (sha256 `9a167c55…` vs `6ec51b5e…`); disturbance sweep **0 … −200 mN** — integral trims Z error by **&lt;1 mm** at log-relevant sag (~20–100 mm OFF), **no** attitude windup. Recommendation unchanged: **do not enable** on hardware. |
 | 2026-09-26 (58) | **Position integral vs Z bias (desk, distinct from History 7 / `docs/09` KI_P wall study):** Merged C.1 logs — **27/27** cf5 scenario flights mean **below** `ctrltarget_z` (same sign), but magnitude **scenario-dependent** (~**2 cm** C5 solo → ~**17 cm** A1 under top); A2 **28 cm align** flag is merge sync, not Z RMSE. **`docs/50`**. SIL ON/OFF hover inconclusive (host `libcf_controller_rs.a` did not rebuild; identical `.so`). **Recommendation:** do not enable `ENABLE_POSITION_INTEGRAL` on hardware; revisit via C.0 solo hover if at all. |

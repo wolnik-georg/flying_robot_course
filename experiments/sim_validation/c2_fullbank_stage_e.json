@@ -1,24 +1,24 @@
 {
   "note": "Desk/SIL go-no-fly gate \u2014 not evidence the model is good.",
-  "weights": "full_bank_40.npz (17-file bank, 181489 samples)",
+  "weights": "full_bank_40.npz",
   "scenario": "A3 dz=0.30 neuralswarm backend",
   "predict": {
     "label": "predict_rnn_en_0",
-    "n_rows": 5194,
+    "n_rows": 5193,
     "drones": {
       "cf231_active": {
         "z_min": 0.0,
-        "z_max": 1.007471,
+        "z_max": 1.007466,
         "cmd_z_max": 1.000007,
-        "rnn_pred_z_rms": 7.734924355260794,
-        "rmse_pred_vs_a_res": 7.811006133659055
+        "rnn_pred_z_rms": 0.38282689951691773,
+        "rmse_pred_vs_a_res": 0.2090782997856192
       },
       "cf_second": {
         "z_min": 0.0,
         "z_max": 1.299298,
         "cmd_z_max": 1.300006,
-        "rnn_pred_z_rms": 7.735281266456084,
-        "rmse_pred_vs_a_res": 7.756083575578481
+        "rnn_pred_z_rms": 0.1237089561282136,
+        "rmse_pred_vs_a_res": 0.1766128409565629
       }
     },
     "diverged": false,
@@ -26,21 +26,21 @@
   },
   "compensate": {
     "label": "compensate_rnn_en_1",
-    "n_rows": 5179,
+    "n_rows": 5202,
     "drones": {
       "cf231_active": {
         "z_min": 0.0,
-        "z_max": 1.307998,
+        "z_max": 1.019969,
         "cmd_z_max": 1.000007,
-        "rnn_pred_z_rms": 7.726972238125994,
-        "rmse_pred_vs_a_res": 7.670523174488111
+        "rnn_pred_z_rms": 0.3900255166595582,
+        "rmse_pred_vs_a_res": 0.226692029830858
       },
       "cf_second": {
         "z_min": 0.0,
-        "z_max": 1.772656,
+        "z_max": 1.302658,
         "cmd_z_max": 1.300008,
-        "rnn_pred_z_rms": 7.726997695943815,
-        "rmse_pred_vs_a_res": 8.658422524819853
+        "rnn_pred_z_rms": 0.13656536223957258,
+        "rmse_pred_vs_a_res": 0.18396748882191782
       }
     },
     "diverged": false,
