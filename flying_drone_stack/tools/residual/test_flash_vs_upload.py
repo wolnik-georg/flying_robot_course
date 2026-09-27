@@ -40,7 +40,8 @@ def cargo_host(features: str, npz: Path | None) -> None:
         cwd=FW_APP,
         env=env,
     )
-    subprocess.check_call(["make", "bindings_python"], cwd=CF_FW)
+    py = os.environ.get("PYTHON", sys.executable)
+    subprocess.check_call(["make", "bindings_python"], cwd=CF_FW, env={**env, "PYTHON": py})
 
 
 def run_predict(w: np.ndarray, use_upload: bool) -> float:

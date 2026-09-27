@@ -268,6 +268,21 @@ Address **`0x0805…`** = flash/rodata, **not** `0x200…` RAM.
 
 Host parity: `tools/residual/test_flash_vs_upload.py` — upload vs flash build, **|Δz| = 0** on identical random weights.
 
+### Flash parity re-check — 2026-09-27 (after upload-protocol fix in `lib.rs`)
+
+The 27-Sep host SIL fix moved **`rnn_protocol_service()` into `traj_iface.c`** and added
+**`cf_rnn_*`** weight-buffer APIs in Rust; **`rnn_predict()` and the `residual_nn_flash` stub
+(`g_rnn_ready=1` at boot) were logically unchanged**, but **`lib.rs` was edited**, so parity was
+re-run rather than assumed.
+
+| Check | Result |
+|-------|--------|
+| `test_flash_vs_upload.py` (rebuild both host features, one forward) | **PASS** |
+| \|upload − flash\| on `rnn_pred_z` | **0.000e+00** |
+
+No flash-resident regression from the upload-path fix. See also `docs/40` § NS2 final desk pass
+2026-09-27.
+
 ### Deployment workflow tradeoff
 
 | Variant | After retrain | Reflash? |

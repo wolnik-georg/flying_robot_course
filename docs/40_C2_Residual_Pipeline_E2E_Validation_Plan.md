@@ -760,3 +760,57 @@ remains a **catastrophe fuse**, not the active limiter on normal SIL predictions
 **Neural-Swarm2 (Strategy 2) is fully validated for desk/SIL open-loop predict and Stage E on the
 fixed host build; hardware closed-loop with `rnn.en=1` remains open until flash + flight logs match
 this parity.**
+
+---
+
+## NS2 final desk pass — 2026-09-27 (flash parity + multi-scenario SIL backend)
+
+**Scope:** Last two open desk items before NS2 is blocked on lab/hardware — re-confirm flash-resident
+parity after the upload-protocol fix (256fc22 touched `lib.rs` but not `rnn_predict()` / flash stub
+logic), and characterize whether the **~10× `a_res_z` scale gap** (neuralswarm SIL vs training bank)
+is A3-specific or general. No change to `residual_nn.rs`, weights, or backend physics.
+
+### Task 1 — Flash-resident parity (post-fix)
+
+| Step | Result |
+|------|--------|
+| Rebuild `residual_nn_flash` + upload host libs via `test_flash_vs_upload.py` | **PASS** |
+| One-step `rnn_pred_z` \|upload − flash\| | **0.000e+00** |
+
+Same methodology as 963bef8 (random 19297-weight `.npz` in a temp file, one forward). No regression
+from the 27-Sep upload-protocol change.
+
+### Task 2 — Multi-scenario `backend=np` vs `backend=neuralswarm`
+
+**Method:** `experiments/analysis/c2_sil_backend_scenario_sweep.sh` + `c2_sil_backend_scenario_sweep.py`
+(predict-only, `rnn.en=0`, `full_bank_40.npz`, ego `cf231_active` in-air mask with peer airborne).
+A3 neuralswarm reuses post-fix `c2_fullbank_predict.csv`; A3 `np` reuses `c2_fullbank_predict_np.csv`
+(2026-09-27 root-cause session). Other cases: A1 `--dz 0.30/0.50`, A2 `--dz 0.30`, A7
+`--allow-extreme`.
+
+**Training bank (gated neighbour, Stage A):** **p50 ≈ −1.32 m/s²**, **p99 ≈ 0.21 m/s²**.
+
+| Scenario | backend=np p50 / p99 | backend=neuralswarm p50 / p99 | p50 / train |
+|----------|---------------------:|------------------------------:|------------:|
+| A1 dz=0.30 | ~0 / ~0.005 | **+0.36 / 0.36** | sign/magnitude unlike bank |
+| A1 dz=0.50 | ~0 / ~0.005 | **−1.08 / 0.36** | **~0.82×** (closest hover-stack case) |
+| A2 dz=0.30 | ~0 / ~0.003 | **−2.34 / 0.36** | **~1.8×** (stronger than bank) |
+| A7 merge | ~0 / ~0.002 | **−0.44 / 0.36** | **~0.33×** |
+| A3 dz=0.30 | ~0 / ~0.005 | **−0.13 / 0.36** | **~0.10×** (original single-scenario gap) |
+
+**`backend=np`:** `a_res_z` ≈ 0 in every scenario (no downwash coupling) — confirms the 27-Sep
+single-pair finding, not A3-specific.
+
+**`backend=neuralswarm`:** magnitude vs the training bank is **scenario-dependent**, not a uniform
+~10× undershoot. A3 translate-through-wash remains the **weakest** match (~10× short on \|p50\|); A1
+dz=0.50 and A2 bracket or exceed the bank; A7 is mid-gap. Upper tail **p99 ~0.36 m/s²** is similar
+across neuralswarm SIL scenarios but **above** the bank p99 (0.21). **Takeaway:** treat SIL
+neuralswarm `a_res_z` statistics as **geometry/motion-specific**; do not assume one scenario
+(A3) characterizes all SIL validation. Scenario choice can narrow trust (e.g. A1 dz=0.50) rather
+than dismissing SIL entirely.
+
+Structured output: `experiments/analysis/out/c2_e2e_2026-09-27/sil_backend_scenario_sweep.json`.
+
+**With flash parity re-confirmed and the backend scale question characterized, there is no remaining
+desk-actionable work on Neural-Swarm2 (Strategy 2); the project is fully blocked on lab/hardware
+(`rnn.en=0` / `rnn.en=1` logs, flash deploy, C.0 ladder) until access returns.**
