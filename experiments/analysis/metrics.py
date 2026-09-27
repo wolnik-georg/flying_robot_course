@@ -234,8 +234,14 @@ def load_merged_csv(path: Path) -> dict[str, VehicleLog]:
         a_res = vec3(name, "a_res")
         a_hat = vec3(name, "rnn_pred")
         e_r = vec3(name, "e_r")
+        tau = vec3(name, "tau")
+        gyro = vec3(name, "gyro")
+        mkeys = [f"{name}.motor_m{i}" for i in (1, 2, 3, 4)]
+        motor = (np.stack([data[:, cols[k]] for k in mkeys], axis=1)
+                 if all(k in cols for k in mkeys) and n_raw else None)
         out[name] = VehicleLog(name, "merged", t_all, pos, pos_des, a_res, a_hat, e_r,
-                                n_raw, str(path), t_zero=t_zero)
+                                n_raw, str(path), t_zero=t_zero,
+                                tau=tau, motor=motor, gyro=gyro)
     return out
 
 

@@ -161,7 +161,7 @@ prints a predict-zero baseline, which is the right instinct — extend it).
 
 | Phase | Work | Blocks |
 |---|---|---|
-| **P1** | ✅ **DONE 2026-09-18.** Control effort, attitude spectrum and min-separation added to `metrics.py`, wired into `vehicle_metrics`/`formation_row`, loaders extended (`gyro`/`tau` for ros, `+motor` for uSD) | — |
+| **P1** | ✅ **DONE 2026-09-18**, **loader fix 2026-09-27.** Control effort, attitude spectrum and min-separation in `metrics.py` (`vehicle_metrics` / `formation_row`). **Bug:** `load_merged_csv()` (real C.1/C.4 merged uSD path) did not pass `tau`/`gyro`/`motor` into `VehicleLog` until 2026-09-27 — effort and spectrum columns were **100% empty** on merged CSVs despite data in file. `load_usd_csv()` was already correct. Re-run suite outputs after fix; **archived phase-metrics CSVs generated before 2026-09-27 on merged data carry that gap** unless regenerated. | — |
 | **P2** | ✅ **DONE 2026-09-18.** `approach_times()`, `phase_windows()`, `slice_log()`, `vehicle_metrics_by_phase()` — every metric now reportable per phase | — |
 | **P3** | ✅ **DONE 2026-09-18.** `aggregate.py` — mean±std/sem, paired Wilcoxon, bootstrap CI on the ratio, rank-biserial effect size, plus small-n and pseudo-replication guards | needs repeat FLIGHTS to produce a claim |
 | **P4** | ✅ **DONE 2026-09-18.** `plot_comparison.py` — grouped bars with SEM error bars, per-phase breakdown, n annotated, honesty rules enforced in code | — |
@@ -202,7 +202,16 @@ current config already captures.
 `control_effort()`, `attitude_spectrum()` and `separation_metrics()` are implemented in
 `metrics.py` and folded into `vehicle_metrics()` / `formation_row()`. `VehicleLog` gained
 `tau`, `motor` and `gyro`; the uSD loader populates all three, and the **ros loader now
-populates `gyro` and `tau`, which `ROS_HEADER` always listed but nothing ever read**. Verified
+populates `gyro` and `tau`, which `ROS_HEADER` always listed but nothing ever read**.
+
+**2026-09-27 — merged CSV loader gap (fixed).** C.1/C.4 analysis uses `load_merged_csv()` on
+`*_merged_usd.csv` files. Until 2026-09-27 it never extracted `cf5.tau_*`, `gyro_*`, or
+`motor_m1..4` (columns present in merge output). P1 metrics on real merged flights were therefore
+inert while `spectrum_ok` correctly stayed 0. Fix: mirror `load_usd_csv()` in the per-vehicle
+loop. Regenerated `c1_2026-09-21/23` and A8 geo/indi phase-metrics CSVs; desk prep +
+`aggregate.summarise()` now return finite effort/gyro stats on uSD-backed rows.
+
+Verified
 on synthetic data (a 7 Hz line injected into the gyro is recovered at exactly 7.00 Hz) and then
 on the real 2026-09-18 A8 pair — which immediately surfaced two things worth knowing:
 
