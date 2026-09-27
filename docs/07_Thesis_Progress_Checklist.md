@@ -25,14 +25,17 @@ bottom.
 > **Active blocker (separate):** **facility mocap attitude** — absurd roll (~154° / −π rad) while level,
 > position OK; theory OptiTrack rigid-body / `active_deck`. Yaml solo test: **`cf_second` disabled**
 > (`d81ec80`). Account: [`lab_sessions/2026-09-24_to_26.md`](lab_sessions/2026-09-24_to_26.md).
-> **Desk — ALL CLEAR (2026-09-26):** C.2 full bank **Stage D/E** + SIL diagnosis (`docs/40` §
-> Diagnosis / Stage D/E), **flash-resident RNN** links on CF21BL (`docs/45` § Implementation), and
-> the follow-up gap-closure pass (sharper gated_true/false correlation breakdown, tilt-only Stage E
-> gate + **cf_second ~0.47m altitude overshoot** flagged as an open safety concern, stray SIL logs
-> cleaned) — all independently re-verified against the raw JSON/git state, not just taken on report.
-> **Nothing further is desk-actionable on C.2** until either real hardware `rnn.en=0` data (needs
-> A4, lab-blocked) or a `backend=np` SIL re-collect closes the model-quality/overshoot questions —
-> see History (57) and its addendum.
+> **Desk — NS2 (Strategy 2) final status (2026-09-27):**
+> - Pipeline (train/test/validate) — **done**.
+> - RAM overflow — **fixed** (flash-resident weights).
+> - SIL bug found — was reading a broken weight buffer, causing garbage predictions.
+>   - **Fixed.** Correlation and altitude overshoot both resolved after the fix.
+> - Flash deployment path — **re-confirmed working**, unaffected by the bug or its fix.
+> - Remaining scale-mismatch question — **checked across 5 scenarios**, not just one.
+>   - Not a universal problem — SIL trustworthiness depends on which scenario is used.
+> - **No desk work left on NS2.** Only real flight data (blocked on mocap) can close what remains.
+>
+> See History (57)–(62) for the full trail.
 >
 > ⚠️ **Superseded headline (2026-09-18):** “Critical path is C.1 from scratch; EKF fix is first action
 > of next session” — see [`lab_sessions/2026-09-18.md`](lab_sessions/2026-09-18.md) and History (43–46).
