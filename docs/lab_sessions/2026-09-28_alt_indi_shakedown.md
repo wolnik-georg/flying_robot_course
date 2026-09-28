@@ -408,3 +408,19 @@ Log in a new `docs/lab_sessions/YYYY-MM-DD.md`: controllers tried, flash time, y
 | cf5 URI | `radio://0/80/2M/E7E7E7BB02` |
 | cf_second URI | `radio://0/80/2M/E7E7E7E7E9` |
 | Doc 41 | `~/Desktop/flying_robot_course/docs/41_Pure_INDI_Implementation_Comparison.md` |
+
+---
+
+## Operator pushback (2026-09-28 night) — root cause weaker than stated, open for tomorrow
+
+Two problems raised with the "gain burst starves HL radio" story, both valid, neither yet resolved:
+
+1. **`cf_second` (controller=5, stock Lee) has received the identical ~21-write inert gain burst on every 2-drone flight this whole project** — including dozens of prior successful C.1 flights — and has never failed to take off. If the burst alone were sufficient to starve HL commander traffic and prevent takeoff, it should have broken those flights too. It never did. So "any non-controller-6 drone hits this bug" is too broad a claim; something **specific to `cf5`/controller=9 being flown for the first time** is more likely at least part of the real story, not the gain burst in isolation.
+2. **Why didn't the original (weeks-ago) SIL validation catch this?** Resolved, not a contradiction: `docs/41`'s controller=9 SIL testing used a direct SIL driver/backend config, never `run_formation.py` itself — it validated the *controller's flight dynamics* (hover, trajectory tracking, downwash), not the *launch script's* takeoff/arm/param-push sequence. That code path had never been SIL-tested with any alternative controller before last night. Two different parts of the system, two different tests — the earlier "sim-clean" result still stands and isn't contradicted.
+
+**Status: the fix (skip inert gains for non-controller-6 drones) is real, correct, and SIL-verified — but not proven to be *the* explanation for `cf5`'s specific failure**, given point 1. Treat as "a good fix for a real launch-script bug" rather than "solved." **Tomorrow's hardware re-fly of `cf5`/controller=9 is the actual test** — if it works, that's real evidence for the fix; if it still fails, the cause is something else specific to controller=9 and this investigation restarts from there.
+
+## Plan — night of 2026-09-28 / next lab session
+
+- **Tonight (desk, not lab):** all C.1-planned scenarios are now collected (21+23+28 Sep) — retrain Neural-Swarm2 on the complete dataset, re-run LOO/eval, check the new A4/A1/A2 folds particularly, since those are new data.
+- **Tomorrow (lab):** re-fly `cf5`/controller=9 solo + 2-drone A1 first (the actual open test from tonight); if clean, continue the alt-INDI ladder (7, then 8) using the same runbook. If `cf5` still fails, stop and re-open the root-cause investigation — don't assume the fix worked without seeing it fly.
