@@ -1,7 +1,7 @@
 # 40 — C.2 Neural-Swarm2 residual pipeline: end-to-end validation plan (with real 2026-09-21 data)
 
-**Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Desk
-NS2/C.2 work closed 2026-09-27** — SIL upload-protocol fix, Stage E re-validated, flash parity,
+**Status:** **executed 2026-09-21** (Stages A–E desk/SIL on **5-file / 4-usable** subset). **Desk NS2/C.2 — full C.1 bank retrained 2026-09-28** (22 files, 28 Sep collection merged; see
+§ **Full C.1 bank retrain — 2026-09-28**). Prior **2026-09-27** closure: SIL upload-protocol fix, Stage E re-validated, flash parity,
 multi-scenario backend scale characterized; **hardware** `rnn.en=0/1` and C.3/C.4 **blocked on lab
 mocap** (see § Neural-Swarm2 SIL closure — 2026-09-27, § NS2 final desk pass — 2026-09-27). **Extended
 2026-09-26 (desk):** full bank train (**24 manifest paths → 18 pair flights → 17 files with rows**)
@@ -817,3 +817,85 @@ Structured output: `experiments/analysis/out/c2_e2e_2026-09-27/sil_backend_scena
 **With flash parity re-confirmed and the backend scale question characterized, there is no remaining
 desk-actionable work on Neural-Swarm2 (Strategy 2); the project is fully blocked on lab/hardware
 (`rnn.en=0` / `rnn.en=1` logs, flash deploy, C.0 ladder) until access returns.**
+
+---
+
+## Full C.1 bank retrain — 2026-09-28 (desk, collection complete)
+
+**Supersedes** the 2026-09-26/27 **21+23 Sep-only** `full_bank_40.npz` bank. **28 Sep** C.1 flights
+are merged (`experiments/logs/c1_2026-09-28_merged/manifest_2026-09-28_c1.json`).
+
+### Training manifest (verified counts)
+
+| Source | Rule | Files |
+|--------|------|------:|
+| 2026-09-21 | `training_eligible_crosswalk` | 4 usable (excludes **A1_13-25-10** zero rows — superseded by 28 Sep A1) |
+| 2026-09-23 | `training_eligible` pair flights | 11 (excludes **legacy A2** `19-21-05` / `19-27-03`; excludes solo **C5**) |
+| 2026-09-28 | `training_eligible: true` only | 7 (A1×1, A2×2, A4×4) |
+| **Total** | | **22 paths, 22 usable** (215 693 training rows) |
+
+**Excluded (manifest, not second-guessed):** `A4_17-21-40` (alignment / crash outlier),
+`A3_17-15-33` (extra warmup). **Not additive:** 28 Sep **A2** pair replaces 23 Sep legacy A2 geometry.
+
+**Note on “21-file” estimate:** Prior **17-fold** bank = 17 usable + 2 legacy A2 in paths →
+**−2 A2 +7 new = 22**, not 21. Every listed path contributed **rows_kept > 0** in Stage A.
+
+Artifact: `experiments/analysis/out/c2_e2e_2026-09-28/training_manifest_2026-09-28.json`,
+`stage_a_full_bank.json`. Script: `experiments/analysis/run_c2_fullbank_retrain_2026_09_28.py`.
+
+### Stage B — full-bank train (40 epochs, same as 26 Sep)
+
+**Weights:** `experiments/analysis/out/c2_e2e_2026-09-28/full_bank_c1_complete.npz`  
+**Log:** `full_bank_train.log` — **val RMSE 0.2627 m/s²**, predict-zero baseline **1.2273 m/s²**
+(**78.6%** reduction), **215 693** samples.
+
+### LOO — 22 folds (40 epochs/fold)
+
+**Mean held-out RMSE 0.340 m/s²**, mean **74.4%** reduction vs predict-zero.
+
+| Fold (highlight) | RMSE [m/s²] | vs zero |
+|------------------|------------:|--------:|
+| **A4_17-20-20** | 0.224 | 79.3% |
+| **A4_17-23-40** | 0.231 | 77.9% |
+| **A4_17-25-41** | 0.216 | 71.1% |
+| **A4_17-27-11** | 0.343 | 69.1% |
+| **A1_17-47-50** (28 Sep) | 0.537 | 61.5% |
+| **A2_17-49-37** | 0.703 | 66.4% |
+| **A2_17-52-55** | 0.546 | 74.3% |
+| A3 folds (reference) | 0.145–0.238 | 68–81% |
+
+**A4 finding:** First **lateral-excitation (C-1/C-2)** data in the bank. Held-out **A4 RMSE is in
+the same band as A3**, not an outlier “unlearnable regime”; worst A4 fold (0.343) is still **below**
+typical **A1/A7/A2** LOO RMSE. **Does not** support “lateral offset breaks the model” — if anything,
+**A1/A2 vertical-circle** folds remain the hard cases.
+
+JSON: `loo_results.json`, weights under `loo_weights/`.
+
+### `eval_model.py` (flight-wise contiguous val blocks, seed=0)
+
+**Combined:** RMSE **0.2524 m/s²**, **R² 0.936**. **Val blocks:** RMSE **0.2627 m/s²** (matches train
+holdout). Binned |error| on val (gated neighbour): **dy** improves toward smaller horizontal offset;
+**dz** RMSE ~0.27–0.36 m/s² across bins (now spans **lateral-offset A4** statistics in the mix).
+
+Output: `experiments/analysis/out/c2_e2e_2026-09-28/eval_model/`.
+
+### SIL + Stage D/E (new weights, upload protocol unchanged)
+
+`server_c2_fullbank_predict.yaml` → **`full_bank_c1_complete.npz`**. Re-ran A3 **dz=0.30**
+predict-only + Stage E dry-run (`c2_fullbank_sim_predict.sh`, `run_c2_stage_de_fullbank_2026_09_28.py`).
+
+| Metric (A3 predict, in-air) | 2026-09-27 fix + old weights | 2026-09-28 retrain |
+|-----------------------------|------------------------------|---------------------|
+| **Clamp fraction** | 0% | **0%** |
+| **corr(a_res, pred) lag 0** | ~0.70 | **0.70** |
+| **gated_true corr** | ~0.94 | **0.905** |
+| **Stage E pass** | yes | **yes** |
+
+**Conclusion on model-quality story:** **Unchanged at the SIL layer** — still **strong gated
+correlation**, **no clamp saturation**, **weak/negative corr outside close encounters** on A3
+translate-through-wash; **scenario-dependent scale mismatch vs training bank** (§ NS2 final desk
+pass) **not cured** by adding A4. **Offline** quality **slightly improved** (more data, R² ~0.94,
+LOO mean ~74%). **A4 data improves coverage** (lateral dy in training quantiles) **without**
+invalidating prior “do not fly `rnn.en=1` on hardware from SIL alone” guidance.
+
+JSON: `sil_predict_diagnosis.json`, `stage_de_fullbank_2026_09_28.json`.

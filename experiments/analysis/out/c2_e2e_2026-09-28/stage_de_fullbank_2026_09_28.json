@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-28",
+  "weights": "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-28/full_bank_c1_complete.npz",
+  "n_training_files": 22,
+  "stage_d_synthetic": {
+    "correlation_abs_a_vs_dz": -0.7219011891939098,
+    "abs_larger_at_small_dz": true
+  },
+  "stage_d_binned": {
+    "n_samples": 215693,
+    "rmse_all": 0.2523668756569788,
+    "binned_error_dz": [
+      {
+        "bin": "0.05-0.19",
+        "axis": "dz",
+        "n": 6766,
+        "rmse_mps2": 0.3645963309851421
+      },
+      {
+        "bin": "0.19-0.32",
+        "axis": "dz",
+        "n": 20660,
+        "rmse_mps2": 0.27090893564997465
+      },
+      {
+        "bin": "0.32-0.46",
+        "axis": "dz",
+        "n": 44256,
+        "rmse_mps2": 0.3567152053079469
+      },
+      {
+        "bin": "0.46-0.59",
+        "axis": "dz",
+        "n": 18190,
+        "rmse_mps2": 0.3266661492194403
+      },
+      {
+        "bin": "0.59-0.73",
+        "axis": "dz",
+        "n": 13830,
+        "rmse_mps2": 0.345465389953062
+      },
+      {
+        "bin": "0.73-0.86",
+        "axis": "dz",
+        "n": 943,
+        "rmse_mps2": 0.32323587574601714
+      },
+      {
+        "bin": "0.86-1.00",
+        "axis": "dz",
+        "n": 1168,
+        "rmse_mps2": 0.3415012747138524
+      }
+    ]
+  },
+  "stage_e": {
+    "exit_code": 0,
+    "stdout_tail": "=== predict rnn.en=0 (reuse existing /home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_predict.csv) ===\n=== compensate rnn.en=1 ===\n  rows=5259 csv=/home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_compensate.csv\n{\n  \"note\": \"Desk/SIL go-no-fly gate \\u2014 not evidence the model is good.\",\n  \"weights\": \"full_bank_40.npz (17-file bank, 181489 samples)\",\n  \"scenario\": \"A3 dz=0.30 neuralswarm backend\",\n  \"predict\": {\n    \"label\": \"predict_rnn_en_0\",\n    \"n_rows\": 5264,\n    \"drones\": {\n      \"cf231_active\": {\n        \"z_min\": 0.0,\n        \"z_max\": 1.007542,\n        \"cmd_z_max\": 1.000007,\n        \"rnn_pred_z_rms\": 0.4097176652233125,\n        \"rmse_pred_vs_a_res\": 0.2844450358307368\n      },\n      \"cf_second\": {\n        \"z_min\": 0.0,\n        \"z_max\": 1.299299,\n        \"cmd_z_max\": 1.30001,\n        \"rnn_pred_z_rms\": 0.36181089916023107,\n        \"rmse_pred_vs_a_res\": 0.37293232422404893\n      }\n    },\n    \"diverged\": false,\n    \"meaningful_flight\": true\n  },\n  \"compensate\": {\n    \"label\": \"compensate_rnn_en_1\",\n    \"n_rows\": 5258,\n    \"drones\": {\n      \"cf231_active\": {\n        \"z_min\": 0.0,\n        \"z_max\": 1.020225,\n        \"cmd_z_max\": 1.000007,\n        \"rnn_pred_z_rms\": 0.38740832380904877,\n        \"rmse_pred_vs_a_res\": 0.22505192680313435\n      },\n      \"cf_second\": {\n        \"z_min\": 0.0,\n        \"z_max\": 1.30266,\n        \"cmd_z_max\": 1.300008,\n        \"rnn_pred_z_rms\": 0.1360265014604092,\n        \"rmse_pred_vs_a_res\": 0.18273649574827636\n      }\n    },\n    \"diverged\": false,\n    \"meaningful_flight\": true\n  },\n  \"meaningful_flight\": true,\n  \"pass\": true,\n  \"inconclusive_reason\": null\n}\nWrote /home/georg/Desktop/flying_robot_course/experiments/sim_validation/c2_fullbank_stage_e.json\n"
+  }
+}
