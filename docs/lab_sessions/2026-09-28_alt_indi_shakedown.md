@@ -305,6 +305,36 @@ ros2 run crazyflie_examples run_formation -- \
 
 ---
 
+## Close-out — A1 failure @ cf5 / controller=9 (2026-09-28 evening)
+
+**Flight:** `A1_2026-09-28_19-18-32` — cf5 `controller=9`, cf_second `controller=5`. Operator: **cf5 motors never spun**; cf_second flew normally. Radio CSV: `experiments/logs/A1_cf5_2026-09-28_19-18-32.csv` is **all-zero** state/attitude/thrust (only `vbat` live); `A1_cf_second_…` shows normal climb. Sidecar: `A1_2026-09-28_19-18-32.meta.json` (`gains_apply=0` on cf5).
+
+### Root cause (traced in code + logs, not the modeAbs gate)
+
+- **Ruled out:** Omar `controller_omar_indi.c` only producing thrust under `modeAbs` — real mechanism, but **not** this incident if cf5 had received the same active HLC setpoints as cf_second (cf_second @ Lee on the identical `run_formation.py` path flew).
+- **Ruled out:** firmware/supervisor allow-list on `stabilizer.controller=9` — no such check in `supervisor.c` / server; solo hover @ c=9 reportedly clean same session.
+- **Found:** `run_formation.py` `apply('takeoff', _RAMP_CONTROLLER=6, …)` still pushed the full shared **`all:` `indi_gains.*` / `pos_gains.*` block** to any drone without a **per-key** override. cf5’s yaml pins only `stabilizer.controller`, `indi_gains.ctrl_mode`, `rnn.en` — **not** the ~15 INDI gain keys — so cf5 @ **controller 9** (where those params are **inert**, `gains_apply=0`) was hit with a large Param burst **immediately before `arm()` / per-drone `takeoff()`**, on the **same single Crazyradio** already carrying two drones’ custom log topics (`crazyflies.yaml` bandwidth note). That matches **cf5 stuck on HLC `nullSetpoint` / motors off** while cf_second’s planner ran — upstream **formation script + radio budget**, not the Omar control law.
+- **Contrast:** `simple_flight.py --pin-controller` pins the ramp to **9** for solo and does not have this “pretend ramp=6 but vehicle is 9, still push OOT gains” pattern.
+
+### Fix (crazyswarm2)
+
+`crazyflie_examples/run_formation.py`:
+
+1. **`_gains_apply_to_drone()`** — skip `indi_gains` / `pos_gains` writes in `apply()` when `resolve()` says that drone’s effective controller **≠ 6** (same rule as log meta `gains_apply`).
+2. **Pre-arm abort** if any `DroneLogger` already sees short/empty `/state` or all-zero position (would have flagged cf5 before arming on a re-run).
+3. **150 ms spacing** between per-drone `takeoff()` / `goTo()` calls (HL services are `call_async` without ack).
+
+### Re-verification (desk / SIL only — no hardware flight by agent)
+
+- `experiments/analysis/test_run_formation_gain_skip.py` — confirms cf5@9 / cf_second@5 skip gain push; shared OOT6 drone still receives gains.
+- Operator should re-run **2-drone A1** after `colcon build --symlink-install` on CS2; expect cf5 `/state` healthy pre-arm, fewer Param writes before takeoff, and nonzero thrust if HL activates.
+
+### Controllers 7 / 8 — same failure class?
+
+**At equal upstream risk** for **2-drone `run_formation.py`** with cf5 pinned to **7** or **8**: they do **not** use Omar’s `modeAbs` gate (`naindi.rs` / `naindi_hybrid.rs` assume HLC absolute position), but they **would** have received the same useless OOT gain flood pre-takeoff before this fix. **No separate control-law patch** — the `apply()` gain skip covers **7/8/9** and stock Lee alike whenever effective controller ≠ 6. Remaining operational requirement: **2-drone radio headroom** (yaml 20 Hz logging, second dongle if needed) is unchanged.
+
+---
+
 ## After session — restore C.1 / default study config
 
 Regardless of outcome, before C.1 or geometric collection:
