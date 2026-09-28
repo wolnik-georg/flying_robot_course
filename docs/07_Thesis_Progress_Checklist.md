@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 27 September 2026
+**Last updated:** 28 September 2026
 
 > **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
 > pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
@@ -18,13 +18,20 @@ bottom.
 
 ## ▶ WHERE WE ARE
 
-> ### 🏁 **Desk work closed (2026-09-27) · Lab blocked on facility mocap · Writing = only active track**
+> ### 🏁 **Mocap fixed, C.1 collection COMPLETE (2026-09-28) · Alt-INDI hardware shakedown in progress · Writing = only fully-open track**
 >
-> **Collection:** **A4 ×4** still required after lab resumes — see [`docs/25`](25_C1_Data_Collection_Plan.md).
-> **24 Sep software regression:** **fixed in repo** (`crazyswarm2` **`32b6e5e`**, not re-flown yet).
-> **Active blocker (separate):** **facility mocap attitude** — absurd roll (~154° / −π rad) while level,
-> position OK; theory OptiTrack rigid-body / `active_deck`. Yaml solo test: **`cf_second` disabled**
-> (`d81ec80`). Account: [`lab_sessions/2026-09-24_to_26.md`](lab_sessions/2026-09-24_to_26.md).
+> **Collection:** **DONE.** A4 ×4 (+ A1/A2/A3 topping-up flights) flown 28-Sep — see
+> [`docs/25`](25_C1_Data_Collection_Plan.md) and `manifest_2026-09-28_c1.json`. No more C.1 flights
+> required; NS2 has been retrained on the complete 22-file bank (History 69).
+> **24 Sep software regression + facility mocap fault:** both **resolved** — mocap physically
+> fixed, lab flying resumed 28-Sep. Account: [`lab_sessions/2026-09-24_to_26.md`](lab_sessions/2026-09-24_to_26.md).
+> **28 Sep evening — alt-INDI hardware shakedown started:** solo hover/figure8 clean on
+> `controller=9` (Omar's INDI); 2-drone A1 failed (motors never spun on `cf5`). Root-caused (with
+> real, unresolved pushback) to a `run_formation.py` launch-script bug — fixed and SIL-verified,
+> **but not yet confirmed by a real re-flight.** Full account and open questions:
+> [`lab_sessions/2026-09-28_alt_indi_shakedown.md`](lab_sessions/2026-09-28_alt_indi_shakedown.md)
+> § "Operator pushback." **Next lab session: re-fly `cf5`/controller=9 first — this is unresolved,
+> not solved.**
 > **Desk — NS2 (Strategy 2) final status (2026-09-27):**
 > - Pipeline (train/test/validate) — **done**.
 > - RAM overflow — **fixed** (flash-resident weights).
@@ -33,7 +40,10 @@ bottom.
 > - Flash deployment path — **re-confirmed working**, unaffected by the bug or its fix.
 > - Remaining scale-mismatch question — **checked across 5 scenarios**, not just one.
 >   - Not a universal problem — SIL trustworthiness depends on which scenario is used.
-> - **No desk work left on NS2.** Only real flight data (blocked on mocap) can close what remains.
+> - **No desk work left on NS2** as of 27 Sep; **28 Sep: retrained on the complete 22-file C.1 bank**
+>   (History 69) — mean LOO reduction 74.4%, full-train 78.6%, SIL correlation 0.91 gated, Stage D
+>   sign now physically correct. Only a real `rnn.en=0`/`rnn.en=1` flight can close what remains —
+>   no longer mocap-blocked, just not yet scheduled.
 > - **Other desk tracks closed same day:** RPM quality (`docs/43`, spike root-cause 27 Sep); position
 >   integral Z-bias (`docs/50`, do not enable); **C.4 analysis** P1 metrics — `load_merged_csv()`
 >   bug fixed (**0608911**), pipeline re-validated on real merges; **thesis Ch. 6–9** `.tex`

@@ -169,19 +169,19 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 27 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 28 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Systematic comparison of reactive, predictive and hybrid strategies for downwash-aware
     formation flight — Crazyflie&nbsp;2.1 brushless, Crazyswarm2, out-of-tree Rust controller.
   </p>
   <div class="statusline">
-    <span class="pill blocked"><span class="dot"></span>Lab · <strong>blocked</strong> — facility mocap attitude (~154°/−π roll, level craft)</span>
-    <span class="pill"><span class="dot"></span>Software · 24&nbsp;Sep regression <strong>fixed</strong> (<code>32b6e5e</code>) — not re-flown yet</span>
-    <span class="pill"><span class="dot"></span>C.1 · ~24 merges banked; <strong>A4 ×4</strong> after mocap + confirm</span>
-    <span class="pill"><span class="dot"></span>Desk · <strong>closed</strong> (27 Sep) — NS2, RPM, position integral, C.4 metrics toolchain, Ch. 6–9 skeleton</span>
-    <span class="pill"><span class="dot"></span>Writing · <strong>only active track</strong> — proofread Ch. 1–5; Ch. 6–9 await C.4 data</span>
-    <span style="color:var(--muted)"><code>lab_sessions/2026-09-24_to_26.md</code> · full trail <code>docs/07</code> History (57)–(65)</span>
+    <span class="pill"><span class="dot"></span>Lab · <strong>mocap fixed, flying resumed</strong> — 28&nbsp;Sep evening alt-INDI shakedown underway</span>
+    <span class="pill"><span class="dot"></span>C.1 · <strong>COMPLETE</strong> — A4 ×4 + topping-up flights 28&nbsp;Sep, 22-file training bank</span>
+    <span class="pill blocked"><span class="dot"></span>Controller=9 · solo clean, <strong>2-drone A1 failed</strong> — fix applied, SIL-verified, <strong>real re-fly still pending</strong></span>
+    <span class="pill"><span class="dot"></span>Desk · NS2 <strong>retrained</strong> on full bank (78.6% reduction); RPM/position-integral/C.4-toolchain closed</span>
+    <span class="pill"><span class="dot"></span>Writing · <strong>only fully-open track</strong> — proofread Ch. 1–5; Ch. 6–9 await real C.4 data</span>
+    <span style="color:var(--muted)"><code>lab_sessions/2026-09-28_alt_indi_shakedown.md</code> · full trail <code>docs/07</code> History (57)–(69)</span>
   </div>
 </header>
 
@@ -189,36 +189,43 @@ footer{
   <div class="stat"><span class="n">50</span><span class="t">pages combined build, Ch.&nbsp;1–9 skeleton</span></div>
   <div class="stat"><span class="n">17</span><span class="t">papers in library, all cited</span></div>
   <div class="stat"><span class="n">16</span><span class="t">formation scenarios, frozen</span></div>
-  <div class="stat"><span class="n">7</span><span class="t">A8 uSD packages archived (19&nbsp;Sep)</span></div>
-  <div class="stat"><span class="n">~24</span><span class="t">C.1 training merges (21+23&nbsp;Sep)</span></div>
+  <div class="stat"><span class="n">22</span><span class="t">C.1 training files, full bank (21+23+28&nbsp;Sep)</span></div>
+  <div class="stat"><span class="n">78.6%</span><span class="t">NS2 error reduction, full-bank retrain</span></div>
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — executive summary (updated 27 Sep 2026)</h2></div>
+  <div class="sec-head"><h2>Snapshot — executive summary (updated 28 Sep 2026)</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
-    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-23.md</code> /
+    <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> /
     <code>2026-09-24_to_26.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
-    <li><strong>27 Sep end state:</strong> <strong>desk engineering closed</strong> (nothing queued);
-      <strong>lab fully blocked</strong> on facility mocap (26 Sep OptiTrack rigid-body fault);
-      <strong>writing only active</strong> — Ch.&nbsp;1–5 frozen for proofreading; Ch.&nbsp;6–9
-      skeleton in <code>thesis/</code> (<code>\todo</code>), content blocked on C.4 flights.
-      Same-day closures: NS2 SIL upload fix + re-validation; C.4 <code>load_merged_csv()</code>
-      P1 fix (<code>0608911</code>); RPM (<code>docs/43</code>); position integral
-      (<code>docs/50</code>). <strong>Pattern:</strong> two “done” labels failed silently on real data
-      until re-run (NS2 upload flags; merged-CSV loader).</li>
+    <li><strong>28 Sep end state:</strong> <strong>mocap fixed, C.1 collection complete</strong> —
+      no mandatory flights remain. <strong>Alt-INDI hardware shakedown underway:</strong>
+      controller=9 (Omar's INDI) clean solo (hover, figure8), but the 2-drone A1 attempt failed —
+      <code>cf5</code>'s motors never spun. Root-caused to a <code>run_formation.py</code>
+      launch-script bug (inert gain parameters flooding the shared radio pre-takeoff), fixed and
+      SIL-verified (<code>crazyswarm2</code> <code>f25470a</code>) — <strong>but a real objection
+      stands unresolved</strong>: <code>cf_second</code> has absorbed the identical parameter
+      burst on every prior 2-drone flight without failing, so the fix may not be the full story.
+      <strong>Next lab session's first task is re-flying <code>cf5</code>/controller=9</strong> —
+      treat as open, not solved. Same evening: <strong>NS2 retrained on the complete 22-file C.1
+      bank</strong> (78.6% full-train error reduction, SIL gated correlation 0.91, a previously
+      backwards Stage D physical-sanity check now correct). <strong>Pattern, still worth
+      remembering:</strong> two "done" labels this week (NS2 SIL upload, merged-CSV P1 loader)
+      failed silently on real data until actually re-run — verify before trusting a status label.</li>
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
       4-point mocap; DShot RPM; uSD match → merge → analysis working on 19&nbsp;Sep archive.</li>
     <li><strong>2-drone controllers on cf5:</strong> stock Lee (top), our geometric + full INDI (bottom)
       — A8 sequence flown and logged; geo vs INDI on cf5 is ~tie on z (n=2), not the old cf231 gap.</li>
     <li><strong>Desk parallel track (§1–12):</strong> <strong>complete</strong> — audited 21&nbsp;Sep;
       C.4 grouping fix (geo n=2 vs INDI n=2 on 19&nbsp;Sep A8). See <code>docs/35</code>.</li>
-    <li><strong>C.1 (major session 23&nbsp;Sep):</strong> ~24 training-eligible merges across manifests
-      (19 on 23&nbsp;Sep + 5 on 21&nbsp;Sep, verified against both manifests);
-      Block A (A7, A1 grid), B (A2/A3), D (C5) largely closed; <strong>A4</strong> (C-1/C-2) remains;
-      21&nbsp;Sep bank still contributes A-5, B-1, partial A-2. Tracker · <code>docs/next_flight_card.html</code>.</li>
+    <li><strong>C.1 — COMPLETE (28&nbsp;Sep):</strong> 22-file training bank across three collection
+      dates (4 from 21&nbsp;Sep, 11 from 23&nbsp;Sep, 7 from 28&nbsp;Sep — legacy 23&nbsp;Sep A2
+      superseded by the 28&nbsp;Sep pair). Blocks A/B/C/D all closed, including the last-remaining
+      <strong>A4</strong> (C-1/C-2 lateral excitation, ×4). No mandatory C.1 flights remain.
+      Manifest · <code>experiments/logs/c1_2026-09-28_merged/manifest_2026-09-28_c1.json</code>.</li>
     <li><strong>C.2 desk — CLOSED, all-clear (26 Sep):</strong> 17-fold LOO on the 17-usable-file
       bank, Stage C pass, full-bank Stage D/E, SIL predict/compensate diagnosis, flash-resident
       onboard RNN (<code>residual_nn_flash</code>, CF21BL links, RAM no longer overflows) — all

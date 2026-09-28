@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 27 Sep 2026 · ⚠️ LAB blocked (facility mocap) · DESK closed (no queued work) · WRITING only active track (Ch. 1–5 proofread; Ch. 6–9 await C.4)</div>
+  <div class="eyebrow">Flight readiness — updated 28 Sep 2026 · ✅ Mocap fixed, C.1 collection COMPLETE · ⚠️ Alt-INDI hardware shakedown in progress (controller=9 unresolved) · NS2 retrained on full bank</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -126,34 +126,39 @@ footer{
 </header>
 
 <section>
-  <h2>⚠️ Lab blocked — facility mocap fault (26 Sep), separate from the software fix</h2>
+  <h2>✅ Mocap fixed, C.1 collection complete · ⚠️ Alt-INDI shakedown: one open question</h2>
   <div class="panel warn">
     <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>26 Sep: solo cf5 hover, physically level on the pad, reports roll ≈154°/−π rad;
-      position centroid stable</strong> (not the 24 Sep drift signature). Leading theory:
-      <strong>OptiTrack rigid-body orientation / marker↔<code>active_deck</code> mismatch</strong>
-      — a facility/hardware issue, not an application-code regression, and orthogonal to
-      everything below. <strong>This needs someone to fix the mocap rigid-body setup — it is not
-      a desk task.</strong> Nothing flies again until it's resolved. Full account:
-      <code>docs/lab_sessions/2026-09-24_to_26.md</code>.</p>
+      <strong>Facility mocap fault (26 Sep) — physically resolved, lab flying resumed 28 Sep.</strong>
+      Same day: <strong>A4 ×4</strong> plus topping-up A1/A2/A3 flown — <strong>C.1 collection is
+      now complete</strong>, no more mandatory flights remain. Manifest:
+      <code>experiments/logs/c1_2026-09-28_merged/manifest_2026-09-28_c1.json</code>.</p>
     <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
-      <strong>Desk work is closed (through 27 Sep).</strong> Nothing engineering-side is queued:
-      RPM dual-source quality + spike note (<code>docs/43</code>); position-integral Z-bias
-      (<code>docs/50</code>, do not enable); C.2 / NS2 pipeline + flash RNN (<code>docs/40</code>,
-      <code>docs/45</code>) including the <strong>SIL upload-protocol bug fix</strong>
-      (<code>traj_iface.c</code> / <code>lib.rs</code>, commit <code>256fc22</code>) — re-validated
-      correlation ≈0.83 and Stage E overshoot resolved; flash parity re-confirmed; SIL backend
-      <code>a_res</code> scale **characterized across five scenarios** (not a single universal 10× gap);
-      <strong>C.4 metrics</strong> — <code>load_merged_csv()</code> fix (<code>0608911</code>) so
-      effort/spectrum P1 columns populate on real merges; thesis <strong>Ch. 6–9</strong> skeleton
-      (<code>thesis/</code>, <code>\todo</code> placeholders). <strong>Writing</strong> is the only
-      active track: Ch. 1–5 frozen for operator proofreading; Ch. 6–9 content waits on C.4.
-      <strong>Still lab-only (not desk):</strong> A4 ×4, hardware <code>rnn.en=0/1</code>,
-      <code>c=7/8/9</code>, real C.4 repeats — all blocked on mocap + flight time.
-      <strong>Explicitly not chased:</strong> <code>run_a8_2026_09_19_suite.py</code> cannot process
-      <code>stock_lee</code> flights (<code>run_analysis.py</code> ctrl argparse); A2 top-deck dropout
-      needs physical inspection. <strong>Lesson:</strong> two items marked “done” failed silently on
-      real data until re-run (NS2 SIL upload flags; merged-CSV P1 loader).</p>
+      <strong>28 Sep evening — alt-INDI hardware shakedown, controller=9 (Omar's INDI) first:</strong>
+      solo hover + figure8 clean on <code>cf5</code>. <strong>2-drone A1 failed — cf5's motors never
+      spun</strong> while <code>cf_second</code> flew normally. Root-caused to a
+      <code>run_formation.py</code> launch-script bug (useless gain parameters flooding the shared
+      radio right before takeoff) — <strong>fixed and SIL-verified</strong>
+      (<code>crazyswarm2</code> <code>f25470a</code>), but <strong>a real, unresolved objection
+      stands</strong>: <code>cf_second</code> has absorbed the identical parameter burst on every
+      prior 2-drone flight without ever failing, so the fix may not be the whole story.
+      <strong>Do not treat this as solved — the next lab session's first task is re-flying
+      <code>cf5</code>/controller=9 to actually test it.</strong> Full account:
+      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> § "Operator pushback."</p>
+    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
+      <strong>Desk work, closed through tonight:</strong> RPM dual-source quality + spike root-cause
+      (<code>docs/43</code>); position-integral Z-bias (<code>docs/50</code>, do not enable); NS2/C.2
+      pipeline + flash RNN + SIL upload-protocol fix (<code>docs/40</code>, <code>docs/45</code>);
+      C.4 <code>load_merged_csv()</code> fix (<code>0608911</code>); thesis Ch. 6–9 skeleton.
+      <strong>28 Sep: NS2 retrained on the complete 22-file C.1 bank</strong> — 78.6% full-train
+      error reduction, SIL gated correlation 0.91, Stage D sign now physically correct
+      (History 69). <strong>Writing</strong> track: Ch. 1–5 frozen for proofreading; Ch. 6–9
+      structure-only until real C.4 data.</p>
+    <p class="note"><strong>Next lab session, in order:</strong> re-fly <code>cf5</code>/controller=9
+      solo + 2-drone A1 first (the actual open test) → if clean, continue the ladder to
+      controller=7 then 8 → if time allows, NS2 <code>rnn.en=0</code> log check on the new weights,
+      then <code>rnn.en=1</code> on one scenario. Runbook:
+      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code>.</p>
   </div>
 </section>
 
