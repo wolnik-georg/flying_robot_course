@@ -335,6 +335,56 @@ ros2 run crazyflie_examples run_formation -- \
 
 ---
 
+## Verification pass — param counts + SIL (2026-09-28 night)
+
+### Task 1 — What was measured
+
+**Param volume (`apply('takeoff', 6, 0, …)`), installed `crazyflies.yaml`:**
+
+| Drone | eff. controller | BEFORE fix (`f25470a^`) | AFTER fix (`f25470a`) |
+|-------|-----------------|-------------------------|------------------------|
+| cf5 | 9 | **21** gain `setParam` writes | **0** |
+| cf_second | 5 | **21** | **0** |
+
+Tool: `experiments/analysis/measure_run_formation_takeoff_params.py` (mirrors `resolve()` + gain loops; 17 shared `indi_gains` + 4 `pos_gains` keys, minus none on cf5/cf_second for those keys).
+
+**SIL 2-drone A1** (`run_formation.py`, `crazyflies.yaml` with cf5 + cf_second enabled — same roster as hardware A1):
+
+| cf5 yaml pin | Server profile | Meta sidecar | `verify_formation_sim.py` | cf5 z (record_states) |
+|--------------|----------------|--------------|---------------------------|------------------------|
+| 9 | `server_sim_omar_indi.yaml` (oot4) | `A1_2026-09-28_20-43-19.meta.json` | **PASS** (dz RMSE 0.1 mm) | 0 → **1.00 m** |
+| 7 | `server_sim_naindi.yaml` (oot2) | `A1_2026-09-28_20-46-01.meta.json` | **PASS** (RMSE 0.3 mm) | 0 → **1.00 m** |
+| 8 | `server_sim_naindi_hybrid.yaml` (oot3) | `A1_2026-09-28_20-48-19.meta.json` | **PASS** (RMSE 0.4 mm) | 0 → **1.00 m** |
+
+Harness: `experiments/analysis/run_formation_alt_controller_sil.sh {oot4|oot2|oot3}`; logs under `experiments/sim_validation/run_formation_sil_*`.
+
+### Task 1 — Honest limits (do not overstate)
+
+| Claim | Status |
+|-------|--------|
+| Gain-skip logic drops inert OOT param traffic to **0** for cf5 @ 9/7/8 and cf_second @ 5 | **Confirmed** (bench script on real yaml) |
+| Fix does not break 2-drone A1 in SIL; both drones climb and hold commanded stack geometry | **Confirmed** (three SIL runs above) |
+| Original hardware failure was **caused by** param burst **starving HL CRTP** on one Crazyradio | **Still inferred only** — no trace of `stabilizer.mode_*` / onboard HLC state from the failed flight, and **SIL does not model radio contention or packet loss** |
+| Pre-arm `/state` abort would have blocked the 2026-09-28 flight | **Unknown** — that flight’s all-zero CSV may be logger-only; uSD was not in repo |
+
+**Hardware still required:** one 2-drone A1 re-fly after `colcon build` with **`f25470a`** to confirm cf5 motors spin and (ideally) uSD or TOC log shows non-idle HLC setpoint modes during takeoff.
+
+### Task 2 — Controllers 7 / 8 (rigor, not assertion)
+
+**Yaml shape (installed config):** cf5 pins `stabilizer.controller`, `indi_gains.ctrl_mode`, `indi_gains.rpm_source`, `rnn.en` only — **no** per-key `indi_gains.kr` / `kt*` / etc. (same as c=9). A pin to **7** or **8** would be the same override pattern; bench script reports **21 → 0** writes for hypothetical cf5@7 and cf5@8.
+
+**Generalization of `_gains_apply_to_drone()`:** predicate is **`eff_ctrl == 6`**, not “controller == 9” — **7/8/9/Lee** all skip when ≠ 6. **SIL-confirmed** for **7** and **8** via separate A1 runs (meta `per_drone.cf5.controller` 7 and 8, verify **PASS**, cf5 reached **~1 m**).
+
+**SIL caveat:** both vehicles run the **same** sim controller profile (`oot2`/`oot3`/`oot4` from server yaml); yaml’s cf_second@5 pin does not switch sim physics to stock Lee. This run validates **`run_formation.py` + gain-skip + HL sequence**, not mixed-firmware physics fidelity.
+
+### Edge cases noted
+
+- **cf_second @ 5** also went from 21 → **0** gain writes after the fix (correct: Lee ignores OOT gains; also reduces radio noise).
+- **Pre-arm logger gate:** drones at exactly `[0,0,0]` with valid `/state` could false-abort (`‖pos‖ < 1e-4`); lab pads usually offset from origin.
+- **SIL param warnings:** `indi_gains.ctrl_mode` / `rpm_source` `setParam` KeyError on oot4/oot2/oot3 sim (expected — those params are not in the sim TOC); unrelated to gain-skip.
+
+---
+
 ## After session — restore C.1 / default study config
 
 Regardless of outcome, before C.1 or geometric collection:
