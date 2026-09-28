@@ -43,6 +43,7 @@ wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see
 | `plot_flight.py` / `plot_interaction.py` | Dashboard + downwash interaction figures |
 | `aggregate.py` / `plot_comparison.py` | Cross-flight comparison (docs/27 P3–P4) |
 | `run_c4_desk_prep.py` | One-shot desk run: `phase_metrics_c4_compare.csv` (geo+INDI only) → summarise + figures (`docs/31`, [`35`](../../docs/35_Desk_Parallel_Audit_Closeout.md)) |
+| `batch_plot_two_drone_merged.py` | All merged **2-drone** uSD logs → `plot_flight` + `plot_interaction` in `out/two_drone_plot_gallery/` (stable filenames + `index.json`) |
 
 Merged uSD logs expose setpoints as **`ctrltarget_*`** (loaded automatically since 2026-09-19).
 
