@@ -9,6 +9,16 @@ correction than the joint integral at the same disturbance sweep; still **not** 
 credible full fix for **17–20 cm** A1-scale log bias without further gain/limit tuning
 or addressing formation physics.
 
+**Validated 2026-09-29 (independent check):** SHA256 of the OFF binary reproduced
+bit-for-bit from a clean rebuild; SIL JSON numbers confirmed self-consistent; anti-windup
+logic confirmed to reuse the existing `clamp_en` bit correctly, not a fabricated flag.
+Two problems were found and fixed in the same pass: a stray `Co-authored-by` commit
+trailer (removed — this project never adds one) and a missing `+` prefix in
+`cffirmware_bindings.patch` for the new `g_ki_z`/`g_ki_z_limit` externs, which would
+have broken re-applying that patch against a fresh `crazyflie-firmware` checkout. A
+third finding — this doc originally mis-stated the INDI-path scope — is corrected
+below where it occurred.
+
 ---
 
 ## Motivation
@@ -35,8 +45,17 @@ tree). Joint integral code paths are **unchanged** when `ENABLE_Z_INTEGRAL` is f
 | Anti-windup | **Conditional integration (freeze, not zero):** no accumulation on ground (`prev_thrust_si ≤ 0.05`); when thrust clamp is active, freeze if saturated **against** the error sign (thrust at ceiling and `ep_z > 0`, or at floor and `ep_z < 0`). Chosen over back-calculation because takeoff/ground phase is the main windup risk and we need sustained authority in flight without resetting accumulated bias. |
 | SWIG | `g_ki_z`, `g_ki_z_limit` in `cffirmware_bindings.patch` / live `cffirmware.i` |
 
-**Out of scope:** duplicate joint-integral block inside INDI-only branches of
-`controller_step()` — geometric / `ctrl_mode=0` path only for this change.
+**Correction (2026-09-29, post-validation):** this table previously claimed the
+INDI-path duplicate integral block in `controller_step()` was left untouched /
+out of scope for this change. That was **wrong** — the same `accumulate_z_integral()`
+call and `z_integral_force_term()` addition were in fact wired into **both**
+`geometric_step_ref()` (`ctrl_mode=0`) **and** `controller_step()` (`ctrl_mode=1/2/3`,
+the INDI paths), not geometric-only as originally scoped/requested. Left in place
+by operator decision (2026-09-29) rather than reverted — harmless while
+`ENABLE_Z_INTEGRAL=false` (the default), since both call sites are no-ops when the
+flag is off. If/when this term is tuned or enabled, treat the INDI-path application
+as unreviewed/unvalidated relative to the geometric path — the SIL A/B below only
+exercises the geometric (`oot`) controller.
 
 **Rebuild (host SIL):** `cargo build --release --target x86_64-unknown-linux-gnu` with
 `DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort"`, then `make bindings_python` in
