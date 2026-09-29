@@ -111,7 +111,7 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 28 Sep 2026 · ✅ Mocap fixed, C.1 collection COMPLETE · ⚠️ Alt-INDI hardware shakedown in progress (controller=9 unresolved) · NS2 retrained on full bank</div>
+  <div class="eyebrow">Flight readiness — updated 29 Sep 2026 · ✅ Mocap fixed, C.1 collection COMPLETE · ✅ controller=9 FLOWN (works) · ⚠️ controller=10 built, first hardware attempt failed (retry needed) · controller=7/8 paused · NS2 retrained on full bank</div>
   <h1>Next Flight Card</h1>
   <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
     <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
@@ -154,11 +154,42 @@ footer{
       error reduction, SIL gated correlation 0.91, Stage D sign now physically correct
       (History 69). <strong>Writing</strong> track: Ch. 1–5 frozen for proofreading; Ch. 6–9
       structure-only until real C.4 data.</p>
-    <p class="note"><strong>Next lab session, in order:</strong> re-fly <code>cf5</code>/controller=9
-      solo + 2-drone A1 first (the actual open test) → if clean, continue the ladder to
-      controller=7 then 8 → if time allows, NS2 <code>rnn.en=0</code> log check on the new weights,
-      then <code>rnn.en=1</code> on one scenario. Runbook:
-      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code>.</p>
+    <p class="note"><strong>Superseded 29 Sep — see the panel below for the current next step.</strong>
+      controller=9's "unresolved" state above was fixed and flown same night (a missing firmware
+      param registration, not the launch-script theory) — full account
+      <code>docs/41</code> §9. controller=7 was then attempted and failed twice (no logs, cause
+      unknown, paused). controller=10 (a new Rust port of controller=9's proven algorithm) was
+      built and attempted directly at A1 — also failed (motors spun, no liftoff). Root cause still
+      open; real fixes are in for the retry.</p>
+  </div>
+</section>
+
+<section>
+  <h2>⚠️ 29 Sep — controller=10 needs a solo-hover retry (current next step)</h2>
+  <div class="panel warn">
+    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
+      <strong>controller=9 (Omar's INDI, literal C port) is proven working</strong> — same-day A1
+      dz=0.30 vs our own geometric: 0.04m error vs 0.17m, ~4–5× better, unconfounded. See
+      <code>docs/41</code> §9.</p>
+    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
+      <strong>controller=10</strong> (<code>ControllerTypeOot5</code>,
+      <code>omar_indi_rust.rs</code>) — a faithful Rust port of controller=9's algorithm, built and
+      numerically verified 7/7 same evening. Flown directly to 2-drone A1 (skipping the usual
+      solo-first step) — <strong><code>cf5</code>'s motors spun but it never left the ground</strong>
+      while <code>cf_second</code> flew normally. uSD analysis found a real single-motor-dominant
+      PWM pattern (not underpowered — plenty of thrust available, badly allocated). Root cause
+      <strong>not confirmed</strong>, but three real fixes are now in: a lazy-init aliasing bug, a
+      documented safety guard on a divide-by-near-zero risk shared with the C reference, and — the
+      important one — real torque/residual telemetry that this flight didn't have (it was silently
+      never wired for this controller family at all).</p>
+    <p class="note"><strong>Next lab session:</strong> <code>git pull</code> both repos → reflash
+      <code>cf5</code> (<code>make cload</code>) → confirm clean connect + <code>ctrlOot5.indi==3</code>
+      → <strong>solo hover only</strong> (<code>cf_second</code> already left disabled in yaml) →
+      if it fails again, pull uSD immediately and run
+      <code>experiments/analysis/check_omar_rust_telemetry.py</code> on the fresh merged CSV — this
+      time it should show the real numbers instead of dead-zero. Full account:
+      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> close-out,
+      <code>docs/41</code> §13.</p>
   </div>
 </section>
 
