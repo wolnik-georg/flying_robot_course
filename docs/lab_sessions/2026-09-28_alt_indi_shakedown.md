@@ -427,6 +427,47 @@ Two problems raised with the "gain burst starves HL radio" story, both valid, ne
 
 ---
 
+## Desk audit — f25470a / f7856e2 (2026-09-29, post-`deck.bcRpm` fix)
+
+**Context:** The **actual** connect failure for controller=9 was
+`controllerOmarIndiInit()` → unregistered `deck.bcRpm` → `param_logic.c:524` assert
+(`docs/41` §9), fixed in firmware (`rpm.c`), flown clean same evening. The **syslink queue
+overflow** story and the **takeoff gain flood** story were parallel hypotheses; neither was the
+param-assert root cause.
+
+**Dependents check (grep + history):** Nothing in `flying_robot_course` or vendored
+`crazyswarm2` *requires* unpaced connects or pre-fix gain spam. What **does** rely on the
+behaviour:
+
+| Artifact | Depends on |
+|----------|------------|
+| `experiments/analysis/test_run_formation_gain_skip.py` | `_gains_apply_to_drone` (eff. controller == 6) |
+| `experiments/analysis/measure_run_formation_takeoff_params.py` | same skip logic |
+| `run_formation_alt_controller_sil.sh` / `verify_formation_sim.py` | SIL passes with skip in place |
+| Launch log grep `CS2_CONNECT_PARAM_PACE_V1` | paced server binary (deploy hygiene) |
+
+Controller **9** and **10** connected and flew **with** pacing after `deck.bcRpm` / `ctrlOot5`
+fixes — desk **cannot** prove unpaced connect is safe; overflow remains a **plausible** boot-time
+risk (8-slot queue, ~45 yaml writes, brushless boot load).
+
+### Sub-change recommendations
+
+| # | Change (commit) | Verdict | Reasoning | Verified |
+|---|-----------------|---------|-----------|----------|
+| A | **Skip `indi_gains`/`pos_gains` when eff. controller ≠ 6** (`f25470a`) | **Keep as-is** | **Never the connect assert.** Real `run_formation.py` bug: `apply('takeoff', …)` still pushed full shared OOT gain blocks to cf5 @ 9/10/7/8 while yaml pins left them on alt laws — **inert on Omar/NA-INDI firmware**, but ~15+ extra CRTP writes before HL takeoff on a contended radio. `formation_flight.py` already documented `gains_apply=0` in meta; `run_formation` lacked the skip until `f25470a`. **Correct for c=9/10:** Omar/Rust-Omar use compile-time / `ctrlOmarIndi` / `ctrlOot5` params, not yaml `indi_gains.kr` / `pos_gains`. Skipping does **not** block required pins (`stabilizer.controller`, `ctrlOot5.indi`, etc.). | `test_run_formation_gain_skip.py`; `docs/41` §9; lab § operator pushback (cf_second tolerated burst — fix still valid, not sole cause of 28 Sep failure) |
+| B | **Abort if radio `/state` empty or all-zero pre-arm** (`f25470a`) | **Keep as-is** | Independent of connect theories — catches broken DroneLogger / HL link before arming (observed all-zero cf5 CSV on 28 Sep A1). Low false-positive risk given existing pose preflight. | Code review `run_formation.py` ~780–795 |
+| C | **150 ms between `takeoff()` / `goTo()` async calls** (`f25470a`) | **Keep as-is** | Defensive CRTP spacing (~0.15 s × (N−1) drones per stage, not load-bearing for connect). Not proven necessary after gain-skip, but cheap vs flight duration; no SIL regression if removed, no strong reason to revert. | SIL matrix history (66–67); no test asserts spacing |
+| D | **150 ms between connect-time `firmware_params` writes** (`f7856e2`) | **Keep but tune → 30 ms** | **Not causal for param assert** (fixed elsewhere). **Unconfirmed but real** guard: measured **44–45** yaml params in **&lt;1 ms** unpaced (`analyze_connect_param_burst.py`); firmware RX queue depth **8**. After bcRpm fix, connect succeeds — likely **would still connect unpaced** today, but removing pacing reintroduces boot-window overflow risk on cf5 brushless. **Cost:** (N−1)×150 ms ≈ **6.6 s** per cf5 connect (N=45 yaml keys today). **Tune:** **30 ms** → ≈ **1.3 s** connect stretch, still **~30 ms/param** &gt;&gt; measured unpaced **~7 µs/param** burst spacing; update log marker string and `test_connect_param_pacing.py` when changed. **Not urgent** — only a latency win. | `test_connect_param_pacing.py`; yaml counts; `docs/41` §9 |
+
+**Reverts:** **None recommended.** Optional follow-up: single commit in `crazyswarm2` lowering
+`kConnectParamPaceMs` from 150 to 30 (no flying_robot_course firmware changes).
+
+**SIL / tests run (desk):** `test_run_formation_gain_skip.py`, `test_connect_param_pacing.py`,
+`analyze_connect_param_burst.py` — all pass. Full `crazyflie_sim` ROS suite not re-run (no
+connect path in sim); no change applied in this audit commit.
+
+---
+
 ## 2026-09-29 — cf5 connect assert (`uart_syslink.c:549`, queue overflow)
 
 **Symptom (lab, reproducible):** `cf5` with `stabilizer.controller: 9` asserts during **connection**, before `run_formation.py` or takeoff:
@@ -535,10 +576,10 @@ Omar's INDI beats our geometric ~4-5× on this metric, same day/conditions, no c
 real, working hardware result for this controller. Full writeup:
 `docs/41_Pure_INDI_Implementation_Comparison.md` §9. Data: `experiments/logs/omar_indi_2026-09-29_merged/`.
 
-**Loose end, not yet closed:** the two earlier "fixes" (`run_formation.py` gain-skip pacing,
-`crazyflie_server.cpp` connect-time pacing) are still in place and add real latency (~6.5s to
-every connect) for problems that turned out not to exist. Candidates to revert once there's time
-to confirm nothing now depends on them.
+**Loose end — closed (desk audit 2026-09-29 evening):** see § *Desk audit — f25470a / f7856e2*
+below. Summary: **keep** all three `run_formation.py` sub-changes; **keep connect pacing but tune
+150 ms → 30 ms** when convenient (not urgent). **Do not revert** gain-skip — it fixes a real
+launch-script bug unrelated to the connect assert.
 
 **Not yet tested:** controller=7/8 (`naindi.rs`/`naindi_hybrid.rs`) — worth checking for the same
 class of missing-param dependency before their first hardware attempt, rather than rediscovering
@@ -678,9 +719,8 @@ the flag is off).
 **Not lab-blocked, but currently deprioritized, not forgotten:**
 - controller=7/8 — paused, no root cause found, no logs captured. Revisit only if controller=10
   doesn't pan out, or time allows a properly-logged retry.
-- The two "loose end" pacing fixes from the wrong-theory chase (`run_formation.py` gain-skip,
-  `crazyflie_server.cpp` connect pacing) — still add ~6.5s to every connect for problems that
-  turned out not to exist. Candidates to revert, not urgent.
+- Connect pacing cost vs benefit — **audited** (§ *Desk audit — f25470a / f7856e2*); optional
+  **30 ms** retune in `crazyflie_server.cpp`, not a revert.
 
 **Desk work: fully exhausted for both active tracks.** Nothing further to investigate on
 controller=10 or the Z-integral without new flight data — see `docs/07`'s Next-action line.
