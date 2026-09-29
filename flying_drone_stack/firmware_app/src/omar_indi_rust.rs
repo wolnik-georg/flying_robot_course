@@ -499,9 +499,18 @@ pub unsafe extern "C" fn controllerOutOfTree5(
     if tick % 2 != 0 {
         return;
     }
-    let s = &mut *core::ptr::addr_of_mut!(ST);
-    if !s.initialized {
+    // Check + Init BEFORE taking any &mut into ST -- calling Init() while a live &mut
+    // reference into the same static is already held (the previous version of this
+    // function did exactly that) is undefined behaviour under Rust's aliasing model.
+    // The host numerical test never caught this because it always calls Init() once,
+    // manually, before its first dispatcher call -- so this lazy-init branch, which is
+    // the ONLY path real hardware ever takes (every flight starts uninitialized), had
+    // never actually been exercised by any test. Found 2026-09-29 after a real flight
+    // produced zero thrust/torque the entire hover -- see docs/41 §13.
+    let already_init = core::ptr::addr_of!((*core::ptr::addr_of!(ST)).initialized).read();
+    if !already_init {
         controllerOutOfTree5Init();
     }
+    let s = &mut *core::ptr::addr_of_mut!(ST);
     step_inner(s, &mut *control, &*setpoint, &*sensors, &*state);
 }
