@@ -494,3 +494,52 @@ If those lines are **missing** but `Update parameter` lines still stack in **<1 
 | Assert | **No** `uart_syslink.c:549` in this capture; after unpaced burst, **firmware reboot** console resumes (~223 ms later) then log **cuts off** |
 
 **Next lab capture:** save **full** `ros2 launch` stdout until connect completes or fails; confirm **`CS2_CONNECT_PARAM_PACE_V1`** before interpreting boot SYS lines. If cf_second is enabled in yaml, expect **`[cf_second] Requesting parameters...`** before or after cf5 depending on connect order — its absence here is **unexplained** (disabled yaml, blocked on cf5 connect, or truncated log).
+
+---
+
+## 2026-09-29 — actual root cause found, fixed, and controller=9 flown for real
+
+**The connect assert was never a pacing/syslink problem.** Both the takeoff-gain-flood theory
+and the syslink-queue theory (above) were plausible but wrong — neither was ever confirmed with
+direct evidence, and both missed something that had been printed in every single boot log from
+the start: `[ERROR] [cf5] Could not find param deck/bcRpm`.
+
+**Root cause:** `controllerOmarIndiInit()` reads `paramGetUint(paramGetVarId("deck","bcRpm"))`.
+His reference firmware registers that param (`NA-INDI-firmware/.../rpm.c`); ours never did. The
+invalid `varid` tripped `ASSERT(PARAM_VARID_IS_VALID(varid))` at `param_logic.c:524` the instant
+`stabilizer.controller` was set to 9 — assert, reboot, repeat. Explains everything: only `cf5`
+(only drone on controller=9), reflashing the *same* image never helped (bug was in the firmware
+source itself, unaffected by reflashing), and why solo hover had looked "clean" the first night —
+those runs had actually been controller=6 (confirmed from flight meta), so this code path never
+ran.
+
+**Fix:** backported the missing `PARAM_GROUP(deck) { bcRpm }` registration verbatim from the
+reference `rpm.c` (`crazyflie-firmware` commit local to this project, documented in
+`flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md`). Read-only presence flag, no
+effect on any other controller. Reflashed `cf5` — **connected clean, no assert, no reboot loop.**
+
+**Second finding, same evening:** connecting didn't mean his INDI was active. `controller_omar_indi.c`
+defaults `.indi = 0` and gates every INDI term behind it; the CS2 SIL has always set `indi=3` at
+init, so hardware and sim had never tested the same code path. Added `ctrlOmarIndi.indi: 3` to
+`cf5`'s yaml override (no reflash needed — runtime param).
+
+**Flown, same session, A1 dz=0.30, 2 reps each:**
+
+| config | realized separation | error vs 0.30m commanded |
+|---|---|---|
+| Our geometric | 0.47 m | 0.17 m |
+| Omar `indi=0` | 0.89 m | 0.59 m |
+| **Omar `indi=3`** | **0.30 m** | **0.04 m** |
+
+Omar's INDI beats our geometric ~4-5× on this metric, same day/conditions, no confound. First
+real, working hardware result for this controller. Full writeup:
+`docs/41_Pure_INDI_Implementation_Comparison.md` §9. Data: `experiments/logs/omar_indi_2026-09-29_merged/`.
+
+**Loose end, not yet closed:** the two earlier "fixes" (`run_formation.py` gain-skip pacing,
+`crazyflie_server.cpp` connect-time pacing) are still in place and add real latency (~6.5s to
+every connect) for problems that turned out not to exist. Candidates to revert once there's time
+to confirm nothing now depends on them.
+
+**Not yet tested:** controller=7/8 (`naindi.rs`/`naindi_hybrid.rs`) — worth checking for the same
+class of missing-param dependency before their first hardware attempt, rather than rediscovering
+it the same way.

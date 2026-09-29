@@ -257,3 +257,53 @@ against — unlike `arm_length`/`THRUST2TORQUE`, which *are* independently confi
 the table in §2). **Never flown, not queued to fly.** Nothing here changes the "no decision
 made" status of §7 above — this section only establishes that everything achievable without
 hardware has now been done, to the same standard `controller=7`/`8` were held to.
+
+## 9. controller=9 — FLOWN, 2026-09-29: crash root-caused and fixed, first real A/B result
+
+**First hardware attempt (28 Sep) crashed on connect** — `stabilizer.controller=9` tripped a
+firmware assert (`param_logic.c:524`, `ASSERT(PARAM_VARID_IS_VALID(varid))`) the instant it was
+selected, rebooting the drone before any flight was possible. Two wrong theories were chased and
+discarded first (a `run_formation.py` takeoff-time gain-push flood; a connect-time syslink queue
+overflow) before the actual cause was found in the boot log itself, which had been printing
+`Could not find param deck/bcRpm` on every single connect attempt from the start.
+
+**Root cause:** `controllerOmarIndiInit()` does `paramGetUint(paramGetVarId("deck","bcRpm"))`.
+His reference firmware (`NA-INDI-firmware/src/deck/drivers/src/rpm.c`) registers that param;
+ours never did (`crazyflie-firmware/src/deck/drivers/src/rpm.c` had no `PARAM_GROUP` at all). The
+invalid `varid` tripped the assert. **Fixed** by backporting the four-line `PARAM_GROUP(deck) {
+bcRpm }` registration verbatim from the reference — a fifth backport of the same class as
+`MOTORRPM2FORCE`/`THRUST2TORQUE`/`vadd5`/`attitudeAcc` in §1's table: infrastructure his
+controller depends on, not his customization. Read-only presence flag, zero behavioural change
+for controllers 5/6/7/8. Full account: `flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md`.
+
+**Second finding, equally important:** even once it could connect, `controller_omar_indi.c`
+defaults `.indi = 0` and gates every INDI term behind it (`self->indi && rpm_deck_available`,
+lines 179/231/365) — so the first successful flight (28 Sep, connect fixed, `indi` never set)
+flew his plain **Lee geometric**, not his INDI, with untuned reference gains on this airframe.
+**The CS2 SIL has always set `indi=3` at init** (`crazyflie_sil.py`, see
+`LOCAL_MODIFICATIONS.md`), so every sim-clean result to date validated a different code path
+than what first flew on hardware. Fixed with a yaml addition, `ctrlOmarIndi.indi: 3` (position +
+attitude INDI, matching the SIL config) on `cf5`'s per-robot override.
+
+**First real hardware result, same session, same conditions, A1 dz=0.30 (2×2×2 reps):**
+
+| config | realized separation | error vs 0.30m commanded | cf5 attitude RMS (roll/pitch) |
+|---|---|---|---|
+| Our geometric (controller=6) | 0.47 m | 0.17 m | 21–22° / 23–24° |
+| Omar, `indi=0` (his geometric, untuned gains) | 0.89 m | 0.59 m | 10° / 25° |
+| **Omar, `indi=3` (his INDI)** | **0.30 m** | **0.04 m** | **7–9° / 7–9°** |
+
+Omar's INDI beats our tuned geometric by **~4-5×** on separation-holding error, same day, same
+mocap, no cross-day confound (an earlier same-metric comparison against a 23-Sep geometric
+baseline showed an inflated ~17× that turned out to be an artifact of comparing across
+sessions with different conditions — `cf_second`'s own tracking differed ~5× between the two
+days on unchanged firmware). His geometric (`indi=0`) is worse than ours, as expected for
+untuned reference gains on an airframe he never tuned for.
+
+**Scope, honestly stated:** one scenario (A1, static vertical-stack hover), n=2 per condition.
+A real thesis-grade result needs repeats across scenarios per the standing 3–5-rep convention.
+This is a first controlled data point, not a finished comparison — but it is a real, unconfounded
+one, and it is the first evidence that his INDI does what it's supposed to do on this hardware.
+
+Data: `experiments/logs/omar_indi_2026-09-29_merged/` (raw uSD: `experiments/logs/usd_raw/2026-09-29_THESIS{1,2}/`).
+Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § 2026-09-29.
