@@ -4,12 +4,18 @@
 (`controller_step` / `geometric_step_ref` in `lib.rs`), distinct from the existing joint
 XY+Z path (`ENABLE_POSITION_INTEGRAL`, `KI_P`, `i_ep`) closed in `docs/50`.
 
-**Status (2026-09-29):** **Implemented, default OFF.** SIL shows materially more Z
-correction than the joint integral at the same disturbance sweep; still **not** a
-credible full fix for **17–20 cm** A1-scale log bias. **Task 4 update:** gain-tuning
-`ki_z` further does not change this — it speeds recovery from a sustained disturbance,
-it does not reduce the peak/initial sag, and even the fastest tested recovery (~9s)
-exceeds a real A1 hold's duration.
+**Status (2026-09-29):** **Implemented, default OFF, ready for hardware test (Task 5).**
+Two genuinely different questions ended up in this doc, with different answers —
+**don't confuse them:**
+- **Disturbance rejection** (a downwash transient hit mid-flight, e.g. the bottom drone
+  entering the top drone's wash partway through a hold): **Task 4 — gain-tuning does not
+  help.** The peak dip is gain-invariant; only recovery speed changes, and even that's too
+  slow to matter within a real hold. Do not expect this term to fix that.
+- **Persistent hover-height bias** (commanded 1.0 m, sits at ~0.9 m the *whole* flight —
+  the thing `docs/50`'s own real-log data actually shows, on **both** drones, in nearly
+  every scenario, not just the one under downwash): **Task 5 — this is a real, credible
+  fix.** `ki_z=16` closes 81-88% of the gap within a realistic 8s hold. **Worth a hardware
+  test now** (C.0 solo hover, flag on).
 
 **Validated 2026-09-29 (independent check):** SHA256 of the OFF binary reproduced
 bit-for-bit from a clean rebuild; SIL JSON numbers confirmed self-consistent; anti-windup
@@ -193,6 +199,53 @@ this recommendation).
 
 ---
 
+## Task 5 — corrected scenario: persistent hover-height bias, not disturbance-onset (2026-09-29)
+
+**Tasks 1-4 above tested the wrong scenario for `docs/50`'s own original motivation.** The
+disturbance sweep injected a constant force **mid-flight (t=5s)** and measured recovery
+afterward — that models "suddenly enters downwash partway through a hover," not "the drone
+sits persistently below commanded height the whole time," which is what real flight data
+actually shows and what this term was originally motivated by.
+
+**Real-data check** (`experiments/analysis/out/position_integral_z_bias_2026-09-26.json`, the
+same dataset `docs/50` Task 1 used): the sag is present in **every scenario checked, on both
+drones** — including the top drone in formations, which isn't under downwash. `cf_second` at
+A1/A2/A3/A8 shows −5% to −20% sag despite not being the drone exposed to the other's downwash.
+This is a persistent, consistent-sign bias (never positive) — evidence of a real, constant
+model bias (thrust curve, mass estimate, or similar), not primarily a downwash-transient
+effect.
+
+**Re-ran the SIL test correctly**: bias present from **t=0** (the whole flight, not injected
+mid-way), measured over a realistic **8s hold** (not an extended 14s window with a late
+onset). Two magnitudes calibrated to match the real-data percentages above:
+
+| Bias magnitude | Gain | Error after 8s hold |
+|---|---:|---:|
+| ~4% sag (A3/A8-scale) | OFF | −2.3 cm |
+| | `ki_z=8` (current default) | **−0.8 cm** (64% closed) |
+| | `ki_z=16` | −0.3 cm (88% closed) |
+| ~17% sag (A1-scale) | OFF | −9.7 cm |
+| | `ki_z=8` (default) | **−4.2 cm** (57% closed) |
+| | `ki_z=16` | −1.8 cm (81% closed) |
+| | `ki_z=32` | −0.4 cm (96% closed) |
+
+**This is a real, meaningful correction** — because the bias is present from the start, the
+integral has the *entire* flight to converge, unlike the disturbance-onset case in Task 4 where
+it only had the leftover time after a late event. Tasks 1-4's "don't enable" verdict was correct
+for *disturbance rejection* (a downwash transient encountered mid-flight) but does not apply to
+*persistent bias correction* (a hover that's just always low) — these are two different
+problems, and only the first was actually tested before this task.
+
+**Revised recommendation:** `ki_z=16` (2x the current default) looks like a good candidate —
+strong correction (81-88% depending on bias magnitude) without the most aggressive tested gain.
+Worth taking to hardware now: C.0 solo hover with `ENABLE_Z_INTEGRAL=true`, compare real
+`z − ctrltarget_z` against the un-integrated baseline over a normal hold duration. This is a
+**lab step**, not further desk work — the SIL case for trying it is now real.
+
+Artifact: `experiments/analysis/ki_z_constant_bias_sil.py`.
+
+---
+
 ## Artifacts
 
 | File | Role |
@@ -204,6 +257,7 @@ this recommendation).
 | `flying_drone_stack/firmware_app/host/cffirmware_bindings.patch` | SWIG externs |
 | `experiments/analysis/ki_z_gain_sweep.py` | Task 4 — gain sweep (mean/rmse table, read with the trace script below) |
 | `experiments/analysis/ki_z_gain_sweep_transient_trace.py` | Task 4 — transient trace that reveals peak-dip-is-gain-invariant |
+| `experiments/analysis/ki_z_constant_bias_sil.py` | Task 5 — corrected scenario, bias from t=0, realistic hold length |
 
 **Related (controller=10 telemetry triage, not this integral):**
 `experiments/analysis/check_omar_rust_telemetry.py`.
