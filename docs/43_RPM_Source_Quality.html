@@ -118,11 +118,15 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Desk study — closed 27 Sep 2026 · sensor quality only (no queued follow-up)</div>
+  <div class="eyebrow">Desk study · reopened 29 Sep 2026 (spike filter + methods) · sensor quality only</div>
   <h1>RPM Source Quality</h1>
   <p class="lede">Does the <strong>optical RPM deck</strong> agree with <strong>DShot</strong>
     bidirectional telemetry on real C.1 flights? Bias, lag, and dropout across
     <strong>29</strong> merged logs — not a stability claim, not a policy change.</p>
+  <p class="lede"><strong>Latency vs policy:</strong> the <strong>deck is faster</strong> — lag is
+    reported as <strong>positive when DShot lags the deck</strong> (typically a few ms, often on a
+    2&nbsp;ms grid). <strong>DShot feeds control for reliability</strong> (deck reported zero on
+    2/4 motors in real 2-drone flight), <em>not</em> because it is the lower-latency channel.</p>
   <p class="refline">
     Script · <code>experiments/analysis/rpm_source_quality.py</code> ·
     Outputs · <code>experiments/analysis/out/rpm_source_quality/</code> ·
@@ -152,35 +156,31 @@ footer{
       </tbody>
     </table>
     <p class="note">Since 2026-09-16, DShot feeds control (<code>rpm_source=1</code>) because the
-      deck reported zero on 2/4 motors in real 2-drone flight. C.1 flights are
-      <strong>geometric on cf5</strong>, not full INDI — both sources are logged on every flight
-      regardless of which one is active, so this comparison covers the whole dataset.</p>
-    <p class="note"><strong>Desk status (27 Sep 2026):</strong> investigation <strong>complete</strong> — no
-      further RPM-quality desk work queued. DShot spike root-cause: markdown § Extension — 2026-09-27 (4).
-      A2 top-deck dropout remains open for <strong>physical inspection</strong>, not log analysis.</p>
+      deck reported zero on 2/4 motors in real 2-drone flight — <strong>reliability, not speed</strong>.
+      C.1 flights are <strong>geometric on cf5</strong>; both sources are logged every flight.</p>
+    <p class="note"><strong>Headline RMSE (29 Sep 2026):</strong> spike-robust median
+      <strong>~126 RPM</strong> vs raw diagnostic <strong>~771 RPM</strong> — see
+      <code>docs/43_RPM_Source_Quality.md</code> metric table. Firmware
+      <code>rpm_get_all()</code> spike guard added 2026-09-29; historical logs predate it.
+      A2 top-deck dropout remains open for <strong>physical inspection</strong>.</p>
   </div>
 </section>
 
 <section>
-  <h2>Pipeline — how the numbers were made</h2>
-  <ol class="steps">
-    <li><strong>Load</strong> both C.1 manifests, keep only entries that actually merged
-      (<code>merge_status == "merged"</code>, or present in the 21-Sep manifest which predates
-      that field).</li>
-    <li><strong>Detect vehicle prefixes</strong> from each merged CSV's own header — never
-      hardcoded — since 23-Sep merges use <code>cf5.</code>/<code>cf_second.</code> and 21-Sep
-      merges use long run-stamped prefixes like <code>cf5_A3_13-00-57.</code>.</li>
-    <li><strong>Per motor, per vehicle:</strong> validity mask
-      <code>(deck&gt;0) &amp; (dshot&gt;0) &amp; (dshot&lt;60000)</code> (guards DShot's
-      <code>0xFFFF</code> invalid sentinel), then bias / RMSE / max-error / cross-correlation lag
-      on the valid rows.</li>
-    <li><strong>Self-test before trusting any lag number:</strong> inject a known 5-sample
-      (10 ms) shift into both a synthetic trace and a real <code>cf5.rpm_m1</code> trace pulled
-      from an actual merge — the pipeline aborts if either fails to recover exactly 10.00 ms.</li>
-    <li><strong>Aggregate</strong> per scenario × vehicle role, reporting <strong>n</strong> at
-      every level and the <strong>worst</strong> case alongside the mean — a global mean would
-      hide the one scenario that actually fails (see below).</li>
-  </ol>
+  <h2>Metric reference</h2>
+  <p style="color:var(--ink-2); font-size:.92rem">Full table (formulas, masks, functions):
+    <code>docs/43_RPM_Source_Quality.md</code>. Lag: <strong>+ ms = DShot lags deck</strong>.</p>
+  <div class="panel scroll">
+    <table class="compact">
+      <thead><tr><th>Metric</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>rmse_robust_rpm</code></td><td>Headline — excludes |Δ| &gt; 10k RPM spikes</td></tr>
+        <tr><td><code>rmse_raw_rpm</code></td><td>Diagnostic — dominated by DShot telemetry glitches</td></tr>
+        <tr><td><code>bias_pct</code>, <code>lag_ms</code></td><td>Base valid mask; lag via <code>cross_corr_lag</code></td></tr>
+        <tr><td><code>deck_zero_pct</code></td><td>Dropout — deck path only (A2 top)</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section>
@@ -277,13 +277,12 @@ footer{
       During C.1 data collection, onboard uSD logging recorded both optical-deck RPM
       (<code>rpm.m1–4</code>) and DShot bidirectional ESC RPM (<code>motor.m1_rpm–m4_rpm</code>)
       at 500&nbsp;Hz on every flight, independent of the control path. Since 2026-09-16, the
-      bottom (geometric) drone uses <code>indi_gains.rpm_source=1</code>, so DShot telemetry
-      feeds torque reconstruction and the logged residual <code>indi.a_res_*</code>; the deck
-      remained on the airframe as a parallel logged channel for post-hoc agreement checks. Across
-      29 merged sessions, agreement is sub-percent and lag single-digit milliseconds on the
-      collection drone, with one scenario-specific exception (A2, top vehicle) where the deck
-      drops out on the majority of samples. This does not assert either source would behave
-      identically inside a closed-loop INDI experiment.</p>
+      bottom (geometric) drone uses <code>indi_gains.rpm_source=1</code> so DShot feeds torque
+      reconstruction and logged <code>indi.a_res_*</code> — chosen for <strong>motor dropout
+      reliability</strong>, not latency (DShot typically <strong>lags</strong> the deck by a few
+      ms). Agreement is sub-percent bias with spike-robust RMSE ~128 RPM (median motor-row); the
+      deck stayed mounted for parallel logging. A2 top shows deck dropout; rare DShot spikes are
+      filtered in firmware as of 2026-09-29.</p>
   </div>
 </section>
 

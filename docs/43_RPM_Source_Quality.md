@@ -1,15 +1,55 @@
 # 43 — RPM source quality (deck vs DShot on C.1 merged logs)
 
-**Date:** 2026-09-23 (desk)  
-**Framing:** This is a **sensor-quality** study only — agreement, lag, and dropout between the optical RPM deck and DShot bidirectional telemetry on the **actual C.1 dataset**. It does **not** reopen July’s DShot/INDI root-cause narrative, does **not** claim closed-loop stability, and does **not** propose changing the standing **`indi_gains.rpm_source=1`** policy.
+**Date:** 2026-09-23 (desk); **reopened 2026-09-29** (spike filter + methods + control-path check)  
+**Framing:** **Sensor-quality** study — agreement, lag, and dropout between the optical RPM deck and DShot bidirectional telemetry on the **C.1 merged dataset**. Not a closed-loop stability claim; **does not** change standing **`indi_gains.rpm_source=1`**.
 
-**Desk status (2026-09-27):** **Complete** — no further RPM-quality desk work queued. DShot spike
-root-cause note: § Extension — 2026-09-27 (4). A2 top-deck dropout remains an **open hardware
-inspection** item, not a desk backlog.
+**Reproduce:** `python3 experiments/analysis/rpm_source_quality.py` (add `--no-plots` if matplotlib/numpy clash)  
+**Outputs:** `experiments/analysis/out/rpm_source_quality/`  
+**Web page:** [`43_RPM_Source_Quality.html`](43_RPM_Source_Quality.html)
 
-**Reproduce:** `experiments/analysis/out/rpm_source_quality/README.md`  
-**Tool:** `experiments/analysis/rpm_source_quality.py` (imports validated `cross_corr_lag` from `flying_drone_stack/tools/investigate_dshot_rpm.py`; does not modify that script).  
-**Web page:** [`43_RPM_Source_Quality.html`](43_RPM_Source_Quality.html) — same content, browsable format.
+---
+
+## Latency vs policy (read this first)
+
+**The optical deck is faster than DShot telemetry, not slower.** On these logs, cross-correlation lag is **positive in the deck-vs-DShot convention used here: positive ms = DShot lags the deck.** Typical dual-vehicle rows sit around **0–5 ms** mean lag on cf5 (bottom), often **2–5 ms** on cf_second (top), with many values on the **2 ms** grid from **500 Hz** sampling. Nearly every finite lag row in the summary table is **≥ 0** — DShot is the delayed channel.
+
+**DShot was adopted for control (`indi_gains.rpm_source=1`, default since 2026-09-18) because of reliability, not speed:** in real **2-drone** flight the optical deck reported **exactly zero on two of four motors** for extended intervals while DShot stayed live (`docs/23_DShot_RPM_Investigation.md`, `docs/07` History). The deck remains on the airframe as a **parallel logged** reference; control and logged `indi.a_res_*` use DShot when `rpm_source=1`.
+
+---
+
+## Metric reference (single source of truth)
+
+All metrics are per **motor-row** (one vehicle prefix × one motor × one merged CSV), computed in `metrics_one_motor()` unless noted.
+
+| Metric | Formula / rule | Units | Sample inclusion | Function |
+|--------|----------------|-------|------------------|----------|
+| **deck_zero_pct** | mean(`deck ≤ 0`) × 100 | % | all rows in merge | `metrics_one_motor` |
+| **dshot_zero_pct** | mean(`dshot ≤ 0`) × 100 | % | all rows | `metrics_one_motor` |
+| **bias_rpm** | mean(`dshot − deck`) on **base valid** mask | RPM | base valid | `metrics_one_motor` |
+| **bias_pct** | 100 × mean(`dshot − deck`) / mean(`deck`) on base valid | % | base valid | `metrics_one_motor` |
+| **bias_robust_*** | same as bias_* on **robust** mask | RPM / % | robust valid | `metrics_one_motor` |
+| **rmse_robust_rpm** | √(mean((`dshot − deck`)²)) on **robust** mask — **headline** tracking error | RPM | robust valid | `metrics_one_motor` |
+| **rmse_raw_rpm** | same on **base valid** only — **diagnostic**; dominated by DShot spikes | RPM | base valid | `metrics_one_motor` |
+| **max_abs_err_rpm** | max \|dshot − deck\| on base valid | RPM | base valid | `metrics_one_motor` |
+| **n_spike_excluded** | count base valid with \|err\| > 10 000 RPM | samples | — | `metrics_one_motor` |
+| **lag_ms** | `cross_corr_lag(deck, dshot, fs=500)` on base valid, ±50 ms search; **+ = DShot lags deck** | ms | base valid (≥50 samples) | `cross_corr_lag` in `rpm_source_quality.py` |
+| **Rolling lag** | same `cross_corr_lag` on 2.0 s windows, 0.5 s step | ms | per-window valid | `rolling_cross_corr_lag` |
+
+**Masks**
+
+- **Base valid:** `(deck > 0) & (dshot > 0) & (dshot < 60 000)` — excludes deck dropout and DShot **0xFFFF** invalid sentinel (`60000` guard).
+- **Robust valid:** base valid **and** `|dshot − deck| ≤ 10 000` RPM — excludes known DShot telemetry spike outliers (§ Spike root cause).
+
+**Fleet headline (29 manifest merges, 2026-09-29 re-run):**
+
+| Statistic | rmse_robust_rpm (headline) | rmse_raw_rpm (diagnostic) |
+|-----------|---------------------------:|--------------------------:|
+| Median across motor-rows | **~126 RPM** | **~771 RPM** |
+| Mean across motor-rows | **~140 RPM** | **~782 RPM** |
+
+Source: `experiments/analysis/out/rpm_source_quality/fleet_robust_rmse.json`, `per_flight.csv`.
+
+Historical CSVs **predate** the firmware spike guard in `rpm_get_all()` (2026-09-29); re-analysis uses robust RMSE on logs only — it does not retroactively simulate the guard.
 
 ---
 
@@ -17,202 +57,88 @@ inspection** item, not a desk backlog.
 
 | Item | Count / note |
 |------|----------------|
-| Merged C.1 CSVs | **29** (`8` × `c1_2026-09-21_merged/`, `21` × `c1_2026-09-23_merged/`) |
-| Manifests | `manifest_2026-09-21_c1.json` (8 paths, no `merge_status` field), `manifest_2026-09-23_c1.json` (**25** entries: **21** `merged`, **2** `no_usd`, **2** `merge_failed`) |
-| Dual RPM in headers | **29/29** (line 1 `# meta:`; column names on line 2) |
-| Single-vehicle merges | **8** (all **C5**, cf5-only — excluded from cross-vehicle comparison) |
-| Raw `.bin` under `usd_raw/` | **91** (not used as analysis input; filenames can invert card vs role — see `*_PAIRING.md`) |
-| uSD config | `flying_drone_stack/tools/usd_thesis_config.txt` — **48** channels, **500 Hz**, both RPM sources |
+| Merged C.1 CSVs | **29** (manifest-filtered) |
+| Dual RPM in headers | **29/29** |
+| Motor-rows | **200** (29 flights × vehicles × 4 motors, minus solo C5 top) |
+| uSD config | **48** channels, **500 Hz**, both RPM sources |
 
-Analysis uses the **full merged time series** per motor with validity mask `(deck>0) & (dshot>0) & (dshot<60000)` (guards DShot `0xFFFF` invalid sentinel), same as `investigate_dshot_rpm.py`.
-
-**Synthetic lag self-test:** injected **5** samples (**10.0 ms**) → recovered **10.00 ms** — **PASS**.
+Synthetic lag self-test: **5** samples (**10 ms**) → recovered **10.00 ms** — **PASS** (synthetic + real `cf5.rpm_m1` trace).
 
 ---
 
 ## Summary by scenario and vehicle role
 
-Vehicle role from merge column prefix: `cf5*` → **bottom**, `cf_second*` → **top**.  
-Lag: **positive ms = DShot lags deck**. Values often quantize to **2 ms** (500 Hz sample period).  
-**Worst** columns are max over motor-rows in that bucket (not a single global mean).
+Vehicle role: `cf5*` → **bottom**, `cf_second*` → **top**.  
+Lag: **positive ms = DShot lags deck**.  
+Bias / lag table unchanged in structure — see `summary_by_scenario_vehicle.csv` (bias still sub-percent except A2 top deck dropout).
 
-| Scenario | Role | n flights | n motor-rows | bias % mean | bias % worst \|·\| | lag ms mean | lag ms max | deck zero % worst | DShot zero % worst |
-|----------|------|-----------|--------------|-------------|-------------------|-------------|------------|-------------------|---------------------|
-| A1 | bottom | 6 | 24 | +0.019 | 0.28 | 0.67 | 4 | 0.0 | 0.0 |
-| A1 | top | 6 | 24 | −0.017 | 0.30 | 4.67 | **44** | 0.0 | 0.0 |
-| A2 | bottom | 2 | 8 | −0.063 | 0.22 | 1.0 | 2 | 0.0 | 0.0 |
-| A2 | top | 2 | 8 | −0.899 | **3.72** | 0.0 | 0 | **69.8** | 0.0 |
-| A3 | bottom | 7 | 28 | −0.065 | 0.34 | 1.79 | 4 | 0.0 | 0.0 |
-| A3 | top | 7 | 28 | −0.073 | 0.22 | 2.71 | 24 | 0.0 | 0.0 |
-| A7 | bottom | 3 | 12 | −0.003 | 0.16 | 1.5 | 2 | 0.0 | 0.0 |
-| A7 | top | 3 | 12 | −0.070 | 0.21 | 5.5 | 36 | 0.0 | 0.0 |
-| A8 | bottom | 3 | 12 | −0.053 | 0.34 | 2.17 | 6 | 0.0 | 0.0 |
-| A8 | top | 3 | 12 | −0.078 | 0.27 | 0.0 | 10 | 0.0 | 0.0 |
-| C5 | bottom | 8 | 32 | −0.091 | 0.42 | 2.62 | 24 | 0.0 | 0.0 |
-
-Source CSV: `experiments/analysis/out/rpm_source_quality/summary_by_scenario_vehicle.csv`  
-Per-flight detail: `per_flight.csv` (**200** motor-rows = 29 flights × dual vehicles where present × 4 motors, minus single-vehicle C5 top).
-
-Figure: `experiments/analysis/out/rpm_source_quality/overview_lag_bias_by_role.png`.
+Figure: `overview_lag_bias_by_role.png` (optional `--no-plots` skip).
 
 ---
 
-## Open finding — A2 top vehicle, deck dropout (all four motors)
+## Open finding — A2 top vehicle, deck dropout
 
-Both **A2** merges (`19-21-05`, `19-27-03`; legacy circle profile, top align RMS flagged in manifest) show **cf5 (bottom): 0% deck zero** on all motors. **cf_second (top): deck reads zero ~54–70% of samples on every motor** in both flights; **DShot zero % = 0%** on the same rows.
-
-| Flight | Role | Motor | deck zero % | DShot zero % | bias % (valid samples only) |
-|--------|------|-------|-------------|--------------|----------------------------|
-| 19-21-05 | top | m1–m4 | 63.1, 67.9, 68.1, 67.6 | 0.0 each | −1.20, −0.26, −0.61, −0.21 |
-| 19-27-03 | top | m1–m4 | 69.6, 68.9, **53.8**, 69.8 | 0.0 each | −0.19, −0.38, **−3.72**, −0.62 |
-
-**Scope:** Not m1-specific — **airframe-wide on the top drone during A2 only** among this dataset. No root-cause claim here (markers, geometry, deck driver, etc.). Lag estimates on top/A2 are **not meaningful** when most deck samples are zero (reported as 0 ms where cross-correlation has insufficient valid pairs).
+Both **A2** merges: **cf_second (top)** deck **zero ~54–70%** on all motors; **DShot 0%** dropout. **cf5 (bottom)** 0% deck zero. Physical inspection still open; not a DShot spike issue.
 
 ---
 
-## Top vs bottom — lag and noise
+## Spike root cause and control-path impact (2026-09-29)
 
-On **dual-vehicle** scenarios, **top (`cf_second`)** shows **larger and more variable** cross-correlation lags than **bottom (`cf5`)** when deck data are present (e.g. A1 top lag mean **4.7 ms** vs bottom **0.7 ms**; A7 top max **36 ms** vs bottom **2 ms**). Many values sit on **±2 ms** grid from 500 Hz sampling; occasional larger peaks (44 ms on one A1 top motor-row) should be read as **noisy extrema**, not calibrated actuator delay. **Bias magnitude** stays **sub-percent** except where deck dropout dominates (A2 top).
+### What the spikes are
+
+Rare **DShot-side** decoded values (**~28k–59k RPM**, passing `dshot < 60000`) while **deck stays ~11–18k RPM** at the same instant. Example on record: **A3 13-04-34** bottom **m1**, **t ≈ 18.268 s** — deck **11 569**, DShot **59 363**.
+
+### Investigation (`rpm_spike_investigation.py` → `spike_investigation.json`)
+
+| Finding | Detail |
+|---------|--------|
+| Spike samples (base valid, \|err\| > 10k) | **~1 540** on original 29-flight set; **~2 121** if extra merges present in tree |
+| Share of raw MSE | **~96%** (2026-09-27 count; same mechanism) |
+| Burst length | Median **2** consecutive 500 Hz samples (**2–4 ms**); max run **15** |
+| Motor identity | All **m1–m4** affected (roughly balanced) |
+| Scenario | Widespread (A1/A3/A7/A8/C5, …); **not** one flight |
+| Ruled out | Deck dropout at spike times; single-motor-only; 0xFFFF sentinel; “one packet” only |
+
+**Root cause (honest):** No single hardware fault line identified. Best fit: **intermittent bidirectional DShot telemetry decode / slot glitches** producing physically impossible eRPM for 1–2 control/log ticks while the optical deck (independent path) stays coherent. **Not** correlated with uSD-logged `ctrl_mode` transitions (column absent). **Not** a clean function of commanded PWM step in neighbor samples.
+
+### Do spikes reach the live control signal?
+
+On **logged geometric flights** (`indi.a_res_*` always written when RPMs exist):
+
+- **`|Δ a_res_z|` per 500 Hz tick** at spike instants: median **~0.036 m/s²** vs **~0.006 m/s²** on matched non-spike samples (**~6×** ratio); p95 **~0.40 m/s²** at spikes.
+- **`tau_*` logs** are **0** on these C.1 geometric runs — no torque-channel correlation available from uSD.
+
+**Conclusion:** The existing **Butterworth / INDI filter chain does not fully hide a 2–4 ms RPM spike** in the **logged residual** — bursts are **small but elevated** vs baseline. At **1 kHz** `rpm_get_all()` the same raw DShot values feed thrust/torque reconstruction **before** filtering; a mid-flight guard is **justified**, not cosmetic.
+
+### Firmware guard (2026-09-29)
+
+In `traj_iface.c` **`rpm_get_all()`**, when `g_indi_rpm_source != 0` (DShot path):
+
+1. Existing **0xFFFF → 0** unchanged.  
+2. Reject **> 28 000 RPM** absolute.  
+3. Reject **> 10 000 RPM** step vs previous accepted sample per motor.  
+4. On reject: **hold previous valid** RPM (do not zero).
+
+**Does not** change `rpm_source` default or deck path behavior. **`make DRONE=bl`** clean after change.
 
 ---
 
 ## Thesis methods (draft paragraph)
 
-During C.1 data collection, onboard uSD logging recorded **both** optical-deck RPM (`rpm.m1–4`) and DShot bidirectional ESC RPM (`motor.m1_rpm–m4_rpm`) at **500 Hz** on every flight (`usd_thesis_config.txt`), independent of the control path. Since **2026-09-16**, the bottom geometric controller drone uses **`indi_gains.rpm_source=1`**, so **DShot telemetry feeds INDI torque reconstruction and the logged residual `indi.a_res_*`**; the deck remained on the airframe as a **parallel logged channel** for post-hoc agreement checks. This document quantifies deck–DShot bias, lag, and dropout on **29** merged two-drone (or single-drone C5) sessions; it does not assert that either source would behave identically inside a closed-loop INDI experiment.
+During C.1 data collection, onboard uSD logging recorded **both** optical-deck RPM (`rpm.m1–4`) and DShot ESC RPM (`motor.m1_rpm–m4_rpm`) at **500 Hz**, independent of which source feeds control. Since **2026-09-16**, the bottom drone uses **`indi_gains.rpm_source=1`**: **DShot feeds torque reconstruction and logged `indi.a_res_*`** because the deck **dropped two motors in real 2-drone flight**, **not** because DShot is lower-latency — cross-correlation shows **DShot typically lags the deck by a few milliseconds**. Post-hoc agreement is summarized with **spike-robust RMSE** (~**126 RPM** median motor-row) versus raw RMSE (~**771 RPM**), reflecting rare DShot telemetry glitches. A **2026-09-29** `rpm_get_all()` sanity filter rejects implausible DShot spikes on the live path; historical logs predate that filter.
 
 ---
 
-## Extension — 2026-09-26: raw overlays + rolling lag
+## Extensions (plots and tables)
 
-**Reproduce:** re-run `experiments/analysis/rpm_source_quality.py` (same entry point as above; writes additive PNGs only).
+Earlier desk extensions (2026-09-26 overlays, rolling lag, grid4, flight summary table) remain in `experiments/analysis/out/rpm_source_quality/`. Read **lag** panels with the **positive = DShot lags deck** convention and A2 dropout caveat.
 
-### Metric definitions (plots)
-
-- **Deck RPM (blue):** optical-deck-derived rotor speed (`<role>.rpm_m1`–`m4`), logged at **500 Hz** on the merged uSD CSV.
-- **DShot RPM (orange):** ESC bidirectional-telemetry rotor speed (`<role>.motor_m1_rpm`–`m4_rpm`), **same drone, same `t` column**. The overlay is both raw traces on one clock — gaps, dropouts, and tracking differences are visible without a summary statistic.
-- **Deck ≤ 0 shading / markers:** where the deck reads zero, the plot shades that time range (and marks samples at **y = 0**) so dropout shape (sustained vs intermittent) is visible.
-
-- **Rolling lag:** the existing **`lag_ms`** is **one** cross-correlation over the **entire** flight (valid samples only, ±50 ms search, same as `cross_corr_lag()`). **Rolling lag** repeats that same function on **2.0 s** windows stepped every **0.5 s** (`rolling_cross_corr_lag()` in `rpm_source_quality.py`); the x-axis is **window center time**. A flat rolling curve means timing is stable; a drifting x-axis trend would mean relative delay changes during the flight.
-
-### New figures
-
-| File | What it shows |
-|------|----------------|
-| [`overlay_A2_19-27-03_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A2_19-27-03_m3.png) | **A2 top, m3** — intermittent deck zeros (~54% flight) while DShot stays non-zero; dropout pattern visible. |
-| [`overlay_A3_13-00-57_cf5_m2.png`](../experiments/analysis/out/rpm_source_quality/overlay_A3_13-00-57_cf5_m2.png) | **Clean baseline** — A3 bottom **m2**, ~0% deck zero, deck/DShot track together. |
-| [`overlay_A1_17-17-26_cf_second_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A1_17-17-26_cf_second_m3.png) | A1 top **m3** (flight-wide **lag_ms = 44** in table). |
-| [`overlay_A7_19-11-19_cf_second_m3.png`](../experiments/analysis/out/rpm_source_quality/overlay_A7_19-11-19_cf_second_m3.png) | A7 top **m3** (flight-wide **lag_ms = 36**). |
-| `rolling_lag_*` PNGs (same stems) | Rolling lag vs time for the same four cases; dashed line = flight-wide **`lag_ms`**. |
-
-### Rolling lag vs single-number `lag_ms`
-
-On **A3 13-00-57 cf5 m2** (clean), rolling lag stays near **0–4 ms** (median **~2 ms**), consistent with the flight-wide **4 ms** — **no meaningful drift**.
-
-On **A1 top m3** and **A7 top m3**, rolling lag spends most windows near **±2 ms** (500 Hz quantization) with **occasional ±24–50 ms spikes**; the flight-wide **44 ms / 36 ms** values are **not** a sustained offset visible across the whole timeline — they are **extrema from one global correlation**, not a phase where DShot systematically lags by tens of ms. **Do not reinterpret those peaks as actuator delay without further checks.**
-
-On **A2 top m3**, many windows lack enough valid deck samples; finite rolling values jump between correlation-window limits — **lag plots are not interpretable** where deck dropout dominates (same caveat as § open finding).
-
----
-
-## Extension — 2026-09-26 (2): 4-motor grids + flight summary table
-
-**Reproduce:** `rpm_source_quality.py` also writes `grid4_*.png` and `flight_summary_table.md`.
-
-### 4-motor overlay grids (top-3 |lag|, A2 excluded)
-
-Full-flight **2×2** deck vs DShot on the **top** vehicle (`cf_second` / suffixed prefix), subplot titles show that motor’s **`bias_pct`** and **`lag_ms`** from `per_flight.csv`.
-
-| Plot | Flight (max |lag| motor) |
-|------|-------------------------|
-| [`grid4_A1_17-17-26.png`](../experiments/analysis/out/rpm_source_quality/grid4_A1_17-17-26.png) | A1 top **m3**, **44 ms** |
-| [`grid4_A7_19-11-19.png`](../experiments/analysis/out/rpm_source_quality/grid4_A7_19-11-19.png) | A7 top **m3**, **36 ms** |
-| [`grid4_A3_13-04-34.png`](../experiments/analysis/out/rpm_source_quality/grid4_A3_13-04-34.png) | A3 top **m4**, **24 ms** |
-
-Figure legend (once per plot): **deck RPM** = optical deck; **DShot RPM** = ESC telemetry; same **500 Hz** clock as § above.
-
-### Successful flights — deck vs DShot (A2 excluded)
-
-One row per merged flight; metrics are **means/maxes over all motor rows** in that CSV (4 on solo C5, 8 on dual-vehicle merges). Source: `per_flight.csv` only (no recomputation).
-
-**Corrected 2026-09-26 (later same day):** the "Mean lag" column previously averaged **signed**
-`lag_ms` per flight, which let positive and negative per-motor lags cancel out (visible as a
-negative flight-level mean, e.g. A1 `13-25-10` originally showed **−1.8 ms**). Fixed to average
-`|lag_ms|` per flight instead, matching the "Mean |bias|" and "Max |lag|" columns, which were
-already absolute-value. Table below regenerated with the fix; median lag moved from 2.0 to
-**3.0 ms** (mean 2.5 → 3.6 ms) — bias and max-lag columns unchanged.
-
-**Headline (27 flights, A2 omitted):** median **|bias| ≈ 0.115%**, median **|lag| ≈ 3.0 ms** — sub-percent bias and a few sample periods of lag for typical sessions; larger **max |lag|** peaks (24–44 ms) appear on individual motor-rows, not as fleet-wide medians.
-
-| Scenario | Flight | Mean \|bias\| % | Mean Δ (RPM) | Mean \|lag\| (ms) | Max \|lag\| (ms) | Deck dropout % | DShot dropout % |
-|----------|--------|---------------|--------------|---------------|----------------|-----------------|-----------------|
-| A1 | 12-51-16 | 0.064 | 10.6 | 2.2 | 6.0 | 0.0 | 0.0 |
-| A1 | 13-25-10 | 0.123 | 19.5 | 3.2 | 10.0 | 0.0 | 0.0 |
-| A1 | 17-17-26 | 0.094 | 16.1 | 8.5 | 44.0 | 0.0 | 0.0 |
-| A1 | 17-18-48 | 0.095 | 16.4 | 4.5 | 24.0 | 0.0 | 0.0 |
-| A1 | 17-36-06 | 0.083 | 13.9 | 2.8 | 8.0 | 0.0 | 0.0 |
-| A1 | 17-37-26 | 0.078 | 12.9 | 1.8 | 4.0 | 0.0 | 0.0 |
-| A3 | 13-00-57 | 0.131 | 20.4 | 2.5 | 4.0 | 0.0 | 0.0 |
-| A3 | 13-02-56 | 0.115 | 18.2 | 2.5 | 4.0 | 0.0 | 0.0 |
-| A3 | 13-04-34 | 0.085 | 13.3 | 4.5 | 24.0 | 0.0 | 0.0 |
-| A3 | 17-45-03 | 0.081 | 12.6 | 1.8 | 6.0 | 0.0 | 0.0 |
-| A3 | 17-46-43 | 0.078 | 12.4 | 4.2 | 16.0 | 0.0 | 0.0 |
-| A3 | 17-54-32 | 0.108 | 17.0 | 2.8 | 4.0 | 0.0 | 0.0 |
-| A3 | 17-57-32 | 0.090 | 14.4 | 2.5 | 4.0 | 0.0 | 0.0 |
-| A7 | 19-11-19 | 0.099 | 16.4 | 7.5 | 36.0 | 0.0 | 0.0 |
-| A7 | 19-12-38 | 0.073 | 12.1 | 2.5 | 4.0 | 0.0 | 0.0 |
-| A7 | 19-13-55 | 0.094 | 15.6 | 3.0 | 16.0 | 0.0 | 0.0 |
-| A8 | 12-11-05 | 0.133 | 20.7 | 3.2 | 10.0 | 0.0 | 0.0 |
-| A8 | 12-11-46 | 0.165 | 25.9 | 1.0 | 2.0 | 0.0 | 0.0 |
-| A8 | 13-14-36 | 0.128 | 20.2 | 4.0 | 8.0 | 0.0 | 0.0 |
-| C5 | 18-02-55 | 0.164 | 24.9 | 2.5 | 6.0 | 0.0 | 0.0 |
-| C5 | 18-03-53 | 0.172 | 26.0 | 4.0 | 8.0 | 0.0 | 0.0 |
-| C5 | 18-06-27 | 0.229 | 35.5 | 3.5 | 10.0 | 0.0 | 0.0 |
-| C5 | 18-08-14 | 0.196 | 30.2 | 4.0 | 8.0 | 0.0 | 0.0 |
-| C5 | 18-16-49 | 0.149 | 22.8 | 9.5 | 24.0 | 0.0 | 0.0 |
-| C5 | 18-17-45 | 0.210 | 32.6 | 2.0 | 4.0 | 0.0 | 0.0 |
-| C5 | 18-18-41 | 0.194 | 30.2 | 3.5 | 4.0 | 0.0 | 0.0 |
-| C5 | 18-21-19 | 0.144 | 22.2 | 3.0 | 4.0 | 0.0 | 0.0 |
-| **All flights (mean)** | — | **0.125** | **19.7** | **3.6** | **11.2** | — | — |
-| **All flights (median)** | — | **0.115** | **18.2** | **3.0** | **8.0** | — | — |
-| **All flights (std)** | — | **0.045** | **6.7** | **2.0** | **10.4** | — | — |
-
----
-
-## Extension — 2026-09-26 (3): Δ RPM panels + richer flight table
-
-**Reproduce:** same `rpm_source_quality.py` run; overwrites existing `overlay_*.png` and `grid4_*.png` in place (`rolling_lag_*` unchanged).
-
-**Plot layout (readability):** at full RPM scale (~10–20k), sub-percent deck/DShot bias makes the two traces look like one color. Overlays are now **two stacked panels** (top: deck + DShot as before, with deck-zero shading unchanged; bottom: **DShot − deck** on its own y-axis, shared time). Single-motor overlays use **figsize (12, 6)** and **lw ≈ 1.0**. The three **`grid4_*`** flights (same `GRID4_LAG_FLIGHTS` as § (2)) are **4 rows × 2 columns** per figure: left column RPM overlay per motor, right column that motor’s Δ panel; **figsize (14, 16)**. No change to underlying RPM samples or metric functions.
-
-**Flight summary table:** § (2) table above now includes **Mean Δ (RPM)** (per-flight mean of `|bias_rpm|` over motor rows) and an **All flights (std)** row (std across the 27 flights for bias %, Δ RPM, mean |lag|, max |lag|). Source still `per_flight.csv` aggregation only.
-
----
-
-## Extension — 2026-09-27 (4): RMSE vs `max_abs_err_rpm` (DShot telemetry spikes)
-
-**Context:** On `per_flight.csv` (200 motor-rows, same valid mask as `metrics_one_motor()`: `deck > 0`, `DShot > 0`, `DShot < 60 000`), median **`rmse_rpm` ≈ 771 RPM** sits next to median **`max_abs_err_rpm` ≈ 40 507 RPM** (fleet max ≈ 47 794 RPM). That pairing is real but easy to misread: the two columns summarize different parts of the error distribution.
-
-**What the spikes are:** Worst-sample errors are dominated by **rare DShot-side telemetry spikes** (often **~50–59k RPM**, still passing **`rs < 60 000`**) while **deck RPM at the same instant stays in the normal hover band (~12–16k)**. This is **not** deck dropout, **not** a sustained deck/DShot disagreement (median **`bias_rpm`** remains small), and **not** “motor RPM actually reached ~45k.” Example (worst row in the table): **A3 `13-04-34` bottom m1** at **t ≈ 18.268 s** — deck **11 569**, DShot **59 363**, **|err| ≈ 47 794**; adjacent 500 Hz samples track normally.
-
-**Fleet counts (merged CSVs reloaded, valid mask unchanged):**
-
-| Quantity | Value |
-|----------|--------|
-| Valid samples (all motor-rows) | **2 019 397** |
-| Samples with **\|err\| > 10 000 RPM** | **1 540** (**0.076%** of valid) |
-| Share of **total MSE** from those samples | **~96.2%** |
-| Motor-rows where **DShot** (not deck) is higher at **argmax \|err\|** | **198 / 200** |
-| Motor-rows with **exactly one** sample **\|err\| > 10 000** | **6 / 200** |
-| Typical **\|err\| > 10 000** count per motor-row (median) | **~7** |
-| Burst structure (**\|err\| > 10 000** runs) | Mostly **1–2 consecutive** samples (**2–4 ms** at 500 Hz); isolated single-point glitches are **uncommon** |
-
-**“Single corrupted packet”:** Directionally right (telemet garbage, not deck failure), but **too narrow** as the whole story — most affected rows show **several** large-error samples per flight, often in **short bursts**, not one lone index every time.
-
-**How to read the headline metrics:** Agreement is **excellent for the vast majority of samples** — desk check with large errors excluded (e.g. **\|err\| > 5 000 RPM** dropped) gives **RMSE ≈ 100 RPM** (median across motor-rows), consistent with sub-percent bias. **`max_abs_err_rpm` as currently reported** is dominated by the rare DShot spikes above and **must not** be taken as representative of typical deck/DShot tracking quality. Tightening the validity mask or adding robust summary columns remains an **open design choice**; this note does not change `rpm_source_quality.py` or any computed column.
+§ Extension 2026-09-27 (4) raw RMSE spike note is **superseded** by robust RMSE + firmware guard above.
 
 ---
 
 ## Related
 
-- Planning prompt: [`42_RPM_Source_Quality_Desk_Prompt.md`](42_RPM_Source_Quality_Desk_Prompt.md)
-- Historical DShot tooling + one-flight spot check: [`23_DShot_RPM_Investigation.md`](23_DShot_RPM_Investigation.md) §5 (unchanged scope)
+- [`42_RPM_Source_Quality_Desk_Prompt.md`](42_RPM_Source_Quality_Desk_Prompt.md)  
+- [`23_DShot_RPM_Investigation.md`](23_DShot_RPM_Investigation.md) §5  
+- `experiments/analysis/rpm_spike_investigation.py`

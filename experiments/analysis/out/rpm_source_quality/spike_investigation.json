@@ -1,0 +1,80 @@
+{
+  "n_spike_samples": 2121,
+  "n_flights_with_spikes": 38,
+  "motor_counts": {
+    "1": 498,
+    "2": 443,
+    "3": 550,
+    "4": 630
+  },
+  "scenario_counts": {
+    "A1": 368,
+    "A3": 654,
+    "A8": 186,
+    "A2": 239,
+    "A7": 111,
+    "C5": 236,
+    "A4": 327
+  },
+  "deck_rpm_at_spike_median": 16046.367543,
+  "deck_rpm_at_spike_p10_p90": [
+    15147.0,
+    18289.538384
+  ],
+  "dshot_spike_val_median": 42612.050285,
+  "dshot_spike_val_unique_rounded": [
+    9000,
+    10000,
+    16000,
+    21000,
+    22000,
+    25000,
+    26000,
+    27000,
+    28000,
+    29000,
+    30000,
+    31000,
+    32000,
+    33000,
+    34000,
+    35000,
+    36000,
+    37000,
+    38000,
+    39000
+  ],
+  "burst_length_median": 2.0,
+  "burst_length_max": 15,
+  "control_path_a_res_z_abs_delta": {
+    "at_spike_median": 0.03552500000000025,
+    "at_spike_p95": 0.39857200000000004,
+    "matched_non_spike_median": 0.00598499999999999,
+    "matched_non_spike_p95": 0.07853210000000006,
+    "ratio_median": 5.9356725146199345
+  },
+  "control_path_tau_z_abs_delta": {
+    "at_spike_median": 0.0,
+    "at_spike_p95": 0.0,
+    "matched_non_spike_median": 0.0,
+    "matched_non_spike_p95": 0.0
+  },
+  "worst_example": {
+    "path": "experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-21-40/A4_2026-09-28_17-21-40_merged_usd.csv",
+    "scenario": "A4",
+    "prefix": "cf5",
+    "motor": 1,
+    "t": 17.722,
+    "deck": 721.0,
+    "dshot": 58408.568115,
+    "err": 57687.568115
+  },
+  "correlations_ruled_out": [
+    "Not deck dropout \u2014 deck RPM in normal hover band at spike instants.",
+    "Not single-motor \u2014 all four motors appear in spike counts (roughly balanced).",
+    "Not one scenario \u2014 spikes in A1/A3/A7/A8/C5; A2 top deck-zero dominated, few valid pairs.",
+    "No ctrl_mode / mode-transition column on uSD \u2014 cannot correlate to INDI handoffs from logs.",
+    "Not 0xFFFF sentinel \u2014 spike values pass rs<60000 and are finite mid-range uint16 garbage."
+  ],
+  "working_hypothesis": "Bidirectional DShot ESC telemetry occasionally returns decoded eRPM values in a physically impossible band (~28k\u201359k RPM) while the optical deck stays near true hover RPM (~11\u201317k). Values often appear in 1\u20132 tick bursts (2\u20134 ms at 500 Hz log rate; control reads the same motor.* log at 1 kHz). Pattern fits intermittent telemetry-slot or decode glitches, not true rotor acceleration \u2014 no clean correlation with commanded PWM step found in this pass (motor PWM changes are smooth at spike neighbors)."
+}

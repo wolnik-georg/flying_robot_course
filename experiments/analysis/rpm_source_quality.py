@@ -13,20 +13,45 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
-TOOLS = REPO / "flying_drone_stack" / "tools"
-sys.path.insert(0, str(TOOLS))
-from investigate_dshot_rpm import cross_corr_lag  # noqa: E402
+ANALYSIS = Path(__file__).resolve().parent
+sys.path.insert(0, str(ANALYSIS))
+
+
+def cross_corr_lag(a: np.ndarray, b: np.ndarray, fs: float, max_lag_s: float = 0.05) -> float:
+    """Lag [ms] aligning b to a; positive = b lags a (same as investigate_dshot_rpm.py)."""
+    a = a - np.mean(a)
+    b = b - np.mean(b)
+    max_lag = int(max_lag_s * fs)
+    if len(a) < 4 * max_lag or len(b) < 4 * max_lag:
+        return float("nan")
+    corr = np.correlate(a, b, mode="full")
+    lags = np.arange(-len(b) + 1, len(a))
+    window = (lags >= -max_lag) & (lags <= max_lag)
+    best = lags[window][np.argmax(corr[window])]
+    return float(-best / fs * 1000.0)
 
 FS = 500.0
 DT_MS = 1000.0 / FS
 OUT_DIR = REPO / "experiments" / "analysis" / "out" / "rpm_source_quality"
+
+# Validity masks (see docs/43 — Metric reference table)
+DSHOT_INVALID_SENTINEL = 60000  # exclude rs >= 60000 (0xFFFF invalid)
+SPIKE_EXCLUDE_ERR_RPM = 10_000.0  # robust RMSE/bias exclude |DShot−deck| above this
+
+
+def valid_mask_base(rd: np.ndarray, rs: np.ndarray) -> np.ndarray:
+    """Samples used for agreement metrics before spike exclusion."""
+    return (rd > 0) & (rs > 0) & (rs < DSHOT_INVALID_SENTINEL)
+
+
+def valid_mask_robust(rd: np.ndarray, rs: np.ndarray) -> np.ndarray:
+    """Headline agreement metrics — excludes DShot telemetry spike outliers."""
+    base = valid_mask_base(rd, rs)
+    err = rs - rd
+    return base & (np.abs(err) <= SPIKE_EXCLUDE_ERR_RPM)
 
 
 def vehicle_role(prefix: str) -> str:
@@ -72,18 +97,26 @@ def metrics_one_motor(rd: np.ndarray, rs: np.ndarray) -> dict:
     n = len(rd)
     deck_zero = float(np.mean(rd <= 0)) if n else float("nan")
     dshot_zero = float(np.mean(rs <= 0)) if n else float("nan")
-    valid = (rd > 0) & (rs > 0) & (rs < 60000)
+    valid = valid_mask_base(rd, rs)
+    robust = valid_mask_robust(rd, rs)
     n_valid = int(valid.sum())
+    n_robust = int(robust.sum())
+    n_spike = n_valid - n_robust
     valid_pct = 100.0 * n_valid / n if n else float("nan")
     out = {
         "n_samples": n,
         "n_valid": n_valid,
+        "n_robust": n_robust,
+        "n_spike_excluded": n_spike,
         "valid_pct": valid_pct,
         "deck_zero_pct": 100.0 * deck_zero,
         "dshot_zero_pct": 100.0 * dshot_zero,
         "bias_rpm": float("nan"),
         "bias_pct": float("nan"),
-        "rmse_rpm": float("nan"),
+        "bias_robust_rpm": float("nan"),
+        "bias_robust_pct": float("nan"),
+        "rmse_raw_rpm": float("nan"),
+        "rmse_robust_rpm": float("nan"),
         "max_abs_err_rpm": float("nan"),
         "lag_ms": float("nan"),
     }
@@ -94,9 +127,16 @@ def metrics_one_motor(rd: np.ndarray, rs: np.ndarray) -> dict:
     err = rs_v - rd_v
     out["bias_rpm"] = float(np.mean(err))
     out["bias_pct"] = float(100.0 * np.mean(err) / np.mean(rd_v))
-    out["rmse_rpm"] = float(np.sqrt(np.mean(err**2)))
+    out["rmse_raw_rpm"] = float(np.sqrt(np.mean(err**2)))
     out["max_abs_err_rpm"] = float(np.max(np.abs(err)))
     out["lag_ms"] = float(cross_corr_lag(rd_v, rs_v, FS))
+    if n_robust >= 50:
+        rd_r = rd[robust].astype(float)
+        rs_r = rs[robust].astype(float)
+        err_r = rs_r - rd_r
+        out["bias_robust_rpm"] = float(np.mean(err_r))
+        out["bias_robust_pct"] = float(100.0 * np.mean(err_r) / np.mean(rd_r))
+        out["rmse_robust_rpm"] = float(np.sqrt(np.mean(err_r**2)))
     return out
 
 
@@ -221,6 +261,15 @@ def rolling_cross_corr_lag(
     return np.array(rows, dtype=float)
 
 
+def _plt():
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    return plt
+
+
 def plot_rpm_overlay(
     t: np.ndarray,
     deck: np.ndarray,
@@ -231,6 +280,7 @@ def plot_rpm_overlay(
     motor_label: str,
 ) -> None:
     """Deck vs DShot RPM + separate DShot−deck delta panel (shared time base)."""
+    plt = _plt()
     tt = t - t[0]
     delta = dshot - deck
     fig, (ax_rpm, ax_delta) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
@@ -288,6 +338,7 @@ def plot_rolling_lag(
     window_s: float = 2.0,
     step_s: float = 0.5,
 ) -> None:
+    plt = _plt()
     roll = rolling_cross_corr_lag(deck, dshot, t, FS, window_s, step_s)
     fig, ax = plt.subplots(figsize=(12, 3.5))
     if roll.size:
@@ -362,6 +413,7 @@ def plot_rpm_grid4(
     vehicle_role_name: str,
 ) -> None:
     """8 rows × 1 col: RPM overlay then DShot−deck delta, stacked, per motor."""
+    plt = _plt()
     csv_path = REPO / merge_rel
     t, arrays = load_merged_csv(csv_path)
     tt = t - t[0]
@@ -586,6 +638,11 @@ def infer_scenario_stamp(path: Path) -> tuple[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, default=OUT_DIR)
+    parser.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="Skip matplotlib figures (CSV/JSON metrics only)",
+    )
     args = parser.parse_args()
     out_dir = args.out
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -594,8 +651,11 @@ def main() -> int:
         print("Aborting: lag self-test failed.", file=sys.stderr)
         return 1
 
-    manifest_entries = {e["path"]: e for e in load_manifest_flights()}
-    csv_paths = sorted(REPO.glob("experiments/logs/c1_*_merged/*/*_merged_usd.csv"))
+    manifest_list = load_manifest_flights()
+    manifest_entries = {e["path"]: e for e in manifest_list}
+    csv_paths = sorted(
+        REPO / e["path"] for e in manifest_list if (REPO / e["path"]).is_file()
+    )
     if len(csv_paths) != 29:
         print(f"WARNING: expected 29 merged CSVs, found {len(csv_paths)}", file=sys.stderr)
 
@@ -685,31 +745,62 @@ def main() -> int:
         w.writeheader()
         w.writerows(summary_rows)
 
-    # Overview plot: lag and |bias_pct| by vehicle_role
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    roles = ["bottom", "top"]
-    lag_by_role = [[r["lag_ms"] for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["lag_ms"])] for role in roles]
-    bias_by_role = [[abs(r["bias_pct"]) for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["bias_pct"])] for role in roles]
-    axes[0].boxplot(lag_by_role, tick_labels=roles)
-    axes[0].set_ylabel("lag (ms)\n(DShot vs deck, + = DShot lags)")
-    axes[0].set_title("Cross-correlation lag by vehicle role")
-    axes[1].boxplot(bias_by_role, tick_labels=roles)
-    axes[1].set_ylabel("|bias| (%)")
-    axes[1].set_title("Deck vs DShot bias magnitude")
-    fig.suptitle("C.1 merged logs — RPM source quality (all motors, full segment)")
-    fig.tight_layout()
     plot_path = out_dir / "overview_lag_bias_by_role.png"
-    fig.savefig(plot_path, dpi=130)
-    plt.close(fig)
+    if not args.no_plots:
+        plt = _plt()
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+        roles = ["bottom", "top"]
+        lag_by_role = [
+            [r["lag_ms"] for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["lag_ms"])]
+            for role in roles
+        ]
+        bias_by_role = [
+            [abs(r["bias_pct"]) for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["bias_pct"])]
+            for role in roles
+        ]
+        axes[0].boxplot(lag_by_role, tick_labels=roles)
+        axes[0].set_ylabel("lag (ms)\n(DShot vs deck, + = DShot lags)")
+        axes[0].set_title("Cross-correlation lag by vehicle role")
+        axes[1].boxplot(bias_by_role, tick_labels=roles)
+        axes[1].set_ylabel("|bias| (%)")
+        axes[1].set_title("Deck vs DShot bias magnitude")
+        fig.suptitle("C.1 merged logs — RPM source quality (all motors, full segment)")
+        fig.tight_layout()
+        fig.savefig(plot_path, dpi=130)
+        plt.close(fig)
+        write_extended_visualizations(out_dir, per_flight_rows)
+        write_grid_and_flight_summary(out_dir, per_flight_rows)
 
-    write_extended_visualizations(out_dir, per_flight_rows)
-    write_grid_and_flight_summary(out_dir, per_flight_rows)
+    # Spike root-cause + control-path correlation (docs/43 Task 3)
+    from rpm_spike_investigation import investigate_all  # noqa: WPS433
+
+    csv_paths = sorted(REPO.glob("experiments/logs/c1_*_merged/*/*_merged_usd.csv"))
+    spike_report = investigate_all(csv_paths)
+    spike_path = out_dir / "spike_investigation.json"
+    spike_path.write_text(json.dumps(spike_report, indent=2) + "\n")
+
+    robust_rmses = [r["rmse_robust_rpm"] for r in per_flight_rows if np.isfinite(r["rmse_robust_rpm"])]
+    raw_rmses = [r["rmse_raw_rpm"] for r in per_flight_rows if np.isfinite(r["rmse_raw_rpm"])]
+    fleet = {
+        "rmse_robust_rpm_median": float(np.median(robust_rmses)) if robust_rmses else float("nan"),
+        "rmse_robust_rpm_mean": float(np.mean(robust_rmses)) if robust_rmses else float("nan"),
+        "rmse_raw_rpm_median": float(np.median(raw_rmses)) if raw_rmses else float("nan"),
+        "rmse_raw_rpm_mean": float(np.mean(raw_rmses)) if raw_rmses else float("nan"),
+        "note": "Historical logs predate rpm_get_all() DShot spike guard in traj_iface.c (2026-09-29).",
+    }
+    (out_dir / "fleet_robust_rmse.json").write_text(json.dumps(fleet, indent=2) + "\n")
 
     print(f"Wrote {per_path} ({len(per_flight_rows)} motor-rows)")
+    print(f"Wrote {spike_path}")
+    print(
+        f"Fleet RMSE median: robust={fleet['rmse_robust_rpm_median']:.1f} RPM, "
+        f"raw={fleet['rmse_raw_rpm_median']:.1f} RPM"
+    )
     print(f"Wrote {summary_path}")
-    print(f"Wrote {plot_path}")
-    print(f"Wrote extended overlay + rolling-lag PNGs under {out_dir}/")
-    print(f"Wrote grid4_*.png and flight_summary_table.md under {out_dir}/")
+    if not args.no_plots:
+        print(f"Wrote {plot_path}")
+        print(f"Wrote extended overlay + rolling-lag PNGs under {out_dir}/")
+        print(f"Wrote grid4_*.png and flight_summary_table.md under {out_dir}/")
     return 0
 
 

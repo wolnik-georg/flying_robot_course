@@ -1,28 +1,26 @@
 # RPM source quality — C.1 merged uSD logs
 
-Compares optical-deck RPM (`rpm.m*`) vs DShot telemetry (`motor.m*_rpm`) logged concurrently at **500 Hz** on C.1 flights. Control uses DShot (`indi_gains.rpm_source=1`); this output is **sensor agreement only**.
+Compares optical-deck RPM (`rpm.m*`) vs DShot telemetry (`motor.m*_rpm`) at **500 Hz**. Control uses DShot (`indi_gains.rpm_source=1`) for **reliability** (deck motor dropouts), not because DShot is lower-latency — **positive lag ms = DShot lags the deck**.
 
 ## Reproduce
 
 ```bash
 cd ~/Desktop/flying_robot_course
-~/.pyenv/versions/flying_robots/bin/python experiments/analysis/rpm_source_quality.py
+python3 experiments/analysis/rpm_source_quality.py
+# if matplotlib/numpy clash:
+python3 experiments/analysis/rpm_source_quality.py --no-plots
 ```
 
 Outputs (overwritten each run):
 
 | File | Description |
 |------|-------------|
-| `per_flight.csv` | One row per scenario / stamp / vehicle prefix / motor |
-| `summary_by_scenario_vehicle.csv` | Aggregated by scenario and vehicle role (`bottom` / `top`) |
-| `overview_lag_bias_by_role.png` | Boxplots of lag and \|bias\| by role |
-| `overlay_*.png` | Deck vs DShot time series (representative flights; see docs/43 § 2026-09-26) |
-| `rolling_lag_*.png` | 2.0 s / 0.5 s stepped rolling cross-correlation lag |
-| `grid4_*.png` | 2×2 deck vs DShot for top-3 &#124;lag&#124; flights (A2 excluded) |
-| `flight_summary_table.md` | Per-flight aggregate table (A2 excluded) |
+| `per_flight.csv` | Per motor-row metrics incl. **rmse_robust_rpm** (headline) and **rmse_raw_rpm** (diagnostic) |
+| `fleet_robust_rmse.json` | Fleet median/mean robust vs raw RMSE |
+| `spike_investigation.json` | Spike root-cause + control-path correlation summary |
+| `summary_by_scenario_vehicle.csv` | By scenario × vehicle role |
+| `overview_lag_bias_by_role.png` | Optional (skip with `--no-plots`) |
 
-**Input:** only `experiments/logs/c1_*_merged/*/*_merged_usd.csv` (not raw `.bin` — see `experiments/logs/usd_raw/*_PAIRING.md`).
-
-**Lag convention:** positive ms = DShot lags deck (`cross_corr_lag` from `flying_drone_stack/tools/investigate_dshot_rpm.py`).
+Metric definitions: `docs/43_RPM_Source_Quality.md` § Metric reference.
 
 Write-up: [`docs/43_RPM_Source_Quality.md`](../../../docs/43_RPM_Source_Quality.md).
