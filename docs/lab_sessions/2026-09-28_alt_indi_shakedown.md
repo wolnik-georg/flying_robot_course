@@ -672,7 +672,7 @@ cause. 7/7 numerical unaffected, real firmware build clean.
 the telemetry gap closed — but none of this is proven to be what actually happened. The only way
 to know is another flight with the new telemetry in place.
 
-## 2026-09-29 — Z-only position integral: built, tested, decided against (for now)
+## 2026-09-29 — Z-only position integral: built, tested twice — two different questions
 
 Separate track, `docs/51_Z_Only_Integral.md`. Built a new, separate Z-only integral for the
 geometric controller (distinct from the joint XY+Z integral `docs/50` already closed), with
@@ -686,7 +686,20 @@ onset is unchanged by gain** (~127 mm at −200 mN regardless of `ki_z`) — onl
 changes, and even the fastest tested gain takes ~9 s to recover, longer than a real A1 hold
 (~5–10 s). **Verdict: do not enable.** Gain-tuning is a recovery-speed knob, not a
 disturbance-rejection knob, and doesn't address the thing that actually matters (the initial
-sag). `ENABLE_Z_INTEGRAL` stays `false`, default gains unchanged.
+sag). **This verdict is only for disturbance rejection — do not enable expecting it to help
+a mid-flight downwash encounter.**
+
+**Task 5 — corrected scenario, same evening.** The gain sweep above tested the wrong problem:
+real C.1 log data (`docs/50`'s own dataset) shows the sag isn't primarily a downwash-transient
+effect — it's present on **both** drones in nearly every scenario, including the top drone,
+often 10-20%. That's a persistent, constant-sign bias present the *whole* flight, not something
+triggered by encountering another drone's wash partway through. Re-ran the SIL test with the
+bias present from t=0 (not injected mid-flight) over a realistic 8s hold:
+`ki_z=16` closes **81-88%** of a 4-17% sag. **This is a real, credible fix for the persistent-
+bias problem** (the thing `docs/50` originally set out to investigate) — genuinely different
+conclusion from disturbance rejection. **Worth a hardware test now**: C.0 solo hover with
+`ENABLE_Z_INTEGRAL=true`, `ki_z=16`, compare real `z − ctrltarget_z` against baseline over a
+normal hold. `ENABLE_Z_INTEGRAL` stays `false` in the tree until that flight happens.
 
 **Validation note:** two real problems were found and fixed in the desk-work Cursor produced this
 session — a stray `Co-authored-by` commit trailer (removed, this project never adds one) and a
@@ -715,6 +728,18 @@ the flag is off).
    missing piece from tonight's analysis.
 6. If it flies clean: re-enable `cf_second`, move to A1, then resume the broader comparison plan
    (dz=0.20/0.50, other scenarios) that was paused before this whole shakedown started.
+
+**Next lab session — Z-only integral (independent of controller=10, can go either before or
+after it in the same session):**
+1. Flip `ENABLE_Z_INTEGRAL` to `true` in `lib.rs`, set `ki_z=16` in yaml (`pos_gains.ki_z`),
+   reflash whichever drone is under test (this is `controller=6`'s geometric path, `ctrl_mode=0`
+   — flies on our own controller, not the Omar family).
+2. **C.0 solo hover** — compare real `z − ctrltarget_z` against the existing un-integrated
+   baseline over a normal hold duration. This is the actual test of Task 5's SIL prediction
+   (81-88% correction) on real hardware.
+3. This is a **persistent-bias fix, not a downwash fix** — don't expect it to help a 2-drone
+   A1 stack's separation error; test it solo first, on the same kind of bias `docs/50` originally
+   found in the log data.
 
 **Not lab-blocked, but currently deprioritized, not forgotten:**
 - controller=7/8 — paused, no root cause found, no logs captured. Revisit only if controller=10
