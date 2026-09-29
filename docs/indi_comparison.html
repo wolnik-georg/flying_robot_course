@@ -201,24 +201,20 @@ footer{border-top:1px solid var(--rule);padding-top:16px;margin-top:20px;
 
 <section>
   <div class="pcard o">
-    <p style="margin-top:0"><strong>⚠️ Status update, 2026-09-23 — the §08/§09 findings below are
-    superseded; the ported controller now flies clean in sim.</strong> §§1–7's algebra
-    (bitmask table, method comparison, residual-equation equivalence, RPM-dependency table) are
-    timeless and still correct as written. But the port (<code>stabilizer.controller=7</code>)
-    was later found crashing in CS2 SIL (2026-09-16), then root-caused 2026-09-17/18 to a real
-    <em>simulator</em> bug — <code>crazyflie_sil.py</code> never populated <code>state.acc</code>,
-    not a port or algebra bug — and fixed. It is now sim-clean single/2/3-drone under both
-    interaction backends, still never flown. A sibling <code>controller=8</code> (same port +
-    <code>use_nn</code>) was also built and verified, and a fourth, independent implementation —
-    <code>controller=9</code>, a literal C port of the supervisor's own INDI — was built,
-    numerically verified, and sim-validated 2026-09-22/23. §06's "consider/investigate" verdicts
-    on torque conditioning, yaw filtering, gyro source and <code>dt</code> resolution were later
-    tested to exhaustion (2026-09-16): 6/7 null, one (per-axis yaw filtering) measurably
-    <em>worsened</em> oscillation and was reverted. §09's notch-filter line was closed negatively
-    (2026-09-13 bode/phase analysis: the loop's own ωₙ sits inside the notch's rejection band —
-    structurally doomed, not a tuning problem). Current canonical status:
-    <code>docs/41_Pure_INDI_Implementation_Comparison.md</code> §8 (now a four-way comparison,
-    not two) and <code>docs/07_Thesis_Progress_Checklist.md</code>.</p>
+    <p style="margin-top:0"><strong>⚠️ Status update, 2026-09-29 — hardware on Omar's implementations;
+    §§1–7 algebra unchanged.</strong> §§1–7 (bitmask table, equivalence, RPM table) remain valid.
+    <code>controller=7</code> / <code>8</code>: sim-clean since the 2026-09-17/18
+    <code>state.acc</code> fix; <strong>hardware paused</strong> (c=7 flip, no logs — see
+    <code>docs/41</code>). <code>controller=9</code> (literal C port of the supervisor's INDI):
+    built and sim-validated 2026-09-22/23; <strong>flown 2026-09-29</strong> after connect assert
+    fixed (missing <code>deck.bcRpm</code> param) and <code>ctrlOmarIndi.indi: 3</code> set in yaml
+    (shipped default <code>indi=0</code> had gated INDI off). First A1 dz=0.30: our geometric
+    ~0.17&nbsp;m vs Omar <code>indi=3</code> ~0.04&nbsp;m separation error — ~4–5× (<code>docs/41</code> §9).
+    <code>controller=10</code> (<code>omar_indi_rust.rs</code>, Rust port of 9): built, <strong>7/7</strong>
+    numerical vs C, SIL smoke clean; first hardware attempt failed (<code>cf5</code> no liftoff);
+    real fixes + telemetry wired; <strong>solo-hover retry staged</strong> (<code>docs/41</code> §12–13).
+    §06/§09 historical verdicts below are unchanged. Canonical record:
+    <code>docs/41</code> and <code>docs/07</code> History (73).</p>
   </div>
 </section>
 

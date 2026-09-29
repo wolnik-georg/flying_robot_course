@@ -169,19 +169,20 @@ footer{
 <div class="wrap">
 
 <header>
-  <span class="lbl">Master's thesis · progress overview · 28 September 2026</span>
+  <span class="lbl">Master's thesis · progress overview · 29 September 2026</span>
   <h1>Two Tracks to the Thesis</h1>
   <p class="sub">
     Systematic comparison of reactive, predictive and hybrid strategies for downwash-aware
     formation flight — Crazyflie&nbsp;2.1 brushless, Crazyswarm2, out-of-tree Rust controller.
   </p>
   <div class="statusline">
-    <span class="pill"><span class="dot"></span>Lab · <strong>mocap fixed, flying resumed</strong> — 28&nbsp;Sep evening alt-INDI shakedown underway</span>
-    <span class="pill"><span class="dot"></span>C.1 · <strong>COMPLETE</strong> — A4 ×4 + topping-up flights 28&nbsp;Sep, 22-file training bank</span>
-    <span class="pill blocked"><span class="dot"></span>Controller=9 · solo clean, <strong>2-drone A1 failed</strong> — fix applied, SIL-verified, <strong>real re-fly still pending</strong></span>
-    <span class="pill"><span class="dot"></span>Desk · NS2 <strong>retrained</strong> on full bank (78.6% reduction); RPM/position-integral/C.4-toolchain closed</span>
+    <span class="pill"><span class="dot"></span>Lab · <strong>next:</strong> controller=10 solo-hover retry (<code>docs/07</code> Next action)</span>
+    <span class="pill"><span class="dot"></span>C.1 · <strong>COMPLETE</strong> — full bank incl. 28&nbsp;Sep; 38 merged CSVs in RPM re-run</span>
+    <span class="pill"><span class="dot"></span>Controller=9 (Omar C port) · <strong>flown, works</strong> — A1 dz=0.30: ~0.04&nbsp;m vs our geo ~0.17&nbsp;m</span>
+    <span class="pill blocked"><span class="dot"></span>Controller=10 (Rust oot5) · built 7/7; first HW no liftoff — <strong>solo retry staged</strong></span>
+    <span class="pill"><span class="dot"></span>Desk · RPM <strong>robust re-run</strong> (~128 RPM headline); <strong>Z-only integral</strong> built (<code>docs/51</code>)</span>
     <span class="pill"><span class="dot"></span>Writing · <strong>only fully-open track</strong> — proofread Ch. 1–5; Ch. 6–9 await real C.4 data</span>
-    <span style="color:var(--muted)"><code>lab_sessions/2026-09-28_alt_indi_shakedown.md</code> · full trail <code>docs/07</code> History (57)–(69)</span>
+    <span style="color:var(--muted)"><code>lab_sessions/2026-09-28_alt_indi_shakedown.md</code> · full trail <code>docs/07</code> History (73)</span>
   </div>
 </header>
 
@@ -194,27 +195,27 @@ footer{
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — executive summary (updated 28 Sep 2026)</h2></div>
+  <div class="sec-head"><h2>Snapshot — executive summary (updated 29 Sep 2026)</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
     <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> /
     <code>2026-09-24_to_26.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
-    <li><strong>28 Sep end state:</strong> <strong>mocap fixed, C.1 collection complete</strong> —
-      no mandatory flights remain. <strong>Alt-INDI hardware shakedown underway:</strong>
-      controller=9 (Omar's INDI) clean solo (hover, figure8), but the 2-drone A1 attempt failed —
-      <code>cf5</code>'s motors never spun. Root-caused to a <code>run_formation.py</code>
-      launch-script bug (inert gain parameters flooding the shared radio pre-takeoff), fixed and
-      SIL-verified (<code>crazyswarm2</code> <code>f25470a</code>) — <strong>but a real objection
-      stands unresolved</strong>: <code>cf_second</code> has absorbed the identical parameter
-      burst on every prior 2-drone flight without failing, so the fix may not be the full story.
-      <strong>Next lab session's first task is re-flying <code>cf5</code>/controller=9</strong> —
-      treat as open, not solved. Same evening: <strong>NS2 retrained on the complete 22-file C.1
-      bank</strong> (78.6% full-train error reduction, SIL gated correlation 0.91, a previously
-      backwards Stage D physical-sanity check now correct). <strong>Pattern, still worth
-      remembering:</strong> two "done" labels this week (NS2 SIL upload, merged-CSV P1 loader)
-      failed silently on real data until actually re-run — verify before trusting a status label.</li>
+    <li><strong>29 Sep close-out (lab + desk):</strong> <strong>controller=9 flown and working.</strong>
+      Real connect crash was a missing firmware param (<code>deck.bcRpm</code>); same evening found
+      shipped <code>indi=0</code> (SIL had always used <code>indi=3</code>) — fixed in yaml. First
+      hardware comparison on A1 dz=0.30: our geometric ~<strong>0.17&nbsp;m</strong> separation error,
+      Omar <code>indi=3</code> ~<strong>0.04&nbsp;m</strong> (~4–5×). Account:
+      <code>docs/41</code> §9. <strong>controller=10</strong> (Rust port of 9): built, 7/7 numerical
+      vs C; first hardware attempt (2-drone, skipping solo) — <code>cf5</code> spun, no liftoff;
+      UB/division guard + live <code>tau</code>/<code>a_res</code> telemetry fixes landed; yaml staged
+      for <strong>solo-hover retry</strong> (<code>docs/41</code> §12–13, <code>docs/07</code> Next action).
+      <strong>Desk:</strong> RPM dual-source reopened — full <strong>38</strong>-flight C.1 set,
+      headline <strong>~128 RPM</strong> spike-filtered RMSE (raw diagnostic ~803 RPM); deck is the
+      faster channel; DShot-only spikes + firmware guard for future flights (<code>docs/43</code>).
+      <strong>Z-only position integral</strong> implemented, default off, staged for C.0 solo test
+      (<code>docs/51</code>) — targets persistent hover bias, not downwash transients.</li>
     <li><strong>Platform:</strong> both drones brushless; <code>cf5</code> + <code>cf_second</code>;
       4-point mocap; DShot RPM; uSD match → merge → analysis working on 19&nbsp;Sep archive.</li>
     <li><strong>2-drone controllers on cf5:</strong> stock Lee (top), our geometric + full INDI (bottom)
@@ -235,10 +236,13 @@ footer{
       on <code>cf_second</code> that the existing (tilt-only) Stage E gate doesn't catch —
       <strong>do not fly <code>rnn.en=1</code></strong> until this is resolved. Needs A4 data or real
       hardware <code>rnn.en=0</code> logs, not more desk work. See <code>docs/40</code>, <code>docs/45</code>.</li>
-    <li><strong>RPM dual-source quality (desk, 23 Sep):</strong> deck vs DShot on all 29 C.1 merges,
-      isolated per drone role — sub-1% bias almost everywhere; one real anomaly, A2's top vehicle
-      shows the optical deck reading zero on 54–70% of samples (all 4 motors, both A2 flights) while
-      DShot stays clean. <code>docs/43</code>.</li>
+    <li><strong>RPM dual-source quality (desk, reopened 29 Sep):</strong> full C.1 glob
+      (<strong>38</strong> merges, <strong>272</strong> motor-rows). Headline tracking error is
+      spike-filtered RMSE ~<strong>128 RPM</strong> (median motor-row); raw with-spikes diagnostic
+      ~803 RPM. Cross-correlation: <strong>deck faster</strong> — positive lag = DShot lags deck.
+      Rare DShot-only telemetry spikes (best-fit decode glitches, not confirmed); analysis excludes
+      them; firmware <code>rpm_get_all()</code> guard protects future flights only. A2 top deck
+      dropout unchanged. <code>docs/43</code>.</li>
     <li><strong>Position-integral Z-bias investigation (desk, 26 Sep):</strong> real logs show a
       consistent, scenario-scaled below-setpoint Z bias on <code>cf5</code> (~2&nbsp;cm solo C5 up to
       ~17–20&nbsp;cm A1 under top) — but a working SIL ON/OFF comparison (verified distinct binaries)
@@ -263,11 +267,10 @@ footer{
     <li><strong>Strategy&nbsp;2 (27 Sep):</strong> desk/SIL path <strong>closed</strong> — train/upload, flash
       RAM, upload-protocol fix, Stage E re-pass. <strong>C.3 hardware</strong> (<code>rnn.en=0/1</code>, A4 in
       bank) waits on <strong>mocap + flight time</strong>, not desk work.</li>
-    <li><strong>Not in the compared set:</strong> <code>stabilizer.controller=9</code> (literal C port
-      of the supervisor's own INDI) — sim-validated end to end 22–23&nbsp;Sep, never flown, parallel
-      track only. Same-day (23&nbsp;Sep) follow-up reversed its mass to Omar's own brushless-established
-      42.7g (was this project's measured 41.0g) and fixed a host-build config-drift bug found along the
-      way. See <code>docs/41</code> §8.</li>
+    <li><strong>Parallel INDI implementations (Strategy 1):</strong> <code>controller=9</code>
+      (Omar literal C) — <strong>flown 29 Sep</strong>, first A1 data above; <code>controller=10</code>
+      (Rust port) — built and numerically verified, hardware retry pending; <code>controller=7/8</code>
+      — sim-clean, hardware paused or out of scope per <code>docs/41</code>. Not all are C.4 rows yet.</li>
   </ul>
 </section>
 
@@ -311,7 +314,9 @@ footer{
         <li><strong>Study pair now</strong> — <code>cf5</code> bottom / <code>cf_second</code> stock Lee top; <code>cf231_active</code> bench-only <em>19 Sep</em></li>
         <li><strong>Mocap</strong> — 4-point <code>active_deck</code> restored; tracking stable at close range</li>
         <li><strong>Desk analysis</strong> — uSD↔radio match, merge, dashboards, P1–P4 suite <em>docs/28</em></li>
-        <li><strong>Controllers built, mostly unflown</strong> — Briesewitz INDI <code>c=7</code>, NA-INDI <code>c=8</code> clean in sim after <code>state.acc</code> fix; Omar's literal INDI port <code>c=9</code> also sim-validated end to end (26&nbsp;Sep); hardware hover still gated on all three</li>
+        <li><strong>Alt-INDI ladder</strong> — <code>c=9</code> Omar C port <strong>flown</strong> (29 Sep);
+          <code>c=10</code> Rust port built, solo-hover retry next; <code>c=7</code> paused (no logs);
+          <code>c=8</code> sim-clean, Strategy 4 out of scope</li>
         <li class="pending"><strong>C.1</strong> — <strong>A4 lemniscate ×4</strong> only (C-1/C-2); rest of plan banked (~24 training merges) <em>docs/25, flight card</em></li>
         <li><strong>C.2 desk — CLOSED (27&nbsp;Sep)</strong> — LOO, Stage C/D/E, flash RNN, SIL
           upload-protocol fix + re-validation (<code>docs/40</code>, <code>docs/45</code>); no desk
@@ -471,14 +476,18 @@ footer{
         <td><code>docs/40</code>, <code>docs/45</code>, <code>docs/13</code>, <code>out/c2_e2e_2026-09-26/</code></td>
       </tr>
       <tr>
-        <td><strong>RPM dual-source quality — done (23&nbsp;Sep)</strong></td>
-        <td>Deck vs DShot bias/lag/dropout, isolated per drone role, all 29 C.1 merges</td>
+        <td><strong>RPM dual-source quality — re-run (29&nbsp;Sep)</strong></td>
+        <td>Full 38-merge C.1 set; robust ~128 RPM RMSE headline; spike markers on plots; deck-faster lag convention</td>
         <td><code>docs/43</code></td>
       </tr>
       <tr>
-        <td><strong>Position-integral Z-bias — done (26&nbsp;Sep)</strong></td>
-        <td>Real scenario-scaled Z bias confirmed in logs; SIL shows existing integral doesn't fix it
-          (&lt;1&nbsp;mm at log-relevant disturbance) — do not enable on hardware</td>
+        <td><strong>Z-only position integral — built (29&nbsp;Sep)</strong></td>
+        <td>Separate from joint XY+Z (<code>docs/50</code>); targets persistent hover-height bias; default off, C.0 solo test staged</td>
+        <td><code>docs/51</code></td>
+      </tr>
+      <tr>
+        <td><strong>Position-integral Z-bias study — done (26&nbsp;Sep)</strong></td>
+        <td>Joint <code>KI_P</code> path: real logs show bias; SIL shows existing integral doesn't fix it — do not enable that path</td>
         <td><code>docs/50</code></td>
       </tr>
       <tr>
@@ -520,7 +529,7 @@ footer{
 </section>
 
 <footer>
-  Updated 27&nbsp;Sep (desk closed, mocap blocker, writing active) · SSOT: <code>docs/07</code> History (57)–(65) ·
+  Updated 29&nbsp;Sep (c=9 flown, c=10 retry, RPM + Z-integral desk) · SSOT: <code>docs/07</code> History (73) ·
   Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
   C.2: <code>docs/40</code>, <code>docs/13</code> ·
   Analysis: <code>docs/28</code>, <code>docs/27</code> ·

@@ -122,7 +122,7 @@ footer code{background:none;padding:0}
 </style>
 
 <main>
-  <div class="eyebrow">Reference — corrected 15–16 September 2026</div>
+  <div class="eyebrow">Reference — updated 29 September 2026</div>
   <h1>Strategy → Controller Map</h1>
   <p class="lede">Which firmware <code>stabilizer.controller</code> number implements which of
     the thesis's seven comparison strategies — written down once, precisely, so the
@@ -166,18 +166,20 @@ footer code{background:none;padding:0}
         open. <b>Do not fly either controller.</b></p>
     </div>
     <div class="call go">
-      <h3>Update, 2026-09-23 — the sim crash is resolved; a fourth implementation exists</h3>
-      <p>The "do not fly" line above is <b>stale</b>. 2026-09-17/18 found the second cause: a
-        real <code>crazyflie_sil.py</code> bug (<code>state.acc</code> never populated, not a
-        controller/gain problem), fixed and re-verified. Both <code>controller=7</code> and
-        <code>controller=8</code> are now <b>sim-clean single/2/3-drone, both interaction
-        backends</b> — still <b>never flown</b>, ready for the normal C.0 hardware-validation
-        ladder (single-drone hover first), not held back any more. A fourth independent
-        implementation, <code>controller=9</code> — a literal C port of the supervisor's own
-        INDI (<code>ControllerTypeOot4</code>) — was built, numerically verified (6/6 to
-        <code>d=0.00e+00</code>), and sim-validated the same way 2026-09-22/23. See
-        <code>docs/41_Pure_INDI_Implementation_Comparison.md</code> §8 and
-        <code>docs/07_Thesis_Progress_Checklist.md</code> for current status.</p>
+      <h3>Update, 2026-09-23 — sim crash resolved; Omar C port added</h3>
+      <p>2026-09-17/18 fixed <code>state.acc</code> in SIL. <code>controller=7</code> and
+        <code>8</code> are <b>sim-clean</b>; hardware for c=7 is <b>paused</b> (Sep 29).</p>
+    </div>
+    <div class="call go">
+      <h3>Update, 2026-09-29 — <code>controller=9</code> flown; <code>controller=10</code> added</h3>
+      <p><code>controller=9</code> (Omar literal C, <code>ControllerTypeOot4</code>): <b>flown and
+        working</b> — connect assert fixed (<code>deck.bcRpm</code> param), yaml
+        <code>indi=3</code>; first A1 data vs our geometric (~0.04&nbsp;m vs ~0.17&nbsp;m separation
+        error at dz=0.30). <code>controller=10</code> (<code>ControllerTypeOot5</code>,
+        <code>omar_indi_rust.rs</code>): Rust port of 9, <b>7/7</b> numerical vs C, SIL smoke clean;
+        first hardware attempt failed (no liftoff on <code>cf5</code>); fixes + telemetry landed;
+        <b>next lab step: solo-hover retry</b> with yaml already on <code>cf5</code>. See
+        <code>docs/41</code> §9–13 and <code>docs/07</code> Next action.</p>
     </div>
   </section>
 
@@ -238,9 +240,10 @@ footer code{background:none;padding:0}
           <td class="mono">
             <span class="ctrl-tag ctrl-ours">controller=6</span> ours, <code style="background:none">ctrl_mode=3</code><br>
             <span class="ctrl-tag ctrl-theirs">controller=7</span> Cobo-Briesewitz, <code style="background:none">use_nn=0</code><br>
-            <span class="ctrl-tag ctrl-theirs">controller=9</span> Omar, literal C port
+            <span class="ctrl-tag ctrl-theirs">controller=9</span> Omar, literal C port<br>
+            <span class="ctrl-tag ctrl-theirs">controller=10</span> Omar, Rust port (<code style="background:none">oot5</code>)
           </td>
-          <td><span class="pill pill-go">6: flying single-drone</span><br><span class="pill pill-go" style="margin-top:4px">7: sim-clean 1/2/3-drone, never flown</span><br><span class="pill pill-go" style="margin-top:4px">9: sim-clean, verified, never flown (2026-09-23)</span></td>
+          <td><span class="pill pill-go">6: flying</span><br><span class="pill pill-open" style="margin-top:4px">7: sim-clean; HW paused (Sep 29)</span><br><span class="pill pill-go" style="margin-top:4px">9: <b>flown</b> — first A1 data (29 Sep)</span><br><span class="pill pill-hold" style="margin-top:4px">10: built 7/7; solo-hover retry next</span></td>
         </tr>
         <tr>
           <td class="num">2</td>
@@ -315,6 +318,6 @@ footer code{background:none;padding:0}
     Sources: docs/01_Thesis_Project_Snapshot.md · docs/18_Strategy_Descriptions.md (local) ·
     docs/07_Thesis_Progress_Checklist.md · flying_drone_stack/firmware_app/src/naindi.rs ·
     docs/22_NA_INDI_Repo_Survey.md<br>
-    Corrected 2026-09-15, same evening as the uSD logging chain validation.
+    Updated 2026-09-29 (c=9 flown, c=10 mapped) · prior correction 2026-09-15.
   </footer>
 </main>
