@@ -766,5 +766,39 @@ next desk SIL run (`position_integral_z_only_sil_compare.py` enforces this).
 - Connect pacing cost vs benefit — **audited** (§ *Desk audit — f25470a / f7856e2*); optional
   **30 ms** retune in `crazyflie_server.cpp`, not a revert.
 
-**Desk work: fully exhausted for both active tracks.** Nothing further to investigate on
-controller=10 or the Z-integral without new flight data — see `docs/07`'s Next-action line.
+## 2026-09-29 — RPM dual-source (deck vs DShot) reopened per supervisor feedback, closed properly
+
+Supervisor flagged three problems with the 2026-09-27 "closed" writeup (`docs/43`): (1) a
+speed claim needed correcting — the deck is the **faster** channel, not DShot, (2) metrics
+weren't clearly documented, (3) DShot telemetry spikes were characterized but never
+root-caused or filtered, then marked closed anyway.
+
+**Fixed same evening, three passes:**
+1. **Framing correction** — deck is lower-latency (DShot consistently lags it by single-digit
+   ms); DShot is the standing control source (`rpm_source=1`) for **reliability** (the deck
+   dropped 2 of 4 motors in real 2-drone flight), never for speed. Now stated explicitly.
+2. **Spike investigation, properly this time** — confirmed DShot-only (deck always stays
+   in-band at spike instants); best-fit root cause is intermittent bidirectional-DShot
+   telemetry decode glitches (not confirmed to a specific mechanism — ruled out deck dropout,
+   single-motor, single-corrupted-packet, PWM-command correlation). **The real finding: this
+   was reaching the live control signal**, not just corrupting analysis — `rpm_get_all()`
+   (feeds thrust/torque reconstruction when `rpm_source=1`, the standing default) only guarded
+   the `0xFFFF` sentinel, nothing against a ~50k RPM spike. `a_res_z` showed ~6x elevated delta
+   at spike ticks vs matched non-spike ticks — the existing filtering doesn't fully absorb it.
+   **Fixed**: two-layer sanity filter in `rpm_get_all()` (28,000 RPM absolute cap + 10,000 RPM
+   slew-rate check, hold-last-good on reject). Builds clean, doesn't touch `rpm_source` policy.
+3. **Clean re-presentation** — full C.1 dataset (38 merges, 272 motor-rows, including the
+   09-28 completion flights), spike-robust RMSE (~128 RPM median) as the new headline metric
+   replacing the old spike-dominated raw RMSE (~803 RPM, now a labeled diagnostic only), 13
+   regenerated plots with spikes visibly marked (not hidden).
+
+All independently re-verified this session — numbers reproduce exactly, firmware filter logic
+traced by hand and confirmed sound, plots opened and visually checked (genuinely clear and
+presentable, not placeholder output). One small doc transcription slip found and fixed along
+the way (a table cell), no other issues.
+
+Full account: `docs/43_RPM_Source_Quality.md`.
+
+**Desk work: fully exhausted across all three tracks tonight** (controller=10, Z-integral,
+RPM dual-source). Nothing further to investigate without new flight data — see `docs/07`'s
+Next-action line.
