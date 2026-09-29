@@ -45,7 +45,7 @@ All metrics are per **motor-row** (one vehicle prefix × one motor × one merged
 | Statistic | rmse_robust_rpm (headline) | rmse_raw_rpm (diagnostic) |
 |-----------|---------------------------:|--------------------------:|
 | Median across motor-rows | **~126 RPM** | **~771 RPM** |
-| Mean across motor-rows | **~140 RPM** | **~782 RPM** |
+| Mean across motor-rows | **~143 RPM** | **~766 RPM** |
 
 Source: `experiments/analysis/out/rpm_source_quality/fleet_robust_rmse.json`, `per_flight.csv`.
 
