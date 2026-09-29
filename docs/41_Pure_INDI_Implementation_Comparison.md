@@ -335,10 +335,28 @@ Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § 2026-09-29
 
 **Recommendation for adoption:** **Do not** replace our geometric core with Omar’s **`indi=0`** path. **No structural change recommended** for Task 4 / Z-tracking redesign based on this comparison alone — keep tuning **`pos_gains`** / integral studies on **our** stack; treat Omar’s **INDI bitmask (`indi=3`)** as the interesting import for future comparison (c=10 Rust port), not his bare geometric defaults.
 
-## 12. controller=10 — Omar INDI in Rust (planned, not executed this desk pass)
+## 12. controller=10 — Omar INDI in Rust (desk build 2026-09-29)
 
-**Intent:** `ControllerTypeOot5` / **`stabilizer.controller=10`**, new module **`firmware_app/src/omar_indi_rust.rs`**, line-equivalent to **`controller_omar_indi.c`**, RPM via **safe `rpm_get_all` pattern** (not Omar’s fragile deck param probe), numerical **`~1e-9`** match vs C, then SIL ladder — **same gate as §8 / c=9**.
+**Slot:** `ControllerTypeOot5` / `CONFIG_CONTROLLER_OOT5` / **`stabilizer.controller=10`**. Module **`firmware_app/src/omar_indi_rust.rs`** exports **`controllerOutOfTree5Init/Test/Update`**. Patch: **`naindi_controller_slot.patch`** (regenerated with Oot5). **`app-config-bl`:** `CONFIG_CONTROLLER_OOT5=y`.
 
-**Status (2026-09-29 desk):** **Not started** — no Kconfig/Kbuild slot, no Rust module, no numerical or SIL runs. **Blocked on:** ~550-line faithful port + host test harness (mirror `test_omar_indi_reference.py` / `naindi` precedent) + firmware dispatch wiring per **`LOCAL_MODIFICATIONS.md`** Oot4 pattern.
+### Intentional deviation (RPM availability)
 
-**Next desk batch (ordered):** (1) firmware **Oot5** enum/dispatch; (2) **`omar_indi_rust.rs`** + `traj_iface` export; (3) **`test_omar_indi_rust_vs_c.py`** 6/6 vectors; (4) SIL **`oot5`** in `crazyflie_sil.py` vs existing **`oot4`** traces; (5) doc update — **never fly** until hardware gate.
+The C reference gates INDI on **`paramGetVarId("deck","bcRpm")`** in **`controllerOmarIndiInit()`** (the crash class fixed in **`rpm.c`** 2026-09-29). The Rust port uses **`oot_rpm_logs_available()`** — **`logVarIdIsValid(logGetVarId("rpm","m1"))`**, same family as **`rpm_get_all()`** in **`traj_iface.c`** — and reads RPM only through **`rpm_get_all()`**. **Control-law goal unchanged; bug-replication goal explicitly rejected.**
+
+### Numerical verification (vs `controller_omar_indi.c`, `indi=3`)
+
+Harness: **`firmware_app/host/test_omar_indi_rust_vs_c.py`** (7 cases: the six **`test_omar_indi_reference.py`** vectors plus **modeDisable low-thrust / ground reset**).
+
+**Result (2026-09-29):** **7/7 PASS**, worst delta **7.15e-07** (thrust/tau), torque many cases **0.00e+00**.
+
+### SIL (`oot5` in `crazyflie_sil.py`)
+
+- Config: **`crazyswarm2/crazyflie/config/server_sim_omar_indi_rust.yaml`** (`controller: oot5`, `backend: np`).
+- Plant sync: same **`oot_omar_mass()` / `oot_omar_kt_equiv()`** branch as **`oot4`** in **`crazyflie_server.py`**.
+- **Single-drone smoke (2026-09-29):** server starts clean, **`simulated airframe … mass=0.0427 kg`** — identical banner to **`oot4`** smoke on the same **`crazyflies_sim1.yaml`** harness (`experiments/analysis/run_omar_indi_rust_sil_smoke.sh`).
+- **2-drone formation script:** **`run_formation_alt_controller_sil.sh oot5`** requires **two enabled robots** in **`crazyflies.yaml`** (same constraint as prior **`oot4`** ladder runs); not re-run here because the installed yaml currently enables one robot — not a controller failure.
+- **Never flown, not queued** — same hardware gate as every other OOT slot.
+
+### Cross-check vs controller=9 (`oot4`)
+
+Same algorithm and plant path → SIL traces should match **`oot4`** when run on identical scenarios; numerical open-loop match to **`controller_omar_indi.c`** is already **7/7** to **~1e-7**.

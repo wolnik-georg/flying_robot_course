@@ -8,11 +8,12 @@ OUT=$REPO/experiments/sim_validation
 LOGDIR=$REPO/experiments/logs
 CTRL=$1
 if [ -z "$CTRL" ]; then
-  echo "usage: $0 oot4|oot2|oot3"
+  echo "usage: $0 oot4|oot5|oot2|oot3"
   exit 1
 fi
 case "$CTRL" in
   oot4) SERVER=$CS2/crazyflie/config/server_sim_omar_indi.yaml; STATE=state_oot4_formation ;;
+  oot5) SERVER=$CS2/crazyflie/config/server_sim_omar_indi_rust.yaml; STATE=state_oot5_formation ;;
   oot2) SERVER=$CS2/crazyflie/config/server_sim_naindi.yaml; STATE=state_oot2_formation ;;
   oot3) SERVER=$CS2/crazyflie/config/server_sim_naindi_hybrid.yaml; STATE=state_oot3_formation ;;
   *) echo "unknown controller profile $CTRL"; exit 1 ;;

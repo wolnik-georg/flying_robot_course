@@ -602,6 +602,14 @@ PARAM_GROUP_STOP(pos_gains)
  * rpm_source at runtime needs no cache-invalidation logic -- whichever array wasn't
  * used yet simply resolves lazily on first read, same as today's single-source path. */
 
+#ifndef UNIT_TEST_MODE
+bool oot_rpm_logs_available(void)
+{
+    logVarId_t id = logGetVarId("rpm", "m1");
+    return logVarIdIsValid(id);
+}
+#endif
+
 void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
     static logVarId_t ids_deck[4]  = {0xffffu, 0xffffu, 0xffffu, 0xffffu};

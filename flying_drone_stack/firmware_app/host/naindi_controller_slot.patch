@@ -1,8 +1,8 @@
 diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
-index 4854009b..4ec68c56 100644
+index 4854009b..eaebfc85 100644
 --- a/src/modules/interface/controller/controller.h
 +++ b/src/modules/interface/controller/controller.h
-@@ -37,6 +37,36 @@ typedef enum {
+@@ -37,6 +37,42 @@ typedef enum {
    ControllerTypeLee,
  #ifdef CONFIG_CONTROLLER_OOT
    ControllerTypeOot,
@@ -36,10 +36,16 @@ index 4854009b..4ec68c56 100644
 +  // (controller_omar_indi.c), no shared state with any of them. See
 +  // firmware_app/host/LOCAL_MODIFICATIONS.md and docs/41_Pure_INDI_Implementation_Comparison.md.
 +  ControllerTypeOot4,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT5
++  // 2026-09-29: fifth out-of-tree slot -- Rust line-port of controller_omar_indi.c (same law as
++  // ControllerTypeOot4 / stabilizer.controller=9). Separate enum, dispatch row, and module
++  // (firmware_app/src/omar_indi_rust.rs). See LOCAL_MODIFICATIONS.md and docs/41 §13.
++  ControllerTypeOot5,
  #endif
    ControllerType_COUNT,
  } ControllerType;
-@@ -57,4 +87,25 @@ bool controllerOutOfTreeTest(void);
+@@ -57,4 +93,31 @@ bool controllerOutOfTreeTest(void);
  void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
  #endif
  
@@ -64,12 +70,18 @@ index 4854009b..4ec68c56 100644
 +void controllerOutOfTree4(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
 +#endif
 +
++#ifdef CONFIG_CONTROLLER_OOT5
++void controllerOutOfTree5Init(void);
++bool controllerOutOfTree5Test(void);
++void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
  #endif //__CONTROLLER_H__
 diff --git a/src/modules/src/Kconfig b/src/modules/src/Kconfig
-index 0a5b4a9e..6ed44bdd 100644
+index 0a5b4a9e..4f73c509 100644
 --- a/src/modules/src/Kconfig
 +++ b/src/modules/src/Kconfig
-@@ -53,6 +53,42 @@ config CONTROLLER_OOT
+@@ -53,6 +53,52 @@ config CONTROLLER_OOT
      bool "Out-of-tree controller"
      default n
  
@@ -109,23 +121,24 @@ index 0a5b4a9e..6ed44bdd 100644
 +        VERIFIED against his compiled build -- do not fly. See
 +        firmware_app/host/LOCAL_MODIFICATIONS.md and docs/41_Pure_INDI_Implementation_Comparison.md.
 +
++config CONTROLLER_OOT5
++    bool "Fifth out-of-tree controller (2026-09-29: Omar INDI Rust port, controller=10)"
++    default n
++    help
++        Fifth independent out-of-tree slot: Rust reimplementation of controller_omar_indi.c
++        (same control law as CONTROLLER_OOT4 / stabilizer.controller=9). Selects
++        ControllerTypeOot5 (stabilizer.controller=10 when OOT/OOT2/OOT3/OOT4 also enabled).
++        Numerically verified against the C reference before SIL; never flown without the
++        hardware gate. See docs/41 section 13.
++
  config ESTIMATOR_KALMAN_ENABLE
      bool "Enable Kalman Estimator"
      default y
-diff --git a/src/modules/src/controller/Kbuild b/src/modules/src/controller/Kbuild
-index 33401b23..cc518911 100644
---- a/src/modules/src/controller/Kbuild
-+++ b/src/modules/src/controller/Kbuild
-@@ -7,3 +7,4 @@ obj-y += controller_brescianini.o
- obj-y += position_controller_indi.o
- obj-y += position_controller_pid.o
- obj-y += controller_lee.o
-+obj-$(CONFIG_CONTROLLER_OOT4) += controller_omar_indi.o
 diff --git a/src/modules/src/controller/controller.c b/src/modules/src/controller/controller.c
-index e260ae8f..8055e51b 100644
+index e260ae8f..12d8e178 100644
 --- a/src/modules/src/controller/controller.c
 +++ b/src/modules/src/controller/controller.c
-@@ -33,6 +33,18 @@ static ControllerFcns controllerFunctions[] = {
+@@ -33,6 +33,21 @@ static ControllerFcns controllerFunctions[] = {
    #ifdef CONFIG_CONTROLLER_OOT
    {.init = controllerOutOfTreeInit, .test = controllerOutOfTreeTest, .update = controllerOutOfTree, .name = "OutOfTree"},
    #endif
@@ -140,6 +153,9 @@ index e260ae8f..8055e51b 100644
 +  #ifdef CONFIG_CONTROLLER_OOT4
 +  // 2026-09-22: fourth OOT slot, see ControllerTypeOot4 in controller.h (supervisor's INDI)
 +  {.init = controllerOutOfTree4Init, .test = controllerOutOfTree4Test, .update = controllerOutOfTree4, .name = "OutOfTree4"},
++  #endif
++  #ifdef CONFIG_CONTROLLER_OOT5
++  {.init = controllerOutOfTree5Init, .test = controllerOutOfTree5Test, .update = controllerOutOfTree5, .name = "OutOfTree5"},
 +  #endif
  };
  

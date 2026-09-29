@@ -86,6 +86,13 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     *m3 = g_host_rpm[2]; *m4 = g_host_rpm[3];
 }
 
+/* controller=10 (omar_indi_rust.rs): RPM path enabled when rpm log vars resolve — not
+ * deck.bcRpm param (intentional deviation from controller_omar_indi.c). */
+bool oot_rpm_logs_available(void)
+{
+    return logGetVarId("rpm", "m1") != 0xffffu;
+}
+
 /* 2026-09-22: controller=9's controllerOmarIndiInit() calls paramGetVarId("deck","bcRpm") once
  * to decide whether the RPM path is exercised at all -- report "present" unconditionally so the
  * INDI branch is actually exercised in host tests, mirroring the exact precedent already used
@@ -197,6 +204,8 @@ extern unsigned char *oot2_state_ptr(void);
 extern size_t oot2_state_size(void);
 extern unsigned char *oot3_state_ptr(void);
 extern size_t oot3_state_size(void);
+extern unsigned char *oot5_state_ptr(void);
+extern size_t oot5_state_size(void);
 
 typedef struct {
   unsigned char *slot[OOT_MAX_DRONES];
@@ -230,6 +239,7 @@ static void oot_swap_select(oot_swap_pool_t *pool, unsigned char *live, size_t n
 static oot_swap_pool_t g_pool_oot  = { .current = -1 };
 static oot_swap_pool_t g_pool_oot2 = { .current = -1 };
 static oot_swap_pool_t g_pool_oot3 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot5 = { .current = -1 };
 
 void oot_select_drone(int idx)
 {
@@ -244,6 +254,11 @@ void naindi_select_drone(int idx)
 void naindi_hybrid_select_drone(int idx)
 {
   oot_swap_select(&g_pool_oot3, oot3_state_ptr(), oot3_state_size(), idx);
+}
+
+void oot5_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot5, oot5_state_ptr(), oot5_state_size(), idx);
 }
 
 /* ---- Peer positions, host simulator only ----------------------------------
