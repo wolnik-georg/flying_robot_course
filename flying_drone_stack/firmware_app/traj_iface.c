@@ -555,12 +555,17 @@ float g_kp_xy = 28.0f;  /* position P gain X/Y [m/s² per m]  */
 float g_kp_z  = 30.0f;  /* position P gain Z                  */
 float g_kv_xy = 3.0f;   /* velocity D gain X/Y [m/s² per m/s] */
 float g_kv_z  = 7.0f;   /* velocity D gain Z                  */
+/* Z-only position integral (lib.rs ENABLE_Z_INTEGRAL): separate from joint i_ep / KI_P. */
+float g_ki_z       = 8.0f;  /* [m/s² per m·s] on accumulated z error */
+float g_ki_z_limit = 1.5f;  /* max |i_ez| [m·s] — sized for ~2–20 cm steady offsets */
 
 PARAM_GROUP_START(pos_gains)
   PARAM_ADD(PARAM_FLOAT, kp_xy, &g_kp_xy)
   PARAM_ADD(PARAM_FLOAT, kp_z,  &g_kp_z)
   PARAM_ADD(PARAM_FLOAT, kv_xy, &g_kv_xy)
   PARAM_ADD(PARAM_FLOAT, kv_z,  &g_kv_z)
+  PARAM_ADD(PARAM_FLOAT, ki_z,       &g_ki_z)
+  PARAM_ADD(PARAM_FLOAT, ki_z_limit, &g_ki_z_limit)
 PARAM_GROUP_STOP(pos_gains)
 
 /* ── controller=10 (ControllerTypeOot5, omar_indi_rust.rs) INDI bitmask ────

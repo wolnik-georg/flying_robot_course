@@ -523,6 +523,11 @@ const KI_ATT: f32 = 0.0;
 //    when disabled the integral term is zeroed out below).
 const ENABLE_POSITION_INTEGRAL: bool = false;
 //
+// 1b. Z-only position integral (separate i_ez / pos_gains.ki_z) — docs/51. Does not touch
+//     i_ep or ENABLE_POSITION_INTEGRAL above. Anti-windup: conditional integration when thrust
+//     is saturated against the error direction (see accumulate_z_integral).
+const ENABLE_Z_INTEGRAL: bool = false;
+//
 // 2. Attitude integral: accumulates SO(3) attitude error to correct steady-state tilt
 //    from motor asymmetry or COM offset.  KI_ATT=0.03 (official Lee firmware default).
 //    When disabled KI_ATT=0.0 above makes this a no-op anyway; flag kept for clarity.
@@ -637,6 +642,8 @@ const GYRO_FB_FC_HZ: f32 = 50.0;  // gyro attitude-rate-feedback low-pass cutoff
 struct State {
     // Shared (both paths)
     i_ep: Vec3,
+    i_ez: f32,
+    prev_thrust_si: f32,
     i_error_att: Vec3,
     last_tick: u32,
     timestamp_prev_us: u64,  // usecTimestamp() at the previous tick, for g_indi_dt_usec=1
@@ -703,7 +710,8 @@ struct State {
 impl State {
     const fn zero() -> Self {
         Self {
-            i_ep: Vec3::zero(), i_error_att: Vec3::zero(), last_tick: 0, timestamp_prev_us: 0,
+            i_ep: Vec3::zero(), i_ez: 0.0, prev_thrust_si: 0.0,
+            i_error_att: Vec3::zero(), last_tick: 0, timestamp_prev_us: 0,
             bw_x: Butterworth2::zero(), bw_y: Butterworth2::zero(), bw_z: Butterworth2::zero(),
             bw_pre_x: Butterworth2::zero(), bw_pre_y: Butterworth2::zero(), bw_pre_z: Butterworth2::zero(),
             omega_filt_prev: Vec3::zero(),
@@ -737,6 +745,8 @@ impl State {
     }
     fn reset(&mut self) {
         self.i_ep = Vec3::zero();
+        self.i_ez = 0.0;
+        self.prev_thrust_si = 0.0;
         self.i_error_att = Vec3::zero();
         self.last_tick = 0;
         self.bw_x.reset_state(); self.bw_y.reset_state(); self.bw_z.reset_state();
@@ -1024,6 +1034,8 @@ extern "C" {
 
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;
+    static mut g_ki_z: f32;
+    static mut g_ki_z_limit: f32;
     static mut g_kv_xy: f32;
     static mut g_kv_z:  f32;
 }
@@ -1447,6 +1459,40 @@ fn gyro_feedback(omega: Vec3, dt: f32, s: &mut State) -> Vec3 {
     )
 }
 
+/// Z-only integral (ENABLE_Z_INTEGRAL). Separate from joint `i_ep` / KI_P.
+/// Anti-windup: conditional integration — do not accumulate when thrust was saturated
+/// against the error direction on the previous tick, or while still on the ground.
+fn accumulate_z_integral(ep_z: f32, dt: f32, s: &mut State) {
+    if !ENABLE_Z_INTEGRAL {
+        return;
+    }
+    unsafe {
+        let ki_lim = g_ki_z_limit;
+        let clamp_en = g_indi_clamp_en;
+        let tmax = g_indi_thrust_max;
+        let mut allow = true;
+        if s.prev_thrust_si <= 0.05 {
+            allow = false;
+        } else if clamp_en & 0b1000 != 0 && s.prev_thrust_si >= tmax - 1e-4 && ep_z > 0.0 {
+            allow = false;
+        } else if clamp_en & 0b1000 != 0 && s.prev_thrust_si <= 0.05 + 1e-4 && ep_z < 0.0 {
+            allow = false;
+        }
+        if allow {
+            s.i_ez += ep_z * dt;
+            s.i_ez = s.i_ez.clamp(-ki_lim, ki_lim);
+        }
+    }
+}
+
+#[inline]
+fn z_integral_force_term(s: &State) -> f32 {
+    if !ENABLE_Z_INTEGRAL {
+        return 0.0;
+    }
+    unsafe { g_ki_z * s.i_ez }
+}
+
 fn geometric_step_ref(
     pos: Vec3, vel: Vec3, r: &Mat3, omega: Vec3,
     pd: Vec3, vd: Vec3, ad: Vec3, yaw_d: f32,
@@ -1456,6 +1502,7 @@ fn geometric_step_ref(
 ) -> (f32, Vec3) {
     let ep = pd.sub(pos);
     let ev = condition_vel_error(vd.sub(vel), dt, s);
+    accumulate_z_integral(ep.z, dt, s);
     s.i_ep = s.i_ep.add(ep.scale(dt));
     s.i_ep = Vec3::new(
         s.i_ep.x.clamp(-KI_LIMIT, KI_LIMIT),
@@ -1467,11 +1514,17 @@ fn geometric_step_ref(
         .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(Vec3::new(KI_P*s.i_ep.x, KI_P*s.i_ep.y, KI_P*s.i_ep.z))
+        .add(Vec3::new(0.0, 0.0, z_integral_force_term(s)))
         .add(Vec3::new(0.0, 0.0, GRAVITY));
     let thrust_vec = f_d.scale(unsafe { g_indi_mass });
     let body_z = Vec3::new(r[0][2], r[1][2], r[2][2]);
     let thrust = thrust_vec.dot(body_z).max(0.0);
-    if thrust < 0.05 { s.i_ep = Vec3::zero(); s.i_error_att = Vec3::zero(); }
+    if thrust < 0.05 {
+        s.i_ep = Vec3::zero();
+        s.i_ez = 0.0;
+        s.i_error_att = Vec3::zero();
+    }
+    s.prev_thrust_si = thrust;
     let rd_flatness;
     let rd: &Mat3 = match rd_override {
         Some(ro) => ro,
@@ -1628,6 +1681,7 @@ fn controller_step(
         s.i_ep.y.clamp(-KI_LIMIT, KI_LIMIT),
         s.i_ep.z.clamp(-KI_LIMIT, KI_LIMIT),
     );
+    accumulate_z_integral(ep.z, dt, s);
 
     // Residual acceleration a_res = a_meas - a_model (world frame).
     //
@@ -1740,6 +1794,7 @@ fn controller_step(
         .add(Vec3::new(kp_xy*ep.x, kp_xy*ep.y, kp_z*ep.z))
         .add(Vec3::new(kv_xy*ev.x, kv_xy*ev.y, kv_z*ev.z))
         .add(ki_term)
+        .add(Vec3::new(0.0, 0.0, z_integral_force_term(s)))
         .add(Vec3::new(0.0, 0.0, gz_comp))
         // ── RESIDUAL SIGN: PARKED AT THE FROZEN (finalized-version-for-INDI-project)
         //    BEHAVIOUR, 2026-09-09. Selected at runtime by `indi_gains.res_sign`.
@@ -1816,8 +1871,10 @@ fn controller_step(
     }
     if thrust < 0.05 {
         s.i_ep = Vec3::zero();
+        s.i_ez = 0.0;
         s.i_error_att = Vec3::zero();
     }
+    s.prev_thrust_si = thrust;
 
     // -- Desired rotation -----------------------------------------------------
     let rd_flatness;

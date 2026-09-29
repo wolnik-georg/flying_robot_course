@@ -110,6 +110,7 @@ index d4ae77ca..a47247c0 100755
 +extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
 +extern float g_indi_fc_bw, g_indi_fc_bw_yaw, g_indi_mass;
 +extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern float g_ki_z, g_ki_z_limit;
 +extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
 +extern int8_t g_indi_res_sign;
 +extern uint16_t g_indi_filt_dt_us;
@@ -192,6 +193,7 @@ index d4ae77ca..a47247c0 100755
 +extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
 +extern float g_indi_fc_bw, g_indi_fc_bw_yaw, g_indi_mass;
 +extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern float g_ki_z, g_ki_z_limit;
 +extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
 +extern int8_t g_indi_res_sign;
 +extern uint16_t g_indi_filt_dt_us;
