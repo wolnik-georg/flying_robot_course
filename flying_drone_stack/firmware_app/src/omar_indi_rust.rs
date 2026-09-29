@@ -15,6 +15,11 @@ extern "C" {
     fn usecTimestamp() -> u64;
     fn oot_rpm_logs_available() -> bool;
     fn powerDistributionGetMaxThrust() -> f32;
+    // yaml/cfclient-settable: PARAM_GROUP(ctrlOot5).indi in traj_iface.c. Read live every
+    // tick (not cached into State at Init) so it behaves like a real runtime param, same as
+    // ctrlOmarIndi.indi for controller=9 -- see docs/41 §13 for why c=9 shipping with this
+    // defaulting to 0 silently flew plain geometric instead of INDI for two days.
+    static g_oot5_indi: u8;
 }
 
 const ATTITUDE_RATE: f32 = 500.0;
@@ -244,6 +249,7 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
         desired_yaw = rpy.z;
     }
 
+    s.indi = unsafe { g_oot5_indi };
     let rpm_ok = unsafe { oot_rpm_logs_available() };
     let mut t1 = 0.0_f32;
     let mut t2 = 0.0;
@@ -463,7 +469,8 @@ pub extern "C" fn omar_indi_rust_set_indi(mode: u8) {
 #[no_mangle]
 pub extern "C" fn controllerOutOfTree5Init() {
     unsafe {
-        ST.indi = 0;
+        // ST.indi is not reset here -- it is synced from g_oot5_indi (the yaml/cfclient
+        // param) every tick in step_inner, before first use, same tick as this Init call.
         ST.i_error_pos = Vec3::zero();
         ST.i_error_att = Vec3::zero();
         ST.omega_prev = Vec3::zero();

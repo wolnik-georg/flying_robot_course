@@ -339,6 +339,14 @@ Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § 2026-09-29
 
 **Slot:** `ControllerTypeOot5` / `CONFIG_CONTROLLER_OOT5` / **`stabilizer.controller=10`**. Module **`firmware_app/src/omar_indi_rust.rs`** exports **`controllerOutOfTree5Init/Test/Update`**. Patch: **`naindi_controller_slot.patch`** (regenerated with Oot5). **`app-config-bl`:** `CONFIG_CONTROLLER_OOT5=y`.
 
+### ⚠️ Pre-flight gap found and fixed, 2026-09-29 (post Cursor build)
+
+Cursor's initial build had **no runtime-settable `indi` param** — `omar_indi_rust_set_indi()` existed as a C-callable function but nothing wired it to a `PARAM_GROUP`, and `controllerOutOfTree5Init()` unconditionally zeroed `ST.indi` on every controller-select. Flying it as-shipped would have **silently repeated controller=9's exact bug** (shipped `indi=0`, flew plain geometric for two days before anyone noticed — §9). The host numerical test didn't catch this because it bypasses yaml entirely and calls the setter directly.
+
+**Fixed:** added `PARAM_GROUP(ctrlOot5) { indi }` in `traj_iface.c` (`uint8_t g_oot5_indi = 3` — defaults **on**, since this controller's whole purpose is being the finalized INDI, not a bare-geometric variant), and `omar_indi_rust.rs` now reads it live every tick (`s.indi = g_oot5_indi`) instead of caching a stale value at Init. Re-verified after the fix: **host build clean, 7/7 numerical still passing (worst delta unchanged, 7.15e-07), real `make DRONE=bl` firmware build clean** (RAM 94776/131072, Flash 39%).
+
+**To fly:** set `ctrlOot5.indi: 3` in `crazyflies.yaml` on `cf5`'s `firmware_params` block (belt-and-suspenders — firmware default is already 3, but explicit is safer given the c=9 precedent), same pattern as `ctrlOmarIndi.indi` for controller=9.
+
 ### Intentional deviation (RPM availability)
 
 The C reference gates INDI on **`paramGetVarId("deck","bcRpm")`** in **`controllerOmarIndiInit()`** (the crash class fixed in **`rpm.c`** 2026-09-29). The Rust port uses **`oot_rpm_logs_available()`** — **`logVarIdIsValid(logGetVarId("rpm","m1"))`**, same family as **`rpm_get_all()`** in **`traj_iface.c`** — and reads RPM only through **`rpm_get_all()`**. **Control-law goal unchanged; bug-replication goal explicitly rejected.**

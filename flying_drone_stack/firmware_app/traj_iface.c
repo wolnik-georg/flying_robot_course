@@ -563,6 +563,19 @@ PARAM_GROUP_START(pos_gains)
   PARAM_ADD(PARAM_FLOAT, kv_z,  &g_kv_z)
 PARAM_GROUP_STOP(pos_gains)
 
+/* ── controller=10 (ControllerTypeOot5, omar_indi_rust.rs) INDI bitmask ────
+ * Runtime-settable via yaml/cfclient, same role as controller=9's ctrlOmarIndi.indi
+ * (bit0=position INDI, bit1=attitude INDI). Read live every tick by omar_indi_rust.rs,
+ * NOT cached at Init -- default is 3 (both bits on) since this controller's whole point
+ * is being the finalized Rust INDI, not a bare-geometric variant. controller=9 shipped
+ * with the equivalent defaulting to 0 and silently flew plain geometric on its first two
+ * days of hardware attempts before this was caught -- see docs/41 §9 and §13. */
+uint8_t g_oot5_indi = 3;
+
+PARAM_GROUP_START(ctrlOot5)
+  PARAM_ADD(PARAM_UINT8, indi, &g_oot5_indi)
+PARAM_GROUP_STOP(ctrlOot5)
+
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
 /* Exposes per-motor RPM via the Crazyflie log system. Two possible sources,
  * selected at RUNTIME by indi_gains.rpm_source (added 2026-09-11):
