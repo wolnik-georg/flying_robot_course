@@ -381,8 +381,21 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
     let d2 = -yb.dot(des_jerk);
     let d3 = sp.attitudeRate.yaw * DEG2RAD * xc.dot(xb);
 
+    // ⚠️ DOCUMENTED DEVIATION from controller_omar_indi.c (2026-09-29, see docs/41 §13):
+    // the C reference gates this purely on `thrustSi != 0`, with NO guard on b1 or c3
+    // going near zero -- as thrust_si -> 0 (a low-thrust ground/takeoff-ramp phase) with
+    // any nonzero commanded jerk, d1/b1 or d2/b1 can blow up into a huge single-axis
+    // omega_des, which downstream becomes a huge single-axis torque command -- structurally
+    // able to produce exactly the "one motor ramps hard, the other three stay idle,
+    // never lifts off" pattern seen on controller=10's first flight (2026-09-29). This
+    // exact risk exists unchanged in the C reference too (not a Rust-port bug), but is
+    // guarded HERE, deliberately breaking strict byte-for-byte fidelity to Omar's source
+    // in favor of not repeating that failure. Omar's controller=9 keeps the unguarded
+    // original behaviour untouched.
+    const MIN_B1: f32 = 0.5; // m/s^2 -- well below any real hover/climb thrust_si/mass
+    const MIN_C3: f32 = 0.05; // |yc x zb| -- near-degenerate only in extreme attitudes
     let mut omega_des = Vec3::zero();
-    if thrust_si != 0.0 {
+    if thrust_si != 0.0 && libm::fabsf(b1) > MIN_B1 && libm::fabsf(c3) > MIN_C3 {
         omega_des.x = d2 / b1;
         omega_des.y = d1 / b1;
         omega_des.z = (b1 * d3 - b3 * d1) / (b1 * c3);
@@ -400,8 +413,9 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
         - omega_des.x * omega_des.y * yc.dot(yb)
         - omega_des.x * omega_des.z * yc.dot(zb);
 
+    // Same documented guard as omega_des above -- same denominators, same risk.
     let mut omega_des_dot = Vec3::zero();
-    if thrust_si != 0.0 {
+    if thrust_si != 0.0 && libm::fabsf(b1) > MIN_B1 && libm::fabsf(c3) > MIN_C3 {
         omega_des_dot.x = e2 / b1;
         omega_des_dot.y = e1 / b1;
         omega_des_dot.z = (b1 * e3 - b3 * e1) / (b1 * c3);
