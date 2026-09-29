@@ -30,8 +30,10 @@ bottom.
 > real, unresolved pushback) to a `run_formation.py` launch-script bug — fixed and SIL-verified,
 > **but not yet confirmed by a real re-flight.** Full account and open questions:
 > [`lab_sessions/2026-09-28_alt_indi_shakedown.md`](lab_sessions/2026-09-28_alt_indi_shakedown.md)
-> § "Operator pushback." **Next lab session: re-fly `cf5`/controller=9 first — this is unresolved,
-> not solved.**
+> § "Operator pushback." **2026-09-29 (desk):** separate **connect-time** syslink queue overflow on
+> cf5 @ c=9 — fixed by pacing `firmware_params` in vendored `crazyflie_server.cpp` (see lab doc §
+> 2026-09-29). **Next lab session:** confirm connect, then re-fly solo + 2-drone A1 (gain-skip fix
+> still unproven in air).
 > **Desk — NS2 (Strategy 2) final status (2026-09-27):**
 > - Pipeline (train/test/validate) — **done**.
 > - RAM overflow — **fixed** (flash-resident weights).
@@ -952,6 +954,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-09-29 (70) | **cf5/controller=9 connect assert (desk):** `uart_syslink.c:549` queue overflow from **unpaced connect-time `firmware_params` burst** (44 writes in ~0.33 ms on cf5; cf_second yaml **42**, same server code — `ctrlOmarIndi` **not** in connect push). Fix: **150 ms pacing** between `set_param_map` writes in **vendored `crazyswarm2` `crazyflie_server.cpp`** (no firmware change). Tools: `analyze_connect_param_burst.py`, `test_connect_param_pacing.py`. **Hardware re-connect not done by agent** — see `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § 2026-09-29. |
 | 2026-09-28 (69) | **NS2 full C.1 bank retrain (desk, `docs/40` § Full C.1 bank retrain 2026-09-28):** **22** interaction files (21+23 Sep minus legacy A2 + zero-row A1_13-25-10, plus **7** eligible 28 Sep incl. **A4×4** lateral block). **`full_bank_c1_complete.npz`**, **22-fold LOO** (A4 folds consistent with A3; A1/A2 harder). **`eval_model.py`:** R² **0.936**, val RMSE **0.263 m/s²**. SIL A3 predict + Stage E **pass** with new weights (**0% clamp**, gated_true corr **~0.91**). **Model-quality narrative unchanged** for SIL scale/gating; offline bank stronger. Artifacts: `experiments/analysis/out/c2_e2e_2026-09-28/`. |
 | 2026-09-28 (68) | **Operator pushback on (67)'s root cause, unresolved — see `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § "Operator pushback".** `cf_second` (controller=5) has absorbed the identical ~21-write inert gain burst on every prior 2-drone flight this whole project without ever failing to take off — so "gain burst starves HL radio" cannot be the *whole* explanation for `cf5`/controller=9's specific failure; something particular to that controller's first-ever hardware attempt is still unaccounted for. Separately clarified (not a contradiction): the original controller=9 SIL validation (`docs/41`) tested the *controller's* flight dynamics via a direct SIL driver, never `run_formation.py`'s takeoff/arm sequence — so last night's "SIL now passes" result doesn't conflict with the earlier "SIL was clean" result; they tested different code paths. **Status: fix is real and SIL-verified, but not proven to be the actual fix for `cf5`'s failure. Tomorrow's hardware re-fly of `cf5`/controller=9 is the real test — do not treat this as solved until it flies clean.** Tonight (desk, not lab): all C.1-planned scenarios now collected — retrain NS2 on the complete 21+23+28-Sep dataset. |
 | 2026-09-28 (67) | **f25470a verification (desk/SIL):** Bench **`measure_run_formation_takeoff_params.py`** — cf5@9 and cf_second@5 **21→0** inert gain writes on `apply('takeoff')`; hypothetical **7/8** same. **SIL A1** (cf5+cf_second, `run_formation.py`) **PASS** for **oot4/oot2/oot3** (`verify_formation_sim`, cf5 z→1 m). **Bandwidth-starvation root cause still inferred** — SIL has no radio contention; **hardware re-fly** still needed. Tools: `run_formation_alt_controller_sil.sh`. |

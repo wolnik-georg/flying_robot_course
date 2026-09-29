@@ -424,3 +424,46 @@ Two problems raised with the "gain burst starves HL radio" story, both valid, ne
 
 - **Tonight (desk, not lab):** all C.1-planned scenarios are now collected (21+23+28 Sep) — retrain Neural-Swarm2 on the complete dataset, re-run LOO/eval, check the new A4/A1/A2 folds particularly, since those are new data.
 - **Tomorrow (lab):** re-fly `cf5`/controller=9 solo + 2-drone A1 first (the actual open test from tonight); if clean, continue the alt-INDI ladder (7, then 8) using the same runbook. If `cf5` still fails, stop and re-open the root-cause investigation — don't assume the fix worked without seeing it fly.
+
+---
+
+## 2026-09-29 — cf5 connect assert (`uart_syslink.c:549`, queue overflow)
+
+**Symptom (lab, reproducible):** `cf5` with `stabilizer.controller: 9` asserts during **connection**, before `run_formation.py` or takeoff:
+
+`SYS: Assert failed at .../uart_syslink.c:549` (`ASSERT(0); // Queue overflow`).
+
+**Not the same bug as 2026-09-28 `run_formation.py` gain flood** — that fix (`f25470a`) only paces/skips gains on `apply('takeoff', …)` **after** connect. This failure is in the **routine connect-time `firmware_params` sync**.
+
+### Mechanism (desk, confirmed with numbers)
+
+| Item | cf5 | cf_second (reconstructed) |
+|------|-----|---------------------------|
+| **Yaml `firmware_params` pushed on connect** | **44** | **42** |
+| **Measured burst (2026-09-29 `debug/lab_logs/debug.log`)** | **44 writes in ~0.00033 s** | *No comparable log in repo* — same `crazyflie_server.cpp` loop would burst similarly |
+| **cf5-only yaml keys** | `indi_gains.rpm_source`, `rnn.en` | — |
+
+**`ctrlOmarIndi` (~22 params on brushless firmware) is not pushed on connect** — not in yaml; the “extra Omar param group” hypothesis for **host write count** is **refuted**. TOC on cf5 is **423 entries** (brushless OOT firmware); cf_second uses stock Lee firmware (smaller TOC, no OOT4).
+
+**Firmware queue:** `STATIC_MEM_QUEUE_ALLOC(syslinkPacketDelivery, 8, …)` in `uart_syslink.c`. On checksum OK, if the queue is full → assert (line ~549). **`uartslkEnableIncoming()` is set `true` in `system.c` before `deckInit()`** — so the “consumer not ready” flag is **not** the gating issue; the problem is **depth + drain rate** while the STM32 is still busy (deck/IMU init, tests) and the nRF51 forwards a **near-simultaneous** CRTP/param storm from the host.
+
+**Why cf5 and not cf_second (working hypothesis, not fully A/B logged):** same unpaced server code, but cf5 is **brushless + dual deck (uSD + RPM) + heavier boot**, and receives **two extra yaml writes** plus post-connect **extra log blocks** (e.g. DShot `rpm` topic). Any of those can widen the boot window where 8 syslink RX slots are insufficient — not “44 vs 42 params alone.”
+
+Tooling: `experiments/analysis/analyze_connect_param_burst.py`.
+
+### Fix applied (host / vendored crazyswarm2 — **not firmware**)
+
+**Layer:** pace **connect-time** parameter application in **`crazyswarm2/crazyflie/src/crazyflie_server.cpp`** (upstream ROS driver — **flagged as vendored patch**, same repo family as `f25470a`).
+
+After building `set_param_map`, **`change_parameter` is called once per entry with `150 ms` sleep between writes** (same spacing as last night’s takeoff gain pacing). ~44 × 150 ms ≈ **6.5 s extra connect time per robot** — acceptable vs boot assert.
+
+**Not changed:** `controller_omar_indi.c`, `uart_syslink.c` queue depth (8 left as-is).
+
+**Desk verify:** `colcon build --packages-select crazyflie` clean; `experiments/analysis/test_connect_param_pacing.py` checks the pacing block exists.
+
+### Next step (hardware — operator only)
+
+1. Pull/build **crazyswarm2** with this commit on the lab PC; `colcon build --packages-select crazyflie`.
+2. `ros2 launch …` with **cf5 @ controller 9** — confirm **no** `uart_syslink.c:549` assert and normal connect.
+3. If connect is clean → proceed with **solo + 2-drone A1** (still the real test of `f25470a` + controller=9).
+4. If assert persists → stop; consider firmware queue bump (document in `LOCAL_MODIFICATIONS.md`) or longer pacing — do not fly.
