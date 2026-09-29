@@ -6,8 +6,10 @@ XY+Z path (`ENABLE_POSITION_INTEGRAL`, `KI_P`, `i_ep`) closed in `docs/50`.
 
 **Status (2026-09-29):** **Implemented, default OFF.** SIL shows materially more Z
 correction than the joint integral at the same disturbance sweep; still **not** a
-credible full fix for **17–20 cm** A1-scale log bias without further gain/limit tuning
-or addressing formation physics.
+credible full fix for **17–20 cm** A1-scale log bias. **Task 4 update:** gain-tuning
+`ki_z` further does not change this — it speeds recovery from a sustained disturbance,
+it does not reduce the peak/initial sag, and even the fastest tested recovery (~9s)
+exceeds a real A1 hold's duration.
 
 **Validated 2026-09-29 (independent check):** SHA256 of the OFF binary reproduced
 bit-for-bit from a clean rebuild; SIL JSON numbers confirmed self-consistent; anti-windup
@@ -121,17 +123,73 @@ A1 bias?
 
 ---
 
+## Task 4 — `ki_z` gain sweep, 2026-09-29 (correction to Task 2's framing)
+
+**Method:** re-ran the already-verified ON binary (SHA256 `60d0a571…`, no rebuild needed —
+`ki_z`/`ki_z_limit` are runtime params) at `ki_z ∈ {8, 16, 24, 32, 48, 64}`, `ki_z_limit`
+fixed at 1.5, against the same −200 mN step-disturbance fixture as Task 1.
+
+**Headline "mean error over t>8s" looked like a clean win as gain increased:**
+
+| `ki_z` | mean err (mm) | rmse (mm) |
+|-------:|--------------:|----------:|
+| 8 (default) | −38.8 | 40.4 |
+| 16 | −15.8 | 18.3 |
+| 32 | −2.9 | 4.4 |
+| 64 | −0.1 | 0.25 |
+
+**But the transient trace reveals this metric was misleading.** Plotting `z` error from
+disturbance onset (`t=5s`) at `ki_z=8` vs `ki_z=16` vs `ki_z=32`: **the peak dip is
+essentially identical regardless of gain** — −128 mm (ki_z=8), −127 mm (ki_z=16), −126 mm
+(ki_z=32), all at `t≈5.4s`. The integral term has no time to act on the instantaneous
+step — the initial response is dominated by the P/D terms and plant dynamics, which the
+gain sweep doesn't touch. What changes with `ki_z` is **only how fast it recovers
+afterward**: at `ki_z=32`, recovery from the ~127 mm peak back to near-zero takes **~9
+seconds**. A real A1 hold in this project runs **~5–10 s total** — shorter than that
+recovery time even at the most aggressive tested gain, and real downwash is unlikely to
+be a clean one-time step the way this fixture models it (present from formation entry,
+not injected mid-hover). So the earlier Task 2 "mean error" table was really comparing
+*how much of an identical peak dip had been recovered from by a given time*, not
+*how much the disturbance was rejected* — the two are not the same claim, and the
+framing overstated what gain-tuning alone can deliver in a realistic flight duration.
+
+**A mild ringing artifact was also observed** even in this idealized, zero-sensor-noise
+fixture (a small secondary worsening around `t=6.0–6.2s` before the trace resumes
+recovering) — a soft warning sign for how a more aggressive gain might behave with real
+sensor noise and delay, not present in this synthetic test at all.
+
+**`ki_z_limit` confirmed not the binding constraint** in this disturbance range — doubling
+it (1.5→3.0) with `ki_z` held fixed produced byte-identical results to the un-doubled case;
+gain, not accumulator ceiling, is what's limiting recovery speed here.
+
+**Corrected verdict:** gain-tuning `ki_z` upward buys **faster recovery from a sustained
+disturbance**, not **reduced peak sag** — it does not address the instantaneous dip a real
+downwash encounter would cause, and the recovery-time benefit may not even materialize
+within a real ~5–10s hold. Task 2's "not a credible full fix for 17–20cm gaps" conclusion
+stands, and this sweep sharpens *why*: the mechanism this term provides (slow accumulation)
+is structurally mismatched to a disturbance that (a) may not be a clean constant force and
+(b) needs correcting faster than an integral, by construction, can respond.
+
+---
+
 ## Task 3 — Recommendation
 
-**Do not enable `ENABLE_Z_INTEGRAL` on hardware yet** (compile flag remains **false**).
+**Do not enable `ENABLE_Z_INTEGRAL` on hardware yet** (compile flag remains **false**,
+default `ki_z=8`/`ki_z_limit=1.5` unchanged — Task 4 found no gain value that changes
+this recommendation).
 
 **Next steps if pursued:**
 
 1. C.0 **solo C5** hover with flag on + param tune — confirm no takeoff windup with
-   conditional integration.
+   conditional integration, and directly observe whether real downwash resembles a step
+   disturbance at all (Task 4 casts doubt on this fixture's disturbance model).
 2. **A1** geometric re-fly with integral on — compare mean `z − ctrltarget_z` to
-   **2026-09-29** **0.17–0.20 m** baseline.
-3. If still short, tune **`ki_z` / `ki_z_limit`** via `pos_gains` (not joint `KI_P`).
+   **2026-09-29** **0.17–0.20 m** baseline, over the *actual* hold duration, not an
+   extended 14s SIL window.
+3. If pursuing gain increases despite Task 4's finding, treat it as a recovery-speed
+   knob, not a disturbance-rejection knob — expect no improvement to the peak/initial
+   sag, and validate against real sensor noise before trusting the idealized ringing-free
+   SIL result at higher gains.
 
 ---
 
@@ -144,6 +202,8 @@ A1 bias?
 | `flying_drone_stack/firmware_app/src/lib.rs` | `i_ez`, anti-windup, `ENABLE_Z_INTEGRAL` |
 | `flying_drone_stack/firmware_app/traj_iface.c` | `g_ki_z`, `g_ki_z_limit` |
 | `flying_drone_stack/firmware_app/host/cffirmware_bindings.patch` | SWIG externs |
+| `experiments/analysis/ki_z_gain_sweep.py` | Task 4 — gain sweep (mean/rmse table, read with the trace script below) |
+| `experiments/analysis/ki_z_gain_sweep_transient_trace.py` | Task 4 — transient trace that reveals peak-dip-is-gain-invariant |
 
 **Related (controller=10 telemetry triage, not this integral):**
 `experiments/analysis/check_omar_rust_telemetry.py`.
