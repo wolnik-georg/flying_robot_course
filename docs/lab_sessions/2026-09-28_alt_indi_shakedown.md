@@ -543,3 +543,144 @@ to confirm nothing now depends on them.
 **Not yet tested:** controller=7/8 (`naindi.rs`/`naindi_hybrid.rs`) — worth checking for the same
 class of missing-param dependency before their first hardware attempt, rather than rediscovering
 it the same way.
+
+## 2026-09-29 — controller=7 first hardware attempt: failed, no logs, cause unknown
+
+Checked first: `naindi.rs` does **not** share controller=9's missing-param bug class — no
+`paramGetVarId`/`paramGetUint` calls anywhere; its RPM read (`rpm_get_all()`) already validates
+the log-id and falls back to 0 instead of asserting. Cleared to fly on that basis.
+
+**Two consecutive solo-hover attempts, both failed the same way:** "one motor spin fast and then
+it flips on the ground." **No radio or uSD logs were captured for either attempt** — a desk-side
+scan (`experiments/analysis/analyze_controller7_sep29.py`) confirmed 0 of 6 same-evening `cf5`
+radio CSVs tag `controller=7` (all are `=9` or `=6`). **Root cause could not be investigated and
+remains completely unknown.** controller=7/8 work was paused here by operator decision — not
+abandoned, but deprioritized in favor of the option below.
+
+## 2026-09-29 — decision: build controller=10 instead of continuing to debug controller=7
+
+Operator's reasoning: controller=9 (Omar's own INDI) is now proven working on real hardware.
+`naindi.rs` (controller=7) is a Rust port of a **different** reference (Cobo-Briesewitz's
+NA-INDI) — debugging it further doesn't get any closer to a Rust-native version of the algorithm
+that's actually known to work. Faster path: build a new, faithful Rust port of
+`controller_omar_indi.c` itself — a new slot, `controller=10`.
+
+**Built same evening** (`ControllerTypeOot5`, `firmware_app/src/omar_indi_rust.rs`): numerically
+verified 7/7 against the C reference (worst delta 7.15e-07), SIL single-drone clean. RPM
+availability deliberately uses this project's own safe `rpm_get_all()`/`oot_rpm_logs_available()`
+pattern instead of Omar's fragile `paramGetVarId` probe — the one intentional, documented
+deviation. Full build notes: `docs/41` §12.
+
+**Pre-flight gap found and fixed before ever reflashing:** the initial build had **no**
+yaml-settable `indi` bitmask param at all — `Init()` unconditionally zeroed it every
+controller-select, which would have silently repeated controller=9's own two-day "shipped with
+indi=0, flew plain geometric" bug. Added `PARAM_GROUP(ctrlOot5) { indi }` (default `3`, not `0`)
+before this ever reached hardware. Verified: host 7/7 unaffected, real `make DRONE=bl` build
+clean.
+
+## 2026-09-29 — controller=10 first hardware attempt: motors spun, bottom drone never lifted off
+
+Flown **directly to A1** (2-drone), skipping the usual solo-first step — explicit operator
+decision, with the real difference from controller=9's own precedent flagged at the time:
+controller=9 had a confirmed working basic flight before its first A1; controller=10 had zero
+real hardware time at all before this attempt.
+
+**Result:** `cf_second` (top, controller=5) flew normally. `cf5` (bottom, controller=10) — motors
+visibly spun, drone never left the ground.
+
+**uSD pulled and analyzed** (both cards, both A1 attempts, `experiments/logs/usd_raw/A1_controller10_2026-09-29_{19-02-37,19-04-22}_merged.csv`):
+- `cf5.z` stayed flat at −0.024 m the entire ~10s flight (normal small EKF noise, estimator not
+  stuck — ruled that theory out directly).
+- **Real finding:** `motor_m1..4` (PWM) show a **single-motor-dominant pattern** in both
+  attempts — one motor (m1 in flight 1, m4 in flight 2) ramps from idle to ~30-50k PWM while the
+  *other three sit flat at idle* the whole time. Peak 4-motor thrust computed from RPM (1.37 N)
+  was well above what's needed to lift the 42.7 g airframe — **not** an underpowered-thrust
+  problem, a torque/allocation problem.
+- `tau_x/y/z`/`a_res_*` read dead-zero throughout — confirmed this is a **telemetry gap, not real
+  data** (the same columns carry real non-zero values in a known-good controller=6 flight from
+  Sep 15). Neither `controller_omar_indi.c` nor `omar_indi_rust.rs` had ever called this
+  project's `indi_tau_write`/`indi_a_res_write`/`indi_e_r_write` bridge. **Fixed** (additive only,
+  no control-law change) so the *next* attempt has real torque/residual telemetry — this one
+  didn't.
+
+**Bug found and fixed, real but not confirmed as the cause:** the controller's lazy-init branch
+(`controllerOutOfTree5()`) took a live `&mut` reference into its static state, then called
+`Init()` — which mutates the same static through a separate path — while that reference was
+still held. Real aliasing UB (the compiler's own warning flagged exactly this), and the *only*
+code path that had ever exercised it was real hardware's first tick — the host numerical test
+always pre-initializes manually, so this branch had literally never run in any test. Fixed by
+reordering (check + Init fully before any `&mut` into the static is created). **Honesty check:**
+reverted the fix and re-ran a cold-start repro on the host build — both versions produced
+identical, correct, non-zero output. Could not reproduce tonight's failure either way, so this
+fix is real and worth keeping, but **not confirmed** as what actually happened on hardware.
+
+**Full code audit against `controller_omar_indi.c`, line by line:** position loop, `R_des`
+construction, `eR`, the differential-flatness `omega_des`/`omega_des_dot` block, INDI residual
+terms, torque assembly — **no further discrepancy found**, consistent with the 7/7 numerical
+match. **One real structural risk identified**, shared with the C reference itself (not a
+Rust-port bug): `omega_des`/`omega_des_dot` divide by `thrust_si/mass` and `|yc × zb|` with no
+floor — near-zero thrust (exactly the ground/takeoff-ramp phase this flight was stuck in) with
+any nonzero commanded jerk can blow one axis up into a huge single-motor torque command,
+structurally matching the observed symptom. **Not confirmed** as the cause — the identical code
+is unguarded in the C reference and flies fine on controller=9. **Guarded anyway**
+(`MIN_B1`/`MIN_C3` floors, commit `f4e9256e`) — a deliberate, documented deviation from strict
+fidelity to Omar's source, since the risk is real regardless of whether it's this flight's actual
+cause. 7/7 numerical unaffected, real firmware build clean.
+
+**Net result: root cause still open.** Two real, worthwhile fixes are in (the UB, the guard) plus
+the telemetry gap closed — but none of this is proven to be what actually happened. The only way
+to know is another flight with the new telemetry in place.
+
+## 2026-09-29 — Z-only position integral: built, tested, decided against (for now)
+
+Separate track, `docs/51_Z_Only_Integral.md`. Built a new, separate Z-only integral for the
+geometric controller (distinct from the joint XY+Z integral `docs/50` already closed), with
+conditional-integration anti-windup. SIL A/B showed materially more correction than the old
+joint integral at the same disturbance sweep (~63 mm vs ~0.6 mm at −200 mN) — looked like a real
+win.
+
+**Gain sweep (`ki_z` 8→64) corrected that framing.** The "mean error" table looked like a clean
+win as gain increased, but the transient trace revealed why: the **peak dip at disturbance
+onset is unchanged by gain** (~127 mm at −200 mN regardless of `ki_z`) — only *recovery speed*
+changes, and even the fastest tested gain takes ~9 s to recover, longer than a real A1 hold
+(~5–10 s). **Verdict: do not enable.** Gain-tuning is a recovery-speed knob, not a
+disturbance-rejection knob, and doesn't address the thing that actually matters (the initial
+sag). `ENABLE_Z_INTEGRAL` stays `false`, default gains unchanged.
+
+**Validation note:** two real problems were found and fixed in the desk-work Cursor produced this
+session — a stray `Co-authored-by` commit trailer (removed, this project never adds one) and a
+missing `+` prefix in `cffirmware_bindings.patch` that would have broken re-applying that patch
+against a fresh `crazyflie-firmware` checkout (fixed). A doc inaccuracy was also corrected —
+`docs/51` originally claimed the Z-integral was geometric-only; it was in fact wired into both
+the geometric and INDI control paths (left in place, corrected in the doc, since it's inert while
+the flag is off).
+
+---
+
+## Close-out (2026-09-29, end of session)
+
+**Yaml state left for next lab session:** `cf5` = `controller: 10`, `ctrlOot5.indi: 3` explicit.
+`cf_second` = **disabled** (solo-first discipline, reset after the direct-to-A1 attempt failed).
+
+**Next lab session — controller=10:**
+1. `git pull` both repos (commits through `de3f673c` / `99e6b33`) — brings the UB fix, the
+   `omega_des`/`omega_des_dot` guard, and the new `tau`/`a_res`/`e_r` telemetry.
+2. `cd flying_drone_stack/firmware_app && make cload` — reflash `cf5`.
+3. Confirm clean connect, spot-check `ctrlOot5.indi` reads `3` before arming.
+4. **Solo hover only** — `cf_second` is already left disabled. Watch closely; this is still
+   unflown-clean code, same discipline as any first attempt.
+5. If it fails again: pull uSD immediately, run `experiments/analysis/check_omar_rust_telemetry.py`
+   on the merged CSV — this time it should show real `tau`/`a_res` values, which is the actual
+   missing piece from tonight's analysis.
+6. If it flies clean: re-enable `cf_second`, move to A1, then resume the broader comparison plan
+   (dz=0.20/0.50, other scenarios) that was paused before this whole shakedown started.
+
+**Not lab-blocked, but currently deprioritized, not forgotten:**
+- controller=7/8 — paused, no root cause found, no logs captured. Revisit only if controller=10
+  doesn't pan out, or time allows a properly-logged retry.
+- The two "loose end" pacing fixes from the wrong-theory chase (`run_formation.py` gain-skip,
+  `crazyflie_server.cpp` connect pacing) — still add ~6.5s to every connect for problems that
+  turned out not to exist. Candidates to revert, not urgent.
+
+**Desk work: fully exhausted for both active tracks.** Nothing further to investigate on
+controller=10 or the Z-integral without new flight data — see `docs/07`'s Next-action line.
