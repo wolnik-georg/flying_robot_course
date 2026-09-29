@@ -118,22 +118,38 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Desk study · reopened 29 Sep 2026 (spike filter + methods) · sensor quality only</div>
+  <div class="eyebrow">Desk study · presentation re-run 29 Sep 2026 (full C.1 set, robust-first) · sensor quality only</div>
   <h1>RPM Source Quality</h1>
   <p class="lede">Does the <strong>optical RPM deck</strong> agree with <strong>DShot</strong>
     bidirectional telemetry on real C.1 flights? Bias, lag, and dropout across
-    <strong>29</strong> merged logs — not a stability claim, not a policy change.</p>
+    <strong>38</strong> merged logs (**272</strong> motor-rows) — not a stability claim, not a policy change.</p>
   <p class="lede"><strong>Latency vs policy:</strong> the <strong>deck is faster</strong> — lag is
     reported as <strong>positive when DShot lags the deck</strong> (typically a few ms, often on a
     2&nbsp;ms grid). <strong>DShot feeds control for reliability</strong> (deck reported zero on
     2/4 motors in real 2-drone flight), <em>not</em> because it is the lower-latency channel.</p>
   <p class="refline">
     Script · <code>experiments/analysis/rpm_source_quality.py</code> ·
+    Plots · <code>~/.pyenv/versions/flying_robots/bin/python experiments/analysis/rpm_source_quality.py</code> ·
+    Metrics-only · <code>python3 … --no-plots</code> if matplotlib/NumPy clash ·
     Outputs · <code>experiments/analysis/out/rpm_source_quality/</code> ·
-    Full write-up · <code>docs/43_RPM_Source_Quality.md</code> ·
-    Planning prompt · <code>docs/42_RPM_Source_Quality_Desk_Prompt.md</code>
+    Full write-up · <code>docs/43_RPM_Source_Quality.md</code>
   </p>
 </header>
+
+<section>
+  <h2>Spikes and headline metrics</h2>
+  <div class="panel warn">
+    <table class="compact">
+      <tbody>
+        <tr><td>Spike behaviour</td><td><strong>DShot-only</strong> — deck stays in-band at every spike instant</td></tr>
+        <tr><td>Root cause</td><td><strong>Best-fit, not confirmed:</strong> intermittent bidirectional DShot telemetry decode glitches (1–2 tick bursts)</td></tr>
+        <tr><td>Headline RMSE</td><td><code>rmse_robust_rpm</code> — excludes |Δ| &gt; 10k RPM on analysis plots (spikes marked, not hidden)</td></tr>
+        <tr><td>Diagnostic</td><td><code>rmse_raw_rpm</code> — with spikes; never the headline</td></tr>
+        <tr><td>Firmware guard</td><td><code>rpm_get_all()</code> (2026-09-29) protects <strong>future</strong> flights only — historical CSVs unchanged</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <section>
   <h2>Scope</h2>
@@ -158,11 +174,11 @@ footer{
     <p class="note">Since 2026-09-16, DShot feeds control (<code>rpm_source=1</code>) because the
       deck reported zero on 2/4 motors in real 2-drone flight — <strong>reliability, not speed</strong>.
       C.1 flights are <strong>geometric on cf5</strong>; both sources are logged every flight.</p>
-    <p class="note"><strong>Headline RMSE (29 Sep 2026):</strong> spike-robust median
-      <strong>~126 RPM</strong> vs raw diagnostic <strong>~771 RPM</strong> — see
-      <code>docs/43_RPM_Source_Quality.md</code> metric table. Firmware
-      <code>rpm_get_all()</code> spike guard added 2026-09-29; historical logs predate it.
-      A2 top-deck dropout remains open for <strong>physical inspection</strong>.</p>
+    <p class="note"><strong>Headline RMSE (full C.1 re-run, 29 Sep 2026):</strong> spike-filtered median
+      <strong>128.1 RPM</strong> vs raw diagnostic (with spikes) <strong>802.9 RPM</strong> —
+      <code>fleet_robust_rmse.json</code>. Plots regenerated on desk with pyenv
+      <code>flying_robots</code> Python. A2 top-deck dropout remains open for
+      <strong>physical inspection</strong>.</p>
   </div>
 </section>
 
@@ -188,10 +204,10 @@ footer{
   <div class="panel">
     <table class="compact">
       <tbody>
-        <tr><td>Merged C.1 CSVs</td><td class="num">29</td><td>8 × 21-Sep + 21 × 23-Sep</td></tr>
-        <tr><td>Dual RPM present</td><td class="num">29 / 29</td><td>zero missing</td></tr>
-        <tr><td>Single-vehicle merges</td><td class="num">8</td><td>all C5, cf5-only, excluded from cross-vehicle rows</td></tr>
-        <tr><td>Motor-rows analyzed</td><td class="num">200</td><td>29 flights × vehicles present × 4 motors</td></tr>
+        <tr><td>Merged C.1 CSVs</td><td class="num">38</td><td>21 / 23 / 28 Sep merges (glob under <code>c1_*_merged</code>)</td></tr>
+        <tr><td>Dual RPM present</td><td class="num">38 / 38</td><td>zero missing</td></tr>
+        <tr><td>Motor-rows analyzed</td><td class="num">272</td><td>per <code>per_flight.csv</code></td></tr>
+        <tr><td>Spike samples (|Δ| &gt; 10k)</td><td class="num">2121</td><td><code>spike_investigation.json</code></td></tr>
         <tr><td>Raw <code>.bin</code> archives</td><td class="num">91</td><td>not used — card filenames can invert the actual vehicle role, see <code>usd_raw/*_PAIRING.md</code></td></tr>
         <tr><td>uSD config</td><td class="num">48 ch · 500 Hz</td><td><code>usd_thesis_config.txt</code>, both RPM sources logged always</td></tr>
       </tbody>
@@ -202,37 +218,55 @@ footer{
 <section>
   <h2>Results by scenario and vehicle role</h2>
   <p style="color:var(--ink-2); font-size:.92rem">Lag convention: positive = DShot lags deck.
-    Values often land on a 2&nbsp;ms grid (the 500&nbsp;Hz sample period) — read single flights to
-    that resolution, not finer. "Worst" is the max over that bucket's motor-rows, not a mean.</p>
+    Primary columns: <strong>robust (spike-filtered) bias % and RMSE</strong>; raw RMSE is diagnostic (with spikes).
+    Values often land on a 2&nbsp;ms grid (500&nbsp;Hz).</p>
   <div class="panel scroll">
     <table class="compact">
       <thead>
         <tr>
           <th>Scenario</th><th>Role</th><th>Flights</th>
-          <th>Bias % mean</th><th>Bias % worst</th>
+          <th>Bias % mean (robust)</th><th>RMSE mean (robust)</th><th>RMSE mean (raw)</th>
           <th>Lag ms mean</th><th>Lag ms max</th>
           <th>Deck-zero % worst</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td>A1</td><td>bottom</td><td class="num">6</td><td class="num">+0.02</td><td class="num">0.28</td><td class="num">0.67</td><td class="num">4</td><td class="num">0.0</td></tr>
-        <tr><td>A1</td><td>top</td><td class="num">6</td><td class="num">&minus;0.02</td><td class="num">0.30</td><td class="num">4.67</td><td class="num">44</td><td class="num">0.0</td></tr>
-        <tr><td>A2</td><td>bottom</td><td class="num">2</td><td class="num">&minus;0.06</td><td class="num">0.22</td><td class="num">1.0</td><td class="num">2</td><td class="num">0.0</td></tr>
-        <tr><td>A2</td><td>top</td><td class="num">2</td><td class="num">&minus;0.90</td><td class="flag">3.72</td><td class="num">0.0</td><td class="num">0</td><td class="flag">69.8</td></tr>
-        <tr><td>A3</td><td>bottom</td><td class="num">7</td><td class="num">&minus;0.07</td><td class="num">0.34</td><td class="num">1.79</td><td class="num">4</td><td class="num">0.0</td></tr>
-        <tr><td>A3</td><td>top</td><td class="num">7</td><td class="num">&minus;0.07</td><td class="num">0.22</td><td class="num">2.71</td><td class="num">24</td><td class="num">0.0</td></tr>
-        <tr><td>A7</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.00</td><td class="num">0.16</td><td class="num">1.5</td><td class="num">2</td><td class="num">0.0</td></tr>
-        <tr><td>A7</td><td>top</td><td class="num">3</td><td class="num">&minus;0.07</td><td class="num">0.21</td><td class="num">5.5</td><td class="num">36</td><td class="num">0.0</td></tr>
-        <tr><td>A8</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.05</td><td class="num">0.34</td><td class="num">2.17</td><td class="num">6</td><td class="num">0.0</td></tr>
-        <tr><td>A8</td><td>top</td><td class="num">3</td><td class="num">&minus;0.08</td><td class="num">0.27</td><td class="num">0.0</td><td class="num">10</td><td class="num">0.0</td></tr>
-        <tr><td>C5</td><td>bottom (solo)</td><td class="num">8</td><td class="num">&minus;0.09</td><td class="num">0.42</td><td class="num">2.62</td><td class="num">24</td><td class="num">0.0</td></tr>
+        <tr><td>A1</td><td>bottom</td><td class="num">7</td><td class="num">&minus;0.12</td><td class="num">158</td><td class="num">871</td><td class="num">0.7</td><td class="num">4</td><td class="num">0.0</td></tr>
+        <tr><td>A1</td><td>top</td><td class="num">7</td><td class="num">&minus;0.15</td><td class="num">121</td><td class="num">729</td><td class="num">4.3</td><td class="num">44</td><td class="num">0.0</td></tr>
+        <tr><td>A2</td><td>bottom</td><td class="num">4</td><td class="num">&minus;0.16</td><td class="num">134</td><td class="num">784</td><td class="num">1.0</td><td class="num">2</td><td class="num">0.0</td></tr>
+        <tr><td>A2</td><td>top</td><td class="num">4</td><td class="num">&minus;0.58</td><td class="num">333</td><td class="num">925</td><td class="num">4.5</td><td class="num">34</td><td class="flag">69.8</td></tr>
+        <tr><td>A3</td><td>bottom</td><td class="num">8</td><td class="num">&minus;0.18</td><td class="num">130</td><td class="num">808</td><td class="num">1.9</td><td class="num">4</td><td class="num">0.0</td></tr>
+        <tr><td>A3</td><td>top</td><td class="num">8</td><td class="num">&minus;0.19</td><td class="num">114</td><td class="num">764</td><td class="num">1.3</td><td class="num">24</td><td class="num">0.0</td></tr>
+        <tr><td>A4</td><td>bottom</td><td class="num">5</td><td class="num">&minus;0.16</td><td class="num">136</td><td class="num">857</td><td class="num">&minus;0.1</td><td class="num">2</td><td class="num">10.5</td></tr>
+        <tr><td>A4</td><td>top</td><td class="num">5</td><td class="num">&minus;0.16</td><td class="num">126</td><td class="num">799</td><td class="num">0.7</td><td class="num">6</td><td class="num">9.9</td></tr>
+        <tr><td>A7</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.11</td><td class="num">138</td><td class="num">672</td><td class="num">1.5</td><td class="num">2</td><td class="num">0.0</td></tr>
+        <tr><td>A7</td><td>top</td><td class="num">3</td><td class="num">&minus;0.18</td><td class="num">111</td><td class="num">659</td><td class="num">5.5</td><td class="num">36</td><td class="num">0.0</td></tr>
+        <tr><td>A8</td><td>bottom</td><td class="num">3</td><td class="num">&minus;0.18</td><td class="num">115</td><td class="num">728</td><td class="num">2.2</td><td class="num">6</td><td class="num">0.0</td></tr>
+        <tr><td>A8</td><td>top</td><td class="num">3</td><td class="num">&minus;0.19</td><td class="num">116</td><td class="num">731</td><td class="num">0.0</td><td class="num">10</td><td class="num">0.0</td></tr>
+        <tr><td>C5</td><td>bottom (solo)</td><td class="num">8</td><td class="num">&minus;0.21</td><td class="num">122</td><td class="num">739</td><td class="num">2.6</td><td class="num">24</td><td class="num">0.0</td></tr>
       </tbody>
     </table>
   </div>
   <p class="refline" style="margin-top:8px">Source ·
-    <code>experiments/analysis/out/rpm_source_quality/summary_by_scenario_vehicle.csv</code> ·
-    per-flight detail in the sibling <code>per_flight.csv</code> ·
-    figure <code>overview_lag_bias_by_role.png</code></p>
+    <code>summary_by_scenario_vehicle.csv</code> · per-flight · <code>flight_summary_table.md</code> ·
+    figures · <code>overview_lag_bias_by_role.png</code>, <code>overview_robust_bias_by_role.png</code>,
+    <code>overlay_*</code>, <code>grid4_*</code>, <code>rolling_lag_*</code> (spike markers on traces)</p>
+</section>
+
+<section>
+  <h2>Plots (regenerated 29 Sep 2026)</h2>
+  <div class="panel">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 .6em">
+      All under <code>experiments/analysis/out/rpm_source_quality/</code>. Titles use <strong>robust</strong> bias/RMSE.
+      Overlays and grid4 include a <strong>Δ-RPM panel</strong>; excluded spike samples shown as red × markers.
+      Rolling lag windows use the <strong>robust valid mask</strong>.</p>
+    <ul class="plain">
+      <li><strong>2</strong> overview figures (lag + robust RMSE; robust bias %)</li>
+      <li><strong>4</strong> trace overlays + Δ-RPM</li>
+      <li><strong>3</strong> four-motor grid4 stacks</li>
+      <li><strong>4</strong> rolling-lag exemplars</li>
+    </ul>
+  </div>
 </section>
 
 <section>
@@ -280,9 +314,10 @@ footer{
       bottom (geometric) drone uses <code>indi_gains.rpm_source=1</code> so DShot feeds torque
       reconstruction and logged <code>indi.a_res_*</code> — chosen for <strong>motor dropout
       reliability</strong>, not latency (DShot typically <strong>lags</strong> the deck by a few
-      ms). Agreement is sub-percent bias with spike-robust RMSE ~128 RPM (median motor-row); the
-      deck stayed mounted for parallel logging. A2 top shows deck dropout; rare DShot spikes are
-      filtered in firmware as of 2026-09-29.</p>
+      ms). Agreement uses spike-filtered RMSE <strong>128 RPM</strong> median motor-row vs
+      <strong>803 RPM</strong> raw diagnostic; spikes are DShot-only (best-fit decode glitches, not confirmed).
+      The deck stayed mounted for parallel logging. A2 top shows deck dropout; firmware
+      <code>rpm_get_all()</code> guard protects future flights only.</p>
   </div>
 </section>
 

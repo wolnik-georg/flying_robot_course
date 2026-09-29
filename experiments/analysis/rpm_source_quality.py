@@ -54,6 +54,12 @@ def valid_mask_robust(rd: np.ndarray, rs: np.ndarray) -> np.ndarray:
     return base & (np.abs(err) <= SPIKE_EXCLUDE_ERR_RPM)
 
 
+def spike_mask(rd: np.ndarray, rs: np.ndarray) -> np.ndarray:
+    """DShot-only telemetry spikes: valid pair but |error| above robust threshold."""
+    base = valid_mask_base(rd, rs)
+    return base & (np.abs(rs - rd) > SPIKE_EXCLUDE_ERR_RPM)
+
+
 def vehicle_role(prefix: str) -> str:
     if prefix == "cf5" or prefix.startswith("cf5_"):
         return "bottom"
@@ -202,6 +208,7 @@ def load_manifest_flights() -> list[dict]:
     for rel in (
         "experiments/logs/c1_2026-09-21_merged/manifest_2026-09-21_c1.json",
         "experiments/logs/c1_2026-09-23_merged/manifest_2026-09-23_c1.json",
+        "experiments/logs/c1_2026-09-28_merged/manifest_2026-09-28_c1.json",
     ):
         p = REPO / rel
         if not p.exists():
@@ -214,7 +221,7 @@ def load_manifest_flights() -> list[dict]:
             path_s = entry.get("path")
             if not path_s:
                 continue
-            if entry.get("merge_status") == "merged" or "c1_2026-09-21" in rel:
+            if entry.get("merge_status") == "merged" or "c1_2026-09-21" in rel or "c1_2026-09-28" in rel:
                 flights.append(entry)
     # De-dupe by path
     seen = set()
@@ -225,6 +232,52 @@ def load_manifest_flights() -> list[dict]:
         seen.add(e["path"])
         out.append(e)
     return out
+
+
+def all_c1_merged_csv_paths() -> list[Path]:
+    """Full C.1-complete set: every merged uSD CSV under c1_*_merged/."""
+    return sorted(REPO.glob("experiments/logs/c1_*_merged/*/*_merged_usd.csv"))
+
+
+def infer_merge_date(rel: str) -> str:
+    if "2026-09-21" in rel:
+        return "2026-09-21"
+    if "2026-09-28" in rel:
+        return "2026-09-28"
+    return "2026-09-23"
+
+
+def _mark_spike_samples(
+    ax_rpm,
+    ax_delta,
+    tt: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+) -> None:
+    """Highlight DShot spike samples excluded from robust metrics (deck stays in-band)."""
+    sp = spike_mask(deck, dshot)
+    if not np.any(sp):
+        return
+    ax_rpm.scatter(
+        tt[sp],
+        dshot[sp],
+        s=14,
+        facecolors="none",
+        edgecolors="C3",
+        linewidths=0.8,
+        zorder=6,
+        label="DShot spike (excluded from robust)",
+    )
+    ax_delta.scatter(
+        tt[sp],
+        dshot[sp] - deck[sp],
+        s=14,
+        marker="x",
+        c="C3",
+        linewidths=0.9,
+        zorder=6,
+        label="spike |Δ| > 10k RPM",
+    )
 
 
 def rolling_cross_corr_lag(
@@ -249,7 +302,7 @@ def rolling_cross_corr_lag(
         end = start + win_n
         rd = deck[start:end]
         rs = dshot[start:end]
-        valid = (rd > 0) & (rs > 0) & (rs < 60000)
+        valid = valid_mask_robust(rd, rs)
         center = float(t[start + win_n // 2] - t0)
         if int(valid.sum()) < 50:
             rows.append((center, float("nan")))
@@ -310,16 +363,17 @@ def plot_rpm_overlay(
         )
     ax_rpm.plot(tt, deck, lw=1.0, color="C0", alpha=0.9, label="deck RPM")
     ax_rpm.plot(tt, dshot, lw=1.0, color="C1", alpha=0.85, label="DShot RPM")
+    _mark_spike_samples(ax_rpm, ax_delta, tt, deck, dshot)
     ax_rpm.set_ylabel("RPM")
-    ax_rpm.set_title(f"{title} — {motor_label}")
-    ax_rpm.legend(loc="upper right", fontsize=8)
+    ax_rpm.set_title(f"{title} — {motor_label} (spike-filtered metrics in CSV)")
+    ax_rpm.legend(loc="upper right", fontsize=7)
     ax_rpm.set_xlim(tt[0], tt[-1])
 
     ax_delta.plot(tt, delta, lw=1.0, color="C2", alpha=0.9, label="DShot − deck")
     ax_delta.axhline(0.0, color="0.65", lw=0.6)
     ax_delta.set_xlabel("time since flight start (s)")
     ax_delta.set_ylabel("Δ RPM")
-    ax_delta.legend(loc="upper right", fontsize=8)
+    ax_delta.legend(loc="upper right", fontsize=7)
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=130)
@@ -354,7 +408,9 @@ def plot_rolling_lag(
     ax.axhline(0, color="0.7", lw=0.5)
     ax.set_xlabel("window center time (s)")
     ax.set_ylabel("lag (ms)\n(+ = DShot lags deck)")
-    ax.set_title(f"Rolling lag ({window_s}s window, {step_s}s step) — {title} — {motor_label}")
+    ax.set_title(
+        f"Rolling lag (robust mask, {window_s}s / {step_s}s) — {title} — {motor_label}"
+    )
     ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -388,6 +444,11 @@ def _plot_rpm_on_ax(
         )
     line_deck, = ax.plot(tt, deck, lw=1.0, color="C0", alpha=0.9)
     line_dshot, = ax.plot(tt, dshot, lw=1.0, color="C1", alpha=0.85)
+    sp = spike_mask(deck, dshot)
+    if np.any(sp):
+        ax.scatter(
+            tt[sp], dshot[sp], s=10, facecolors="none", edgecolors="C3", linewidths=0.7, zorder=6,
+        )
     ax.set_title(subplot_title, fontsize=9)
     ax.set_xlim(tt[0], tt[-1])
     ax.tick_params(labelsize=7)
@@ -396,7 +457,11 @@ def _plot_rpm_on_ax(
 
 
 def _plot_delta_on_ax(ax, tt: np.ndarray, deck: np.ndarray, dshot: np.ndarray) -> None:
-    ax.plot(tt, dshot - deck, lw=1.0, color="C2", alpha=0.9)
+    delta = dshot - deck
+    ax.plot(tt, delta, lw=1.0, color="C2", alpha=0.9)
+    sp = spike_mask(deck, dshot)
+    if np.any(sp):
+        ax.scatter(tt[sp], delta[sp], s=10, marker="x", c="C3", linewidths=0.8, zorder=6)
     ax.axhline(0.0, color="0.65", lw=0.6)
     ax.set_ylabel("Δ RPM", fontsize=8)
     ax.tick_params(labelsize=7)
@@ -437,7 +502,8 @@ def plot_rpm_grid4(
         )
         if meta:
             st = (
-                f"m{motor}: bias {meta['bias_pct']:+.2f}%  "
+                f"m{motor}: robust bias {meta['bias_robust_pct']:+.2f}%  "
+                f"RMSE {meta['rmse_robust_rpm']:.0f} RPM  "
                 f"lag {meta['lag_ms']:+.1f} ms"
             )
         else:
@@ -480,16 +546,20 @@ def flight_summary_table_md(per_flight_rows: list[dict]) -> str:
 
     rows_out = []
     for (scenario, stamp), motors in sorted(groups.items()):
-        abs_bias = [abs(float(m["bias_pct"])) for m in motors if np.isfinite(m["bias_pct"])]
-        abs_bias_rpm = [abs(float(m["bias_rpm"])) for m in motors if np.isfinite(m["bias_rpm"])]
+        abs_bias_r = [
+            abs(float(m["bias_robust_pct"])) for m in motors if np.isfinite(m["bias_robust_pct"])
+        ]
+        rmse_r = [float(m["rmse_robust_rpm"]) for m in motors if np.isfinite(m["rmse_robust_rpm"])]
+        rmse_raw = [float(m["rmse_raw_rpm"]) for m in motors if np.isfinite(m["rmse_raw_rpm"])]
         lags = [float(m["lag_ms"]) for m in motors if np.isfinite(m["lag_ms"])]
         abs_lags = [abs(x) for x in lags]
         rows_out.append(
             {
                 "scenario": scenario,
                 "flight": stamp,
-                "mean_abs_bias": float(np.mean(abs_bias)) if abs_bias else float("nan"),
-                "mean_abs_bias_rpm": float(np.mean(abs_bias_rpm)) if abs_bias_rpm else float("nan"),
+                "mean_abs_bias_robust_pct": float(np.mean(abs_bias_r)) if abs_bias_r else float("nan"),
+                "mean_rmse_robust_rpm": float(np.mean(rmse_r)) if rmse_r else float("nan"),
+                "mean_rmse_raw_rpm": float(np.mean(rmse_raw)) if rmse_raw else float("nan"),
                 "mean_lag": float(np.mean(abs_lags)) if abs_lags else float("nan"),
                 "max_abs_lag": float(np.max(abs_lags)) if abs_lags else float("nan"),
                 "deck_drop": float(np.max([m["deck_zero_pct"] for m in motors])),
@@ -501,38 +571,46 @@ def flight_summary_table_md(per_flight_rows: list[dict]) -> str:
         return f"{x:.{nd}f}" if np.isfinite(x) else "—"
 
     hdr = (
-        "| Scenario | Flight | Mean |bias| % | Mean Δ (RPM) | Mean |lag| (ms) | "
-        "Max |lag| (ms) | Deck dropout % | DShot dropout % |"
+        "| Scenario | Flight | Mean |bias| % (robust) | Mean RMSE (robust) | "
+        "Mean RMSE (raw, diagnostic) | Mean |lag| (ms) | Max |lag| (ms) | "
+        "Deck dropout % | DShot dropout % |"
     )
     sep = (
-        "|----------|--------|---------------|--------------|---------------|"
-        "----------------|-----------------|-----------------|"
+        "|----------|--------|------------------------|--------------------|"
+        "-----------------------------|---------------|-----------------|"
+        "-----------------|-----------------|"
     )
-    lines = [hdr, sep]
+    lines = [
+        "# Spike-filtered headline metrics per flight (A2 excluded)",
+        "",
+        hdr,
+        sep,
+    ]
     for r in rows_out:
         lines.append(
-            f"| {r['scenario']} | {r['flight']} | {fmt(r['mean_abs_bias'], 3)} | "
-            f"{fmt(r['mean_abs_bias_rpm'], 1)} | "
+            f"| {r['scenario']} | {r['flight']} | {fmt(r['mean_abs_bias_robust_pct'], 3)} | "
+            f"{fmt(r['mean_rmse_robust_rpm'], 1)} | {fmt(r['mean_rmse_raw_rpm'], 1)} | "
             f"{fmt(r['mean_lag'], 1)} | {fmt(r['max_abs_lag'], 1)} | "
             f"{fmt(r['deck_drop'], 1)} | {fmt(r['dshot_drop'], 1)} |"
         )
-    mb = [r["mean_abs_bias"] for r in rows_out]
-    mbr = [r["mean_abs_bias_rpm"] for r in rows_out]
+    mb = [r["mean_abs_bias_robust_pct"] for r in rows_out]
+    mr = [r["mean_rmse_robust_rpm"] for r in rows_out]
+    mraw = [r["mean_rmse_raw_rpm"] for r in rows_out]
     ml = [r["mean_lag"] for r in rows_out]
     mal = [r["max_abs_lag"] for r in rows_out]
     lines.append(
         f"| **All flights (mean)** | — | **{fmt(np.mean(mb), 3)}** | "
-        f"**{fmt(np.mean(mbr), 1)}** | "
+        f"**{fmt(np.mean(mr), 1)}** | **{fmt(np.mean(mraw), 1)}** | "
         f"**{fmt(np.mean(ml), 1)}** | **{fmt(np.mean(mal), 1)}** | — | — |"
     )
     lines.append(
         f"| **All flights (median)** | — | **{fmt(median(mb), 3)}** | "
-        f"**{fmt(median(mbr), 1)}** | "
+        f"**{fmt(median(mr), 1)}** | **{fmt(median(mraw), 1)}** | "
         f"**{fmt(median(ml), 1)}** | **{fmt(median(mal), 1)}** | — | — |"
     )
     lines.append(
         f"| **All flights (std)** | — | **{fmt(float(np.std(mb)), 3)}** | "
-        f"**{fmt(float(np.std(mbr)), 1)}** | "
+        f"**{fmt(float(np.std(mr)), 1)}** | **{fmt(float(np.std(mraw)), 1)}** | "
         f"**{fmt(float(np.std(ml)), 1)}** | **{fmt(float(np.std(mal)), 1)}** | — | — |"
     )
     return "\n".join(lines)
@@ -653,11 +731,8 @@ def main() -> int:
 
     manifest_list = load_manifest_flights()
     manifest_entries = {e["path"]: e for e in manifest_list}
-    csv_paths = sorted(
-        REPO / e["path"] for e in manifest_list if (REPO / e["path"]).is_file()
-    )
-    if len(csv_paths) != 29:
-        print(f"WARNING: expected 29 merged CSVs, found {len(csv_paths)}", file=sys.stderr)
+    csv_paths = all_c1_merged_csv_paths()
+    print(f"C.1 merged CSVs: {len(csv_paths)}", file=sys.stderr)
 
     per_flight_rows: list[dict] = []
 
@@ -683,7 +758,7 @@ def main() -> int:
                 m = metrics_one_motor(arrays[rd_col], arrays[rs_col])
                 row = {
                     "scenario": scenario,
-                    "date": "2026-09-21" if "2026-09-21" in rel else "2026-09-23",
+                    "date": infer_merge_date(rel),
                     "stamp": stamp,
                     "merge_path": rel,
                     "vehicle_prefix": prefix,
@@ -713,8 +788,11 @@ def main() -> int:
                 return float("nan"), float("nan"), float("nan"), 0
             return float(np.mean(vals)), float(np.median(vals)), float(np.max(np.abs(vals))), len(vals)
 
-        bias_m, bias_med, bias_worst, n = agg("bias_pct", np.mean)
-        lag_m, lag_med, lag_worst_abs, _ = agg("lag_ms", np.mean)
+        br_m, br_med, br_worst, _ = agg("bias_robust_pct", np.mean)
+        rmse_r_m, rmse_r_med, _, _ = agg("rmse_robust_rpm", np.mean)
+        rmse_raw_m, rmse_raw_med, rmse_raw_worst, _ = agg("rmse_raw_rpm", np.mean)
+        bias_raw_m, _, _, _ = agg("bias_pct", np.mean)
+        lag_m, lag_med, _, _ = agg("lag_ms", np.mean)
         lag_vals = [x["lag_ms"] for x in rows if np.isfinite(x["lag_ms"])]
         lag_max = float(np.max(lag_vals)) if lag_vals else float("nan")
         lag_min = float(np.min(lag_vals)) if lag_vals else float("nan")
@@ -727,9 +805,15 @@ def main() -> int:
                 "vehicle_role": role,
                 "n_flights": n_flights,
                 "n_motor_rows": len(rows),
-                "bias_pct_mean": bias_m,
-                "bias_pct_median": bias_med,
-                "bias_pct_worst_abs": bias_worst,
+                "bias_robust_pct_mean": br_m,
+                "bias_robust_pct_median": br_med,
+                "bias_robust_pct_worst_abs": br_worst,
+                "rmse_robust_rpm_mean": rmse_r_m,
+                "rmse_robust_rpm_median": rmse_r_med,
+                "rmse_raw_rpm_mean": rmse_raw_m,
+                "rmse_raw_rpm_median": rmse_raw_med,
+                "rmse_raw_rpm_worst": rmse_raw_worst,
+                "bias_pct_mean_raw_diagnostic": bias_raw_m,
                 "lag_ms_mean": lag_m,
                 "lag_ms_median": lag_med,
                 "lag_ms_min": lag_min,
@@ -754,17 +838,36 @@ def main() -> int:
             [r["lag_ms"] for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["lag_ms"])]
             for role in roles
         ]
-        bias_by_role = [
-            [abs(r["bias_pct"]) for r in per_flight_rows if r["vehicle_role"] == role and np.isfinite(r["bias_pct"])]
+        rmse_robust_by_role = [
+            [
+                r["rmse_robust_rpm"]
+                for r in per_flight_rows
+                if r["vehicle_role"] == role and np.isfinite(r["rmse_robust_rpm"])
+            ]
+            for role in roles
+        ]
+        bias_robust_by_role = [
+            [
+                abs(r["bias_robust_pct"])
+                for r in per_flight_rows
+                if r["vehicle_role"] == role and np.isfinite(r["bias_robust_pct"])
+            ]
             for role in roles
         ]
         axes[0].boxplot(lag_by_role, tick_labels=roles)
-        axes[0].set_ylabel("lag (ms)\n(DShot vs deck, + = DShot lags)")
-        axes[0].set_title("Cross-correlation lag by vehicle role")
-        axes[1].boxplot(bias_by_role, tick_labels=roles)
-        axes[1].set_ylabel("|bias| (%)")
-        axes[1].set_title("Deck vs DShot bias magnitude")
-        fig.suptitle("C.1 merged logs — RPM source quality (all motors, full segment)")
+        axes[0].set_ylabel("lag (ms)\n(+ = DShot lags deck)")
+        axes[0].set_title("Lag by vehicle role")
+        axes[1].boxplot(rmse_robust_by_role, tick_labels=roles)
+        axes[1].set_ylabel("RMSE (RPM)\nspike-filtered")
+        axes[1].set_title("Robust RMSE by vehicle role")
+        fig.suptitle("C.1 merged logs — spike-filtered headline metrics")
+        fig2, ax2 = plt.subplots(figsize=(5, 4))
+        ax2.boxplot(bias_robust_by_role, tick_labels=roles)
+        ax2.set_ylabel("|bias| (%) robust")
+        ax2.set_title("Robust |bias| by vehicle role")
+        fig2.tight_layout()
+        fig2.savefig(out_dir / "overview_robust_bias_by_role.png", dpi=130)
+        plt.close(fig2)
         fig.tight_layout()
         fig.savefig(plot_path, dpi=130)
         plt.close(fig)
@@ -774,7 +877,6 @@ def main() -> int:
     # Spike root-cause + control-path correlation (docs/43 Task 3)
     from rpm_spike_investigation import investigate_all  # noqa: WPS433
 
-    csv_paths = sorted(REPO.glob("experiments/logs/c1_*_merged/*/*_merged_usd.csv"))
     spike_report = investigate_all(csv_paths)
     spike_path = out_dir / "spike_investigation.json"
     spike_path.write_text(json.dumps(spike_report, indent=2) + "\n")

@@ -1,11 +1,35 @@
 # 43 — RPM source quality (deck vs DShot on C.1 merged logs)
 
-**Date:** 2026-09-23 (desk); **reopened 2026-09-29** (spike filter + methods + control-path check)  
+**Date:** 2026-09-23 (desk); **reopened 2026-09-29** (spike filter + methods + control-path check); **presentation re-run 2026-09-29** (full C.1 glob, robust-first plots/tables)  
 **Framing:** **Sensor-quality** study — agreement, lag, and dropout between the optical RPM deck and DShot bidirectional telemetry on the **C.1 merged dataset**. Not a closed-loop stability claim; **does not** change standing **`indi_gains.rpm_source=1`**.
 
-**Reproduce:** `python3 experiments/analysis/rpm_source_quality.py` (add `--no-plots` if matplotlib/numpy clash)  
+**Reproduce (plots + tables):**
+
+```bash
+cd ~/Desktop/flying_robot_course
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/rpm_source_quality.py
+```
+
+On hosts where system `python3` has a **matplotlib / NumPy ABI clash**, use **`--no-plots`** for metrics/CSVs only:
+
+```bash
+python3 experiments/analysis/rpm_source_quality.py --no-plots
+```
+
 **Outputs:** `experiments/analysis/out/rpm_source_quality/`  
 **Web page:** [`43_RPM_Source_Quality.html`](43_RPM_Source_Quality.html)
+
+---
+
+## Spikes and metrics (read once)
+
+| Topic | Statement |
+|-------|-----------|
+| **What spikes are** | Rare **DShot-only** decoded RPM jumps while the **optical deck stays in-band** at the same 500 Hz instant. |
+| **Root cause** | **Best-fit hypothesis, not confirmed:** intermittent **bidirectional DShot telemetry decode glitches** (1–2 tick bursts). Do not overclaim a single hardware mechanism. |
+| **Headline error** | **`rmse_robust_rpm`** — RMSE on **robust valid** samples (`\|dshot − deck\| ≤ 10 000` RPM). |
+| **Diagnostic only** | **`rmse_raw_rpm`** — same on **base valid** only; **dominated by spikes**; label “with spikes” in prose, never as the headline. |
+| **Historical logs** | Firmware **`rpm_get_all()`** spike guard (2026-09-29) **does not** alter stored uSD CSVs; this re-run is **analysis-side** spike exclusion and visible spike markers on plots, not a re-simulation of the live filter. |
 
 ---
 
@@ -40,14 +64,14 @@ All metrics are per **motor-row** (one vehicle prefix × one motor × one merged
 - **Base valid:** `(deck > 0) & (dshot > 0) & (dshot < 60 000)` — excludes deck dropout and DShot **0xFFFF** invalid sentinel (`60000` guard).
 - **Robust valid:** base valid **and** `|dshot − deck| ≤ 10 000` RPM — excludes known DShot telemetry spike outliers (§ Spike root cause).
 
-**Fleet headline (29 manifest merges, 2026-09-29 re-run):**
+**Fleet headline (full C.1 merged glob — 38 CSVs, 2026-09-29 presentation re-run):**
 
-| Statistic | rmse_robust_rpm (headline) | rmse_raw_rpm (diagnostic) |
-|-----------|---------------------------:|--------------------------:|
-| Median across motor-rows | **~126 RPM** | **~771 RPM** |
-| Mean across motor-rows | **~143 RPM** | **~766 RPM** |
+| Statistic | rmse_robust_rpm (headline) | rmse_raw_rpm (diagnostic, with spikes) |
+|-----------|---------------------------:|---------------------------------------:|
+| Median across motor-rows | **128.1 RPM** | **802.9 RPM** |
+| Mean across motor-rows | **139.7 RPM** | **781.8 RPM** |
 
-Source: `experiments/analysis/out/rpm_source_quality/fleet_robust_rmse.json`, `per_flight.csv`.
+Source: `experiments/analysis/out/rpm_source_quality/fleet_robust_rmse.json`, `per_flight.csv` (**272** motor-rows).
 
 Historical CSVs **predate** the firmware spike guard in `rpm_get_all()` (2026-09-29); re-analysis uses robust RMSE on logs only — it does not retroactively simulate the guard.
 
@@ -57,22 +81,41 @@ Historical CSVs **predate** the firmware spike guard in `rpm_get_all()` (2026-09
 
 | Item | Count / note |
 |------|----------------|
-| Merged C.1 CSVs | **29** (manifest-filtered) |
-| Dual RPM in headers | **29/29** |
-| Motor-rows | **200** (29 flights × vehicles × 4 motors, minus solo C5 top) |
+| Merged C.1 CSVs | **38** (`c1_*_merged/*/*_merged_usd.csv`, incl. **2026-09-28** merges) |
+| Dual RPM in headers | **38/38** |
+| Motor-rows | **272** |
 | uSD config | **48** channels, **500 Hz**, both RPM sources |
+| Spike samples (base valid, \|err\| > 10k) | **2121** (`spike_investigation.json`) |
 
 Synthetic lag self-test: **5** samples (**10 ms**) → recovered **10.00 ms** — **PASS** (synthetic + real `cf5.rpm_m1` trace).
 
 ---
 
-## Summary by scenario and vehicle role
+## Summary by scenario and vehicle role (spike-filtered headline)
 
 Vehicle role: `cf5*` → **bottom**, `cf_second*` → **top**.  
 Lag: **positive ms = DShot lags deck**.  
-Bias / lag table unchanged in structure — see `summary_by_scenario_vehicle.csv` (bias still sub-percent except A2 top deck dropout).
+Primary columns: **robust bias %** and **robust RMSE**; raw RMSE is **diagnostic (with spikes)**. Full CSV: `summary_by_scenario_vehicle.csv`.
 
-Figure: `overview_lag_bias_by_role.png` (optional `--no-plots` skip).
+| Scenario | Role | Flights | Bias % mean (robust) | Bias % worst \|·\| (robust) | RMSE mean (robust) | RMSE mean (raw, diagnostic) | Lag ms mean | Lag ms max | Deck-zero % worst |
+|----------|------|---------|----------------------|----------------------------|--------------------|-----------------------------|-------------|------------|-------------------|
+| A1 | bottom | 7 | −0.12 | 0.29 | 158.1 | 870.6 | 0.7 | 4 | 0.0 |
+| A1 | top | 7 | −0.15 | 0.24 | 120.7 | 728.7 | 4.3 | 44 | 0.0 |
+| A2 | bottom | 4 | −0.16 | 0.35 | 133.9 | 783.7 | 1.0 | 2 | 0.0 |
+| A2 | top | 4 | −0.58 | 3.87 | 333.0 | 925.0 | 4.5 | 34 | 69.8 |
+| A3 | bottom | 8 | −0.18 | 0.47 | 130.3 | 808.1 | 1.9 | 4 | 0.0 |
+| A3 | top | 8 | −0.19 | 0.29 | 114.1 | 763.6 | 1.3 | 24 | 0.0 |
+| A4 | bottom | 5 | −0.16 | 0.29 | 135.6 | 857.0 | −0.1 | 2 | 10.5 |
+| A4 | top | 5 | −0.16 | 0.28 | 126.3 | 799.2 | 0.7 | 6 | 9.9 |
+| A7 | bottom | 3 | −0.11 | 0.15 | 137.6 | 672.3 | 1.5 | 2 | 0.0 |
+| A7 | top | 3 | −0.18 | 0.26 | 111.4 | 658.6 | 5.5 | 36 | 0.0 |
+| A8 | bottom | 3 | −0.18 | 0.43 | 115.0 | 727.7 | 2.2 | 6 | 0.0 |
+| A8 | top | 3 | −0.19 | 0.31 | 115.6 | 731.1 | 0.0 | 10 | 0.0 |
+| C5 | bottom | 8 | −0.21 | 0.48 | 122.1 | 738.5 | 2.6 | 24 | 0.0 |
+
+Figures: `overview_lag_bias_by_role.png` (lag + **robust RMSE** by role), `overview_robust_bias_by_role.png` (**robust bias %** by role).
+
+Per-flight robust headline table: `flight_summary_table.md` (A2 deck-dropout flights still listed; interpret with § Open finding).
 
 ---
 
@@ -92,7 +135,7 @@ Rare **DShot-side** decoded values (**~28k–59k RPM**, passing `dshot < 60000`)
 
 | Finding | Detail |
 |---------|--------|
-| Spike samples (base valid, \|err\| > 10k) | **~1 540** on original 29-flight set; **~2 121** if extra merges present in tree |
+| Spike samples (base valid, \|err\| > 10k) | **2121** on full **38**-CSV C.1 glob (was **~1540** on the earlier 29-manifest subset) |
 | Share of raw MSE | **~96%** (2026-09-27 count; same mechanism) |
 | Burst length | Median **2** consecutive 500 Hz samples (**2–4 ms**); max run **15** |
 | Motor identity | All **m1–m4** affected (roughly balanced) |
@@ -125,15 +168,25 @@ In `traj_iface.c` **`rpm_get_all()`**, when `g_indi_rpm_source != 0` (DShot path
 
 ## Thesis methods (draft paragraph)
 
-During C.1 data collection, onboard uSD logging recorded **both** optical-deck RPM (`rpm.m1–4`) and DShot ESC RPM (`motor.m1_rpm–m4_rpm`) at **500 Hz**, independent of which source feeds control. Since **2026-09-16**, the bottom drone uses **`indi_gains.rpm_source=1`**: **DShot feeds torque reconstruction and logged `indi.a_res_*`** because the deck **dropped two motors in real 2-drone flight**, **not** because DShot is lower-latency — cross-correlation shows **DShot typically lags the deck by a few milliseconds**. Post-hoc agreement is summarized with **spike-robust RMSE** (~**126 RPM** median motor-row) versus raw RMSE (~**771 RPM**), reflecting rare DShot telemetry glitches. A **2026-09-29** `rpm_get_all()` sanity filter rejects implausible DShot spikes on the live path; historical logs predate that filter.
+During C.1 data collection, onboard uSD logging recorded **both** optical-deck RPM (`rpm.m1–4`) and DShot ESC RPM (`motor.m1_rpm–m4_rpm`) at **500 Hz**, independent of which source feeds control. Since **2026-09-16**, the bottom drone uses **`indi_gains.rpm_source=1`**: **DShot feeds torque reconstruction and logged `indi.a_res_*`** because the deck **dropped two motors in real 2-drone flight**, **not** because DShot is lower-latency — cross-correlation shows **DShot typically lags the deck by a few milliseconds**. Post-hoc agreement is summarized with **spike-robust RMSE** (**128 RPM** median motor-row on the full C.1 set) versus **raw diagnostic** RMSE (**803 RPM**, with spikes). Rare spikes are **DShot-only** (deck in-band); best-fit cause is **decode glitches, not confirmed**. A **2026-09-29** `rpm_get_all()` sanity filter protects **future** flights; historical CSVs are unchanged.
 
 ---
 
-## Extensions (plots and tables)
+## Plots (regenerated 2026-09-29, robust-first)
 
-Earlier desk extensions (2026-09-26 overlays, rolling lag, grid4, flight summary table) remain in `experiments/analysis/out/rpm_source_quality/`. Read **lag** panels with the **positive = DShot lags deck** convention and A2 dropout caveat.
+All figures live under `experiments/analysis/out/rpm_source_quality/`. **Headline metrics on titles/subtitles use robust bias/RMSE.** Trace overlays and grid4 **mark excluded spike samples** (red **×** on RPM and Δ-RPM panels) instead of hiding them. **Rolling lag** uses the **robust valid mask inside each window**.
 
-§ Extension 2026-09-27 (4) raw RMSE spike note is **superseded** by robust RMSE + firmware guard above.
+| Figure | Description |
+|--------|-------------|
+| `overview_lag_bias_by_role.png` | Cross-correlation lag (ms) and **robust RMSE** by scenario × vehicle role |
+| `overview_robust_bias_by_role.png` | **Robust bias %** by scenario × vehicle role |
+| `overlay_*.png` (4) | Deck vs DShot + **Δ-RPM** panel; spike samples marked |
+| `grid4_*.png` (3) | Four motors × (RPM + Δ-RPM) stack; A1, A3, A7 exemplars |
+| `rolling_lag_*.png` (4) | 2 s / 0.5 s step rolling lag (robust-masked windows) |
+
+Representative overlays: `overlay_A1_17-17-26_cf_second_m3`, `overlay_A3_13-00-57_cf5_m2`, `overlay_A7_19-11-19_cf_second_m3`, `overlay_A2_19-27-03_m3` (A2 deck-dropout context).
+
+§ Extension 2026-09-27 raw-RMSE spike note is **superseded** by robust RMSE + marked-spike plots above.
 
 ---
 
