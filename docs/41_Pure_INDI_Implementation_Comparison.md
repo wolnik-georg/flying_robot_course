@@ -307,3 +307,38 @@ one, and it is the first evidence that his INDI does what it's supposed to do on
 
 Data: `experiments/logs/omar_indi_2026-09-29_merged/` (raw uSD: `experiments/logs/usd_raw/2026-09-29_THESIS{1,2}/`).
 Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` § 2026-09-29.
+
+## 10. controller=7 — first hardware attempt 2026-09-29 (time-boxed desk pass)
+
+**Operator report:** first-ever **c=7** (`naindi.rs`, Briesewitz NA-INDI) attempt — one motor spun fast, drone flipped on the ground. **Not** the same failure class as c=9’s `deck.bcRpm` / param assert (already ruled out for c=7: no `paramGetVarId` in `naindi.rs`; RPM via `rpm_get_all()` with invalid-id fallback).
+
+**Logs in this repo (desk scan, 2026-09-29):** **No radio CSV or meta file with `controller=7`.** All six `A1_cf5_2026-09-29_*.csv` files tag **`controller=9`** (four flights) or **`controller=6`** (two flights). `experiments/analysis/analyze_controller7_sep29.py` confirms **0** c=7 entries. **Conclusion:** the c=7 ground flip was **not captured** in the synced log set — root cause **cannot be closed from data here**; need a complete radio + uSD capture on the next c=7 attempt (script banner must show `stabilizer.controller=7`).
+
+**What the repo logs *do* show (not c=7, but same evening):** `A1_cf5_2026-09-29_17-54-03.csv` (meta **c=9**) has a mid-flight **gyro_y ≈ 1993°/s** spike at **t≈36 s** (not a short ground flip). Radio columns have **no per-motor RPM/thrust** — only aggregate `thrust`/`tau_*` (often zero in export), so **mixer/runaway on one motor cannot be verified** from these CSVs alone.
+
+**Gain / architecture cross-check (§2 table, `naindi.rs`):** c=7 is **Briesewitz**, not Omar — hardcoded **`KPOS_P/D/I = 12 / 10.5 / 2`** (reference airframe), **`g_indi_mass`** (~0.041 kg brushless), per-motor **`g_indi_kt1..4`**. That is **orthogonal** to yaml **`pos_gains` 64/48/5/7** (those apply to **controller=6**, not c=7). Numerical open-loop match to reference C was verified in sim; **closed-loop first flight** on this heavier brushless + DShot stack was always an open risk (same class as Omar **`indi=0`** under-performing until **`indi=3`**).
+
+**Time-boxed verdict:** **Root cause not found** — insufficient logs; no silent fix applied. **Plausible hypotheses** (ranked, all unproven): (1) **gain / inertia mismatch** for first closed-loop hop on brushless; (2) **HL setpoint / arming** transient commanding large body torque; (3) **mixer saturation** under asymmetric RPM residual — needs uSD `motor.*` or onboard log. **Next step:** re-attempt with **full capture** + confirm **`CS2_CONNECT_PARAM_PACE_V1`** and connect pacing live before interpreting boot.
+
+## 11. Structural comparison — our geometric (c=6) vs Omar geometric path (c=9, `indi=0`)
+
+**Same family:** both are **Lee-style SE(3)**: desired body-z from commanded force direction, PD (+ I) on position/velocity, attitude tracking with **`KR` / `Komega`** (and attitude I on Omar’s side).
+
+| Aspect | Ours (`lib.rs`, `ctrl_mode=0`, c=6) | Omar (`controller_omar_indi.c`, `indi=0`, c=9) |
+|--------|--------------------------------------|-----------------------------------------------|
+| Position gains | **`pos_gains` yaml** — flown **64/48, 5/7** (+ **KI 0.05** on position in Rust) | **`ctrlOmarIndi.Kpos_*` defaults** — **7 / 4 / 0** (yaml `pos_gains` **does not** tune c=9) |
+| Force direction / `R_des` | Flatness from **`f_d`** (PD+I+gravity) | Flatness from **`a_d + a_indi`** with **`a_indi=0`** → same structure, **weaker PD** |
+| Attitude | **`kr_geo/kw_geo`** (~0.01 / 0.0011) + optional gyro LPF + **no** ω×Jω in default geo path | **`KR/Komega/KI`** (~0.007 / 0.00115 / **0.03 on eR**) + **ω×Jω gyroscopic** term |
+| RPM / residual | Logs **`a_res`**; geo path does not use RPM in control | **`indi=0`** skips RPM residual branches entirely |
+
+**Tonight’s data (§9):** our geometric **0.17 m** vs Omar **`indi=0`** **0.59 m** separation error on A1 dz=0.30 — **consistent with gain/tuning**, not a mysterious structural advantage in his geometric branch. His **`indi=3`** result (**0.04 m**) shows the **residual INDI loops** are what help, not copying his **7/4** geometric PD.
+
+**Recommendation for adoption:** **Do not** replace our geometric core with Omar’s **`indi=0`** path. **No structural change recommended** for Task 4 / Z-tracking redesign based on this comparison alone — keep tuning **`pos_gains`** / integral studies on **our** stack; treat Omar’s **INDI bitmask (`indi=3`)** as the interesting import for future comparison (c=10 Rust port), not his bare geometric defaults.
+
+## 12. controller=10 — Omar INDI in Rust (planned, not executed this desk pass)
+
+**Intent:** `ControllerTypeOot5` / **`stabilizer.controller=10`**, new module **`firmware_app/src/omar_indi_rust.rs`**, line-equivalent to **`controller_omar_indi.c`**, RPM via **safe `rpm_get_all` pattern** (not Omar’s fragile deck param probe), numerical **`~1e-9`** match vs C, then SIL ladder — **same gate as §8 / c=9**.
+
+**Status (2026-09-29 desk):** **Not started** — no Kconfig/Kbuild slot, no Rust module, no numerical or SIL runs. **Blocked on:** ~550-line faithful port + host test harness (mirror `test_omar_indi_reference.py` / `naindi` precedent) + firmware dispatch wiring per **`LOCAL_MODIFICATIONS.md`** Oot4 pattern.
+
+**Next desk batch (ordered):** (1) firmware **Oot5** enum/dispatch; (2) **`omar_indi_rust.rs`** + `traj_iface` export; (3) **`test_omar_indi_rust_vs_c.py`** 6/6 vectors; (4) SIL **`oot5`** in `crazyflie_sil.py` vs existing **`oot4`** traces; (5) doc update — **never fly** until hardware gate.
