@@ -15,6 +15,16 @@ extern "C" {
     fn usecTimestamp() -> u64;
     fn oot_rpm_logs_available() -> bool;
     fn powerDistributionGetMaxThrust() -> f32;
+    // Telemetry only -- shared with lib.rs/naindi.rs, additive, no control-law effect.
+    // Added 2026-09-29: controller=10's first flight (A1) showed a single-motor-dominant
+    // command pattern (one motor ramps while the other three idle, drone never lifts off)
+    // but tau_x/y/z read dead-zero in the uSD log because nothing called these before --
+    // the SAME gap exists in the C reference (controller_omar_indi.c also never calls
+    // these), so it's not a Rust-port regression, but it means neither c=9 nor c=10 had
+    // ever produced real torque telemetry on this project's uSD config until now.
+    fn indi_tau_write(tx: f32, ty: f32, tz: f32);
+    fn indi_a_res_write(ax: f32, ay: f32, az: f32);
+    fn indi_e_r_write(ex: f32, ey: f32, ez: f32, norm: f32);
     // yaml/cfclient-settable: PARAM_GROUP(ctrlOot5).indi in traj_iface.c. Read live every
     // tick (not cached into State at Init) so it behaves like a real runtime param, same as
     // ctrlOmarIndi.indi for controller=9 -- see docs/41 §13 for why c=9 shipping with this
@@ -310,6 +320,7 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
             let a_imu_f = s.filter_acc_imu.get();
             a_indi = a_rpm_f.sub(a_imu_f);
         }
+        unsafe { indi_a_res_write(a_indi.x, a_indi.y, a_indi.z) };
 
         thrust_si = MASS * a_d.add(a_indi).dot(mat_mul_vec(&r, z));
         if thrust_si < 0.01 {
@@ -353,6 +364,7 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
 
     let e_rm = matsub(&mat_at_b(&s.r_des, &r), &mat_at_b(&r, &s.r_des));
     let e_r = vee_half(&e_rm);
+    unsafe { indi_e_r_write(e_r.x, e_r.y, e_r.z, e_r.norm()) };
 
     let g = &sensors.gyro;
     let omega = Vec3::new(g.axis[0] * DEG2RAD, g.axis[1] * DEG2RAD, g.axis[2] * DEG2RAD);
@@ -438,6 +450,7 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
         let indi_moments = tau_rpm_f.sub(tau_gyro_f);
         u = u.add(indi_moments);
     }
+    unsafe { indi_tau_write(u.x, u.y, u.z) };
 
     control.controlMode = cm_ft;
     let union_ptr = (&mut control.__bindgen_anon_1) as *mut _ as *mut f32;
