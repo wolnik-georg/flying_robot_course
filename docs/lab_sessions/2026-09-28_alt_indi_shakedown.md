@@ -713,10 +713,11 @@ the flag is off).
 
 ## Close-out (2026-09-29, end of session)
 
-**Yaml state left for next lab session:** `cf5` = `controller: 10`, `ctrlOot5.indi: 3` explicit.
-`cf_second` = **disabled** (solo-first discipline, reset after the direct-to-A1 attempt failed).
+**Yaml state (superseded for default next test):** Z-integral staging sets `cf5` = **`controller: 6`**
+(see Z-only section below). **Paused controller=10** config preserved at crazyswarm2 **`99e6b33`**
+(cf5 `controller: 10`, `ctrlOot5.indi: 3`). Operator may run either test first.
 
-**Next lab session — controller=10:**
+**Next lab session — controller=10 (paused, yaml reverted manually — see Z-integral revert path):**
 1. `git pull` both repos (commits through `de3f673c` / `99e6b33`) — brings the UB fix, the
    `omega_des`/`omega_des_dot` guard, and the new `tau`/`a_res`/`e_r` telemetry.
 2. `cd flying_drone_stack/firmware_app && make cload` — reflash `cf5`.
@@ -729,17 +730,35 @@ the flag is off).
 6. If it flies clean: re-enable `cf_second`, move to A1, then resume the broader comparison plan
    (dz=0.20/0.50, other scenarios) that was paused before this whole shakedown started.
 
-**Next lab session — Z-only integral (independent of controller=10, can go either before or
-after it in the same session):**
-1. Flip `ENABLE_Z_INTEGRAL` to `true` in `lib.rs`, set `ki_z=16` in yaml (`pos_gains.ki_z`),
-   reflash whichever drone is under test (this is `controller=6`'s geometric path, `ctrl_mode=0`
-   — flies on our own controller, not the Omar family).
-2. **C.0 solo hover** — compare real `z − ctrltarget_z` against the existing un-integrated
-   baseline over a normal hold duration. This is the actual test of Task 5's SIL prediction
-   (81-88% correction) on real hardware.
-3. This is a **persistent-bias fix, not a downwash fix** — don't expect it to help a 2-drone
-   A1 stack's separation error; test it solo first, on the same kind of bias `docs/50` originally
-   found in the log data.
+**Next lab session — Z-only integral (STAGED 2026-09-29 evening, supersedes controller=10 yaml):**
+
+**Yaml (crazyswarm2, committed):** `cf5` → `stabilizer.controller: 6`, `indi_gains.ctrl_mode: 0`
+(unchanged), `all.pos_gains.ki_z: 16.0`, `ki_z_limit: 1.5`, `cf_second.enabled: false`.
+`ctrlOot5` / `ctrlOmarIndi` blocks left in yaml but **dormant** under c=6.
+
+**Compile flag (NOT committed — project convention):** `ENABLE_Z_INTEGRAL` stays **`false` in
+git**, same as `ENABLE_POSITION_INTEGRAL` (SIL harnesses patch the flag locally and always
+restore `false`). **Yaml `ki_z` is inert until the firmware image is built with the flag
+true.** Desk verified `make DRONE=bl` + host bindings clean with a **local** flip to `true`;
+committed tree remains `false`.
+
+**Before `make cload` (mandatory):**
+1. `git pull` both repos.
+2. In `flying_drone_stack/firmware_app/src/lib.rs` (~527): set
+   `const ENABLE_Z_INTEGRAL: bool = true;` (**do not commit** until post-flight review).
+3. `cd flying_drone_stack/firmware_app && make DRONE=bl && make cload` on `cf5`.
+4. Confirm connect pushes `pos_gains.ki_z == 16` (readback or log).
+
+**Fly:** **C.0 solo hover** only — compare `z − ctrltarget_z` vs un-integrated baseline over a
+normal hold. Task 5 SIL target: **81–88%** closure of persistent 4–17% sag (`docs/51`). **Not**
+an A1 / downwash test.
+
+**Revert to controller=10 retry:** in `crazyflies.yaml` cf5 block set `controller: 10`; restore
+wording from `git show 99e6b33:crazyflie/config/crazyflies.yaml` for the c=10 comment block;
+set `ENABLE_Z_INTEGRAL` back to `false` and reflash before flying Omar Rust.
+
+**After Z-integral flight:** set `ENABLE_Z_INTEGRAL` back to `false` in working tree before
+next desk SIL run (`position_integral_z_only_sil_compare.py` enforces this).
 
 **Not lab-blocked, but currently deprioritized, not forgotten:**
 - controller=7/8 — paused, no root cause found, no logs captured. Revisit only if controller=10
