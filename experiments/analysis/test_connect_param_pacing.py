@@ -10,6 +10,7 @@ CPP = (
 
 def test_connect_param_pacing_present():
     text = CPP.read_text()
-    assert "syslink RX queue" in text
+    assert "CS2_CONNECT_PARAM_PACE_V1" in text
+    assert "connect-param pacing: ENABLED (150ms)" in text
     assert "sleep_for(pace)" in text
     assert "std::chrono::milliseconds(150)" in text

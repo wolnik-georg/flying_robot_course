@@ -467,3 +467,30 @@ After building `set_param_map`, **`change_parameter` is called once per entry wi
 2. `ros2 launch …` with **cf5 @ controller 9** — confirm **no** `uart_syslink.c:549` assert and normal connect.
 3. If connect is clean → proceed with **solo + 2-drone A1** (still the real test of `f25470a` + controller=9).
 4. If assert persists → stop; consider firmware queue bump (document in `LOCAL_MODIFICATIONS.md`) or longer pacing — do not fly.
+
+### Deploy verification marker (2026-09-29 desk)
+
+**Problem:** With `f7856e2` on disk, **flightcontrol1** logs still showed **44 `setParam` writes in ~0.3 ms** — the paced binary was **not** what `ros2 launch` was running (wrong workspace install / stale `colcon` output). There was **no log line** to prove which `crazyflie_server` binary was live.
+
+**Fix (crazyswarm2, after `f7856e2`):** grep the launch log for:
+
+1. **Once at node startup:**  
+   `CS2_CONNECT_PARAM_PACE_V1 connect-param pacing: ENABLED (150ms per firmware_params write on connect)`
+2. **Per robot at connect:**  
+   `[cf5] connect-param pacing: ENABLED (150ms) applying N firmware_params from yaml`  
+   then after ~**(N−1)×150 ms**:  
+   `[cf5] connect-param pacing: finished N writes in X.XX s`
+
+If those lines are **missing** but `Update parameter` lines still stack in **<1 ms**, the old unpaced binary is still running — rebuild **`crazyflie`** in the workspace you **`source install/setup.bash`** from, then relaunch.
+
+**2026-09-29 `debug/lab_logs/debug.log` (flightcontrol1):**
+
+| Check | Finding |
+|-------|---------|
+| Pacing marker | **Absent** — confirms **unpaced** server on lab PC |
+| cf5 param burst | **44 writes in ~0.32 ms** (same as pre-fix) |
+| cf_second | **Zero lines** — no connect attempt visible in this file |
+| End of file | **Truncated** at line 110 mid–second-boot `DECK_DISCOVERY: deckctrl` (blank tail) — **not** enough to call a firmware hang vs incomplete terminal capture |
+| Assert | **No** `uart_syslink.c:549` in this capture; after unpaced burst, **firmware reboot** console resumes (~223 ms later) then log **cuts off** |
+
+**Next lab capture:** save **full** `ros2 launch` stdout until connect completes or fails; confirm **`CS2_CONNECT_PARAM_PACE_V1`** before interpreting boot SYS lines. If cf_second is enabled in yaml, expect **`[cf_second] Requesting parameters...`** before or after cf5 depending on connect order — its absence here is **unexplained** (disabled yaml, blocked on cf5 connect, or truncated log).
