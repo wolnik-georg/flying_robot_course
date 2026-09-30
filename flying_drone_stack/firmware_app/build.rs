@@ -40,13 +40,41 @@ fn main() {
         unsafe { env::set_var("LIBCLANG_PATH", "/usr/lib/llvm-14/lib"); }
     }
 
-    let bindings = bindgen::Builder::default()
+    // 2026-09-30 LOCAL FIX -- CRITICAL, ARM-TARGET ONLY. Without this, bindgen's clang parses C
+    // enums with host (x86_64) conventions -- 4-byte ints. The real firmware compiles with
+    // arm-none-eabi-gcc, which packs plain enums (e.g. stab_mode_t / mode_e, used in
+    // setpoint_s.mode.{x,y,z,...}) as 1-byte types by default on this ARM target. The resulting
+    // struct-layout mismatch made every Rust read of setpoint.mode.* garbage -- confirmed root
+    // cause of controller=10 (omar_indi_rust.rs) never leaving the position-control branch
+    // across six real flight attempts (2026-09-29/30). See
+    // docs/41_Pure_INDI_Implementation_Comparison.md §17-18 for the full diagnosis (byte-level
+    // offsetof probe compiled with the real ARM toolchain flags, confirming sizeof(stab_mode_t)
+    // ==1 and 1-byte field stride in the true compiled layout).
+    // lib.rs (controller=6) never reads setpoint.mode.* so it was never affected by this;
+    // controller_omar_indi.c (controller=9) reads it identically but is pure C, no FFI layout
+    // involved. omar_indi_rust.rs is the first Rust code in this project to cross this boundary.
+    //
+    // MUST be gated on the ARM target only. The host x86_64 build links Rust against C sources
+    // compiled by ordinary `gcc`, which -- unlike arm-none-eabi-gcc on this target -- does NOT
+    // default to short enums. Applying -fshort-enums unconditionally was tried first and broke
+    // the host/SIL build the opposite way (Rust assumes 1-byte, host C stays 4-byte) --
+    // test_omar_indi_rust_vs_c.py went from 7/7 to 1/7 (rust thrust pinned at 0.0, same
+    // fallback-branch symptom, just on the other side of the FFI boundary). DO NOT apply this
+    // unconditionally; DO NOT revert it for the ARM target.
+    let target = env::var("TARGET").unwrap_or_default();
+    let is_arm_target = target.starts_with("thumbv7em");
+
+    let mut builder = bindgen::Builder::default()
         .header("wrapper.h")
         // Firmware include paths
         .clang_arg(format!("-I{}/src/modules/interface", fw_base))
         .clang_arg(format!("-I{}/src/modules/interface/controller", fw_base))
         .clang_arg(format!("-I{}/src/hal/interface", fw_base))
-        .clang_arg(format!("-I{}/src/utils/interface/lighthouse", fw_base))
+        .clang_arg(format!("-I{}/src/utils/interface/lighthouse", fw_base));
+    if is_arm_target {
+        builder = builder.clang_arg("-fshort-enums");
+    }
+    let bindings = builder
         // Generate no_std-compatible code (core:: instead of std::)
         .use_core()
         .ctypes_prefix("core::ffi")
