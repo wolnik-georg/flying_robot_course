@@ -380,6 +380,307 @@ def plot_rpm_overlay(
     plt.close(fig)
 
 
+# Worked-example motor-row for walkthrough-aligned figures (docs/43).
+WORKED_EXAMPLE_MERGE = (
+    "experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/"
+    "A3_2026-09-21_13-00-57_merged_usd.csv"
+)
+WORKED_EXAMPLE_PREFIX = "cf5_A3_13-00-57"
+WORKED_EXAMPLE_MOTOR = 2
+WORKED_EXAMPLE_TITLE = "A3 13-00-57"
+
+# Larger lag for alignment illustration (A3 m2 lag ~4 ms is only 2 samples at 500 Hz).
+LAG_ALIGN_ILLUSTRATION = (
+    "experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/"
+    "A1_2026-09-23_17-17-26_merged_usd.csv",
+    "cf_second",
+    3,
+    "A1 17-17-26",
+)
+
+FIG_W = 14.0  # ~1320 px at dpi=130 for docs/43 wide layout
+
+
+def _robust_rpm_ylim(deck: np.ndarray, dshot: np.ndarray) -> tuple[float, float]:
+    robust = valid_mask_robust(deck, dshot)
+    if not np.any(robust):
+        return 0.0, 20000.0
+    vals = np.concatenate([deck[robust], dshot[robust]])
+    lo, hi = float(np.min(vals)), float(np.max(vals))
+    pad = max(80.0, 0.03 * (hi - lo))
+    return lo - pad, hi + pad
+
+
+def _robust_delta_ylim(deck: np.ndarray, dshot: np.ndarray) -> tuple[float, float]:
+    robust = valid_mask_robust(deck, dshot)
+    if not np.any(robust):
+        return -500.0, 500.0
+    delta = dshot[robust] - deck[robust]
+    lo, hi = float(np.min(delta)), float(np.max(delta))
+    pad = max(50.0, 0.08 * (hi - lo))
+    return lo - pad, hi + pad
+
+
+def _mark_spikes_at_ylim(
+    ax,
+    tt: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    y_top: float,
+    *,
+    max_labels: int = 6,
+) -> None:
+    """Spike DShot values above zoom y-range — triangle on axis + optional value labels."""
+    sp = spike_mask(deck, dshot)
+    if not np.any(sp):
+        return
+    t_sp = tt[sp]
+    d_sp = dshot[sp]
+    ax.scatter(
+        t_sp,
+        np.full(t_sp.shape, y_top),
+        marker="^",
+        s=36,
+        c="C3",
+        edgecolors="0.2",
+        linewidths=0.4,
+        zorder=7,
+        label="DShot spike (off-scale ▲)",
+    )
+    n_lab = min(int(sp.sum()), max_labels)
+    order = np.argsort(-np.abs(d_sp - deck[sp]))[:n_lab]
+    for j in order:
+        ax.annotate(
+            f"{d_sp[j]:.0f}",
+            xy=(t_sp[j], y_top),
+            xytext=(0, 6),
+            textcoords="offset points",
+            ha="center",
+            fontsize=6,
+            color="C3",
+            rotation=45 if n_lab > 3 else 0,
+        )
+
+
+def dshot_time_aligned_to_deck(t: np.ndarray, dshot: np.ndarray, lag_ms: float) -> np.ndarray:
+    """Shift DShot forward in time so +lag_ms (DShot lags deck) aligns with deck at same t."""
+    if not np.isfinite(lag_ms):
+        return np.full_like(dshot, np.nan)
+    lag_s = lag_ms / 1000.0
+    t_query = t + lag_s
+    return np.interp(t_query, t, dshot, left=np.nan, right=np.nan)
+
+
+def plot_rpm_overlay_zoomed(
+    t: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    out_path: Path,
+    *,
+    title: str,
+    motor_label: str,
+) -> None:
+    """Deck vs DShot with y-axis from robust-valid samples; spikes marked at top edge."""
+    plt = _plt()
+    tt = t - t[0]
+    delta = dshot - deck
+    y_lo, y_hi = _robust_rpm_ylim(deck, dshot)
+    d_lo, d_hi = _robust_delta_ylim(deck, dshot)
+    fig, (ax_rpm, ax_delta) = plt.subplots(2, 1, figsize=(FIG_W, 6.5), sharex=True)
+    ax_rpm.plot(tt, deck, lw=1.2, color="C0", alpha=0.95, label="deck RPM")
+    ax_rpm.plot(tt, dshot, lw=1.2, color="C1", alpha=0.9, label="DShot RPM")
+    _mark_spikes_at_ylim(ax_rpm, tt, deck, dshot, y_hi)
+    sp = spike_mask(deck, dshot)
+    if np.any(sp):
+        ax_delta.scatter(
+            tt[sp],
+            delta[sp],
+            s=12,
+            marker="x",
+            c="C3",
+            linewidths=0.9,
+            zorder=6,
+            label="spike |Δ| > 10k",
+        )
+    ax_rpm.set_ylim(y_lo, y_hi)
+    ax_rpm.set_ylabel("RPM")
+    ax_rpm.set_title(f"{title} — {motor_label} (y-axis: robust-valid band)")
+    ax_rpm.legend(loc="upper right", fontsize=7)
+    ax_delta.plot(tt, delta, lw=1.0, color="C2", alpha=0.9, label="DShot − deck")
+    ax_delta.axhline(0.0, color="0.65", lw=0.6)
+    ax_delta.set_ylim(d_lo, d_hi)
+    ax_delta.set_xlabel("time since flight start (s)")
+    ax_delta.set_ylabel("Δ RPM")
+    ax_delta.legend(loc="upper right", fontsize=7)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def plot_rpm_agreement_scatter(
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    out_path: Path,
+    *,
+    title: str,
+    use_hexbin: bool = True,
+    subtitle: str = "",
+) -> None:
+    """Deck vs DShot on robust-valid mask; y=x reference."""
+    plt = _plt()
+    robust = valid_mask_robust(deck, dshot)
+    xd = deck[robust]
+    yd = dshot[robust]
+    fig, ax = plt.subplots(figsize=(FIG_W, 7))
+    if xd.size == 0:
+        ax.text(0.5, 0.5, "no robust-valid samples", ha="center", transform=ax.transAxes)
+    elif use_hexbin and xd.size > 8000:
+        hb = ax.hexbin(xd, yd, gridsize=55, mincnt=1, cmap="Blues", linewidths=0.1)
+        fig.colorbar(hb, ax=ax, label="sample count")
+    else:
+        ax.scatter(xd, yd, s=2, alpha=0.25, c="C0", edgecolors="none")
+    if xd.size:
+        lo = float(min(xd.min(), yd.min()))
+        hi = float(max(xd.max(), yd.max()))
+        pad = 0.02 * (hi - lo)
+        ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], "k--", lw=1, alpha=0.7, label="y = x")
+        ax.set_xlim(lo - pad, hi + pad)
+        ax.set_ylim(lo - pad, hi + pad)
+    ax.set_xlabel("deck RPM")
+    ax.set_ylabel("DShot RPM")
+    ax.set_title(title + (f"\n{subtitle}" if subtitle else ""))
+    ax.set_aspect("equal", adjustable="box")
+    ax.legend(loc="upper left", fontsize=8)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def plot_rpm_agreement_scatter_fleet(
+    deck_bottom: np.ndarray,
+    dshot_bottom: np.ndarray,
+    deck_top: np.ndarray,
+    dshot_top: np.ndarray,
+    out_path: Path,
+) -> None:
+    plt = _plt()
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W, 6.5), sharex=True, sharey=True)
+    last_hb = None
+    for ax, xd, yd, role in (
+        (axes[0], deck_bottom, dshot_bottom, "bottom (cf5)"),
+        (axes[1], deck_top, dshot_top, "top (cf_second)"),
+    ):
+        if xd.size > 8000:
+            last_hb = ax.hexbin(xd, yd, gridsize=48, mincnt=1, cmap="Blues", linewidths=0.1)
+        elif xd.size:
+            ax.scatter(xd, yd, s=1, alpha=0.2, c="C0")
+        if xd.size:
+            lo = float(min(xd.min(), yd.min()))
+            hi = float(max(xd.max(), yd.max()))
+            pad = 0.02 * (hi - lo)
+            ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], "k--", lw=1, alpha=0.7)
+            ax.set_xlim(lo - pad, hi + pad)
+            ax.set_ylim(lo - pad, hi + pad)
+        ax.set_title(role)
+        ax.set_xlabel("deck RPM")
+        ax.set_ylabel("DShot RPM")
+        ax.set_aspect("equal", adjustable="box")
+    if last_hb is not None:
+        fig.colorbar(last_hb, ax=axes.ravel().tolist(), label="sample count", shrink=0.85)
+    fig.suptitle("Fleet agreement — all robust-valid samples (spike-filtered)", y=1.02)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_lag_alignment_panels(
+    t: np.ndarray,
+    deck: np.ndarray,
+    dshot: np.ndarray,
+    lag_ms: float,
+    out_path: Path,
+    *,
+    title: str,
+    motor_label: str,
+    window_s: float = 2.5,
+) -> None:
+    """Short window: raw overlay vs DShot shifted by measured lag_ms (+ = DShot lags deck)."""
+    plt = _plt()
+    tt = t - t[0]
+    robust = valid_mask_robust(deck, dshot)
+    if np.sum(robust) < 100:
+        mid = len(t) // 2
+    else:
+        mid = int(np.argmax(np.convolve(robust.astype(float), np.ones(200), mode="same")))
+    half = int(round(window_s * FS / 2))
+    i0 = max(0, mid - half)
+    i1 = min(len(t), mid + half)
+    tw = tt[i0:i1]
+    rd = deck[i0:i1]
+    rs = dshot[i0:i1]
+    rs_al = dshot_time_aligned_to_deck(t[i0:i1], rs, lag_ms)
+    y_lo, y_hi = _robust_rpm_ylim(rd, rs)
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W, 4.2), sharey=True)
+    for ax, y2, lab in (
+        (axes[0], rs, "DShot (unshifted)"),
+        (axes[1], rs_al, f"DShot shifted +{lag_ms:.1f} ms"),
+    ):
+        ax.plot(tw, rd, lw=1.3, color="C0", label="deck")
+        ax.plot(tw, y2, lw=1.3, color="C1", alpha=0.9, label=lab)
+        ax.set_ylim(y_lo, y_hi)
+        ax.set_xlabel("time (s)")
+        ax.set_ylabel("RPM")
+        ax.legend(fontsize=7, loc="upper right")
+    axes[0].set_title(f"Before lag correction — {title} — {motor_label}")
+    axes[1].set_title(f"After +{lag_ms:.1f} ms shift on DShot (+ = DShot lagged deck)")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
+def plot_lag_histogram_fleet(per_flight_rows: list[dict], out_path: Path) -> None:
+    plt = _plt()
+    lag_bottom = [
+        r["lag_ms"] for r in per_flight_rows if r["vehicle_role"] == "bottom" and np.isfinite(r["lag_ms"])
+    ]
+    lag_top = [
+        r["lag_ms"] for r in per_flight_rows if r["vehicle_role"] == "top" and np.isfinite(r["lag_ms"])
+    ]
+    bins = np.arange(-12, 52, 2)
+    fig, ax = plt.subplots(figsize=(FIG_W, 4.5))
+    ax.hist(
+        lag_bottom,
+        bins=bins,
+        alpha=0.55,
+        label=f"bottom (n={len(lag_bottom)} motor-rows)",
+        color="C0",
+        edgecolor="white",
+        linewidth=0.4,
+    )
+    ax.hist(
+        lag_top,
+        bins=bins,
+        alpha=0.55,
+        label=f"top (n={len(lag_top)} motor-rows)",
+        color="C1",
+        edgecolor="white",
+        linewidth=0.4,
+    )
+    ax.axvline(0, color="0.5", lw=0.8)
+    ax.set_xlabel("lag_ms (+ = DShot lags deck)")
+    ax.set_ylabel("motor-row count")
+    ax.set_title("Fleet cross-correlation lag distribution (272 motor-rows)")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=130)
+    plt.close(fig)
+
+
 def plot_rolling_lag(
     t: np.ndarray,
     deck: np.ndarray,
@@ -626,6 +927,117 @@ def write_grid_and_flight_summary(out_dir: Path, per_flight_rows: list[dict]) ->
     return md
 
 
+def write_agreement_lag_plots(
+    out_dir: Path,
+    per_flight_rows: list[dict],
+    csv_paths: list[Path],
+) -> None:
+    """Agreement scatter (fleet + worked example) and lag visibility plots."""
+
+    def row_lag(scenario: str, stamp: str, prefix: str, motor: int) -> float:
+        for r in per_flight_rows:
+            if (
+                r["scenario"] == scenario.split()[0]
+                and r["stamp"] == stamp.split()[1]
+                and r["vehicle_prefix"] == prefix
+                and r["motor"] == motor
+            ):
+                return float(r["lag_ms"])
+        return float("nan")
+
+    cache: dict[str, tuple[np.ndarray, dict[str, np.ndarray]]] = {}
+
+    def load_cached(rel: str) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+        if rel not in cache:
+            cache[rel] = load_merged_csv(REPO / rel)
+        return cache[rel]
+
+    deck_b_parts: list[np.ndarray] = []
+    dshot_b_parts: list[np.ndarray] = []
+    deck_t_parts: list[np.ndarray] = []
+    dshot_t_parts: list[np.ndarray] = []
+    for r in per_flight_rows:
+        _, arrays = load_cached(r["merge_path"])
+        rd_col = f"{r['vehicle_prefix']}.rpm_m{r['motor']}"
+        rs_col = f"{r['vehicle_prefix']}.motor_m{r['motor']}_rpm"
+        if rd_col not in arrays or rs_col not in arrays:
+            continue
+        rd = arrays[rd_col]
+        rs = arrays[rs_col]
+        rob = valid_mask_robust(rd, rs)
+        if r["vehicle_role"] == "bottom":
+            deck_b_parts.append(rd[rob])
+            dshot_b_parts.append(rs[rob])
+        elif r["vehicle_role"] == "top":
+            deck_t_parts.append(rd[rob])
+            dshot_t_parts.append(rs[rob])
+
+    deck_b = np.concatenate(deck_b_parts) if deck_b_parts else np.array([])
+    dshot_b = np.concatenate(dshot_b_parts) if dshot_b_parts else np.array([])
+    deck_t = np.concatenate(deck_t_parts) if deck_t_parts else np.array([])
+    dshot_t = np.concatenate(dshot_t_parts) if dshot_t_parts else np.array([])
+
+    plot_rpm_agreement_scatter_fleet(
+        deck_b,
+        dshot_b,
+        deck_t,
+        dshot_t,
+        out_dir / "scatter_fleet_robust_by_role.png",
+    )
+
+    t_w, arr_w = load_cached(WORKED_EXAMPLE_MERGE)
+    rd_w = arr_w[f"{WORKED_EXAMPLE_PREFIX}.rpm_m{WORKED_EXAMPLE_MOTOR}"]
+    rs_w = arr_w[f"{WORKED_EXAMPLE_PREFIX}.motor_m{WORKED_EXAMPLE_MOTOR}_rpm"]
+    rob_n = int(valid_mask_robust(rd_w, rs_w).sum())
+    plot_rpm_agreement_scatter(
+        rd_w,
+        rs_w,
+        out_dir / "scatter_A3_13-00-57_cf5_m2_robust.png",
+        title=f"{WORKED_EXAMPLE_TITLE} — {WORKED_EXAMPLE_PREFIX} m{WORKED_EXAMPLE_MOTOR}",
+        subtitle=f"robust-valid samples only (n={rob_n:,})",
+        use_hexbin=rob_n > 8000,
+    )
+
+    lag_w = row_lag(WORKED_EXAMPLE_TITLE, WORKED_EXAMPLE_TITLE, WORKED_EXAMPLE_PREFIX, WORKED_EXAMPLE_MOTOR)
+    if not np.isfinite(lag_w):
+        lag_w = float(
+            cross_corr_lag(
+                rd_w[valid_mask_robust(rd_w, rs_w)].astype(float),
+                rs_w[valid_mask_robust(rd_w, rs_w)].astype(float),
+                FS,
+            )
+        )
+    plot_lag_alignment_panels(
+        t_w,
+        rd_w,
+        rs_w,
+        lag_w,
+        out_dir / "lag_align_A3_13-00-57_cf5_m2.png",
+        title=WORKED_EXAMPLE_TITLE,
+        motor_label=f"{WORKED_EXAMPLE_PREFIX} m{WORKED_EXAMPLE_MOTOR}",
+    )
+
+    merge_a1, prefix_a1, motor_a1, title_a1 = LAG_ALIGN_ILLUSTRATION
+    t_a1, arr_a1 = load_cached(merge_a1)
+    rd_a1 = arr_a1[f"{prefix_a1}.rpm_m{motor_a1}"]
+    rs_a1 = arr_a1[f"{prefix_a1}.motor_m{motor_a1}_rpm"]
+    lag_a1 = row_lag(title_a1, title_a1, prefix_a1, motor_a1)
+    plot_lag_alignment_panels(
+        t_a1,
+        rd_a1,
+        rs_a1,
+        lag_a1,
+        out_dir / "lag_align_A1_17-17-26_cf_second_m3.png",
+        title=title_a1,
+        motor_label=f"{prefix_a1} m{motor_a1}",
+        window_s=2.5,
+    )
+
+    plot_lag_histogram_fleet(per_flight_rows, out_dir / "lag_hist_fleet_by_role.png")
+
+    _ = csv_paths  # signature keeps parity with main(); cache built from per_flight_rows
+
+
 def write_extended_visualizations(out_dir: Path, per_flight_rows: list[dict]) -> None:
     """Overlay + rolling-lag plots for representative flights (additive outputs)."""
 
@@ -656,6 +1068,10 @@ def write_extended_visualizations(out_dir: Path, per_flight_rows: list[dict]) ->
         rs = arrays[rs_col]
         motor_label = f"{prefix} motor m{motor}"
         plot_rpm_overlay(t, rd, rs, out_dir / overlay_name, title=title, motor_label=motor_label)
+        zoom_name = overlay_name.replace("overlay_", "overlay_zoom_", 1)
+        plot_rpm_overlay_zoomed(
+            t, rd, rs, out_dir / zoom_name, title=title, motor_label=motor_label
+        )
         meta = row_key(title.split()[0], title.split()[1], vehicle_role(prefix), motor)
         glag = meta["lag_ms"] if meta else float("nan")
         plot_rolling_lag(
@@ -872,6 +1288,7 @@ def main() -> int:
         fig.savefig(plot_path, dpi=130)
         plt.close(fig)
         write_extended_visualizations(out_dir, per_flight_rows)
+        write_agreement_lag_plots(out_dir, per_flight_rows, csv_paths)
         write_grid_and_flight_summary(out_dir, per_flight_rows)
 
     # Spike root-cause + control-path correlation (docs/43 Task 3)
@@ -902,6 +1319,7 @@ def main() -> int:
     if not args.no_plots:
         print(f"Wrote {plot_path}")
         print(f"Wrote extended overlay + rolling-lag PNGs under {out_dir}/")
+        print(f"Wrote overlay_zoom_*, scatter_*, lag_align_*, lag_hist_* under {out_dir}/")
         print(f"Wrote grid4_*.png and flight_summary_table.md under {out_dir}/")
     return 0
 

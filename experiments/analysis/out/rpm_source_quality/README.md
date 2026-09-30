@@ -30,7 +30,8 @@ Outputs (overwritten each run):
 | `spike_investigation.json` | Spike counts + control-path correlation summary |
 | `summary_by_scenario_vehicle.csv` | By scenario × vehicle role (robust-first columns) |
 | `flight_summary_table.md` | Per-flight robust headline table |
-| `overview_*.png`, `overlay_*.png`, `grid4_*.png`, `rolling_lag_*.png` | Regenerated figures (spike markers on traces; rolling lag uses robust mask) |
+| `overview_*.png`, `overlay_*.png`, `overlay_zoom_*.png`, `grid4_*.png`, `rolling_lag_*.png` | Trace + zoomed (robust y-axis) + rolling lag |
+| `scatter_*_robust*.png`, `lag_align_*.png`, `lag_hist_fleet_by_role.png` | Agreement scatter + lag alignment + fleet lag histogram |
 
 Metric definitions: `docs/43_RPM_Source_Quality.md` § Metric reference.
 

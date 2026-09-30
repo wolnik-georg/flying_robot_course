@@ -330,12 +330,11 @@ footer{
   </div>
   <p class="refline" style="margin-top:8px">Source ·
     <code>summary_by_scenario_vehicle.csv</code> · per-flight · <code>flight_summary_table.md</code> ·
-    figures · <code>overview_lag_bias_by_role.png</code>, <code>overview_robust_bias_by_role.png</code>,
-    <code>overlay_*</code>, <code>grid4_*</code>, <code>rolling_lag_*</code> (spike markers on traces)</p>
+    figures · see § Plots below (overview, overlays, zoom, scatter, lag alignment, histogram)</p>
 </section>
 
 <section>
-  <h2>Plots (regenerated 29 Sep 2026)</h2>
+  <h2>Plots (regenerated 29 Sep 2026; agreement + lag views 30 Sep 2026)</h2>
   <div class="panel">
     <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 .6em">
       All under <code>experiments/analysis/out/rpm_source_quality/</code>. Titles use <strong>robust</strong> bias/RMSE.
@@ -370,6 +369,29 @@ footer{
     <img src="../experiments/analysis/out/rpm_source_quality/rolling_lag_A2_19-27-03_cf_second_m3.png" alt="Rolling lag A2 19-27-03 cf_second m3" style="max-width:100%; border-radius:6px; margin-bottom:12px">
     <img src="../experiments/analysis/out/rpm_source_quality/rolling_lag_A3_13-00-57_cf5_m2.png" alt="Rolling lag A3 13-00-57 cf5 m2" style="max-width:100%; border-radius:6px; margin-bottom:12px">
     <img src="../experiments/analysis/out/rpm_source_quality/rolling_lag_A7_19-11-19_cf_second_m3.png" alt="Rolling lag A7 19-11-19 cf_second m3" style="max-width:100%; border-radius:6px">
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px">Zoomed overlays — hover-band agreement (4)</h3>
+  <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 10px">Y-axis limits from <strong>robust-valid</strong> RPM only; DShot spikes shown as ▲ on the top edge with true RPM labels.</p>
+  <div class="panel">
+    <img src="../experiments/analysis/out/rpm_source_quality/overlay_zoom_A1_17-17-26_cf_second_m3.png" alt="Zoomed overlay A1 17-17-26" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/overlay_zoom_A2_19-27-03_m3.png" alt="Zoomed overlay A2 19-27-03" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/overlay_zoom_A3_13-00-57_cf5_m2.png" alt="Zoomed overlay A3 13-00-57 cf5 m2" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/overlay_zoom_A7_19-11-19_cf_second_m3.png" alt="Zoomed overlay A7 19-11-19" style="max-width:100%; border-radius:6px">
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px">Agreement scatter — robust-valid (2)</h3>
+  <div class="panel">
+    <img src="../experiments/analysis/out/rpm_source_quality/scatter_fleet_robust_by_role.png" alt="Fleet agreement hexbin by vehicle role" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/scatter_A3_13-00-57_cf5_m2_robust.png" alt="Worked example A3 13-00-57 cf5 m2 agreement" style="max-width:100%; border-radius:6px">
+  </div>
+
+  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px">Lag made visible (3)</h3>
+  <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 10px">Worked example uses <strong>A3 13-00-57 cf5 m2</strong> (+4&nbsp;ms lag). <strong>A1 17-17-26 cf_second m3</strong> (+44&nbsp;ms) shows the same shift when offset is wider than two 500&nbsp;Hz samples.</p>
+  <div class="panel">
+    <img src="../experiments/analysis/out/rpm_source_quality/lag_align_A3_13-00-57_cf5_m2.png" alt="Lag alignment A3 worked example" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/lag_align_A1_17-17-26_cf_second_m3.png" alt="Lag alignment A1 large lag exemplar" style="max-width:100%; border-radius:6px; margin-bottom:12px">
+    <img src="../experiments/analysis/out/rpm_source_quality/lag_hist_fleet_by_role.png" alt="Fleet lag histogram by role" style="max-width:100%; border-radius:6px">
   </div>
 </section>
 

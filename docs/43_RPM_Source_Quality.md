@@ -320,8 +320,14 @@ All figures live under `experiments/analysis/out/rpm_source_quality/`. **Headlin
 | `overlay_*.png` (4) | Deck vs DShot + **Δ-RPM** panel; spike samples marked |
 | `grid4_*.png` (3) | Four motors × (RPM + Δ-RPM) stack; A1, A3, A7 exemplars |
 | `rolling_lag_*.png` (4) | 2 s / 0.5 s step rolling lag (robust-masked windows) |
+| `overlay_zoom_*.png` (4) | Same exemplars as overlays; **y-axis from robust-valid band**; off-scale spikes as ▲ + value labels |
+| `scatter_fleet_robust_by_role.png` | All robust-valid samples, hexbin by vehicle role; **y = x** reference |
+| `scatter_A3_13-00-57_cf5_m2_robust.png` | Worked-example motor-row agreement (walkthrough in § Step-by-step) |
+| `lag_align_A3_13-00-57_cf5_m2.png` | 2.5 s window: DShot unshifted vs shifted by measured lag (+4 ms on this row) |
+| `lag_align_A1_17-17-26_cf_second_m3.png` | Same panels for **larger lag** (+44 ms) — easier to see offset than 2 samples at 500 Hz |
+| `lag_hist_fleet_by_role.png` | Histogram of `lag_ms` over 272 motor-rows (bottom vs top) |
 
-Representative overlays: `overlay_A1_17-17-26_cf_second_m3`, `overlay_A3_13-00-57_cf5_m2`, `overlay_A7_19-11-19_cf_second_m3`, `overlay_A2_19-27-03_m3` (A2 deck-dropout context).
+Representative overlays: `overlay_A1_17-17-26_cf_second_m3`, `overlay_A3_13-00-57_cf5_m2`, `overlay_A7_19-11-19_cf_second_m3`, `overlay_A2_19-27-03_m3` (A2 deck-dropout context). Pair each raw overlay with `overlay_zoom_*` to read hover-band agreement without spike-dominated scaling.
 
 § Extension 2026-09-27 raw-RMSE spike note is **superseded** by robust RMSE + marked-spike plots above.
 
