@@ -123,7 +123,7 @@ footer{
   <h1>RPM Source Quality</h1>
   <p class="lede">Does the <strong>optical RPM deck</strong> agree with <strong>DShot</strong>
     bidirectional telemetry on real C.1 flights? Bias, lag, and dropout across
-    <strong>38</strong> merged logs (**272</strong> motor-rows) — not a stability claim, not a policy change.</p>
+    <strong>38</strong> merged logs (<strong>272</strong> motor-rows) — not a stability claim, not a policy change.</p>
   <p class="lede"><strong>Latency vs policy:</strong> the <strong>deck is faster</strong> — lag is
     reported as <strong>positive when DShot lags the deck</strong> (typically a few ms, often on a
     2&nbsp;ms grid). <strong>DShot feeds control for reliability</strong> (deck reported zero on
@@ -388,6 +388,20 @@ footer{
 
   <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px">Lag made visible (3)</h3>
   <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 10px">Worked example uses <strong>A3 13-00-57 cf5 m2</strong> (+4&nbsp;ms lag). <strong>A1 17-17-26 cf_second m3</strong> (+44&nbsp;ms) shows the same shift when offset is wider than two 500&nbsp;Hz samples.</p>
+  <div class="note" style="margin-bottom:12px">
+    <strong>Honest correction (2026-09-30):</strong> these two panels were first captioned as
+    showing "obvious alignment" after the shift — checked quantitatively (correlation/RMSE
+    between deck and DShot in the exact plotted window) and that doesn't hold. A3's shift is
+    marginally in the right direction (correlation 0.400→0.422) but too small to see by eye.
+    <strong>A1's shift makes agreement measurably worse (correlation 0.716→0.435, RMSE
+    75→92&nbsp;RPM)</strong> — its 44&nbsp;ms flight-wide lag value is exactly the kind of noisy
+    correlation-peak artifact the "Top vs bottom" section below already warns isn't a real
+    calibrated delay. Several other 6-10&nbsp;ms exemplars were checked as replacements and
+    showed similarly marginal, inconsistent results — the likely real finding is that measurable
+    lag in this dataset is mostly too small relative to sample noise to visibly demonstrate in a
+    short window, not that a better example exists. Kept both plots for the record; read them as
+    "the self-test proves the method is correct," not "these two panels show it working well."
+  </div>
   <div class="panel">
     <img src="../experiments/analysis/out/rpm_source_quality/lag_align_A3_13-00-57_cf5_m2.png" alt="Lag alignment A3 worked example" style="max-width:100%; border-radius:6px; margin-bottom:12px">
     <img src="../experiments/analysis/out/rpm_source_quality/lag_align_A1_17-17-26_cf_second_m3.png" alt="Lag alignment A1 large lag exemplar" style="max-width:100%; border-radius:6px; margin-bottom:12px">

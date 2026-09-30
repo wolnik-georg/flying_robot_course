@@ -323,11 +323,35 @@ All figures live under `experiments/analysis/out/rpm_source_quality/`. **Headlin
 | `overlay_zoom_*.png` (4) | Same exemplars as overlays; **y-axis from robust-valid band**; off-scale spikes as ▲ + value labels |
 | `scatter_fleet_robust_by_role.png` | All robust-valid samples, hexbin by vehicle role; **y = x** reference |
 | `scatter_A3_13-00-57_cf5_m2_robust.png` | Worked-example motor-row agreement (walkthrough in § Step-by-step) |
-| `lag_align_A3_13-00-57_cf5_m2.png` | 2.5 s window: DShot unshifted vs shifted by measured lag (+4 ms on this row) |
-| `lag_align_A1_17-17-26_cf_second_m3.png` | Same panels for **larger lag** (+44 ms) — easier to see offset than 2 samples at 500 Hz |
+| `lag_align_A3_13-00-57_cf5_m2.png` | 2.5 s window: DShot unshifted vs shifted by measured lag (+4 ms on this row) — **honest caveat below** |
+| `lag_align_A1_17-17-26_cf_second_m3.png` | Same panels at the flight-wide **+44 ms** lag value — **not a good correction example, see below** |
 | `lag_hist_fleet_by_role.png` | Histogram of `lag_ms` over 272 motor-rows (bottom vs top) |
 
 Representative overlays: `overlay_A1_17-17-26_cf_second_m3`, `overlay_A3_13-00-57_cf5_m2`, `overlay_A7_19-11-19_cf_second_m3`, `overlay_A2_19-27-03_m3` (A2 deck-dropout context). Pair each raw overlay with `overlay_zoom_*` to read hover-band agreement without spike-dominated scaling.
+
+**Honest correction on the two `lag_align_*` plots (2026-09-30):** these were originally captioned
+as showing "obvious alignment" after the shift. Checked quantitatively (correlation and RMSE
+between deck and shifted/unshifted DShot, in the exact plotted window) — that claim doesn't hold:
+
+| Exemplar | Correlation, unshifted → shifted | RMSE, unshifted → shifted |
+|---|---|---|
+| A3 13-00-57, motor 2 (+4 ms) | 0.400 → 0.422 | 86.0 → 84.6 RPM |
+| A1 17-17-26, motor 3 (+44 ms) | **0.716 → 0.435** | **75.2 → 91.6 RPM** |
+
+A3's shift is marginally in the right direction but too small to see by eye (as originally
+noted). **A1's shift makes agreement measurably *worse*, not better** — the plot doesn't show
+what its caption claims. Root cause: `44 ms` is the flight-wide cross-correlation's reported
+value for that motor-row, but §"Top vs bottom" above already documents that isolated large lag
+values like this one are **noisy correlation peaks, not calibrated delays** — this A1 case is
+exactly that, and using it as a "correction" demo applies a noisy estimate to a window where it
+doesn't hold. Checked several other motor-rows with more moderate (6-10 ms) lag values as
+possible replacements — all showed similarly marginal, inconsistent changes, suggesting the
+real story is that **measurable lag in this dataset is mostly too small relative to sample-to-
+sample noise to produce a visually dramatic before/after** with real flight data, not that a
+better exemplar exists. Both plots are kept (removing them loses information) but should be read
+as: the self-test proves the *method* correctly recovers a known injected delay; these two real-
+data panels show that applying real, estimated lag values to short windows does not reliably
+or visibly improve alignment — a legitimate, if less exciting, finding in its own right.
 
 § Extension 2026-09-27 raw-RMSE spike note is **superseded** by robust RMSE + marked-spike plots above.
 
