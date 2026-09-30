@@ -526,7 +526,12 @@ const ENABLE_POSITION_INTEGRAL: bool = false;
 // 1b. Z-only position integral (separate i_ez / pos_gains.ki_z) — docs/51. Does not touch
 //     i_ep or ENABLE_POSITION_INTEGRAL above. Anti-windup: conditional integration when thrust
 //     is saturated against the error direction (see accumulate_z_integral).
-const ENABLE_Z_INTEGRAL: bool = false;
+// 2026-09-30 STAGED TRUE for the pending Z-only integral hardware test (docs/51 Task 5,
+// docs/41 §18, crazyswarm2 cf5.controller=6 + pos_gains.ki_z=16.0 already staged). Revert to
+// `false` after that test flies -- this is a deliberate, one-time exception to keeping this
+// flag false in the committed tree, made because this build needs to reach a lab PC over git
+// rather than a local-only edit. Do not leave this `true` past the Z-integral test.
+const ENABLE_Z_INTEGRAL: bool = true;
 //
 // 2. Attitude integral: accumulates SO(3) attitude error to correct steady-state tilt
 //    from motor asymmetry or COM offset.  KI_ATT=0.03 (official Lee firmware default).
