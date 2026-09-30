@@ -802,3 +802,111 @@ Full account: `docs/43_RPM_Source_Quality.md`.
 **Desk work: fully exhausted across all three tracks tonight** (controller=10, Z-integral,
 RPM dual-source). Nothing further to investigate without new flight data — see `docs/07`'s
 Next-action line.
+
+## 2026-09-30 — exact lab checklists (audit follow-up, patch file corruption actually fixed)
+
+Full audit done post-close: the `g_ki_z` "SWIG binding bug" reported earlier was a false alarm
+(stale build + a grep that missed valid syntax), corrected. But `cffirmware_bindings.patch`
+had a **second, real** corruption my first hand-edit missed — properly fixed by regenerating
+the whole file via this project's own documented procedure (`git diff bindings/`), verified
+with `git apply --check --reverse` against the live tree. See `docs/07` History and memory
+`feedback_verify_before_reporting_binding_bugs` for the full account. Doesn't change either
+checklist below — just documenting that the supporting infra is now genuinely clean.
+
+**Current yaml state:** `cf5` = controller **6** (staged for the Z-integral test), `ctrl_mode`
+**0**, `cf_second` disabled. Switch step 2 of Checklist A if running controller=10 first.
+
+### Checklist A — controller=10 solo-hover retry
+
+```bash
+# 1. Pull latest
+cd ~/Desktop/flying_robot_course && git pull
+cd ~/Desktop/crazyswarm2 && git pull
+
+# 2. crazyflies.yaml, cf5 block: firmware_params.stabilizer.controller: 6 -> 10
+#    (confirm ctrlOot5.indi: 3 is still present, left dormant, not deleted)
+
+# 3. Confirm ENABLE_Z_INTEGRAL is false in
+#    flying_drone_stack/firmware_app/src/lib.rs (~line 529) -- revert if you'd
+#    locally flipped it for a prior Z-integral test
+
+# 4. Reflash cf5
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl cload CLOAD_ARGS='-w radio://0/80/2M/E7E7E7BB02'
+
+# 5. Confirm cf_second stays enabled: false in crazyflies.yaml (solo only)
+
+# 6. Start CS2
+source ~/Desktop/crazyswarm2/install/setup.bash
+ros2 launch crazyflie launch.py backend:=cflib
+# watch for a clean connect (no assert/reboot); confirm ctrlOot5.indi reads 3
+
+# 7. Fly solo hover
+ros2 run crazyflie_examples simple_flight -- \
+  --trajectory hover --pin-controller --height 1.0 --duration 8
+
+# 8. Watch closely -- land/disarm immediately on any growing oscillation,
+#    this is genuinely unflown-clean code
+
+# 9. Pull uSD immediately after, either outcome
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<mount> cf5
+python3 experiments/analysis/check_omar_rust_telemetry.py <merged_csv_path>
+# tau_x/y/z should be real non-zero data this time -- that was the missing
+# piece last attempt
+```
+
+### Checklist B — Z-only integral hardware test
+
+```bash
+# 1. Pull latest (skip if already done above)
+
+# 2. Confirm cf5 is on controller=6 / ctrl_mode=0
+python3 -c "
+import yaml
+d = yaml.safe_load(open('/home/georg/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml'))
+r = d['robots']['cf5']
+print(r['firmware_params']['stabilizer']['controller'], r['firmware_params']['indi_gains']['ctrl_mode'])
+"
+# expect: 6 0
+
+# 3. Flip the integral flag LOCALLY (do not commit):
+#    flying_drone_stack/firmware_app/src/lib.rs (~line 529)
+#    const ENABLE_Z_INTEGRAL: bool = false;  ->  true
+
+# 4. Confirm gains are staged (shared all: block)
+python3 -c "
+import yaml
+d = yaml.safe_load(open('/home/georg/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml'))
+print(d['all']['firmware_params']['pos_gains'])
+"
+# expect ki_z: 16.0, ki_z_limit: 1.5
+
+# 5. Reflash cf5
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl cload CLOAD_ARGS='-w radio://0/80/2M/E7E7E7BB02'
+
+# 6. cf_second stays disabled (solo only)
+
+# 7. Start CS2 (same command as Checklist A step 6)
+
+# 8. Fly solo hover, longer duration to see convergence (SIL used an 8s hold)
+ros2 run crazyflie_examples simple_flight -- \
+  --trajectory hover --pin-controller --height 1.0 --duration 10
+
+# 9. Compare real z vs ctrltarget_z against a known un-integrated baseline --
+#    this is a PERSISTENT HOVER-BIAS test, not a downwash test.
+#    SIL target: 81-88% reduction of the sag.
+
+# 10. AFTER the flight, revert the flag before anything else:
+#     lib.rs ~line 529: const ENABLE_Z_INTEGRAL: bool = true;  ->  false
+#     (keeps position_integral_z_only_sil_compare.py's own restore-to-false
+#     assumption correct for the next desk SIL run)
+```
+
+Both tests share the same `cf5` URI/reflash pattern — can run back-to-back in one session, just
+flip yaml `controller:` and the `ENABLE_Z_INTEGRAL` flag between them.
+
+**RPM dual-source page (no lab action needed, reference only):**
+```bash
+xdg-open ~/Desktop/flying_robot_course/docs/43_RPM_Source_Quality.html
+```
