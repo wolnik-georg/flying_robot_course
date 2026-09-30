@@ -73,6 +73,143 @@ All metrics are per **motor-row** (one vehicle prefix × one motor × one merged
 
 Source: `experiments/analysis/out/rpm_source_quality/fleet_robust_rmse.json`, `per_flight.csv` (**272** motor-rows).
 
+---
+
+## Metrics explained, step by step, with a real worked example
+
+Everything below is computed on **one real motor-row**: `cf5`, flight `A3_2026-09-21_13-00-57`,
+motor 2 — the exact same flight/motor shown in the overlay plot earlier in this doc. Every
+number here was hand-computed directly from the raw merged CSV to independently confirm the
+pipeline's own output, not copied from it — they match to the decimal.
+
+### The basic idea
+
+Every flight logs RPM from **two separate sensors watching the same four motors**: the optical
+deck (a camera-like sensor that watches the propeller and infers speed from what it sees) and
+DShot (the motor controller electronically reporting its own commanded/measured speed back over
+the same wire that drives it). Neither is "ground truth" by construction — they're two
+independent measurements of the same physical quantity, and disagreement between them is
+information, not necessarily an error in either one.
+
+**"Motor-row"** is the unit everything is computed on: one specific flight, one specific drone,
+one specific motor (1 through 4). A single 30-second flight with 2 drones logging 4 motors each
+produces 8 motor-rows. The fleet numbers (272 motor-rows) are just this repeated across every
+flight/drone/motor combination in the dataset, then aggregated.
+
+### Step 1 — the raw samples
+
+At 500 Hz, each motor-row is a long list of `(deck_rpm, dshot_rpm)` pairs, one per tick. A
+normal-looking stretch from the real data (both sensors reading a stable ~19,000 RPM hover):
+
+| t (s) | deck (RPM) | DShot (RPM) | error = DShot − deck |
+|---|---:|---:|---:|
+| 5.000 | 19044.0 | 19043.4 | −0.7 |
+| 5.002 | 19011.9 | 18845.1 | −166.7 |
+| 5.004 | 18985.8 | 18796.0 | −189.8 |
+| 5.008 | 18889.1 | 18858.9 | −30.2 |
+| 5.016 | 18734.4 | 18790.3 | +56.0 |
+
+Then, 100 ms later in the *same* motor-row, a spike:
+
+| t (s) | deck (RPM) | DShot (RPM) | error = DShot − deck |
+|---|---:|---:|---:|
+| 5.120 | 16833.6 | 34893.5 | **+18059.8** |
+| 5.122 | 16803.5 | 49505.5 | **+32702.0** |
+
+The deck barely moved (16833→16803, entirely normal). DShot jumped to nearly double and then
+nearly triple the real speed, for two ticks, then came back. This pair of rows *is* what
+"spike" means throughout this doc — not a description, this is literally what one looks like in
+the raw numbers.
+
+### Step 2 — the two validity masks
+
+Before computing anything, some samples get excluded — but *which* ones, and why, matters:
+
+- **`deck > 0`** — the deck occasionally reports exactly 0 when it loses lock on the propeller
+  (a real dropout, not noise). A 0 doesn't mean "the motor stopped," it means "the sensor has no
+  reading" — including it in an error calculation would compare a real DShot number against a
+  meaningless deck placeholder.
+- **`dshot > 0` and `dshot < 60000`** — DShot uses `0xFFFF` (65535) as its own explicit
+  "no value" sentinel. `60000` is a safety margin below that so genuinely garbage-but-not-quite-
+  the-sentinel values near the top of the `uint16` range don't sneak through either.
+- Samples passing both of the above are **"base valid"** — this is the widest reasonable mask,
+  and it's what `bias_rpm`/`rmse_raw_rpm`/`max_abs_err_rpm` are computed on.
+- **"Robust valid"** = base valid **and** `|dshot − deck| ≤ 10,000 RPM`. This is the mask that
+  drops exactly the two spike rows shown above (+18060 and +32702 both exceed 10,000) while
+  keeping every normal sample, spikes included in the errors above. On this specific motor-row,
+  base-valid has 17,688 samples; robust-valid drops it to 17,683 — **5 samples excluded**, out
+  of nearly 18,000. That's the whole story of why `rmse_robust` and `rmse_raw` differ so much:
+  a handful of huge numbers versus thousands of small ones.
+
+### Step 3 — bias (is one sensor systematically higher or lower than the other?)
+
+**Formula:** the plain average of `(dshot − deck)` over every base-valid sample.
+
+Summing all 17,688 `(dshot − deck)` values on this motor-row and dividing by the count gives
+**`bias_rpm = +2.2`**. In plain terms: across the whole flight, DShot reads on average 2.2 RPM
+*higher* than the deck — on a ~15,000-19,000 RPM hover, that's a rounding error, not a real
+disagreement. `bias_pct` is the same number expressed as a percentage of the mean deck RPM, so
+it's comparable across motors/flights that hover at different speeds.
+
+Why the average, and not something else? Because bias is specifically asking "does one sensor
+systematically read high or low," and averaging cancels out random per-tick noise while
+preserving a genuine constant offset. If DShot were *always* reading, say, 200 RPM high, this
+number would show ~+200; it doesn't, so there's no evidence of a systematic calibration
+mismatch between the two sensors — this dataset's disagreement is dominated by the rare spikes,
+not a steady offset.
+
+### Step 4 — RMSE (how far off is a "typical" disagreement, and why two versions?)
+
+**Formula:** square every error, average the squares, take the square root — `√(mean(error²))`.
+Squaring first (rather than just averaging `|error|`) means large errors count *much* more than
+small ones — a standard, deliberate property of RMSE, and exactly why the raw and robust
+versions diverge so sharply here.
+
+- **`rmse_raw_rpm` (diagnostic, includes the spikes):** on this motor-row, **508.1 RPM**. Two
+  samples out of 17,688 (the +18060 and +32702 spikes) contribute so much to the sum of squares
+  that they single-handedly dominate this number — 508 RPM makes it look like the sensors
+  disagree by roughly 3% of hover speed *typically*, which is **not true** for the other 17,686
+  samples.
+- **`rmse_robust_rpm` (headline, spikes excluded):** **106.7 RPM** — computed identically, just
+  on the 17,683 samples that survive the robust mask. This is what the sensors actually agree to
+  on a normal tick: about half a percent of hover RPM, well within what you'd expect from two
+  independently-sampled, independently-noisy measurements of the same fast-spinning motor.
+
+The fleet-wide headline (**128.1 RPM** median, **802.9 RPM** raw diagnostic median, 272
+motor-rows) is just this same robust/raw split, repeated across every flight and averaged — the
+one worked motor-row above (106.7 / 508.1) sits close to the fleet median on both counts, so
+it's a representative example, not a cherry-picked best case.
+
+### Step 5 — lag (does one sensor react to changes before the other?)
+
+**Method:** cross-correlation. Take the two RPM traces, try sliding one against the other by
+every possible small time offset (up to ±50 ms), and find the offset where they line up best
+(the highest correlation). That offset *is* the lag.
+
+Why this instead of, say, comparing timestamps directly? Because RPM sensors don't come with a
+"this reading is delayed by exactly X ms" label — the only way to measure a real transport delay
+is to see how much you have to shift one signal in time before its *shape* (the ups and downs of
+the actual RPM changes) matches the other's shape. Cross-correlation is the standard tool for
+exactly this.
+
+**Sign convention, and how it's verified, not just asserted:** the code defines positive lag as
+"DShot lags the deck." This isn't just a docstring — there's a self-test
+(`synthetic_lag_self_test`) that builds a synthetic DShot trace by taking the deck trace and
+deliberately delaying it by a known amount (5 samples = 10 ms at 500 Hz), then checks the
+function recovers exactly `+10.00 ms`. It does, every run (`Synthetic lag self-test... PASS` in
+the script's own console output) — so when real flight data shows positive lag values almost
+everywhere (typically 0–5 ms), that positive sign is a verified statement that **DShot is the
+delayed channel**, not an assumption.
+
+### Step 6 — dropout (`deck_zero_pct` / `dshot_zero_pct`)
+
+Just the percentage of *all* samples (valid or not) where that sensor read exactly 0 — the
+simplest metric here, and the one that flagged the real, separate finding in this dataset: the
+top drone's deck reads zero on 54–70% of samples in the A2 scenario specifically (§ "Open
+finding" below), a genuine hardware dropout unrelated to the spike story above.
+
+---
+
 Historical CSVs **predate** the firmware spike guard in `rpm_get_all()` (2026-09-29); re-analysis uses robust RMSE on logs only — it does not retroactively simulate the guard.
 
 ---
