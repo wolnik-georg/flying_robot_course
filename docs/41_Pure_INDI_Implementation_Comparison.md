@@ -293,6 +293,8 @@ attitude INDI, matching the SIL config) on `cf5`'s per-robot override.
 | Omar, `indi=0` (his geometric, untuned gains) | 0.89 m | 0.59 m | 10° / 25° |
 | **Omar, `indi=3` (his INDI)** | **0.30 m** | **0.04 m** | **7–9° / 7–9°** |
 
+![A1 dz=0.30 three-way comparison, same-day same-conditions](../experiments/analysis/out/indi_comparison/docs41_a1_three_way_comparison.png)
+
 Omar's INDI beats our tuned geometric by **~4-5×** on separation-holding error, same day, same
 mocap, no cross-day confound (an earlier same-metric comparison against a 23-Sep geometric
 baseline showed an inflated ~17× that turned out to be an artifact of comparing across
@@ -384,6 +386,8 @@ Same algorithm and plant path → SIL traces should match **`oot4`** when run on
 - `cf5.z` never left ground level (-0.024 m, small live EKF noise throughout — the estimator itself is alive and normal, not stuck; roll/pitch/gyro/acc all show plausible resting-on-ground values). This rules out a stuck-EKF theory.
 - `cf5.ctrltarget_z = 1.0 m` constant the whole flight (commanded height never reached).
 - **Real finding: `motor_m1`/`motor_m2`/`motor_m3`/`motor_m4` (PWM) show a single-motor-dominant pattern in both attempts** — one motor (m1 in flight 1, m4 in flight 2) ramps from idle (~7000) up to ~30-50k while the *other three sit flat at idle* the entire time, then it settles back to idle. Peak instantaneous 4-motor thrust (computed from `motor_mN_rpm`) reached 1.37 N — well above the 0.42 N needed to lift the 42.7 g airframe — so this is **not** an underpowered-thrust problem; it's a torque/thrust allocation problem. This is the same symptom class as controller=7's "one motor spins fast" report from earlier tonight, on an unrelated controller/reference implementation.
+
+![controller=10 single-motor-dominant PWM pattern, real flight data](../experiments/analysis/out/indi_comparison/docs41_controller10_single_motor_pattern.png)
 - **`tau_x/y/z`/`a_res_x/y/z` read dead-zero throughout — this is a telemetry gap, not real data.** Confirmed by comparing against a known-good controller=6 flight (`A8_2026-09-15…merged.csv`), where the same log columns carry real non-zero values. Root cause: neither `controller_omar_indi.c` (c=9) nor `omar_indi_rust.rs` (c=10) ever called this project's `indi_tau_write`/`indi_a_res_write`/`indi_e_r_write` bridge — not a Rust-port regression, the same gap exists in the C reference; this project's uSD config was simply never wired for the Omar-family controllers' internal state. **Fixed 2026-09-29** (commit `ae973f20`): added the three write calls to `omar_indi_rust.rs`, additive only, no control-law change, re-verified 7/7 numerical unaffected and a real `make DRONE=bl` build clean. The *next* controller=10 attempt will have real `u`/`a_indi`/`e_r` telemetry; this one didn't.
 
 **Full code audit against `controller_omar_indi.c`, 2026-09-29 (commit `f4e9256e`):** went through the entire control law line-by-line — position loop, `R_des` construction, `eR`, the differential-flatness `omega_des`/`omega_des_dot` block, INDI residual terms, torque assembly. **No further discrepancy found** beyond the aliasing UB already fixed (§ above) — every sign, gating condition, and division matches the C reference exactly, consistent with the 7/7 numerical match.

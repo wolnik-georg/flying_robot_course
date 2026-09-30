@@ -159,6 +159,8 @@ not injected mid-hover). So the earlier Task 2 "mean error" table was really com
 *how much the disturbance was rejected* — the two are not the same claim, and the
 framing overstated what gain-tuning alone can deliver in a realistic flight duration.
 
+![Disturbance mid-flight: peak dip unchanged by gain, only recovery speed differs](../experiments/analysis/out/z_only_integral/z_integral_task4_disturbance_onset.png)
+
 **A mild ringing artifact was also observed** even in this idealized, zero-sensor-noise
 fixture (a small secondary worsening around `t=6.0–6.2s` before the trace resumes
 recovering) — a soft warning sign for how a more aggressive gain might behave with real
@@ -229,6 +231,8 @@ onset). Two magnitudes calibrated to match the real-data percentages above:
 | | `ki_z=16` | −1.8 cm (81% closed) |
 | | `ki_z=32` | −0.4 cm (96% closed) |
 
+![Persistent bias present from t=0, realistic 8s hold, ki_z closes most of the gap](../experiments/analysis/out/z_only_integral/z_integral_task5_persistent_bias.png)
+
 **This is a real, meaningful correction** — because the bias is present from the start, the
 integral has the *entire* flight to converge, unlike the disturbance-onset case in Task 4 where
 it only had the leftover time after a late event. Tasks 1-4's "don't enable" verdict was correct
@@ -258,6 +262,8 @@ Artifact: `experiments/analysis/ki_z_constant_bias_sil.py`.
 | `experiments/analysis/ki_z_gain_sweep.py` | Task 4 — gain sweep (mean/rmse table, read with the trace script below) |
 | `experiments/analysis/ki_z_gain_sweep_transient_trace.py` | Task 4 — transient trace that reveals peak-dip-is-gain-invariant |
 | `experiments/analysis/ki_z_constant_bias_sil.py` | Task 5 — corrected scenario, bias from t=0, realistic hold length |
+| `experiments/analysis/z_only_integral_plot_data.py` + `render_z_only_integral_plots.py` | Task 4/5 plots — two-stage (system python3.10 for cffirmware, pyenv flying_robots for matplotlib) |
+| `experiments/analysis/out/z_only_integral/*.png` | The two rendered plots embedded above |
 
 **Related (controller=10 telemetry triage, not this integral):**
 `experiments/analysis/check_omar_rust_telemetry.py`.
