@@ -25,7 +25,14 @@ extern "C" {
     fn indi_tau_write(tx: f32, ty: f32, tz: f32);
     fn indi_a_res_write(ax: f32, ay: f32, az: f32);
     fn indi_e_r_write(ex: f32, ey: f32, ez: f32, norm: f32);
-    fn oot5_diag_write(branch_mode_abs: f32, thrust_si: f32, sp_mode_z: f32, sp_thrust: f32);
+    fn oot5_diag_write(
+        branch_mode_abs: f32,
+        thrust_si: f32,
+        sp_mode_z: f32,
+        sp_thrust: f32,
+        sp_mode_x: f32,
+        sp_mode_y: f32,
+    );
     // yaml/cfclient-settable: PARAM_GROUP(ctrlOot5).indi in traj_iface.c. Read live every
     // tick (not cached into State at Init) so it behaves like a real runtime param, same as
     // ctrlOmarIndi.indi for controller=9 -- see docs/41 §13 for why c=9 shipping with this
@@ -352,6 +359,8 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
                     0.0,
                     sp.mode.z as u8 as f32,
                     sp.thrust as f32,
+                    sp.mode.x as u32 as f32,
+                    sp.mode.y as u32 as f32,
                 );
             }
             return;
@@ -482,6 +491,8 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
             thrust_si,
             sp.mode.z as u8 as f32,
             sp.thrust as f32,
+            sp.mode.x as u32 as f32,
+            sp.mode.y as u32 as f32,
         );
     }
 

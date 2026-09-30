@@ -509,3 +509,81 @@ Also appended these four keys to **`flying_drone_stack/tools/usd_thesis_config.t
 **Conclusion:** **Same no-lift signature**; motor/spike detail **varies run-to-run** (consistent with prior §13–§15), **not** a clear sign that **§15 firmware** changed control-law behaviour. **§14 fallback/`oot5_*` question remains untestable until uSD closes cleanly.**
 
 **Controller=10 root cause:** still **blocked on Problem B** — do not advance §14 hypothesis work until a post-fix flight produces a **non-zero, new `thesisNN`** with **`oot5_branch` / `oot5_thrust_si`** populated.
+
+## 17. controller=10 — first real `oot5_*` uSD (thesis26/27): §14 refuted; fallback branch 100%; mode_z garbage
+
+**Problem B (§15/§16):** **resolved** — `usd.logging=0` in `simple_flight.py` confirmed on two flights; **`thesis26`/`thesis27` ~1.8 MB each**, decode ~**9465–9718** samples @ ~**505 Hz**, **~19.3 s**. Lift-off failure **unchanged** (`z ≈ −0.023 m`).
+
+**Logs:** `experiments/logs/usd_raw/cf5_thesis26_2026-09-30_18-23-43.bin`, `…/cf5_thesis27_2026-09-30_18-23-39.bin`.
+
+### §14 conclusion retracted (code-reading vs telemetry)
+
+§14 inferred from **`crtpCommanderHighLevelGetSetpoint`** (`plan_current_goal` + **`modeAbs`** assignment in the **`is_traj_eval_valid`** branch) that a normal **`simple_flight` hover** should keep **`omar_indi_rust`** in the **position branch**.
+
+**Both thesis26 and thesis27 contradict that:**
+
+| Signal | thesis26 | thesis27 |
+|--------|----------|----------|
+| **`indi.oot5_branch`** | **0.0** (100%, 9465/9465) | **0.0** (100%, 9718/9718) |
+| **`indi.oot5_sp_thrust`** | **0.0** every sample | **0.0** every sample |
+| **`indi.oot5_thrust_si`** | **0.0** every sample | **0.0** every sample |
+| **`indi.oot5_sp_mode_z`** | min **0**, max **255**, mean **~210.1**, 131 unique | min **0**, max **255**, mean **~210.7**, 137 unique |
+| **`ctrltarget.z`** (same `setpoint_t` the stabilizer logs) | **0–1 m**, mean **~0.899** | **0–1 m**, mean **~0.901** |
+| **`z`** (state) | flat **~−0.023 m** | flat **~−0.023 m** |
+
+So the **controller stays in the fallback (direct thrust/attitude) path for the entire logged hover**, while **`ctrltarget.z` shows a real HL-style height command (~1 m)** on the **same firmware setpoint** the geometric/INDI stack uses. **`sp.thrust` reads cleanly as 0**; **`sp.mode.z` logged via `as u8 as f32` does not look like `modeDisable`/`modeAbs`/`modeVelocity` (0/1/2).**
+
+**Interpretation (evidence-bound):** either **(A)** Rust is **mis-reading `setpoint.mode.*`** (narrow layout/padding issue around **`velocity_body` → `mode`**, not ruled out despite whole-struct bindgen check), or **(B)** some other mechanism leaves **`mode.*` non-`modeAbs`** while **`position.z` is still driven toward 1 m** — **§14’s “HL always sets modeAbs during hover” story is not supported by flight data** and must not be used to dismiss the fallback branch.
+
+**Struct layout check already done (desk):** ARM **`bindings.rs`** from `cargo build --target thumbv7em-none-eabihf` matches C **`setpoint_t`** field order including **`attitudeAcc`** (2026-09-22 local mod). **`sp.thrust == 0`** is consistent with correct earlier-field reads; **`mode` sub-struct** remains the prime suspect for **(A)** until **`oot5_sp_mode_x/y`** fly.
+
+### Desk change — `oot5_sp_mode_x` / `oot5_sp_mode_y` (uncommitted, ready after reflash)
+
+**Purpose:** log **`sp.mode.x` / `sp.mode.y` as full `u32 → f32`** ( **`sp_mode_z` left as legacy `u8` cast** for continuity with thesis26/27).
+
+**Wiring sanity-check (matches existing pattern):**
+
+- **`omar_indi_rust.rs`:** both **`oot5_diag_write`** call sites (early arming return + end of **`step_inner`**) pass **`sp.mode.x/y as u32 as f32`** after **`sp_mode_z` / `sp_thrust`**.
+- **`traj_iface.c`:** signature extended; **`log_oot5_sp_mode_x/y`** + **`LOG_ADD`** in existing **`LOG_GROUP_START(indi)`**.
+- **`oot_host.c`:** same signature + latches for SIL.
+- **`usd_thesis_config.txt`:** **`indi.oot5_sp_mode_x`**, **`indi.oot5_sp_mode_y`** appended (**54 named channels** under `on:fixedFrequency`, **≤ 56** cap).
+
+**Lab:** **`make DRONE=bl` + `cload` + reboot** still required before these two vars appear on card (config on card already updated per operator).
+
+**Next-flight read:**
+
+- **Noisy x/y like z** → strong **(A)** (systematic **`mode` read/offset** or bad pointer at OOT5 boundary).
+- **Clean x/y ∈ {0,1,2}, z alone garbage** → focus **z-specific clobber** or logging cast artifact on z only.
+- **Clean x/y/z but never `modeAbs`** → revisit **HL planner runtime** (see below) — modes genuinely not `modeAbs` despite **`ctrltarget.z`**.
+
+### `crtpCommanderHighLevelGetSetpoint` — full-function read (planner disabled/stopped vs hover)
+
+Function flow (`crtp_commander_high_level.c` **345–415**):
+
+1. **`RATE_HL_COMMANDER`** (100 Hz) gate — else **`return false`** (setpoint queue **unchanged**).
+2. **`plan_current_goal(&planner, t)`** under **`lockTraj`**.
+3. **`if (plan_is_disabled || plan_is_stopped)`** (**359–372**):
+   - Sync **`pos/vel/yaw`** from state estimate.
+   - If **`plan_is_stopped`** (`planner.state == TRAJECTORY_STATE_IDLE`): **`*setpoint = nullSetpoint`**, **`return true`** — all **`mode* = modeDisable`**, physical values **0** (comment: motors off intent).
+   - Else (**disabled only**, not stopped): **`return false`** — **does not write `*setpoint`**.
+4. **`else if (is_traj_eval_valid(&ev))`** (**374–408**): copy trajectory **`ev` → setpoint**, set **`mode.x/y/z = modeAbs`**, **`mode.roll/pitch = modeDisable`**, **`mode.yaw = modeAbs`**, **`return true`**.
+5. **`else`**: **`plan_disable`**, **`return false`**.
+
+**`simple_flight --trajectory hover` (Mode E):** per-drone **`takeoff`**, then **`goTo(pos, 0, 2.0)`**, then **sleep hover** — **no `startTrajectory`** for hover. That sequence **does** start **`plan_go_to` / `plan_takeoff`** trajectories (`planner.c`); while **`TRAJECTORY_STATE_FLYING`**, **`plan_current_goal`** returns **`plan_eval`** (after segment end, **`piecewise_eval`** holds **endpoint position**, zero vel/acc — still **valid `ev.pos`**, not NaN).
+
+**Can the disabled/stopped early return explain thesis26/27?**
+
+- **`plan_is_stopped` + `nullSetpoint`:** would force **`ctrltarget.z = 0`**, not **~0.9–1 m** for most of a 19 s log. **Inconsistent** with measured uSD **`ctrltarget.z`** unless HL were only active briefly (data show sustained high **`ctrltarget.z`**, not a short blip).
+- **`plan_is_disabled` + `return false`:** leaves the **commander queue** at the **last HL write**. That could preserve an **old** setpoint, but would **not by itself** explain **monotonic `ctrltarget.z → 1 m`** unless some **other** writer updated **`position.z`** without updating **`mode`** — on this firmware image, **`commanderSetSetpoint`** callers are **HL**, **CRTP generic/rpyt**, and **extrx**; **`simple_flight` hover does not use low-level CRTP position streaming. **Collision avoidance** can adjust **`position`/`velocity`** but **does not clear `mode.x/y/z`** (`collision_avoidance.c` **192–252**).
+
+**Honest limit:** without logging **`planner.state`**, **`plan_is_disabled`**, or **`plan_is_stopped`** at runtime, we **cannot prove** the planner was **`FLYING` with valid eval** for every 100 Hz HL tick — but the **combination of `ctrltarget.z ≈ 1 m` + `oot5_branch = 0` + garbage `oot5_sp_mode_z`** is **not** what §14 predicted from source alone, and **“stopped/nullSetpoint whole flight” is ruled out** by **`ctrltarget.z`** unless **`ctrltarget` and the Rust `setpoint` pointer diverge** (they should not in **`stabilizer.c`**).
+
+### Proposed telemetry (next round — **not implemented**; fly **`oot5_sp_mode_x/y` first**)
+
+If **`mode_x/mode_y`** flight is still ambiguous:
+
+1. **HL planner state (most direct for §14-style “never following trajectory”):** log **`planner.state`** (or booleans **`plan_is_disabled`**, **`plan_is_stopped`**, **`is_traj_eval_valid(ev)`**) from **`crtpCommanderHighLevelGetSetpoint`** once per HL tick — e.g. new **`hl.plan_state`** / **`hl.traj_valid`** floats in a small **`LOG_GROUP`**. This is **more direct** than inferring planner health from **`mode.z`** alone.
+2. **C-side mode cross-check:** in the **`controllerOutOfTree5`** C wrapper (if added), log **`setpoint->mode.x/y/z`** as **`uint32_t`** right before the Rust call — **same memory, C offsetof** — to **sever Rust bindgen vs true firmware layout** without guessing.
+3. **Rust position cross-check:** add **`indi.oot5_sp_pos_z`** = **`sp.position.z`** in **`oot5_diag_write`** to confirm Rust reads the same **`z`** as **`ctrltarget.z`**.
+
+**Controller=10 root cause:** **active investigation** — fallback path + **zero `thrust_si`** with **HL height command present** is the current failure shape; **fix blocked on disambiguating (A) vs (B)** above.

@@ -698,6 +698,8 @@ static float log_oot5_branch_mode_abs;
 static float log_oot5_thrust_si;
 static float log_oot5_sp_mode_z;
 static float log_oot5_sp_thrust;
+static float log_oot5_sp_mode_x;
+static float log_oot5_sp_mode_y;
 /* Loop dt in microseconds, as MEASURED by the controller each tick. Logged so the
  * 500-vs-1000 Hz question (see filt_dt_us above) can be settled from a real flight
  * rather than from reading stabilizer.c. Expect a flat 1000 if the loop is clean. */
@@ -748,12 +750,15 @@ void indi_e_r_write(float ex, float ey, float ez, float norm)
     log_e_r_x = ex; log_e_r_y = ey; log_e_r_z = ez; log_e_r_norm = norm;
 }
 
-void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust)
+void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust,
+                      float sp_mode_x, float sp_mode_y)
 {
     log_oot5_branch_mode_abs = branch_mode_abs;
     log_oot5_thrust_si = thrust_si;
     log_oot5_sp_mode_z = sp_mode_z;
     log_oot5_sp_thrust = sp_thrust;
+    log_oot5_sp_mode_x = sp_mode_x;
+    log_oot5_sp_mode_y = sp_mode_y;
 }
 
 LOG_GROUP_START(indi)
@@ -780,4 +785,6 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, oot5_thrust_si, &log_oot5_thrust_si)
   LOG_ADD(LOG_FLOAT, oot5_sp_mode_z, &log_oot5_sp_mode_z)
   LOG_ADD(LOG_FLOAT, oot5_sp_thrust, &log_oot5_sp_thrust)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_x, &log_oot5_sp_mode_x)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_y, &log_oot5_sp_mode_y)
 LOG_GROUP_STOP(indi)
