@@ -480,16 +480,33 @@ footer{
   </div>
 
   <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — what each scenario teaches (one line)</h3>
+  <div class="panel done" style="margin-bottom:14px">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
+      <strong>30 Sep update:</strong> A1/A2/A3/A4/A7/A8 are all real-flown (54 flights total,
+      see counts below); LOO held-out generalization confirmed reasonable across A1–A4/A7
+      (R² 0.57–0.93, 70–76% error reduction vs baseline) on the 2026-09-28 22-flight training
+      run — the earlier "A1 fails held-out" read was from a stale 4-flight snapshot, corrected.
+      <strong>Only A5, A6, C4 lack usable C.1 data among 2-drone scenarios</strong> — all three
+      were flown for real historically (Aug/early-Sep), but radio-only, predating the validated
+      uSD chain (2026-09-15), so none have <code>a_res</code>; a fresh flight under the current
+      setup is needed regardless of the earlier attempts. (B1–B3/C1–C3 are 3-drone, out of scope
+      until the 2-drone phase is considered done.) Also open: A8 (14 flights) and C5 (8 flights)
+      aren't in the residual training set at all — reason not yet found, worth checking before
+      assuming they're unusable.
+    </p>
+  </div>
   <div class="panel next">
     <ul class="plain">
-      <li><strong>A7</strong> — Top and bottom stay aligned while <code>dz</code> sweeps 1.10→0.10&nbsp;m; one flight covers almost the whole vertical separation axis inside the neighbour gate.</li>
-      <li><strong>A1</strong> — Fixed vertical stack, both hover ~15&nbsp;s; pure <code>dz</code> at ~zero relative velocity (static downwash curve).</li>
-      <li><strong>A3 @ dz 0.25</strong> — Top hovers, bottom translates back and forth; repeats sweep relative horizontal speed at close range (velocity term for the net).</li>
-      <li><strong>A3 @ dz 0.40</strong> — Same pattern at mid separation and mid speed; fills the middle of the <code>dz</code>–speed grid.</li>
-      <li><strong>A2</strong> — Both drones follow the same circular path; own motion with near-fixed relative state (separates “I’m moving” from “neighbour is moving”).</li>
-      <li><strong>A4</strong> — Stacked but laterally offset (≤0.15&nbsp;m), lemniscate motion; excites small <code>dx/dy</code> <em>inside</em> the 0.2&nbsp;m gate (mandatory for lateral falloff).</li>
-      <li><strong>C5</strong> — Solo <code>cf5</code> near the floor; no neighbour — data for the ground-effect branch <code>phi_G</code>, not downwash.</li>
-      <li><strong>A8</strong> — Crossing at wide span: good for controller demos and docs/24; <strong>not</strong> for C.1 training (neighbour gated out most of the run).</li>
+      <li><strong>A1</strong> — Fixed vertical stack, both hover; pure <code>dz</code> at ~zero relative velocity (static downwash curve). <strong>12 real flights.</strong></li>
+      <li><strong>A2</strong> — Both drones follow the same circular path; own motion with near-fixed relative state. <strong>4 real flights.</strong></li>
+      <li><strong>A3</strong> — Top hovers, bottom sweeps through its wash; cleanest excitation. <strong>8 real flights.</strong></li>
+      <li><strong>A4</strong> — Stacked but laterally offset, lemniscate motion; excites small <code>dx/dy</code>, hardest geometry to model. <strong>5 real flights — done, not a gap anymore.</strong></li>
+      <li><strong>A7</strong> — Top and bottom stay aligned while <code>dz</code> sweeps 1.10→0.10&nbsp;m in one continuous gradient. <strong>3 real flights.</strong></li>
+      <li><strong>A8</strong> — Crossing at wide span, wash arrives as a transient. <strong>14 real flights — not yet in the residual training set, unexplained.</strong></li>
+      <li><strong>C5</strong> — Solo <code>cf5</code> near the floor; ground-effect branch, not downwash. <strong>8 real flights — same unexplained training-set gap as A8.</strong></li>
+      <li><strong>A5</strong> <em>(no usable C.1 data)</em> — Counter-rotating circle stack; horizontal offset sweeps 0→2r→0 twice per lap at constant height/speed. Was flown many times in Aug/early-Sep, but radio-only, predating the validated uSD chain (2026-09-15) — no <code>a_res</code>, unusable for residual training. Needs a fresh flight under the current setup.</li>
+      <li><strong>A6</strong> <em>(no usable C.1 data, extreme-gated)</em> — Smallest separation (8–10cm), strongest interaction, smallest error margin. Also flown historically (radio-only, pre-uSD). Highest remaining scientific value, highest risk.</li>
+      <li><strong>C4</strong> <em>(no usable C.1 data, extreme-gated at default params)</em> — Docking approach: simultaneous lateral + vertical closure. Also flown historically (radio-only, pre-uSD). Lower priority unless docking specifically matters to thesis scope.</li>
     </ul>
   </div>
 
@@ -505,22 +522,32 @@ footer{
       </thead>
       <tbody>
         <tr>
-          <td>1</td><td>C-1</td>
-          <td><code>--scenario A4 --dz 0.30 --offset 0.10 --axis y --motion lemniscate</code> ×2</td>
-          <td>Block C — only major gap left</td>
+          <td>1</td><td>A5</td>
+          <td><code>--scenario A5 --dz 0.50</code></td>
+          <td>Cheapest way to close the last unflown "normal" 2-drone geometry</td>
         </tr>
         <tr>
-          <td>2</td><td>C-2</td>
-          <td><code>--scenario A4 --dz 0.50 --offset 0.15 --axis x --motion lemniscate</code> ×2</td>
-          <td>Block C</td>
+          <td>2</td><td>A6</td>
+          <td><code>--scenario A6 --dz 0.08 --allow-extreme</code> ×1, then <code>--dz 0.10 --allow-extreme</code> ×1</td>
+          <td>Highest remaining scientific value among 2-drone scenarios; operator call on risk</td>
         </tr>
         <tr>
-          <td>—</td><td>A-2</td>
-          <td><code>--scenario A1 --dz 0.20 --hold 15</code></td>
-          <td>Optional 2nd rep (have <code>13-25-10</code>)</td>
+          <td>3</td><td>C4</td>
+          <td><code>--scenario C4 --allow-extreme</code> (default <code>dz_end=0.10</code> triggers the extreme gate)</td>
+          <td>Lower priority — only if docking maneuvers matter to thesis scope</td>
         </tr>
       </tbody>
     </table>
+  </div>
+  <div class="panel done" style="margin-top:14px">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
+      <strong>30 Sep also done:</strong> controller=10 (<code>omar_indi_rust.rs</code>) root-caused
+      and fixed — a bindgen/ARM-GCC enum-size mismatch was corrupting every
+      <code>setpoint.mode.*</code> read; first successful flight after the fix (hover + figure8).
+      Z-only position integral (controller=6) validated on hardware same night: closed the
+      long-standing ~10cm hover-height bias to 2–3mm across 3 hovers + 2 clean figure8s, first
+      try, no gain tuning needed. Full account: <code>docs/41</code> §18, <code>docs/51</code>.
+    </p>
   </div>
   <div class="panel done" style="margin-top:14px">
     <p style="color:var(--ink-2); font-size:.92rem; margin:0">

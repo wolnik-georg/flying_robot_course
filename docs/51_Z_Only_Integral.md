@@ -1,10 +1,33 @@
 # Z-only position integral — new term (2026-09-29)
 
-**Scope:** Desk-only. Separate **Z-only** integral on the geometric controller
+**Scope:** Separate **Z-only** integral on the geometric controller
 (`controller_step` / `geometric_step_ref` in `lib.rs`), distinct from the existing joint
 XY+Z path (`ENABLE_POSITION_INTEGRAL`, `KI_P`, `i_ep`) closed in `docs/50`.
 
-**Status (2026-09-29):** **Implemented, default OFF, ready for hardware test (Task 5).**
+**Status (2026-09-30): VALIDATED ON REAL HARDWARE, first try, no gain tuning needed.**
+3 hovers + 2 clean figure8s, `cf5`, `ki_z=16.0`/`ki_z_limit=1.5` (confirmed active via radio
+metadata `full_pos_gains_ki_z=16.0` and, more directly, via in-flight behavior: z bias shrinks
+over the course of each flight — e.g. one hover went from +4.5mm in the first half to −0.4mm
+in the second half — the specific signature of integral action actually correcting, not just
+a param being set). Steady-state hover height landed within **2-3mm of the commanded 1.0m**
+across all 5 clean flights (was ~10cm off before this fix, the Task 5 problem below).
+One figure8 attempt crashed (full attitude tumble, roll to 179.8°) — operator-assessed as a
+probable outlier given it started within ~1-2s of the maneuver beginning (likely too early for
+integral windup to be the cause) and the other 2/3 figure8 attempts were clean; not confirmed
+either way, noted honestly rather than dismissed or treated as a blocker.
+`ENABLE_Z_INTEGRAL` is currently staged `true` in the committed tree (a deliberate, one-time
+exception so the build could reach a lab PC via git — revert to `false` once testing is
+considered complete, per the flag's own inline comment in `lib.rs`).
+
+**Correction:** this term is specific to `lib.rs`/controller=6 (`g_ki_z`/`g_ki_z_limit`/
+`ENABLE_Z_INTEGRAL`, a runtime `PARAM`). It is **not** related to and does **not** apply to
+controller=10 (`omar_indi_rust.rs`, the Rust port of Omar's pure INDI) — that controller has
+its own, separate, currently-disabled `KPOS_I: Vec3` compile-time constant (joint X/Y/Z, not
+Z-only). Confirmed directly: zero references to `g_ki_z` anywhere in `omar_indi_rust.rs`. See
+`docs/41` §18 for the full writeup and correction of an earlier wrong suggestion to reuse this
+mechanism there.
+
+**Prior status (2026-09-29):** Implemented, default OFF, ready for hardware test (Task 5).
 Two genuinely different questions ended up in this doc, with different answers —
 **don't confuse them:**
 - **Disturbance rejection** (a downwash transient hit mid-flight, e.g. the bottom drone
