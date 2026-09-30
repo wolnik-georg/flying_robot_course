@@ -908,10 +908,13 @@ flip yaml `controller:` and the `ENABLE_Z_INTEGRAL` flag between them.
 
 ### Checklist C — controller=10 solo-hover (branch + `thrust_si` diagnostics, post–§15 cap fix)
 
-**Context:** §14–§15 (`docs/41`). **Problem A:** `usd_thesis_config.txt` has **52** variables;
+**Context:** §14–§16 (`docs/41`). **Problem A:** `usd_thesis_config.txt` has **52** variables;
 firmware cap must be **≥ 52** (`MAX_USD_LOG_VARIABLES_PER_EVENT` **56** in local `usddeck.c`
-as of 2026-09-30 desk fix — **reflash required**). **Problem B:** watch for **0-byte `thesisNN`**
-(`simple_flight.py` starts uSD but does not stop it — see §15).
+— **reflash required**). **Problem B (blocker):** **`simple_flight.py` must stop uSD logging**
+(`usd.logging=0` after landing — desk fix in crazyswarm2, uncommitted as of §16); without it,
+new files stay **0 bytes** and `copy_usd_log.py` keeps picking stale **`thesis22`**. After
+pull/build CS2 with that fix, if logs are **still** 0-byte → try a **spare uSD card** and
+run **`check_usd_deck.py`** (needs radio + drone powered).
 
 ```bash
 # 0. Pre-flight — config vs deck cap (do not skip)
@@ -933,9 +936,11 @@ print(f"usd_thesis_config.txt: {n} variables (cap {cap})")
 assert n <= cap, f"TRIM CONFIG OR RAISE CAP — {n} > {cap}"
 EOF
 
-# 1. Pull latest (flying_robot_course + crazyswarm2)
+# 1. Pull latest + rebuild CS2 (simple_flight uSD stop fix lives in crazyswarm2)
 cd ~/Desktop/flying_robot_course && git pull
 cd ~/Desktop/crazyswarm2 && git pull
+cd ~/Desktop/crazyswarm2 && colcon build --packages-select crazyflie_examples --symlink-install
+source ~/Desktop/crazyswarm2/install/setup.bash
 
 # 2. cf5 yaml: stabilizer.controller: 10, ctrlOot5.indi: 3 present
 #    ENABLE_Z_INTEGRAL must stay false in firmware_app/src/lib.rs
@@ -963,7 +968,9 @@ ros2 run crazyflie_examples simple_flight -- \
 
 # 8. Before leaving the pad — card sanity (catch 0-byte sessions early)
 ls -la /media/<mount>/thesis* | tail -5
-# Newest file should be NON-ZERO bytes. 0 bytes = logging started, never closed — no data.
+# Newest file should be NON-ZERO bytes (typically hundreds of KB after ~10s hover).
+# 0 bytes = usd.logging never got 0 / f_close — copy_usd_log.py will skip it (§16).
+# If still 0 bytes AFTER simple_flight fix + logging=0: swap in a spare uSD card and retry.
 
 # 9. uSD copy, merge, triage (use paths printed by copy_usd_log.py)
 # IMPORTANT: do NOT pass --tag to copy_usd_log.py here -- merge_usd_logs.py derives the

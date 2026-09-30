@@ -477,3 +477,35 @@ Also appended these four keys to **`flying_drone_stack/tools/usd_thesis_config.t
 | **2026-09-29 18:26** (not a clean c=10 baseline) | **−17 to +0.01** (EKF/runaway) | saturated RPM | **0** |
 
 **Conclusion:** the **two 2026-09-30 hovers match each other** (flat z, modest RPM with occasional DShot-style **65535** spikes, small radio torques). **Not a new failure mode** introduced by diagnostic firmware — **still no lift-off**. uSD gap tonight is **logging infrastructure (A+B)**, not a third distinct control-law symptom.
+
+## 16. controller=10 — fourth hardware solo-hover (2026-09-30 ~18:08): uSD still empty (3× 0-byte)
+
+**Flight:** fourth solo hover after **§15 cap fix (48→56) + diagnostic firmware reflash** (operator-confirmed). Radio: `Controls/logs/hover_mode1_kt0.008_2026-09-30_18-08-52.csv` (~26.5 s). **Same lift failure:** **`z ≈ −0.023 m`**, **`stabilizer.controller=10`** in meta (`takeoff`/`trajectory`/`landing`). **No uSD:** card now has **`thesis23`/`thesis24`/`thesis25` all 0 bytes**; `copy_usd_log.py` still returns **`thesis22`** only (984571 B, **`usd.runTag=1790701476`**, same sha256 as §14 — **not this session**). **Still zero `indi.oot5_*` rows to analyze.**
+
+### Problem B — now a 3× reproduced blocker (investigation)
+
+**Cap change (48→56) — not implicated by code review.** Re-read `usddeck.c` parsing (`~645–679`), `usddeckWriteEventData` (`dataSize = … + cfg->numBytes`), ring buffer (`bufferSize` from config **4096**), and header/write path. **`varIds[]` and `numVars` cap both use `MAX_USD_LOG_VARIABLES_PER_EVENT` (now 56)** — no separate hardcoded **48** elsewhere under `src/deck/`. At **52× `LOG_FLOAT`**, **`numBytes = 208`**; per-sample **`dataSize ≈ 218 B`** ≪ **4096** — no secondary byte cap tripped. Raising the macro only adds **8× `logVarId_t`** per event config (~32 B BSS) — not a plausible silent kill switch.
+
+**Concrete host-side bug found (fix applied, crazyswarm2 — uncommitted):** **`simple_flight.py` sets `usd.logging=1` (~439) but never `usd.logging=0`.** `run_formation.py` / `formation_flight.py` / `figure8.py` all stop logging before cleanup. On firmware, **`usd.logging` → `enableLogging`**; **`f_close` + CRC + FAT size update run only when logging stops** (`usdWriteTask`, `~987–1027`). Project uSD docs: **0-byte `thesisNN` = session started (`f_open` / counter advanced) but never cleanly stopped** — matches **three consecutive empty files** while **`copy_usd_log.py` skips 0-byte files** and keeps surfacing **`thesis22`**. This explains the **escalating “no uSD” pattern for all `simple_flight` hovers** without requiring the cap change to break the deck driver. **`thesis22` likely closed** via an earlier script path, power-down graceful shutdown, or a flight that did stop logging.
+
+**Fix (desk, uncommitted):** `simple_flight.py` — **`allcfs.setParam('usd.logging', 0)`** after landing, before disarm, plus **`finally`** guard (mirrors `run_formation.py ~892`).
+
+**Still open / lab-only checks:**
+
+- **`check_usd_deck.py`** — requires live Crazyradio (not runnable offline here); read **`usd.canLog`** after connect before arming.
+- **Reflash verification** — no `cload` log in repo; confirm **`CS2`/build** and **`Modified`** banner on next flash.
+- **Spare uSD card** — if **`logging=0` fix** still yields 0-byte files, try a **different card** (FAT wear / corruption) before blaming firmware.
+
+**Not evidence that Problem A fix was wrong:** cap **56** is still required so **`oot5_thrust_si`** and **`usd.runTag`** actually parse into the config once files close properly.
+
+### Radio CSV — fourth vs prior Sep-30 attempts
+
+| Run | Duration | z (m) | RPM notes | thrust max |
+|-----|----------|-------|-----------|------------|
+| 17:27 (2nd) | 26.5 s | flat −0.023 | m3 **one** 65535 spike | 0.0048 |
+| 17:48 (3rd) | 23.1 s | flat −0.023 | m1 **one** 65535 spike | ~0 |
+| **18:08 (4th)** | **26.5 s** | **flat −0.023** | **m1/m4 elevated means (~10k/7k), no 65535 spikes**; m2/m3 ~2.5k | ~0 |
+
+**Conclusion:** **Same no-lift signature**; motor/spike detail **varies run-to-run** (consistent with prior §13–§15), **not** a clear sign that **§15 firmware** changed control-law behaviour. **§14 fallback/`oot5_*` question remains untestable until uSD closes cleanly.**
+
+**Controller=10 root cause:** still **blocked on Problem B** — do not advance §14 hypothesis work until a post-fix flight produces a **non-zero, new `thesisNN`** with **`oot5_branch` / `oot5_thrust_si`** populated.
