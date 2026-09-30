@@ -587,3 +587,120 @@ If **`mode_x/mode_y`** flight is still ambiguous:
 3. **Rust position cross-check:** add **`indi.oot5_sp_pos_z`** = **`sp.position.z`** in **`oot5_diag_write`** to confirm Rust reads the same **`z`** as **`ctrltarget.z`**.
 
 **Controller=10 root cause:** **active investigation** — fallback path + **zero `thrust_si`** with **HL height command present** is the current failure shape; **fix blocked on disambiguating (A) vs (B)** above.
+
+## 18. Root cause found and fixed — controller=10 flies (2026-09-30)
+
+**Root cause: a bindgen/ABI enum-size mismatch, not a planner or logic bug.**
+
+`build.rs`'s `bindgen::Builder::default()` never specified an ARM cross-target or an enum-size
+flag. bindgen's clang therefore parsed `setpoint_s`'s `mode_e`/`stab_mode_t` with **host
+(x86_64) conventions — a 4-byte `int`**. The real firmware is compiled with
+**`arm-none-eabi-gcc`**, which packs plain C enums as the smallest fitting type — **1 byte** —
+on this target by default. Every Rust read of `sp.mode.x/y/z` in `omar_indi_rust.rs` was
+therefore reading 4 bytes across what are actually **four separate 1-byte fields**
+(`mode.x`, `mode.y`, `mode.z`, `mode.roll`), producing a value nowhere near the valid 0–2
+enum range — confirmed directly via a byte-level `offsetof`/`sizeof` probe compiled with the
+real ARM toolchain flags:
+
+| Quantity | Real ARM compile | Rust (pre-fix) |
+|---|---|---|
+| `sizeof(stab_mode_t)` | 1 byte | 4 bytes (`c_uint`) |
+| `offsetof(mode.x / .y / .z)` | 153 / 154 / 155 | different, wrong |
+| `sizeof(setpoint_t)` | 160 bytes | different, wrong |
+
+This explains **every** controller=10 hardware failure (six real attempts, 2026-09-29/30):
+the position-control branch (gated on `sp.mode.x/y/z == modeAbs`) could never match against
+garbage, so `step_inner()` always fell back to the direct-thrust path, which reads `sp.thrust`
+directly — always `0.0` for a position-type HL setpoint. Cross-checked independently:
+`ctrltarget.z` (read via a completely separate stock `stabilizer.c` log path, same underlying
+struct) correctly tracked the commanded height the whole time, proving the setpoint struct
+itself — and the HL planner — were fine; only the Rust-side `mode` read was corrupted.
+
+**Why this was never caught before:** `lib.rs` (controller=6, this project's own proven
+controller) never reads `setpoint.mode.*` at all, so it was structurally immune.
+`controller_omar_indi.c` (controller=9) reads it identically but is pure C — no FFI boundary,
+no possible mismatch. `omar_indi_rust.rs` is the **first Rust code in this project to ever
+cross this specific struct boundary**.
+
+**Fix:** gate `-fshort-enums` on the ARM target only (`TARGET` env var in `build.rs`,
+`target.starts_with("thumbv7em")`). An unconditional first attempt was tried and immediately
+caught by `test_omar_indi_rust_vs_c.py` dropping from 7/7 to 1/7 — applying `-fshort-enums`
+globally broke the **host/SIL build the opposite way** (host `gcc` does not default to short
+enums, so Rust then assumed 1-byte while the host-compiled C reference stayed 4-byte). The
+target-conditional fix keeps both builds internally self-consistent with their own compiler's
+actual enum ABI. Re-verified after the fix: ARM-side offsets exactly match the real-toolchain
+probe (153/154/155/160, byte-for-byte); host side correctly stays 4-byte; `make DRONE=bl`
+clean; `test_omar_indi_rust_vs_c.py` 7/7 PASS, worst delta unchanged (7.15e-07).
+
+### First successful flight (2026-09-30, post-fix)
+
+Solo hover + figure8, `cf5`, both flown clean — **first-ever successful controller=10 flight**
+after six failed attempts.
+
+| Signal | Hover (thesis30, 21.2s) | Figure8 (thesis32, 13.6s) |
+|---|---|---|
+| `oot5_branch == 1.0` (position branch active) | 86% of samples | 93% of samples |
+| `thrust_si` | real, 0–0.50 N, mean 0.32 N | real, 0–0.51 N, mean 0.36 N |
+| `z` climbed to | 1.18 m (commanded 1.0 m) | 1.18 m |
+| Steady-state `z` (ctrltarget==1.0) | mean **1.162 m**, std 0.7 cm | — |
+| XY RMSE vs commanded | — | **9.7 cm** |
+| Z RMSE vs commanded | — | 14.8 cm |
+| roll std / peak | 1.5° / 5.5° | 7.5° / **24.5°** |
+| pitch std / peak | 1.5° / 6.6° | 5.4° / 15.5° |
+
+The ~10–15% of samples with `branch==0` is expected, not a regression — takeoff ramp and
+landing descent legitimately sit outside valid-trajectory-eval HL state.
+
+**Assessment:** real tracking, not yet tuned. XY RMSE (9.7 cm) and attitude excursions (up to
+24.5° roll on the figure8) are rough compared to this project's mature controllers (~2–3 cm
+XY RMSE baseline) — expected for a never-tuned controller's first flight, not evidence of a
+remaining bug. Two issues stand out:
+
+1. **Persistent +16 cm hover-height bias** (steady-state 1.162 m vs commanded 1.000 m, very
+   low noise — std 0.7 cm, so it's a real bias, not jitter).
+2. **Attitude oscillation on the figure8** (roll std 7.5°, peak 24.5°) — not present during
+   hover (roll std only 1.5°), so it's excited by the figure8's dynamics specifically, not a
+   constant-offset problem.
+
+### ⚠️ Correction — the height-bias fix path is NOT `lib.rs`'s Z-integral mechanism
+
+An earlier suggestion in this session to try `pos_gains.ki_z=16` (the Z-only integral staged
+for controller=6, docs/51) on controller=10 was **wrong and has been retracted**. Checked
+directly: `g_ki_z` / `g_ki_z_limit` / `ENABLE_Z_INTEGRAL` are referenced **only** in `lib.rs`
+(controller=6) — zero occurrences anywhere in `omar_indi_rust.rs`. They are unrelated
+mechanisms, unrelated gain namespaces, gating a completely different controller.
+
+`omar_indi_rust.rs` has its **own**, separate, **currently-disabled** integral term:
+
+```rust
+const KPOS_P: Vec3 = Vec3 { x: 7.0, y: 7.0, z: 7.0 };
+const KPOS_D: Vec3 = Vec3 { x: 4.0, y: 4.0, z: 4.0 };
+const KPOS_I: Vec3 = Vec3 { x: 0.0, y: 0.0, z: 0.0 };   // <- zero on all axes right now
+const KPOS_I_LIMIT: f32 = 2.0;
+```
+
+The accumulator (`s.i_error_pos`, `step_inner()` line ~308) genuinely runs every tick, but is
+multiplied by `KPOS_I = 0.0`, so it has **zero effect on the control output** — controller=10
+currently flies with **no integral action at all**, on any axis. That alone is a sufficient,
+simpler explanation for the persistent height bias than reaching for any Z-only mechanism:
+pure P+D control has no way to null a steady-state error from unmodelled effects (mass/thrust
+constant mismatch, etc.).
+
+**Correct next step, if pursued:** raise `KPOS_I.z` (and/or x/y) from `0.0` to a small nonzero
+value directly in `omar_indi_rust.rs`. Note this is a **compile-time Rust `const`**, not a
+runtime-adjustable `PARAM` like `lib.rs`'s `g_ki_z` — changing it requires a rebuild + reflash,
+not a yaml/cfclient edit. This is also a **joint X/Y/Z** integral gain (shared `KPOS_I` vector,
+same as Omar's original C reference `controller_omar_indi.c`), not a Z-only mechanism — raising
+it would add integral correction on all three axes at once, unlike `lib.rs`'s deliberately
+Z-only design. Not yet attempted; needs its own staged test before flying, same discipline as
+every other gain change in this project.
+
+### Next steps
+
+1. A few more repeat hover/figure8 flights to confirm these numbers are representative
+   (first-ever flight, small sample) before tuning against them.
+2. Stage a `KPOS_I` bump in `omar_indi_rust.rs` (see above) as the height-bias fix candidate —
+   own gain, own mechanism, own rebuild/reflash cycle, not `lib.rs`'s Z-integral.
+3. A `KR`/`KW`-equivalent attitude gain look for the figure8 roll/pitch excursions — check
+   `controller_omar_indi.c`'s reference values for what Omar's own tuning used, since this port
+   should currently be running whatever gains the literal C port carried over.
