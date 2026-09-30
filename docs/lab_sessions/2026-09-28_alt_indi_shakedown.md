@@ -906,6 +906,86 @@ ros2 run crazyflie_examples simple_flight -- \
 Both tests share the same `cf5` URI/reflash pattern — can run back-to-back in one session, just
 flip yaml `controller:` and the `ENABLE_Z_INTEGRAL` flag between them.
 
+### Checklist C — controller=10 solo-hover (branch + `thrust_si` diagnostics, post–§15 cap fix)
+
+**Context:** §14–§15 (`docs/41`). **Problem A:** `usd_thesis_config.txt` has **52** variables;
+firmware cap must be **≥ 52** (`MAX_USD_LOG_VARIABLES_PER_EVENT` **56** in local `usddeck.c`
+as of 2026-09-30 desk fix — **reflash required**). **Problem B:** watch for **0-byte `thesisNN`**
+(`simple_flight.py` starts uSD but does not stop it — see §15).
+
+```bash
+# 0. Pre-flight — config vs deck cap (do not skip)
+python3 - <<'EOF'
+from pathlib import Path
+cap = 56  # grep MAX_USD_LOG_VARIABLES_PER_EVENT ~/Desktop/crazyflie-firmware/src/deck/drivers/src/usddeck.c
+cfg = Path("/home/georg/Desktop/flying_robot_course/flying_drone_stack/tools/usd_thesis_config.txt")
+in_evt = False
+n = 0
+for line in cfg.read_text().splitlines():
+    line = line.strip()
+    if line.startswith("on:"):
+        in_evt = True
+        continue
+    if not in_evt or not line or line[0].isdigit() or "." not in line:
+        continue
+    n += 1
+print(f"usd_thesis_config.txt: {n} variables (cap {cap})")
+assert n <= cap, f"TRIM CONFIG OR RAISE CAP — {n} > {cap}"
+EOF
+
+# 1. Pull latest (flying_robot_course + crazyswarm2)
+cd ~/Desktop/flying_robot_course && git pull
+cd ~/Desktop/crazyswarm2 && git pull
+
+# 2. cf5 yaml: stabilizer.controller: 10, ctrlOot5.indi: 3 present
+#    ENABLE_Z_INTEGRAL must stay false in firmware_app/src/lib.rs
+
+# 3. Build + reflash (OOT + raised uSD cap in crazyflie-firmware usddeck.c)
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl cload CLOAD_ARGS='-w radio://0/80/2M/E7E7E7BB02'
+# Save cload stdout in the lab log — confirms flash, not just build.
+
+# 4. uSD: copy refreshed usd_thesis_config.txt → card config.txt, power-cycle cf5
+cp ~/Desktop/flying_robot_course/flying_drone_stack/tools/usd_thesis_config.txt /media/<mount>/config.txt
+
+# 5. cf_second.enabled: false; cf_second.controller: 5 — verify in yaml
+
+# 6. CS2
+source ~/Desktop/crazyswarm2/install/setup.bash
+ros2 launch crazyflie launch.py backend:=cflib
+# readback:
+ros2 param get /cf5/params stabilizer.controller   # 10
+ros2 param get /cf5/params ctrlOot5.indi         # 3
+
+# 7. Solo hover (operator)
+ros2 run crazyflie_examples simple_flight -- \
+  --trajectory hover --pin-controller --height 1.0 --duration 8
+
+# 8. Before leaving the pad — card sanity (catch 0-byte sessions early)
+ls -la /media/<mount>/thesis* | tail -5
+# Newest file should be NON-ZERO bytes. 0 bytes = logging started, never closed — no data.
+
+# 9. uSD copy, merge, triage (use paths printed by copy_usd_log.py)
+# IMPORTANT: do NOT pass --tag to copy_usd_log.py here -- merge_usd_logs.py derives the
+# column prefix from the copied filename, and a --tag suffix breaks the clean "cf5." prefix
+# check_omar_rust_telemetry.py hardcodes (verified 2026-09-30: --tag c10solo produced
+# "cf5_c10solo.tau_x", not "cf5.tau_x", and the check script found nothing to check).
+cd ~/Desktop/flying_robot_course
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<mount> cf5
+# ^ note the exact output path it prints, e.g. experiments/logs/usd_raw/cf5_thesis22_<ts>.bin
+python3 flying_drone_stack/tools/merge_usd_logs.py experiments/logs/usd_raw/cf5_thesis22_<ts>.bin \
+  -o experiments/logs/usd_raw/cf5_thesis22_<ts>_merged.csv
+python3 experiments/analysis/check_omar_rust_telemetry.py experiments/logs/usd_raw/cf5_thesis22_<ts>_merged.csv
+
+# 10. Diagnostic pass/fail (merged columns are cf5.oot5_* -- confirmed by the merge step above)
+#    During hover window expect:
+#      cf5.oot5_branch ≈ 1.0  (modeAbs position branch)
+#      cf5.oot5_thrust_si >> 0.01 when z error ~1 m (if branch=1)
+#      cf5.oot5_sp_mode_z = modeAbs enum (compare to cfclient TOC / docs/41 §14)
+#    If branch=0 while ctrltarget_z tracks → HL setpoint mode bug, not control law math.
+#    If branch=1 and thrust_si healthy but tau still 0 → logging or torque path, not mode.
+```
+
 **RPM dual-source page (no lab action needed, reference only):**
 ```bash
 xdg-open ~/Desktop/flying_robot_course/docs/43_RPM_Source_Quality.html

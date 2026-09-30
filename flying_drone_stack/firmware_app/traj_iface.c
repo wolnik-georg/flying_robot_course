@@ -693,6 +693,11 @@ static float log_tau_x,     log_tau_y,     log_tau_z;
 static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
 static float log_a_res_x, log_a_res_y, log_a_res_z;
 static float log_e_r_x, log_e_r_y, log_e_r_z, log_e_r_norm;
+/* controller=10 (omar_indi_rust) diagnostics — 2026-09-30 second hardware failure triage */
+static float log_oot5_branch_mode_abs;
+static float log_oot5_thrust_si;
+static float log_oot5_sp_mode_z;
+static float log_oot5_sp_thrust;
 /* Loop dt in microseconds, as MEASURED by the controller each tick. Logged so the
  * 500-vs-1000 Hz question (see filt_dt_us above) can be settled from a real flight
  * rather than from reading stabilizer.c. Expect a flat 1000 if the loop is clean. */
@@ -743,6 +748,14 @@ void indi_e_r_write(float ex, float ey, float ez, float norm)
     log_e_r_x = ex; log_e_r_y = ey; log_e_r_z = ez; log_e_r_norm = norm;
 }
 
+void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust)
+{
+    log_oot5_branch_mode_abs = branch_mode_abs;
+    log_oot5_thrust_si = thrust_si;
+    log_oot5_sp_mode_z = sp_mode_z;
+    log_oot5_sp_thrust = sp_thrust;
+}
+
 LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
   LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
@@ -763,4 +776,8 @@ LOG_GROUP_START(indi)
   LOG_ADD(LOG_FLOAT, e_r_y,     &log_e_r_y)
   LOG_ADD(LOG_FLOAT, e_r_z,     &log_e_r_z)
   LOG_ADD(LOG_FLOAT, e_r_norm,  &log_e_r_norm)
+  LOG_ADD(LOG_FLOAT, oot5_branch,   &log_oot5_branch_mode_abs)
+  LOG_ADD(LOG_FLOAT, oot5_thrust_si, &log_oot5_thrust_si)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_z, &log_oot5_sp_mode_z)
+  LOG_ADD(LOG_FLOAT, oot5_sp_thrust, &log_oot5_sp_thrust)
 LOG_GROUP_STOP(indi)

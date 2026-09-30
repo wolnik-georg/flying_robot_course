@@ -399,3 +399,81 @@ Same algorithm and plant path → SIL traces should match **`oot4`** when run on
 **Fix applied (commit `f4e9256e`), documented deviation:** added `MIN_B1`/`MIN_C3` floors gating the same two divisions — `omega_des`/`omega_des_dot` fall back to zero instead of dividing by a near-zero denominator. **This is a deliberate break from strict byte-for-byte fidelity to Omar's source** (flagged inline in the code and here, per the project's "should work exactly the same way as Omar's... with everything" goal for this controller) — `controller_omar_indi.c` (controller=9) is untouched and keeps the original unguarded behavior. Re-verified: 7/7 numerical unaffected (all test cases sit well above both floors), real `make DRONE=bl` build clean.
 
 **Root cause: still open**, but well-characterized rather than speculative, and the identified risk is now guarded regardless of whether it was the actual cause. The only way to fully confirm or rule it out is a fresh flight with the now-added `tau`/`a_res`/`e_r` telemetry. **Do not re-fly controller=10 until that telemetry is reviewed from a new attempt, or until a stronger alternative explanation is found.**
+
+## 14. controller=10 — second hardware solo-hover attempt (2026-09-30)
+
+**Flight:** solo hover via `simple_flight.py` (`--trajectory hover --pin-controller --height 1.0`), `cf5` @ **`stabilizer.controller=10`**, `ctrlOot5.indi: 3`, `cf_second` disabled. **Outcome:** same failure class as §13 — **never left the ground** (`z` flat ≈ **−0.024 m** for ~11.2 s while **`ctrltarget_z = 1.0 m`** was live the whole time). Motor PWM showed real activity (m1/m2 pinned **7000**, m3/m4 ramping **~28500→33000**), not an all-idle HL stall.
+
+**New telemetry (first flight with `indi_tau_write` / `indi_a_res_write` / `indi_e_r_write` wired for Oot5):**
+
+| Signal | uSD behaviour (5622 samples @ 500 Hz) |
+|--------|----------------------------------------|
+| `indi.tau_x/y/z` | **Exactly 0.0** throughout |
+| `indi.a_res_x/y/z` | **Exactly 0.0** throughout |
+| `indi.e_r_norm` | **Bit-identical** **0.01653197966516018** on every sample |
+| Motors | As above — asymmetric pairs, not four-motor co-climb |
+
+**Desk code trace — fallback-branch hypothesis (position `modeAbs` vs direct-thrust `else`):**
+
+- **`omar_indi_rust.rs`** takes the **position branch** when `sp.mode.x \|\| sp.mode.y \|\| sp.mode.z == modeAbs` (same predicate as `controller_omar_indi.c`). The **`else`** branch uses **`sp.thrust`** and **`sp.attitude.roll/pitch`** only — it never calls `indi_a_res_write` (so **`a_res` would stay at log init 0** if that branch ran every tick).
+- **`crtp_commander_high_level.c`** (`plan_current_goal` path, lines ~374–391): for a **valid active trajectory** (what `uploadTrajectory` + `startTrajectory` / `simple_flight` hover uses), the HL commander sets **`setpoint->mode.{x,y,z} = modeAbs`**, fills **`position/velocity/acceleration/jerk/snap`**, and sets **`mode.roll/pitch = modeDisable`**, **`mode.yaw = modeAbs`**. **`nullSetpoint`** (planner stopped) is a separate path and would **not** explain a sustained **`ctrltarget_z = 1.0`** hold.
+- **Conclusion:** for a normal in-flight hover with the commanded height seen on the log, **code reading refutes “stuck in fallback because HL never sets modeAbs.”** The more likely explanations for **`a_res ≡ 0`** are **`(g_oot5_indi & 1) == 0`**, **`oot_rpm_logs_available() == false`**, or **`step_inner()` not executing** (see below) — not the wrong position/thrust branch *given standard HL trajectory setpoints*.
+
+**Frozen `e_r_norm` / zero `tau` — what that implies:**
+
+- If **`step_inner()` ran every tick** with live EKF attitude, **`e_r` should jitter** even on the pad; **5622 bit-identical norms** is not consistent with healthy per-tick `indi_e_r_write()` updates.
+- **`controllerOutOfTree5()` returns immediately on odd `tick`** (`tick % 2 != 0`) — same **500 Hz effective rate** as Omar C’s internal `RATE_DO_EXECUTE(ATTITUDE_RATE, tick)` gate, but on odd ticks **no telemetry writes and no new `control` output** are produced. That alone should **not** freeze a variable across *all* samples (even ticks should still update), but it **does** mean half of stabilizer ticks are no-ops for Oot5.
+- **Shared log statics** in `traj_iface.c`: `indi.*` floats are **one global latch per drone** — if Oot5 stopped calling the write helpers mid-flight, uSD would **hold the last value** (could look “frozen”). **`tau ≡ 0`** with **`e_r_norm` stuck at one non-zero constant** fits **“writes not happening or not from this controller tick path”** as much as **“real zero torque.”**
+
+**Registration:** confirmed separately this session — **`CONFIG_CONTROLLER_OOT5=y`**, dispatch **`stabilizer.controller=10` → `controllerOutOfTree5`** (not an enum/slot mismatch).
+
+**Desk fix (2026-09-30, uncommitted): diagnostic logs for the *next* hardware attempt**
+
+Added **`oot5_diag_write()`** → existing **`LOG_GROUP_START(indi)`** (4 floats, no new group):
+
+| Log var | Meaning |
+|---------|---------|
+| `indi.oot5_branch` | **1.0** = position/`modeAbs` branch, **0.0** = fallback |
+| `indi.oot5_thrust_si` | **`thrust_si`** after position or thrust mapping [N] |
+| `indi.oot5_sp_mode_z` | raw **`setpoint.mode.z`** enum as float |
+| `indi.oot5_sp_thrust` | raw **`setpoint.thrust`** (uint16 cast) |
+
+Also appended these four keys to **`flying_drone_stack/tools/usd_thesis_config.txt`** — **re-copy `config.txt` to the uSD card** before the next flight or the new fields will not record.
+
+**Verification after change:** `make DRONE=bl` clean; **`test_omar_indi_rust_vs_c.py`** **7/7 PASS** (worst delta **7.15e-07**, unchanged).
+
+**Next hardware read:** after merge, check **`oot5_branch ≈ 1`** and **`oot5_thrust_si`** during hover — if branch is 1 with **~1 m z error**, **`thrust_si` should be well above 0.01 N**; if **`thrust_si` is high** but **`tau` still logs 0**, suspect logging/linkage; if **`branch == 0`** while **`ctrltarget_z` tracks**, suspect **setpoint mode not `modeAbs`** on the wire (HL/planner state), which would be new and actionable.
+
+## 15. controller=10 — third hardware solo-hover (2026-09-30 evening): no uSD, cap bug found
+
+**Flight:** third solo-hover attempt with diagnostic **`oot5_diag_write()`** firmware (intended). Radio: `Controls/logs/hover_mode1_kt0.008_2026-09-30_17-48-47.csv` (~23 s). **Same failure:** **`z ≈ −0.023 m`** flat, never climbs. Meta confirms **`stabilizer.controller=10`** throughout (`takeoff`/`trajectory`/`landing` lines).
+
+**uSD:** **No usable onboard log for this flight.** `copy_usd_log.py` still picks **`thesis22`** (~984 KB, **`usd.runTag=1790701476`**, 11.2 s) — **byte-identical to the §14 attempt**, not tonight. Card also has **`thesis23`** and **`thesis24`**, both **0 bytes** (two logging sessions that started but wrote no closed file — matches **two earlier radio runs** the same evening: `…_17-27-16.csv` and `…_17-48-47.csv`). **No `indi.oot5_*` data exists for any third attempt.**
+
+### Problem A — config exceeded deck cap (fixed, Option 1)
+
+**Root cause:** `usd_thesis_config.txt` lists **52** variables under `on:fixedFrequency`. Firmware **`MAX_USD_LOG_VARIABLES_PER_EVENT` was 48** (`usddeck.c`); parser **silently skips** extras (`Skip log variable … out of storage`, DEBUG only). With the 2026-09-30 config, the **last four parsed slots** (`indi.oot5_thrust_si`, `indi.oot5_sp_mode_z`, `indi.oot5_sp_thrust`, **`usd.runTag`**) fall **outside** the cap — so **`oot5_thrust_si` (the key diagnostic) and session `runTag` would never record** even on a healthy card. (`indi.oot5_branch` is the 48th slot and would record; **`oot5_thrust_si` would not**.)
+
+**Fix applied (Option 1 — raise cap, not trim):** **`MAX_USD_LOG_VARIABLES_PER_EVENT` 48 → 56** in **`~/Desktop/crazyflie-firmware/src/deck/drivers/src/usddeck.c`** (local modification, documented in **`firmware_app/host/LOCAL_MODIFICATIONS.md`**). Rationale: project already relies on a raised cap; trimming would drop **`motor.m*_rpm` vs `rpm.m*`** or other C.1 channels without a clear science win. **52 ≤ 56** verified by line-count of `group.name` entries under `on:fixedFrequency`.
+
+**Requires:** **`make DRONE=bl` + `cload`** on cf5 (deck driver is in the main firmware image, not the OOT Rust crate alone). Re-copy **`usd_thesis_config.txt` → card `config.txt`**.
+
+### Problem B — 0-byte `thesis23`/`thesis24` (open)
+
+**Facts (offline):**
+
+1. **`simple_flight.py` sets `usd.logging=1` once per run** (after climb/`goTo`, before hover) but **never sets `usd.logging=0`**. Contrast: **`run_formation.py`**, **`formation_flight.py`**, **`figure8.py`** all stop logging cleanly. **`_firmware_idle_reset()`** does not touch uSD. **Two radio CSVs tonight ⇒ two `usd.logging=1` opens ⇒ two new file numbers** — consistent with **thesis23** and **thesis24**, both **0 bytes**.
+2. **Why 0 bytes vs §14’s non-empty `thesis22`?** Not fully closed from repo evidence alone. **`thesis22`** may pre-date the 52-line config or had a lucky flush; **0-byte** still means **no `f_close`/no payload** per project uSD rules. **Reflash success tonight is unverified** here (no `cload` log in repo) — **needs lab confirmation** on next flash.
+3. **`check_usd_deck.py`:** not runnable offline (no Crazyradio in this environment). Card mount shows **many historical `thesisNN` files** including older 0-byte entries (`thesis02`, `thesis13`, `thesis20`) — not unique to tonight.
+
+**No code fix applied for B** (insufficient evidence). **Next lab:** after landing, **`ls -la /media/.../thesis*`** before removing the drone; confirm **newest non-zero file size** and **`usd.runTag`** in decode; consider **`usd.logging=0` in `simple_flight.py`** (same pattern as `run_formation.py`) — **separate change, not made in this pass**.
+
+### Radio-only comparison (third vs prior attempts)
+
+| Run | z (m) | RPM pattern | Radio `tau_x` |
+|-----|-------|-------------|-------------|
+| **2026-09-30 17:48** (3rd) | flat **−0.023** | m1/m2 ~2.2–4k; **m1/m3 spikes to 65535** | tiny (~10⁻³), non-zero most rows |
+| **2026-09-30 17:27** (2nd uSD miss) | flat **−0.023** | similar; **m3 spike 65535** | tiny, non-zero all rows |
+| **2026-09-29 18:26** (not a clean c=10 baseline) | **−17 to +0.01** (EKF/runaway) | saturated RPM | **0** |
+
+**Conclusion:** the **two 2026-09-30 hovers match each other** (flat z, modest RPM with occasional DShot-style **65535** spikes, small radio torques). **Not a new failure mode** introduced by diagnostic firmware — **still no lift-off**. uSD gap tonight is **logging infrastructure (A+B)**, not a third distinct control-law symptom.

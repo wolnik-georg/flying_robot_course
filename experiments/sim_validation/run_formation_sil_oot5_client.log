@@ -1,0 +1,19 @@
+
+[formation] A1  Vertical stack hover, dz=0.30 m
+[formation] Both stationary; the lower vehicle sits in the upper one's wash.
+[formation] 2 robot(s), 5.0 s, tags: hover, data_collection
+[formation] anchor [0. 0. 1.]
+    robot 0 [ bottom] slot [0. 0. 0.]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
+    robot 1 [    top] slot [0.  0.  0.3]  Hover       vmax 0.00 m/s  amax 0.00 m/s^2
+    closest commanded approach: 0.300 m between robots 0 and 1 at t=0.0s
+    robot 0 trajectory:  2 pieces, 5.00 s
+    robot 1 trajectory:  2 pieces, 5.00 s
+[formation] commanded relative geometry:
+     bottom - top     dx  +0.00.. +0.00  dy  +0.00.. +0.00  dz  -0.30.. -0.30  |d| 0.300..0.300 m
+[formation] wrote data/formations/A1_dz0.3_hold5.0_rotate_deg0.0_r0_bottom.csv
+[formation] wrote data/formations/A1_dz0.3_hold5.0_rotate_deg0.0_r1_top.csv
+
+[formation] checks passed.
+Warning: No joystick found!
+[formation] A1 needs 2 robot(s) but 1 are enabled in crazyflies.yaml
+[ros2run]: Process exited with failure 1

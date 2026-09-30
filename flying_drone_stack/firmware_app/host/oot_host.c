@@ -27,6 +27,7 @@
 #undef indi_notch_log_write
 #undef indi_a_res_write
 #undef indi_e_r_write
+#undef oot5_diag_write
 #undef peer_get_all
 
 #include <stdint.h>
@@ -134,6 +135,7 @@ uint16_t motorsGetRatio(uint32_t id)
 /* ── log sinks: latch the values the controller publishes ─────────────────── */
 static float l_alp_raw[3], l_alp[3], l_tau[3], l_alp_notch[3], l_a_res[3];
 static float l_e_r[3], l_e_r_norm;
+static float l_oot5_branch, l_oot5_thrust_si, l_oot5_sp_mode_z, l_oot5_sp_thrust;
 
 void indi_log_write(float arx, float ary, float arz, float ax, float ay, float az)
 {
@@ -146,6 +148,14 @@ void indi_a_res_write(float x, float y, float z)       { l_a_res[0]=x; l_a_res[1
 void indi_e_r_write(float ex, float ey, float ez, float norm)
 {
     l_e_r[0]=ex; l_e_r[1]=ey; l_e_r[2]=ez; l_e_r_norm=norm;
+}
+
+void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust)
+{
+    l_oot5_branch = branch_mode_abs;
+    l_oot5_thrust_si = thrust_si;
+    l_oot5_sp_mode_z = sp_mode_z;
+    l_oot5_sp_thrust = sp_thrust;
 }
 
 /* Readers for Python. a_res is f_res/m -- the residual the thesis measures. */

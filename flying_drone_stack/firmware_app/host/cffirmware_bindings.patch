@@ -207,7 +207,7 @@ index d4ae77ca..1623731b 100755
  %include "axis3fSubSampler.h"
  %include "outlierFilterTdoa.h"
 diff --git a/bindings/setup.py b/bindings/setup.py
-index 5f650752..ec90ebfa 100644
+index 5f650752..4ff751b0 100644
 --- a/bindings/setup.py
 +++ b/bindings/setup.py
 @@ -2,8 +2,30 @@
@@ -251,7 +251,7 @@ index 5f650752..ec90ebfa 100644
      "src/utils/src/pid.c",
      "src/utils/src/filter.c",
      "src/utils/src/num.c",
-@@ -57,17 +82,58 @@ fw_sources = [
+@@ -57,17 +82,59 @@ fw_sources = [
      "src/modules/src/kalman_core/mm_distance.c",
  ]
  
@@ -270,7 +270,8 @@ index 5f650752..ec90ebfa 100644
 +    # replacements the simulator can drive and read.
 +    oot_defines = ["-D%s=%s_fw_unused" % (n, n) for n in (
 +        "rpm_get_all", "indi_log_write", "indi_tau_write",
-+        "indi_notch_log_write", "indi_a_res_write", "indi_e_r_write", "peer_get_all")]
++        "indi_notch_log_write", "indi_a_res_write", "indi_e_r_write",
++        "oot5_diag_write", "peer_get_all")]
 +    print("[setup] out-of-tree controller: linking", OOT_LIB)
 +else:
 +    print("[setup] out-of-tree controller: not built, skipping (sim will lack 'oot')")
