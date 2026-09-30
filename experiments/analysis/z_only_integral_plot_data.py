@@ -3,12 +3,13 @@
 python3.10, not the pyenv flying_robots env matplotlib needs -- see render_z_only_integral_plots.py
 for stage 2). Writes z_integral_plot_data.json for the render script to consume.
 
-⚠️ The g_ki_z/g_ki_z_limit SWIG cvar binding was found broken in the live cffirmware.i
-(unbalanced %{ %} blocks -- 2 opens vs 4 closes) during this pass on 2026-09-30 and worked
-around here by writing the C symbol directly via ctypes in earlier debugging; this script uses
-the normal cvar path and was re-verified working after a from-scratch bindings rebuild. If
-`cvar has g_ki_z: True` stops printing True, the binding has regressed again -- see
-LOCAL_MODIFICATIONS.md.
+CORRECTION 2026-09-30: an earlier pass here reported the g_ki_z/g_ki_z_limit SWIG cvar
+binding as broken (miscounted %{ %} blocks as 2 opens/4 closes -- the grep pattern missed
+`%inline %{` and `%pythoncode %{`, which are also valid openers; the real count is 5/5,
+balanced). The actual failure was testing against a stale cached .so built before this
+binding existed. A from-scratch rebuild (rm the .so + wrap.c, rebuild cargo, then
+bindings_python) confirms `cvar.g_ki_z` works normally -- no SWIG bug, no fix needed. Kept
+as a plain `cvar` read below; no ctypes workaround required.
 
 Run: /usr/bin/python3.10 z_only_integral_plot_data.py
 Then: ~/.pyenv/versions/flying_robots/bin/python render_z_only_integral_plots.py
