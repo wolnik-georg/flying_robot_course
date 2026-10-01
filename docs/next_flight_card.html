@@ -510,13 +510,27 @@ footer{
     </ul>
   </div>
 
+  <div class="panel done" style="margin-bottom:14px">
+    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
+      <strong>30 Sep tracks — all closed:</strong> controller=10 SIL gain-tuning confirmed a
+      dead end (±75% around Omar's gains, no meaningful effect on either rough spot — leave
+      Omar's gains as-is, <code>docs/41</code> §19-20.5); A8/C5 residual-training-set exclusion
+      confirmed correct (A8 neighbour-gate survival ~6.8% vs ~100% for A1, independently
+      measured; C5 genuinely solo). <code>rnn.en=0</code> sanity checklist (D) and A5/A6/C4
+      fly-prep (E) ready — not yet flown.
+    </p>
+  </div>
   <div class="panel next" style="margin-bottom:14px">
     <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>30 Sep: four next-step tracks queued, handed to Cursor for desk/SIL prep</strong>
-      (rnn.en=0 sanity-flight checklist, A5/A6/C4 fly-prep, controller=10 SIL gain-tuning,
-      A8/C5 residual-training-set investigation) — operator plans/validates, Cursor does the
-      prep work, nothing flies until checklists come back. Track results land in
-      <code>docs/41</code> §19+ and a new checklist section in the current lab session doc.
+      <strong>1 Oct: NS2 same-day retrain fast-path built and desk-verified</strong> — fly
+      A5/A6/C4 + the <code>rnn.en=0</code> sanity check today, then if time allows: merge →
+      <code>experiments/analysis/build_c1_training_manifest.py</code> → <code>run_c2_lab_retrain.py</code>
+      (train → LOO → eval, auto OK/NO-GO per new-scenario fold) → check the two-part decision
+      gate (combined <code>eval_report.md</code> R²≥0.85/≥70% read manually + per-scenario LOO
+      R²≥0.35/≥50% automated) → only then Checklist G (<code>rnn.en=1</code> on <strong>A1 or A3</strong>,
+      never A5/A6/C4 themselves). Budget ~10-20min for full LOO, it's the long pole, not a quick
+      retrain. Full detail: <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code>
+      "Decision gate" section + Checklists D-G.
     </p>
   </div>
 

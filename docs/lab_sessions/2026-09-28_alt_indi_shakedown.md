@@ -997,3 +997,335 @@ python3 experiments/analysis/check_omar_rust_telemetry.py experiments/logs/usd_r
 ```bash
 xdg-open ~/Desktop/flying_robot_course/docs/43_RPM_Source_Quality.html
 ```
+
+---
+
+### Checklist D — onboard NeuralSwarm2 sanity flight (`rnn.en=0`, log-only)
+
+**Goal:** confirm weights upload, **`rnn.ready=1`**, and **`rnn.pred_*`** look plausible vs
+**`indi.a_res_*`** — **zero control authority** (`rnn.en` stays **0**; prediction does not feed
+the position loop — see `firmware_app/CLAUDE.md`).
+
+**Weights (recommended for this flight):**  
+`experiments/analysis/out/c2_e2e_2026-09-28/full_bank_c1_complete.npz`  
+(trained on **22** C.1 merged flights, eval **R²≈0.936** combined — `eval_model/eval_report.md`).
+Older **`flying_drone_stack/tools/residual/weights/c2_dryrun_2026-09-19_geo.npz`** is a **geo dry-run**
+only — **do not** use for this sanity check unless intentionally comparing to that experiment.
+
+**Scenario:** **2-drone near-hover with neighbour** — **A1** or **A3** at modest **`dz`**
+(e.g. **`--scenario A1 --dz 0.30 --hold 10`**) so the proximity gate can ever be true.  
+**cf5** = bottom (residual ego), **cf_second** enabled.
+
+**Controller decision (operator — not preset here):**
+
+- **C.1 collection rule:** geometric **`ctrl_mode: 0`** on **cf5** when training data is the goal
+  (`docs/25`).
+- For **pure NN sanity** (this checklist): any controller that logs healthy **`indi.a_res_*`** +
+  RPM on cf5 is acceptable; **controller=6** with **`ENABLE_Z_INTEGRAL`** is fine if that is what
+  is already staged — **do not change integral flags for this flight unless you intend to**.
+
+**uSD:** **`usd_thesis_config.txt`** already lists **`rnn.pred_x/y/z`**, **`rnn.clamped`**, and
+**`indi.a_res_x/y/z`** (verify cap ≤ 56 before flying).
+
+```bash
+# 0. CS2 + both drones enabled; check_usd_deck.py on each (needs radio + power)
+source ~/Desktop/crazyswarm2/install/setup.bash
+ros2 launch crazyflie launch.py backend:=cflib
+
+# 1. Upload weights (ground, ~30 s per drone) — NO --enable
+ros2 run crazyflie_examples upload_residual_weights -- \
+  --weights /home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-09-28/full_bank_c1_complete.npz \
+  --cf cf5 --cf cf_second
+
+# 2. Readback before arming (expect ready=1, en=0)
+ros2 param get /cf5/params rnn.ready
+ros2 param get /cf5/params rnn.en
+ros2 param get /cf_second/params rnn.ready
+
+# 3. Fly formation (example A1)
+ros2 run crazyflie_examples run_formation -- \
+  --auto-center --yes \
+  --scenario A1 --dz 0.30 --hold 10
+
+# 4. Post-flight — uSD copy + merge (tag path if usd.runTag flashed)
+cd ~/Desktop/flying_robot_course
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<mount> cf5
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<mount> cf_second
+# If run_tag pairing:
+python3 flying_drone_stack/tools/merge_usd_logs.py \
+  --run-tag <tag> \
+  --archive-t1 /media/<cf5_mount> \
+  --archive-t2 /media/<cf_second_mount> \
+  -o experiments/logs/usd_raw/A1_rnn_sanity_<date>_merged.csv
+
+# 5. Sanity metrics (qualitative — NOT control validation)
+#    On cf5 (bottom): scatter or time-align rnn.pred_z vs indi.a_res_z when neighbour gate likely
+#    (|dx|,|dy| small). Expect same order of magnitude / correlated sign when gate active;
+#    pred≈0 when far apart is normal. rnn.clamped=1 occasionally is OK; stuck at 1 whole flight is not.
+```
+
+**Do not** set **`rnn.en=1`** in this checklist.
+
+---
+
+### Checklist E — C.1 fly-prep: **A5**, **A6**, **C4** (first uSD-quality flights)
+
+**Context:** SIL-validated (`docs/12`); prior radio-only runs **not** in C.1 bank. **No sim work**
+here — exact **`run_formation`** commands only.
+
+**Controller decision (operator):** project rule is **one controller per scenario** for comparable
+C.1 data. **controller=6** is the most proven path tonight (Z-integral validated, docs/51) — **or**
+stay on **controller=10** if continuing Omar campaign — **pick one before the block and keep yaml
+consistent across all three flights**. This checklist does **not** change yaml for you.
+
+**Extreme gating (verified in `formations/scenarios.py` + `safety.py`):**
+
+- **A6:** `extreme=True` always → **`--allow-extreme` required**.
+- **C4:** default **`dz_end=0.10`** → `extreme=(dz_end < 0.15)` → **`--allow-extreme` required**.
+- **A5:** default **`dz=0.50`** → **not** extreme → **`--allow-extreme` not required**.
+
+**Default-grid parameters** (from `scenarios.py` `_self_test` cases ~748–754):
+
+| Scenario | Command |
+|----------|---------|
+| **A5** | `ros2 run crazyflie_examples run_formation -- --auto-center --yes --scenario A5 --dz 0.50` |
+| **A6 @ dz=0.08** | `… run_formation -- --auto-center --yes --allow-extreme --scenario A6 --dz 0.08` |
+| **A6 @ dz=0.10** | `… run_formation -- --auto-center --yes --allow-extreme --scenario A6 --dz 0.10` |
+| **C4** (defaults) | `… run_formation -- --auto-center --yes --allow-extreme --scenario C4` |
+
+**Pre-flight:** both drones, **`cf5` bottom**, uSD **`config.txt`**, **`usd.logging=0` fix** in CS2
+(`simple_flight` / `run_formation` stop path), **`check_usd_deck.py`**.
+
+**Post-flight merge (roles + meta — same pattern as `c1_2026-09-28_merged/`):**
+
+```bash
+cd ~/Desktop/flying_robot_course
+# After copy_usd_log.py for cf5 + cf_second, paths e.g.:
+#   experiments/logs/usd_raw/cf5_thesisNN_<ts>.bin
+#   experiments/logs/usd_raw/cf_second_thesisMM_<ts>.bin
+# Save run_formation's printed .meta.json path, e.g. experiments/logs/meta/A5_....meta.json
+
+python3 flying_drone_stack/tools/merge_usd_logs.py \
+  experiments/logs/usd_raw/cf5_thesisNN_<ts>.bin \
+  experiments/logs/usd_raw/cf_second_thesisMM_<ts>.bin \
+  --meta experiments/logs/meta/A5_<stamp>.meta.json \
+  --roles bottom top \
+  -o experiments/logs/c1_<date>_merged/A5_<stamp>/A5_<stamp>_merged_usd.csv
+```
+
+Repeat per flight with **`A6` / `C4`** meta files. Prefer **`--run-tag`** pairing when both cards
+have **`usd.runTag`** (see `docs/25`).
+
+---
+
+### Checklist E follow-up — same-day retrain after A5 / A6 / C4 (desk-prep commands)
+
+**Goal:** After Checklist **E** flights land, go from raw uSD → **updated weights** + **LOO gate**
+without improvising. **Do not** use this block until new merges exist on disk.
+
+**Runtime (measured 2026-09-30 on 22-flight bank, `--epochs 40`, CPU):**
+
+| Step | Wall time (order of magnitude) |
+|------|--------------------------------|
+| **`train.py` full bank** (22 CSVs) | **~20–25 s** (data load + **~11–16 s** fit) |
+| **One LOO fold** (N−1 CSVs) | **~25–30 s** |
+| **Full LOO** (N folds) | **~10–15 min** for **N≈22–28** (dominates lab time) |
+| **`eval_model.py`** | **~30–60 s** |
+
+Adding **~6** new flights (→ **~28** total) scales LOO roughly linearly: budget **~12–18 min**
+for **train + LOO + eval**, plus **~5–15 min** for copy/merge depending on card count — **fits a
+focused lab block** if LOO is expected, not a “30 s retrain.”
+
+**Variables to set once per lab day:**
+
+```bash
+export LAB_DATE=2026-09-30          # calendar date of merges
+export MERGE_ROOT=experiments/logs/c1_${LAB_DATE}_merged
+export OUT=experiments/analysis/out/c2_e2e_${LAB_DATE}
+```
+
+#### Step 1 — Copy uSD off each card (repeat per flight / per card)
+
+```bash
+cd ~/Desktop/flying_robot_course
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<cf5_mount> cf5
+python3 flying_drone_stack/tools/copy_usd_log.py /media/<cf_second_mount> cf_second
+```
+
+#### Step 2 — Merge each formation flight (roles + meta; same layout as `c1_2026-09-28_merged/`)
+
+```bash
+cd ~/Desktop/flying_robot_course
+mkdir -p "${MERGE_ROOT}"
+
+# Example: A5 (replace thesisNN/MM and meta path with run_formation output)
+python3 flying_drone_stack/tools/merge_usd_logs.py \
+  experiments/logs/usd_raw/cf5_thesisNN_<ts>.bin \
+  experiments/logs/usd_raw/cf_second_thesisMM_<ts>.bin \
+  --meta experiments/logs/meta/A5_<stamp>.meta.json \
+  --roles bottom top \
+  -o "${MERGE_ROOT}/A5_${LAB_DATE}_<stamp>/A5_${LAB_DATE}_<stamp>_merged_usd.csv"
+
+# A6 / C4: same pattern; meta file must match that run (see Checklist E commands).
+# Prefer --run-tag <tag> when both cards logged usd.runTag (see docs/25).
+```
+
+Optional: append entries to **`${MERGE_ROOT}/manifest_${LAB_DATE}_c1.json`** (same fields as
+`c1_2026-09-28_merged/manifest_2026-09-28_c1.json`: **`training_eligible: true`**, **`path`**, etc.).
+
+#### Step 3 — Build updated training manifest (base 22 + new A5/A6/C4)
+
+```bash
+cd ~/Desktop/flying_robot_course
+python3 experiments/analysis/build_c1_training_manifest.py \
+  --merge-dir "${MERGE_ROOT}" \
+  --scenarios A5 A6 C4 \
+  -o "${OUT}/training_manifest_lab.json"
+```
+
+Re-run with different **`--scenarios`** or after adding more merges — no hand-editing JSON.
+
+#### Step 4 — Full retrain + LOO + eval (one driver script)
+
+```bash
+cd ~/Desktop/flying_robot_course
+python3 experiments/analysis/run_c2_lab_retrain.py \
+  --manifest "${OUT}/training_manifest_lab.json"
+```
+
+**Outputs:**
+
+- **`${OUT}/full_bank_c1_complete.npz`** — upload target
+- **`${OUT}/loo_results.json`** — per-flight held-out metrics (same schema as
+  `experiments/analysis/out/c2_e2e_2026-09-28/loo_results.json`)
+- **`${OUT}/eval_model/eval_report.md`** — combined R² / RMSE / per-file table
+
+**Manual equivalent (if script fails):**
+
+```bash
+# Full train (paths from manifest — example uses jq)
+MAN="${OUT}/training_manifest_lab.json"
+PATHS=$(python3 -c "import json; m=json.load(open('$MAN')); print(' '.join('/home/georg/Desktop/flying_robot_course/'+f['path'] for f in m['flights']))")
+python3 flying_drone_stack/tools/residual/train.py $PATHS \
+  -o "${OUT}/full_bank_c1_complete.npz" --epochs 40
+
+python3 flying_drone_stack/tools/residual/eval_model.py \
+  "${OUT}/full_bank_c1_complete.npz" $PATHS \
+  -o "${OUT}/eval_model" --no-plots
+```
+
+LOO folds: see **`experiments/analysis/run_c2_fullbank_retrain_2026_09_28.py`** (same loop as
+**`run_c2_lab_retrain.py`**).
+
+#### Step 5 — Upload weights (no `--enable`; same as Checklist D)
+
+```bash
+source ~/Desktop/crazyswarm2/install/setup.bash
+ros2 run crazyflie_examples upload_residual_weights -- \
+  --weights /home/georg/Desktop/flying_robot_course/${OUT}/full_bank_c1_complete.npz \
+  --cf cf5 --cf cf_second
+```
+
+Then **`rnn.ready=1`**, **`rnn.en=0`** until Checklist **G** decision gate passes.
+
+---
+
+### Decision gate — rnn.en=1 real control test? (read after Step 4)
+
+**Default path tomorrow:** Checklist **D** only (**`rnn.en=0`**, log-only sanity).
+
+**Optional path:** Checklist **G** only if **both** sections below pass.
+
+#### A) Combined model quality (`eval_report.md`)
+
+| Check | PASS | FAIL |
+|-------|------|------|
+| Combined **R²** | **≥ 0.85** | **< 0.85** |
+| **% reduction vs predict-zero** | **≥ 70%** | **< 70%** |
+
+(2026-09-28 bank: **R²≈0.936**, **~79%** reduction — use as reference, not a guarantee after new data.)
+
+#### B) LOO on **new** scenarios only (A5 / A6 / C4 folds in `loo_results.json`)
+
+For **each** held-out flight whose folder name starts with **`A5_`**, **`A6_`**, or **`C4_`**:
+
+| Metric | PASS (compare to A1–A7 LOO band) | FAIL |
+|--------|----------------------------------|------|
+| **R²** | **≥ 0.35** | **< 0.20** → **hard NO-GO** |
+| **R²** middle | **0.20–0.35** | **soft NO-GO** (repeat data / skip rnn.en=1) |
+| **% reduction vs zero** | **≥ 50%** | **< 20%** → **hard NO-GO** |
+| **n** (samples) | **> 0** | **0** → **NO-GO** |
+
+**One-line operator rule:** If **any** A5/A6/C4 LOO line prints **`NO-GO`** from
+**`run_c2_lab_retrain.py`** gate summary → stay on **`rnn.en=0`**. If **all new-scenario LOO
+lines are `OK`** *and* section **A** passes → **may** open Checklist **G** (operator call).
+
+**Log hygiene:** identify flown controller from **`trajectory_stabilizer_controller`** (and
+takeoff/landing variants) in radio CSV meta — **not** **`yaml_stabilizer_controller`**.
+
+---
+
+### Checklist G — rnn.en=1 control validation (only if decision gate PASS)
+
+**⚠️ Control-affecting:** with **`rnn.en=1`**, NN prediction **feeds the position loop** (not
+log-only). **Abort:** set **`rnn.en=0`**, land, revert to Checklist **D** weights if needed.
+
+**Do not** validate on **A5 / A6 / C4** the same day they entered training — use an
+**already-characterized** scenario (**A1** or **A3** recommended; same **`ctrl_mode: 0`** rule as C.1).
+
+**Pre-flight**
+
+```bash
+source ~/Desktop/crazyswarm2/install/setup.bash
+ros2 launch crazyflie launch.py backend:=cflib
+
+# Weights already uploaded (Checklist E follow-up Step 5)
+ros2 param get /cf5/params rnn.ready    # expect 1
+ros2 param get /cf5/params rnn.en       # expect 0 before enable
+
+# Enable ON cf5 (bottom / residual ego) only — confirm param name in firmware if unsure
+ros2 param set /cf5/params rnn.en 1
+ros2 param get /cf5/params rnn.en       # expect 1
+```
+
+**Flight (example — A1, modest dz, 10 s hold)**
+
+```bash
+ros2 run crazyflie_examples run_formation -- \
+  --auto-center --yes \
+  --scenario A1 --dz 0.30 --hold 10
+```
+
+**Watch (cf5 / bottom):** height vs command (**z** bias vs baseline hovers), neighbour gate
+(**`rnn.clamped`** stuck at 1), large divergence **`rnn.pred_*`** vs **`indi.a_res_*`**. Compare
+subjectively to last **`rnn.en=0`** A1 on same **`dz`**.
+
+**Abort / revert (any doubt)**
+
+```bash
+ros2 param set /cf5/params rnn.en 0
+# optional: re-upload prior known-good weights from c2_e2e_2026-09-28 if session corrupted
+```
+
+**Post-flight:** merge uSD as usual; **do not** treat one flight as proof — log for desk review only.
+
+---
+
+### Checklist F — A8 / C5 vs residual training bank (desk conclusion, no lab action)
+
+**C5:** **`scenarios.C5`** — **`N_ROBOTS=1`**, single **`RobotPlan('solo', …)`** near-ground pass
+(ground effect, not downwash). **`training_manifest_2026-09-28.json`** excludes it explicitly
+(**“solo C5”**). **Recommendation:** **confirmed correct exclusion** — no neighbour to learn.
+
+**A8:** **14** merged CSVs on disk, **not** in the 22-flight bank. Measured neighbour-gate survival
+(`model.build_mask`: **|dx|,|dy|<0.2 m**, **|dvx|<1.5 m/s**):
+
+| Scenario | Typical **gated** fraction (min-ego per flight) |
+|----------|--------------------------------------------------|
+| **A1** (example) | **~100%** |
+| **A8** (14 files) | **mean 0.071** (7.1%), range **0.062–0.083** |
+
+Crossing geometry keeps horizontal separation **>0.2 m** almost all flight time — matches
+**`next_flight_card.html`** (“neighbour gated out most of the run”). **Recommendation:**
+**confirmed correct exclusion** — adding A8 would mostly duplicate **phi_G / zero-interaction**
+rows, not downwash-rich **`phi_S`** samples. **No manifest change proposed.**

@@ -701,6 +701,307 @@ every other gain change in this project.
    (first-ever flight, small sample) before tuning against them.
 2. Stage a `KPOS_I` bump in `omar_indi_rust.rs` (see above) as the height-bias fix candidate —
    own gain, own mechanism, own rebuild/reflash cycle, not `lib.rs`'s Z-integral.
-3. A `KR`/`KW`-equivalent attitude gain look for the figure8 roll/pitch excursions — check
-   `controller_omar_indi.c`'s reference values for what Omar's own tuning used, since this port
-   should currently be running whatever gains the literal C port carried over.
+3. A `KR`/`KW`-equivalent attitude gain look for the figure8 roll/pitch excursions — see **§19**
+   (gain audit + proposed SIL; no discrepancy vs Omar C found).
+
+## 19. controller=10 gain tuning prep — Kpos_I SIL sweep + attitude gain audit (2026-09-30 desk)
+
+**Context:** §18 first successful flights — **+16 cm hover bias** (steady **1.162 m** vs **1.000 m**),
+**figure8 roll std 7.5° / peak 24.5°** (hover roll std **1.5°** only). This section is **desk/SIL
+recommendation only** — no firmware change applied here.
+
+### Height bias — mechanism (confirmed in code)
+
+`omar_indi_rust.rs` accumulates **`s.i_error_pos`** every position-branch tick and applies
+**`veltmul(KPOS_I, s.i_error_pos)`** in **`a_d`**. **`KPOS_I = {0,0,0}`** today → **pure P+D**,
+same as **`controller_omar_indi.c`** defaults (**`Kpos_I = {0,0,0}`** in Omar’s C — not a Rust
+placeholder bug). **`KPOS_I_LIMIT = 2.0`** clamps the accumulator vector norm.
+
+**Not `lib.rs` / `g_ki_z`:** controller=6’s Z-only integral is a **different controller and namespace**
+(docs/51); do not copy **`ki_z=16`** onto c=10.
+
+**Change path:** edit **`const KPOS_I`** in **`omar_indi_rust.rs`** (joint **x/y/z** vector), then
+**`make DRONE=bl` + reflash** — not a yaml param.
+
+### SIL sweep (Omar C proxy, same math as oot5) — **corrected 2026-09-30**
+
+Script: **`experiments/analysis/oot5_kpos_i_sweep.py`**  
+Run: **`/usr/bin/python3.10 experiments/analysis/oot5_kpos_i_sweep.py`**
+
+**Fixes vs first §19 draft (do not use the old table or `Kpos_I.z = 1.0` staging):**
+
+1. **Plant mass** — **`oot_omar_mass()` → 0.0427 kg** (not stock CF2.1 **39.3 g**).
+2. **`f_a` semantics** — CS2 **`Quadrotor.step(..., f_a)`** applies world-frame **N** in
+   **`vel += (g + (R f_u + f_a)/m) dt`** (`crazyflie_sim/backend/np.py`); **`f_a` is not ignored**.
+3. **Broken first sweep** — script used **`indi = 3`** (flight default). Full INDI **nulls constant
+   **`f_a`**, so **`Kpos_I.z = 0`** showed **~0 mm** while every nonzero **`Kpos_I.z`** looked worse
+   (misleading; the **0.19 mm** baseline was **not** “0.19 N leaking as mm”).
+4. **Method now** — **`indi = 0`** isolates the **position P+D+I** path. **`f_ext_z > 0`** (upward
+   world force after **t > 5 s**) is **binary-searched** so **`Kpos_I.z = 0`** → **+162 mm** mean
+   error (§18 hover-high bias). Sanity: **`indi = 0`**, **`f_ext_z = −0.19 N`** → **~636 mm low**
+   (credible P+D-only sag at **0.0427 kg**).
+
+**Corrected sweep** (mass **0.0427 kg**, **`f_ext_z ≈ +0.04842 N`**, metric from **t ≥ 10 s**):
+
+| **Kpos_I.z** | **Mean z error (mm)** | **RMSE (mm)** | **z std (mm)** |
+|-------------:|----------------------:|--------------:|---------------:|
+| 0.0 | +162.0 | 162.0 | 0.0 |
+| 0.5 | +112.6 | 113.9 | 16.9 |
+| 1.0 | +69.2 | 72.5 | 21.7 |
+| 1.5 | +39.0 | 43.4 | 19.0 |
+| 2.0 | +20.5 | 24.7 | 13.8 |
+| 2.5 | +10.0 | 13.2 | 8.7 |
+| 3.0 | +4.4 | 6.6 | 4.9 |
+| 3.5 | +1.7 | 2.9 | 2.3 |
+| 4.0 | +0.5 | 1.0 | 0.9 |
+
+**With `indi = 3` and the same `f_ext`**, mean error stays **~0 mm** — confirming that **this force
+injection does not reproduce §18 bias under flight INDI**; the table above is a **position-loop
+proxy**, not a closed-loop INDI+integral co-design proof.
+
+**Confidence:**
+
+- **High** — old **`Kpos_I.z = 1.0`** recommendation is **retracted**; first sweep was **invalid**
+  for tuning **`Kpos_I`** (wrong mass + **`indi = 3`** masked **`f_a`**).
+- **Medium** — nonzero **`Kpos_I.z`** **does** trim the **calibrated +162 mm** offset in the
+  **`indi = 0`** proxy; direction matches control theory.
+- **Low** — picking **any single gain** (including **~3.5–4.0** from this grid) for hardware:
+  real flights use **`indi = 3`**, and tonight’s **+162 mm** is likely **model/thrust mismatch**,
+  not a constant world force. **No desk number is validated for a safe first hop.**
+
+**Hardware staging (operator decision, not applied here):**
+
+1. **Do not** stage **`KPOS_I.z = 1.0`** from the retracted table.
+2. If trying **`Kpos_I`** anyway: treat as **experimental** — start **conservatively** (e.g.
+   **`KPOS_I.z = 2.0`**, Z-only inside the **`Vec3`**), **short hover**, same **`z` vs target**
+   metric as §18; back off on oscillation. **Expect SIL grid not to transfer 1:1** until an
+   **`indi = 3`** bias model exists (thrust/kt/mass split — **still open desk work**).
+3. Prefer confirming bias on **repeat hovers** before any integral bump.
+
+### Attitude (figure8) — gain audit, no sweep yet
+
+| Gain | `omar_indi_rust.rs` | `controller_omar_indi.c` |
+|------|---------------------|---------------------------|
+| **KR** | `{0.007, 0.007, 0.008}` | `{0.007, 0.007, 0.008}` |
+| **KOMEGA** | `{0.00115, 0.00115, 0.002}` | **Komega** same |
+| **KI_ATT** | `{0.03, 0.03, 0.03}` | **KI** same |
+
+**No discrepancy** — figure8 excursions are **not** explained by “wrong default KR/KW vs Omar C”.
+**Confidence: high** on that negative finding. **Low** on root cause without a **full HL figure8
+SIL** run at **`timescale=0.05`** (tonight’s profile): likely **trajectory-induced** coupling through
+position loop + INDI, not a missing constant tweak obvious from static gain compare.
+
+**Proposed next desk step (not run here):** CS2 SIL **`simple_flight --trajectory figure8 --kt 0.008`**
+with **`controller: oot5`**, log roll/pitch RMS vs **`KR` ±25%** — only after **`Kpos_I`** hardware
+trial, to avoid tuning two knobs at once.
+
+## 20. controller=10 vs controller=9 — structural check + bounded gain sweeps (2026-09-30 desk)
+
+**Question:** Is the gap vs Omar’s flown **controller=9** (gains identical) a **structural port
+issue** or a **small gain-tuning** problem? **Scripts:** `experiments/analysis/oot5_bounded_gain_sweep.py`
+(height + figure8), building on the corrected methodology in **`oot5_kpos_i_sweep.py`** (§19).
+
+### 20.1 Structural check (non-gain)
+
+| Topic | Finding | Impact on c=9 vs c=10 gap |
+|-------|---------|-----------------------------|
+| **Effective rate** | C: `RATE_DO_EXECUTE(ATTITUDE_RATE=500 Hz, tick)` on **1 kHz** stabilizer loop. Rust: `if tick % 2 != 0 { return; }` on the same tick. | **Equivalent (500 Hz)** — not an explainable gap. |
+| **Position `dt`** | C: `dt = 1/ATTITUDE_RATE`. Rust: `DT = 1/500`. | **Match** for P/D/I accumulation. |
+| **INDI filters** | C: 30 Hz Butterworth on acc/tau/gyro, init sample time **1/500 s**. Rust: same cutoff, same **`DT`**, reimplemented biquad. | **Intended match** (host 7/7 numerical still holds). |
+| **Moment INDI `dt`** | C: `usecTimestamp()` delta for gyro differentiation. Rust: same pattern (`dt_meas` with fallback to **`DT`** on first step). | **Same on hardware**; SIL/host timestamp granularity may differ slightly — **second-order** for tonight’s symptoms. |
+| **`MIN_B1` / `MIN_C3` guard** | **Rust c=10 only** (§13); C **controller=9** unguarded. | **Figure8 SIL proxy (`kt=0.05`):** guard would fire **0%** of ticks ( **`b1 ≈ thrust/mass ≫ 0.5`**, **`c3` well above 0.05**). **Not a mid-flight figure8 explanation** in this model. |
+| **Setpoint `mode` enum (fixed §17)** | Was a **real** structural bug (4-byte host vs 1-byte ARM); caused wrong branch/thrust before fix. | **Post-fix flights** (§18) show **`oot5_branch ≈ 1`**, real **`thrust_si`** — **not** the remaining hover/figure8 gap. |
+| **RPM availability probe** | C: `deck.bcRpm` param. Rust: `oot_rpm_logs_available()`. | **Intentional**; same RPM path in flight when deck logs exist. |
+
+**controller=9 figure8 at tonight’s profile?** Repo **meta/logs** for **`controller=9`** are **solo
+hover / A1 only** (Sep 2026) — **no logged figure8 at any `kt`**. **Tonight’s real figure8s**
+(2026-09-30 radio CSV **`meta:run_kt=0.05`**) include **controller=10 thesis32** (§18 roll stats)
+and same-night **controller=6** figure8s — **not `kt=0.008`**. **Log hygiene:** use
+**`takeoff_stabilizer_controller` / `trajectory_stabilizer_controller` / `landing_stabilizer_controller`**
+for which controller flew — **`meta:yaml_stabilizer_controller`** can reflect yaml at log finalize,
+not flight time. **Conclusion:** comparing **c=10 figure8** to “**c=9 known-good figure8**” is
+**not established** — **c=9 hover success does not prove figure8 at `kt=0.05` was ever flown.**
+
+**Structural verdict:** **No open structural difference** found that clearly explains **+162 mm
+hover** or **figure8 roll std 7.5°** **after the enum fix**, except the **documented c=10-only
+`omega_des` guard** (inactive in figure8 SIL above). **Remaining gap is plausibly real-algorithm +
+plant/HL/SIL fidelity**, not wrong gain constants on paper. **Bounded gain sweeps below are
+still worth running** but **transfer to hardware is low confidence** until SIL matches §18 magnitude.
+
+### 20.2 Disturbance / bias methodology (not §19’s mistake)
+
+- **Do not** use constant **`f_a`** under **`indi=3`** — INDI nulls it (§19).
+- **Plant-only kt or mass mismatch** alone is also **nulled to ~0 mm** in closed-loop **`indi=3`**
+  SIL — confirmed by sweep script.
+- **Height-bias testbed (flight INDI):** inject **`st.acc.z` bias [g]** (IMU vs RPM-model split) —
+  calibrated to **+162 mm** at Omar gains with **`acc_z_bias ≈ −0.116 g`**.
+- **Position-branch cross-check (`indi=0`):** **`f_ext_z ≈ +0.0484 N`**, same **+162 mm** at
+  **`Kpos_I=0`** (consistent with §19 corrected table).
+
+### 20.3 Bounded one-knob sweeps (±~30% around Omar; separate axes)
+
+**Height** — metric: mean **z** error [mm], **t ≥ 12 s** hover @ **1 m**, **indi=3**, IMU-bias proxy:
+
+| Knob | Omar | −30% / −20% | +20% / +30% | Effect on +162 mm bias |
+|------|-----:|------------:|------------:|------------------------|
+| **Kpos_P.z** | 7.0 | 4.9 → **+231 mm**; 5.6 → **+203 mm** | 8.4 → **+135 mm**; 9.1 → **+125 mm** | **Yes — P trims DC height** in this proxy (~**−37 mm** at **+30% P**). **Confidence: medium** for direction only. |
+| **Kpos_D.z** | 4.0 | 2.8–5.2 | (same grid) | **No** — all **~+162 mm** (D does not fix DC bias). **Confidence: high** (noop). |
+| **Kpos_I.z** | 0.0 | 0.2 → **+120 mm** | 1.0 → **+32 mm** | **Yes — integral trims bias** monotonically in **0.2–1.0** range; **does not** reach null within **≤1.0**. **Confidence: medium** for mechanism; **low** for picking **0.4 vs 1.0** on hardware. |
+
+**Height (`indi=0`, f_ext proxy)** — same P grid moves bias (**+162 → +125 mm** at **+30% P**);
+**Kpos_D** noop on DC; **Kpos_I** **0.2–1.0** reduces **+162 → +54 mm** at **1.0** (stronger integral
+effect than **`indi=3`** proxy — expected).
+
+**Figure8** — see **§20.3 correction** below for trajectory **`kt`**; height rows above unchanged.
+
+### 20.3 correction — figure8 SIL used wrong `kt` (same evening as §20 draft)
+
+**⚠️ First §20 figure8 block (retracted):** `oot5_bounded_gain_sweep.py` used
+**`figure8_mode1_kt0.008.csv`**, with text claiming **`kt=0.008`** was “tonight’s profile.” **Wrong.**
+Radio logs from **2026-09-30** show **`meta:run_kt=0.05`** for **every figure8 flown that night**
+(including **controller=10** thesis32, source of §18 **7.5° / 24.5°** roll). The **4.08° std / 33°
+peak** SIL baseline and the **“harness vs hardware excursion scale”** wording were **confounded**
+by a **slower trajectory** — **do not cite those attitude numbers.**
+
+**Corrected run:** **`figure8_mode1_kt0.05.csv`**, **`indi=3`**, Omar gains (`--figure8-only` after fix):
+
+| Metric | SIL Omar | Hardware §18 (c=10, kt=0.05) |
+|--------|---------:|-----------------------------:|
+| **roll std** | **4.21°** | **7.5°** |
+| **roll peak** | **19.2°** | **24.5°** |
+| **pitch std / peak** | **3.12° / 10.8°** | **5.4° / 15.5°** |
+
+**Interpretation:** **Roll std** is still **~44% lower** in SIL than hardware (**4.2° vs 7.5°**) —
+the **“SIL under-predicts roll variability”** conclusion **survives** the fix (not just wrong `kt`).
+**Roll peak** moves **much closer** (**19° vs 25°**; the **`kt=0.008`** run had wrongly shown **33°**
+peak). So the first draft’s **peak** mismatch was **partly trajectory error**; **std** mismatch is
+**real on the correct profile**.
+
+**Bounded attitude sweeps (corrected `kt=0.05`)** — metric **roll std [°]**:
+
+| Knob | Omar (×1.0) | 0.7× | 1.3× | Effect |
+|------|------------:|-----:|-----:|--------|
+| **KR** | **4.21°** (peak **19.2°**) | 4.26° | 4.18° | **~±2%** — **no meaningful change**. |
+| **KOMEGA** | 4.21° | 4.15° | 4.27° | **~±3%** — **noop**. |
+| **KI_ATT** | 4.21° | 4.22° | 4.18° | **~±1%** — **noop**. |
+
+**Verdict (post-correction):** **KR / KOMEGA / KI_ATT ±30%** still **does not move the needle** on
+roll std under the **same `kt=0.05`** profile as hardware — **“don’t stage attitude gain tweaks from
+this sweep”** **holds**, now on the **correct excitation**, not assumed from the retracted table.
+
+### 20.4 Ranked verdict and staging recommendation
+
+| Rank | Knob / track | Verdict | Hardware staging? |
+|-----:|--------------|---------|-------------------|
+| 1 | **Structural (enum, rate, filters)** | **No remaining smoking gun** post-§17 fix. | **N/A** — do not change law. |
+| 2 | **Figure8 comparison baseline** | **c=9 figure8 not in log record at any `kt`** — don’t blame “Rust vs C” on figure8 alone. | Repeat **c=9** or **c=10** figure8 @ **`kt=0.05`** with **trajectory-phase controller meta** before tuning. |
+| 3 | **Kpos_D.z** | **No DC height effect** in either proxy. | **Do not stage** for bias. |
+| 4 | **KR / KOMEGA / KI_ATT** | **No effect** in **±30%** on SIL figure8 roll std @ **`kt=0.05`** (confirmed after §20.3 correction). | **Do not stage** from this sweep. |
+| 5 | **Kpos_P.z** | **Modest** bias reduction if **increase P (~+20–30%)** in **`indi=3`** proxy — trades against overshoot risk; **not validated** on hardware. | **Optional experiment only:** e.g. **7.0 → 8.4 (+20%)**, single short hover — **operator call**, **low confidence**. |
+| 6 | **Kpos_I.z** | **Helps** in both proxies; **0.2–1.0** still leaves **+32…+120 mm** in **`indi=3`** testbed. **Not** the retracted **§19 `f_a` / 1.0** claim. | **Optional experiment only:** e.g. **`KPOS_I.z = 0.4`**, Z-only, **short hover** — **low confidence**; **never** the old **1.0** staging. |
+
+**Overall recommendation:** **Do not** treat this as a gain-retune session. **Omar’s constants stay
+the anchor.** If anything is tried on hardware, it should be **one** small deviation (**`Kpos_P.z +
+20%`** *or* **`Kpos_I.z = 0.4`**, not both), with **repeat-hover confirmation** of the **+162 mm**
+bias first. **Higher priority follow-ups:** (a) **matched figure8 log for c=9** @ **`kt=0.05`**,
+(b) **SIL/HL parity** — **roll std** still **4.2° vs 7.5°** on **correct trajectory** (peak much
+closer), (c) **thrust/RPM/mass identification** for DC bias under **real `indi=3`** (not SIL IMU
+bias alone).
+
+**Confidence summary:** **High** — D / attitude gains / **`MIN_B1` guard** explanations as above.
+**Medium** — **Kpos_P** / **Kpos_I** direction for height in **proxy** testbeds. **Low** — any
+specific numeric staging on **cf5** before parity work.
+
+### 20.5 Extended one-knob sweeps (final widened desk pass, 2026-09-30)
+
+**Scope:** One **deliberately wider** grid pass — **not** open-ended retuning. Script:
+**`experiments/analysis/oot5_extended_gain_sweep.py`** (imports **`oot5_bounded_gain_sweep`**;
+figure8 still **`figure8_mode1_kt0.05.csv`**, asserted at runtime).
+
+**Limitations (carry through every row below):**
+
+1. **Attitude SIL** still **under-predicts hardware roll variability** (**4.2° vs 7.5°** std at
+   Omar gains on **`kt=0.05`**) — a **fidelity gap**. A gain that “looks better” here does **not**
+   close that gap or prove hardware improvement.
+2. **Height** uses the **IMU-bias proxy** (**`acc_z ≈ −0.116 g` → +162 mm** at Omar **P/D/I**).
+   That mechanism is **not validated** against the **real +16 cm** hover bias on **cf5**. Numbers
+   below are **sim-only**, same class of caveat as §19–§20.3.
+
+#### Height — extended **Kpos_I.z** and **Kpos_P.z** (`indi=3`, IMU-bias proxy)
+
+Metric: mean **z** error and **z std** [mm], **t ≥ 12 s** after climb (std = spread of **z** during
+hold — proxy for integrator ringing).
+
+**Kpos_I.z** (Omar **P=7**, **D=4**):
+
+| **Kpos_I.z** | **Mean err (mm)** | **z std (mm)** |
+|-------------:|------------------:|---------------:|
+| 0.0 (Omar) | +162.0 | 0.03 |
+| 0.5 | +74.5 | **9.60** |
+| 1.0 | +31.5 | **8.46** |
+| 1.5 | +12.1 | 5.07 |
+| 2.0 | +4.1 | 2.39 |
+| 2.5 | +1.2 | 0.89 |
+| 3.0 | +0.3 | 0.26 |
+| 4.0 | +0.02 | 0.02 |
+| 5.0 | ~0 | 0.03 |
+
+**Tradeoff read:** Mean bias **monotonically decreases** through the grid; **null-like mean** appears
+around **3.0–4.0**, but **z std rises sharply** for **0.5–1.0** (**~8–10 mm**, comparable to
+hardware’s **7 mm** hover **z** std from §18 — here it is **integrator transient/ringing in sim**, not
+confirmed on vehicle). By **≥2.0**, mean is **≤4 mm** with **std ≤2.4 mm**. **Kpos_I.z = 4.0** is
+**4× Omar’s zero baseline** and **far outside** “small perturbation” — a **sim null**, **not** a
+validated hardware staging value (and **not** the retracted §19 **`f_a`** sweep).
+
+**Kpos_P.z** (**Kpos_I=0**):
+
+| **Kpos_P.z** | **Mean err (mm)** | **z std (mm)** |
+|-------------:|------------------:|---------------:|
+| 7.0 (Omar) | +162.0 | 0.03 |
+| 10.0 | +113.4 | 0.02 |
+| 14.0 (~2×) | +81.0 | 0.02 |
+| 16.0 | +70.9 | 0.02 |
+
+**P alone does not null** the proxy bias even at **~2.3× Omar** — error falls but **plateaus ~71 mm**
+at **P=16**. **No meaningful oscillation penalty** in this metric (std stays **~0.02 mm**). **Verdict:**
+**Kpos_P** is **not the lever to eliminate DC height error** in this testbed; at most **partial trim**
+if combined with something else — **not supported as a solo hardware fix** from this pass.
+
+#### Attitude — extended **KR / KOMEGA / KI_ATT** (×Omar, **`kt=0.05`**, roll std [°])
+
+Baseline Omar: **4.21°** std / **19.2°** peak (hardware **7.5° / 24.5°**).
+
+| **Scale ×** | **KR std** | **KOMEGA std** | **KI_ATT std** |
+|------------:|-----------:|---------------:|---------------:|
+| 0.25 | **68.35** (unstable) | **32.25** | 4.22 |
+| 0.50 | **15.04** | **39.22** | 4.22 |
+| 0.75 | 4.26 | 4.16 | 4.22 |
+| **1.00** | **4.21** | **4.21** | **4.21** |
+| 1.25 | 4.18 | 4.26 | 4.19 |
+| 1.50 | 4.17 | 4.21 | 4.16 |
+| 1.75 | 4.16 | 4.08 | 4.13 |
+
+**Read:** **Weakening KR or KOMEGA below ~0.75× Omar** causes **large simulated instability** (very
+high roll std/peaks) — **not** a usable tuning direction. From **0.75× through 1.75×**, all three
+knobs stay within **~±2%** of baseline roll std (**KI_ATT** especially flat). **No knob reproduces
+hardware 7.5° std** at any tested scale. **Verdict:** **Confirmed dead end** for fixing **figure8
+roll excursion** via **KR/KOMEGA/KI_ATT** perturbation up to **±75%** — **root cause is elsewhere**
+(SIL fidelity, HL/plant, coupling), **not** “we didn’t sweep far enough” above **0.75×**.
+
+#### §20.5 final verdict (desk closure)
+
+| Problem | Extended sweep answer | Hardware candidate? |
+|---------|----------------------|---------------------|
+| **+16 cm hover bias** | **Kpos_I** can null **mean** in **IMU-bias sim** at **3–4× Omar’s I=0** with **ringing mid-grid**; **Kpos_P** only **partially** trims. | **No validated staging.** Proxy **≠** real bias mechanism. **Omar anchor unchanged.** |
+| **Figure8 roll (7.5° std)** | **±75%** on attitude gains: **flat** near Omar except **dangerous under-damping** below **0.75×**. SIL still **4.2° vs 7.5°**. | **Do not stage** attitude gains from this work. **Gains are not the answer** for this symptom in sim or (by extension) as a blind hardware tweak. |
+
+**Operator note:** §20.4’s **optional** **`Kpos_I.z = 0.4`** / **`Kpos_P +20%`** suggestions are
+**superseded for closure** by this pass: extended grid shows **why** (**I** needs much larger values
+in sim to null; **P** cannot null alone). **No new numeric recommendation** replaces Omar defaults
+for the next flight without **real-mechanism identification** and/or **repeat hover** baselines.
+
+### Training-set note — A8 / C5 (Track 4 summary)
+
+See §19 addendum in lab checklist **F** — **A8 neighbour gate ~7%** of samples (14 merged flights,
+mean gated fraction **0.071** vs **A1 ≈ 100%**); **C5 solo (`N_ROBOTS=1`)** correctly excluded from
+C.1 bank. **Confirmed correct exclusion**, not an oversight.
