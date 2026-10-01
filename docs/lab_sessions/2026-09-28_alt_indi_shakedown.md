@@ -66,7 +66,7 @@ After CS2 is up, optional readback (replace name if your ROS graph differs):
 
 ```bash
 # Expect stabilizer.controller == 5 on cf_second only
-ros2 param get /cf_second/params stabilizer.controller
+ros2 param get /crazyflie_server cf_second.params.stabilizer.controller
 ```
 
 **If cf_second is not 5 → do not launch.**
@@ -959,8 +959,8 @@ cp ~/Desktop/flying_robot_course/flying_drone_stack/tools/usd_thesis_config.txt 
 source ~/Desktop/crazyswarm2/install/setup.bash
 ros2 launch crazyflie launch.py backend:=cflib
 # readback:
-ros2 param get /cf5/params stabilizer.controller   # 10
-ros2 param get /cf5/params ctrlOot5.indi         # 3
+ros2 param get /crazyflie_server cf5.params.stabilizer.controller   # 10
+ros2 param get /crazyflie_server cf5.params.ctrlOot5.indi         # 3
 
 # 7. Solo hover (operator)
 ros2 run crazyflie_examples simple_flight -- \
@@ -1038,9 +1038,9 @@ ros2 run crazyflie_examples upload_residual_weights -- \
   --cf cf5 --cf cf_second
 
 # 2. Readback before arming (expect ready=1, en=0)
-ros2 param get /cf5/params rnn.ready
-ros2 param get /cf5/params rnn.en
-ros2 param get /cf_second/params rnn.ready
+ros2 param get /crazyflie_server cf5.params.rnn.ready
+ros2 param get /crazyflie_server cf5.params.rnn.en
+ros2 param get /crazyflie_server cf_second.params.rnn.ready
 
 # 3. Fly formation (example A1)
 ros2 run crazyflie_examples run_formation -- \
@@ -1280,12 +1280,12 @@ source ~/Desktop/crazyswarm2/install/setup.bash
 ros2 launch crazyflie launch.py backend:=cflib
 
 # Weights already uploaded (Checklist E follow-up Step 5)
-ros2 param get /cf5/params rnn.ready    # expect 1
-ros2 param get /cf5/params rnn.en       # expect 0 before enable
+ros2 param get /crazyflie_server cf5.params.rnn.ready    # expect 1
+ros2 param get /crazyflie_server cf5.params.rnn.en       # expect 0 before enable
 
 # Enable ON cf5 (bottom / residual ego) only — confirm param name in firmware if unsure
-ros2 param set /cf5/params rnn.en 1
-ros2 param get /cf5/params rnn.en       # expect 1
+ros2 param set /crazyflie_server cf5.params.rnn.en 1
+ros2 param get /crazyflie_server cf5.params.rnn.en       # expect 1
 ```
 
 **Flight (example — A1, modest dz, 10 s hold)**
@@ -1303,7 +1303,7 @@ subjectively to last **`rnn.en=0`** A1 on same **`dz`**.
 **Abort / revert (any doubt)**
 
 ```bash
-ros2 param set /cf5/params rnn.en 0
+ros2 param set /crazyflie_server cf5.params.rnn.en 0
 # optional: re-upload prior known-good weights from c2_e2e_2026-09-28 if session corrupted
 ```
 
