@@ -67,7 +67,36 @@ bottom.
 | | |
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
-| **Next action — lab** | **⬅️ NEXT SESSION (updated 2026-10-01, supersedes everything below for now).**
+| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-01 mid-session, supersedes everything below for now).**
+**2-drone C.1 data collection is effectively COMPLETE.** A5 flown today (3 clean flights, real
+mocap-boundary fix: circle radius 0.75m→0.40m default changed in `scenarios.py`, same lab-volume
+reduction already applied to A2 — confirmed working, no further A5 flights needed). **A6 and C4
+are DROPPED from the active 2-drone target** — both showed genuine, repeated real crashes at
+their extreme-gated parameters (A6: 4 crashes in 5 attempts, roll excursions 105-163°,
+consistent onset at the shuttle's close-pass/reversal moment, `a_res_z` real disturbance peaks
+at -6.2 m/s² even on the one clean flight; C4: crashed too). Confirmed these are genuine
+control-margin failures at 8-10cm separation, not software bugs (A5 flew clean in between,
+ruling out a global stuck-state explanation). Revisiting A6/C4 at gentler parameters is a
+deliberate future decision, not queued. **Active 2-drone scope is now: A1, A2, A3, A4, A5, A7,
+A8, C5 — every one has multiple real C.1 flights banked.**
+
+**C.2 retrain executed for real today, gate PASSED.** 26-flight bank (22 base + 4 new: 3×A5 +
+1×A6), combined R²=0.944 (up from 0.936), 81.7% reduction vs predict-zero. Per-scenario LOO on
+all 4 new folds: OK (R² 0.828-0.931, well above the 0.35/50% floor) — A6's single fold flagged
+as thin (n=1) but passing on its own metrics. **Checklist G (`rnn.en=1` real validation on A1 or
+A3) is now a live, gate-passed option** — not automatic, operator's call when ready. New weights:
+`experiments/analysis/out/c2_e2e_2026-10-01/full_bank_c1_complete.npz`.
+
+**`rnn.en=0` NeuralSwarm2 sanity flight (Checklist D) in progress as of this doc update** — real
+bug hit and worked around: `upload_residual_weights.py` crashes on `int(ready) == 1` when
+`cf.getParam("rnn.ready")` returns NaN (a client-side read-timing/type issue, not a real
+firmware problem — `rnn.ready` is a plain `uint8_t` in firmware, can't natively produce NaN).
+Workaround: ignore the broken param readback, verify via the `rnn.pred_z` **log** variable
+(already in uSD config) instead. Script fix not yet applied — still crashes on this path, needs
+a proper fix (retry/backoff before reading `ready`, and handle NaN gracefully) before relying on
+it unattended again.
+
+<br><br>*Prior entry (2026-09-30 close-out), superseded above but kept for continuity:*
 **Fly today, in order:** (1) **A5, A6, C4** — the only three 2-drone formation-library scenarios
 still lacking usable C.1 residual-training data (checked and confirmed 2026-09-30: A1/A2/A3/A4/
 A7/A8/C5 already have 54 real flights between them; A5/A6/C4 were flown historically but

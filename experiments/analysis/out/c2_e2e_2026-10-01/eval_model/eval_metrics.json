@@ -1,0 +1,972 @@
+{
+  "weights": "/home/georg/Desktop/flying_robot_course/experiments/analysis/out/c2_e2e_2026-10-01/full_bank_c1_complete.npz",
+  "train_meta": {
+    "created": "2026-10-01 18:11:18",
+    "git": "da1d865a",
+    "sources": [
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv",
+      "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv"
+    ],
+    "synthetic": false,
+    "n_samples": 254981,
+    "mass_kg": 0.0364,
+    "val_rmse": 0.2524396479129791,
+    "baseline_rmse": 1.15878164768219,
+    "epochs": 40,
+    "seed": 0
+  },
+  "build_stats": {
+    "files": 26,
+    "rows_in": 509962,
+    "dropped_zero_a_res": 254981,
+    "dropped_z_floor": 0,
+    "no_neighbour_influence": 129544,
+    "per_source": [
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv",
+        2,
+        7554,
+        7554
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv",
+        2,
+        7805,
+        7805
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv",
+        2,
+        8052,
+        8052
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv",
+        2,
+        8055,
+        8055
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv",
+        2,
+        7983,
+        7983
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv",
+        2,
+        7983,
+        7983
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv",
+        2,
+        7856,
+        7856
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv",
+        2,
+        7857,
+        7857
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv",
+        2,
+        17691,
+        17691
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv",
+        2,
+        17897,
+        17897
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv",
+        2,
+        10502,
+        10502
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv",
+        2,
+        10969,
+        10969
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv",
+        2,
+        10503,
+        10503
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv",
+        2,
+        13131,
+        13131
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv",
+        2,
+        13564,
+        13564
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv",
+        2,
+        9873,
+        9873
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv",
+        2,
+        9416,
+        9416
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv",
+        2,
+        9895,
+        9895
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv",
+        2,
+        9893,
+        9893
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv",
+        2,
+        6418,
+        6418
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv",
+        2,
+        6398,
+        6398
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv",
+        2,
+        6398,
+        6398
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv",
+        2,
+        9295,
+        9295
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv",
+        2,
+        9293,
+        9293
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv",
+        2,
+        9294,
+        9294
+      ],
+      [
+        "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv",
+        2,
+        11406,
+        11406
+      ]
+    ]
+  },
+  "mass_kg": 0.0364,
+  "combined": {
+    "n": 254981,
+    "rmse_mps2": 0.23407060765494472,
+    "r2": 0.9438656872117094,
+    "baseline_zero_rmse": 1.2784855365753174,
+    "baseline_mean_rmse": 0.9879447817802429,
+    "pct_reduction_vs_zero": 81.69157171054509
+  },
+  "val_block_split": {
+    "n": 51092,
+    "rmse_mps2": 0.2524396475957209,
+    "r2": 0.9256864804594387,
+    "baseline_zero_rmse": 1.15878164768219,
+    "baseline_mean_rmse": 0.9260269999504089,
+    "pct_reduction_vs_zero": 78.21508063226113
+  },
+  "train_block_split": {
+    "n": 203889,
+    "rmse_mps2": 0.22923703668573284,
+    "r2": 0.9475341324661292,
+    "baseline_zero_rmse": 1.3067647218704224,
+    "baseline_mean_rmse": 1.0007978677749634,
+    "pct_reduction_vs_zero": 82.45766564943557
+  },
+  "per_flight": [
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15108,
+        "dropped_zero_a_res": 7554,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv",
+            2,
+            7554,
+            7554
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7554,
+        "rmse_mps2": 0.3310933218275606,
+        "r2": 0.8380925763961685,
+        "baseline_zero_rmse": 1.7889881134033203,
+        "baseline_mean_rmse": 0.8228431344032288,
+        "pct_reduction_vs_zero": 81.49270420820751
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15610,
+        "dropped_zero_a_res": 7805,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv",
+            2,
+            7805,
+            7805
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7805,
+        "rmse_mps2": 0.28259454487524766,
+        "r2": 0.9118778701840625,
+        "baseline_zero_rmse": 1.786966323852539,
+        "baseline_mean_rmse": 0.9519656300544739,
+        "pct_reduction_vs_zero": 84.18579348121126
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 16104,
+        "dropped_zero_a_res": 8052,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv",
+            2,
+            8052,
+            8052
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 8052,
+        "rmse_mps2": 0.27685256882823045,
+        "r2": 0.8829930268145371,
+        "baseline_zero_rmse": 1.8258041143417358,
+        "baseline_mean_rmse": 0.8093617558479309,
+        "pct_reduction_vs_zero": 84.83667734925413
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 16110,
+        "dropped_zero_a_res": 8055,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv",
+            2,
+            8055,
+            8055
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 8055,
+        "rmse_mps2": 0.3231798116888561,
+        "r2": 0.8344603409346497,
+        "baseline_zero_rmse": 2.082854986190796,
+        "baseline_mean_rmse": 0.7943158149719238,
+        "pct_reduction_vs_zero": 84.48380641804067
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15966,
+        "dropped_zero_a_res": 7983,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv",
+            2,
+            7983,
+            7983
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7983,
+        "rmse_mps2": 0.3419638716772746,
+        "r2": 0.8277271569363653,
+        "baseline_zero_rmse": 2.022348165512085,
+        "baseline_mean_rmse": 0.8238949179649353,
+        "pct_reduction_vs_zero": 83.0907517553643
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15966,
+        "dropped_zero_a_res": 7983,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv",
+            2,
+            7983,
+            7983
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7983,
+        "rmse_mps2": 0.23039770484797617,
+        "r2": 0.8794873239446237,
+        "baseline_zero_rmse": 1.3948434591293335,
+        "baseline_mean_rmse": 0.6636846661567688,
+        "pct_reduction_vs_zero": 83.48218193661737
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15712,
+        "dropped_zero_a_res": 7856,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv",
+            2,
+            7856,
+            7856
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7856,
+        "rmse_mps2": 0.4245541568711406,
+        "r2": 0.8111769358162606,
+        "baseline_zero_rmse": 2.0929300785064697,
+        "baseline_mean_rmse": 0.9770247340202332,
+        "pct_reduction_vs_zero": 79.71484278279829
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 15714,
+        "dropped_zero_a_res": 7857,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv",
+            2,
+            7857,
+            7857
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 7857,
+        "rmse_mps2": 0.4125533606187872,
+        "r2": 0.8087750981310595,
+        "baseline_zero_rmse": 2.1224684715270996,
+        "baseline_mean_rmse": 0.9434261322021484,
+        "pct_reduction_vs_zero": 80.56256824762357
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 35382,
+        "dropped_zero_a_res": 17691,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 14959,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv",
+            2,
+            17691,
+            17691
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 17691,
+        "rmse_mps2": 0.1424159686585162,
+        "r2": 0.9623636141556775,
+        "baseline_zero_rmse": 0.7703068852424622,
+        "baseline_mean_rmse": 0.7340991497039795,
+        "pct_reduction_vs_zero": 81.51178817339932
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 35794,
+        "dropped_zero_a_res": 17897,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 15205,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv",
+            2,
+            17897,
+            17897
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 17897,
+        "rmse_mps2": 0.1357502234616818,
+        "r2": 0.9644990205838198,
+        "baseline_zero_rmse": 0.7570136785507202,
+        "baseline_mean_rmse": 0.7204774618148804,
+        "pct_reduction_vs_zero": 82.06766570961155
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 21004,
+        "dropped_zero_a_res": 10502,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 8431,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-21_merged/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv",
+            2,
+            10502,
+            10502
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 10502,
+        "rmse_mps2": 0.15567618321762566,
+        "r2": 0.9513951383589402,
+        "baseline_zero_rmse": 0.7403327226638794,
+        "baseline_mean_rmse": 0.7061262130737305,
+        "pct_reduction_vs_zero": 78.97213260309923
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 21938,
+        "dropped_zero_a_res": 10969,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 8923,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv",
+            2,
+            10969,
+            10969
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 10969,
+        "rmse_mps2": 0.13876229913999055,
+        "r2": 0.9474790671650882,
+        "baseline_zero_rmse": 0.6587721705436707,
+        "baseline_mean_rmse": 0.6054876446723938,
+        "pct_reduction_vs_zero": 78.93622327344627
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 21006,
+        "dropped_zero_a_res": 10503,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 8492,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv",
+            2,
+            10503,
+            10503
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 10503,
+        "rmse_mps2": 0.11136041026648405,
+        "r2": 0.9659190268849013,
+        "baseline_zero_rmse": 0.6587429046630859,
+        "baseline_mean_rmse": 0.6032187342643738,
+        "pct_reduction_vs_zero": 83.09501180533559
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 26262,
+        "dropped_zero_a_res": 13131,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 10756,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv",
+            2,
+            13131,
+            13131
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 13131,
+        "rmse_mps2": 0.14014036853411238,
+        "r2": 0.9647166414043965,
+        "baseline_zero_rmse": 0.8115123510360718,
+        "baseline_mean_rmse": 0.7460677623748779,
+        "pct_reduction_vs_zero": 82.73096295389803
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 27128,
+        "dropped_zero_a_res": 13564,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 11195,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv",
+            2,
+            13564,
+            13564
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 13564,
+        "rmse_mps2": 0.1298137825574108,
+        "r2": 0.9657112558275224,
+        "baseline_zero_rmse": 0.7656725645065308,
+        "baseline_mean_rmse": 0.7010436058044434,
+        "pct_reduction_vs_zero": 83.04578372334986
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 19746,
+        "dropped_zero_a_res": 9873,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 5798,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv",
+            2,
+            9873,
+            9873
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9873,
+        "rmse_mps2": 0.15368005414126057,
+        "r2": 0.9654972466840879,
+        "baseline_zero_rmse": 1.085697889328003,
+        "baseline_mean_rmse": 0.8273525834083557,
+        "pct_reduction_vs_zero": 85.8450444039841
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 18832,
+        "dropped_zero_a_res": 9416,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 5937,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv",
+            2,
+            9416,
+            9416
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9416,
+        "rmse_mps2": 0.1830469926816423,
+        "r2": 0.9494874798341525,
+        "baseline_zero_rmse": 1.0455172061920166,
+        "baseline_mean_rmse": 0.8144474625587463,
+        "pct_reduction_vs_zero": 82.49220657512313
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 19790,
+        "dropped_zero_a_res": 9895,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 5896,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv",
+            2,
+            9895,
+            9895
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9895,
+        "rmse_mps2": 0.1609234155661218,
+        "r2": 0.9200802247031822,
+        "baseline_zero_rmse": 0.7445416450500488,
+        "baseline_mean_rmse": 0.5692356824874878,
+        "pct_reduction_vs_zero": 78.38624385405541
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 19786,
+        "dropped_zero_a_res": 9893,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 5809,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-28_merged/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv",
+            2,
+            9893,
+            9893
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9893,
+        "rmse_mps2": 0.21740162092256374,
+        "r2": 0.9329391636983916,
+        "baseline_zero_rmse": 1.1089333295822144,
+        "baseline_mean_rmse": 0.8395146727561951,
+        "pct_reduction_vs_zero": 80.39542909180403
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 12836,
+        "dropped_zero_a_res": 6418,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv",
+            2,
+            6418,
+            6418
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 6418,
+        "rmse_mps2": 0.37685480859015735,
+        "r2": 0.7633094919976793,
+        "baseline_zero_rmse": 1.5833265781402588,
+        "baseline_mean_rmse": 0.7746109366416931,
+        "pct_reduction_vs_zero": 76.1985421205521
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 12796,
+        "dropped_zero_a_res": 6398,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv",
+            2,
+            6398,
+            6398
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 6398,
+        "rmse_mps2": 0.3270879331046112,
+        "r2": 0.7717282603063992,
+        "baseline_zero_rmse": 1.562839388847351,
+        "baseline_mean_rmse": 0.6846024394035339,
+        "pct_reduction_vs_zero": 79.07091826333799
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 12796,
+        "dropped_zero_a_res": 6398,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 0,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-09-23_merged/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv",
+            2,
+            6398,
+            6398
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 6398,
+        "rmse_mps2": 0.3163334382148598,
+        "r2": 0.8162346366266312,
+        "baseline_zero_rmse": 1.7073668241500854,
+        "baseline_mean_rmse": 0.7379267811775208,
+        "pct_reduction_vs_zero": 81.4724385093796
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 18590,
+        "dropped_zero_a_res": 9295,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 6351,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv",
+            2,
+            9295,
+            9295
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9295,
+        "rmse_mps2": 0.1782701880726169,
+        "r2": 0.9619434773327875,
+        "baseline_zero_rmse": 1.1366195678710938,
+        "baseline_mean_rmse": 0.9138274192810059,
+        "pct_reduction_vs_zero": 84.31575585078835
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 18586,
+        "dropped_zero_a_res": 9293,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 6415,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv",
+            2,
+            9293,
+            9293
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9293,
+        "rmse_mps2": 0.19786737991687395,
+        "r2": 0.9577236118834356,
+        "baseline_zero_rmse": 1.1717321872711182,
+        "baseline_mean_rmse": 0.9623327851295471,
+        "pct_reduction_vs_zero": 83.11325897962288
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 18588,
+        "dropped_zero_a_res": 9294,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 6381,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv",
+            2,
+            9294,
+            9294
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 9294,
+        "rmse_mps2": 0.23513829995761107,
+        "r2": 0.930565137616745,
+        "baseline_zero_rmse": 1.118156909942627,
+        "baseline_mean_rmse": 0.8923487067222595,
+        "pct_reduction_vs_zero": 78.97090311147153
+      }
+    },
+    {
+      "path": "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv",
+      "build_stats": {
+        "files": 1,
+        "rows_in": 22812,
+        "dropped_zero_a_res": 11406,
+        "dropped_z_floor": 0,
+        "no_neighbour_influence": 8996,
+        "per_source": [
+          [
+            "/home/georg/Desktop/flying_robot_course/experiments/logs/c1_2026-10-01_merged/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv",
+            2,
+            11406,
+            11406
+          ]
+        ]
+      },
+      "metrics": {
+        "n": 11406,
+        "rmse_mps2": 0.20871751445687536,
+        "r2": 0.9339075283286606,
+        "baseline_zero_rmse": 0.8949559926986694,
+        "baseline_mean_rmse": 0.8118633031845093,
+        "pct_reduction_vs_zero": 76.6784605992185
+      }
+    }
+  ],
+  "binned_error": [
+    {
+      "bin": "0.00-0.05",
+      "axis": "dy",
+      "n": 6860,
+      "rmse_mps2": 0.45429106387943197
+    },
+    {
+      "bin": "0.05-0.10",
+      "axis": "dy",
+      "n": 9542,
+      "rmse_mps2": 0.3671454865240123
+    },
+    {
+      "bin": "0.10-0.15",
+      "axis": "dy",
+      "n": 3651,
+      "rmse_mps2": 0.22899569451008847
+    },
+    {
+      "bin": "0.15-0.20",
+      "axis": "dy",
+      "n": 1480,
+      "rmse_mps2": 0.1309980372317475
+    },
+    {
+      "bin": "0.20-0.25",
+      "axis": "dy",
+      "n": 226,
+      "rmse_mps2": 0.12365700659684498
+    },
+    {
+      "bin": "-0.01-0.23",
+      "axis": "dz",
+      "n": 2465,
+      "rmse_mps2": 0.5130381988223834
+    },
+    {
+      "bin": "0.23-0.47",
+      "axis": "dz",
+      "n": 11918,
+      "rmse_mps2": 0.34163882231039516
+    },
+    {
+      "bin": "0.47-0.71",
+      "axis": "dz",
+      "n": 6337,
+      "rmse_mps2": 0.34567872503152963
+    },
+    {
+      "bin": "0.71-0.96",
+      "axis": "dz",
+      "n": 204,
+      "rmse_mps2": 0.3718442518937335
+    },
+    {
+      "bin": "0.96-1.20",
+      "axis": "dz",
+      "n": 865,
+      "rmse_mps2": 0.33522468976403
+    }
+  ]
+}
