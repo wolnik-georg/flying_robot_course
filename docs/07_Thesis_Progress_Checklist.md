@@ -96,6 +96,45 @@ Workaround: ignore the broken param readback, verify via the `rnn.pred_z` **log*
 a proper fix (retry/backoff before reading `ready`, and handle NaN gracefully) before relying on
 it unattended again.
 
+**First Checklist G attempt (2026-10-01 evening) ran but did not actually validate anything.**
+Flew A1 with `rnn.en=1`: first attempt worked (no tumble), second crashed with the same
+pre-existing liftoff-tumble signature (0-byte uSD log, not `rnn`-related — see tumble note
+below). On the working flight's merged uSD, `rnn_pred_x/y/z` and `rnn_clamped` were **exactly
+0.0 for all 5002 samples** — the weights were never actually loaded into the firmware buffer,
+despite `rnn.en`/`rnn.ready` param readbacks looking clean. This is a second, more serious
+upload-path bug beyond the known NaN-readback crash: **`rnn.en`/`rnn.ready` reading back fine is
+not proof the upload worked.** Checklist G therefore remains open/unvalidated.
+
+**Also observed today, not yet root-caused:** a Z-integral ramp-up overshoot on liftoff (up to
+15.8cm above the commanded 1.0m target) — quantified and ruled out as the cause of today's
+crashes (it was largest on the flight that worked, smallest/absent on the ones that crashed).
+The real common factor across today's A1 and A6 crashes is a genuine attitude tumble ~0.7-0.8s
+after leaving the ground, independent of scenario — cause still unknown.
+
+**Next-steps breakdown, in realistic order:**
+1. **Fix the upload-path bugs** (desk work, no hardware needed): (a) the known NaN crash on
+   `rnn.ready` readback, (b) the new, more serious silent-failure mode where the upload appears
+   to succeed but no weights actually land in the firmware buffer. Add a real post-upload check
+   (`rnn.n` should read back ≈19297) instead of trusting `en`/`ready` alone.
+2. **Investigate the liftoff tumble** (desk work): why A1/A6 sometimes tumble ~0.7-0.8s after
+   leaving the ground and sometimes don't, within the same session/scenario/drone. Candidates
+   not yet checked: mocap marker occlusion at the exact liftoff moment, session-cumulative
+   hardware state (battery/motor temp/prop wear). This blocks Checklist G only if it turns out
+   to specifically affect A1/A3 (the validation scenarios) — otherwise it's parallel work.
+3. **Re-run Checklist G** once (1) is fixed — re-upload weights, confirm `rnn.n`≈19297 before
+   flying, then fly A1 or A3 with `rnn.en=1` and confirm `rnn_pred_*` shows real nonzero values
+   in the merged uSD log before calling it validated.
+4. **C.3 — integrate** the validated residual model into the real flight controller. Not started;
+   gated on Checklist G actually passing (not just attempted).
+5. **C.4 — compare** controller-with-residual vs without on real flights. Feeds the thesis
+   results chapters directly.
+6. **Writing — Ch.6-9**: blocked on C.4 data, so effectively next once C.3/C.4 move. See
+   `project_writing_track` in memory.
+
+Parked, not queued: revisiting A6/C4 at gentler parameters (deliberate future decision);
+controller=10 gain-tuning (closed, root cause elsewhere, not a quick fix — see §19-20.5 of
+`docs/41`).
+
 <br><br>*Prior entry (2026-09-30 close-out), superseded above but kept for continuity:*
 **Fly today, in order:** (1) **A5, A6, C4** — the only three 2-drone formation-library scenarios
 still lacking usable C.1 residual-training data (checked and confirmed 2026-09-30: A1/A2/A3/A4/
