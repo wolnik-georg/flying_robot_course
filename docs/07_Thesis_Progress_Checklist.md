@@ -111,22 +111,61 @@ crashes (it was largest on the flight that worked, smallest/absent on the ones t
 The real common factor across today's A1 and A6 crashes is a genuine attitude tumble ~0.7-0.8s
 after leaving the ground, independent of scenario — cause still unknown.
 
+**2026-10-01 late-evening desk work (after lab closed):**
+
+1. **Upload-path bugs — FIXED and committed** (`crazyswarm2` `001d872`, uncommitted no longer).
+   Both the NaN-readback crash and the silent weight-load failure are closed:
+   `upload_residual_weights.py` now polls `rnn.ready` with a timeout instead of crashing on NaN,
+   and additionally verifies `rnn.n == len(weights)` before reporting success or honoring
+   `--enable`. Independently validated against the actual diff (not just Cursor's prose) —
+   `--enable` is unreachable on any verification-failure path, compiles clean. **Not yet proven
+   on real hardware** — next lab session's first upload is the real test.
+
+2. **Z-integral/damping investigation — thorough SIL study done, root cause of the 15.8cm
+   hardware overshoot still NOT found.** Two rounds of independently-verified (re-ran the actual
+   scripts, not just trusted reports) SIL sweeps:
+   - `kv_z` sweep (4-18 at `ki_z=16`): current staged `kv_z=7` is already near-optimal — values
+     below are clearly under-damped, values above slowly make overshoot *worse*, not better.
+   - `ki_z` trade-off sweep (0-20, both liftoff-overshoot cost and disturbance-rejection
+     benefit): current staged `ki_z=16` is already close to the knee of the trade-off curve.
+   - **Across every gain combination tested, SIL never reproduced more than ~22mm of overshoot**
+     — 7x smaller than the real ~15.8cm seen on hardware. Strong signal the SIL model is missing
+     something (real motor/ESC dynamics, EKF transient at liftoff, or a planning-side issue),
+     not that an untested gain value would fix it. **Do not spend more time re-sweeping `kv_z`
+     or `ki_z` around their current values — that avenue is exhausted for now.**
+   - Follow-up sent to Cursor, **result pending as of session close**: (A) decode raw/uncropped
+     uSD for today's two clean A1 flights and check whether the *commanded* setpoint itself
+     spikes during the real takeoff ramp (never checked — all prior analysis used data cropped
+     to after the ramp), separating a planning-side issue from a control-tracking one; (B) run
+     Omar's reference gains (`Kpos_P=7.0, Kpos_D=4.0, Kpos_I=0.0` — confirmed structurally
+     equivalent control law, `~/Desktop/crazyflie-firmware-omar/.../controller_lee.c`) through
+     our own SIL liftoff harness as a comparison point. **Read Cursor's results first thing next
+     session before deciding what's next on this thread.**
+
+3. **Open supervisor question, surfaced tonight, not yet asked**: per this doc's own C.3 table,
+   "Strategy 1: Pure INDI" in the thesis's compared set is `controller=6, ctrl_mode=3` (already
+   gate-passed on A8) — **not** Omar's separate C/Rust port (`controller=9`/`10`, parked for
+   unrelated gain-tuning reasons). Confirm with supervisor which one is actually meant before any
+   "fly A1 with both to compare" exercise — changes what that comparison would even test.
+
 **Next-steps breakdown, in realistic order:**
-1. **Fix the upload-path bugs** (desk work, no hardware needed): (a) the known NaN crash on
-   `rnn.ready` readback, (b) the new, more serious silent-failure mode where the upload appears
-   to succeed but no weights actually land in the firmware buffer. Add a real post-upload check
-   (`rnn.n` should read back ≈19297) instead of trusting `en`/`ready` alone.
-2. **Investigate the liftoff tumble** (desk work): why A1/A6 sometimes tumble ~0.7-0.8s after
-   leaving the ground and sometimes don't, within the same session/scenario/drone. Candidates
-   not yet checked: mocap marker occlusion at the exact liftoff moment, session-cumulative
-   hardware state (battery/motor temp/prop wear). This blocks Checklist G only if it turns out
-   to specifically affect A1/A3 (the validation scenarios) — otherwise it's parallel work.
-3. **Re-run Checklist G** once (1) is fixed — re-upload weights, confirm `rnn.n`≈19297 before
-   flying, then fly A1 or A3 with `rnn.en=1` and confirm `rnn_pred_*` shows real nonzero values
-   in the merged uSD log before calling it validated.
-4. **C.3 — integrate** the validated residual model into the real flight controller. Not started;
+1. Read Cursor's Part A/B results (commanded-setpoint check + Omar-gains SIL comparison) —
+   determines whether the overshoot is planning-side, gain-side, or neither.
+2. **Re-run Checklist G** with the now-fixed upload script — re-upload weights, confirm
+   `rnn.n`≈19297 in the script's own output (not just `en`/`ready`), then fly A1 or A3 with
+   `rnn.en=1` and confirm `rnn_pred_*` shows real nonzero values in the merged uSD log before
+   calling it validated.
+3. **Investigate the liftoff tumble** (separate from the overshoot question — evidence so far
+   shows the two are not simply related): why A1/A6 sometimes tumble ~0.65-0.75s after leaving
+   the ground and sometimes don't. Candidates not yet checked: mocap marker occlusion at the
+   exact liftoff moment, session-cumulative hardware state. Real bottleneck: no telemetry
+   survives a crash (0-byte uSD) — getting crash-surviving motor/torque logging in the first
+   ~1.5s after liftoff is the concrete instrumentation gap, higher priority than another A1
+   attempt that would just produce more of the same incomplete data.
+4. Confirm the Strategy 1 identity question with supervisor.
+5. **C.3 — integrate** the validated residual model into the real flight controller. Not started;
    gated on Checklist G actually passing (not just attempted).
-5. **C.4 — compare** controller-with-residual vs without on real flights. Feeds the thesis
+6. **C.4 — compare** controller-with-residual vs without on real flights. Feeds the thesis
    results chapters directly.
 6. **Writing — Ch.6-9**: blocked on C.4 data, so effectively next once C.3/C.4 move. See
    `project_writing_track` in memory.
@@ -1061,6 +1100,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-10-01 (74) | **2-drone C.1 collection complete (A5 fixed, A6/C4 dropped); NS2 retrain gate PASSED; Checklist G attempted but not validated (upload silently failed to load weights, second bug beyond the known NaN crash — both now fixed and committed); liftoff tumble found and characterized but not root-caused; Z-integral/damping gains (`kv_z=7`, `ki_z=16`) confirmed near-optimal via two independent SIL sweeps, neither reproducing the real ~15.8cm hardware overshoot.** Full account: `docs/lab_sessions/2026-10-01.md`. |
 | 2026-09-29 (73) | **Session close-out: controller=7 failed (no logs, cause unknown, paused); controller=10 built + flown + failed (cause still open); Z-only integral built + tested + decided against.** **controller=7:** two solo-hover attempts failed identically ("one motor spins fast, flips on ground"), zero logs captured either time — root cause unknown, paused by operator decision in favor of controller=10. **controller=10** (`ControllerTypeOot5`, `omar_indi_rust.rs`): built, 7/7 numerical vs `controller_omar_indi.c`, a real pre-flight gap fixed before ever reflashing (no yaml-settable `indi` param — would have repeated c=9's own indi=0 bug). **First hardware attempt (direct to A1, skipping solo — operator decision):** `cf_second` flew fine, `cf5` motors spun but never left ground. uSD analysis found a real single-motor-dominant PWM pattern (not underpowered — one motor alone had enough thrust); `tau`/`a_res` telemetry confirmed dead (never wired for this controller family at all, fixed). Two real bugs found and fixed along the way (a lazy-init aliasing UB; an unguarded division in `omega_des`/`omega_des_dot` shared with the C reference, now guarded as a documented deviation) — neither confirmed as the actual cause; full code audit found no other discrepancy from the C reference. **Root cause remains open** — next step is a real flight (solo, not A1) with the now-added telemetry. **Z-only integral** (`docs/51`): built separate from the already-rejected joint integral, SIL A/B looked like a 100x win over the old term — a follow-up gain sweep corrected this: the peak disturbance dip is gain-invariant, only recovery speed changes, and even the fastest tested gain needs longer to recover than a real hold lasts. **Do not enable.** Two commit-hygiene bugs found and fixed in this session's Cursor-produced work (a stray co-author trailer; a malformed patch-file line that would have broken re-application against a fresh checkout). Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` close-out, `docs/41` §13, `docs/51` Task 4. |
 | 2026-09-29 (71) | **controller=9 actual root cause found + fixed + FLOWN (lab, evening).** History (70)'s syslink-pacing theory was **wrong** — real cause was `controllerOmarIndiInit()` reading an unregistered param (`deck.bcRpm`, never in our `rpm.c`), tripping `ASSERT(PARAM_VARID_IS_VALID)` at `param_logic.c:524` on every connect. **Fixed:** backported the missing `PARAM_GROUP(deck){bcRpm}` from the reference firmware (`LOCAL_MODIFICATIONS.md`); reflashed `cf5` — connects clean. **Second bug found same evening:** his controller defaults `indi=0` (INDI terms all gated off); SIL has always run `indi=3`, so sim and hardware had never tested the same thing. Fixed via yaml (`ctrlOmarIndi.indi: 3`). **First real result, same-session A1 dz=0.30:** our geometric 0.17m separation error, Omar `indi=0` 0.59m, **Omar `indi=3` 0.04m — ~4-5× better than our geometric**, unconfounded (same day/conditions). n=2/condition, one scenario — first data point, not a finished comparison. Full account `docs/41` §9, `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md`. **Loose end:** the connect-pacing (`f7856e2`) and takeoff-gain-skip (`f25470a`) fixes from the wrong-theory chase are still live, adding ~6.5s/connect for a problem that wasn't real — candidates to revert. **controller=7/8 not yet checked for the same missing-param class of bug.** |
 | 2026-09-29 (72) | **controller=10 (`docs/41` §12):** **`omar_indi_rust.rs`** + **Oot5** slot; **7/7** numerical vs **`controller_omar_indi.c`** (worst **7.15e-07**); SIL **`oot5`** smoke clean (same **0.0427 kg** plant as **`oot4`**); **never flown**. RPM via **`rpm_get_all`**, not **`deck.bcRpm`**. |
