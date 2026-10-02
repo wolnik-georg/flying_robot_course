@@ -67,7 +67,60 @@ bottom.
 | | |
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
-| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-01 mid-session, supersedes everything below for now).**
+| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-02 session close, supersedes everything below for now).**
+
+**2026-10-02 close-out — 3-way INDI comparison recorded, liftoff-tumble root cause found for
+`ctrl_mode=3`.**
+
+- **INDI comparison data collection is DONE for the variants that are actually usable.** Flew
+  Omar's C port (`controller=9`), Omar's Rust port (`controller=10`), and our own full INDI
+  (`controller=6, ctrl_mode=3`) on A8 and A1, all against `cf_second` now running our own
+  geometric (switched off the old stock-Lee pin specifically because stock Lee's z-tracking
+  wasn't tight enough to trust the commanded `dz` as the real inter-drone separation — `cf_second`
+  tracked 1.4-2.2cm RMS throughout, confirming that was the right call). Stock Bitcraze INDI
+  (`controller=3`) and Briesewitz/Cobo's NA-INDI (`controller=7/8`) were both deliberately
+  skipped — the former has no RPM source so produces no `a_res`, not meaningfully comparable for
+  this thesis; the latter is explicitly out of the compared set by supervisor decision (Sep 2026)
+  and separately unresolved (two failed solo attempts, never root-caused). The three recorded
+  variants are the complete usable set.
+- **Result so far**: our own geometric/INDI tracks tightest across both scenarios. Omar's two
+  ports both show a real, scenario-dependent z-tracking degradation on A8 (15-25cm offset) that
+  isn't present on A1 — consistent across both his C and Rust implementations, suggesting the
+  issue is scenario dynamics, not implementation-specific.
+- **Liftoff-tumble root cause found and fixed for `ctrl_mode=3`**: our own full INDI crashed on A8
+  tonight with the same 0.65s-post-liftoff tumble signature seen in every A1/A6 tumble since
+  2026-10-01. Direct hardware A/B (same session/scenario/drone): `ki_z=16` → 169.7° tumble,
+  `ki_z=0` → clean, 5/5 subsequent attempts. **`ki_z` must stay disabled for full INDI** — the
+  interaction with INDI's attitude/thrust path isn't understood at the code level yet, only
+  empirically confirmed. **Not yet confirmed whether this is also the explanation for the
+  original `ctrl_mode=0` A1/A6 tumbles** — same timing signature, strongly suspected, never
+  directly re-tested with `ki_z=0` on plain geometric.
+- **Separate, smaller finding**: with the tumble fixed, full INDI shows a real sustained attitude
+  oscillation on A1 (roll/pitch std ~7-9°) that A8 under the same config doesn't show (std ~2°) —
+  opposite of the naive expectation. Open question, not investigated further tonight.
+- **NS2/residual-prediction investigation is NOT closed** — still needs more time. Tonight ruled
+  out the upload-failure bug (fixed, confirmed working) and found a major structural gap
+  (`backend=cflib`, used in every flight command this project has ever run, never broadcasts
+  neighbour positions to other drones) but the root cause of exactly-zero predictions on a
+  verified-loaded network is still open, investigation ongoing via Cursor.
+- **Z-only integral's original purpose — confirmed working, multiple times, on hardware tonight**:
+  the Z-integral (`ki_z=16`) was flown repeatedly under plain geometric on both `cf5` and
+  `cf_second` this session (A8/A1, multiple reps) with tight z-tracking throughout — the original
+  2026-09-29/30 validation (closing the ~10cm persistent hover-height bias) holds up under
+  renewed real-flight testing, just with the new `ctrl_mode=3` caveat above.
+
+**Next steps, in order:**
+1. Re-test A1 under `ctrl_mode=0` with `ki_z=0` to confirm (or rule out) the same root cause for
+   the original A1/A6 tumbles — the single highest-value next lab action for closing this
+   investigation properly.
+2. Continue the NS2 zero-prediction investigation at the desk (Cursor) — needs real time, not a
+   quick fix; not blocking the INDI comparison or C.3/C.4 prep.
+3. Decide, using tonight's comparison data, which "Pure INDI" the thesis's Strategy 1 should
+   actually be — supervisor clarification still pending (`ctrl_mode=3` vs Omar's ports).
+4. Investigate the new A1-specific full-INDI oscillation if `ctrl_mode=3` is the chosen direction.
+5. Once Strategy 1's identity is settled and Checklist G (NS2) is unblocked, proceed to C.3/C.4.
+
+<br><br>*Prior entry (2026-10-01 mid-session), superseded above but kept for continuity:*
 **2-drone C.1 data collection is effectively COMPLETE.** A5 flown today (3 clean flights, real
 mocap-boundary fix: circle radius 0.75m→0.40m default changed in `scenarios.py`, same lab-volume
 reduction already applied to A2 — confirmed working, no further A5 flights needed). **A6 and C4
@@ -1100,6 +1153,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-10-02 (75) | **3-way INDI comparison recorded (Omar C=9, Omar Rust=10, ours ctrl_mode=3, all vs cf_second now on our geometric); liftoff-tumble root cause found for ctrl_mode=3: ki_z=16 x full-INDI, confirmed via direct hardware A/B (169.7° tumble → clean, 5/5).** Our own controller tracks tightest both scenarios; Omar's two ports both show 15-25cm z offset on A8 specifically, not A1 — consistent across both his implementations. `ki_z` must stay 0 for full INDI pending code-level understanding; whether this also explains the original ctrl_mode=0 A1/A6 tumbles is strongly suspected (same 0.65s timing) but not yet directly tested. New smaller finding: full INDI shows sustained A1 attitude oscillation (std ~7-9°) absent on A8 (std ~2°) under the same config, open. Z-integral's original fix re-confirmed working on hardware, multiple reps, plain geometric, both drones. NS2 zero-prediction investigation still open, needs more time; found `backend=cflib` never broadcasts peer positions to other drones (used in every flight command this project has ever run). Stock Bitcraze INDI and Briesewitz/Cobo's NA-INDI deliberately skipped for the comparison (no RPM/no a_res; supervisor-excluded Sep 2026, respectively). Full account: `docs/lab_sessions/2026-10-02.md`. |
 | 2026-10-01 (74) | **2-drone C.1 collection complete (A5 fixed, A6/C4 dropped); NS2 retrain gate PASSED; Checklist G attempted but not validated (upload silently failed to load weights, second bug beyond the known NaN crash — both now fixed and committed); liftoff tumble found and characterized but not root-caused; Z-integral/damping gains (`kv_z=7`, `ki_z=16`) confirmed near-optimal via two independent SIL sweeps, neither reproducing the real ~15.8cm hardware overshoot.** Full account: `docs/lab_sessions/2026-10-01.md`. |
 | 2026-09-29 (73) | **Session close-out: controller=7 failed (no logs, cause unknown, paused); controller=10 built + flown + failed (cause still open); Z-only integral built + tested + decided against.** **controller=7:** two solo-hover attempts failed identically ("one motor spins fast, flips on ground"), zero logs captured either time — root cause unknown, paused by operator decision in favor of controller=10. **controller=10** (`ControllerTypeOot5`, `omar_indi_rust.rs`): built, 7/7 numerical vs `controller_omar_indi.c`, a real pre-flight gap fixed before ever reflashing (no yaml-settable `indi` param — would have repeated c=9's own indi=0 bug). **First hardware attempt (direct to A1, skipping solo — operator decision):** `cf_second` flew fine, `cf5` motors spun but never left ground. uSD analysis found a real single-motor-dominant PWM pattern (not underpowered — one motor alone had enough thrust); `tau`/`a_res` telemetry confirmed dead (never wired for this controller family at all, fixed). Two real bugs found and fixed along the way (a lazy-init aliasing UB; an unguarded division in `omega_des`/`omega_des_dot` shared with the C reference, now guarded as a documented deviation) — neither confirmed as the actual cause; full code audit found no other discrepancy from the C reference. **Root cause remains open** — next step is a real flight (solo, not A1) with the now-added telemetry. **Z-only integral** (`docs/51`): built separate from the already-rejected joint integral, SIL A/B looked like a 100x win over the old term — a follow-up gain sweep corrected this: the peak disturbance dip is gain-invariant, only recovery speed changes, and even the fastest tested gain needs longer to recover than a real hold lasts. **Do not enable.** Two commit-hygiene bugs found and fixed in this session's Cursor-produced work (a stray co-author trailer; a malformed patch-file line that would have broken re-application against a fresh checkout). Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` close-out, `docs/41` §13, `docs/51` Task 4. |
 | 2026-09-29 (71) | **controller=9 actual root cause found + fixed + FLOWN (lab, evening).** History (70)'s syslink-pacing theory was **wrong** — real cause was `controllerOmarIndiInit()` reading an unregistered param (`deck.bcRpm`, never in our `rpm.c`), tripping `ASSERT(PARAM_VARID_IS_VALID)` at `param_logic.c:524` on every connect. **Fixed:** backported the missing `PARAM_GROUP(deck){bcRpm}` from the reference firmware (`LOCAL_MODIFICATIONS.md`); reflashed `cf5` — connects clean. **Second bug found same evening:** his controller defaults `indi=0` (INDI terms all gated off); SIL has always run `indi=3`, so sim and hardware had never tested the same thing. Fixed via yaml (`ctrlOmarIndi.indi: 3`). **First real result, same-session A1 dz=0.30:** our geometric 0.17m separation error, Omar `indi=0` 0.59m, **Omar `indi=3` 0.04m — ~4-5× better than our geometric**, unconfounded (same day/conditions). n=2/condition, one scenario — first data point, not a finished comparison. Full account `docs/41` §9, `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md`. **Loose end:** the connect-pacing (`f7856e2`) and takeoff-gain-skip (`f25470a`) fixes from the wrong-theory chase are still live, adding ~6.5s/connect for a problem that wasn't real — candidates to revert. **controller=7/8 not yet checked for the same missing-param class of bug.** |
