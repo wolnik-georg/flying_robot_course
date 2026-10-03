@@ -61,6 +61,7 @@ class IndiRow:
     t_steady_lo: float
     t_steady_hi: float
     duration_s: float
+    ends_in_air: bool = False  # radio log stops while the drone is still airborne (truncated log)
 
 
 def flight_stamp(path: Path) -> str:
@@ -116,13 +117,14 @@ def analyze_cf5(path: Path) -> IndiRow | None:
         err = (z[mask] - z_cmd) * 100.0
         err_cm = float(np.mean(err))
         max_abs = float(np.max(np.abs(err)))
+    ends_air = bool(z[-1] > 0.15)
     return IndiRow(
-        path, scen, var, flag, err_cm, max_abs, max_tilt, t_lift, z_cmd, t_lo, t_hi, dur,
+        path, scen, var, flag, err_cm, max_abs, max_tilt, t_lift, z_cmd, t_lo, t_hi, dur, ends_air,
     )
 
 
 def pick_representative(rows: list[IndiRow]) -> IndiRow | None:
-    clean = [r for r in rows if r.flag == "clean" and np.isfinite(r.mean_err_cm)]
+    clean = [r for r in rows if r.flag == "clean" and np.isfinite(r.mean_err_cm) and not r.ends_in_air]
     if not clean:
         return None
     med = float(np.median([r.mean_err_cm for r in clean]))
@@ -190,7 +192,7 @@ def main() -> None:
         "",
         "## Steady window",
         f"- Liftoff: pos_z > 0.05 m; steady = liftoff + {STEADY_AFTER_LIFTOFF_S} s … hold end (A1: param_hold; A8: duration_s − 2.5 s); tilt ≤ {TILT_EXCLUDE_DEG}°.",
-        "- Representative plot: **clean** flight closest to variant median mean error; legend time = HH-MM-SS stamp.",
+        "- Representative plot: **clean, complete** flight (log ends on the ground) closest to variant median mean error; legend time = HH-MM-SS stamp.",
         "- **pre-fix:** 18-57-49, 18-59-17 (ki_z=16 tumbles). **aborted:** 19-08-13 (~18 s). **crashed (flip/abort):** 18-22-05 or tilt≈180°.",
         "- **completed, tilt excursion >45°:** flight ran but peak |roll|/|pitch| > 45° (e.g. 18-23-23, 18-48-33).",
         "",
@@ -198,12 +200,12 @@ def main() -> None:
         "- Full trace shows **pos_z near 0 m** after the hold window; this is **post-scenario landing / ground contact** on the radio log (A1 hold ends ~15 s after liftoff; landing follows).",
         "- **Mean/max in the table use only the steady window** (tilt ≤ 25°, before landing); the dips are **not** included in those statistics.",
         "",
-        "| scenario | variant | flight | flag | mean z error (cm) | max |z error| (cm) | max tilt (°) |",
-        "|---|---|---|---|---:|---:|---:|",
+        "| scenario | variant | flight | flag | log | mean z error (cm) | max |z error| (cm) | max tilt (°) |",
+        "|---|---|---|---|---|---:|---:|---:|",
     ]
     for r in sorted(rows, key=lambda x: (x.scenario, x.variant, x.path.name)):
         md.append(
-            f"| {r.scenario} | {r.variant} | `{r.path.name}` | {r.flag} | "
+            f"| {r.scenario} | {r.variant} | `{r.path.name}` | {r.flag} | {'ends in air (truncated)' if r.ends_in_air else 'complete'} | "
             f"{r.mean_err_cm:.2f} | {r.max_abs_err_cm:.2f} | {r.max_tilt_deg:.1f} |"
         )
     md.append("")
