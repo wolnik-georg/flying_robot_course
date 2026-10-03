@@ -510,6 +510,94 @@ def main():
           f"div0={p_div0[2]:+.6f} div1={z1.pred()[2]:+.6f}")
     fw.cvar.g_rnn_div = 1
 
+    # 18. Peer silent ≥500 ms then stationary: velocity must resync (not frozen forever).
+    fw.controllerOutOfTreeInit()
+    fw.oot_select_drone(0)
+    drop = Fw(own_pos=(0.0, 0.0, 1.0))
+    drop.upload(w)
+    t_base = next_peer_ts(100)
+    peer_end = np.array([0.10, 0.10, 1.30], np.float32)
+    for k in range(200):
+        px = 3.0 * 0.001 * (k + 1)
+        drop.peers([np.array([px, 0.05, 1.5], np.float32)], t_base + k + 1)
+        drop.step()
+    last_ts = t_base + 200
+    drop.peers([peer_end], last_ts)
+    drop.step()
+    for _ in range(900):
+        drop.peers([peer_end], last_ts)
+        drop.step()
+    gap_ts = last_ts + 900
+    drop.peers([peer_end], gap_ts)
+    drop.step()
+    after_gap = float(drop.pred()[2])
+    dp = peer_end - drop.own_pos
+    ref_fresh_z, _ = reference(
+        w, [(dp, np.zeros(3, np.float32))], 1.0, drop.own_vel, mass)
+    ref_stale_z, _ = reference(
+        w, [(dp, np.array([3.0, 0.0, 0.0], np.float32))], 1.0, drop.own_vel, mass)
+    check("900 ms dropout then stationary matches fresh-state pred",
+          abs(after_gap - float(ref_fresh_z[2])) < 2e-4,
+          f"after={after_gap:+.6f} ref_fresh={ref_fresh_z[2]:+.6f} ref_stale={ref_stale_z[2]:+.6f}")
+    check("900 ms dropout does not keep stale gated-out velocity",
+          abs(float(ref_fresh_z[2]) - float(ref_stale_z[2])) > 1e-5,
+          f"ref_fresh={ref_fresh_z[2]:+.6f} ref_stale={ref_stale_z[2]:+.6f}")
+    frozen = after_gap
+    for k in range(3000):
+        drop.peers([peer_end], gap_ts + k + 1)
+        drop.step()
+    check("pred stable 3 s after resync (not drifting on stale dv)",
+          abs(float(drop.pred()[2]) - frozen) < 2e-4,
+          f"start={frozen:+.6f} end={drop.pred()[2]:+.6f}")
+
+    # 19. Timestamps going backwards ⇒ resync on next valid packet.
+    back = Fw(own_pos=(0.0, 0.0, 1.0))
+    back.upload(w)
+    ts = next_peer_ts(100)
+    back.peers([np.array([0.10, 0.0, 1.5], np.float32)], ts)
+    back.step()
+    back.peers([np.array([0.20, 0.0, 1.5], np.float32)], ts + 10)
+    back.step()
+    back.peers([np.array([0.25, 0.0, 1.5], np.float32)], ts - 50)
+    back.step()
+    back.peers([np.array([0.30, 0.0, 1.5], np.float32)], ts + 20)
+    back.step()
+    ref_back = Fw(own_pos=(0.0, 0.0, 1.0))
+    ref_back.upload(w)
+    ref_back.peers([np.array([0.30, 0.0, 1.5], np.float32)], next_peer_ts(100))
+    ref_back.step()
+    check("backwards timestamp then advance matches fresh peer at rest",
+          abs(float(back.pred()[2]) - float(ref_back.pred()[2])) < 2e-4,
+          f"back={back.pred()[2]:+.6f} ref={ref_back.pred()[2]:+.6f}")
+
+    # 20. Stale |dvx|≥1.5 before dropout must not gate neighbour out permanently after resync.
+    gate = Fw(own_pos=(0.0, 0.0, 1.0))
+    gate.upload(w)
+    ts_g = next_peer_ts(100)
+    for k in range(100):
+        px = 3.0 * 0.001 * (k + 1)
+        gate.peers([np.array([px, 0.05, 1.5], np.float32)], ts_g + k + 1)
+        gate.step()
+    gate.peers([np.array([0.10, 0.10, 1.30], np.float32)], ts_g + 100 + 900)
+    gate.step()
+    pred_after_gap = float(gate.pred()[2])
+    ref_gate = Fw(own_pos=(0.0, 0.0, 1.0))
+    ref_gate.upload(w)
+    ref_gate.peers([np.array([0.10, 0.10, 1.30], np.float32)], next_peer_ts(100))
+    ref_gate.step()
+    expect_gate = float(ref_gate.pred()[2])
+    check("after dropout+resync neighbour path matches fresh in-gate peer",
+          abs(pred_after_gap - expect_gate) < 2e-4,
+          f"gate={pred_after_gap:+.6f} fresh={expect_gate:+.6f}")
+    alone_g = Fw(own_pos=(0.0, 0.0, 1.0))
+    alone_g.upload(w)
+    alone_g.peers([], next_peer_ts())
+    alone_g.step()
+    alone_z = float(alone_g.pred()[2])
+    check("after dropout+resync not stuck at ground-only (neighbour term active)",
+          abs(pred_after_gap - alone_z) > 1e-5,
+          f"with={pred_after_gap:+.6f} alone={alone_z:+.6f}")
+
     print()
     if fails:
         print(f"{len(fails)} FAILED: {', '.join(fails)}")

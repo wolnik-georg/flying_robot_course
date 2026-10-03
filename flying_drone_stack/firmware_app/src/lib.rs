@@ -709,6 +709,10 @@ struct State {
     /// Previous peer sample (x, y, z, timestamp_ms), for differencing a relative velocity the
     /// peer API does not provide. Per-vehicle, hence in State rather than a global: the host
     /// simulator swaps this block per drone, and shared peer history would corrupt both.
+    ///
+    /// Slots are indexed by peer API order, not radio ID — if a slot starts reporting a different
+    /// body without a controller `reset()`, stale `(peer_prev, peer_vel)` can persist until the
+    /// next timestamp gap resync or `State::reset()`.
     peer_prev: [(f32, f32, f32, u32); residual_nn::MAX_NEIGHBOURS],
     /// Last peer absolute velocity estimate per slot (reused when mocap timestamp unchanged).
     peer_vel: [Vec3; residual_nn::MAX_NEIGHBOURS],
@@ -849,14 +853,20 @@ unsafe fn rnn_predict_eval(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 
             s.peer_prev[k] = (p.x, p.y, p.z, ts_new);
             s.peer_vel[k] = Vec3::zero();
             Vec3::zero()
-        } else if ts_new != pt && dt_ms > 0 && dt_ms < 500 {
+        } else if ts_new == pt {
+            s.peer_vel[k]
+        } else if dt_ms > 0 && dt_ms < 500 {
             let inv = 1000.0 / dt_ms as f32;
             let v = Vec3::new((p.x - px) * inv, (p.y - py) * inv, (p.z - pz) * inv);
             s.peer_vel[k] = v;
             s.peer_prev[k] = (p.x, p.y, p.z, ts_new);
             v
         } else {
-            s.peer_vel[k]
+            // Timestamp advanced but gap is invalid (≥500 ms silence, wrap, or backwards):
+            // resync like first-seen — zero velocity this tick, fresh baseline for the next diff.
+            s.peer_prev[k] = (p.x, p.y, p.z, ts_new);
+            s.peer_vel[k] = Vec3::zero();
+            Vec3::zero()
         };
         rel[k] = (p.sub(own_pos), v_peer.sub(own_vel));
     }
