@@ -23,10 +23,10 @@ Copy each `.bin` to `build_artifacts/` so one build cannot overwrite the other u
 ```bash
 cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
 make DRONE=bl
-cp build/cf21bl.bin build_artifacts/cf21bl_default.bin    # Flash ≈402088 B
+cp build/cf21bl.bin build_artifacts/cf21bl_default.bin    # Flash ≈402512 B (sha256 e766f0a4…)
 
 make DRONE=bl all-rnn-flash
-cp build/cf21bl.bin build_artifacts/cf21bl_rnn_100hz.bin  # Flash ≈484016 B, rnn.div=10 default
+cp build/cf21bl.bin build_artifacts/cf21bl_rnn_100hz.bin  # Flash ≈484392 B, rnn.div=10 default (sha256 f7711848…)
 
 # cf5 (do not run until bench step chosen):
 cfloader flash build_artifacts/cf21bl_default.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
@@ -43,7 +43,16 @@ The stabilizer-stack patch (`flying_drone_stack/firmware_patches/stabilizer_stac
 **Extra bench test (no flight, motors OFF), added 2026-10-03:** both drones on the floor ~0.5 m apart, `ros2 topic echo /poses`, flip `cf5` by hand → does the `cf5` pose jump onto `cf_second`? (Tests the hypothesis that the late `cf5`↔`cf_second` position lock is the mocap tracker re-assigning a flipped, identical-marker body — a consequence of the crash, not its cause.)
 
 **Gate caveat from 10-03:** `rnn_pred_z` was non-zero, but `rnn_pred_x/y` were exactly 0 and `rnn_pred_z` ≈ constant —
-the gate on z alone is **not** sufficient evidence the neighbour path works.
+the gate on z alone is **not** sufficient evidence the neighbour path works. Architecture is **Z-only**
+by design ([`52_NS2_Reference_Comparison.md`](52_NS2_Reference_Comparison.md)); constant `rnn_pred_z` can be
+**ground φ_G** (~−4 m/s² plausible) even when neighbours are wrong — require **variation with peer motion**
+on A8 predict-only.
+
+**Desk G5 (2026-10-03, corrected):** CS2 yaml has no `g_rnn_div`; use `run_ns2_div_sim.py` (**subprocess-isolated**,
+optional **100 Hz peer packets** via `oot_set_peer` wrapper). Custom A8-like pass, `np` plant (no downwash).
+**Realistic 100 Hz peers, predict-only:** div1 vs div10 mean RMS **~0.001 m/s²**, fraction |Δ|>0.1 **~0%**.
+**1 kHz SIL peer stamping** inflates diff (noisy 1 ms differencing, clamp spikes). Appendix I's 0.93 m/s² figure
+was **State carry-over + wrong peer rate** — retracted in Validation 9 / Appendix J.
 
 ## 0. Firmware feature (read first)
 

@@ -147,9 +147,10 @@ are not its own. `peerLocalizationGetPositionByIdx()` reads them, so the network
 **no new communication**.
 
 The peer API carries **position only**. Relative velocity is differenced onboard when the peer
-timestamp **advances**; between updates the last velocity for that peer slot is **held** (so a 1 kHz
-control loop does not zero `dv` on the nine ticks between ~100 Hz peer packets). First sight of a
-peer still uses zero relative velocity. Peer history is per-vehicle state in the controller `State`
+timestamp **advances** with **0 < Δt < 500 ms**; between updates the last velocity for that peer slot is
+**held**. If the timestamp jumps by **≥500 ms** (silence) or goes **backwards**, the slot **resyncs** with
+**zero velocity** that tick (2026-10-03 fix — avoids frozen stale `dv` and permanent gate-out). First sight
+of a peer still uses zero relative velocity. Peer history is per-vehicle state in the controller `State`
 struct, not a global — the host simulator swaps that block per drone. (Same class of bug as INDI's
 ground failure when state was global; see [`09_Simulation.md`](09_Simulation.md).)
 
@@ -162,6 +163,15 @@ continuous. `rnn.div=1` restores the pre-change 1 kHz evaluation. Bench timing:
 `rnn.rst=1` clears `us_max`. **Not** added to `usd_thesis_config.txt` (variable cap — see
 `MAX_USD_LOG_VARIABLES_PER_EVENT` in local `usddeck.c`, **56** as of 2026-09-30; thesis config
 **54** logged variables at **500 Hz** uSD rate).
+
+**Reference comparison (2026-10-03).** Full matrix vs public `aerorobotics/neural-swarm` + NS1/NS2 PDFs:
+[`52_NS2_Reference_Comparison.md`](52_NS2_Reference_Comparison.md). **Verdict:** the papers give
+**~550 µs**/network and **100 Hz mocap**, but **do not document** an onboard evaluation period; our
+**`rnn.div=10` (~100 Hz with hold) is inferred**, not copied from reference firmware (**private**).
+Live **2-drone SIL** div sweep: `experiments/sim_validation/run_ns2_div_sim.py` (**subprocess-isolated**,
+**100 Hz peer-packet mode**). At realistic packet rate, div1≈div10 predict-only (mean RMS **~0.001 m/s²**);
+1 kHz SIL peer stamping inflates differences. **Peer velocity resync (2026-10-03):** gaps **≥500 ms** or
+backwards timestamps now **resync** `peer_prev` (`lib.rs`); host tests **31/31**.
 
 ### Guards
 

@@ -16,7 +16,9 @@ build and is unstable; the default build is the known-good fallback. `cpp` is th
 - [x] **D1 — 100 Hz network evaluation** (`rnn.div`, hold).
 - [x] **D2 — timing log** (`rnn.us_*`, `read_rnn_timing.py`).
 - [x] **D3 — static scratch buffers**.
-- [x] **D4 — host regression** (`test_residual_nn.py` **28/28**; div sweep via `rnn_div_sweep_host.py`).
+- [x] **D4 — host regression** (`test_residual_nn.py` **31/31** incl. peer-resync; div sweep via `run_ns2_div_sim.py`).
+- [x] **D4b — G5 live 2-drone SIL div sweep** (`experiments/sim_validation/run_ns2_div_sim.py` → `ns2_div_sil_results.json`).
+- [x] **D9 — NS2 reference matrix** (`docs/52_NS2_Reference_Comparison.md`; clone @ `48b1851…` outside repo).
 - [x] **D5 — builds** (`build_artifacts/cf21bl_default.bin`, `cf21bl_rnn_100hz.bin`).
 - [x] **D6 — `docs/13`** controller call rate 1 kHz + 100 Hz hold documented.
 - [x] **D7 — identity scan** (`check_estimator_identity.py`, `lock_on_scan.py`).

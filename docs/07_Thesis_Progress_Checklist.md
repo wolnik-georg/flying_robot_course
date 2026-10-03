@@ -84,9 +84,8 @@ Full account: [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md). Headli
   never does). (1) Stack overflow found + patched (`STABILIZER_TASK_STACKSIZE` 3×→8×,
   `flying_drone_stack/firmware_patches/stabilizer_stack_8x.patch`; `/cf5/pose` fixed by it). (2) **MCU overload is the
   leading suspect for the remaining `cf5`-only warnings** (loop rate 899, Kalman 98, latency, boot assert, silent pose).
-- **Reference check:** official code is public `aerorobotics/neural-swarm` (covers NS1+NS2; `nn-export/nn.c` = our
-  architecture); their firmware is private. NS1 paper: ≈550 µs per network, f_a <4 ms → they cannot run it per
-  1 ms tick; stock position loop is 100 Hz. **Our architecture is right, our call rate is ~10× too high and was never measured.**
+- **Reference check (desk, validated):** public `aerorobotics/neural-swarm` @ `48b1851…` — architecture, φ_G inputs, neighbour gate (`robots.py:257`), grams output and z-only output **match** ours (matrix: [`52_NS2_Reference_Comparison.md`](52_NS2_Reference_Comparison.md)); their firmware integration (call rate) is private. Papers give ≈550 µs/network and 100 Hz mocap but **no stated NN evaluation rate** → our `rnn.div=10` (~100 Hz hold) is **inferred, not documented**. At realistic 100 Hz peer packets div=10 ≈ div=1 (SIL predict-only, RMS ~0.001–0.013 m/s²). `rnn_pred_x/y ≡ 0` is by design (z-only). The hardware constant `rnn_pred_z ≈ −4.5` was recorded while `cf5` was locked/flipping (neighbour at zero distance gives −2.4; φ_G alone ≤ 0.8) — not a scaling problem.
+- **Peer-velocity resync bug fixed (desk):** `rnn_predict_eval` froze the relative velocity forever after a >500 ms peer gap/backwards timestamp (found in validation); fixed + tests (host all-pass). **Flash the rebuilt binaries** `build_artifacts/cf21bl_default.bin` `e766f0a4…` and `cf21bl_rnn_100hz.bin` `f7711848…` (laptop only, gitignored) — the old hashes are obsolete.
 - Wrong earlier claim corrected: `cf5` did **not** fly geometric `ki_z=16` fine on 10-01/10-02 (those were the tumbles);
   `ki_z` theory shelved, not closed.
 

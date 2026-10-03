@@ -70,7 +70,7 @@ python3 "$REPO/flying_drone_stack/tools/lab_preflight.py" \
 LAPTOP_REPO=~/Desktop/flying_robot_course
 cd "$LAPTOP_REPO/flying_drone_stack/firmware_app"
 sha256sum build_artifacts/cf21bl_default.bin
-# EXPECT: 9fda82ac3f42048bfd087c20b51352ebe114295b14c6c4c9f783c8d73f1d3eff
+# EXPECT: e766f0a43128bc1bfbc1a0f1f0783c213da8cc99477745e418dafef0664fc817
 
 # Stop CS2 / any radio app first; power-cycle cf5 after flash
 cfloader flash "$LAPTOP_REPO/flying_drone_stack/firmware_app/build_artifacts/cf21bl_default.bin" \
@@ -97,7 +97,7 @@ ros2 topic echo /cf5/pose --once
 LAPTOP_REPO=~/Desktop/flying_robot_course
 cd "$LAPTOP_REPO/flying_drone_stack/firmware_app"
 sha256sum build_artifacts/cf21bl_rnn_100hz.bin
-# EXPECT: ed7e0cb7dc4326ac234c5bc516bc44c58712fd760c7831b8a81569737dde0a35
+# EXPECT: f7711848ac17063c7ddc31564935b22e38ffac704ab64a0b714e5110438ea2ea
 
 # Stop CS2; power-cycle after flash
 cfloader flash "$LAPTOP_REPO/flying_drone_stack/firmware_app/build_artifacts/cf21bl_rnn_100hz.bin" \
@@ -253,7 +253,7 @@ $PYTHON "$LAPTOP_REPO/flying_drone_stack/tools/merge_usd_logs.py" \
 LAPTOP_REPO=~/Desktop/flying_robot_course
 cd "$LAPTOP_REPO/flying_drone_stack/firmware_app"
 sha256sum build_artifacts/cf21bl_default.bin
-# EXPECT: 9fda82ac3f42048bfd087c20b51352ebe114295b14c6c4c9f783c8d73f1d3eff
+# EXPECT: e766f0a43128bc1bfbc1a0f1f0783c213da8cc99477745e418dafef0664fc817
 
 # Re-flash default (CS2 stopped; power-cycle)
 cfloader flash "$LAPTOP_REPO/flying_drone_stack/firmware_app/build_artifacts/cf21bl_default.bin" \
@@ -311,8 +311,8 @@ python3 "$REPO/flying_drone_stack/tools/lab_preflight.py" \
 
 | Artifact (laptop path) | SHA256 |
 |---|---|
-| `…/build_artifacts/cf21bl_default.bin` | `9fda82ac…` |
-| `…/build_artifacts/cf21bl_rnn_100hz.bin` | `ed7e0cb7…` |
+| `…/build_artifacts/cf21bl_default.bin` | `e766f0a4…` (402512 B; peer-resync fix 2026-10-03) |
+| `…/build_artifacts/cf21bl_rnn_100hz.bin` | `f7711848…` (484392 B) |
 
 | Step | Firmware on cf5 |
 |---|---|
