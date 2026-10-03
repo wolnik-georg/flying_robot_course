@@ -169,18 +169,19 @@ def main() -> None:
             z = cols["pos_z"]
             err = (z - rep.z_cmd_m) * 100.0
             c = colors[var]
-            ax_z.plot(t, z, color=c, lw=1.5, label=f"{var} ({flight_stamp(rep.path)})")
-            ax_z.axhline(rep.z_cmd_m, color=c, ls="--", lw=0.9, alpha=0.6)
-            ax_e.plot(t, err, color=c, lw=1.2)
+            ax_z.plot(t, z, color=c, lw=1.6, label=var)
+            z_cmd_used = rep.z_cmd_m
+            ax_e.plot(t, err, color=c, lw=1.3)
+        ax_z.axhline(z_cmd_used, color="black", ls="--", lw=1.2, label="commanded z")
         ax_z.set_ylabel("z position (m)")
-        ax_z.set_title(f"{scen} — representative clean flight per variant")
-        ax_z.legend(fontsize=9, loc="best")
+        ax_z.set_title({"A1": "A1 — two drones stacked, hovering", "A8": "A8 — two drones swap sides"}[scen])
+        ax_z.legend(fontsize=10, loc="best")
         ax_e.axhline(0, color="black", lw=0.6)
         ax_e.set_xlabel("time since liftoff (s)")
         ax_e.set_ylabel("z error (cm)")
         ax_e.set_ylim(-35, 35)
 
-    fig.suptitle("Bottom drone (cf5) z vs commanded — 2026-10-02 INDI comparison", y=1.01)
+    fig.suptitle("Height of the bottom drone vs commanded height (one flight per variant)", y=1.01)
     fig.savefig(PNG, bbox_inches="tight")
     print(f"wrote {PNG}")
 

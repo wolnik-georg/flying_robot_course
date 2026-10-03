@@ -53,17 +53,17 @@ def trace_formation(row):
 
 def plot_panel(ax, rows: list, trace_fn, title: str):
     inc = [r for r in rows if r.included]
-    ax.axhspan(-Z_BAND_CM, Z_BAND_CM, color="#4FB39A", alpha=0.12, zorder=0)
+    ax.axhspan(-Z_BAND_CM, Z_BAND_CM, color="#4FB39A", alpha=0.18, zorder=0, label=f"±{Z_BAND_CM:g} cm")
     ax.axhline(0, color="black", lw=0.8, alpha=0.5)
     for r in inc:
         t, err, land = trace_fn(r)
-        ax.plot(t, err, color="#2E6DA4", lw=0.9, alpha=0.85)
-        if land > 0:
-            ax.axvspan(max(0, land), t[-1], color="0.85", alpha=0.35, zorder=0)
+        ax.plot(t, err, color="#2E6DA4", lw=1.0, alpha=0.85)
     ax.set_ylim(-Z_ERR_YLIM_CM, Z_ERR_YLIM_CM)
-    ax.set_xlabel("time since hover segment start (s)")
+    ax.set_xlabel("time since takeoff (s)")
     ax.set_ylabel("z error (cm)")
-    ax.set_title(f"{title}\n(n={len(inc)} flights)")
+    ax.set_title(title)
+    ax.text(0.98, 0.04, f"{len(inc)} flights (one line each)", transform=ax.transAxes, ha="right", fontsize=10)
+    ax.legend(loc="upper right", fontsize=10)
 
 
 def summarize(rows: list):
@@ -91,17 +91,17 @@ def main() -> None:
     a8_rows = [r for r in form_rows if r.scenario == "A8"]
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False)
-    plot_panel(axes[0, 0], hover_rows, trace_controls, "Hover — solo cf5")
-    plot_panel(axes[0, 1], f8_rows, trace_controls, "Figure-8 — solo cf5")
+    plot_panel(axes[0, 0], hover_rows, trace_controls, "Hover (1 drone)")
+    plot_panel(axes[0, 1], f8_rows, trace_controls, "Figure-8 (1 drone)")
     plot_panel(
         axes[1, 0], a1_rows, trace_formation,
-        "A1 — top drone (cf_second), geometric + ki_z=16",
+        "A1 (2 drones stacked, top drone shown)",
     )
     plot_panel(
         axes[1, 1], a8_rows, trace_formation,
-        "A8 — top drone (cf_second), geometric + ki_z=16",
+        "A8 (2 drones swap sides, top drone shown)",
     )
-    fig.suptitle("Geometric + Z-integral: z − commanded z", y=1.02)
+    fig.suptitle("z error = measured z − commanded z (geometric controller with Z-integral)", y=1.02)
     fig.tight_layout()
     fig.savefig(PNG, bbox_inches="tight")
     print(f"wrote {PNG}")

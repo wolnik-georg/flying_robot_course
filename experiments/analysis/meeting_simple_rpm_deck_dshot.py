@@ -306,6 +306,50 @@ def plot_pair(path: Path, prefix: str, motor: int, meta: dict, out_png: Path) ->
     plt.close(fig)
 
 
+def plot_overlay_and_delta(path: Path, prefix: str, motor: int, meta: dict, out_overlay: Path, out_delta: Path) -> None:
+    """Two simple figures for ONE flight/motor: (1) overlay of both sources, (2) their difference."""
+    t, arrays = load_merged_csv(path)
+    deck = arrays[f"{prefix}.rpm_m{motor}"]
+    dshot = arrays[f"{prefix}.motor_m{motor}_rpm"]
+    i0, i1 = meta["i0"], meta["i1"]
+    td, dd, ds = t[i0 : i1 + 1] - t[i0], deck[i0 : i1 + 1], dshot[i0 : i1 + 1]
+    bad, _, _, _ = glitch_masks(dd, ds)
+    d_plot = dd.astype(float); s_plot = ds.astype(float)
+    d_plot[bad] = np.nan; s_plot[bad] = np.nan
+    diff = s_plot - d_plot
+    fid = flight_id_from_path(path)
+
+    # zoom window: the 2 s with the largest deck RPM swing (fast transient -> lag visible)
+    w = int(2.0 * FS)
+    best, zi = -1.0, 0
+    for k in range(0, max(len(dd) - w, 1), int(0.25 * FS)):
+        seg = np.nan_to_num(d_plot[k : k + w], nan=np.nanmedian(d_plot))
+        r = float(seg.max() - seg.min())
+        if r > best:
+            best, zi = r, k
+    C_DECK, C_DSHOT = "#1F5C4D", "#D1495B"
+
+    fig, (a0, a1) = plt.subplots(2, 1, figsize=(11, 7), gridspec_kw={"height_ratios": [1, 1.1]})
+    plot_segments(a0, td, d_plot, color=C_DECK, lw=2.4, alpha=0.9, label="optical deck")
+    plot_segments(a0, td, s_plot, color=C_DSHOT, lw=0.9, label="DShot (spikes removed)")
+    a0.axvspan(td[zi], td[min(zi + w, len(td) - 1)], color="0.8", alpha=0.5)
+    a0.set_title("Full flight"); a0.set_xlabel("time (s)"); a0.set_ylabel("motor RPM"); a0.legend(loc="upper right")
+    sl = slice(zi, zi + w)
+    plot_segments(a1, td[sl], d_plot[sl], color=C_DECK, lw=3.0, alpha=0.9, label="optical deck")
+    plot_segments(a1, td[sl], s_plot[sl], color=C_DSHOT, lw=1.4, label="DShot (spikes removed)")
+    a1.set_title("Zoom on the grey 2 s"); a1.set_xlabel("time (s)"); a1.set_ylabel("motor RPM"); a1.legend(loc="upper right")
+    fig.suptitle(f"Motor RPM, optical deck vs DShot ({fid}, {prefix}, motor {motor})", y=1.0)
+    fig.tight_layout(); fig.savefig(out_overlay, bbox_inches="tight"); plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(11, 4.2))
+    plot_segments(ax, td, diff, color="#2E6DA4", lw=0.8)
+    ax.axhline(0, color="black", lw=0.8)
+    ax.set_xlabel("time (s)"); ax.set_ylabel("DShot − deck (RPM)")
+    ax.set_title(f"Difference DShot − deck  |  bias {meta['bias_pct']:.2f} %, RMSE {meta['rmse']:.0f} RPM, "
+                 f"r {meta['r']:.3f}, lag {meta['lag_ms']:.0f} ms (DShot later)")
+    fig.tight_layout(); fig.savefig(out_delta, bbox_inches="tight"); plt.close(fig)
+
+
 def a3_spike_check(path: Path, prefix: str, motor: int, meta: dict) -> dict:
     t, arrays = load_merged_csv(path)
     deck = arrays[f"{prefix}.rpm_m{motor}"]
@@ -396,20 +440,13 @@ def main() -> None:
             a3_row = row
             a3_checks = a3_spike_check(row["path"], row["prefix"], 1, row)
             break
-    for tag, row, rule in picks:
-        path, prefix, motor = row["path"], row["prefix"], row["motor"]
-        fid = row["flight"]
-        out = OUT_ASSETS / f"fig_rpm_deck_vs_dshot_{fid}_m{motor}.png"
-        if out in written:
-            out = OUT_ASSETS / f"fig_rpm_deck_vs_dshot_{fid}_{tag}_m{motor}.png"
-        plot_pair(path, prefix, motor, row, out)
-        written.append(out)
-        print(f"wrote {out}")
-    if a3_row is not None:
-        a3_out = OUT_ASSETS / f"fig_rpm_deck_vs_dshot_{a3_row['flight']}_m1_acceptance.png"
-        if a3_out not in written:
-            plot_pair(a3_row["path"], a3_row["prefix"], 1, a3_row, a3_out)
-            print(f"wrote {a3_out}")
+    # one flight is enough for the meeting: the stable-lag pick -> overlay + delta figures
+    row = pick_lag
+    out_ov = OUT_ASSETS / "fig_rpm_overlay.png"
+    out_dl = OUT_ASSETS / "fig_rpm_delta.png"
+    plot_overlay_and_delta(row["path"], row["prefix"], row["motor"], row, out_ov, out_dl)
+    written += [out_ov, out_dl]
+    print(f"wrote {out_ov}\nwrote {out_dl}")
     total_new = sum(r["n_bad"] for r in included)
     total_old = sum(r["n_bad_old"] for r in included)
     fast_frac = sum(r["n_bad_on_fast_deck"] for r in included) / max(total_new, 1)
