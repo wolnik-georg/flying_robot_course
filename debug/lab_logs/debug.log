@@ -1,44 +1,26 @@
-ackage finished [0.57s]
-  1 package had stderr output: crazyflie_examples
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation -- --scenario A8 --dz 0.5 --height 0.5  --passes 4 --auto-center --yes
+ad stderr output: crazyflie_examples
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 launch crazyflie launch.py backend:=cflib 2>&1 | tee ~/launch_$(date +%H%M).log
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-10-03-13-36-45-746713-flightcontrol1-2700937
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [2700942]
+[INFO] [crazyflie_server.py-2]: process started with pid [2700943]
+[INFO] [teleop-3]: process started with pid [2700944]
+[INFO] [joy_node-4]: process started with pid [2700945]
+[INFO] [gui.py-5]: process started with pid [2700946]
+[teleop-3] [INFO] [1791027405.866830520] [teleop]: Mode changed to high_level
+[motion_capture_tracking_node-1] logClouds=0
+[joy_node-4] [INFO] [1791027405.993187027] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[crazyflie_server.py-2] Traceback (most recent call last):
+[crazyflie_server.py-2]   File "/home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server.py", line 40, in <module>
+[crazyflie_server.py-2]     import tf_transformations
+[crazyflie_server.py-2]   File "/opt/ros/jazzy/lib/python3.12/site-packages/tf_transformations/__init__.py", line 46, in <module>
+[crazyflie_server.py-2]     import transforms3d
+[crazyflie_server.py-2] ModuleNotFoundError: No module named 'transforms3d'
+[ERROR] [crazyflie_server.py-2]: process has died [pid 2700943, exit code 1, cmd '/home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server.py --ros-args -r __node:=crazyflie_server --params-file /tmp/launch_params_7e50s4hp --params-file /tmp/launch_params_z1ih7l4_'].
 
-[formation] A8  Vertical swap (2 robots), dz=0.50 m at crossing, span=1.00 m, passes=4
-[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
-[formation] 2 robot(s), 26.0 s, tags: swap, data_collection
-[formation] anchor [0.  0.  0.5]
-    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    robot 1 [    top] slot [0.  0.5 0.5]  Then        vmax 0.36 m/s  amax 0.21 m/s^2
-    closest commanded approach: 0.500 m between robots 0 and 1 at t=23.0s
-    robot 0 trajectory:  5 pieces, 26.00 s
-    robot 1 trajectory:  5 pieces, 26.00 s
-[formation] commanded relative geometry:
-     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.50.. -0.50  |d| 0.500..1.118 m
-[formation] wrote data/formations/A8_dz0.5_span1.0_duration6.0_settle2.0_passes4_rotate_deg0.0_r0_bottom.csv
-[formation] wrote data/formations/A8_dz0.5_span1.0_duration6.0_settle2.0_passes4_rotate_deg0.0_r1_top.csv
-
-[formation] checks passed.
-[formation] --auto-center: anchor moved to [0.  0.  0.5] (was [0.  0.3 0.5])
-
-[formation] anchored on cf5 at [0.  0.  0.5]
-    cf5          [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.5  0.5]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.  0.5 1. ]
-
-[formation] per-drone effective config (what each vehicle actually flies):
-    cf5            controller=6 ctrl_mode=3  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-    cf_second      controller=6 ctrl_mode=0  pos_gains kp_xy=40.0 kv_xy=8.0 kp_z=30.0 kv_z=10.0   [own override]
-[formation] resetting EKF (complementary re-init, then Kalman)...
-[formation] waiting for EKF to converge on mocap...
-    cf5            EKF [0. 0. 0.]  mocap [0. 0. 0.]  |err| 0 mm
-    cf_second      EKF [ 0.158 -0.351 -0.024]  mocap [ 0.158 -0.351 -0.024]  |err| 0 mm
-
-[formation] *** ABORT: radio log telemetry not healthy ***
-[formation]   cf5: /state empty or all-zero (see [logger] warning)
-[formation] Fix logging before arming — uSD may still be fine, but HL
-[formation] commands need a healthy link. NOT taking off.
-[log] cf5: 0 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf5_2026-10-03_12-44-28.csv
-[log] cf_second: 0 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-10-03_12-44-28.csv
-
-[formation] realised relative geometry (last settled sample):
-    cf5 - cf_second: got [-0.158  0.351  0.024]  want [ 0.  -1.  -0.5]  err [-0.158  1.351  0.524] m  |ez| 524 mm
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
 
