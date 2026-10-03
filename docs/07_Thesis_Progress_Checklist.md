@@ -69,6 +69,25 @@ bottom.
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
 | **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-03 session close, supersedes everything below for now).**
 
+**2026-10-03 desk update (later, supersedes the NS2 "Next (desk)" line below — desk work is DONE):**
+
+- **NS2 desk work closed and independently validated:** network evaluation at ~100 Hz (`rnn.div=10`) with timing log
+  (`rnn.us_*`), static scratch buffers, peer-velocity resync fix, stack patch 8×, host tests 21/21; reference comparison
+  `docs/52`. **Remaining blockers are lab-only:** bench (default vs 100 Hz build + timing) → tracker flip test → A8
+  predict-only (`rnn.en=0`) → default-firmware `ki_z` 16 vs 0 → only then `rnn.en=1`. Order: `ns2_next_lab_protocol.md` §0.
+- **Meeting 2026-10-03 doc final** ([`meetings/2026-10-03.md`](meetings/2026-10-03.md)), numbers regenerated from logs:
+  - **Pure INDI (bottom drone, mean / max z error, cm):** A1 — Ours −17…−19 / 29–38, Omar C +2…+4 / 6–9, Omar Rust −11 / 18;
+    A8 — Ours +3.4 / ~8, Omar C +22 / 30, Omar Rust +19 / 26. No clear winner (Ours best A8, worst A1); both Omar ports ~20 cm
+    high on A8. n = 1–2 clean flights per cell. **Decision pending: which variant is the thesis "Pure INDI".**
+  - **Geometric + Z-integral (`ki_z=16`):** steady z within ≈2 cm (hover +0.15/2.0, figure-8 +0.68/1.9, A1 top −1.65/2.3,
+    A8 top −1.65/2.4); A8 bottom +0.13/8.3 (7–8 cm dips at the 4 crossings = downwash; only 2 clean flights, none for A1).
+    A8 window fix: `duration_s` counts from trajectory start, not liftoff — windows now end at landing.
+  - **RPM deck vs DShot (top drone only, no downwash, 32 motor-rows):** bias −0.22 %, RMSE 104 RPM, r 0.92, lag 2 ms (DShot later,
+    1 sample). Spike filter: Hampel on Δ=DShot−deck (21 samples, max(600 RPM, 6·1.4826·MAD)) + |Δ|>10 000 + DShot ≥ 60 000;
+    254 / 434 000 samples removed (0.06 %). DShot stays the control source for reliability.
+- **Still open (unchanged):** why `cf5` tumbled first on the flash-RNN build; fsck card THESIS1; flash the rebuilt binaries
+  (hashes below).
+
 **2026-10-03 close-out — NS2 first hardware attempt NOT validated; `cf5` unstable on the flash-RNN firmware.**
 Full account: [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md). Headlines:
 
@@ -1189,6 +1208,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-10-03 (77) | **Meeting 2026-10-03 doc finalised; NS2 desk work closed.** Pure-INDI 3-way numbers, Z-integral tracking (incl. A8 bottom drone) and deck-vs-DShot RPM analysis regenerated from logs and written up with equations (`meetings/2026-10-03.md`). Fixed an A8 steady-window bug (`duration_s` is from trajectory start, so the last crossings were cut). RPM analysis restricted to top-drone geometric flights (no downwash); Hampel spike filter spelled out. Remaining NS2 steps are lab-only. |
 | 2026-10-03 (76) | **NS2 first hardware attempt (lab): not validated; `cf5` crashed on both A8 flights, `cf_second` clean.** Desk prep (flash-RNN build target, `backend:=cpp`, ghost-neighbour `id==0` fix); uSD cards archived on PC + cards, reset, thesis config restored. Lab: connect-time assert traced to unpaced server built from the wrong folder (`colcon` must run in `~/georg/ros2_ws`, Jazzy); flash-RNN firmware zeroed `/cf5/pose` → stack-overflow found (eval ≈610 B + `phi_forward` ≈585 B vs 1800 B stabilizer stack) and patched (8×, `firmware_patches/stabilizer_stack_8x.patch`). A8×2: flight 1 ran stale full-INDI yaml (oscillation, flip); flight 2 geometric `ki_z=16` liftoff tumble, z overshoot 1.06 m. **uSD finding:** `cf5`'s onboard estimate ≡ `cf_second`'s (corr 1.000) today, anti-correlated (correct) on 10-02 → cause open. `rnn_pred_x/y`≡0, `rnn_pred_z`≈const. `cf5`-only rate warnings (loop 899, Kalman 98) + silent pose/assert later. Reference research: official `aerorobotics/neural-swarm` (firmware private); NS1 ≈550 µs/network → network must run ≈100 Hz, ours runs 1 kHz. Plan: Cursor prompt for 100 Hz + timing build, bench-first lab order. See `lab_sessions/2026-10-03.md`. |
 | 2026-10-02 (75) | **3-way INDI comparison recorded (Omar C=9, Omar Rust=10, ours ctrl_mode=3, all vs cf_second now on our geometric); liftoff-tumble root cause found for ctrl_mode=3: ki_z=16 x full-INDI, confirmed via direct hardware A/B (169.7° tumble → clean, 5/5).** Our own controller tracks tightest both scenarios; Omar's two ports both show 15-25cm z offset on A8 specifically, not A1 — consistent across both his implementations. `ki_z` must stay 0 for full INDI pending code-level understanding; whether this also explains the original ctrl_mode=0 A1/A6 tumbles is strongly suspected (same 0.65s timing) but not yet directly tested. New smaller finding: full INDI shows sustained A1 attitude oscillation (std ~7-9°) absent on A8 (std ~2°) under the same config, open. Z-integral's original fix re-confirmed working on hardware, multiple reps, plain geometric, both drones. NS2 zero-prediction investigation still open, needs more time; found `backend=cflib` never broadcasts peer positions to other drones (used in every flight command this project has ever run). Stock Bitcraze INDI and Briesewitz/Cobo's NA-INDI deliberately skipped for the comparison (no RPM/no a_res; supervisor-excluded Sep 2026, respectively). Full account: `docs/lab_sessions/2026-10-02.md`. |
 | 2026-10-01 (74) | **2-drone C.1 collection complete (A5 fixed, A6/C4 dropped); NS2 retrain gate PASSED; Checklist G attempted but not validated (upload silently failed to load weights, second bug beyond the known NaN crash — both now fixed and committed); liftoff tumble found and characterized but not root-caused; Z-integral/damping gains (`kv_z=7`, `ki_z=16`) confirmed near-optimal via two independent SIL sweeps, neither reproducing the real ~15.8cm hardware overshoot.** Full account: `docs/lab_sessions/2026-10-01.md`. |
