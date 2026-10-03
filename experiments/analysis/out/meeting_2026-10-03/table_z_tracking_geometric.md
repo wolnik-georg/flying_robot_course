@@ -42,29 +42,29 @@
 | `A1_cf_second_2026-10-02_19-15-47.csv` | yes | -2.10 | 2.10 | 2.31 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 
 ## A8 top drone (cf_second) — summary (steady window only)
-- n=8 | mean error -1.66 cm | mean |error| 1.66 cm | max |error| 2.41 cm
+- n=9 | mean error -1.65 cm | mean |error| 1.65 cm | max |error| 2.42 cm
 
 | flight | clean | mean (cm) | mean |e| (cm) | max |e| (cm) | note |
 |---|---:|---:|---:|---:|---|
-| `A8_cf_second_2026-10-02_18-23-23.csv` | yes | -1.12 | 1.12 | 1.41 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-02_18-24-57.csv` | yes | -1.25 | 1.25 | 1.51 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-02_18-45-09.csv` | yes | -1.60 | 1.60 | 1.91 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-02_18-46-45.csv` | yes | -1.55 | 1.55 | 1.81 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_18-23-23.csv` | yes | -1.15 | 1.15 | 1.92 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_18-24-57.csv` | yes | -1.27 | 1.27 | 1.85 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_18-45-09.csv` | yes | -1.58 | 1.58 | 1.98 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_18-46-45.csv` | yes | -1.54 | 1.54 | 1.98 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 | `A8_cf_second_2026-10-02_18-57-49.csv` | no | nan | nan | nan | max tilt 179.7° > 45° |
 | `A8_cf_second_2026-10-02_18-59-17.csv` | no | nan | nan | nan | max tilt 56.4° > 45° |
-| `A8_cf_second_2026-10-02_19-08-13.csv` | no | nan | nan | nan | no steady samples |
-| `A8_cf_second_2026-10-02_19-09-54.csv` | yes | -1.68 | 1.68 | 2.01 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-02_19-11-30.csv` | yes | -1.71 | 1.71 | 2.01 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-03_13-10-32.csv` | yes | -2.23 | 2.23 | 2.41 | ki_z=16 from session yaml (not in cf_second radio # meta) |
-| `A8_cf_second_2026-10-03_13-15-00.csv` | yes | -2.10 | 2.10 | 2.31 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_19-08-13.csv` | yes | -1.59 | 1.59 | 1.70 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_19-09-54.csv` | yes | -1.70 | 1.70 | 2.01 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-02_19-11-30.csv` | yes | -1.73 | 1.73 | 2.02 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-03_13-10-32.csv` | yes | -2.22 | 2.22 | 2.42 | ki_z=16 from session yaml (not in cf_second radio # meta) |
+| `A8_cf_second_2026-10-03_13-15-00.csv` | yes | -2.08 | 2.08 | 2.31 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 
 ## A8 bottom drone (cf5) — summary (steady window only)
-- n=2 | mean error 0.15 cm | mean |error| 0.89 cm | max |error| 8.30 cm
+- n=2 | mean error 0.13 cm | mean |error| 0.93 cm | max |error| 8.30 cm
 
 | flight | clean | mean (cm) | mean |e| (cm) | max |e| (cm) | note |
 |---|---:|---:|---:|---:|---|
-| `A8_cf5_2026-10-02_17-23-14.csv` | yes | 0.15 | 0.88 | 7.87 | ki_z=16 from session yaml (not in cf5 radio # meta) |
-| `A8_cf5_2026-10-02_17-28-37.csv` | yes | 0.16 | 0.90 | 8.30 | ki_z=16 from session yaml (not in cf5 radio # meta) |
+| `A8_cf5_2026-10-02_17-23-14.csv` | yes | 0.14 | 0.93 | 7.87 | ki_z=16 from session yaml (not in cf5 radio # meta) |
+| `A8_cf5_2026-10-02_17-28-37.csv` | yes | 0.12 | 0.92 | 8.30 | ki_z=16 from session yaml (not in cf5 radio # meta) |
 
 ## Change vs previous table (window end = log end − 2.5 s)
 - Previous max |error| on hovers included **landing descent**; descent-based end gives max |error| **≈2 cm** on 09-30 hovers (see Hover rows).
@@ -73,4 +73,3 @@
 - `A1_cf_second_2026-10-02_19-13-24.csv` (A1): no steady samples
 - `A8_cf_second_2026-10-02_18-57-49.csv` (A8 top drone (cf_second)): max tilt 179.7° > 45°
 - `A8_cf_second_2026-10-02_18-59-17.csv` (A8 top drone (cf_second)): max tilt 56.4° > 45°
-- `A8_cf_second_2026-10-02_19-08-13.csv` (A8 top drone (cf_second)): no steady samples

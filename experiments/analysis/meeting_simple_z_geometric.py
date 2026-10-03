@@ -48,7 +48,7 @@ def trace_formation(row):
     t = cols["time_s"] - row.t_lift
     err = (cols["pos_z"] - row.z_cmd_m) * 100.0
     land_start = row.t_steady_hi - row.t_lift
-    keep = (t >= 0) & (t <= land_start + 0.5)
+    keep = (t >= 0) & (t <= land_start)
     return t[keep], err[keep], land_start
 
 

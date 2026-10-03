@@ -322,8 +322,17 @@ def analyze_formation_track(path: Path, vehicle: str, require_ki16: bool = True,
     t_lo = t_lift + STEADY_AFTER_LIFTOFF_S
     t_desc = steady_end_before_descent(t, z, t_lo, z_cmd)
     t_cap = hold_end_formation(scen, radio_meta, mj, t_lift, float(t[-1]))
-    # bottom drone (cf5): the crossing dips (downwash, ~-8 cm) are NOT a descent -> use the scenario end only
-    t_hi = t_cap if vehicle == "cf5" else min(t_desc, t_cap)
+    if scen.upper() == "A8":
+        # A8 `duration_s` is counted from the start of the trajectory (after takeoff), not from liftoff, so it
+        # cuts off the last crossings. Use the real end of the hold = start of the landing descent instead.
+        if vehicle == "cf5":
+            # crossing dips (downwash, ~-8 cm) are not a descent: landing = first z > 10 cm below command, minus 1 s
+            low = np.where((t >= t_lo) & (z < z_cmd - 0.10))[0]
+            t_hi = float(t[low[0]]) - 1.0 if len(low) else float(t[-1]) - LANDING_BUFFER_S
+        else:
+            t_hi = t_desc
+    else:
+        t_hi = min(t_desc, t_cap)
     mask = (t >= t_lo) & (t <= t_hi) & (tilt <= TILT_EXCLUDE_DEG)
     if not np.any(mask):
         return TrackRow(

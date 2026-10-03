@@ -109,6 +109,11 @@ def analyze_cf5(path: Path) -> IndiRow | None:
     z_cmd = z_command_for_vehicle(radio_meta, mj, "cf5")
     t_lo = t_lift + STEADY_AFTER_LIFTOFF_S
     t_hi = hold_end_formation(scen, radio_meta, mj, t_lift, float(t[-1]))
+    if scen == "A8":
+        # `duration_s` counts from trajectory start (after takeoff), so it cut off the last crossings:
+        # end = landing descent = first z > 30 cm below command after the steady start, minus 1.5 s
+        low = np.where((t >= t_lo) & (z < z_cmd - 0.30))[0]
+        t_hi = float(t[low[0]]) - 1.5 if len(low) else float(t[-1]) - 2.5
     mask = (t >= t_lo) & (t <= t_hi) & (tilt <= TILT_EXCLUDE_DEG)
     if not np.any(mask):
         err_cm = float("nan")
@@ -191,7 +196,7 @@ def main() -> None:
         "# Table — INDI z error (cf5 bottom, 2026-10-02)",
         "",
         "## Steady window",
-        f"- Liftoff: pos_z > 0.05 m; steady = liftoff + {STEADY_AFTER_LIFTOFF_S} s … hold end (A1: param_hold; A8: duration_s − 2.5 s); tilt ≤ {TILT_EXCLUDE_DEG}°.",
+        f"- Liftoff: pos_z > 0.05 m; steady = liftoff + {STEADY_AFTER_LIFTOFF_S} s … hold end (A1: param_hold; A8: landing descent (first z > 30 cm below command) − 1.5 s); tilt ≤ {TILT_EXCLUDE_DEG}°.",
         "- Representative plot: **clean, complete** flight (log ends on the ground) closest to variant median mean error; legend time = HH-MM-SS stamp.",
         "- **pre-fix:** 18-57-49, 18-59-17 (ki_z=16 tumbles). **aborted:** 19-08-13 (~18 s). **crashed (flip/abort):** 18-22-05 or tilt≈180°.",
         "- **completed, tilt excursion >45°:** flight ran but peak |roll|/|pitch| > 45° (e.g. 18-23-23, 18-48-33).",
