@@ -89,6 +89,16 @@ GATE_DXY = 0.2
 GATE_DVX = 1.5
 GRAMS_TO_NEWTONS = 9.81 / 1000.0
 
+# Monotonic peer timestamps (ms). Reusing values across cases leaves stale peer_prev in the
+# process-global controller State (Init does not reset it), which breaks gate tests.
+_PEER_T_MS = 10_000
+
+
+def next_peer_ts(step: int = 100) -> int:
+    global _PEER_T_MS
+    _PEER_T_MS += step
+    return _PEER_T_MS
+
 
 def forward(w, off, layers, x, last_linear=True):
     """Run a phi_Net/rho_Net stack from the flat weight vector.
@@ -139,6 +149,9 @@ class Fw:
     def __init__(self, own_pos=(0.0, 0.0, 1.0), own_vel=(0.0, 0.0, 0.0)):
         fw.controllerOutOfTreeInit()
         fw.oot_select_drone(0)
+        fw.oot_set_peer_count(0)
+        for _i in range(MAX_NEIGHBOURS):
+            fw.oot_set_peer(_i, 0.0, 0.0, 0.0, 0)
         self.tick = 0
         self.own_pos = np.array(own_pos, np.float32)
         self.own_vel = np.array(own_vel, np.float32)
@@ -247,6 +260,9 @@ def main():
         return 2
     print("  PASS  residual_nn feature present (upload completes)")
 
+    # Default firmware `rnn.div` is 10 (~100 Hz); host tests expect per-step eval (legacy 1 kHz).
+    fw.cvar.g_rnn_div = 1
+
     # 1. An un-uploaded network must be inert -- including the ground-effect term, which is
     #    otherwise unconditional.
     #
@@ -267,7 +283,7 @@ def main():
     h = Fw()
     h.unload()
     fw.cvar.g_rnn_pred_x = fw.cvar.g_rnn_pred_y = fw.cvar.g_rnn_pred_z = SENTINEL
-    h.peers([(0.0, 0.0, 1.3)], 1000)
+    h.peers([(0.0, 0.0, 1.3)], next_peer_ts())
     h.step(2)
     check("inert before upload (predict path does not run)",
           np.allclose(h.pred(), SENTINEL), f"pred={h.pred()}")
@@ -276,7 +292,7 @@ def main():
     ready = h.upload(w, drop=N_WEIGHTS // 2)
     check("incomplete upload refused", ready == 0, f"ready={ready}")
     fw.cvar.g_rnn_pred_x = fw.cvar.g_rnn_pred_y = fw.cvar.g_rnn_pred_z = SENTINEL
-    h.peers([(0.0, 0.0, 1.3)], 2000)
+    h.peers([(0.0, 0.0, 1.3)], next_peer_ts())
     h.step(2)
     check("inert after refused upload", np.allclose(h.pred(), SENTINEL), f"pred={h.pred()}")
 
@@ -293,7 +309,7 @@ def main():
     #    assertion is agreement with the pure-ground-effect reference AND a non-zero value.
     h = Fw(own_pos=(0.1, -0.2, 0.35), own_vel=(0.3, 0.0, -0.1))
     check("complete upload accepted", h.upload(w) == 1, f"ready={fw.cvar.g_rnn_ready}")
-    h.peers([], 5000)
+    h.peers([], next_peer_ts())
     h.step()
     ref, _ = h.ref(w, [])
     got = h.pred()
@@ -311,16 +327,20 @@ def main():
     h.upload(w)
     p1 = [np.array([0.15, -0.20, 1.32], np.float32),
           np.array([0.05, -0.25, 0.72], np.float32)]
-    h.peers(p1, 5000)
+    t_first = next_peer_ts()
+    h.peers(p1, t_first)
     h.step()
     ref, _ = h.ref(w, p1)
     got = h.pred()
     check("2 neighbours in gate, first sample", np.allclose(got, ref, atol=2e-4),
           f"fw={got[2]:+.6f} ref={ref[2]:+.6f}")
+    check("first-seen peer uses zero relative velocity",
+          np.allclose(got, ref, atol=2e-4),
+          f"fw={got[2]:+.6f} ref={ref[2]:+.6f}")
 
     # 6. Second sample 100 ms later: peer velocity is differenced from the timestamps.
     p2 = [p + np.array([0.02, 0.00, -0.01], np.float32) for p in p1]
-    h.peers(p2, 5100)
+    h.peers(p2, next_peer_ts(100))
     h.step()
     peer_v = [(b - a) * 10.0 for a, b in zip(p1, p2)]  # 100 ms -> x10
     ref, _ = h.ref(w, p2, peer_v)
@@ -328,11 +348,22 @@ def main():
     check("differenced peer velocity", np.allclose(got, ref, atol=2e-4),
           f"fw={got[2]:+.6f} ref={ref[2]:+.6f}")
 
+    # 6b. Same timestamp twice: relative velocity must be held, not zeroed.
+    t_hold = next_peer_ts(100)
+    h.peers(p2, t_hold)
+    h.step()
+    pred_after_first = h.pred().copy()
+    h.peers(p2, t_hold)
+    h.step()
+    check("peer velocity held when timestamp unchanged",
+          np.allclose(h.pred(), pred_after_first, atol=1e-6),
+          f"first={pred_after_first[2]:+.6f} second={h.pred()[2]:+.6f}")
+
     # 7. Permutation invariance -- the property deep sets exist for.
-    h.peers(list(reversed(p2)), 6000)
+    h.peers(list(reversed(p2)), next_peer_ts())
     h.step()
     a = h.pred()
-    h.peers(p2, 7000)
+    h.peers(p2, next_peer_ts())
     h.step()
     b = h.pred()
     check("permutation invariant", np.allclose(a, b, atol=2e-4), f"{a[2]:+.6f} vs {b[2]:+.6f}")
@@ -342,22 +373,22 @@ def main():
     #       prediction has to equal the ground-effect-only value. These are separate checks
     #       because the gate is asymmetric (dx, dy, dvx -- not dz, dvy, dvz) and any attempt to
     #       "regularise" it would break exactly one of them.
-    def gate_case(name, peer_offset, own_vel=(0.0, 0.0, 0.0), peer_vel=None, t0=5000):
+    def gate_case(name, peer_offset, own_vel=(0.0, 0.0, 0.0), peer_vel=None):
         g = Fw(own_pos=(0.0, 0.0, 1.0), own_vel=own_vel)
         g.upload(w)
-        g.peers([], t0)
+        g.peers([], next_peer_ts())
         g.step()
         alone = g.pred()
         pos = np.array([0.0, 0.0, 1.0], np.float32) + np.asarray(peer_offset, np.float32)
         if peer_vel is None:
-            g.peers([pos], t0 + 100)
+            g.peers([pos], next_peer_ts(100))
             g.step()
         else:
             # Two samples 100 ms apart to give the peer the intended velocity.
             prev = pos - np.asarray(peer_vel, np.float32) * 0.1
-            g.peers([prev], t0 + 100)
+            g.peers([prev], next_peer_ts(100))
             g.step()
-            g.peers([pos], t0 + 200)
+            g.peers([pos], next_peer_ts(100))
             g.step()
         check(name, np.allclose(g.pred(), alone, atol=2e-4),
               f"with={g.pred()[2]:+.6f} alone={alone[2]:+.6f}")
@@ -370,10 +401,10 @@ def main():
     #     checks above would also pass with the neighbour term accidentally disabled entirely.
     g = Fw(own_pos=(0.0, 0.0, 1.0))
     g.upload(w)
-    g.peers([], 5000)
+    g.peers([], next_peer_ts())
     g.step()
     alone = g.pred()
-    g.peers([np.array([0.10, 0.10, 1.30], np.float32)], 5100)
+    g.peers([np.array([0.10, 0.10, 1.30], np.float32)], next_peer_ts(100))
     g.step()
     near = g.pred()
     check("neighbour inside gate changes prediction",
@@ -381,7 +412,7 @@ def main():
           f"with={near[2]:+.6f} alone={alone[2]:+.6f}")
 
     # 12. dz is deliberately NOT gated: a neighbour far above, but aligned in x/y, still counts.
-    g.peers([np.array([0.05, 0.05, 2.60], np.float32)], 6000)
+    g.peers([np.array([0.05, 0.05, 2.60], np.float32)], next_peer_ts())
     g.step()
     check("dz is not gated", not np.allclose(g.pred(), alone, atol=1e-5),
           f"with={g.pred()[2]:+.6f} alone={alone[2]:+.6f}")
@@ -392,7 +423,7 @@ def main():
     #     self-consistent reference would not.
     h = Fw(own_pos=(0.0, 0.0, 0.40))
     h.upload(w)
-    h.peers([], 5000)
+    h.peers([], next_peer_ts())
     h.step()
     ground = [0.0 - 0.40, 0.0, 0.0, 0.0]
     rho_in = forward(w, OFF_PHI_G, phi_layers(PHI_IN_G), ground)
@@ -406,7 +437,7 @@ def main():
     big = (w * 80.0).astype(np.float32)
     h = Fw(own_pos=(0.0, 0.0, 0.30))
     h.upload(big)
-    h.peers([np.array([0.05, 0.0, 0.45], np.float32)], 5000)
+    h.peers([np.array([0.05, 0.0, 0.45], np.float32)], next_peer_ts())
     h.step()
     mag = abs(float(h.pred()[2]))
     check("output clamped", fw.cvar.g_rnn_clamped == 1 and mag <= OUT_CLAMP + 1e-3,
@@ -421,11 +452,63 @@ def main():
             np.array([-0.05, 0.05, 0.80], np.float32),
             np.array([0.05, -0.05, 1.40], np.float32),
             np.array([-0.05, -0.05, 0.60], np.float32)]
-    h.peers(many, 5000)
+    # Host peer buffer holds 3 slots; pass exactly 3 so firmware and reference truncate the same way.
+    h.peers(many[:MAX_NEIGHBOURS], next_peer_ts())
     h.step()
-    ref, _ = h.ref(w, many)          # reference truncates at MAX_NEIGHBOURS too
+    ref, _ = h.ref(w, many[:MAX_NEIGHBOURS])
     check("respects MAX_NEIGHBOURS", np.allclose(h.pred(), ref, atol=2e-4),
           f"fw={h.pred()[2]:+.6f} ref={ref[2]:+.6f}")
+
+    # 16. Decimation: g_rnn_div=10 evaluates on ticks 1,10,20,... and holds between.
+    d = Fw(own_pos=(0.1, -0.2, 1.0), own_vel=(0.3, 0.0, -0.1))
+    d.upload(w)
+    fw.controllerOutOfTreeInit()
+    fw.oot_select_drone(0)
+    fw.cvar.g_rnn_div = 10
+    ts_peer = next_peer_ts()
+    d.peers(p1, ts_peer)
+    preds = []
+    for tick in range(1, 26):
+        if tick == 10:
+            p1_b = [p + np.array([0.05, 0.0, 0.0], np.float32) for p in p1]
+            d.peers(p1_b, next_peer_ts(100))
+        elif tick == 20:
+            p1_c = [p + np.array([0.05, 0.05, 0.0], np.float32) for p in p1]
+            d.peers(p1_c, next_peer_ts(100))
+        d.step()
+        preds.append(float(fw.cvar.g_rnn_pred_z))
+    fw.cvar.g_rnn_div = 1
+    ok_hold = all(np.isclose(preds[i], preds[0], atol=1e-6) for i in range(1, 9))
+    ok_hold = ok_hold and all(np.isclose(preds[i], preds[9], atol=1e-6) for i in range(10, 19))
+    check("decimation div=10 holds between eval ticks", ok_hold,
+          f"t1={preds[0]:+.5f} t9={preds[8]:+.5f} t10={preds[9]:+.5f} t20={preds[19]:+.5f}")
+    check("decimation updates on eval tick 10 (peer moved)",
+          not np.isclose(preds[8], preds[9], atol=1e-5),
+          f"t9={preds[8]:+.5f} t10={preds[9]:+.5f}")
+    check("decimation tick 9 unchanged before peer move at 10",
+          np.isclose(preds[7], preds[8], atol=1e-6),
+          f"t8={preds[7]:+.5f} t9={preds[8]:+.5f}")
+    check("decimation updates on eval tick 20 (peer moved again)",
+          not np.isclose(preds[18], preds[19], atol=1e-5),
+          f"t19={preds[18]:+.5f} t20={preds[19]:+.5f}")
+    check("decimation logs pred every tick (continuous)",
+          all(np.isfinite(p) for p in preds), f"n={len(preds)}")
+
+    # 17. g_rnn_div=0 behaves like 1 (one eval per controller step).
+    fw.cvar.g_rnn_div = 0
+    z0 = Fw(own_pos=(0.0, 0.0, 0.40))
+    z0.upload(w)
+    z0.peers([], next_peer_ts())
+    z0.step()
+    p_div0 = z0.pred().copy()
+    fw.cvar.g_rnn_div = 1
+    z1 = Fw(own_pos=(0.0, 0.0, 0.40))
+    z1.upload(w)
+    z1.peers([], next_peer_ts())
+    z1.step()
+    check("g_rnn_div=0 behaves like 1", np.allclose(p_div0, z1.pred(), atol=1e-6),
+          f"div0={p_div0[2]:+.6f} div1={z1.pred()[2]:+.6f}")
+    fw.cvar.g_rnn_div = 1
 
     print()
     if fails:

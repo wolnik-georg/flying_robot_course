@@ -20,7 +20,8 @@ checkout or an upstream pull.
 | File | What it changes | Consequence if lost |
 |---|---|---|
 | `bindings/setup.py` | Links the out-of-tree controller into the SIL build; renames six colliding symbols (`peer_get_all` added 2026-08-23 for the residual network -- the host has no `peer_localization`, so `oot_host.c` injects peers instead); sets `CONFIG_PLATFORM_CF21BL`. **2026-09-18: added `controller_indi.c`/`position_controller_indi.c` to `fw_sources`** — Bitcraze's own stock INDI wasn't compiled into the host build at all before this; needed to wire it into the SIL as a third reference point (see `controller_indi.h`'s row below and `docs/07`) | **The simulator does not build.** Without the platform define it builds but silently uses the wrong airframe — `THRUST_MAX` 0.1125 N/motor instead of 0.2 — and attitude INDI never leaves the ground. Losing the `controller_indi.c` addition just removes the `indi` controller option (`crazyflie_sil.py` — a separate, `flying_robot_course`-tracked change) |
-| `bindings/cffirmware.i` | Exposes `controllerOutOfTree*`, the RPM/log helpers, the airframe constants, the gain globals and the `rnn.*` residual-network globals + peer injection. **2026-09-18: added `%include "controller_indi.h"`** (was never SWIG-exposed before, despite the airframe-matching filter tweak below existing since July). **2026-09-18: added `naindi_select_drone`/`naindi_hybrid_select_drone`** (per-vehicle state-swap for controller=7/8, mirroring `oot_select_drone` — see "Multi-vehicle support for controller=7/8" below) | Simulator cannot select or configure our controller |
+| `bindings/cffirmware.i` | Exposes `controllerOutOfTree*`, the RPM/log helpers, the airframe constants, the gain globals and the `rnn.*` residual-network globals + peer injection. **2026-10-03:** added `g_rnn_div`, `g_rnn_rst`, `g_rnn_us_last/max/avg` for 100 Hz decimation + timing bench (host `test_residual_nn.py` sets `g_rnn_div=1`).
+| `src/config/config.h` (2026-10-03, patch in `flying_drone_stack/firmware_patches/stabilizer_stack_8x.patch`) | `STABILIZER_TASK_STACKSIZE` **3× → 8×** `configMINIMAL_STACKSIZE` (+4500 B task stack). Flash-RNN `ResidualNet::eval` overflowed the default **1800 B** stabilizer stack (lab 2026-10-03: silent `/cf5/pose`, boot assert). **Default build still safe; RNN build requires this.** Revert only if network eval stack is proven small again. | **2026-09-18: added `%include "controller_indi.h"`** (was never SWIG-exposed before, despite the airframe-matching filter tweak below existing since July). **2026-09-18: added `naindi_select_drone`/`naindi_hybrid_select_drone`** (per-vehicle state-swap for controller=7/8, mirroring `oot_select_drone` — see "Multi-vehicle support for controller=7/8" below) | Simulator cannot select or configure our controller |
 | `src/deck/drivers/src/usddeck.c` | `MAX_USD_LOG_VARIABLES_PER_EVENT` 20 → **48** (2026-09-21) → **56** (2026-09-30). **2026-09-21 evening:** `usd.runTag` param + log for session pairing — see `docs/39`. **2026-09-30:** config grew to **52** lines (`indi.oot5_*` ×4 for controller=10 branch/thrust diagnostics); at cap **48** the parser **silently dropped the last four config lines** (`oot5_branch` … `oot5_sp_thrust`) — the fields this investigation depends on never recorded. Raised to **56** (6 slots headroom). | **⚠️ The most dangerous one to lose.** Extra `usd_thesis_config.txt` lines beyond the cap are **skipped** (`Skip log variable … out of storage`, DEBUG only) — missing columns, no flight abort. Before any uSD flight: `grep MAX_USD_LOG_VARIABLES_PER_EVENT src/deck/drivers/src/usddeck.c` → **56**, and count variable lines under `on:fixedFrequency` (must be ≤ cap). |
 | `src/modules/interface/controller/controller_indi.h` | Filter cutoff and `g1`/`g2` re-derived for the CF21BL airframe through stock INDI's legacy output path (July 2026 investigation) — `STABILIZATION_INDI_FILT_CUTOFF` 8.0 (stock) → **70.0 Hz**, matching the standard/upgraded platform's own `fc_bw`, not the brushless-flown 60Hz (see the file's own comment for why). **2026-09-18: actually run closed-loop for the first time** (via the new `indi` SIL controller above) — this is the config already flown clean on real hardware, confirmed apples-to-apples, not a mismatch | The stock-INDI comparison is no longer on equal terms with ours |
 | `src/modules/interface/controller/controller.h`, `src/modules/src/controller/controller.c`, `src/modules/src/Kconfig` (2026-09-14) | Adds `ControllerTypeOot2` / `CONFIG_CONTROLLER_OOT2` — a **second, independent** out-of-tree controller slot (`stabilizer.controller=7`) alongside the existing `ControllerTypeOot` (`=6`, our geometric/INDI, `ctrl_mode` 0-3). Exists so a byte-faithful Rust port of Cobo-Briesewitz's NA-INDI (`firmware_app/src/naindi.rs`) can fly without any risk of interfering with our own controller — separate enum value, separate dispatch row, separate Rust module, no shared state | Controller 7 does not exist / does not build; falls back silently to whatever `ControllerType_COUNT`-indexed garbage or a build error, depending on how it's lost |
@@ -38,7 +39,38 @@ checkout or an upstream pull.
 
 ---
 
-## Recovering them
+## How to restore everything (2026-10-03)
+
+All patches live under **`flying_drone_stack/firmware_patches/`** (canonical; supersedes scattered
+`host/*.patch` copies for new restores). From a clean **bitcraze/crazyflie-firmware** checkout:
+
+```bash
+FW=~/Desktop/crazyflie-firmware
+PATCH=~/Desktop/flying_robot_course/flying_drone_stack/firmware_patches
+cd "$FW"
+for p in stabilizer_stack_8x.patch usddeck_56_variables.patch controller_indi_cf21bl.patch \
+  controller_oot_slots.patch controller_omar_indi.h.patch controller_omar_indi.c.patch \
+  naindi_gyro_no_lpf_math3d.patch platform_cf21bl_omar_constants.patch rpm_deck_bcRpm.patch \
+  cffirmware_bindings.patch
+do git apply --check "$PATCH/$p" && git apply "$PATCH/$p" || exit 1
+done
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+DRONE_PLATFORM=bl RUSTFLAGS="-C panic=abort" \
+  cargo build --release --target x86_64-unknown-linux-gnu --features residual_nn
+cd "$FW" && rm -f build/_cffirmware*.so build/cffirmware_wrap.c && make bindings_python
+make DRONE=bl   # from firmware_app/; uses CRAZYFLIE_BASE=$FW by default
+```
+
+**Recoverability check (desk 2026-10-03):** patches **`git apply`** clean on a fresh worktree;
+**`make DRONE=bl`** succeeds with `CRAZYFLIE_BASE` pointed at that tree. **`make bindings_python`**
+in the worktree alone failed until the **`firmware_app` Rust lib** is built first — always use the
+order above.
+
+Regenerate patches after editing the live firmware tree — see **`firmware_patches/README.md`**.
+
+---
+
+## Recovering them (legacy paths)
 
 The bindings changes are preserved as a patch in this repository:
 

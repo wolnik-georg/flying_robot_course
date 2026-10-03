@@ -710,6 +710,12 @@ struct State {
     /// peer API does not provide. Per-vehicle, hence in State rather than a global: the host
     /// simulator swaps this block per drone, and shared peer history would corrupt both.
     peer_prev: [(f32, f32, f32, u32); residual_nn::MAX_NEIGHBOURS],
+    /// Last peer absolute velocity estimate per slot (reused when mocap timestamp unchanged).
+    peer_vel: [Vec3; residual_nn::MAX_NEIGHBOURS],
+    /// Held network output between decimated evaluations (`rnn.div` > 1).
+    rnn_hold: Vec3,
+    rnn_clamped_hold: bool,
+    rnn_tick: u16,
 }
 
 impl State {
@@ -746,6 +752,10 @@ impl State {
             bw_res_d: [Butterworth2::zero(); 3],
             bw_res_init: false,
             peer_prev: [(0.0, 0.0, 0.0, 0); residual_nn::MAX_NEIGHBOURS],
+            peer_vel: [Vec3::zero(); residual_nn::MAX_NEIGHBOURS],
+            rnn_hold: Vec3::zero(),
+            rnn_clamped_hold: false,
+            rnn_tick: 0,
         }
     }
     fn reset(&mut self) {
@@ -774,6 +784,10 @@ impl State {
         self.tau_act = Vec3::zero();
         self.indi_init = false;
         self.peer_prev = [(0.0, 0.0, 0.0, 0); residual_nn::MAX_NEIGHBOURS];
+        self.peer_vel = [Vec3::zero(); residual_nn::MAX_NEIGHBOURS];
+        self.rnn_hold = Vec3::zero();
+        self.rnn_clamped_hold = false;
+        self.rnn_tick = 0;
     }
 }
 
@@ -802,8 +816,24 @@ static mut RNN: ResidualNet = ResidualNet::new();
 /// comparison is only possible if the prediction is recorded on flights where it is not being
 /// used -- including flights under the geometric controller.
 #[cfg(any(feature = "residual_nn", feature = "residual_nn_flash"))]
-unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
+unsafe fn rnn_record_timing(us: u32) {
+    if g_rnn_rst != 0 {
+        g_rnn_us_max = 0;
+        g_rnn_us_avg = 0.0;
+        g_rnn_rst = 0;
+    }
+    let us16 = us.min(65535) as u16;
+    g_rnn_us_last = us16;
+    if us16 > g_rnn_us_max {
+        g_rnn_us_max = us16;
+    }
+    g_rnn_us_avg = g_rnn_us_avg * (15.0 / 16.0) + (us as f32) * (1.0 / 16.0);
+}
+
+#[cfg(any(feature = "residual_nn", feature = "residual_nn_flash"))]
+unsafe fn rnn_predict_eval(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
     const M: usize = residual_nn::MAX_NEIGHBOURS;
+    let t0 = usecTimestamp();
     let (mut xs, mut ys, mut zs) = ([0.0f32; M], [0.0f32; M], [0.0f32; M]);
     let mut ts = [0u32; M];
     let n = peer_get_all(xs.as_mut_ptr(), ys.as_mut_ptr(), zs.as_mut_ptr(),
@@ -813,20 +843,52 @@ unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
     for k in 0..n.min(M) {
         let p = Vec3::new(xs[k], ys[k], zs[k]);
         let (px, py, pz, pt) = s.peer_prev[k];
-        let dt_ms = ts[k].wrapping_sub(pt);
-        let v = if pt != 0 && dt_ms > 0 && dt_ms < 500 {
-            let inv = 1000.0 / dt_ms as f32;
-            Vec3::new((p.x - px) * inv, (p.y - py) * inv, (p.z - pz) * inv)
-        } else {
+        let ts_new = ts[k];
+        let dt_ms = ts_new.wrapping_sub(pt);
+        let v_peer = if pt == 0 {
+            s.peer_prev[k] = (p.x, p.y, p.z, ts_new);
+            s.peer_vel[k] = Vec3::zero();
             Vec3::zero()
+        } else if ts_new != pt && dt_ms > 0 && dt_ms < 500 {
+            let inv = 1000.0 / dt_ms as f32;
+            let v = Vec3::new((p.x - px) * inv, (p.y - py) * inv, (p.z - pz) * inv);
+            s.peer_vel[k] = v;
+            s.peer_prev[k] = (p.x, p.y, p.z, ts_new);
+            v
+        } else {
+            s.peer_vel[k]
         };
-        s.peer_prev[k] = (p.x, p.y, p.z, ts[k]);
-        rel[k] = (p.sub(own_pos), v.sub(own_vel));
+        rel[k] = (p.sub(own_pos), v_peer.sub(own_vel));
     }
 
     let pred = RNN.eval(&rel, n, own_pos.z, own_vel);
-    rnn_pred_write(pred.x, pred.y, pred.z, RNN.clamped as u8);
+    let t1 = usecTimestamp();
+    let us = (t1 - t0) as u32;
+    rnn_record_timing(us);
     pred
+}
+
+/// Evaluate or hold the residual network (`rnn.div` decimation; logs stay continuous).
+#[cfg(any(feature = "residual_nn", feature = "residual_nn_flash"))]
+unsafe fn rnn_predict(s: &mut State, own_pos: Vec3, own_vel: Vec3) -> Vec3 {
+    let div = if g_rnn_div == 0 { 1 } else { g_rnn_div as u16 };
+    s.rnn_tick = s.rnn_tick.wrapping_add(1);
+    let do_eval = s.rnn_tick == 1 || (s.rnn_tick % div) == 0;
+    if do_eval {
+        let pred = rnn_predict_eval(s, own_pos, own_vel);
+        s.rnn_hold = pred;
+        s.rnn_clamped_hold = RNN.clamped;
+        rnn_pred_write(pred.x, pred.y, pred.z, RNN.clamped as u8);
+        pred
+    } else {
+        rnn_pred_write(
+            s.rnn_hold.x,
+            s.rnn_hold.y,
+            s.rnn_hold.z,
+            s.rnn_clamped_hold as u8,
+        );
+        s.rnn_hold
+    }
 }
 
 /// Stub for builds without the `residual_nn` feature -- unreachable in practice since
@@ -1036,6 +1098,11 @@ extern "C" {
     static mut g_rnn_end:   u8;
     static mut g_rnn_en:    u8;
     static mut g_rnn_ready: u8;
+    static mut g_rnn_div:   u8;
+    static mut g_rnn_rst:   u8;
+    static mut g_rnn_us_last: u16;
+    static mut g_rnn_us_max:  u16;
+    static mut g_rnn_us_avg:  f32;
 
     static mut g_kp_xy: f32;
     static mut g_kp_z:  f32;

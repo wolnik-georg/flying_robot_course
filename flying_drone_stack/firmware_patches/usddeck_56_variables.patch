@@ -1,0 +1,43 @@
+diff --git a/src/deck/drivers/src/usddeck.c b/src/deck/drivers/src/usddeck.c
+index 1d505958..195c1d8d 100644
+--- a/src/deck/drivers/src/usddeck.c
++++ b/src/deck/drivers/src/usddeck.c
+@@ -90,7 +90,13 @@
+ #define SPI_END_TRANSACTION     spiEndTransaction
+ #endif
+ 
+-#define MAX_USD_LOG_VARIABLES_PER_EVENT   (20)
++// LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Raised from the stock 20.
++// Thesis uSD config (flying_drone_stack/tools/usd_thesis_config.txt) lists 52 variables
++// per fixedFrequency event as of 2026-09-30 (incl. indi.oot5_* diagnostics + usd.runTag).
++// Parser silently skips any line beyond this cap (DEBUG_PRINT only). Was 48 until 2026-09-30
++// when 4 oot5 fields were dropped — including runTag if pushed past slot 48. See
++// flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
++#define MAX_USD_LOG_VARIABLES_PER_EVENT   (56)
+ #define MAX_USD_LOG_EVENTS                (20)
+ #define FIXED_FREQUENCY_EVENT_ID          (0xFFFF)
+ #define FIXED_FREQUENCY_EVENT_NAME        "fixedFrequency"
+@@ -238,6 +244,9 @@ static ringBuffer_t logBuffer;
+ static TaskHandle_t xHandleWriteTask;
+ 
+ static bool enableLogging;
++// LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Session tag set by host before usd.logging=1;
++// logged on every sample so post-flight pairing is O(1). See flying_robot_course/docs/29.
++static uint32_t runTag;
+ static uint32_t lastFileSize = 0;
+ static crc32Context_t crcContext;
+ 
+@@ -1108,6 +1117,7 @@ PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, canLog, &initSuccess)
+  * @brief Controls if logging to the SD-card is active. Set to 1 to start logging, set to 0 to stop logging (default).
+  */
+ PARAM_ADD_CORE(PARAM_UINT8, logging, &enableLogging) /* use to start/stop logging*/
++PARAM_ADD_CORE(PARAM_UINT32, runTag, &runTag)
+ PARAM_GROUP_STOP(usd)
+ 
+ /**
+@@ -1126,4 +1136,5 @@ STATS_CNT_RATE_LOG_ADD(spiReBps, &spiReadRate)
+  * @brief Data write rate to the SD card [bytes/s]
+  */
+ STATS_CNT_RATE_LOG_ADD(fatWrBps, &fatWriteRate)
++LOG_ADD_CORE(LOG_UINT32, runTag, &runTag)
+ LOG_GROUP_STOP(usd)

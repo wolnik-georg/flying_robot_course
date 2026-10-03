@@ -1,0 +1,106 @@
+diff --git a/src/modules/interface/controller/controller_indi.h b/src/modules/interface/controller/controller_indi.h
+index 4e407ae9..e19ed284 100644
+--- a/src/modules/interface/controller/controller_indi.h
++++ b/src/modules/interface/controller/controller_indi.h
+@@ -38,16 +38,44 @@
+ #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
+ 
+ // these parameters are used in the filtering of the angular acceleration [Hz]
+-#define STABILIZATION_INDI_FILT_CUTOFF 8.0f
++// 2026-07-22: operator requested 70Hz (note: our ACTUAL flown brushless fc_bw is 60Hz --
++// 70 is what the standard/upgraded brushed drones use, see crazyflies.yaml:244 vs :171/:192).
++// Stock default (8.0f) commented below -- restore to revert.
++// #define STABILIZATION_INDI_FILT_CUTOFF 8.0f
++#define STABILIZATION_INDI_FILT_CUTOFF 70.0f
+ 
+ // the yaw sometimes requires more filtering
+ #define STABILIZATION_INDI_FILT_CUTOFF_R STABILIZATION_INDI_FILT_CUTOFF
+ 
+ // Control effectiveness coefficients values Volodscoi
+-#define STABILIZATION_INDI_G1_P 0.0066146f
+-#define STABILIZATION_INDI_G1_Q 0.0052125f
+-#define STABILIZATION_INDI_G1_R 0.001497f
+-#define STABILIZATION_INDI_G2_R 0.000043475f
++// 2026-07-22: g1/g2 re-derived for THIS airframe (CF21BL brushless) through stock INDI's actual
++// output path (controlModeLegacy, NOT ForceTorque -- verified in controller_indi.c:150/329-332
++// and power_distribution_quadrotor.c's powerDistributionLegacy). Stock defaults were fit for a
++// standard brushed CF2.1 on the SAME legacy mixer; raising ref_rate/ref_err alone (§18.4b) left
++// g1 at that stale scale and produced an UNRELATED low-frequency (1.75 Hz) instability, not our
++// 6.3 Hz cycle -- this is the fix for that gap.
++// Derivation (bench_actuator_2026-07-22_17-12-22.csv static curve + CF21BL kt + ARM_M/TORQUE_RATIO):
++//   dRPM/d(raw cmd) = 0.573 (near-hover slope of the measured command->RPM static curve)
++//   dF/d(raw cmd)   = 2*kt*RPM_hover * dRPM/d(raw) = 6.76e-6 N/unit  (kt=4.10e-10, RPM_hover=14400)
++//   roll/pitch: legacy mixer moves 2 motors +raw/2, 2 motors -raw/2 per unit commanded ->
++//     d(torque)/d(cmd) = ARM_M(0.035355)*2*dF/d(raw) = 4.783e-7 Nm/unit
++//     g1_p = g1_q = d(torque)/d(cmd) / J_xy(23.951e-6) = 0.01997
++//   yaw: legacy mixer moves all 4 motors +-raw (full magnitude, diagonal alternating) ->
++//     d(torque_z)/d(cmd) = TORQUE_RATIO(0.0056928)*4*dF/d(raw) = 1.540e-7 Nm/unit
++//     (g1_r+g2) = d(torque_z)/d(cmd) / J_z(32.347e-6) = 0.00476 -> scaled g1_r/g2 by that ratio
++// CAVEAT: this path is genuinely less certain than our verified ForceTorque mixer reconstruction
++// (§12) -- the legacy mixer is Bitcraze's older, non-SI-calibrated scheme (see their own comment
++// in stabilizer_types.h: "SI units...is probably a better option"). Treat as a best-effort
++// starting point, not an exact calibration -- fly cautiously, incrementally, abort-ready.
++// Original stock defaults commented below -- restore to revert.
++// #define STABILIZATION_INDI_G1_P 0.0066146f
++// #define STABILIZATION_INDI_G1_Q 0.0052125f
++// #define STABILIZATION_INDI_G1_R 0.001497f
++// #define STABILIZATION_INDI_G2_R 0.000043475f
++#define STABILIZATION_INDI_G1_P 0.01997f
++#define STABILIZATION_INDI_G1_Q 0.01997f
++#define STABILIZATION_INDI_G1_R 0.00463f
++#define STABILIZATION_INDI_G2_R 0.000134f
+ 
+ // Control effectiveness coefficients values Max Kemmeren, these will become the new ones, not finalized yet
+ // #define STABILIZATION_INDI_G1_P 0.0032502f
+@@ -56,19 +84,40 @@
+ // #define STABILIZATION_INDI_G2_R 0.00001725f
+ 
+ //Proportional gains inner INDI, attitude error
+-#define STABILIZATION_INDI_REF_ERR_P 5.0f
+-#define STABILIZATION_INDI_REF_ERR_Q 5.0f
+-#define STABILIZATION_INDI_REF_ERR_R 5.0f
++// 2026-07-22: raised P/Q to match our OOT INDI's flown brushless gains (kr=2400, kw=170) for
++// an apples-to-apples shake comparison (docs/investigation_indi_oscillation_2026-07-21.md §18.4).
++// Stock's alpha_ref = ref_rate*(ref_err*eR - e_omega) <=> ours alpha_ref = -kr*eR - kw*e_omega,
++// so ref_rate plays the role of kw and ref_err = kr/kw sets the same PD-zero location.
++// Original stock defaults (5.0f / 24.0f) commented below -- restore to revert.
++// #define STABILIZATION_INDI_REF_ERR_P 5.0f
++// #define STABILIZATION_INDI_REF_ERR_Q 5.0f
++// #define STABILIZATION_INDI_REF_ERR_R 5.0f
++#define STABILIZATION_INDI_REF_ERR_P 14.12f
++#define STABILIZATION_INDI_REF_ERR_Q 14.12f
++#define STABILIZATION_INDI_REF_ERR_R 14.12f
+ 
+ //Derivative gains inner INDI, attitude rate error
+-#define STABILIZATION_INDI_REF_RATE_P 24.0f
+-#define STABILIZATION_INDI_REF_RATE_Q 24.0f
+-#define STABILIZATION_INDI_REF_RATE_R 24.0f
+-
+-// Actuator model coefficient
+-#define STABILIZATION_INDI_ACT_DYN_P 0.03149f
+-#define STABILIZATION_INDI_ACT_DYN_Q 0.03149f
+-#define STABILIZATION_INDI_ACT_DYN_R 0.03149f
++// #define STABILIZATION_INDI_REF_RATE_P 24.0f
++// #define STABILIZATION_INDI_REF_RATE_Q 24.0f
++// #define STABILIZATION_INDI_REF_RATE_R 24.0f
++#define STABILIZATION_INDI_REF_RATE_P 170.0f
++#define STABILIZATION_INDI_REF_RATE_Q 170.0f
++#define STABILIZATION_INDI_REF_RATE_R 170.0f
++
++// Actuator model coefficient (alpha = dt/(dt+tau) at 500 Hz, dt=0.002s; NOT tau directly --
++// verified from the update rule u_act_dyn += act_dyn*(u_in-u_act_dyn) in controller_indi.c).
++// Stock default 0.03149 => tau=61.5ms (brushed-CF2.1 assumption, coincidentally close to our
++// bench-measured brushless tau, but not the same drone -- use our own number).
++// 2026-07-22: set to our bench-measured brushless actuator time constant tau=44ms
++// (docs/investigation §16, bench_actuator_2026-07-22_17-12-22.csv):
++//   alpha = dt/(dt+tau) = 0.002/(0.002+0.044) = 0.04348
++// Original stock default commented below -- restore to revert.
++// #define STABILIZATION_INDI_ACT_DYN_P 0.03149f
++// #define STABILIZATION_INDI_ACT_DYN_Q 0.03149f
++// #define STABILIZATION_INDI_ACT_DYN_R 0.03149f
++#define STABILIZATION_INDI_ACT_DYN_P 0.04348f
++#define STABILIZATION_INDI_ACT_DYN_Q 0.04348f
++#define STABILIZATION_INDI_ACT_DYN_R 0.04348f
+ 
+ /**
+  * @brief angular rates

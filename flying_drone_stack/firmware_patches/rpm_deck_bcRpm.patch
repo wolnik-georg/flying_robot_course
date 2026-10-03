@@ -1,0 +1,47 @@
+diff --git a/src/deck/drivers/src/rpm.c b/src/deck/drivers/src/rpm.c
+index 7225c8a9..be685394 100644
+--- a/src/deck/drivers/src/rpm.c
++++ b/src/deck/drivers/src/rpm.c
+@@ -33,6 +33,7 @@
+ #include "deck.h"
+ #include "debug.h"
+ #include "log.h"
++#include "param.h"
+ 
+ //Hardware configuration
+ #define ET_GPIO_PERIF   (RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC)
+@@ -318,6 +319,34 @@ static const DeckDriver rpm_deck = {
+ 
+ DECK_DRIVER(rpm_deck);
+ 
++/* 2026-09-29: backported verbatim from the reference NA-INDI-firmware's own rpm.c.
++ *
++ * Why this is needed: controller_omar_indi.c (stabilizer.controller=9, the literal port of the
++ * supervisor's controller_lee.c) does, in its init:
++ *
++ *     paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
++ *     rpm_deck_available = (paramGetUint(idDeckBcRpm) == 1);
++ *
++ * His firmware registers `deck.bcRpm` here; THIS firmware never did. So paramGetVarId()
++ * returned an invalid id and paramGetUint() -> paramGetInt() tripped
++ * ASSERT(PARAM_VARID_IS_VALID(varid)) at param_logic.c:524 -- crashing the drone the instant
++ * controller=9 was selected. Diagnosed 2026-09-29 from cf5's own boot log, which had been
++ * printing "Could not find param deck/bcRpm" on every connect.
++ *
++ * Fourth backport of the same class as MOTORRPM2FORCE / THRUST2TORQUE / vadd5 /
++ * setpoint_t.attitudeAcc (docs/41 section 8): plain upstream infrastructure his controller
++ * depends on, not his customization. Read-only presence flag; changes nothing for
++ * controllers 5/6/7/8, which never read it.
++ */
++PARAM_GROUP_START(deck)
++
++/**
++ * @brief Nonzero if the bcRpm (optical RPM) deck is initialised
++ */
++PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcRpm, &isInit)
++
++PARAM_GROUP_STOP(deck)
++
+ 
+ LOG_GROUP_START(rpm)
+ LOG_ADD(LOG_UINT16, m1, &m1rpm)

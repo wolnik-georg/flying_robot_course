@@ -139,6 +139,18 @@ const GRAMS_TO_NEWTONS: f32 = 9.81 / 1000.0; // neuralswarm.py: f_a / 1000 * 9.8
 const GATE_DXY: f32 = 0.2;
 const GATE_DVX: f32 = 1.5;
 
+// Scratch for phi_forward / rho_forward — single caller: stabilizer task at eval time only.
+// Host SIL runs controller_step from one thread per drone instance; not re-entrant.
+static mut PHI_H1: [f32; PHI_L1] = [0.0; PHI_L1];
+static mut PHI_H2: [f32; PHI_L2] = [0.0; PHI_L2];
+static mut PHI_H3: [f32; PHI_L3] = [0.0; PHI_L3];
+static mut PHI_OUT: [f32; HIDDEN] = [0.0; HIDDEN];
+static mut RHO_H1: [f32; RHO_L1] = [0.0; RHO_L1];
+static mut RHO_H2: [f32; RHO_L2] = [0.0; RHO_L2];
+static mut RHO_H3: [f32; RHO_L3] = [0.0; RHO_L3];
+static mut RHO_OUT_SCRATCH: [f32; RHO_OUT] = [0.0; RHO_OUT];
+static mut EVAL_RHO_INPUT: [f32; HIDDEN] = [0.0; HIDDEN];
+
 #[cfg(feature = "residual_nn_flash")]
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/rnn_weights_embedded.rs"));
@@ -253,33 +265,33 @@ impl ResidualNet {
             return Vec3::zero();
         }
 
-        let mut rho_input = [0.0f32; HIDDEN];
-
-        // Ground interaction -- unconditional, every tick, regardless of neighbours.
-        let ground_x = [0.0 - own_z, -own_vel.x, -own_vel.y, -own_vel.z];
         let w = self.weights();
-        let phi_g = phi_forward(w, OFF_PHI_G, &ground_x);
-        for (acc, v) in rho_input.iter_mut().zip(phi_g.iter()) {
-            *acc += *v;
-        }
-
-        // Neighbours -- every vehicle in this project is "small", so always phi_S/rho_S.
-        for item in rel.iter().take(n.min(MAX_NEIGHBOURS)) {
-            let (dp, dv) = *item;
-            let gated = libm::fabsf(dp.x) < GATE_DXY
-                && libm::fabsf(dp.y) < GATE_DXY
-                && libm::fabsf(dv.x) < GATE_DVX;
-            if !gated {
-                continue;
-            }
-            let x = [dp.x, dp.y, dp.z, dv.x, dv.y, dv.z];
-            let phi_s = phi_forward(w, OFF_PHI_S, &x);
-            for (acc, v) in rho_input.iter_mut().zip(phi_s.iter()) {
+        let faz_grams = unsafe {
+            EVAL_RHO_INPUT = [0.0f32; HIDDEN];
+            // Ground interaction -- unconditional, every tick, regardless of neighbours.
+            let ground_x = [0.0 - own_z, -own_vel.x, -own_vel.y, -own_vel.z];
+            let phi_g = phi_forward(w, OFF_PHI_G, &ground_x);
+            for (acc, v) in EVAL_RHO_INPUT.iter_mut().zip(phi_g.iter()) {
                 *acc += *v;
             }
-        }
 
-        let faz_grams = rho_forward(w, OFF_RHO_S, &rho_input);
+            // Neighbours -- every vehicle in this project is "small", so always phi_S/rho_S.
+            for item in rel.iter().take(n.min(MAX_NEIGHBOURS)) {
+                let (dp, dv) = *item;
+                let gated = libm::fabsf(dp.x) < GATE_DXY
+                    && libm::fabsf(dp.y) < GATE_DXY
+                    && libm::fabsf(dv.x) < GATE_DVX;
+                if !gated {
+                    continue;
+                }
+                let x = [dp.x, dp.y, dp.z, dv.x, dv.y, dv.z];
+                let phi_s = phi_forward(w, OFF_PHI_S, &x);
+                for (acc, v) in EVAL_RHO_INPUT.iter_mut().zip(phi_s.iter()) {
+                    *acc += *v;
+                }
+            }
+            rho_forward(w, OFF_RHO_S, &EVAL_RHO_INPUT)
+        };
         let mass = unsafe { g_indi_mass };
         let faz_accel = (faz_grams * GRAMS_TO_NEWTONS) / mass;
 
@@ -302,32 +314,28 @@ impl ResidualNet {
 /// (6 for S/L, 4 for G).
 #[inline]
 fn phi_forward(w: &[f32], off: usize, x: &[f32]) -> [f32; HIDDEN] {
-    let mut h1 = [0.0f32; PHI_L1];
-    let mut h2 = [0.0f32; PHI_L2];
-    let mut h3 = [0.0f32; PHI_L3];
-    let mut out = [0.0f32; HIDDEN];
-    let mut o = off;
-    o = layer_relu(w, o, x, &mut h1);
-    o = layer_relu(w, o, &h1, &mut h2);
-    o = layer_relu(w, o, &h2, &mut h3);
-    let _ = layer_linear(w, o, &h3, &mut out);
-    out
+    unsafe {
+        let mut o = off;
+        o = layer_relu(w, o, x, &mut PHI_H1);
+        o = layer_relu(w, o, &PHI_H1, &mut PHI_H2);
+        o = layer_relu(w, o, &PHI_H2, &mut PHI_H3);
+        let _ = layer_linear(w, o, &PHI_H3, &mut PHI_OUT);
+        PHI_OUT
+    }
 }
 
 /// `rho_Net.forward`: same pattern, three ReLU layers then a linear fourth, collapsing to the
 /// single scalar the reference calls `faz`.
 #[inline]
 fn rho_forward(w: &[f32], off: usize, x: &[f32; HIDDEN]) -> f32 {
-    let mut h1 = [0.0f32; RHO_L1];
-    let mut h2 = [0.0f32; RHO_L2];
-    let mut h3 = [0.0f32; RHO_L3];
-    let mut out = [0.0f32; RHO_OUT];
-    let mut o = off;
-    o = layer_relu(w, o, x, &mut h1);
-    o = layer_relu(w, o, &h1, &mut h2);
-    o = layer_relu(w, o, &h2, &mut h3);
-    let _ = layer_linear(w, o, &h3, &mut out);
-    out[0]
+    unsafe {
+        let mut o = off;
+        o = layer_relu(w, o, x, &mut RHO_H1);
+        o = layer_relu(w, o, &RHO_H1, &mut RHO_H2);
+        o = layer_relu(w, o, &RHO_H2, &mut RHO_H3);
+        let _ = layer_linear(w, o, &RHO_H3, &mut RHO_OUT_SCRATCH);
+        RHO_OUT_SCRATCH[0]
+    }
 }
 
 /// One fully-connected layer with ReLU. Returns the offset just past the weights it consumed.

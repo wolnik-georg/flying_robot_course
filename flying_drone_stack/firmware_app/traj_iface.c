@@ -128,6 +128,12 @@ uint8_t  g_rnn_begin = 0;  /* host sets 1 to start a fresh upload; Rust clears  
 uint8_t  g_rnn_end   = 0;  /* host sets 1 when done; Rust validates and clears           */
 uint8_t  g_rnn_en    = 0;  /* 0 = predict but do not use; 1 = feed into the controller    */
 uint8_t  g_rnn_ready = 0;  /* read-only: 1 once a complete, finite weight set is loaded   */
+uint8_t  g_rnn_div   = 10; /* evaluate every N controller ticks (1 kHz); 10 => ~100 Hz     */
+uint8_t  g_rnn_rst   = 0;  /* host sets 1 to reset rnn.us_max / us_avg                     */
+
+uint16_t g_rnn_us_last = 0;
+uint16_t g_rnn_us_max  = 0;
+float    g_rnn_us_avg  = 0.0f;
 
 /* Logged so the prediction can be compared against the measured residual in flight --
  * that comparison IS the evaluation of every learned method in this thesis.            */
@@ -202,6 +208,8 @@ PARAM_GROUP_START(rnn)
   PARAM_ADD(PARAM_UINT8,  end,   &g_rnn_end)
   PARAM_ADD(PARAM_UINT8,  en,    &g_rnn_en)
   PARAM_ADD(PARAM_UINT8,  ready, &g_rnn_ready)
+  PARAM_ADD(PARAM_UINT8,  div,   &g_rnn_div)
+  PARAM_ADD(PARAM_UINT8,  rst,   &g_rnn_rst)
 PARAM_GROUP_STOP(rnn)
 
 LOG_GROUP_START(rnn)
@@ -210,6 +218,9 @@ LOG_GROUP_START(rnn)
   LOG_ADD(LOG_FLOAT, pred_z,  &g_rnn_pred_z)
   LOG_ADD(LOG_UINT8, clamped, &g_rnn_clamped)
   LOG_ADD(LOG_UINT8, ready,   &g_rnn_ready)
+  LOG_ADD(LOG_UINT16, us_last, &g_rnn_us_last)
+  LOG_ADD(LOG_UINT16, us_max,  &g_rnn_us_max)
+  LOG_ADD(LOG_FLOAT,  us_avg,  &g_rnn_us_avg)
 LOG_GROUP_STOP(rnn)
 
 /* ── CRTP parameter group ────────────────────────────────────────────────── */
