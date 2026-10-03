@@ -359,13 +359,13 @@ def plot_overlay_and_delta(path: Path, prefix: str, motor: int, meta: dict, out_
     C_DECK, C_DSHOT = "#1F5C4D", "#D1495B"
 
     fig, (a0, a1) = plt.subplots(2, 1, figsize=(11, 7), gridspec_kw={"height_ratios": [1, 1.1]})
-    plot_segments(a0, td, d_plot, color=C_DECK, lw=2.4, alpha=0.9, label="optical deck")
-    plot_segments(a0, td, s_plot, color=C_DSHOT, lw=0.9, label="DShot (spikes removed)")
+    plot_segments(a0, td, d_plot, color=C_DECK, lw=1.8, alpha=1.0, zorder=3, label="optical deck")
+    plot_segments(a0, td, s_plot, color=C_DSHOT, lw=0.9, alpha=0.8, zorder=2, label="DShot (spikes removed)")
     a0.axvspan(td[zi], td[min(zi + w, len(td) - 1)], color="0.8", alpha=0.5)
     a0.set_title("Full flight"); a0.set_xlabel("time (s)"); a0.set_ylabel("motor RPM"); a0.legend(loc="upper right")
     sl = slice(zi, zi + w)
-    plot_segments(a1, td[sl], d_plot[sl], color=C_DECK, lw=3.0, alpha=0.9, label="optical deck")
-    plot_segments(a1, td[sl], s_plot[sl], color=C_DSHOT, lw=1.4, label="DShot (spikes removed)")
+    plot_segments(a1, td[sl], d_plot[sl], color=C_DECK, lw=3.0, alpha=1.0, zorder=3, label="optical deck")
+    plot_segments(a1, td[sl], s_plot[sl], color=C_DSHOT, lw=1.4, alpha=0.8, zorder=2, label="DShot (spikes removed)")
     a1.set_title("Zoom on the grey 2 s"); a1.set_xlabel("time (s)"); a1.set_ylabel("motor RPM"); a1.legend(loc="upper right")
     fig.suptitle(f"Motor RPM, optical deck vs DShot ({fid}, {prefix}, motor {motor})", y=1.0)
     fig.tight_layout(); fig.savefig(out_overlay, bbox_inches="tight"); plt.close(fig)
