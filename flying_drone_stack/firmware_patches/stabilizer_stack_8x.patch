@@ -1,0 +1,13 @@
+diff --git a/src/config/config.h b/src/config/config.h
+index 32a73b6a..ce780193 100644
+--- a/src/config/config.h
++++ b/src/config/config.h
+@@ -180,7 +180,7 @@
+ #define MEM_TASK_STACKSIZE              (2 * configMINIMAL_STACK_SIZE)
+ #define PARAM_TASK_STACKSIZE            (2 * configMINIMAL_STACK_SIZE)
+ #define SENSORS_TASK_STACKSIZE          (2 * configMINIMAL_STACK_SIZE)
+-#define STABILIZER_TASK_STACKSIZE       (3 * configMINIMAL_STACK_SIZE)
++#define STABILIZER_TASK_STACKSIZE       (8 * configMINIMAL_STACK_SIZE) /* local: flash-RNN eval needs ~1.4-2 KB of stack on top of the controller */
+ #define RATE_SUPERVISOR_TASK_STACKSIZE  configMINIMAL_STACK_SIZE
+ #define NRF24LINK_TASK_STACKSIZE        configMINIMAL_STACK_SIZE
+ #define ESKYLINK_TASK_STACKSIZE         configMINIMAL_STACK_SIZE

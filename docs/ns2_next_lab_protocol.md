@@ -29,6 +29,8 @@ make DRONE=bl cload-rnn-flash CLOAD_ARGS='-w radio://0/80/2M/E7E7E7BB02'
 
 If the drone still has **default** firmware: **`rnn.ready=1` after CRTP upload is misleading** — `cf_rnn_finish_upload()` is a stub; **`rnn_pred_*` stay 0**. Fix: **reflash flash-RNN** (command above) before any G attempt.
 
+**2026-10-03 hardware finding:** flash-RNN build ran the NN every tick from boot (`g_rnn_ready=1`) and overflowed the 1.8 KB stabilizer stack (eval ~610 B + phi_forward ~585 B), giving a boot `radiolink.c:171` assert and `cf5` pose stuck at 0. Fix: `STABILIZER_TASK_STACKSIZE` 3x -> 8x in `crazyflie-firmware/src/config/config.h`, saved as `flying_drone_stack/firmware_patches/stabilizer_stack_8x.patch` (re-apply with `git apply` after any firmware tree reset). Pose confirmed working after flashing.
+
 ## 1. Environment — CS2 launch (`backend=cpp`)
 
 **Why not `cflib`:** this lab’s session docs (`2026-09-28_alt_indi_shakedown.md`, etc.) always used
