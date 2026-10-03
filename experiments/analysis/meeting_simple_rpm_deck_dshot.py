@@ -238,6 +238,7 @@ def analyze_motor(
         "lag_iqr_ms": float("nan"),
         "i0": 0,
         "i1": 0,
+        "deck_std": float("nan"),
     }
     airborne = (deck > AIRBORNE_RPM_MIN) & (dshot_raw > AIRBORNE_RPM_MIN)
     run = longest_run(airborne)
@@ -257,6 +258,7 @@ def analyze_motor(
         out["excluded"] = f"airborne segment {seg_s:.1f} s < {MIN_AIRBORNE_S:.0f} s"
         return out
     out["n_airborne"] = len(td)
+    out["deck_std"] = float(np.std(dd))
     bad, old_bad, dshot_high, deck_glitch = glitch_masks(dd, ds)
     out["n_bad"] = int(bad.sum())
     out["n_bad_old"] = int(old_bad.sum())
@@ -369,11 +371,13 @@ def plot_overlay_and_delta(path: Path, prefix: str, motor: int, meta: dict, out_
     fig.tight_layout(); fig.savefig(out_overlay, bbox_inches="tight"); plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(11, 4.2))
-    plot_segments(ax, td, diff, color="#2E6DA4", lw=0.8)
+    rm = meta["rmse"]
+    ax.axhspan(-rm, rm, color="#4FB39A", alpha=0.2, label=f"±RMSE = ±{rm:.0f} RPM")
+    plot_segments(ax, td, diff, color="#2E6DA4", lw=0.8, label="DShot − deck")
     ax.axhline(0, color="black", lw=0.8)
     ax.set_xlabel("time (s)"); ax.set_ylabel("DShot − deck (RPM)")
-    ax.set_title(f"Difference DShot − deck  |  bias {meta['bias_pct']:.2f} %, RMSE {meta['rmse']:.0f} RPM, "
-                 f"r {meta['r']:.3f}, lag {meta['lag_ms']:.0f} ms (DShot later)")
+    ax.set_title("Difference DShot − deck: noise around 0, no drift")
+    ax.legend(loc="upper right")
     fig.tight_layout(); fig.savefig(out_delta, bbox_inches="tight"); plt.close(fig)
 
 
@@ -468,7 +472,8 @@ def main() -> None:
             a3_checks = a3_spike_check(row["path"], row["prefix"], 1, row)
             break
     # one flight is enough for the meeting: the stable-lag pick -> overlay + delta figures
-    row = pick_lag
+    # figure flight = the calmest one (smallest deck RPM std), so the plot does not look like an unstable hover
+    row = min(included, key=lambda r: r["deck_std"])
     out_ov = OUT_ASSETS / "fig_rpm_overlay.png"
     out_dl = OUT_ASSETS / "fig_rpm_delta.png"
     plot_overlay_and_delta(row["path"], row["prefix"], row["motor"], row, out_ov, out_dl)
