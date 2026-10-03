@@ -28,6 +28,14 @@ cp flying_drone_stack/tools/usd_thesis_config.txt /media/<sd>/config.txt
 #   cp flying_drone_stack/tools/usd_mocap_diagnostic_config.txt /media/<sd>/config.txt
 # Swap back to usd_thesis_config.txt before resuming normal C.1 collection.
 
+# Liftoff diagnostic launch timing (2026-10-02, Part A — commanded ctrltarget during ramp):
+# Standard run_formation / flight.py turn usd.logging on only AFTER takeoff+goTo+upload, so no
+# historical uSD file captures ground->hover. For one intentional diagnostic flight (not C.1 default):
+#   git apply ~/Desktop/flying_robot_course/docs/lab_usd_liftoff_logging_diagnostic.patch  # crazyswarm2
+#   export FORMATION_USD_AT_TAKEOFF=1
+#   ros2 run crazyflie_examples run_formation -- --scenario A1 ...
+# Revert the script patch after; keep thesis config.txt on the card. Do NOT move usec.reset.
+
 # 2. card into the deck, power-cycle the drone, then confirm the deck came up.
 #    Safe to run as many times as you like -- reads two read-only status params
 #    (usd.bcUSD, usd.canLog) and never touches usd.logging, so it cannot contaminate

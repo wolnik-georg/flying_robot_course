@@ -5,6 +5,10 @@
 #   make clean    — clean the firmware build output
 #   make cload    — flash over Crazyradio (requires cfloader on PATH)
 #
+# NS2 flash-resident weights (additive; plain `make` / `make cload` unchanged):
+#   make cload-rnn-flash              — build residual_nn_flash + flash (default npz below)
+#   make cload-rnn-flash RNN_WEIGHTS_NPZ=/path/to/other.npz
+#
 # The resulting firmware binary is at build/cf2.bin.
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -61,3 +65,17 @@ brushless-seed:
 		$(MAKE) cf21bl_defconfig; \
 	fi
 endif
+
+# ── NS2: flash-resident RNN (does not alter default targets) ─────────────────
+# Recurses with CF_CARGO_FEATURES / CF_RNN_WEIGHTS_NPZ only for these targets.
+RNN_WEIGHTS_NPZ ?= $(abspath $(PWD)/../../experiments/analysis/out/c2_e2e_2026-10-01/full_bank_c1_complete.npz)
+RNN_FLASH_MAKE = $(MAKE) CF_CARGO_FEATURES='--features residual_nn_flash' CF_RNN_WEIGHTS_NPZ='$(RNN_WEIGHTS_NPZ)'
+
+.PHONY: all-rnn-flash cload-rnn-flash
+all-rnn-flash:
+	@test -f '$(RNN_WEIGHTS_NPZ)' || (echo "Missing RNN_WEIGHTS_NPZ: $(RNN_WEIGHTS_NPZ)" >&2; exit 1)
+	$(RNN_FLASH_MAKE) all
+
+cload-rnn-flash:
+	@test -f '$(RNN_WEIGHTS_NPZ)' || (echo "Missing RNN_WEIGHTS_NPZ: $(RNN_WEIGHTS_NPZ)" >&2; exit 1)
+	$(RNN_FLASH_MAKE) cload

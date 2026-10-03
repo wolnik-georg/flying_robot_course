@@ -150,6 +150,7 @@ uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
   for (uint8_t i = 0; i < max; ++i) {
     peerLocalizationOtherPosition_t *p = peerLocalizationGetPositionByIdx(i);
     if (p == NULL) break;
+    if (p->id == 0) continue;
     xs[n] = p->pos.x; ys[n] = p->pos.y; zs[n] = p->pos.z; ts[n] = p->pos.timestamp;
     ++n;
   }

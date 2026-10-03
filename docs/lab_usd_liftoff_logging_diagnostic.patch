@@ -1,0 +1,77 @@
+# Diagnostic-only uSD timing for liftoff ctrltarget capture (Part A). Do NOT commit as default.
+# Apply in crazyswarm2 when you want one flight that logs ground -> takeoff -> scenario:
+#
+#   cd ~/Desktop/crazyswarm2
+#   git apply ~/Desktop/flying_robot_course/docs/lab_usd_liftoff_logging_diagnostic.patch
+#   export FORMATION_USD_AT_TAKEOFF=1
+#   ros2 run crazyflie_examples run_formation -- --scenario A1 ...
+#   unset FORMATION_USD_AT_TAKEOFF
+#   git checkout -- crazyflie_examples/crazyflie_examples/run_formation.py
+#
+# Side effects: ~10-15 s more data at 500 Hz (~5-8k rows) per session; same single file per
+# usd.logging 0->1 session. Do NOT move usec.reset — it must stay on the ground before takeoff.
+# uSD config: standard usd_thesis_config.txt (ctrltarget_z is already logged).
+#
+diff --git a/crazyflie_examples/crazyflie_examples/run_formation.py b/crazyflie_examples/crazyflie_examples/run_formation.py
+index 52d2323..abec5d3 100644
+--- a/crazyflie_examples/crazyflie_examples/run_formation.py
++++ b/crazyflie_examples/crazyflie_examples/run_formation.py
+@@ -25,6 +25,7 @@ import argparse
+ from pathlib import Path
+ import sys
+ import time
++import os
+ 
+ import numpy as np
+ 
+@@ -805,6 +806,23 @@ def main():
+         for lg in loggers:
+             lg.active = True
+ 
++        # DIAGNOSTIC ONLY (Part A / liftoff ctrltarget): set FORMATION_USD_AT_TAKEOFF=1
++        # before launch to start uSD before the takeoff ramp. Standard C.1 keeps logging
++        # off until after upload (~10-12 s later), which never captures ground->hover.
++        usd_at_takeoff = os.environ.get('FORMATION_USD_AT_TAKEOFF', '') == '1'
++        run_tag = int(time.time())
++        if usd_at_takeoff:
++            try:
++                allcfs.setParam('usd.runTag', run_tag)
++                th.sleep(0.05)
++                allcfs.setParam('usd.logging', 1)
++                usd_start = time.monotonic()
++                print(f'[formation] DIAG: uSD logging before takeoff (FORMATION_USD_AT_TAKEOFF=1) '
++                      f'at t={usd_start - log_t0:.3f}s')
++            except Exception as e:
++                print(f'[formation] DIAG: uSD early start failed ({e}) -- falling back to standard timing')
++                usd_at_takeoff = False
++
+         # Stage 1: straight up to each robot's own slot height, no lateral motion, so a
+         # stack is vertically separated before anything moves sideways.
+         print('[formation] stage 1: climbing to slot heights...')
+@@ -832,16 +850,16 @@ def main():
+         # takeoff -- see the long comment at the top of this try block. Sending it at this
+         # point (mid-flight, which is where it originally sat) destroys the high-level
+         # commander's time base and crashes the vehicle within one control tick.
+-        run_tag = int(time.time())
+-        try:
+-            allcfs.setParam('usd.runTag', run_tag)
+-            th.sleep(0.05)
+-            allcfs.setParam('usd.logging', 1)
+-            usd_start = time.monotonic()
+-            print(f'[formation] uSD logging started (broadcast) at '
+-                  f't={usd_start - log_t0:.3f}s')
+-        except Exception as e:
+-            print(f'[formation] uSD logging not started ({e}) -- radio logs only')
++        if not usd_at_takeoff:
++            try:
++                allcfs.setParam('usd.runTag', run_tag)
++                th.sleep(0.05)
++                allcfs.setParam('usd.logging', 1)
++                usd_start = time.monotonic()
++                print(f'[formation] uSD logging started (broadcast) at '
++                      f't={usd_start - log_t0:.3f}s')
++            except Exception as e:
++                print(f'[formation] uSD logging not started ({e}) -- radio logs only')
+ 
+         # Record the exact simulation-clock instant the trajectory starts. Verification
+         # afterwards needs the window, and guessing it from the recorded states is

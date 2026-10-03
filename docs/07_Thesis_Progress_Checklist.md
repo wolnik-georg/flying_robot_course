@@ -186,14 +186,21 @@ after leaving the ground, independent of scenario — cause still unknown.
      something (real motor/ESC dynamics, EKF transient at liftoff, or a planning-side issue),
      not that an untested gain value would fix it. **Do not spend more time re-sweeping `kv_z`
      or `ki_z` around their current values — that avenue is exhausted for now.**
-   - Follow-up sent to Cursor, **result pending as of session close**: (A) decode raw/uncropped
-     uSD for today's two clean A1 flights and check whether the *commanded* setpoint itself
-     spikes during the real takeoff ramp (never checked — all prior analysis used data cropped
-     to after the ramp), separating a planning-side issue from a control-tracking one; (B) run
-     Omar's reference gains (`Kpos_P=7.0, Kpos_D=4.0, Kpos_I=0.0` — confirmed structurally
-     equivalent control law, `~/Desktop/crazyflie-firmware-omar/.../controller_lee.c`) through
-     our own SIL liftoff harness as a comparison point. **Read Cursor's results first thing next
-     session before deciding what's next on this thread.**
+   - **Part A (commanded setpoint at liftoff) — still open, not resolved by log decode (2026-10-02
+     correction).** An initial decode of `cf5_thesis50_2026-10-01_18-52-05.bin` reported flat
+     `ctrltarget_z≈1.0`, but that file's time axis **starts ~13.7 s** with **z already ~0.94 m** —
+     the recording begins after the climb, because `run_formation.py` sets `usd.logging=1` only after
+     takeoff/goTo/upload (~10–12 s after ground `usec.reset`). Radio CSVs for the same flights have
+     **no commanded-setpoint columns**. So hardware logs **cannot** answer whether `ctrltarget_z`
+     stepped during liftoff. **Desk code read (Bitcraze HL commander):** `takeoff`/`takeoff2` →
+     `plan_takeoff` → `plan_takeoff_or_landing` → **`piecewise_plan_7th_order_no_jerk`** from current
+     `(pos,yaw,vel=0,acc=0)` to target height over `duration` — a **single smooth polynomial ramp**,
+     not an instant jump to hover height (see `planner.c`, `pptraj.c`, `crtp_commander_high_level.c`).
+     That rules out a deliberate "step to 1 m" in the planner, but **not** tracking/integral effects or
+     a discontinuity if planning `pos` ≠ true state at takeoff. **Next hardware:** diagnostic-only
+     `docs/lab_usd_liftoff_logging_diagnostic.patch` + `FORMATION_USD_AT_TAKEOFF=1` (do not change
+     default C.1 toggle points).
+   - **Part B (Omar gains in SIL liftoff)** — still optional / not run as of 2026-10-02 close.
 
 3. **Open supervisor question, surfaced tonight, not yet asked**: per this doc's own C.3 table,
    "Strategy 1: Pure INDI" in the thesis's compared set is `controller=6, ctrl_mode=3` (already
@@ -202,8 +209,8 @@ after leaving the ground, independent of scenario — cause still unknown.
    "fly A1 with both to compare" exercise — changes what that comparison would even test.
 
 **Next-steps breakdown, in realistic order:**
-1. Read Cursor's Part A/B results (commanded-setpoint check + Omar-gains SIL comparison) —
-   determines whether the overshoot is planning-side, gain-side, or neither.
+1. **Overshoot thread:** Part A is **not** closed from logs; use HL-code conclusion above + optional
+   liftoff uSD diagnostic flight. Part B (Omar-gains SIL) still optional.
 2. **Re-run Checklist G** with the now-fixed upload script — re-upload weights, confirm
    `rnn.n`≈19297 in the script's own output (not just `en`/`ready`), then fly A1 or A3 with
    `rnn.en=1` and confirm `rnn_pred_*` shows real nonzero values in the merged uSD log before
