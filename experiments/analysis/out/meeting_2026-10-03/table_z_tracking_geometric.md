@@ -41,7 +41,7 @@
 | `A1_cf_second_2026-10-02_19-13-24.csv` | no | nan | nan | nan | no steady samples |
 | `A1_cf_second_2026-10-02_19-15-47.csv` | yes | -2.10 | 2.10 | 2.31 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 
-## A8 — summary (steady window only)
+## A8 top drone (cf_second) — summary (steady window only)
 - n=8 | mean error -1.66 cm | mean |error| 1.66 cm | max |error| 2.41 cm
 
 | flight | clean | mean (cm) | mean |e| (cm) | max |e| (cm) | note |
@@ -58,11 +58,19 @@
 | `A8_cf_second_2026-10-03_13-10-32.csv` | yes | -2.23 | 2.23 | 2.41 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 | `A8_cf_second_2026-10-03_13-15-00.csv` | yes | -2.10 | 2.10 | 2.31 | ki_z=16 from session yaml (not in cf_second radio # meta) |
 
+## A8 bottom drone (cf5) — summary (steady window only)
+- n=2 | mean error 0.15 cm | mean |error| 0.89 cm | max |error| 8.30 cm
+
+| flight | clean | mean (cm) | mean |e| (cm) | max |e| (cm) | note |
+|---|---:|---:|---:|---:|---|
+| `A8_cf5_2026-10-02_17-23-14.csv` | yes | 0.15 | 0.88 | 7.87 | ki_z=16 from session yaml (not in cf5 radio # meta) |
+| `A8_cf5_2026-10-02_17-28-37.csv` | yes | 0.16 | 0.90 | 8.30 | ki_z=16 from session yaml (not in cf5 radio # meta) |
+
 ## Change vs previous table (window end = log end − 2.5 s)
 - Previous max |error| on hovers included **landing descent**; descent-based end gives max |error| **≈2 cm** on 09-30 hovers (see Hover rows).
 
 ## All exclusions
 - `A1_cf_second_2026-10-02_19-13-24.csv` (A1): no steady samples
-- `A8_cf_second_2026-10-02_18-57-49.csv` (A8): max tilt 179.7° > 45°
-- `A8_cf_second_2026-10-02_18-59-17.csv` (A8): max tilt 56.4° > 45°
-- `A8_cf_second_2026-10-02_19-08-13.csv` (A8): no steady samples
+- `A8_cf_second_2026-10-02_18-57-49.csv` (A8 top drone (cf_second)): max tilt 179.7° > 45°
+- `A8_cf_second_2026-10-02_18-59-17.csv` (A8 top drone (cf_second)): max tilt 56.4° > 45°
+- `A8_cf_second_2026-10-02_19-08-13.csv` (A8 top drone (cf_second)): no steady samples

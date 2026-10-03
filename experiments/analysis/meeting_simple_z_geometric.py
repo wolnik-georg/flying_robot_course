@@ -28,6 +28,7 @@ from meeting_simple_common import (
     formation_candidate_paths,
 )
 
+BOTTOM_A8_1002 = ("A8_cf5_2026-10-02_17-23-14.csv", "A8_cf5_2026-10-02_17-28-37.csv")
 PNG = OUT_ASSETS / "fig_z_tracking_geometric.png"
 MD = OUT_TABLES / "table_z_tracking_geometric.md"
 
@@ -51,18 +52,24 @@ def trace_formation(row):
     return t[keep], err[keep], land_start
 
 
-def plot_panel(ax, rows: list, trace_fn, title: str):
-    inc = [r for r in rows if r.included]
+def plot_panel(ax, rows: list, trace_fn, title: str, label: str | None = None,
+               extra: list | None = None):
+    """rows: main group (blue). extra: [(rows, color, label)] additional groups (e.g. bottom drone)."""
     ax.axhspan(-Z_BAND_CM, Z_BAND_CM, color="#4FB39A", alpha=0.18, zorder=0, label=f"±{Z_BAND_CM:g} cm")
     ax.axhline(0, color="black", lw=0.8, alpha=0.5)
-    for r in inc:
-        t, err, land = trace_fn(r)
-        ax.plot(t, err, color="#2E6DA4", lw=1.0, alpha=0.85)
+    groups = [(rows, "#2E6DA4", label)] + list(extra or [])
+    counts = []
+    for grp_rows, color, lab in groups:
+        inc = [r for r in grp_rows if r.included]
+        for k, r in enumerate(inc):
+            t, err, land = trace_fn(r)
+            ax.plot(t, err, color=color, lw=1.0, alpha=0.85, label=(lab if (k == 0 and lab) else None))
+        counts.append(f"{len(inc)} {lab.split(' (')[0] if lab else 'flights'}")
     ax.set_ylim(-Z_ERR_YLIM_CM, Z_ERR_YLIM_CM)
     ax.set_xlabel("time since takeoff (s)")
     ax.set_ylabel("z error (cm)")
     ax.set_title(title)
-    ax.text(0.98, 0.04, f"{len(inc)} flights (one line each)", transform=ax.transAxes, ha="right", fontsize=10)
+    ax.text(0.98, 0.04, "one line per flight: " + ", ".join(counts), transform=ax.transAxes, ha="right", fontsize=9)
     ax.legend(loc="upper right", fontsize=10)
 
 
@@ -89,17 +96,21 @@ def main() -> None:
     form_rows = [analyze_formation_track(p, "cf_second") for p in form_paths]
     a1_rows = [r for r in form_rows if r.scenario == "A1"]
     a8_rows = [r for r in form_rows if r.scenario == "A8"]
+    # bottom drone (cf5), geometric + Z-integral: the two clean A8 flights of the 2026-10-02 session
+    # (cf5 controller 6 / ctrl_mode 0; ki_z=16 from the session yaml, not logged in these old metas)
+    a8_bottom_rows = [analyze_formation_track(REPO / "experiments/logs" / n, "cf5", assume_ki16=True) for n in BOTTOM_A8_1002]
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=False)
     plot_panel(axes[0, 0], hover_rows, trace_controls, "Hover (1 drone)")
     plot_panel(axes[0, 1], f8_rows, trace_controls, "Figure-8 (1 drone)")
     plot_panel(
         axes[1, 0], a1_rows, trace_formation,
-        "A1 (2 drones stacked, top drone shown)",
+        "A1 (2 drones stacked)", label="top drone",
     )
     plot_panel(
         axes[1, 1], a8_rows, trace_formation,
-        "A8 (2 drones swap sides, top drone shown)",
+        "A8 (2 drones swap sides)", label="top drone",
+        extra=[(a8_bottom_rows, "#D1495B", "bottom drone")],
     )
     fig.suptitle("z error = measured z − commanded z (geometric controller with Z-integral)", y=1.02)
     fig.tight_layout()
@@ -130,7 +141,8 @@ def main() -> None:
         ("Hover", hover_rows),
         ("Figure-8", f8_rows),
         ("A1", a1_rows),
-        ("A8", a8_rows),
+        ("A8 top drone (cf_second)", a8_rows),
+        ("A8 bottom drone (cf5)", a8_bottom_rows),
     ]
     all_exc: list[str] = []
     for pname, rows in panels:

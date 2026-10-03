@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -49,6 +50,8 @@ def cross_corr_lag(a: np.ndarray, b: np.ndarray, fs: float, max_lag_s: float = M
 
 
 def load_merged_csv(path: Path) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    if path.suffix == ".bin":
+        return load_raw_usd(path)
     with open(path, newline="") as f:
         first = f.readline()
         if not first.startswith("#"):
@@ -67,6 +70,30 @@ def load_merged_csv(path: Path) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     t = np.array(cols["t"], dtype=float)
     arrays = {k: np.array(v, dtype=float) for k, v in cols.items() if k != "t"}
     return t, arrays
+
+
+def load_raw_usd(path: Path) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Raw uSD log -> (t, arrays) with the same '<vehicle>.<col>' keys as the merged CSVs."""
+    import contextlib, io
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "flying_drone_stack/tools"))
+    import decode_usd_log
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        r = decode_usd_log.load(str(path))
+    veh = path.name.split("_thesis")[0].split("_A8")[0]
+    arrays = {f"{veh}.{k}": np.asarray(v, dtype=float) for k, v in r.items()
+              if k != "t" and np.ndim(v) == 1}
+    return np.asarray(r["t"], dtype=float), arrays
+
+
+# Top drone (cf_second) only: controller=6 / ctrl_mode=0 geometric + Z-integral (radio # meta), so no
+# downwash and no INDI. Same-session cf_second 17:xx flights were controller=5/ctrl_mode=3 -> excluded.
+# Flights shorter than MIN_AIRBORNE_S (A1 16 s, solo hovers <=21 s) drop out via the existing rule.
+TOP_DRONE_RAW = (
+    [f"cf_second_thesis{n}_2026-10-02_{ts}.bin" for n, ts in (
+        (43, "18-28-10"), (44, "18-28-10"), (47, "18-52-26"), (48, "18-52-26"),
+        (54, "19-18-11"), (55, "19-18-12"))]
+    + ["cf_second_A8_thesis00_2026-10-03_13-17-25.bin", "cf_second_A8_thesis01_2026-10-03_13-17-26.bin"]
+)
 
 
 def detect_prefixes(header_cols: dict[str, np.ndarray]) -> list[str]:
@@ -261,7 +288,7 @@ def flight_id_from_path(path: Path) -> str:
 
 
 def discover_merged() -> list[Path]:
-    return sorted(LOGS.glob("c1_*_merged/**/*_merged_usd.csv"))
+    return [LOGS / "usd_raw" / n for n in TOP_DRONE_RAW if (LOGS / "usd_raw" / n).exists()]
 
 
 def plot_pair(path: Path, prefix: str, motor: int, meta: dict, out_png: Path) -> None:

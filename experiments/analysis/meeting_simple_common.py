@@ -257,7 +257,7 @@ def analyze_controls_track(path: Path) -> TrackRow:
     )
 
 
-def analyze_formation_track(path: Path, vehicle: str, require_ki16: bool = True) -> TrackRow:
+def analyze_formation_track(path: Path, vehicle: str, require_ki16: bool = True, assume_ki16: bool = False) -> TrackRow:
     scen = path.name.split("_")[0]
     label = path.name
     try:
@@ -274,7 +274,9 @@ def analyze_formation_track(path: Path, vehicle: str, require_ki16: bool = True)
     kz = formation_ki_z(mj, vehicle, radio_meta)
     date, stamp = stamp_from_name(path)
     if require_ki16 and not is_geometric_ki16(ctrl, mode, kz):
-        if ctrl == 6 and mode == 0 and kz == 0 and vehicle == "cf_second":
+        if assume_ki16 and ctrl == 6 and mode == 0 and kz == 0:
+            meta_note = f"ki_z=16 from session yaml (not in {vehicle} radio # meta)"
+        elif ctrl == 6 and mode == 0 and kz == 0 and vehicle == "cf_second":
             cut = CUT_1002.get(scen)
             explicit = path.name in FORMATION_A8_1003
             if explicit or (cut and date == cut[0] and stamp_ge(stamp, cut[1])):
@@ -320,7 +322,8 @@ def analyze_formation_track(path: Path, vehicle: str, require_ki16: bool = True)
     t_lo = t_lift + STEADY_AFTER_LIFTOFF_S
     t_desc = steady_end_before_descent(t, z, t_lo, z_cmd)
     t_cap = hold_end_formation(scen, radio_meta, mj, t_lift, float(t[-1]))
-    t_hi = min(t_desc, t_cap)
+    # bottom drone (cf5): the crossing dips (downwash, ~-8 cm) are NOT a descent -> use the scenario end only
+    t_hi = t_cap if vehicle == "cf5" else min(t_desc, t_cap)
     mask = (t >= t_lo) & (t <= t_hi) & (tilt <= TILT_EXCLUDE_DEG)
     if not np.any(mask):
         return TrackRow(
