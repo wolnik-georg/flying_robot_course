@@ -1,0 +1,20 @@
+# Cursor follow-up 2 — why did cf5 tumble first? (desk only, 2026-10-03)
+
+Repo `~/Desktop/flying_robot_course`. Fresh start. Read `docs/lab_sessions/2026-10-03.md`, esp. **"Validation 2"** (it corrects the cause-and-effect story). Same constraints as `docs/cursor_prompt_ns2_100hz_2026-10-03.md`: never fly/flash/commit/push, no `Co-Authored-By`, don't edit `docs/07`, no firmware logic changes, no `crazyflies.yaml` edits (report proposals only).
+
+## Context (verified by Claude)
+- Radio CSVs of one flight share ONE clock. On 10-03 `cf5` tumbles first with a correct own position; only at ≈15.5–16 s (both flights, during the flip) does its estimate jump onto `cf_second`'s. So the position "mix-up" is a **consequence**, not the cause. Hypothesis: mocap rigid-body tracker (ICP; `ICP did not converge` warnings; `cf5`/`cf_second` are both `cf21_active` 4-marker) re-assigns the flipped body to the neighbour.
+- Your F1/F2/F3 were accepted; F4 (SIL div sweep) is still open; the decimation test (div=10) is weak: constant inputs cannot tell "held" from "re-evaluated".
+
+## Tasks
+**G1 — Lock-on scan.** Script `experiments/analysis/lock_on_scan.py`: for every archived 2-drone flight with both radio CSVs (`experiments/logs/A*_cf5_*.csv` + `_cf_second_`), on the shared clock find (a) the time from which `cf5` position stays within 5 cm (y) / 15 cm (z) of `cf_second`'s, (b) liftoff, first |tilt|>20°, max tilt. Table over all dates. Question: does the lock ever occur **without** a preceding tilt >20°? Always after a flip? Also run it for the 2026-10-02 flights (control).
+**G2 — Tracker config review (read-only).** Inspect `crazyswarm2/crazyflie/config/motion_capture.yaml` and the rigid-body/marker config for `cf5` and `cf_second`; summarise how `motion_capture_tracking` (librigidbodytracker/ICP) handles two bodies with identical marker layouts when one is lost/flipped; extract timestamps of `ICP did not converge` / `No updated pose` warnings from `debug/lab_logs/debug.log` and relate them to flight events where possible. Propose (don't apply) options: distinct marker patterns, tracker parameters, a software guard (reject pose jumps > X m between packets).
+**G3 — Why did cf5 tumble first? (ranked, honest).** Flight 13:10 (old full-INDI yaml, oscillation ~4 s after liftoff, right after the 0.5 m crossing) and 13:15 (geometric `ki_z=16`, tilt within 0.4 s of liftoff, z overshoot 1.06 m): characterise the pre-lock phase from radio data (note radio is ~10 Hz — say what cannot be resolved) and uSD where it covers (`cf5_A8_thesis0{0,1}_*.bin`; check what time window it actually covers). Compare with: 10-01 geometric A1/A6 tumbles, 10-02 full INDI (clean with `ki_z=0`, tumble with `ki_z=16`, default firmware). Rank hypotheses — `ki_z=16`, flash-RNN CPU overload/stack, crossing proximity/downwash, low battery (`vbat` min 3.0 V) — with the evidence for/against each and what single cheap measurement would split them.
+**G4 — Strengthen the decimation test** in `host/test_residual_nn.py`: change a peer input between ticks 9 and 10 (and 19 and 20) and assert the output changes **exactly** at tick 10/20 and not before; keep all 25 existing tests passing (rebuild order: cargo host build → `touch` → `rm build/_cffirmware*.so build/cffirmware_wrap.c && make bindings_python` → system `python3`).
+**G5 — Task F4 from the previous prompt:** 2-drone A8 (or A3) SIL, `rnn.div=1` vs `10`: RMS/max diff of `rnn_pred_z`, lag, effect on pred-vs-`a_res` agreement. Report honestly if 100 Hz hold degrades it.
+
+## Deliverable
+New section **`docs/lab_sessions/2026-10-03.md` → "Appendix C — follow-up 2 (Cursor)"** (do not edit earlier sections): per-task status, G1 table, G2 findings + proposals, G3 ranked hypotheses, G4/G5 numbers, reproduction commands, files touched.
+
+## Reporting
+Confidence (high/medium/low) per claim; separate verified-by-data from inferred; say "inconclusive" when it is. Lead with the G3 ranking and the G1 answer to "does the lock ever happen without a flip?".

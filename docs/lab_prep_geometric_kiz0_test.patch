@@ -1,59 +1,30 @@
-# Ready-to-apply for NEXT LAB SESSION ONLY — geometric A1 ki_z A/B (do not commit as-is).
-# Apply on crazyswarm2: crazyflie/config/crazyflies.yaml
+# Lab-only: geometric ki_z A/B on cf5 (DEFAULT firmware, Step A binary).
+# Target: crazyswarm2 @ c13546a — crazyflie/config/crazyflies.yaml
+# cf5 is already ctrl_mode=0, ki_z=16; this patch sets ki_z=0 for the B leg only.
 #
-# Goal: test whether ki_z=16 causes the original ctrl_mode=0 liftoff tumbles (2026-10-01).
-# Pass/fail: no |roll| or |pitch| > 20° within 3 s of liftoff, on ≥2–3 clean A1 attempts.
+# Pass/fail (each setting, ≥2–3 attempts): no |roll| or |pitch| >20° within 3 s of liftoff.
+# Compare ki_z=16 (yaml default, no patch) vs ki_z=0 (with patch) on the SAME default firmware.
 #
-# Usage:
-#   cd ~/Desktop/crazyswarm2
-#   git apply ~/Desktop/flying_robot_course/docs/lab_prep_geometric_kiz0_test.patch
-#   # fly A1 with run_formation (plain geometric on cf5)
-#   # revert with: git checkout -- crazyflie/config/crazyflies.yaml
+# Usage (lab PC):
+#   WS=~/georg/ros2_ws
+#   cd $WS/src/crazyswarm2
+#   git apply $REPO/docs/lab_prep_geometric_kiz0_test.patch
+#   # fly (A1 or short hover per protocol)
+#   git checkout -- crazyflie/config/crazyflies.yaml
 #
-# Regenerated 2026-10-02 (original had a malformed second hunk header -- line counts didn't
-# match the body, confirmed via `patch --dry-run` and `git apply --check` both failing with
-# "corrupt patch at line 28"). This version is machine-generated from a real edit + git diff,
-# re-verified with `git apply --check` before being written here.
+# Regenerated 2026-10-03; verified: git apply --check against c13546a (exit 0).
 diff --git a/crazyflie/config/crazyflies.yaml b/crazyflie/config/crazyflies.yaml
-index 93ceba3..8556cbf 100644
+index dd73bca..2067f51 100644
 --- a/crazyflie/config/crazyflies.yaml
 +++ b/crazyflie/config/crazyflies.yaml
-@@ -195,11 +195,9 @@ robots:
-     type: cf21_active  # 4-marker active_deck, confirmed mounted
-     firmware_params:
-       stabilizer:
--        controller: 6   # 2026-10-02: switched to our own full INDI (ctrl_mode=3 below) for the
--                         # final leg of the A8/A1 3-way comparison (Omar C=9 done, Omar Rust=10
--                         # done, ours now). accumulate_z_integral() runs inside controller_step(),
--                         # shared by all ctrl_mode values -- ki_z=16 (inherited from all:) applies
--                         # here same as it did for cf_second's plain geometric, confirmed in code.
-+        controller: 6   # NEXT LAB: plain geometric ki_z A/B on cf5 (ctrl_mode=0 below) -- test
-+                         # whether ki_z=16 causes the original 2026-10-01 A1/A6 liftoff tumbles,
-+                         # same way it was confirmed for ctrl_mode=3 full INDI on 2026-10-02.
-       ctrlOot5:
-         indi: 3
-       ctrlOmarIndi:
-@@ -219,19 +217,12 @@ robots:
-         # terms stay off silently even with this set.
-         indi: 3
-       indi_gains:
--        ctrl_mode: 3    # 2026-10-02: full INDI (both position and attitude INDI terms) for the
--                         # comparison's "ours" leg. Needs deck.bcRpm==1 / rpm_source=1 (below) for
--                         # a real RPM source, same requirement as Omar's INDI variants.
-+        ctrl_mode: 0    # plain geometric -- A1 liftoff ki_z tumble hypothesis test
-         rpm_source: 1   # DShot for control + a_res (deck still logged on uSD)
-       pos_gains:
--        # 2026-10-02: DIRECT TEST of the operator's hypothesis -- full INDI (ctrl_mode=3) crashed
--        # on A8 tonight with the exact same 0.65s-post-liftoff tumble signature as every A1/A6
--        # tumble under ctrl_mode=0, but full INDI itself passed the A8 gate clean on 2026-09-18,
--        # BEFORE the Z-integral existed (added 2026-09-29). Neither SIL sweep (kv_z/ki_z) ever
--        # tested g_controller_mode != 0, so the Z-integral x full-INDI interaction was never
--        # validated. ki_z=0 here isolates that: if the tumble goes away, ki_z is implicated
--        # specifically for ctrl_mode=3, not a general controller=6 problem. kp_xy/kp_z/kv_xy/kv_z
--        # still inherit from all: (64/48/5/7) -- only the integral term is disabled.
-+        # TEST ARM: disable Z integral on cf5 only (all: still has ki_z=16 for cf_second).
-+        # Baseline run: remove this entire pos_gains: block so cf5 inherits ki_z=16 from all:.
-+        # Pass/fail: no |roll| or |pitch| > 20 deg within 3s of liftoff, >=2-3 clean A1 attempts.
-         ki_z: 0.0
+@@ -232,8 +232,8 @@ robots:
+         # validated. ki_z=0 here isolates that: if the tumble goes away, ki_z is implicated
+         # specifically for ctrl_mode=3, not a general controller=6 problem. kp_xy/kp_z/kv_xy/kv_z
+         # still inherit from all: (64/48/5/7) -- only the integral term is disabled.
+-        ki_z: 16.0      # 2026-10-03: geometric -> Z-integral ON (ki_z=0 was ONLY for ctrl_mode=3,
+-                         # where ki_z=16 caused the liftoff tumble). Never pair 16 with ctrl_mode=3.
++        ki_z: 0.0       # A/B: ki_z=0 on DEFAULT firmware (Step A bin); revert after test
++                         # Baseline ki_z=16: git checkout -- crazyflie/config/crazyflies.yaml
          ki_z_limit: 1.5
        rnn:
+         en: 0           # predict/log only; NN still evaluated + logged (rnn_pred_*). Set 1 only for Checklist G

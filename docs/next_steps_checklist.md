@@ -1,108 +1,88 @@
 # Next steps checklist
 
-Simple lab + desk list (as of **2026-10-02**, post–lab + NS2/Part A desk close-out). Update when items move.
+Simple lab + desk list (as of **2026-10-03**, after the NS2 first hardware attempt — see
+[`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). Update when items move. Grouped by topic, then desk vs lab.
+
+**One-paragraph state:** NS2 did **not** validate. `cf5` crashed on both A8 flights; `cf_second` was clean.
+The flash-RNN firmware evaluates the network every **1 kHz** tick from boot (reference ≈ 550 µs/network ⇒ only feasible
+at ≈ 100 Hz) → stack overflow (patched, 8×) and probable MCU overload (unproven). Separately, `cf5`'s position estimate locked onto `cf_second`'s late in both flights — **a consequence of the flip** (tracker re-assignment, hypothesis), not the cause; why `cf5` tumbled first is the real open question. `cf5` is currently flashed with the flash-RNN + stack-8×
+build and is unstable; the default build is the known-good fallback. `cpp` is the only backend (`cflib` abandoned).
 
 ---
 
-## Next lab session — do these first (3–5)
+## TOPIC 1 — NS2 / Strategy 2 (the blocker)
 
-1. **Reflash cf5 flash-RNN + apply ghost-neighbour fix** — `make DRONE=bl cload-rnn-flash` (`firmware_app/Makefile`); commit/apply `traj_iface.c` `peer_get_all` **skip `id==0`** (desk fix, may still be uncommitted). Cards: **`usd_thesis_config.txt`** on both decks (not Omar-only config).
-2. **Launch CS2 with peers** — `source ~/Desktop/crazyswarm2/install/setup.bash` then `ros2 launch crazyflie launch.py backend:=cpp` (see `docs/ns2_next_lab_protocol.md`). **Not `cflib`** — lab habit used cflib; cpp is prepared, not yet flown for NS2.
-3. **NS2 hover gate (mandatory before `rnn.en=1`)** — short hover or A1 segment, **`rnn.en=0`**, merge uSD; need **`|rnn_pred_z| > 1e-3`** somewhere. Fail → stop; do not enable compensation.
-4. **Checklist G** — if gate passes: predict-only flight, then **`rnn.en=1`** on A1 or A3, merge again with non-zero preds.
-5. **Geometric A1 `ki_z` A/B** (if time) — apply `docs/lab_prep_geometric_kiz0_test.patch`, test whether **`ki_z=16`** explains original ctrl_mode=0 liftoff tumbles (separate from full-INDI tumble, already fixed with **`ki_z=0`** on mode 3).
+### Desk (Cursor NS2 block — see [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md) Appendices A–D)
+- [x] **D1 — 100 Hz network evaluation** (`rnn.div`, hold).
+- [x] **D2 — timing log** (`rnn.us_*`, `read_rnn_timing.py`).
+- [x] **D3 — static scratch buffers**.
+- [x] **D4 — host regression** (`test_residual_nn.py` **28/28**; div sweep via `rnn_div_sweep_host.py`).
+- [x] **D5 — builds** (`build_artifacts/cf21bl_default.bin`, `cf21bl_rnn_100hz.bin`).
+- [x] **D6 — `docs/13`** controller call rate 1 kHz + 100 Hz hold documented.
+- [x] **D7 — identity scan** (`check_estimator_identity.py`, `lock_on_scan.py`).
+- [ ] **D8 — contingencies sketched** (only if 100 Hz still doesn't fit): smaller retrained network (C.2 retrain), or off-board evaluation.
 
-**Optional same session:** Part A liftoff diagnostic — `docs/lab_usd_liftoff_logging_diagnostic.patch` + `FORMATION_USD_AT_TAKEOFF=1` (captures ramp; not required for NS2 gate).
-
----
-
-## Next 5 (priority overview)
-
-1. **NS2 end-to-end hardware gate** — three desk blockers addressed (flash build, `backend=cpp`, ghost peer slot); **one flight proves all** (`docs/ns2_next_lab_protocol.md`).
-2. **Restore / keep uSD thesis config** before NS2 and C.1.
-3. **Geometric A1 + `ki_z=0` A/B** — rule in or out same tumble mechanism as full INDI (`ki_z=16`).
-4. **Supervisor: Strategy 1 (“Pure INDI”)** — Oct 2 evidence: Omar C/Rust (9/10) vs ours (6/3); ours tightest; Omar worse on **A8 crossing**, not simple hover; stock Bitcraze / NA-INDI out of scope.
-5. **Checklist G** — still blocked until merged uSD shows **non-zero `rnn_pred_*`**.
-
----
-
-## Before you fly
-
-- [ ] Pull latest **both repos** (`flying_robot_course` + `crazyswarm2`).
-- [ ] Weights baked in flash build: **`full_bank_c1_complete.npz`** (2026-10-01) unless `RNN_WEIGHTS_NPZ=…` override.
-- [ ] uSD **`config.txt`** = **`usd_thesis_config.txt`**.
-- [ ] **cf5 yaml:** full INDI (`ctrl_mode=3`) → **`ki_z=0`** override; plain geometric → **`ki_z=16`** OK (re-flown Oct 2).
-- [ ] CS2 **`backend:=cpp`** for NS2 / any flight needing onboard neighbours.
+### Lab — next session (bench BEFORE flight; criteria in `ns2_next_lab_protocol.md` §0)
+1. [ ] **Charge/swap batteries; fix card THESIS1** (`umount` + `fsck.vfat -a`), finish its on-card archive/reset.
+2. [ ] **Bench A:** flash **default** build on `cf5` → `cpp` launch → `/cf5/pose` publishes, no rate warnings/assert.
+3. [ ] **Bench B:** flash **100 Hz + timing** build → read timing log; max must be well below 1 ms; warnings gone.
+4. [ ] **A8 predict-only** (`rnn.en=0`, **pull yaml first**) → merge → `rnn_pred_x/y/z` non-zero **and** `cf5` position ≠ `cf_second` position.
+5. [ ] **Checklist G** (`rnn.en=1`, A1/A3) only if 4 passes.
 
 ---
 
-## Desk (when not in lab)
+## TOPIC 2 — `cf5` position "mix-up" (re-interpreted 2026-10-03: consequence of the flip, not the cause)
 
-- [x] **NS2 desk prep (2026-10-02):** `make cload-rnn-flash`; `backend=cpp` build/launch doc in `docs/ns2_next_lab_protocol.md`; ghost slot fix in `traj_iface.c` (review/commit before flash).
-- [x] **Part A:** no existing log covers liftoff ramp; HL takeoff is smooth 7th-order ramp in code; diagnostic patch ready (`docs/lab_usd_liftoff_logging_diagnostic.patch`).
-- [ ] **Part B:** Omar-gains liftoff SIL — optional; hardware comparisons partly substitute.
-- [x] **Skip:** more **kv_z / ki_z** sweeps (SIL exhausted).
-- [x] **Skip:** RPM / DShot (`docs/43` closed).
+- Same-clock radio data: `cf5` has its **own** correct position until it is tumbling; only ≈15.5–16 s (both flights) does its estimate jump onto `cf_second`'s. Hypothesis: mocap rigid-body tracker (ICP, identical 4-marker `cf21_active` layouts) re-assigns the flipped/occluded body to the neighbour. `cpp` ID-path theory demoted.
+- [ ] **Bench (no flight, motors off):** `ros2 topic echo /poses`, both drones on the floor ~0.5 m apart, flip `cf5` by hand → does the `cf5` pose jump onto `cf_second`? Confirms/refutes the tracker hypothesis.
+- [ ] **Desk:** for every archived 2-drone flight find the lock-on time vs tilt events (does it always follow a flip?); review `motion_capture.yaml` marker/rigid-body config. If confirmed: distinct marker layouts / tracker params before more close-crossing flights.
 
 ---
 
-## Lab — must do (blocks Strategy 2 / G)
+## TOPIC 3 — liftoff tumble / `ki_z` (shelved, not closed)
 
-- [x] Upload script verify — **2026-10-02:** `rnn.ready=1`, `rnn.n=19297` (not proof of onboard eval on default firmware).
-- [ ] **Reflash flash-RNN** on cf5 (and peer-fix firmware if not in image yet).
-- [ ] Merge uSD — **`rnn_pred_*` not all zero** (failed Oct 2 on default build + cflib).
-- [ ] Fly **A1 or A3** with **`rnn.en=1`** after gate passes.
-- [ ] If that passes → **Checklist G done**.
+- [ ] Geometric `ki_z` A/B (`docs/lab_prep_geometric_kiz0_test.patch`) — **only after Topics 1–2 are clean**, otherwise a wrong pose / overloaded MCU contaminates it.
+- Fact: full INDI + `ki_z=16` → tumble (confirmed 10-02, direct A/B). Fact: `cf5` geometric + `ki_z=16` tumbled on 10-03 **but with the mix-up present**, so inconclusive. Earlier claim "geometric `ki_z=16` re-flown OK on `cf5`" was **wrong** (only `cf_second`).
+- [ ] Optional: liftoff uSD diagnostic (`docs/lab_usd_liftoff_logging_diagnostic.patch`, `FORMATION_USD_AT_TAKEOFF=1`).
 
 ---
 
-## Lab — should do (data quality)
+## TOPIC 4 — thesis tracks independent of NS2
 
-- [ ] **Crash-surviving logs** (0-byte uSD on tumble) before more aggressive A1 retries.
-- [ ] **Full INDI A1 attitude oscillation** (~7–9° std vs ~2° on A8) — open, separate from tumble.
-
----
-
-## Lab — after G passes
-
-- [ ] **C.3:** Modes **0 / 1 / 2** on **controller=6**.
-- [ ] **C.4:** With vs without residual compare flights.
+- [ ] **Supervisor:** which "Pure INDI" is Strategy 1 — `controller=6/ctrl_mode=3` vs Omar C/Rust (10-02 3-way data; ours tightest; Omar worse on A8). In `docs/meetings/2026-10-03.md`.
+- [ ] **Writing:** Ch.6–9 skeletons exist; content waits on C.4 data (needs Strategy 2).
+- [ ] **C.3/C.4:** modes 0/1/2 on `controller=6`; with/without residual — after Checklist G.
+- [ ] Open INDI items (lower priority): full-INDI A1 attitude oscillation; Omar's A8-only 15–25 cm z offset; hardware z-overshoot vs SIL.
 
 ---
 
-## Ask supervisor (data-backed)
+## Before you fly (every session)
 
-- [ ] **Strategy 1 identity** — thesis **`controller=6` / `ctrl_mode=3`** vs **Omar c=9/10**? Oct 2 3-way flights are the pack.
+- [ ] **Charged batteries in both drones** (10-03: `cf5` sagged to 3.0 V, `cf_second` ended 3.65 V).
+- [ ] Pull latest **both repos on the lab PC** (`flying_robot_course` + `~/georg/ros2_ws/src/crazyswarm2`) — **flight 1 on 10-03 ran a stale yaml**.
+- [ ] Build **from the workspace root** `~/georg/ros2_ws` (`colcon build --symlink-install --packages-select crazyflie_interfaces crazyflie_py crazyflie crazyflie_examples`); never inside `src/crazyswarm2`.
+- [ ] Launch: `ros2 launch crazyflie launch.py` (`cpp`, default); confirm `CS2_CONNECT_PARAM_PACE_V1` in the output.
+- [ ] `ros2 topic echo /cf5/pose --once` shows a real position **before** any flight; `run_formation` prints the per-drone config — check `ctrl_mode`/`ki_z`/`rnn.en`.
+- [ ] Both drones booted cleanly (no `Assert failed`, no `rate is off`); power-cycle after any assert.
+- [ ] uSD `config.txt` = `usd_thesis_config.txt`; `check_usd_deck.py` on each drone; card not read-only.
+- [ ] `cf5` yaml: geometric `ctrl_mode=0` + `ki_z=16`, or full INDI `ctrl_mode=3` + **`ki_z=0`** — never `ki_z=16` with `ctrl_mode=3`.
 
 ---
 
 ## Don’t bother right now
 
-- [x] Re-fly **A6/C4** at old extreme settings.
-- [x] **Stock Bitcraze INDI** / **NA-INDI** for thesis compare — out of scope.
-- [ ] **Controller=10** deep tuning unless supervisor picks Omar Rust as Strategy 1.
-- [ ] **Full INDI + `ki_z=16`** on cf5 — known liftoff tumble (use **`ki_z=0`**).
+- [x] `backend:=cflib` (needs `transforms3d`, then `link_statistics` mismatch) — abandoned.
+- [x] `tools/read_stored_radio_address.py` — inconclusive; address mismatch unlikely (URI connects).
+- [x] More `kv_z` / `ki_z` SIL sweeps; RPM/DShot (`docs/43` closed); A6/C4 at extreme settings; stock Bitcraze INDI / NA-INDI for the thesis compare.
 
 ---
 
 ## Already done (don’t redo)
 
-- [x] C.1 active scenarios + **retrain gate passed**.
-- [x] Upload script fix; Oct 2 readback OK.
-- [x] **Full INDI liftoff tumble** — **`ki_z=16` × mode 3**; fix **`ki_z=0`**, 5/5 clean (Oct 2).
-- [x] **Z-integral under plain geometric** — **`ki_z=16` still OK** (Oct 2, both drones).
-- [x] **Pure INDI comparison** — Omar C (9), Omar Rust (10), ours (6/3) on **A8 + A1**.
-- [x] **RPM dual-source / DShot spikes** — closed (`docs/43`).
-- [x] **kv_z=7** — SIL says leave it.
-- [x] Z-overshoot **does not** explain **geometric** crashes (Oct 1).
-
----
-
-## Still open
-
-- [ ] **Geometric A1/A6 tumbles** (~0.7 s) — **suspect `ki_z=16`**; direct A/B not flown yet.
-- [ ] **NS2 preds on hardware** — desk path complete; **needs gate flight** (flash + cpp + peer fix).
-- [ ] **Omar A8-only ~15–25 cm z offset** (C and Rust) — why scenario-specific.
-- [ ] **Full INDI A1 oscillation** vs A8 — same config.
-- [ ] **Hardware Z-overshoot vs SIL** — no log at liftoff; code says smooth HL ramp; optional diagnostic flight.
-- [ ] **Checklist G** — until non-zero preds on flash-RNN + cpp.
+- [x] C.1 active scenarios + retrain gate passed (R² 0.944).
+- [x] Upload script fixes (readback OK 10-02) — irrelevant for the flash build (no upload).
+- [x] 3-way Pure INDI comparison (Omar C 9, Omar Rust 10, ours 6/3) on A8 + A1.
+- [x] Full-INDI liftoff tumble: `ki_z=16` × mode 3; fix `ki_z=0`, 5/5 clean (10-02).
+- [x] NS2 desk blockers: `cload-rnn-flash`, `backend=cpp`, ghost-neighbour `id==0`; stack patch 8× (`firmware_patches/`).
+- [x] Reference research: `aerorobotics/neural-swarm` public (NS1+NS2, `hardware/nn-export`); firmware submodule private.
+- [x] uSD cards archived (PC + on-card) and reset 10-03 (card THESIS1 on-card step pending, read-only).

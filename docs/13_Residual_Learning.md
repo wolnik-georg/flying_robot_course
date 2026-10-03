@@ -146,13 +146,22 @@ Crazyswarm2 already broadcasts every vehicle's pose, and the firmware already st
 are not its own. `peerLocalizationGetPositionByIdx()` reads them, so the network's main input costs
 **no new communication**.
 
-The peer API carries **position only**. Relative velocity is differenced onboard against the
-previous sample using the timestamp the same struct carries. A peer seen for the first time, or one
-whose timestamp has not advanced, is given zero relative velocity rather than a divide-by-nothing
-spike. Peer history is per-vehicle state and lives inside the controller `State` struct, not in a
-global — the host simulator swaps that block per drone, and a global would let one vehicle's peer
-history corrupt another's velocity estimate. (This is the same class of bug that made INDI fail to
-leave the ground in simulation; see [`09_Simulation.md`](09_Simulation.md).)
+The peer API carries **position only**. Relative velocity is differenced onboard when the peer
+timestamp **advances**; between updates the last velocity for that peer slot is **held** (so a 1 kHz
+control loop does not zero `dv` on the nine ticks between ~100 Hz peer packets). First sight of a
+peer still uses zero relative velocity. Peer history is per-vehicle state in the controller `State`
+struct, not a global — the host simulator swaps that block per drone. (Same class of bug as INDI's
+ground failure when state was global; see [`09_Simulation.md`](09_Simulation.md).)
+
+**Evaluation rate (2026-10-03 desk).** `controllerOutOfTree()` runs at **`RATE_MAIN_LOOP` = 1000 Hz**
+(`stabilizer_types.h`). The flash-RNN build calls the network from that path whenever
+`g_rnn_ready != 0`. Default **`rnn.div` = 10** (`PARAM_UINT8`, clamp ≥ 1): one real evaluation every
+*N* ticks; held `rnn.pred_*` / `rnn.clamped` are still logged every tick so uSD/radio traces stay
+continuous. `rnn.div=1` restores the pre-change 1 kHz evaluation. Bench timing:
+`rnn.us_last` / `rnn.us_max` / `rnn.us_avg` (µs, `usecTimestamp()` around each evaluation);
+`rnn.rst=1` clears `us_max`. **Not** added to `usd_thesis_config.txt` (variable cap — see
+`MAX_USD_LOG_VARIABLES_PER_EVENT` in local `usddeck.c`, **56** as of 2026-09-30; thesis config
+**54** logged variables at **500 Hz** uSD rate).
 
 ### Guards
 
@@ -177,7 +186,8 @@ Trained `.npz` → `build.rs` / `export_weights_rs.py` → `EMBEDDED_RNN_WEIGHTS
 
 ### 3.2 CRTP upload build (`residual_nn`)
 
-Parameter group `rnn`, serviced once per 500 Hz control tick — **before the arming check**, so the
+Parameter group `rnn`, serviced once per **1 kHz** control tick (`rnn_service` in the main loop) —
+**before the arming check**, so the
 network can be loaded while the drone is on the ground.
 
 | Parameter | Meaning |
@@ -188,6 +198,8 @@ network can be loaded while the drone is on the ground.
 | `rnn.end` | 1 validates and commits |
 | `rnn.ready` | read-only: 1 once a complete, finite weight set is loaded |
 | `rnn.en` | 0 = predict but do not use; 1 = feed into the controller |
+| `rnn.div` | Evaluation decimation (default **10** ≈ 100 Hz with hold); 1 = evaluate every tick |
+| `rnn.rst` | Write 1 to reset `rnn.us_max` (timing bench) |
 
 **A partial upload is refused outright.** `finish_upload` accepts only if the declared count matches
 the architecture, every index was written, and every value is finite. This matters more than it
@@ -204,7 +216,8 @@ numerically rather than trusted (§5).
 
 ## 4. Logging: the prediction is recorded even when it is not used
 
-`rnn.pred_x/y/z` and `rnn.clamped` are computed and logged **every tick, regardless of `rnn.en`**.
+`rnn.pred_x/y/z` and `rnn.clamped` are written **every tick** (held between evaluations when
+`rnn.div>1`), regardless of `rnn.en`. Real network execution runs every `rnn.div` ticks when ready.
 
 This is not incidental. Comparing predicted against measured residual *is* the evaluation of every
 learned method in this thesis, and that comparison is only possible if the prediction is recorded
@@ -213,7 +226,8 @@ which is where the training data comes from in the first place.
 
 | Path | Status |
 |---|---|
-| uSD, 500 Hz | **Active** — added to `tools/usd_thesis_config.txt`, now 35 variables (limit 40) |
+| uSD, 500 Hz | **Active** — `tools/usd_thesis_config.txt` (**54** variables; cap **56** in patched `usddeck.c`) |
+| Radio bench | **`rnn.us_*` timing** — enable in `crazyflies.yaml` for bench only; omitted from uSD config |
 | Radio, 100 Hz | **Present but commented** in `crazyflies.yaml` as topic `rnn_pred` — radio saturates around 2 drones already. Enable only for single-drone tuning |
 
 Adding these to the uSD config **now**, before any data collection, is deliberate: the collection

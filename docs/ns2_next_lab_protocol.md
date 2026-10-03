@@ -2,6 +2,49 @@
 
 Use after pulling both repos. **Do not fly A8 or enable `rnn.en=1` until Step 4 passes.**
 
+## STATUS 2026-10-03 — read this first (supersedes the order below)
+
+First hardware attempt did **not** validate (`lab_sessions/2026-10-03.md`). `cf5` crashed on both A8 flights; its
+onboard position was identical to `cf_second`'s; the flash-RNN build evaluates the network on **every 1 kHz tick**
+(reference: ≈550 µs per network ⇒ ≈100 Hz max). **Do not fly NS2 again until the bench steps below pass.**
+
+**Revised lab order (bench before flight):**
+
+| Step | What | Pass | If it fails |
+|---|---|---|---|
+| 0 | Charged batteries; pull both repos on lab PC; build from `~/georg/ros2_ws` root; card THESIS1 fsck | pacing marker `CS2_CONNECT_PARAM_PACE_V1` in launch | fix environment first |
+| A | Flash **default** build on `cf5` (`make DRONE=bl`, ≈402 KB), `cpp` launch | `/cf5/pose` publishes, no `rate is off`/Kalman warnings, no assert | not firmware → hardware/radio/mocap; stop, send log |
+| B | Flash **100 Hz + timing** build (artifact below), `read_rnn_timing.py` with CS2 stopped | `rnn.us_max` ≪ 1000 µs, avg stable; no stabilizer/Kalman rate warnings; `/cf5/pose` OK | network too heavy even at 100 Hz → contingencies (smaller net / off-board) |
+| C | A8 predict-only, `rnn.en=0`, `cf5` geometric (`ctrl_mode=0`, `ki_z=16`), **yaml pulled** | `rnn_pred_x/y/z` non-zero, **`cf5` position ≠ `cf_second` position** | mix-up persists on a clean build → `cpp` ID path implicated, stop |
+| D | Checklist G (`rnn.en=1`, A1/A3) | non-zero preds, stable flight | — |
+
+Build and flash are separate; plain `make cload` can rebuild the default over the RNN build.
+Copy each `.bin` to `build_artifacts/` so one build cannot overwrite the other unnoticed:
+```bash
+cd ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app
+make DRONE=bl
+cp build/cf21bl.bin build_artifacts/cf21bl_default.bin    # Flash ≈402088 B
+
+make DRONE=bl all-rnn-flash
+cp build/cf21bl.bin build_artifacts/cf21bl_rnn_100hz.bin  # Flash ≈484016 B, rnn.div=10 default
+
+# cf5 (do not run until bench step chosen):
+cfloader flash build_artifacts/cf21bl_default.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
+cfloader flash build_artifacts/cf21bl_rnn_100hz.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
+
+# Timing (add rnn.us_last, rnn.us_max, rnn.us_avg to crazyflies.yaml firmware_logging first):
+python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/read_rnn_timing.py \
+  radio://0/80/2M/E7E7E7BB02 --seconds 10
+# Pass: us_max well under 1000 µs; us_avg ≪ 1000; optional rnn.rst=1 to clear peak between runs
+```
+The stabilizer-stack patch (`flying_drone_stack/firmware_patches/stabilizer_stack_8x.patch`) must be applied to
+`~/Desktop/crazyflie-firmware` (`git apply`) before any RNN build; the default build does not need it but is not harmed by it.
+
+**Extra bench test (no flight, motors OFF), added 2026-10-03:** both drones on the floor ~0.5 m apart, `ros2 topic echo /poses`, flip `cf5` by hand → does the `cf5` pose jump onto `cf_second`? (Tests the hypothesis that the late `cf5`↔`cf_second` position lock is the mocap tracker re-assigning a flipped, identical-marker body — a consequence of the crash, not its cause.)
+
+**Gate caveat from 10-03:** `rnn_pred_z` was non-zero, but `rnn_pred_x/y` were exactly 0 and `rnn_pred_z` ≈ constant —
+the gate on z alone is **not** sufficient evidence the neighbour path works.
+
 ## 0. Firmware feature (read first)
 
 On **CF21BL**, only two builds can run a real onboard network:
@@ -9,7 +52,7 @@ On **CF21BL**, only two builds can run a real onboard network:
 | Build | `make` | RAM upload (`residual_nn`) | Flash weights (`residual_nn_flash`) |
 |--------|--------|----------------------------|-------------------------------------|
 | **Default** | `make DRONE=bl` | **Does not link** (RAM overflow ~41 KB) | N |
-| **Flash RNN** | `make DRONE=bl cload-rnn-flash` (from `flying_drone_stack/firmware_app/`; override `RNN_WEIGHTS_NPZ=…` if needed) | N/A | **Yes** — `g_rnn_ready=1` from boot; preds from embedded weights |
+| **Flash RNN** | `make DRONE=bl all-rnn-flash` then copy to `build_artifacts/`; flash with `cfloader` (do **not** use plain `make cload` — it can rebuild default firmware over the RNN artifact) | N/A | **Yes** — `g_rnn_ready=1` from boot; preds from embedded weights |
 | **SIL / host** | `--features residual_nn` on x86_64 | Yes (host only) | N |
 
 **What is on `cf5` today cannot be proven from git alone.** Desk indicators:
@@ -133,7 +176,7 @@ Add before merge/decode mapping (and extend `decode_usd_log.py` `RENAME` if used
 rnn.ready
 ```
 
-Re-count variables vs **40-variable** uSD limit before flashing cards.
+Re-count variables vs **56-variable** uSD cap (`MAX_USD_LOG_VARIABLES_PER_EVENT` in patched `usddeck.c`) before flashing cards.
 
 ## 6. Peer data (quality, not all-zero gate)
 

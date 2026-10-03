@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 28 September 2026
+**Last updated:** 3 October 2026
 
 > **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
 > pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
@@ -67,7 +67,37 @@ bottom.
 | | |
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
-| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-02 session close, supersedes everything below for now).**
+| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-03 session close, supersedes everything below for now).**
+
+**2026-10-03 close-out — NS2 first hardware attempt NOT validated; `cf5` unstable on the flash-RNN firmware.**
+Full account: [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md). Headlines:
+
+- **Both A8 flights crashed `cf5`** (`cf_second` clean). Flight 1 accidentally ran the old full-INDI yaml (lab PC
+  hadn't pulled the geometric change); flight 2 (geometric, `ki_z=16`) tumbled at liftoff (z overshoot 1.06 m vs 0.5 m).
+- **`cf5`'s estimate locking onto `cf_second`'s position is a CONSEQUENCE of the crash, not its cause** (same-clock radio
+  data): `cf5` tumbles first (own position still correct), and only ≈15.5–16 s, while flipping, does its position jump onto
+  `cf_second`'s (likely the mocap rigid-body tracker re-assigning the lost, identical-marker `cf5` body — hypothesis, bench
+  test planned). The earlier "cf5 thought it was at the top drone" causality is retracted. **Real open cause: why `cf5`
+  tumbled/oscillated** (flight 2 at liftoff with geometric `ki_z=16` on the flash-RNN build; flight 1 after the crossing
+  with full INDI on the flash-RNN build) — `ki_z` theory regains weight, flash-RNN overload is a confounder → default-firmware A/B. The lock-on after a flip also appears in every flipped 10-02 A8 run (default firmware, `cflib`) and 10-01 A6 → it is tracker behaviour after a flip, independent of NS2 firmware/backend (`lab_sessions/2026-10-03.md` Validation 3).
+- **Firmware findings:** the flash-RNN build evaluates the network on **every 1 kHz tick from boot** (default build
+  never does). (1) Stack overflow found + patched (`STABILIZER_TASK_STACKSIZE` 3×→8×,
+  `flying_drone_stack/firmware_patches/stabilizer_stack_8x.patch`; `/cf5/pose` fixed by it). (2) **MCU overload is the
+  leading suspect for the remaining `cf5`-only warnings** (loop rate 899, Kalman 98, latency, boot assert, silent pose).
+- **Reference check:** official code is public `aerorobotics/neural-swarm` (covers NS1+NS2; `nn-export/nn.c` = our
+  architecture); their firmware is private. NS1 paper: ≈550 µs per network, f_a <4 ms → they cannot run it per
+  1 ms tick; stock position loop is 100 Hz. **Our architecture is right, our call rate is ~10× too high and was never measured.**
+- Wrong earlier claim corrected: `cf5` did **not** fly geometric `ki_z=16` fine on 10-01/10-02 (those were the tumbles);
+  `ki_z` theory shelved, not closed.
+
+**Next (desk, via Cursor):** [`cursor_prompt_ns2_100hz_2026-10-03.md`](cursor_prompt_ns2_100hz_2026-10-03.md) — 100 Hz
+network evaluation + timing log + static buffers + SIL regression. **Next (lab, bench before flight):** fsck card
+THESIS1 → flash **default** build (is the RNN build the cause?) → flash **100 Hz+timing** build and read µs → only then
+A8 predict-only with the position-identity check → ki_z A/B → Checklist G. Order and pass/fail criteria:
+[`ns2_next_lab_protocol.md`](ns2_next_lab_protocol.md) §0 and `next_steps_checklist.md`.
+
+<br><br>*Prior entry (2026-10-02 session close), superseded above but kept for continuity:*
+
 
 **2026-10-02 close-out — 3-way INDI comparison recorded, liftoff-tumble root cause found for
 `ctrl_mode=3`.**
@@ -1160,6 +1190,7 @@ Rules that keep it trustworthy:
 
 | Date | Change |
 |---|---|
+| 2026-10-03 (76) | **NS2 first hardware attempt (lab): not validated; `cf5` crashed on both A8 flights, `cf_second` clean.** Desk prep (flash-RNN build target, `backend:=cpp`, ghost-neighbour `id==0` fix); uSD cards archived on PC + cards, reset, thesis config restored. Lab: connect-time assert traced to unpaced server built from the wrong folder (`colcon` must run in `~/georg/ros2_ws`, Jazzy); flash-RNN firmware zeroed `/cf5/pose` → stack-overflow found (eval ≈610 B + `phi_forward` ≈585 B vs 1800 B stabilizer stack) and patched (8×, `firmware_patches/stabilizer_stack_8x.patch`). A8×2: flight 1 ran stale full-INDI yaml (oscillation, flip); flight 2 geometric `ki_z=16` liftoff tumble, z overshoot 1.06 m. **uSD finding:** `cf5`'s onboard estimate ≡ `cf_second`'s (corr 1.000) today, anti-correlated (correct) on 10-02 → cause open. `rnn_pred_x/y`≡0, `rnn_pred_z`≈const. `cf5`-only rate warnings (loop 899, Kalman 98) + silent pose/assert later. Reference research: official `aerorobotics/neural-swarm` (firmware private); NS1 ≈550 µs/network → network must run ≈100 Hz, ours runs 1 kHz. Plan: Cursor prompt for 100 Hz + timing build, bench-first lab order. See `lab_sessions/2026-10-03.md`. |
 | 2026-10-02 (75) | **3-way INDI comparison recorded (Omar C=9, Omar Rust=10, ours ctrl_mode=3, all vs cf_second now on our geometric); liftoff-tumble root cause found for ctrl_mode=3: ki_z=16 x full-INDI, confirmed via direct hardware A/B (169.7° tumble → clean, 5/5).** Our own controller tracks tightest both scenarios; Omar's two ports both show 15-25cm z offset on A8 specifically, not A1 — consistent across both his implementations. `ki_z` must stay 0 for full INDI pending code-level understanding; whether this also explains the original ctrl_mode=0 A1/A6 tumbles is strongly suspected (same 0.65s timing) but not yet directly tested. New smaller finding: full INDI shows sustained A1 attitude oscillation (std ~7-9°) absent on A8 (std ~2°) under the same config, open. Z-integral's original fix re-confirmed working on hardware, multiple reps, plain geometric, both drones. NS2 zero-prediction investigation still open, needs more time; found `backend=cflib` never broadcasts peer positions to other drones (used in every flight command this project has ever run). Stock Bitcraze INDI and Briesewitz/Cobo's NA-INDI deliberately skipped for the comparison (no RPM/no a_res; supervisor-excluded Sep 2026, respectively). Full account: `docs/lab_sessions/2026-10-02.md`. |
 | 2026-10-01 (74) | **2-drone C.1 collection complete (A5 fixed, A6/C4 dropped); NS2 retrain gate PASSED; Checklist G attempted but not validated (upload silently failed to load weights, second bug beyond the known NaN crash — both now fixed and committed); liftoff tumble found and characterized but not root-caused; Z-integral/damping gains (`kv_z=7`, `ki_z=16`) confirmed near-optimal via two independent SIL sweeps, neither reproducing the real ~15.8cm hardware overshoot.** Full account: `docs/lab_sessions/2026-10-01.md`. |
 | 2026-09-29 (73) | **Session close-out: controller=7 failed (no logs, cause unknown, paused); controller=10 built + flown + failed (cause still open); Z-only integral built + tested + decided against.** **controller=7:** two solo-hover attempts failed identically ("one motor spins fast, flips on ground"), zero logs captured either time — root cause unknown, paused by operator decision in favor of controller=10. **controller=10** (`ControllerTypeOot5`, `omar_indi_rust.rs`): built, 7/7 numerical vs `controller_omar_indi.c`, a real pre-flight gap fixed before ever reflashing (no yaml-settable `indi` param — would have repeated c=9's own indi=0 bug). **First hardware attempt (direct to A1, skipping solo — operator decision):** `cf_second` flew fine, `cf5` motors spun but never left ground. uSD analysis found a real single-motor-dominant PWM pattern (not underpowered — one motor alone had enough thrust); `tau`/`a_res` telemetry confirmed dead (never wired for this controller family at all, fixed). Two real bugs found and fixed along the way (a lazy-init aliasing UB; an unguarded division in `omega_des`/`omega_des_dot` shared with the C reference, now guarded as a documented deviation) — neither confirmed as the actual cause; full code audit found no other discrepancy from the C reference. **Root cause remains open** — next step is a real flight (solo, not A1) with the now-added telemetry. **Z-only integral** (`docs/51`): built separate from the already-rejected joint integral, SIL A/B looked like a 100x win over the old term — a follow-up gain sweep corrected this: the peak disturbance dip is gain-invariant, only recovery speed changes, and even the fastest tested gain needs longer to recover than a real hold lasts. **Do not enable.** Two commit-hygiene bugs found and fixed in this session's Cursor-produced work (a stray co-author trailer; a malformed patch-file line that would have broken re-application against a fresh checkout). Full account: `docs/lab_sessions/2026-09-28_alt_indi_shakedown.md` close-out, `docs/41` §13, `docs/51` Task 4. |
