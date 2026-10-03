@@ -1,26 +1,745 @@
-ad stderr output: crazyflie_examples
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 launch crazyflie launch.py backend:=cflib 2>&1 | tee ~/launch_$(date +%H%M).log
-[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-10-03-13-36-45-746713-flightcontrol1-2700937
+
+Summary: 1 package finished [0.63s]
+  1 package had stderr output: crazyflie_examples
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 launch crazyflie launch.py 2>&1 | tee ~/launch_$(date +%H%M).log
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-10-03-13-52-10-484902-flightcontrol1-2707579
 [INFO] [launch]: Default logging verbosity is set to INFO
 /opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
   IfCondition(
   	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
   )
   warnings.warn(
-[INFO] [motion_capture_tracking_node-1]: process started with pid [2700942]
-[INFO] [crazyflie_server.py-2]: process started with pid [2700943]
-[INFO] [teleop-3]: process started with pid [2700944]
-[INFO] [joy_node-4]: process started with pid [2700945]
-[INFO] [gui.py-5]: process started with pid [2700946]
-[teleop-3] [INFO] [1791027405.866830520] [teleop]: Mode changed to high_level
+[INFO] [motion_capture_tracking_node-1]: process started with pid [2707584]
+[INFO] [crazyflie_server-2]: process started with pid [2707585]
+[INFO] [teleop-3]: process started with pid [2707586]
+[INFO] [joy_node-4]: process started with pid [2707587]
+[INFO] [gui.py-5]: process started with pid [2707588]
+[teleop-3] [INFO] [1791028330.602308821] [teleop]: Mode changed to high_level
+[crazyflie_server-2] [INFO] [1791028330.612198278] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1791028330.614509310] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1791028330.616722532] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
 [motion_capture_tracking_node-1] logClouds=0
-[joy_node-4] [INFO] [1791027405.993187027] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
-[crazyflie_server.py-2] Traceback (most recent call last):
-[crazyflie_server.py-2]   File "/home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server.py", line 40, in <module>
-[crazyflie_server.py-2]     import tf_transformations
-[crazyflie_server.py-2]   File "/opt/ros/jazzy/lib/python3.12/site-packages/tf_transformations/__init__.py", line 46, in <module>
-[crazyflie_server.py-2]     import transforms3d
-[crazyflie_server.py-2] ModuleNotFoundError: No module named 'transforms3d'
-[ERROR] [crazyflie_server.py-2]: process has died [pid 2700943, exit code 1, cmd '/home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server.py --ros-args -r __node:=crazyflie_server --params-file /tmp/launch_params_7e50s4hp --params-file /tmp/launch_params_z1ih7l4_'].
-
-
+[crazyflie_server-2] [INFO] [1791028330.620217113] [crazyflie_server]: [cf5] SYS: I am 0x383036363034511000550026 and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1791028330.621269272] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1791028330.623368895] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1791028330.625390435] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1791028330.627488884] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1791028330.629692377] [crazyflie_server]: [cf5] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1791028330.630850538] [crazyflie_server]: [cf5] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1791028330.633209970] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1791028330.634284399] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1791028330.636649565] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1791028330.638660640] [crazyflie_server]: [cf5] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1791028330.639723086] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1791028330.641710455] [crazyflie_server]: [cf5] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1791028330.643660758] [crazyflie_server]: [cf5] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1791028330.645559927] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1791028330.647656209] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1791028330.649691116] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1791028330.652033350] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1791028330.654115123] [crazyflie_server]: [cf5] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1791028330.656072461] [crazyflie_server]: [cf5] SYS: NRF51 version: 2025.12 (C21B)
+[crazyflie_server-2] [INFO] [1791028330.657227106] [crazyflie_server]: [cf5] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1791028330.659080635] [crazyflie_server]: [cf5] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1791028330.660934769] [crazyflie_server]: [cf5] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1791028330.662752889] [crazyflie_server]: [cf5] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1791028330.663811025] [crazyflie_server]: [cf5] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1791028330.665710920] [crazyflie_server]: [cf5] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1791028330.666990319] [crazyflie_server]: [cf5] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1791028330.668970664] [crazyflie_server]: [cf5] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1791028330.670758852] [crazyflie_server]: [cf5] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1791028330.673295412] [crazyflie_server]: [cf5] uSD: malloc buffer 4096 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1791028330.675696220] [crazyflie_server]: [cf5] STAB: WARNING: stabilizer loop rate is off (899)
+[crazyflie_server-2] [INFO] [1791028330.676579492] [crazyflie_server]: [cf5] Requesting parameters...
+[crazyflie_server-2] [INFO] [1791028330.681301631] [crazyflie_server]: [cf5] Param TOC: 427 entries with CRC 2738880939
+[crazyflie_server-2] [INFO] [1791028330.681339683] [crazyflie_server]: [cf5] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1791028330.705680942] [crazyflie_server]: [cf5] reqParamTOC: 0.094636 s (427 params)
+[crazyflie_server-2] [INFO] [1791028330.705762057] [crazyflie_server]: [cf5] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1791028330.705773182] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.indi" to 3
+[crazyflie_server-2] [INFO] [1791028330.705780222] [crazyflie_server]: [cf5] Update parameter "ctrlOot5.indi" to 3
+[crazyflie_server-2] [INFO] [1791028330.705786830] [crazyflie_server]: [cf5] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1791028330.705793378] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1791028330.705799697] [crazyflie_server]: [cf5] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1791028330.705830620] [crazyflie_server]: [cf5] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1791028330.705836836] [crazyflie_server]: [cf5] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1791028330.705842960] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1791028330.705849399] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1791028330.705855383] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1791028330.705861202] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1791028330.705867434] [crazyflie_server]: [cf5] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1791028330.705874013] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1791028330.705880539] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1791028330.705886433] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1791028330.705892578] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1791028330.705899353] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1791028330.705908661] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1791028330.705914669] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1791028330.705920701] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1791028330.705926786] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1791028330.705932997] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1791028330.705938985] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1791028330.705944991] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1791028330.705951047] [crazyflie_server]: [cf5] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1791028330.705957089] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1791028330.705963149] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1791028330.705969361] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1791028330.705975726] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1791028330.705982264] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1791028330.705988632] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1791028330.705994917] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1791028330.706001770] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1791028330.706008040] [crazyflie_server]: [cf5] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1791028330.706014437] [crazyflie_server]: [cf5] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1791028330.706020869] [crazyflie_server]: [cf5] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1791028330.706027007] [crazyflie_server]: [cf5] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1791028330.706033047] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1791028330.706039542] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1791028330.706045718] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1791028330.706051759] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1791028330.706057847] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1791028330.706063865] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1791028330.706069484] [crazyflie_server]: [cf5] Update parameter "rnn.en" to 0
+[crazyflie_server-2] [INFO] [1791028330.706075592] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 6
+[crazyflie_server-2] [INFO] [1791028330.706086752] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1791028330.706111975] [crazyflie_server]: [cf5] ref frame: world
+[joy_node-4] [INFO] [1791028330.740912717] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[crazyflie_server-2] [INFO] [1791028330.752353610] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1791028330.753221634] [crazyflie_server]: [cf5] Log TOC: 646 entries with CRC 531672855
+[crazyflie_server-2] [INFO] [1791028330.753243300] [crazyflie_server]: [cf5] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1791028330.753515095] [crazyflie_server]: [cf5] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.760408515] [crazyflie_server]: [cf5] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.769435575] [crazyflie_server]: [cf5] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.777178222] [crazyflie_server]: [cf5] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.784241342] [crazyflie_server]: [cf5] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.794270406] [crazyflie_server]: [cf5] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.804492108] [crazyflie_server]: [cf5] Logging to rpm at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.813316899] [crazyflie_server]: [cf5] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1791028330.825762796] [crazyflie_server]: [cf5] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1791028330.832358075] [crazyflie_server]: [cf5] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1791028330.840516459] [crazyflie_server]: [cf5] Requesting memories...
+[crazyflie_server-2] [INFO] [1791028330.844113283] [crazyflie_server]: [cf5] Memories: 7
+[crazyflie_server-2] [INFO] [1791028330.897751695] [crazyflie_server]: [cf_second] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1791028330.901968747] [crazyflie_server]: [cf_second] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1791028330.906128783] [crazyflie_server]: [cf_second] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1791028330.913298167] [crazyflie_server]: [cf_second] SYS: I am 0x383036363034511000370055 and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1791028330.915681968] [crazyflie_server]: [cf_second] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1791028330.919672041] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1791028330.924314500] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1791028330.929256490] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1791028330.933474171] [crazyflie_server]: [cf_second] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1791028330.936147927] [crazyflie_server]: [cf_second] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1791028330.940537822] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1791028330.944170649] [crazyflie_server]: [cf_second] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1791028330.948689121] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1791028330.952543026] [crazyflie_server]: [cf_second] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1791028330.954565923] [crazyflie_server]: [cf_second] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1791028330.959126401] [crazyflie_server]: [cf_second] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1791028330.963328306] [crazyflie_server]: [cf_second] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1791028330.968505364] [crazyflie_server]: [cf_second] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1791028330.973341125] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1791028330.978085159] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1791028330.982639721] [crazyflie_server]: [cf_second] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1791028330.986920436] [crazyflie_server]: [cf_second] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1791028330.990900297] [crazyflie_server]: [cf_second] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1791028330.993007355] [crazyflie_server]: [cf_second] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1791028330.995180813] [crazyflie_server]: [cf_second] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1791028330.999201923] [crazyflie_server]: [cf_second] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1791028331.002942218] [crazyflie_server]: [cf_second] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1791028331.005013035] [crazyflie_server]: [cf_second] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1791028331.009743148] [crazyflie_server]: [cf_second] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1791028331.011977953] [crazyflie_server]: [cf_second] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1791028331.016486783] [crazyflie_server]: [cf_second] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1791028331.021156648] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_branch
+[crazyflie_server-2] [INFO] [1791028331.025223500] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_thrust_si
+[crazyflie_server-2] [INFO] [1791028331.030210955] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_sp_mode_z
+[crazyflie_server-2] [INFO] [1791028331.034616359] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_sp_thrust
+[crazyflie_server-2] [INFO] [1791028331.039153311] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_sp_mode_x
+[crazyflie_server-2] [INFO] [1791028331.043271878] [crazyflie_server]: [cf_second] uSD: Unknown log variable indi.oot5_sp_mode_y
+[crazyflie_server-2] [INFO] [1791028331.045389004] [crazyflie_server]: [cf_second] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1791028331.049703595] [crazyflie_server]: [cf_second] uSD: malloc buffer 4096 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1791028331.051465254] [crazyflie_server]: [cf_second] Requesting parameters...
+[crazyflie_server-2] [INFO] [1791028331.061835860] [crazyflie_server]: [cf_second] Param TOC: 427 entries with CRC 2738880939
+[crazyflie_server-2] [INFO] [1791028331.061891738] [crazyflie_server]: [cf_second] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1791028331.076167358] [crazyflie_server]: [cf_second] reqParamTOC: 0.191621 s (427 params)
+[crazyflie_server-2] [INFO] [1791028331.076224072] [crazyflie_server]: [cf_second] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1791028331.076232364] [crazyflie_server]: [cf_second] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1791028331.076239451] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1791028331.076243536] [crazyflie_server]: [cf_second] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1791028331.076248902] [crazyflie_server]: [cf_second] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1791028331.076253488] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1791028331.076257408] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1791028331.076261365] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1791028331.076265300] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1791028331.076269467] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1791028331.076273586] [crazyflie_server]: [cf_second] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1791028331.076277936] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1791028331.076282083] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1791028331.076286022] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1791028331.076289985] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1791028331.076294162] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1791028331.076297877] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1791028331.076301889] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1791028331.076305825] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1791028331.076309753] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1791028331.076313677] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1791028331.076317430] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1791028331.076336527] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1791028331.076340536] [crazyflie_server]: [cf_second] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1791028331.076344406] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1791028331.076348435] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1791028331.076352530] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1791028331.076357994] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1791028331.076362132] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1791028331.076366331] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1791028331.076370302] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1791028331.076374240] [crazyflie_server]: [cf_second] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1791028331.076378197] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1791028331.076382808] [crazyflie_server]: [cf_second] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1791028331.076386859] [crazyflie_server]: [cf_second] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1791028331.076390704] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1791028331.076395031] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1791028331.076400291] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1791028331.076406852] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1791028331.076411040] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1791028331.076415629] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1791028331.076421304] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 6
+[crazyflie_server-2] [INFO] [1791028331.076426589] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1791028331.076450114] [crazyflie_server]: [cf_second] ref frame: world
+[crazyflie_server-2] [INFO] [1791028331.167276197] [crazyflie_server]: [cf_second] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1791028331.168999891] [crazyflie_server]: [cf_second] Log TOC: 640 entries with CRC 1461960864
+[crazyflie_server-2] [INFO] [1791028331.169031879] [crazyflie_server]: [cf_second] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1791028331.169271473] [crazyflie_server]: [cf_second] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.180233582] [crazyflie_server]: [cf_second] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.190403436] [crazyflie_server]: [cf_second] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.200574185] [crazyflie_server]: [cf_second] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.210873631] [crazyflie_server]: [cf_second] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.222685086] [crazyflie_server]: [cf_second] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.235856963] [crazyflie_server]: [cf_second] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1791028331.247234293] [crazyflie_server]: [cf_second] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1791028331.258919414] [crazyflie_server]: [cf_second] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1791028331.271915960] [crazyflie_server]: [cf_second] Requesting memories...
+[crazyflie_server-2] [INFO] [1791028331.277937373] [crazyflie_server]: [cf_second] Memories: 7
+[crazyflie_server-2] [WARN] [1791028331.603130130] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 101.8, Min: 79.6, Max: 135.7)
+[crazyflie_server-2] [WARN] [1791028331.611118807] [crazyflie_server]: [cf5] last latency update: 1.003896 s
+[crazyflie_server-2] [WARN] [1791028331.843168741] [crazyflie_server]: [cf5] Unexpected number of broadcast packets. Sent: 51. Received: 65331
+[crazyflie_server-2] [WARN] [1791028331.884641638] [crazyflie_server]: [cf_second] last latency update: 1.002401 s
+[crazyflie_server-2] [WARN] [1791028332.603121177] [crazyflie_server]: [all] Motion capture rate off (#: 12, Avg: 101.4, Min: 76.1, Max: 153.3)
+[crazyflie_server-2] [INFO] [1791028332.762281803] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028333.603202137] [crazyflie_server]: [all] Motion capture rate off (#: 11, Avg: 101.2, Min: 76.5, Max: 140.4)
+[crazyflie_server-2] [WARN] [1791028333.621427322] [crazyflie_server]: [cf5] High latency: 10.3 ms
+[crazyflie_server-2] [INFO] [1791028333.761209753] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028334.603202526] [crazyflie_server]: [all] Motion capture rate off (#: 14, Avg: 101.6, Min: 76.0, Max: 147.1)
+[crazyflie_server-2] [WARN] [1791028334.621199088] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [INFO] [1791028334.763171428] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028335.603192813] [crazyflie_server]: [all] Motion capture rate off (#: 12, Avg: 101.6, Min: 74.6, Max: 151.8)
+[crazyflie_server-2] [WARN] [1791028335.627184315] [crazyflie_server]: [cf5] High latency: 16.0 ms
+[crazyflie_server-2] [WARN] [1791028336.603168311] [crazyflie_server]: [all] Motion capture rate off (#: 12, Avg: 101.5, Min: 71.3, Max: 157.6)
+[crazyflie_server-2] [WARN] [1791028336.625137748] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1791028337.066012543] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1791028337.066145425] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1791028337.066169276] [motion_capture_tracking]: No updated pose for cf5 for 0.000428 s.
+[motion_capture_tracking_node-1] [WARN] [1791028337.066190945] [motion_capture_tracking]: No updated pose for cf_second for 0.000428 s.
+[crazyflie_server-2] [WARN] [1791028337.603214067] [crazyflie_server]: [all] Motion capture rate off (#: 25, Avg: 113.0, Min: 30.4, Max: 816.7)
+[crazyflie_server-2] [WARN] [1791028337.627199627] [crazyflie_server]: [cf5] High latency: 16.0 ms
+[crazyflie_server-2] [WARN] [1791028338.603205144] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 101.5, Min: 64.2, Max: 185.2)
+[crazyflie_server-2] [WARN] [1791028339.603210084] [crazyflie_server]: [all] Motion capture rate off (#: 9, Avg: 102.0, Min: 64.4, Max: 182.3)
+[crazyflie_server-2] [WARN] [1791028339.626207992] [crazyflie_server]: [cf5] High latency: 15.1 ms
+[crazyflie_server-2] [WARN] [1791028340.603188656] [crazyflie_server]: [all] Motion capture rate off (#: 10, Avg: 101.6, Min: 61.8, Max: 175.9)
+[crazyflie_server-2] [INFO] [1791028340.815168804] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028341.603216166] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 101.6, Min: 62.6, Max: 180.5)
+[crazyflie_server-2] [WARN] [1791028341.624194943] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [WARN] [1791028342.603173661] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.8, Min: 69.3, Max: 171.6)
+[crazyflie_server-2] [WARN] [1791028342.629176613] [crazyflie_server]: [cf5] High latency: 18.0 ms
+[crazyflie_server-2] [WARN] [1791028343.603198835] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.9, Min: 69.1, Max: 162.7)
+[crazyflie_server-2] [WARN] [1791028343.625176461] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028343.637172558] [crazyflie_server]: [cf5] Received unrequested data for block: 255
+[crazyflie_server-2] [WARN] [1791028344.603192908] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 101.3, Min: 64.5, Max: 174.7)
+[crazyflie_server-2] [WARN] [1791028344.622173013] [crazyflie_server]: [cf5] High latency: 10.9 ms
+[crazyflie_server-2] [INFO] [1791028344.841174609] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028345.603208243] [crazyflie_server]: [all] Motion capture rate off (#: 8, Avg: 101.2, Min: 72.3, Max: 154.1)
+[crazyflie_server-2] [WARN] [1791028345.622183853] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028346.603206405] [crazyflie_server]: [all] Motion capture rate off (#: 8, Avg: 101.3, Min: 65.2, Max: 177.8)
+[crazyflie_server-2] [WARN] [1791028347.603165361] [crazyflie_server]: [all] Motion capture rate off (#: 11, Avg: 104.3, Min: 55.6, Max: 446.3)
+[crazyflie_server-2] [INFO] [1791028347.852240643] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028348.603192839] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.7, Min: 76.4, Max: 145.5)
+[crazyflie_server-2] [WARN] [1791028348.897687299] [crazyflie_server]: [cf_second] High latency: 13.0 ms
+[crazyflie_server-2] [WARN] [1791028349.603176608] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 101.1, Min: 73.3, Max: 154.6)
+[crazyflie_server-2] [WARN] [1791028349.625167390] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028350.603307841] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 81.6, Max: 124.8)
+[crazyflie_server-2] [WARN] [1791028350.623200943] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028351.603205744] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 79.4, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028351.625200998] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028352.603206189] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 78.4, Max: 134.6)
+[crazyflie_server-2] [WARN] [1791028352.622209734] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028353.603220451] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 78.1, Max: 130.7)
+[crazyflie_server-2] [WARN] [1791028354.603231140] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.8, Min: 71.2, Max: 162.2)
+[crazyflie_server-2] [WARN] [1791028355.603167403] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.6, Max: 127.9)
+[crazyflie_server-2] [WARN] [1791028356.603193469] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.4, Max: 129.2)
+[crazyflie_server-2] [WARN] [1791028357.603208931] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 77.4, Max: 136.6)
+[crazyflie_server-2] [WARN] [1791028357.625192543] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028358.603205595] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 77.6, Max: 133.6)
+[crazyflie_server-2] [WARN] [1791028359.603170414] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 78.0, Max: 132.3)
+[crazyflie_server-2] [WARN] [1791028359.622221835] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028360.603166663] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.5, Max: 130.1)
+[crazyflie_server-2] [WARN] [1791028361.603124151] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 80.3, Max: 134.7)
+[crazyflie_server-2] [WARN] [1791028361.621128125] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028362.603174531] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 82.0, Max: 125.1)
+[crazyflie_server-2] [WARN] [1791028363.603130300] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.8, Min: 80.6, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028364.603189920] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.2, Min: 76.8, Max: 129.8)
+[crazyflie_server-2] [WARN] [1791028365.603181361] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 80.5, Max: 129.1)
+[crazyflie_server-2] [WARN] [1791028365.622173551] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028366.603215671] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 79.4, Max: 127.9)
+[crazyflie_server-2] [WARN] [1791028367.603205621] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 76.0, Max: 140.8)
+[crazyflie_server-2] [INFO] [1791028367.972191632] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028368.603197032] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.1, Max: 127.0)
+[crazyflie_server-2] [WARN] [1791028369.603180630] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.5, Max: 127.0)
+[crazyflie_server-2] [WARN] [1791028370.603180913] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.6, Max: 126.4)
+[crazyflie_server-2] [WARN] [1791028371.603167963] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 79.4, Max: 128.6)
+[crazyflie_server-2] [WARN] [1791028372.603208369] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.8, Max: 130.3)
+[crazyflie_server-2] [WARN] [1791028372.625181909] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [INFO] [1791028373.999174241] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028374.603162050] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.7, Max: 131.9)
+[crazyflie_server-2] [WARN] [1791028374.622758457] [crazyflie_server]: [cf5] High latency: 11.6 ms
+[crazyflie_server-2] [WARN] [1791028375.603192208] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 82.4, Max: 121.0)
+[crazyflie_server-2] [WARN] [1791028375.622232604] [crazyflie_server]: [cf5] High latency: 11.1 ms
+[crazyflie_server-2] [WARN] [1791028376.603213029] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 81.6, Max: 127.2)
+[crazyflie_server-2] [WARN] [1791028376.622268411] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028377.603210594] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.2, Max: 125.0)
+[crazyflie_server-2] [WARN] [1791028377.625170883] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[crazyflie_server-2] [INFO] [1791028378.021176833] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028378.603186629] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 76.9, Max: 135.3)
+[crazyflie_server-2] [WARN] [1791028379.603222192] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.2, Max: 130.2)
+[crazyflie_server-2] [WARN] [1791028380.603165235] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 101.0, Min: 75.6, Max: 138.7)
+[crazyflie_server-2] [WARN] [1791028381.603209876] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 79.0, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028382.603175339] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 77.6, Max: 133.8)
+[crazyflie_server-2] [WARN] [1791028383.603169591] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 79.2, Max: 130.5)
+[crazyflie_server-2] [WARN] [1791028383.621253456] [crazyflie_server]: [cf5] High latency: 10.1 ms
+[crazyflie_server-2] [WARN] [1791028384.603195516] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 74.9, Max: 145.3)
+[crazyflie_server-2] [WARN] [1791028385.603185135] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 82.9, Max: 122.1)
+[crazyflie_server-2] [WARN] [1791028387.603190136] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.8, Max: 130.9)
+[crazyflie_server-2] [WARN] [1791028387.622245207] [crazyflie_server]: [cf5] High latency: 11.1 ms
+[crazyflie_server-2] [WARN] [1791028388.603174733] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 77.4, Max: 137.5)
+[crazyflie_server-2] [WARN] [1791028388.623172165] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028389.603209656] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 82.7, Max: 133.9)
+[crazyflie_server-2] [WARN] [1791028390.603210943] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 78.8, Max: 131.9)
+[crazyflie_server-2] [WARN] [1791028391.603118144] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 78.1, Max: 132.8)
+[crazyflie_server-2] [WARN] [1791028392.603191134] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 79.5, Max: 135.6)
+[crazyflie_server-2] [INFO] [1791028393.121127802] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028393.603180777] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 77.8, Max: 131.4)
+[crazyflie_server-2] [WARN] [1791028394.603172013] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.8, Min: 77.5, Max: 134.6)
+[crazyflie_server-2] [WARN] [1791028394.623240873] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028395.603198011] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.7, Max: 126.0)
+[crazyflie_server-2] [WARN] [1791028395.622220284] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028396.603194795] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 80.8, Max: 126.4)
+[crazyflie_server-2] [WARN] [1791028397.603221256] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 78.5, Max: 136.4)
+[crazyflie_server-2] [WARN] [1791028398.603221519] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 85.6, Max: 122.6)
+[crazyflie_server-2] [WARN] [1791028398.622821210] [crazyflie_server]: [cf5] High latency: 11.7 ms
+[crazyflie_server-2] [WARN] [1791028399.603222412] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 74.9, Max: 147.8)
+[crazyflie_server-2] [WARN] [1791028399.626620973] [crazyflie_server]: [cf5] High latency: 15.4 ms
+[crazyflie_server-2] [WARN] [1791028400.603167648] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.5, Min: 81.0, Max: 122.5)
+[crazyflie_server-2] [WARN] [1791028400.623162066] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028401.603175215] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 83.3, Max: 121.6)
+[crazyflie_server-2] [WARN] [1791028402.603180908] [crazyflie_server]: [all] Motion capture rate off (#: 9, Avg: 100.9, Min: 79.6, Max: 132.8)
+[crazyflie_server-2] [WARN] [1791028403.603189593] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 79.1, Max: 132.4)
+[crazyflie_server-2] [WARN] [1791028403.623202682] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028404.603227564] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.2, Min: 80.2, Max: 123.6)
+[crazyflie_server-2] [WARN] [1791028405.603180787] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.7, Min: 79.2, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028405.624159963] [crazyflie_server]: [cf5] High latency: 12.9 ms
+[crazyflie_server-2] [WARN] [1791028406.603213863] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.2, Max: 121.0)
+[crazyflie_server-2] [WARN] [1791028406.622150324] [crazyflie_server]: [cf5] High latency: 10.9 ms
+[crazyflie_server-2] [WARN] [1791028407.603210230] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.5, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028408.603168757] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 77.1, Max: 130.8)
+[crazyflie_server-2] [WARN] [1791028409.603215953] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 75.3, Max: 140.7)
+[crazyflie_server-2] [WARN] [1791028410.603170525] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.3, Max: 127.5)
+[crazyflie_server-2] [WARN] [1791028410.622179665] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028411.603179244] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.3, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028412.603192779] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 78.1, Max: 127.7)
+[crazyflie_server-2] [WARN] [1791028412.621234043] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [INFO] [1791028413.212081976] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028413.603174524] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.3, Max: 125.1)
+[crazyflie_server-2] [WARN] [1791028414.603203904] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.7, Min: 78.1, Max: 133.5)
+[crazyflie_server-2] [WARN] [1791028415.603198041] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.1, Max: 125.8)
+[crazyflie_server-2] [WARN] [1791028415.622175901] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028416.603169014] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.6, Max: 124.6)
+[crazyflie_server-2] [WARN] [1791028417.603215917] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 77.7, Max: 138.8)
+[crazyflie_server-2] [WARN] [1791028418.603197676] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 82.9, Max: 121.1)
+[crazyflie_server-2] [WARN] [1791028419.603192465] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.7, Min: 79.3, Max: 133.8)
+[crazyflie_server-2] [WARN] [1791028420.603206263] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.8, Max: 127.7)
+[crazyflie_server-2] [WARN] [1791028421.603230818] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.5, Max: 129.7)
+[crazyflie_server-2] [WARN] [1791028421.625169715] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[crazyflie_server-2] [INFO] [1791028422.251218713] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028422.603217768] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 81.6, Max: 120.1)
+[crazyflie_server-2] [INFO] [1791028423.252052416] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028423.603171602] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.0, Max: 123.5)
+[crazyflie_server-2] [WARN] [1791028424.603163355] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 86.0, Max: 122.3)
+[crazyflie_server-2] [WARN] [1791028424.623194929] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028425.603190085] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 79.1, Max: 132.7)
+[crazyflie_server-2] [WARN] [1791028425.622205772] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [INFO] [1791028426.266168886] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028426.603296295] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 80.0, Max: 133.6)
+[crazyflie_server-2] [WARN] [1791028427.603199029] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 76.7, Max: 130.2)
+[crazyflie_server-2] [WARN] [1791028427.626183058] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1791028428.603135438] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.4, Max: 124.2)
+[crazyflie_server-2] [WARN] [1791028428.621156134] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028429.625261108] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028431.603165235] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.0, Max: 127.8)
+[crazyflie_server-2] [WARN] [1791028432.603167655] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 79.3, Max: 128.7)
+[crazyflie_server-2] [WARN] [1791028432.623203982] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028433.603130377] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.7, Max: 129.1)
+[crazyflie_server-2] [WARN] [1791028433.622148642] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028434.603201107] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.0, Max: 125.3)
+[crazyflie_server-2] [WARN] [1791028435.603163717] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.6, Min: 79.3, Max: 130.8)
+[crazyflie_server-2] [WARN] [1791028436.603165363] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 77.5, Max: 127.9)
+[crazyflie_server-2] [WARN] [1791028437.603184745] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.5, Min: 80.4, Max: 130.2)
+[crazyflie_server-2] [WARN] [1791028437.894693485] [crazyflie_server]: [cf_second] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028438.603202360] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.5, Min: 80.0, Max: 127.7)
+[crazyflie_server-2] [WARN] [1791028438.626178705] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1791028439.603267949] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 84.7, Max: 124.3)
+[crazyflie_server-2] [WARN] [1791028440.603209608] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.2, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028441.603176846] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.0, Max: 129.9)
+[crazyflie_server-2] [WARN] [1791028441.622187056] [crazyflie_server]: [cf5] High latency: 10.5 ms
+[crazyflie_server-2] [WARN] [1791028442.603176892] [crazyflie_server]: [all] Motion capture rate off (#: 9, Avg: 100.9, Min: 74.3, Max: 145.9)
+[crazyflie_server-2] [WARN] [1791028443.603240904] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 79.0, Max: 128.3)
+[crazyflie_server-2] [INFO] [1791028444.379197205] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028444.603169138] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 82.7, Max: 125.3)
+[crazyflie_server-2] [WARN] [1791028445.603260698] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.5, Max: 129.9)
+[crazyflie_server-2] [WARN] [1791028446.603222978] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.1, Max: 129.5)
+[crazyflie_server-2] [WARN] [1791028447.603271003] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 78.3, Max: 130.3)
+[crazyflie_server-2] [WARN] [1791028448.603159533] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 78.9, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028449.603262680] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 82.4, Max: 123.7)
+[crazyflie_server-2] [WARN] [1791028449.625172794] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028450.603221273] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.1, Min: 83.8, Max: 121.4)
+[crazyflie_server-2] [WARN] [1791028451.603173953] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 79.3, Max: 132.1)
+[crazyflie_server-2] [WARN] [1791028451.625197577] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028452.603176326] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.2, Max: 121.3)
+[crazyflie_server-2] [WARN] [1791028452.625194958] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028453.603218219] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 78.3, Max: 134.9)
+[crazyflie_server-2] [WARN] [1791028454.603177640] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 83.5, Max: 122.9)
+[crazyflie_server-2] [WARN] [1791028454.626177460] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1791028455.603165004] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.7, Min: 75.8, Max: 147.7)
+[crazyflie_server-2] [WARN] [1791028456.603166217] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.6, Min: 80.7, Max: 126.5)
+[crazyflie_server-2] [WARN] [1791028456.623172409] [crazyflie_server]: [cf5] High latency: 11.9 ms
+[crazyflie_server-2] [WARN] [1791028457.603177455] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 78.9, Max: 132.2)
+[crazyflie_server-2] [INFO] [1791028458.458184375] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028458.603205702] [crazyflie_server]: [all] Motion capture rate off (#: 12, Avg: 100.9, Min: 78.0, Max: 135.7)
+[crazyflie_server-2] [WARN] [1791028458.623207194] [crazyflie_server]: [cf5] High latency: 11.9 ms
+[crazyflie_server-2] [WARN] [1791028459.603168616] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 79.9, Max: 129.8)
+[crazyflie_server-2] [WARN] [1791028460.603191893] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.7, Max: 125.0)
+[crazyflie_server-2] [WARN] [1791028461.603138106] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 80.8, Max: 130.9)
+[crazyflie_server-2] [WARN] [1791028461.625170561] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028462.603215488] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.6, Min: 81.3, Max: 133.1)
+[crazyflie_server-2] [WARN] [1791028463.603190955] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.7, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028464.603170927] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.9, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028465.603182854] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 78.9, Max: 123.5)
+[crazyflie_server-2] [WARN] [1791028465.896676098] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028466.603173580] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 76.8, Max: 134.7)
+[crazyflie_server-2] [WARN] [1791028467.603168937] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 76.6, Max: 139.7)
+[crazyflie_server-2] [WARN] [1791028468.603187541] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.8, Min: 80.7, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028469.603187741] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.6, Min: 80.3, Max: 126.8)
+[crazyflie_server-2] [WARN] [1791028469.622197291] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028470.603174353] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 79.2, Max: 132.8)
+[crazyflie_server-2] [WARN] [1791028470.624589941] [crazyflie_server]: [cf5] High latency: 13.4 ms
+[crazyflie_server-2] [WARN] [1791028471.603190484] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.5, Min: 81.1, Max: 126.6)
+[crazyflie_server-2] [WARN] [1791028472.603193102] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 78.1, Max: 131.2)
+[crazyflie_server-2] [WARN] [1791028472.623192988] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028473.603134204] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 79.9, Max: 124.5)
+[crazyflie_server-2] [WARN] [1791028474.603166131] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 75.1, Max: 134.3)
+[crazyflie_server-2] [WARN] [1791028474.623277007] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028475.603197564] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.3, Max: 129.3)
+[crazyflie_server-2] [WARN] [1791028476.603267851] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 80.3, Max: 129.0)
+[crazyflie_server-2] [WARN] [1791028477.603234766] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 81.4, Max: 127.1)
+[crazyflie_server-2] [WARN] [1791028478.603207183] [crazyflie_server]: [all] Motion capture rate off (#: 10, Avg: 100.7, Min: 78.9, Max: 131.6)
+[crazyflie_server-2] [WARN] [1791028478.622399291] [crazyflie_server]: [cf5] High latency: 11.2 ms
+[crazyflie_server-2] [WARN] [1791028478.896663282] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [INFO] [1791028479.566169636] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028479.603193919] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 79.7, Max: 126.2)
+[crazyflie_server-2] [WARN] [1791028480.603175455] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.2, Max: 130.4)
+[crazyflie_server-2] [WARN] [1791028480.625165618] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[crazyflie_server-2] [WARN] [1791028481.603180490] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 79.6, Max: 127.2)
+[crazyflie_server-2] [WARN] [1791028481.625165609] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028482.603172688] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 79.1, Max: 130.3)
+[crazyflie_server-2] [WARN] [1791028483.603166671] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 82.9, Max: 126.2)
+[crazyflie_server-2] [WARN] [1791028484.603164718] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 82.3, Max: 126.6)
+[crazyflie_server-2] [WARN] [1791028485.603179371] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 77.9, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028486.603174013] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 80.0, Max: 126.1)
+[crazyflie_server-2] [WARN] [1791028487.603140900] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.6, Min: 75.4, Max: 145.9)
+[crazyflie_server-2] [WARN] [1791028487.623180604] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028488.603189430] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 82.8, Max: 124.9)
+[crazyflie_server-2] [WARN] [1791028489.603208777] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.3, Max: 131.1)
+[crazyflie_server-2] [WARN] [1791028490.603206879] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 77.7, Max: 136.1)
+[crazyflie_server-2] [WARN] [1791028490.624223232] [crazyflie_server]: [cf5] High latency: 13.1 ms
+[crazyflie_server-2] [WARN] [1791028491.603189231] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 78.9, Max: 129.6)
+[crazyflie_server-2] [WARN] [1791028491.623210447] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028492.603199798] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.6, Min: 79.5, Max: 131.5)
+[crazyflie_server-2] [WARN] [1791028493.603227259] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 77.6, Max: 137.9)
+[crazyflie_server-2] [WARN] [1791028494.603205898] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 78.3, Max: 131.7)
+[crazyflie_server-2] [WARN] [1791028494.621208157] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028495.603191524] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 78.5, Max: 121.9)
+[crazyflie_server-2] [WARN] [1791028496.603192705] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 77.3, Max: 133.6)
+[crazyflie_server-2] [WARN] [1791028497.603229834] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.1, Max: 124.1)
+[crazyflie_server-2] [WARN] [1791028498.603232029] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.6, Min: 77.6, Max: 137.2)
+[crazyflie_server-2] [INFO] [1791028498.640191406] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028499.603188408] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 81.0, Max: 126.7)
+[crazyflie_server-2] [WARN] [1791028499.625174769] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [INFO] [1791028499.641166953] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028500.603171191] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 81.3, Max: 125.2)
+[crazyflie_server-2] [WARN] [1791028501.603178577] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.0, Max: 126.1)
+[crazyflie_server-2] [WARN] [1791028501.895719892] [crazyflie_server]: [cf_second] High latency: 11.1 ms
+[crazyflie_server-2] [WARN] [1791028502.603200942] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.3, Max: 130.2)
+[crazyflie_server-2] [WARN] [1791028503.603207386] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 85.4, Max: 123.3)
+[crazyflie_server-2] [WARN] [1791028504.625171782] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[crazyflie_server-2] [WARN] [1791028505.603206645] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 79.4, Max: 129.1)
+[crazyflie_server-2] [WARN] [1791028505.895671287] [crazyflie_server]: [cf_second] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028506.603184566] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 82.3, Max: 125.0)
+[crazyflie_server-2] [WARN] [1791028507.603171475] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 79.9, Max: 129.0)
+[crazyflie_server-2] [WARN] [1791028507.622195587] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028508.603190006] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.5, Max: 126.5)
+[crazyflie_server-2] [WARN] [1791028508.623192695] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028509.603182798] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 78.7, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028510.603208675] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 77.3, Max: 137.2)
+[crazyflie_server-2] [WARN] [1791028511.603193830] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.3, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028512.603165620] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.2, Min: 83.5, Max: 124.4)
+[crazyflie_server-2] [WARN] [1791028513.603253921] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.5, Max: 130.6)
+[crazyflie_server-2] [INFO] [1791028513.738191934] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028514.603230909] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 82.0, Max: 127.4)
+[crazyflie_server-2] [WARN] [1791028515.603213700] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.3, Max: 123.1)
+[crazyflie_server-2] [WARN] [1791028516.603188273] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.8, Max: 129.3)
+[crazyflie_server-2] [WARN] [1791028516.625209322] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028517.603222403] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 79.8, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028517.626198448] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1791028518.603208082] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 83.1, Max: 124.6)
+[crazyflie_server-2] [WARN] [1791028518.623219614] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028520.603176162] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 78.8, Max: 130.1)
+[crazyflie_server-2] [WARN] [1791028521.603215501] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.5, Min: 76.1, Max: 138.3)
+[crazyflie_server-2] [WARN] [1791028521.625170250] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028522.603178076] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.8, Min: 80.3, Max: 128.6)
+[crazyflie_server-2] [WARN] [1791028523.603189952] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 78.3, Max: 137.0)
+[crazyflie_server-2] [WARN] [1791028524.603194861] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.1, Max: 129.3)
+[crazyflie_server-2] [WARN] [1791028525.603145996] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 79.2, Max: 121.6)
+[crazyflie_server-2] [WARN] [1791028526.603167933] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.4, Max: 123.8)
+[crazyflie_server-2] [WARN] [1791028526.621496296] [crazyflie_server]: [cf5] High latency: 10.3 ms
+[crazyflie_server-2] [WARN] [1791028527.603172013] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.7, Min: 79.7, Max: 128.7)
+[crazyflie_server-2] [WARN] [1791028528.603167455] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 78.2, Max: 127.7)
+[crazyflie_server-2] [WARN] [1791028529.603253493] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 81.9, Max: 124.3)
+[crazyflie_server-2] [WARN] [1791028530.603210925] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.2, Max: 125.0)
+[crazyflie_server-2] [WARN] [1791028530.621888802] [crazyflie_server]: [cf5] High latency: 10.7 ms
+[crazyflie_server-2] [WARN] [1791028531.603162834] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.5, Min: 84.8, Max: 120.6)
+[crazyflie_server-2] [WARN] [1791028531.625194001] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028532.603168073] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.7, Min: 76.5, Max: 130.5)
+[crazyflie_server-2] [WARN] [1791028533.603233227] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.1, Max: 125.2)
+[crazyflie_server-2] [WARN] [1791028534.603133603] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.8, Max: 122.5)
+[crazyflie_server-2] [WARN] [1791028534.623224996] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028535.603199050] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.1, Max: 131.1)
+[crazyflie_server-2] [INFO] [1791028535.857162590] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028536.603192272] [crazyflie_server]: [all] Motion capture rate off (#: 9, Avg: 100.9, Min: 76.6, Max: 136.3)
+[crazyflie_server-2] [WARN] [1791028537.603181968] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.9, Min: 79.8, Max: 131.3)
+[crazyflie_server-2] [WARN] [1791028538.603179804] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 83.3, Max: 123.8)
+[crazyflie_server-2] [WARN] [1791028539.603198405] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.1, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028540.603165258] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 79.7, Max: 134.6)
+[crazyflie_server-2] [INFO] [1791028540.890162280] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028541.603178111] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 79.3, Max: 130.3)
+[crazyflie_server-2] [INFO] [1791028541.893171520] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028542.603165370] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.8, Max: 129.2)
+[crazyflie_server-2] [WARN] [1791028542.624227497] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [WARN] [1791028543.603134195] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 78.9, Max: 125.1)
+[crazyflie_server-2] [WARN] [1791028544.603233937] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.8, Min: 80.1, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028544.622242392] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028545.603269113] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.4, Max: 124.6)
+[crazyflie_server-2] [WARN] [1791028546.603179478] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 82.1, Max: 127.3)
+[crazyflie_server-2] [WARN] [1791028547.603169213] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 78.9, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028549.603200956] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.0, Max: 128.0)
+[crazyflie_server-2] [WARN] [1791028550.603196640] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.2, Min: 79.0, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028551.603176533] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.7, Min: 74.1, Max: 153.9)
+[crazyflie_server-2] [WARN] [1791028552.603171171] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.1, Max: 127.1)
+[crazyflie_server-2] [WARN] [1791028553.603187008] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 80.9, Max: 130.0)
+[crazyflie_server-2] [WARN] [1791028553.896674603] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028554.623194287] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028555.603207907] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.1, Max: 134.0)
+[crazyflie_server-2] [WARN] [1791028555.622061014] [crazyflie_server]: [cf5] High latency: 10.8 ms
+[crazyflie_server-2] [WARN] [1791028556.603175309] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.3, Max: 128.7)
+[crazyflie_server-2] [INFO] [1791028556.963179793] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028557.603229056] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.6, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028558.603210511] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.1, Max: 124.4)
+[crazyflie_server-2] [WARN] [1791028559.623209457] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028560.603195784] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 75.5, Max: 139.1)
+[crazyflie_server-2] [INFO] [1791028560.979185099] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028561.603217417] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 77.9, Max: 130.7)
+[crazyflie_server-2] [WARN] [1791028564.603151656] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.7, Min: 75.8, Max: 141.5)
+[crazyflie_server-2] [WARN] [1791028565.603221997] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 82.0, Max: 130.1)
+[crazyflie_server-2] [INFO] [1791028566.010188325] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028566.603163497] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 75.2, Max: 138.7)
+[crazyflie_server-2] [WARN] [1791028567.603240658] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.8, Max: 127.9)
+[crazyflie_server-2] [WARN] [1791028568.603199804] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.8, Min: 79.5, Max: 132.6)
+[crazyflie_server-2] [WARN] [1791028569.603157380] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.7, Max: 129.6)
+[crazyflie_server-2] [WARN] [1791028570.623200142] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028571.603229704] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 78.7, Max: 128.7)
+[crazyflie_server-2] [WARN] [1791028571.896685155] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028572.603609850] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.4, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028573.603180616] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.9, Max: 129.8)
+[crazyflie_server-2] [WARN] [1791028574.603202042] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 77.3, Max: 138.5)
+[crazyflie_server-2] [WARN] [1791028575.603183061] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.7, Min: 77.8, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028576.603172439] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.4, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028577.603180012] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.6, Max: 128.1)
+[crazyflie_server-2] [INFO] [1791028578.068167340] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028578.603184659] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.7, Min: 78.7, Max: 135.6)
+[crazyflie_server-2] [INFO] [1791028579.069172523] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028579.603232282] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 78.1, Max: 134.8)
+[crazyflie_server-2] [WARN] [1791028579.622129737] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028580.603192217] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 78.3, Max: 136.8)
+[crazyflie_server-2] [WARN] [1791028581.603118244] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.7, Min: 77.4, Max: 137.1)
+[crazyflie_server-2] [WARN] [1791028582.603196790] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.0, Max: 123.6)
+[crazyflie_server-2] [WARN] [1791028583.603169782] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 79.3, Max: 127.0)
+[crazyflie_server-2] [WARN] [1791028584.603146134] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.7, Min: 83.5, Max: 146.1)
+[crazyflie_server-2] [WARN] [1791028585.603209088] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 78.6, Max: 131.9)
+[crazyflie_server-2] [WARN] [1791028585.623204439] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028586.603182416] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 80.2, Max: 130.0)
+[crazyflie_server-2] [WARN] [1791028587.603168406] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 80.1, Max: 129.2)
+[crazyflie_server-2] [WARN] [1791028587.623241148] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028587.896669887] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028588.603193706] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.5, Max: 123.4)
+[crazyflie_server-2] [WARN] [1791028589.603181778] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.7, Max: 127.8)
+[crazyflie_server-2] [WARN] [1791028590.603210024] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.9, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028591.603141808] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 79.2, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028591.623126446] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028592.603206829] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 80.0, Max: 129.9)
+[crazyflie_server-2] [WARN] [1791028593.603251304] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 83.6, Max: 121.6)
+[crazyflie_server-2] [WARN] [1791028594.603218527] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.3, Max: 127.2)
+[crazyflie_server-2] [WARN] [1791028594.623256832] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [INFO] [1791028595.143152709] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028595.623299070] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028596.603124132] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 82.4, Max: 128.3)
+[crazyflie_server-2] [WARN] [1791028596.896685134] [crazyflie_server]: [cf_second] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028597.603184936] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 77.6, Max: 137.8)
+[crazyflie_server-2] [WARN] [1791028597.623166182] [crazyflie_server]: [cf5] High latency: 11.8 ms
+[crazyflie_server-2] [WARN] [1791028599.603142973] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.6, Min: 80.3, Max: 129.8)
+[crazyflie_server-2] [INFO] [1791028600.169203436] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028601.603228529] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.2, Max: 124.8)
+[crazyflie_server-2] [WARN] [1791028602.603173430] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 76.9, Max: 134.6)
+[crazyflie_server-2] [WARN] [1791028604.603212039] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.3, Max: 127.3)
+[crazyflie_server-2] [WARN] [1791028605.603204059] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 80.1, Max: 132.6)
+[crazyflie_server-2] [WARN] [1791028606.603173253] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 81.3, Max: 123.5)
+[crazyflie_server-2] [WARN] [1791028607.603267793] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 80.4, Max: 122.5)
+[crazyflie_server-2] [WARN] [1791028608.603202706] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.4, Max: 129.5)
+[crazyflie_server-2] [WARN] [1791028609.603227735] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 80.5, Max: 129.5)
+[crazyflie_server-2] [WARN] [1791028609.623239696] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028610.603255089] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.1, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028610.623228234] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028611.603163166] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 77.6, Max: 133.0)
+[crazyflie_server-2] [WARN] [1791028612.603178047] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 82.7, Max: 126.4)
+[crazyflie_server-2] [WARN] [1791028613.603218098] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 80.2, Max: 128.8)
+[crazyflie_server-2] [WARN] [1791028613.625127496] [crazyflie_server]: [cf5] High latency: 13.9 ms
+[crazyflie_server-2] [WARN] [1791028614.603214343] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.6, Max: 132.4)
+[crazyflie_server-2] [WARN] [1791028615.603176883] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 79.4, Max: 125.3)
+[crazyflie_server-2] [INFO] [1791028616.280162805] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028616.603181569] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 77.7, Max: 130.0)
+[crazyflie_server-2] [WARN] [1791028617.603256945] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.4, Min: 81.5, Max: 125.5)
+[crazyflie_server-2] [WARN] [1791028617.623139212] [crazyflie_server]: [cf5] High latency: 11.9 ms
+[crazyflie_server-2] [WARN] [1791028617.894704472] [crazyflie_server]: [cf_second] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028618.603345996] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.5, Max: 130.6)
+[crazyflie_server-2] [WARN] [1791028619.603200366] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.8, Max: 127.3)
+[crazyflie_server-2] [WARN] [1791028620.622150384] [crazyflie_server]: [cf5] High latency: 10.9 ms
+[crazyflie_server-2] [WARN] [1791028621.603183920] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.5, Min: 78.4, Max: 136.1)
+[crazyflie_server-2] [INFO] [1791028622.310185297] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028622.603178590] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 80.5, Max: 132.5)
+[crazyflie_server-2] [WARN] [1791028622.627206403] [crazyflie_server]: [cf5] High latency: 16.0 ms
+[crazyflie_server-2] [WARN] [1791028623.603165944] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 78.8, Max: 124.6)
+[crazyflie_server-2] [WARN] [1791028623.623225851] [crazyflie_server]: [cf5] High latency: 12.1 ms
+[crazyflie_server-2] [WARN] [1791028624.603171392] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 78.2, Max: 132.4)
+[crazyflie_server-2] [WARN] [1791028625.603130691] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.7, Min: 81.0, Max: 128.8)
+[crazyflie_server-2] [INFO] [1791028626.331213562] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028626.603217102] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 82.4, Max: 124.0)
+[crazyflie_server-2] [WARN] [1791028627.603142730] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.9, Max: 128.8)
+[crazyflie_server-2] [WARN] [1791028628.603174356] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 79.3, Max: 129.0)
+[crazyflie_server-2] [WARN] [1791028629.603206728] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.1, Max: 129.4)
+[crazyflie_server-2] [WARN] [1791028630.603188945] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.5, Min: 78.6, Max: 132.8)
+[crazyflie_server-2] [WARN] [1791028631.603178092] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 82.1, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028632.603174557] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 83.7, Max: 120.3)
+[crazyflie_server-2] [WARN] [1791028633.603135193] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 82.0, Max: 125.4)
+[crazyflie_server-2] [WARN] [1791028634.603206399] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 81.7, Max: 127.5)
+[crazyflie_server-2] [WARN] [1791028635.603159373] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.6, Max: 122.3)
+[crazyflie_server-2] [WARN] [1791028636.603246665] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 81.9, Max: 123.1)
+[crazyflie_server-2] [WARN] [1791028637.603189655] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.4, Max: 131.4)
+[crazyflie_server-2] [WARN] [1791028638.603131064] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.1, Max: 125.7)
+[crazyflie_server-2] [WARN] [1791028638.626209380] [crazyflie_server]: [cf5] High latency: 15.1 ms
+[crazyflie_server-2] [WARN] [1791028639.603194593] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.8, Max: 129.2)
+[crazyflie_server-2] [WARN] [1791028640.603194641] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.6, Min: 78.6, Max: 132.3)
+[crazyflie_server-2] [WARN] [1791028640.623168027] [crazyflie_server]: [cf5] High latency: 11.8 ms
+[crazyflie_server-2] [WARN] [1791028641.603140074] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.3, Max: 130.2)
+[crazyflie_server-2] [WARN] [1791028641.625184075] [crazyflie_server]: [cf5] High latency: 14.0 ms
+[crazyflie_server-2] [WARN] [1791028643.603137956] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.0, Max: 124.1)
+[crazyflie_server-2] [WARN] [1791028644.603189964] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 79.5, Max: 127.7)
+[crazyflie_server-2] [WARN] [1791028645.603207046] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 78.7, Max: 128.6)
+[crazyflie_server-2] [WARN] [1791028646.603206478] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 80.4, Max: 122.9)
+[crazyflie_server-2] [WARN] [1791028647.603196143] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 80.5, Max: 130.7)
+[crazyflie_server-2] [WARN] [1791028648.603194244] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.1, Max: 129.7)
+[crazyflie_server-2] [WARN] [1791028649.603244008] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.7, Max: 123.3)
+[crazyflie_server-2] [WARN] [1791028650.603187972] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 77.1, Max: 133.1)
+[crazyflie_server-2] [WARN] [1791028651.603141366] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.7, Max: 127.6)
+[crazyflie_server-2] [WARN] [1791028652.603210972] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 76.4, Max: 137.8)
+[crazyflie_server-2] [WARN] [1791028653.603214011] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.5, Max: 126.4)
+[crazyflie_server-2] [WARN] [1791028654.626125656] [crazyflie_server]: [cf5] High latency: 14.9 ms
+[crazyflie_server-2] [WARN] [1791028655.603156969] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.5, Max: 128.3)
+[crazyflie_server-2] [WARN] [1791028656.603172336] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 82.2, Max: 126.8)
+[crazyflie_server-2] [WARN] [1791028657.603208429] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.1, Min: 85.7, Max: 124.5)
+[crazyflie_server-2] [WARN] [1791028658.603189304] [crazyflie_server]: [all] Motion capture rate off (#: 7, Avg: 100.8, Min: 78.4, Max: 132.4)
+[crazyflie_server-2] [WARN] [1791028660.624165322] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [WARN] [1791028660.895573719] [crazyflie_server]: [cf_second] High latency: 10.9 ms
+[crazyflie_server-2] [WARN] [1791028661.603218796] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.9, Max: 132.1)
+[crazyflie_server-2] [WARN] [1791028661.896657357] [crazyflie_server]: [cf_second] High latency: 11.9 ms
+[crazyflie_server-2] [WARN] [1791028662.603215878] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.3, Max: 132.9)
+[crazyflie_server-2] [WARN] [1791028663.603181590] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 79.8, Max: 124.9)
+[crazyflie_server-2] [WARN] [1791028664.603191552] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 80.6, Max: 123.6)
+[crazyflie_server-2] [WARN] [1791028665.603124301] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 81.5, Max: 125.9)
+[crazyflie_server-2] [WARN] [1791028665.622119619] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028666.603213453] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 79.8, Max: 130.9)
+[crazyflie_server-2] [WARN] [1791028667.603170087] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.7, Max: 128.9)
+[crazyflie_server-2] [WARN] [1791028668.603123601] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 80.2, Max: 129.9)
+[crazyflie_server-2] [WARN] [1791028669.603219291] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.0, Max: 128.4)
+[crazyflie_server-2] [WARN] [1791028670.603204804] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 82.4, Max: 125.1)
+[crazyflie_server-2] [WARN] [1791028671.603198351] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.6, Min: 77.5, Max: 135.2)
+[crazyflie_server-2] [WARN] [1791028672.603139456] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.7, Max: 125.0)
+[crazyflie_server-2] [WARN] [1791028673.603188601] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 82.3, Max: 122.9)
+[crazyflie_server-2] [WARN] [1791028674.603126222] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 82.4, Max: 123.3)
+[crazyflie_server-2] [WARN] [1791028675.603189728] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.9, Max: 123.2)
+[crazyflie_server-2] [WARN] [1791028676.603203276] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 78.3, Max: 136.3)
+[crazyflie_server-2] [WARN] [1791028677.603120065] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.6, Max: 122.9)
+[crazyflie_server-2] [INFO] [1791028677.641166359] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028678.603217023] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.3, Max: 124.0)
+[crazyflie_server-2] [WARN] [1791028679.603198398] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.5, Min: 80.5, Max: 128.5)
+[crazyflie_server-2] [WARN] [1791028679.622197777] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1791028680.603230286] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 80.4, Max: 121.9)
+[crazyflie_server-2] [WARN] [1791028680.626188543] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1791028681.603125901] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.6, Min: 78.1, Max: 133.9)
+[crazyflie_server-2] [INFO] [1791028681.668195372] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028683.603249541] [crazyflie_server]: [all] Motion capture rate off (#: 6, Avg: 100.8, Min: 78.7, Max: 128.1)
+[crazyflie_server-2] [WARN] [1791028684.603117841] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.4, Min: 78.0, Max: 134.8)
+[crazyflie_server-2] [WARN] [1791028684.623122509] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028685.603178057] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.0, Max: 130.1)
+[crazyflie_server-2] [WARN] [1791028686.603166480] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 81.3, Max: 123.1)
+[crazyflie_server-2] [WARN] [1791028687.603171458] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 75.1, Max: 136.2)
+[crazyflie_server-2] [WARN] [1791028688.603224956] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 84.2, Max: 126.2)
+[crazyflie_server-2] [WARN] [1791028688.894717781] [crazyflie_server]: [cf_second] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1791028689.603183759] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 80.2, Max: 126.9)
+[crazyflie_server-2] [WARN] [1791028690.603241294] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.8, Min: 81.2, Max: 132.1)
+[crazyflie_server-2] [WARN] [1791028691.603122270] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.3, Min: 79.3, Max: 134.1)
+[crazyflie_server-2] [INFO] [1791028691.729136002] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (98)
+[crazyflie_server-2] [WARN] [1791028692.603196814] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 80.9, Max: 128.4)
+[crazyflie_server-2] [WARN] [1791028693.603211595] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 84.2, Max: 128.2)
+[crazyflie_server-2] [WARN] [1791028694.603136996] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 100.4, Min: 78.8, Max: 130.1)
+[crazyflie_server-2] [WARN] [1791028695.603169182] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 81.7, Max: 123.8)
+[crazyflie_server-2] [WARN] [1791028695.623222404] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1791028696.603174761] [crazyflie_server]: [all] Motion capture rate off (#: 4, Avg: 100.5, Min: 77.3, Max: 132.0)
+[crazyflie_server-2] [WARN] [1791028697.603234907] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.3, Min: 84.3, Max: 123.9)
+^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
