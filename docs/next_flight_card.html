@@ -176,6 +176,17 @@ footer{
 </section>
 
 <section>
+  <h2>Later (after the NS2 test, not this session): INDI oscillation</h2>
+  <div class="panel">
+    <ul class="plain">
+      <li><strong>Bench:</strong> measure command → thrust latency (and gyro-to-controller latency).</li>
+      <li><strong>Logging:</strong> apply <code>docs/lab_prep_log_filter_params.patch</code> first (records <code>res_sign</code>, <code>filt_dt_us</code>, <code>notch_en</code>, <code>filt_prewarp</code>).</li>
+      <li><strong>A1 flights, yaml only:</strong> baseline → <strong>package</strong> (<code>res_sign=-1</code>, <code>kr=483</code>, <code>kw=76</code>, KP 40/30, KV 8/10, <code>ki_z=0</code>) → sign only. Abort at |roll/pitch| &gt; 25° for 0.5 s or z &lt; 0.25 m. Blocks in <code>docs/58</code>, <code>docs/61</code>; results so far in <code>docs/56</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
   <h2>Not now</h2>
   <div class="not-this-week">
     <ul>

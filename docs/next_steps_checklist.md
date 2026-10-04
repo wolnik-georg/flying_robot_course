@@ -21,12 +21,18 @@ Flight-day steps only: [`next_flight_card.html`](next_flight_card.html). Everyth
 - [ ] Default-firmware `ki_z` 16 vs 0.
 - [ ] Only then network on (`rnn.en=1`, Checklist G).
 
+**Lab, after the NS2 test — INDI oscillation (investigation closed for now; details `docs/56`)**
+- [ ] Bench: measure command → thrust latency (and gyro-to-controller latency); the one number that pins down the delay budget.
+- [ ] Apply the logging patch on the lab PC (`docs/lab_prep_log_filter_params.patch`) so flights record `res_sign`, `filt_dt_us`, `notch_en`, `filt_prewarp`, rpm source.
+- [ ] A1 flights (yaml only, no reflash, abort at |roll/pitch| > 25° for 0.5 s or z < 0.25 m): baseline → **package first** (`res_sign=-1`, `kr=483`, `kw=76`, KP 40/30, KV 8/10, `ki_z=0`) → sign only (`res_sign=-1` at kr 2400 diverged on 2026-09-09). Exact blocks in `docs/58` and `docs/61`.
+
 **Decisions (you + supervisor)**
 - [ ] Which INDI variant is the thesis "Pure INDI": Ours / Omar C / Omar Rust.
 - [ ] Which scenarios go into the comparative study (temporary downwash favours ours, constant downwash favours Omar's) — decide together with the INDI variant.
 - [ ] Is 100 Hz enough for the network, or try higher?
 
 **Desk**
+- [ ] INDI investigation docs 53–61 and tables `docs/56` are final for now (untracked, not yet committed). Only reopen if the bench latency or the A1 flights contradict them. If the simulation is continued: fix the shared-parameter artifact (top drone 220 °/s in every Omar-bottom run) first.
 - [ ] After the INDI decision: fix the constant z offset of Omar C/Rust, or one more look at the oscillation in ours (unlikely to find anything).
 - [ ] Only if 100 Hz does not fit: smaller retrained network or off-board evaluation (D8).
 - [ ] After the lab: retrain only if the data say so.
