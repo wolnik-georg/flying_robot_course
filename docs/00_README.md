@@ -21,12 +21,12 @@ work — proofread Ch. 1–5; fill Ch. 6–9 after **C.4**.
 > | Blocked by | **Facility mocap fault** — no flying | C.4 **flight data** for results chapters |
 >
 > ### ★ Core Thesis Workflow — the lab-track master plan
-> **Software preparation FINISHED. C.1 ~24 merges banked; A4 ×4 + C.4 flights wait on mocap.**
+> **Software preparation FINISHED. C.1 collection COMPLETE (2026-09-28); NS2 first hardware attempt failed 2026-10-03 — next lab question: does the 100 Hz network rate stop the crashes?**
 >
 > | # | Phase | Detail |
 > |---|---|---|
 > | 1 | C.0 — Hardware Gate | ✅ closed enough (Sep 2026) |
-> | **2** | **C.1 — Residual Data Collection** ⬅️ **next** | [`25`](25_C1_Data_Collection_Plan.md), [`next_flight_card.html`](next_flight_card.html) |
+> | **2** | **C.1 — Residual Data Collection** ✅ complete; **NS2 hardware validation ⬅️ next** | [`25`](25_C1_Data_Collection_Plan.md), [`next_flight_card.html`](next_flight_card.html), [`next_steps_checklist.md`](next_steps_checklist.md) |
 > | 3 | C.2 — Train the Residual Model | [`13`](13_Residual_Learning.md) |
 > | 4 | C.3 — Integrate the Strategies | [`13`](13_Residual_Learning.md), [`01`](01_Thesis_Project_Snapshot.md) |
 > | 5 | C.4 — Systematic Comparison | [`05`](05_Experimental_Protocol_2Robot.md), [`24`](24_Downwash_Compensation_Comparison.md) |
@@ -41,7 +41,7 @@ work — proofread Ch. 1–5; fill Ch. 6–9 after **C.4**.
 |---|---|
 | Know the project status, what's next | [`07`](07_Thesis_Progress_Checklist.md) |
 | **Desk work in parallel (no lab)** | [`31`](31_Desk_Parallel_Track.md), closeout [`35`](35_Desk_Parallel_Audit_Closeout.md) |
-| **Next lab (C.1)** | [`next_flight_card.html`](next_flight_card.html), [`25`](25_C1_Data_Collection_Plan.md) |
+| **Next lab (NS2 at 100 Hz)** | [`next_flight_card.html`](next_flight_card.html) (flight steps), [`next_steps_checklist.md`](next_steps_checklist.md) (all areas), [`ns2_next_lab_protocol.md`](ns2_next_lab_protocol.md) |
 | C.4 metrics & figures (desk) | [`27`](27_Analysis_and_Metrics_Plan.md), `experiments/analysis/run_c4_desk_prep.py` |
 | INDI baseline plan | [`29`](29_INDI_Baseline_Desk_Plan.md) |
 | Results chapter outline | [`30`](30_Results_Chapters_Skeleton.md) |

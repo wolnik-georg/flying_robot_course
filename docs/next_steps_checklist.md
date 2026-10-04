@@ -1,12 +1,42 @@
 # Next steps checklist
 
-Simple lab + desk list (as of **2026-10-03**, after the NS2 first hardware attempt — see
+Simple lab + desk list (as of **2026-10-05**, meeting prepared 2026-10-03, after the NS2 first hardware attempt — see
 [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). Update when items move. Grouped by topic, then desk vs lab.
 
 **One-paragraph state:** NS2 did **not** validate. `cf5` crashed on both A8 flights; `cf_second` was clean.
 The flash-RNN firmware evaluates the network every **1 kHz** tick from boot (reference ≈ 550 µs/network ⇒ only feasible
 at ≈ 100 Hz) → stack overflow (patched, 8×) and probable MCU overload (unproven). Separately, `cf5`'s position estimate locked onto `cf_second`'s late in both flights — **a consequence of the flip** (tracker re-assignment, hypothesis), not the cause; why `cf5` tumbled first is the real open question. `cf5` is currently flashed with the flash-RNN + stack-8×
 build and is unstable; the default build is the known-good fallback. `cpp` is the only backend (`cflib` abandoned).
+
+---
+
+## WHAT'S NEXT — by area (2026-10-05, from the meeting doc [`meetings/2026-10-05.md`](meetings/2026-10-05.md))
+
+Flight-day steps only: [`next_flight_card.html`](next_flight_card.html). Everything else is here.
+
+**Lab (next session) — one question: does 100 Hz stop the `cf5` crashes?**
+- [ ] Fix card THESIS1 (fsck), flash the rebuilt binaries.
+- [ ] Bench, motors off: default build → 100 Hz build + timing → tracker flip test.
+- [ ] A8 with network off (`rnn.en=0`) + position-identity check.
+- [ ] Default-firmware `ki_z` 16 vs 0.
+- [ ] Only then network on (`rnn.en=1`, Checklist G).
+
+**Decisions (you + supervisor)**
+- [ ] Which INDI variant is the thesis "Pure INDI": Ours / Omar C / Omar Rust.
+- [ ] Which scenarios go into the comparative study (temporary downwash favours ours, constant downwash favours Omar's) — decide together with the INDI variant.
+- [ ] Is 100 Hz enough for the network, or try higher?
+
+**Desk**
+- [ ] After the INDI decision: fix the constant z offset of Omar C/Rust, or one more look at the oscillation in ours (unlikely to find anything).
+- [ ] Only if 100 Hz does not fit: smaller retrained network or off-board evaluation (D8).
+- [ ] After the lab: retrain only if the data say so.
+
+**Email**
+- [ ] Follow up the FBL-controller email (~2 weeks old; Strategy 3 is blocked without it).
+
+**Writing**
+- [ ] Write up INDI, Z tracking and RPM results (Ch. 6–9) now; NS2 results after the lab.
+- [ ] Ch. 6–9 content for the comparison waits on C.4 data.
 
 ---
 
@@ -51,7 +81,9 @@ build and is unstable; the default build is the known-good fallback. `cpp` is th
 
 ## TOPIC 4 — thesis tracks independent of NS2
 
-- [ ] **Supervisor:** which "Pure INDI" is Strategy 1 — `controller=6/ctrl_mode=3` vs Omar C/Rust (10-02 3-way data; ours tightest; Omar worse on A8). In `docs/meetings/2026-10-03.md`.
+- [ ] **Supervisor:** which "Pure INDI" is Strategy 1 — `controller=6/ctrl_mode=3` vs Omar C/Rust (10-02 3-way data: ours best on A8, worst on A1; Omar C/Rust ~20 cm high on A8). In [`meetings/2026-10-05.md`](meetings/2026-10-05.md).
+- [ ] **Supervisor:** which scenarios go into the comparative study (influences the INDI choice).
+- [ ] **FBL controller:** follow up the email (~2 weeks old; Strategy 3 blocked without it).
 - [ ] **Writing:** Ch.6–9 skeletons exist; content waits on C.4 data (needs Strategy 2).
 - [ ] **C.3/C.4:** modes 0/1/2 on `controller=6`; with/without residual — after Checklist G.
 - [ ] Open INDI items (lower priority): full-INDI A1 attitude oscillation; Omar's A8-only 15–25 cm z offset; hardware z-overshoot vs SIL.

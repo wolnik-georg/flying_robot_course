@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 3 October 2026
+**Last updated:** 5 October 2026
 
 > **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
 > pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
@@ -18,7 +18,9 @@ bottom.
 
 ## ▶ WHERE WE ARE
 
-> ### 🏁 **Mocap fixed, C.1 collection COMPLETE (2026-09-28) · Alt-INDI hardware shakedown in progress · Writing = only fully-open track**
+> ### 🏁 **C.1 collection COMPLETE · INDI / Z-integral / RPM results final (meeting 2026-10-05) · NS2: 100 Hz lab test is next · Writing: INDI/Z/RPM results now**
+>
+> **Current state (2026-10-05):** see **▶ NEXT STEPS** in the table below. The paragraphs in this block are history (28 Sep).
 >
 > **Collection:** **DONE.** A4 ×4 (+ A1/A2/A3 topping-up flights) flown 28-Sep — see
 > [`docs/25`](25_C1_Data_Collection_Plan.md) and `manifest_2026-09-28_c1.json`. No more C.1 flights
@@ -75,7 +77,7 @@ bottom.
   (`rnn.us_*`), static scratch buffers, peer-velocity resync fix, stack patch 8×, host tests 21/21; reference comparison
   `docs/52`. **Remaining blockers are lab-only:** bench (default vs 100 Hz build + timing) → tracker flip test → A8
   predict-only (`rnn.en=0`) → default-firmware `ki_z` 16 vs 0 → only then `rnn.en=1`. Order: `ns2_next_lab_protocol.md` §0.
-- **Meeting 2026-10-03 doc final** ([`meetings/2026-10-05.md`](meetings/2026-10-05.md)), numbers regenerated from logs:
+- **Meeting doc final** ([`meetings/2026-10-05.md`](meetings/2026-10-05.md), prepared 2026-10-03), numbers regenerated from logs:
   - **Pure INDI (bottom drone, mean / max z error, cm):** A1 — Ours −17…−19 / 29–38, Omar C +2…+4 / 6–9, Omar Rust −11 / 18;
     A8 — Ours +3.4 / ~8, Omar C +22 / 30, Omar Rust +19 / 26. No clear winner (Ours best A8, worst A1); both Omar ports ~20 cm
     high on A8. n = 1–2 clean flights per cell. **Decision pending: which variant is the thesis "Pure INDI".**
@@ -87,6 +89,19 @@ bottom.
     254 / 434 000 samples removed (0.06 %). DShot stays the control source for reliability.
 - **Still open (unchanged):** why `cf5` tumbled first on the flash-RNN build; fsck card THESIS1; flash the rebuilt binaries
   (hashes below).
+
+**▶ NEXT STEPS (from the meeting doc, completed from the lab docs; supersedes the older "Next" lines below):**
+Flight-day steps only: [`next_flight_card.html`](next_flight_card.html). All areas (lab, decisions, desk, email, writing): [`next_steps_checklist.md`](next_steps_checklist.md).
+1. **Lab — does 100 Hz stop the `cf5` crashes?** Run order (bench before flight, criteria in
+   [`ns2_next_lab_protocol.md`](ns2_next_lab_protocol.md) §0): fsck card THESIS1 + flash rebuilt binaries → bench A (default build)
+   → bench B (100 Hz + timing, read µs) → tracker flip test (motors off) → A8 with `rnn.en=0` and position-identity check
+   → default-firmware `ki_z` 16 vs 0 → only then `rnn.en=1` (Checklist G). If 100 Hz still does not fit: smaller network or
+   off-board evaluation.
+2. **Decide the thesis "Pure INDI" variant** (Ours / Omar C / Omar Rust). Follow-ups depend on it: fix the constant z offset of
+   Omar C/Rust, or take one more look at the oscillation in our INDI (unlikely to find anything).
+3. **Decide the scenarios of the comparative study** (influences 2: temporary downwash favours ours, constant downwash favours Omar's).
+4. **Follow up the FBL-controller email** (~2 weeks old; Strategy 3 is blocked without it).
+5. **Writing:** INDI / Z tracking / RPM results (Ch. 6–9) now; NS2 results after the lab; rest waits on C.4 data.
 
 **2026-10-03 close-out — NS2 first hardware attempt NOT validated; `cf5` unstable on the flash-RNN firmware.**
 Full account: [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md). Headlines:
@@ -108,8 +123,8 @@ Full account: [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md). Headli
 - Wrong earlier claim corrected: `cf5` did **not** fly geometric `ki_z=16` fine on 10-01/10-02 (those were the tumbles);
   `ki_z` theory shelved, not closed.
 
-**Next (desk, via Cursor):** [`cursor_prompt_ns2_100hz_2026-10-03.md`](cursor_prompt_ns2_100hz_2026-10-03.md) — 100 Hz
-network evaluation + timing log + static buffers + SIL regression. **Next (lab, bench before flight):** fsck card
+**Next (desk, via Cursor) — DONE 2026-10-03:** [`cursor_prompt_ns2_100hz_2026-10-03.md`](cursor_prompt_ns2_100hz_2026-10-03.md) — 100 Hz
+network evaluation + timing log + static buffers + SIL regression. **Next (lab, bench before flight) — see ▶ NEXT STEPS above:** fsck card
 THESIS1 → flash **default** build (is the RNN build the cause?) → flash **100 Hz+timing** build and read µs → only then
 A8 predict-only with the position-identity check → ki_z A/B → Checklist G. Order and pass/fail criteria:
 [`ns2_next_lab_protocol.md`](ns2_next_lab_protocol.md) §0 and `next_steps_checklist.md`.

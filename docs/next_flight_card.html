@@ -111,549 +111,66 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight readiness — updated 29 Sep 2026 · ✅ Mocap fixed, C.1 collection COMPLETE · ✅ controller=9 FLOWN (works) · ⚠️ controller=10 built, first hardware attempt failed (retry needed) · controller=7/8 paused · NS2 retrained on full bank</div>
+  <div class="eyebrow">Flight card — updated 2026-10-05 · flights and bench only · other next steps: <code>docs/next_steps_checklist.md</code></div>
   <h1>Next Flight Card</h1>
-  <p class="lede"><strong>C.1 / Neural-Swarm2 data</strong> is the main lab goal (geometric on
-    <strong>cf5</strong> while collecting — see matrices under Next lab). Finalize
-    <strong>standing INDI</strong> for comparison flights separately (table below).</p>
+  <p class="lede"><strong>One question for the next lab session:</strong> does running the NS2 network at
+    <strong>100 Hz</strong> (instead of 1 kHz) stop the <strong>cf5</strong> crashes? Bench first, flights second.</p>
   <p class="refline">
-    Meeting (21 Sep) · <code>docs/meetings/2026-09-21.md</code> ·
-    Session · <code>docs/lab_sessions/2026-09-23.md</code> ·
-    Manifest · <code>experiments/logs/c1_2026-09-23_merged/manifest_2026-09-23_c1.json</code> (+ 21 Sep) ·
-    C.1 · <code>docs/25_C1_Data_Collection_Plan.md</code> ·
-    uSD dual-RPM · <code>flying_drone_stack/tools/README_usd_thesis_logging.md</code>
+    Meeting · <code>docs/meetings/2026-10-05.md</code> ·
+    Protocol (pass/fail, commands) · <code>docs/ns2_next_lab_protocol.md</code> ·
+    Bench cheat sheet · <code>docs/lab_bench_cheatsheet_2026-10-03.md</code> ·
+    Last session · <code>docs/lab_sessions/2026-10-03.md</code>
   </p>
 </header>
 
 <section>
-  <h2>✅ Mocap fixed, C.1 collection complete · ⚠️ Alt-INDI shakedown: one open question</h2>
-  <div class="panel warn">
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>Facility mocap fault (26 Sep) — physically resolved, lab flying resumed 28 Sep.</strong>
-      Same day: <strong>A4 ×4</strong> plus topping-up A1/A2/A3 flown — <strong>C.1 collection is
-      now complete</strong>, no more mandatory flights remain. Manifest:
-      <code>experiments/logs/c1_2026-09-28_merged/manifest_2026-09-28_c1.json</code>.</p>
-    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
-      <strong>28 Sep evening — alt-INDI hardware shakedown, controller=9 (Omar's INDI) first:</strong>
-      solo hover + figure8 clean on <code>cf5</code>. <strong>2-drone A1 failed — cf5's motors never
-      spun</strong> while <code>cf_second</code> flew normally. Root-caused to a
-      <code>run_formation.py</code> launch-script bug (useless gain parameters flooding the shared
-      radio right before takeoff) — <strong>fixed and SIL-verified</strong>
-      (<code>crazyswarm2</code> <code>f25470a</code>), but <strong>a real, unresolved objection
-      stands</strong>: <code>cf_second</code> has absorbed the identical parameter burst on every
-      prior 2-drone flight without ever failing, so the fix may not be the whole story.
-      <strong>Do not treat this as solved — the next lab session's first task is re-flying
-      <code>cf5</code>/controller=9 to actually test it.</strong> Full account:
-      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> § "Operator pushback."</p>
-    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
-      <strong>Desk work, closed through tonight:</strong> RPM dual-source quality + spike root-cause
-      (<code>docs/43</code>); position-integral Z-bias (<code>docs/50</code>, do not enable); NS2/C.2
-      pipeline + flash RNN + SIL upload-protocol fix (<code>docs/40</code>, <code>docs/45</code>);
-      C.4 <code>load_merged_csv()</code> fix (<code>0608911</code>); thesis Ch. 6–9 skeleton.
-      <strong>28 Sep: NS2 retrained on the complete 22-file C.1 bank</strong> — 78.6% full-train
-      error reduction, SIL gated correlation 0.91, Stage D sign now physically correct
-      (History 69). <strong>Writing</strong> track: Ch. 1–5 frozen for proofreading; Ch. 6–9
-      structure-only until real C.4 data.</p>
-    <p class="note"><strong>Superseded 29 Sep — see the panel below for the current next step.</strong>
-      controller=9's "unresolved" state above was fixed and flown same night (a missing firmware
-      param registration, not the launch-script theory) — full account
-      <code>docs/41</code> §9. controller=7 was then attempted and failed twice (no logs, cause
-      unknown, paused). controller=10 (a new Rust port of controller=9's proven algorithm) was
-      built and attempted directly at A1 — also failed (motors spun, no liftoff). Root cause still
-      open; real fixes are in for the retry.</p>
-  </div>
-</section>
-
-<section>
-  <h2>⚠️ 29 Sep — controller=10 needs a solo-hover retry (current next step)</h2>
-  <div class="panel warn">
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>controller=9 (Omar's INDI, literal C port) is proven working</strong> — same-day A1
-      dz=0.30 vs our own geometric: 0.04m error vs 0.17m, ~4–5× better, unconfounded. See
-      <code>docs/41</code> §9.</p>
-    <p style="color:var(--ink-2); font-size:.95rem; margin:.6em 0 0">
-      <strong>controller=10</strong> (<code>ControllerTypeOot5</code>,
-      <code>omar_indi_rust.rs</code>) — a faithful Rust port of controller=9's algorithm, built and
-      numerically verified 7/7 same evening. Flown directly to 2-drone A1 (skipping the usual
-      solo-first step) — <strong><code>cf5</code>'s motors spun but it never left the ground</strong>
-      while <code>cf_second</code> flew normally. uSD analysis found a real single-motor-dominant
-      PWM pattern (not underpowered — plenty of thrust available, badly allocated). Root cause
-      <strong>not confirmed</strong>, but three real fixes are now in: a lazy-init aliasing bug, a
-      documented safety guard on a divide-by-near-zero risk shared with the C reference, and — the
-      important one — real torque/residual telemetry that this flight didn't have (it was silently
-      never wired for this controller family at all).</p>
-    <p class="note"><strong>Next lab session:</strong> <code>git pull</code> both repos → reflash
-      <code>cf5</code> (<code>make cload</code>) → confirm clean connect + <code>ctrlOot5.indi==3</code>
-      → <strong>solo hover only</strong> (<code>cf_second</code> already left disabled in yaml) →
-      if it fails again, pull uSD immediately and run
-      <code>experiments/analysis/check_omar_rust_telemetry.py</code> on the fresh merged CSV — this
-      time it should show the real numbers instead of dead-zero. Full account:
-      <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> close-out,
-      <code>docs/41</code> §13.</p>
-  </div>
-</section>
-
-<section>
-  <h2>Software fix — ready, unconfirmed (blocked behind the mocap fault above)</h2>
-  <div class="panel next">
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>24 Sep A4/A1 flights showed real, physical instability</strong> — confirmed from raw
-      IMU (gyro/accel), not just a logging artifact. <strong>cf5</strong>: calm attitude
-      (&lt;1.5°) but its position estimate ran away smoothly (dead-reckoning-style drift).
-      <strong>cf_second</strong>: genuine attitude tumbles (roll to 148°+, confirmed by real
-      sustained gyro rates 200–735°/s, not an estimate glitch). Leading suspect: a same-day
-      geofence tightening (1.70→1.30 m) plus a new auto-height-clamp silently moved A1/A4 flights
-      to a height (0.77 m) that had <strong>never been flight-tested</strong> — the config that
-      worked on 23 Sep used 1.0 m.</p>
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>25 Sep: fixed, not just diagnosed.</strong> <code>crazyswarm2</code>
-      <code>32b6e5e</code> reverts <code>FLIGHT_SPACE</code> z back to the tape-measured
-      <strong>(0.0, 1.70)</strong>, and turns the auto-height-clamp
-      (<code>clamp_height_for_mocap_z</code>, plus A2's own equivalent) from a silent
-      substitution into a <strong>hard refuse-to-launch</strong> — every height that flies from
-      now on is one a human chose, never one code picked silently. Re-verified end to end: A1/A3/
-      A4/A8 at their real C.1 parameters all recompute back to <strong>height=1.0</strong>
-      (no clamp needed at all) under the restored ceiling — exactly what flew clean on 23 Sep. A
-      deliberately-too-tall request now refuses with a clear message instead of substituting
-      (tested). Root cause of *why* 0.77m specifically caused real instability is still not
-      proven — but the untested-silent-substitution design is gone regardless of the ultimate
-      cause.</p>
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .6em">
-      <strong>26 Sep: A7-specific follow-up fix.</strong> <code>crazyswarm2</code>
-      <code>782cea0</code> — A7 has its own documented mocap-tracking constraint (top vehicle
-      loses track above ≈1.25–1.30m) that its own <code>apply_a7_lab_defaults</code> was
-      deriving from the just-restored general ceiling, silently pushing it back to an
-      untested 1.60m top. Fixed with a fixed, scenario-specific <code>A7_TOP_MAX=1.20</code>,
-      independent of the general geofence. <strong>Checked every scenario's logged flight
-      history — A7 is the only one that has ever needed a tighter constraint than the general
-      1.70m default.</strong> Policy: keep the general geofence at its proven-good default;
-      any scenario that genuinely needs tighter constraints gets its own fixed override, same
-      pattern as C5's <code>--z-floor</code> — never a blanket change again.</p>
-    <table class="compact">
-      <thead><tr><th>Step</th><th>Action</th></tr></thead>
-      <tbody>
-        <tr><td>0 — sync</td><td><code>git pull</code> both repos on the lab PC; confirm
-          <code>crazyswarm2</code> HEAD includes <code>782cea0</code> or later; rebuild
-          (<code>colcon build --packages-select crazyflie_examples --symlink-install</code>).</td></tr>
-        <tr><td>1 — logging</td><td>Copy <code>usd_mocap_diagnostic_config.txt</code> to
-          <strong>both</strong> cards before the confirmation flights — logs raw external pose
-          (<code>locSrv.*</code>) alongside the EKF's fused output, so a repeat incident can be
-          told apart from a pure fusion bug. Swap back to <code>usd_thesis_config.txt</code>
-          once confirmed clean.</td></tr>
-        <tr><td>2 — single-drone</td><td><code>simple_flight</code> hover, one drone,
-          <code>--pin-controller</code> — cheapest sanity check first, and the one that
-          directly re-tests the mocap fix once it lands.</td></tr>
-        <tr><td>3 — confirm the geofence fix</td><td><code>--scenario A1 --dz 0.30 --hold 15</code>
-          then <code>--scenario A1 --dz 0.50 --hold 15</code> — both now fly at height=1.0
-          automatically (no clamp, no manual override needed). Both should be clean; the second
-          is the exact config that misbehaved on 24 Sep.</td></tr>
-        <tr><td>4 — confirm the A7 fix</td><td><code>--scenario A7 --dz-start 1.10 --dz-end 0.10
-          --speed 0.30</code> — should compute height=0.1/top≈1.20 (see the printed
-          <code>[formation] A7: --height -&gt;</code> line); A7 has never been flown under this
-          exact fix, treat as a fresh data point.</td></tr>
-      </tbody>
-    </table>
-    <p class="note"><strong>Do not resume A4/C.1 formation flights until step 3 is confirmed
-      clean</strong> — 24 Sep's clamped-height flights should not be merged into C.1 training
-      data.</p>
-  </div>
-</section>
-
-<section>
-  <h2>Meeting follow-up — next ~week</h2>
+  <h2>0 — Before you fly (every session)</h2>
   <div class="panel next">
     <ul class="plain">
-      <li><strong>uSD session tag</strong> — DONE 23 Sep: both drones reflashed with <code>usd.runTag</code>, tag-based pairing (<code>merge_usd_logs.py --run-tag</code>) is now the standing method (RMS search stays the fallback for pre-flash archives). See <code>experiments/logs/usd_raw/2026-09-23_PAIRING.md</code>.</li>
-      <li><strong>Dual RPM on uSD</strong> — keep <code>indi_gains.rpm_source=1</code> (DShot); log <strong>both</strong> <code>motor.m*_rpm</code> and <code>rpm.m*</code> on the card (<code>MAX_USD_LOG…=48</code>).</li>
-      <li><strong>RPM source quality (updated 2026-09-29)</strong> — deck is <strong>lower-latency</strong> than DShot; DShot is control source for <strong>reliability</strong> (deck zero on 2/4 motors in 2-drone flight). Headline spike-robust RMSE ~128 RPM vs raw ~803 RPM. <a href="43_RPM_Source_Quality.html">page</a> · <code>rpm_get_all()</code> spike guard in firmware. Keep dual logging on card.</li>
-      <li><strong>Z tracking</strong> — the 21 Sep A1 z-tracking gaps this diagnostic chased are now closed by the 23 Sep reflies (A-3/A-4 done, tag-paired) — no longer an open desk item. Historical account: <code>experiments/analysis/c1_a1_z_diagnostic_2026_09_21.py</code> → <code>a1_z_diagnostic.json</code>.</li>
-      <li><strong>C.1 — Neural-Swarm2 data collection</strong> — geometric on <code>cf5</code>; only <strong>A4 (C-1/C-2, ×4)</strong> remains — see plan tracker below (<code>docs/25</code>).</li>
-      <li><strong>C.2 desk — CLOSED, all-clear (2026-09-27)</strong> — 17-fold LOO, Stage C pass, full-bank Stage D/E, flash-resident onboard path (<code>docs/40</code>, <code>docs/45</code>). <strong>27 Sep: root-caused and fixed a real SIL host-build bug</strong> (commit <code>256fc22</code>) that was silently marking the weight upload "ready" with an empty buffer — the earlier ~0.47&nbsp;m <code>cf_second</code> altitude overshoot and weak correlation were both artifacts of this bug, not the trained model; both resolved after the fix (re-validated SIL correlation ≈0.83, Stage E overshoot gone). Multi-scenario sweep: neuralswarm <code>a_res</code> vs training bank is <strong>scenario-dependent</strong> (A3 weakest ~10× short on |p50|; not universal). <strong>Still lab-only:</strong> never flown with this fix, <strong>A4 ×4</strong>, hardware <code>rnn.en=0/1</code>, <code>c=7/8/9</code> — all blocked on mocap. Nothing further is desk-actionable on NS2.</li>
-      <li><strong>Finalize INDI baseline</strong> (parallel, before large C.4) — our geo + our full INDI; stock INDI; Briesewitz <code>c=7</code>. <strong>Supervisor's own INDI (<code>c=9</code>)</strong> is now a literal C port, numerically verified and sim-validated end to end (<code>docs/41</code> §8) — same never-flown status as <code>c=7</code>/<code>8</code>, ready for the same hardware ladder whenever prioritized.</li>
+      <li><strong>Batteries charged</strong> in both drones (10-03: <code>cf5</code> sagged to 3.0 V).</li>
+      <li><strong>Pull both repos</strong> on the lab PC (<code>flying_robot_course</code> + <code>crazyswarm2</code>); a stale yaml ruined flight 1 on 10-03.</li>
+      <li>Build from the workspace root <code>~/georg/ros2_ws</code>; launch <code>ros2 launch crazyflie launch.py</code> (<code>cpp</code>), check <code>CS2_CONNECT_PARAM_PACE_V1</code>.</li>
+      <li><strong>Card THESIS1:</strong> <code>umount</code> + <code>fsck.vfat -a</code>; both cards: <code>config.txt</code> = <code>usd_thesis_config.txt</code>, <code>check_usd_deck.py</code> on each drone.</li>
+      <li><strong>Flash the rebuilt binaries</strong> from the laptop (<code>build_artifacts/</code>): default <code>e766f0a4…</code>, 100 Hz + timing <code>f7711848…</code>. Stack patch applied first.</li>
+      <li><code>ros2 topic echo /cf5/pose --once</code> shows a real position before any flight; no <code>Assert failed</code>, no <code>rate is off</code>.</li>
+      <li><code>cf5</code> yaml: geometric <code>ctrl_mode=0</code> + <code>ki_z=16</code>, or full INDI <code>ctrl_mode=3</code> + <code>ki_z=0</code>. Never <code>ki_z=16</code> with <code>ctrl_mode=3</code>.</li>
     </ul>
   </div>
 </section>
 
 <section>
-  <h2>Done this week (checked)</h2>
-  <div class="panel done">
-    <ul class="plain">
-      <li><strong>23 Sep lab — C.1 gaps closed:</strong> A1 dz 0.30/0.50 ×2 each, A3 B-2/B-3, C5 D-1–D-3, A7 ×3, A2 B-4 ×2 — 19 new training merges, tag-paired via <code>usd.runTag</code>.</li>
-      <li><strong>24 C.1 training merges now banked total</strong> (19 + 5 from 21 Sep) — independently verified file-by-file, see <code>docs/41</code>.</li>
-      <li><strong><code>usd.runTag</code> reflash + pairing</strong> — done on both drones; tag-based merge is now standing method, not RMS-search fallback.</li>
-      <li><strong>Supervisor's INDI (<code>c=9</code>)</strong> — literal C port built, numerically verified 6/6 to <code>d=0.00e+00</code>, sim-validated single/2/3-drone under both no-interaction and real coupled-downwash backends. Never flown, parallel track, did not block C.1. Same-day follow-up: <code>CF_MASS</code> reversed to Omar's own brushless-established <strong>42.7g</strong> (<code>cf21blrpm_defconfig</code>) in place of this project's measured 41.0g — also caught a host-build config-drift bug (mass define never reached the host/SWIG build at all); re-verified 6/6 + dispatch wrapper + SIL sanity check. See <code>docs/41</code> §8 and <code>omar_indi_reference_build_notes.md</code>.</li>
-      <li><strong>Desk pipeline:</strong> thesis-order uSD↔radio match, merged analysis suite (<code>docs/28</code>); tag-pairing validation (<code>experiments/logs/usd_raw/2026-09-23_PAIRING.md</code>).</li>
-    </ul>
-  </div>
-</section>
-
-<section>
-  <h2>INDI vs geometric — why the big gap disappeared</h2>
-  <div class="panel warn">
-    <p style="color:var(--ink-2); font-size:.95rem; margin:0 0 .5em">
-      The <strong>large</strong> INDI win lives in <code>docs/24</code> row 1–2
-      (<strong>cf231</strong>, 18&nbsp;Sep). Today’s numbers are a <strong>different airframe,
-      metric, and scenario slice</strong> — not a proof that INDI regressed.</p>
-    <table class="compact">
-      <thead>
-        <tr>
-          <th>Block</th>
-          <th>Bottom drone</th>
-          <th>Metric</th>
-          <th>Geometric</th>
-          <th>Full INDI</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>18 Sep (docs/24)</td>
-          <td><code>cf231_active</code></td>
-          <td>Crossing window, cmd traj, <code>passes=2</code></td>
-          <td>‖e‖ <strong>104</strong>&nbsp;mm (z 71&nbsp;mm)</td>
-          <td>‖e‖ <strong>36</strong>&nbsp;mm (z 34&nbsp;mm)</td>
-        </tr>
-        <tr>
-          <td>19 Sep (docs/24 § cf5)</td>
-          <td><code>cf5</code></td>
-          <td>Whole merged uSD (~9&nbsp;s geo/INDI; ~15&nbsp;s some Lee runs)</td>
-          <td>‖e‖ <strong>40–42</strong>&nbsp;mm</td>
-          <td>‖e‖ <strong>36–37</strong>&nbsp;mm</td>
-        </tr>
-      </tbody>
-    </table>
-    <ul class="plain" style="margin-top:.75em">
-      <li><strong>Geometric collapsed on cf5</strong> (~104 → ~41&nbsp;mm) — mainly <strong>valid mocap</strong>, not a controller retune.</li>
-      <li><strong>INDI total error similar</strong> (~36&nbsp;mm both days); on cf5, <strong>z ≈ total</strong> for both controllers (~tie).</li>
-      <li><strong>C.4 later</strong> — only after INDI baseline fixed; matched scenarios and log length on <strong>cf5</strong>.</li>
-    </ul>
-  </div>
-</section>
-
-<section>
-  <h2>Next lab (in order)</h2>
-  <div class="panel next">
-    <ul class="plain">
-      <li><strong>1 — C.1 / Neural-Swarm2 data — A4 only.</strong> Everything else in the plan (Blocks A/B/D, A7, A2) is done — see the priority fly-list and plan tracker below. Full plan <code>docs/25_C1_Data_Collection_Plan.md</code>.</li>
-      <li><strong>2 — Logging sanity (each session)</strong> — after land, check new <code>thesisNN</code> on the card covers the <strong>full flight</strong>. Merge uses the <strong>shorter</strong> of the two drones' recordings — it does not cut a long card down. Confirm <code>passes</code> in meta matches what you commanded.</li>
-      <li><strong>3 — Finalize INDI baseline</strong> (before big C.4, parallel to C.1) — our geometric + our full INDI (flying); <strong>stock INDI</strong> and <strong>Briesewitz pure INDI (c=7)</strong> on same stack; <strong>supervisor's INDI (c=9)</strong> now sim-validated and ready for the same hardware ladder whenever prioritized (<code>docs/41</code>) — same or better than ours?</li>
-      <li><strong>4 — FBL controller</strong> — desk follow-up when ready.</li>
-      <li><strong>5 — Comparative study (C.4)</strong> — start once (3) is decided and A4 lands; do not block (1).</li>
-    </ul>
-    <p class="note"><strong>Side note (later):</strong> controllers <strong>7 / 8 / 9</strong> — all sim-clean, none flown. Single-drone hover first for whichever is prioritized, then 2-drone A8 if clean — not ahead of C.1 or (3).</p>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — controllers (collection flights)</h3>
+  <h2>1 — Bench, motors OFF</h2>
   <div class="panel next">
     <table class="compact">
-      <thead>
-        <tr><th>Vehicle</th><th>Role</th><th>Fly with</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>cf5</code></td>
-          <td>Bottom (in wash)</td>
-          <td><strong>Geometric</strong> <code>c=6</code> <code>ctrl_mode=0</code></td>
-          <td>Label = measured <code>a_res_z</code>; INDI on bottom cancels what you train on</td>
-        </tr>
-        <tr>
-          <td><code>cf_second</code></td>
-          <td>Top (disturbance)</td>
-          <td><strong>Stock Lee</strong> <code>c=5</code></td>
-          <td>Neighbour only; <code>a_res</code> not used as ego target</td>
-        </tr>
-        <tr>
-          <td>Both</td>
-          <td>—</td>
-          <td>uSD on; control RPM = DShot</td>
-          <td>Card logs <strong>DShot + deck</strong> RPM; <code>rnn.en=0</code> while collecting</td>
-        </tr>
-        <tr>
-          <td><code>cf5</code> solo</td>
-          <td>Block D</td>
-          <td>Geometric + uSD</td>
-          <td><strong>C5</strong> near-ground — ground-effect branch <code>phi_G</code></td>
-        </tr>
-      </tbody>
+      <tr><th>Step</th><th>What</th><th>Pass</th></tr>
+      <tr><td>A</td><td>Flash <strong>default</strong> build on <code>cf5</code>, launch</td><td><code>/cf5/pose</code> publishes, no rate warnings, no assert</td></tr>
+      <tr><td>B</td><td>Flash <strong>100 Hz + timing</strong> build, <code>read_rnn_timing.py</code> (CS2 stopped)</td><td><code>rnn.us_max</code> well below 1000 µs, warnings gone, pose OK</td></tr>
+      <tr><td>C</td><td>Tracker flip test: both drones on the floor ~0.5 m apart, <code>ros2 topic echo /poses</code>, flip <code>cf5</code> by hand</td><td>Shows whether the <code>cf5</code> pose jumps onto <code>cf_second</code> (tracker hypothesis)</td></tr>
     </table>
-    <p class="note" style="margin-top:10px"><strong>Gate:</strong> neighbour counts only if <code>|dx|,|dy|&lt;0.2</code>&nbsp;m and <code>|dvx|&lt;1.5</code>&nbsp;m/s — favour <strong>stacked / aligned</strong> scenarios, not <strong>A8</strong> (demo only).</p>
-    <p class="note"><strong>Preflight yaml:</strong> repo <code>crazyswarm2/crazyflie/config/crazyflies.yaml</code> (2026-09-21) pins <code>cf5</code> to <code>controller: 6</code>, <code>ctrl_mode: 0</code>, <code>rpm_source: 1</code>, <code>rnn.en: 0</code> + DShot <code>rpm</code> radio topic. Sync on the lab PC; for full-INDI A8 only, temporarily set cf5 <code>ctrl_mode: 3</code> (or stock INDI <code>controller: 3</code> for the comparison row).</p>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — plan tracker (<code>docs/25</code>)</h3>
-  <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 10px">
-    <strong>Training data</strong> = merged uSD in manifest only (not radio CSV).
-    <strong>~24</strong> C.1 training merges in bank (21 Sep + 23 Sep manifests) · <strong>11</strong> plan rows complete ·
-    <strong>1</strong> partial · <strong>2</strong> open (C-1, C-2). Post-flash: pair by <code>usd_run_tag</code> (<code>docs/39</code>).
-  </p>
-  <div class="panel next">
-    <table class="compact track">
-      <thead>
-        <tr>
-          <th>Plan</th><th>Scenario</th><th>Parameters</th><th>Reps</th>
-          <th>Merged uSD</th><th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>A-1</td><td><strong>A7</strong></td>
-          <td><code>--dz-start 1.10 --dz-end 0.10 --speed 0.30</code> (+ lab rotate 90°)</td>
-          <td>3</td><td><code>19-11-19</code>, <code>19-12-38</code>, <code>19-13-55</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>A-2</td><td><strong>A1</strong></td>
-          <td><code>--dz 0.20 --hold 15</code></td>
-          <td>2</td><td><code>13-25-10</code> (1/2)</td><td class="stat-partial">1 merged · 2nd rep optional</td>
-        </tr>
-        <tr>
-          <td>A-3</td><td><strong>A1</strong></td>
-          <td><code>--dz 0.30 --hold 15</code></td>
-          <td>2</td><td><code>17-17-26</code>, <code>17-18-48</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>A-4</td><td><strong>A1</strong></td>
-          <td><code>--dz 0.50 --hold 15</code></td>
-          <td>2</td><td><code>17-36-06</code>, <code>17-37-26</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>A-5</td><td><strong>A1</strong></td>
-          <td><code>--dz 0.75 --hold 15</code></td>
-          <td>1</td><td><code>12-51-16</code></td><td class="stat-done">Done</td>
-        </tr>
-        <tr>
-          <td>B-1</td><td><strong>A3</strong></td>
-          <td><code>--dz 0.25 --speed 0.30 --passes 4</code></td>
-          <td>2</td><td><code>13-00-57</code>, <code>13-02-56</code></td><td class="stat-done">Done (2/2)</td>
-        </tr>
-        <tr>
-          <td>B-2</td><td><strong>A3</strong></td>
-          <td><code>--dz 0.25 --speed 0.50 --passes 4</code></td>
-          <td>2</td><td><code>13-04-34</code>, <code>17-45-03</code>, <code>17-46-43</code></td><td class="stat-done">Done (21+23 Sep)</td>
-        </tr>
-        <tr>
-          <td>B-3</td><td><strong>A3</strong></td>
-          <td><code>--dz 0.40 --speed 0.40 --passes 4</code></td>
-          <td>1+</td><td><code>17-54-32</code>, <code>17-57-32</code></td><td class="stat-done">Done (23 Sep, 2 reps)</td>
-        </tr>
-        <tr>
-          <td>B-4</td><td><strong>A2</strong></td>
-          <td><code>--dz 0.30 --path circle --speed 0.4</code></td>
-          <td>2</td><td><code>19-21-05</code>, <code>19-27-03</code></td><td class="stat-done">Done (23 Sep; legacy profile)</td>
-        </tr>
-        <tr>
-          <td>C-1</td><td><strong>A4</strong></td>
-          <td><code>--dz 0.30 --offset 0.10 --axis y --motion lemniscate</code></td>
-          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
-        </tr>
-        <tr>
-          <td>C-2</td><td><strong>A4</strong></td>
-          <td><code>--dz 0.50 --offset 0.15 --axis x --motion lemniscate</code></td>
-          <td>2</td><td>—</td><td class="stat-open">Not flown</td>
-        </tr>
-        <tr>
-          <td>D-1</td><td><strong>C5</strong> solo</td>
-          <td><code>--height 0.10 --speed 0.25 --passes 2 --z-floor 0</code></td>
-          <td>2</td><td><code>18-06-27</code>, <code>18-08-14</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>D-2</td><td><strong>C5</strong> solo</td>
-          <td><code>--height 0.15 --speed 0.25 --passes 2 --z-floor 0</code></td>
-          <td>2</td><td><code>18-16-49</code>, <code>18-17-45</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>D-3</td><td><strong>C5</strong> solo</td>
-          <td><code>--height 0.25 --speed 0.25 --passes 2 --z-floor 0</code></td>
-          <td>1+</td><td><code>18-18-41</code>, <code>18-21-19</code></td><td class="stat-done">Done (23 Sep)</td>
-        </tr>
-        <tr>
-          <td>—</td><td><strong>A8</strong></td>
-          <td><code>--dz 0.25 --span 1.0 --passes 2–4</code> (demo)</td>
-          <td>—</td><td><code>12-11-05</code>, <code>12-11-46</code>, <code>13-14-36</code></td>
-          <td class="stat-qa">QA / docs only — not C.1 training (gate)</td>
-        </tr>
-      </tbody>
-    </table>
-    <ul class="plain" style="margin-top:.75em">
-      <li><strong>Minimum viable (~18 flights):</strong> Block A + B-1/B-2 + D-1/D-2 — see gaps above.</li>
-      <li><strong>Floor:</strong> A7 ×3 + C5 ×2 if the session goes badly.</li>
-      <li><strong>After lab:</strong> tag merge (<code>merge_usd_logs.py --run-tag</code>) or RMS fallback for old archives → add to manifest → <code>train.py</code> on C.1 merges only.</li>
-    </ul>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">C.1 — what each scenario teaches (one line)</h3>
-  <div class="panel done" style="margin-bottom:14px">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>30 Sep update:</strong> A1/A2/A3/A4/A7/A8 are all real-flown (54 flights total,
-      see counts below); LOO held-out generalization confirmed reasonable across A1–A4/A7
-      (R² 0.57–0.93, 70–76% error reduction vs baseline) on the 2026-09-28 22-flight training
-      run — the earlier "A1 fails held-out" read was from a stale 4-flight snapshot, corrected.
-      <strong>Only A5, A6, C4 lack usable C.1 data among 2-drone scenarios</strong> — all three
-      were flown for real historically (Aug/early-Sep), but radio-only, predating the validated
-      uSD chain (2026-09-15), so none have <code>a_res</code>; a fresh flight under the current
-      setup is needed regardless of the earlier attempts. (B1–B3/C1–C3 are 3-drone, out of scope
-      until the 2-drone phase is considered done.) Also open: A8 (14 flights) and C5 (8 flights)
-      aren't in the residual training set at all — reason not yet found, worth checking before
-      assuming they're unusable.
-    </p>
-  </div>
-  <div class="panel next">
-    <ul class="plain">
-      <li><strong>A1</strong> — Fixed vertical stack, both hover; pure <code>dz</code> at ~zero relative velocity (static downwash curve). <strong>12 real flights.</strong></li>
-      <li><strong>A2</strong> — Both drones follow the same circular path; own motion with near-fixed relative state. <strong>4 real flights.</strong></li>
-      <li><strong>A3</strong> — Top hovers, bottom sweeps through its wash; cleanest excitation. <strong>8 real flights.</strong></li>
-      <li><strong>A4</strong> — Stacked but laterally offset, lemniscate motion; excites small <code>dx/dy</code>, hardest geometry to model. <strong>5 real flights — done, not a gap anymore.</strong></li>
-      <li><strong>A7</strong> — Top and bottom stay aligned while <code>dz</code> sweeps 1.10→0.10&nbsp;m in one continuous gradient. <strong>3 real flights.</strong></li>
-      <li><strong>A8</strong> — Crossing at wide span, wash arrives as a transient. <strong>14 real flights — not yet in the residual training set, unexplained.</strong></li>
-      <li><strong>C5</strong> — Solo <code>cf5</code> near the floor; ground-effect branch, not downwash. <strong>8 real flights — same unexplained training-set gap as A8.</strong></li>
-      <li><strong>A5</strong> <em>(no usable C.1 data)</em> — Counter-rotating circle stack; horizontal offset sweeps 0→2r→0 twice per lap at constant height/speed. Was flown many times in Aug/early-Sep, but radio-only, predating the validated uSD chain (2026-09-15) — no <code>a_res</code>, unusable for residual training. Needs a fresh flight under the current setup.</li>
-      <li><strong>A6</strong> <em>(no usable C.1 data, extreme-gated)</em> — Smallest separation (8–10cm), strongest interaction, smallest error margin. Also flown historically (radio-only, pre-uSD). Highest remaining scientific value, highest risk.</li>
-      <li><strong>C4</strong> <em>(no usable C.1 data, extreme-gated at default params)</em> — Docking approach: simultaneous lateral + vertical closure. Also flown historically (radio-only, pre-uSD). Lower priority unless docking specifically matters to thesis scope.</li>
-    </ul>
-  </div>
-
-  <div class="panel done" style="margin-bottom:14px">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>30 Sep tracks — all closed:</strong> controller=10 SIL gain-tuning confirmed a
-      dead end (±75% around Omar's gains, no meaningful effect on either rough spot — leave
-      Omar's gains as-is, <code>docs/41</code> §19-20.5); A8/C5 residual-training-set exclusion
-      confirmed correct (A8 neighbour-gate survival ~6.8% vs ~100% for A1, independently
-      measured; C5 genuinely solo). <code>rnn.en=0</code> sanity checklist (D) and A5/A6/C4
-      fly-prep (E) ready — not yet flown.
-    </p>
-  </div>
-  <div class="panel next" style="margin-bottom:14px">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>1 Oct: NS2 same-day retrain fast-path built and desk-verified</strong> — fly
-      A5/A6/C4 + the <code>rnn.en=0</code> sanity check today, then if time allows: merge →
-      <code>experiments/analysis/build_c1_training_manifest.py</code> → <code>run_c2_lab_retrain.py</code>
-      (train → LOO → eval, auto OK/NO-GO per new-scenario fold) → check the two-part decision
-      gate (combined <code>eval_report.md</code> R²≥0.85/≥70% read manually + per-scenario LOO
-      R²≥0.35/≥50% automated) → only then Checklist G (<code>rnn.en=1</code> on <strong>A1 or A3</strong>,
-      never A5/A6/C4 themselves). Budget ~10-20min for full LOO, it's the long pole, not a quick
-      retrain. Full detail: <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code>
-      "Decision gate" section + Checklists D-G.
-    </p>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Next lab — fly list (priority order)</h3>
-  <p style="color:var(--muted); font-size:.88rem; margin:0 0 8px">
-    Prefix every command: <code>ros2 run crazyflie_examples run_formation --</code> · add
-    <code>--auto-center --yes</code> on hardware · after <code>usd.runTag</code> flash + one A8 tag check.
-  </p>
-  <div class="panel next">
-    <table class="compact track">
-      <thead>
-        <tr><th>Pri</th><th>Plan</th><th>Command</th><th>Why</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>1</td><td>A5</td>
-          <td><code>--scenario A5 --dz 0.50</code></td>
-          <td>Cheapest way to close the last unflown "normal" 2-drone geometry</td>
-        </tr>
-        <tr>
-          <td>2</td><td>A6</td>
-          <td><code>--scenario A6 --dz 0.08 --allow-extreme</code> ×1, then <code>--dz 0.10 --allow-extreme</code> ×1</td>
-          <td>Highest remaining scientific value among 2-drone scenarios; operator call on risk</td>
-        </tr>
-        <tr>
-          <td>3</td><td>C4</td>
-          <td><code>--scenario C4 --allow-extreme</code> (default <code>dz_end=0.10</code> triggers the extreme gate)</td>
-          <td>Lower priority — only if docking maneuvers matter to thesis scope</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="panel done" style="margin-top:14px">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>30 Sep also done:</strong> controller=10 (<code>omar_indi_rust.rs</code>) root-caused
-      and fixed — a bindgen/ARM-GCC enum-size mismatch was corrupting every
-      <code>setpoint.mode.*</code> read; first successful flight after the fix (hover + figure8).
-      Z-only position integral (controller=6) validated on hardware same night: closed the
-      long-standing ~10cm hover-height bias to 2–3mm across 3 hovers + 2 clean figure8s, first
-      try, no gain tuning needed. Full account: <code>docs/41</code> §18, <code>docs/51</code>.
-    </p>
-  </div>
-  <div class="panel done" style="margin-top:14px">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0">
-      <strong>23 Sep desk:</strong> <strong>19</strong> training merges in
-      <code>manifest_2026-09-23_c1.json</code> + <strong>5</strong> from 21 Sep (A-5, B-1, partial A-2, A3).
-      Session · <code>docs/lab_sessions/2026-09-23.md</code> · pairing ·
-      <code>experiments/logs/usd_raw/2026-09-23_PAIRING.md</code>
-    </p>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Omar INDI (<code>c=9</code>) hardware ladder — after A4, same session OK</h3>
-  <div class="panel warn">
-    <p style="color:var(--ink-2); font-size:.92rem; margin:0 0 .6em">
-      <strong>Sequencing: finish A4 ×4 first, cf5 stays on <code>controller: 6</code> until then.</strong>
-      Everything below is prepared (firmware built/verified, RPM deck confirmed attached, yaml
-      still correctly on 6) — the only thing not yet physically done is the uSD card swap.
-      Full audit: <code>docs/44_Controller9_Omar_Hardware_Validation_Prompt.md</code>.</p>
-    <table class="compact">
-      <thead><tr><th>Step</th><th>Action</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>1 — uSD card</td>
-          <td>Pull <strong>cf5's card only</strong> (cf_second stays Lee, keeps its normal config), mount it, then:<br>
-            <code>cp flying_drone_stack/tools/usd_omar_indi_config.txt /media/&lt;sd&gt;/config.txt</code><br>
-            Remount on the drone before flying.</td>
-        </tr>
-        <tr>
-          <td>2 — yaml</td>
-          <td>Per-robot override on <strong>cf5 only</strong>: <code>controller: 9</code>. Do not touch
-            the shared <code>all:</code> block or <code>cf_second</code> (<code>controller: 5</code>).
-            Lab-side override only — not committed.</td>
-        </tr>
-        <tr>
-          <td>3 — inertia</td>
-          <td>Fly Omar's default <code>J</code> first (no change needed — already compiled in).
-            If a hop shows unexplained oscillation, quick fallback with <strong>no reflash</strong>:
-            write <code>ctrlOmarIndi.J_x/J_y/J_z</code> via cfclient to
-            <code>23.951e-6 / 23.951e-6 / 32.347e-6</code> (this airframe's real measured inertia).</td>
-        </tr>
-        <tr>
-          <td>4 — ladder</td>
-          <td>Single-drone <code>simple_flight --pin-controller</code>: hover → figure8/circle,
-            conservative speed/height. If clean → 2-drone <strong>A8 only</strong>
-            (<code>dz</code> 0.20–0.25&nbsp;m, fixed-<code>dz</code> vertical swap) — one scenario is
-            enough for this pass. Abort on growing roll/pitch oscillation within ~1&nbsp;s of
-            trajectory start, same discipline as <code>c=7/8</code>.</td>
-        </tr>
-        <tr>
-          <td>5 — restore</td>
-          <td><strong>Mandatory before any further C.1 flying:</strong> cf5 yaml back to
-            <code>controller: 6, ctrl_mode: 0</code>, and cf5's card back to
-            <code>cp flying_drone_stack/tools/usd_thesis_config.txt /media/&lt;sd&gt;/config.txt</code>.</td>
-        </tr>
-      </tbody>
-    </table>
-    <p class="note"><strong>Logging note:</strong> the standing thesis uSD config's
-      <code>indi.*</code>/<code>rnn.*</code> channels go stale under <code>c=9</code> — it has its
-      own <code>ctrlOmarIndi.*</code> log group. <code>usd_omar_indi_config.txt</code> swaps those
-      17 dead slots for his own thrust/torque/error/residual-equivalent fields
-      (<code>a_rpm_f*</code> − <code>a_imu_f*</code> = his INDI residual), same 48-channel budget,
-      500&nbsp;Hz, same shared state/gyro/acc/RPM channels as always.</p>
-  </div>
-
-  <h3 style="font-family:var(--cond); font-size:1.05rem; margin:20px 0 10px;">Desk window (before next lab)</h3>
-  <div class="panel warn">
-    <ul class="plain" style="margin:0">
-      <li>C.2 smoke on manifest paths only (<code>dataset.build</code>, <code>train.py</code>, baseline vs zero).</li>
-      <li><s>Analysis dashboards on the 8 verified merges</s> — done 2026-09-21 (<code>run_c1_2026_09_21_suite.py</code>).</li>
-      <li>cf5 z-tracking note from failed A1 archive (gains vs data quality) — inform pre-lab yaml, no silent retune.</li>
-      <li>Flash + bench <code>usd.runTag</code> + one tagged A8 (unblocks clean pairing from next session).</li>
-      <li>Thesis: methods paragraph on data collection + partial dz/speed grid (cite manifest, not radio CSV).</li>
-    </ul>
+    <p class="note"><strong>If B fails</strong> (network too heavy even at 100 Hz): stop, no NS2 flight; next is a smaller network or off-board evaluation.</p>
   </div>
 </section>
 
 <section>
-  <h2>Flashable / do not select</h2>
-  <div class="panel">
+  <h2>2 — Flights, in order</h2>
+  <div class="panel next">
     <ul class="plain">
-      <li><strong>Controller 6</strong> — our geometric + full INDI (<code>ctrl_mode</code> 0 / 3): <strong>OK to fly</strong>.</li>
-      <li><strong>Controller 7 / 8</strong> — Briesewitz / NA-INDI ports: <strong>not in the compared set</strong> (Sep 2026). Reference/sim only — do not schedule as C.4 modes.</li>
-      <li><strong>Neural-Swarm2 residual</strong> — trained full-bank weights exist; fly path needs <code>residual_nn_flash</code> build + reflash (or SIL upload path). Lab blocked on mocap, not C.2 desk.</li>
+      <li><strong>1 — A8, network off (<code>rnn.en=0</code>), 100 Hz build</strong>, <code>cf5</code> geometric (<code>ki_z=16</code>), yaml pulled. Pass: no crash; <code>rnn_pred_x/y/z</code> non-zero <strong>and varying with the neighbour's motion</strong>; <code>cf5</code> position ≠ <code>cf_second</code> position.</li>
+      <li><strong>2 — A8 with default firmware, <code>ki_z</code> 16 vs 0</strong> (same drone, same session). Separates the <code>ki_z</code> theory from the network load.</li>
+      <li><strong>3 — Network on (<code>rnn.en=1</code>)</strong> on A1 / A3, only if flights 1–2 are clean (Checklist G). Pass: non-zero predictions, stable flight.</li>
+    </ul>
+    <p class="note"><strong>After every flight:</strong> check the new <code>thesisNN</code> on the card covers the full flight; copy with <code>copy_usd_log.py</code> (never assume a card log and a radio CSV belong together).</p>
+  </div>
+</section>
+
+<section>
+  <h2>3 — Stop rules</h2>
+  <div class="panel warn">
+    <ul class="plain">
+      <li>Any <code>Assert failed</code>, <code>rate is off</code>, or silent <code>/cf5/pose</code>: land / power-cycle, send the log, do not fly.</li>
+      <li><code>cf5</code> tumbles again: stop; do not retry the same config. Compare against the default-firmware flight (flight 2).</li>
+      <li>After a crash: toggle <code>stabilizer.estimator</code> 1 → 2 before the next flight (stuck EKF).</li>
+      <li>Never broadcast <code>usec.reset</code> mid-flight.</li>
     </ul>
   </div>
 </section>
@@ -662,16 +179,17 @@ footer{
   <h2>Not now</h2>
   <div class="not-this-week">
     <ul>
-      <li>Large C.4 A8 matrix before INDI baseline + C.1 volume</li>
-      <li>cf231 bench, optional A1 retest, brushless swap</li>
-      <li>NA-INDI / hybrid campaign flights — <strong>out of scope</strong> (see <code>docs/34_NA_INDI_Decision_Memo.md</code> banner; thesis set 0–3)</li>
+      <li>More C.1 collection flights (collection is complete).</li>
+      <li>Comparison flights before the INDI variant and the scenarios are decided (see <code>docs/next_steps_checklist.md</code>).</li>
+      <li><code>backend:=cflib</code>; more <code>ki_z</code> SIL sweeps; NA-INDI / stock Bitcraze INDI in the thesis compare.</li>
     </ul>
   </div>
 </section>
 
 <footer>
   Progress · <code>docs/07_Thesis_Progress_Checklist.md</code> ·
-  Prior uSD / usec.reset history · <code>docs/flight_card_validation.html</code>
+  All next steps (lab, decisions, desk, writing) · <code>docs/next_steps_checklist.md</code> ·
+  Previous version of this card (29 Sep) · git history
 </footer>
 
 </div>

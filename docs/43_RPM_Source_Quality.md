@@ -21,6 +21,13 @@ python3 experiments/analysis/rpm_source_quality.py --no-plots
 
 ---
 
+## Update 2026-10-05 — final meeting version (supersedes the spike rule and data selection below)
+
+- **Data:** top drone `cf_second` only (geometric + Z-integral, no downwash), 8 flights ≥ 25 s × 4 motors = 32 motor-rows, from raw uSD logs.
+- **Spike rule (one line):** drop a sample from both traces if `|DShot − deck| > 2000 RPM`. Spikes are DShot = 65 535 (invalid reading) or brief dips to ~10 000; normal difference < 500 RPM; any limit 500–5000 RPM removes the same 254 of ~434 000 samples (0.06 %).
+- **Result (median of 32):** bias −0.22 %, RMSE 104 RPM, r 0.92, lag 0–2 ms (DShot later, ≤ 1 sample; resolution 2 ms). Bias/RMSE consistent across all motors; r lowest (0.78) in calm A8 flights. Hover-like RPM only (15–16 k).
+- Script `experiments/analysis/meeting_simple_rpm_deck_dshot.py`, tables in `experiments/analysis/out/meeting_2026-10-03/`, write-up in [`meetings/2026-10-05.md`](meetings/2026-10-05.md) §3.
+
 ## Spikes and metrics (read once)
 
 | Topic | Statement |
