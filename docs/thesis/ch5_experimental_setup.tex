@@ -53,16 +53,17 @@ which cannot be run without it.
 
 Each vehicle carries two additions that are not optional for this work:
 
-\paragraph{A rotor-speed source}, optical RPM deck or DShot telemetry. Without it the applied
+\paragraph{A rotor-speed source}, the optical rotor-speed (RPM) deck or DShot telemetry (the rotor
+speed reported by the motor controller). Without it the applied
 thrust cannot be reconstructed, so $a_{\mathrm{res}}$ is unavailable and \emph{reads identically
 zero} rather than failing loudly. Strategy~1 additionally cannot run at all. This is the
 single most consequential hardware prerequisite in the setup.
 
-\paragraph{A micro SD deck}, the recording medium for the dataset, for the reasons in
+\paragraph{A micro SD (uSD) deck}, the recording medium for the dataset, for the reasons in
 Section~\ref{sec:setup-logging}.
 
 State estimation uses the on-board extended Kalman filter, fed with external pose from a
-motion-capture system at \SI{100}{\hertz}. The control loop runs at \SI{500}{\hertz} onboard.
+motion-capture (mocap) system at \SI{100}{\hertz}. The control loop runs at \SI{500}{\hertz} onboard.
 
 % -------------------------------------------------------------------------------------
 \section{Flight volume}
@@ -84,8 +85,7 @@ automatically centred and, where necessary, rotated to fit. That a configuration
 before flight, not discovered during it.
 
 \todo{The volume figures are corroborated from two independent statements but have not been
-tape-measured. Measure before the first session and update this section
-(docs/11\_Hardware\_Readiness\_Checklist.md).}
+tape-measured. Measure them and update this section.}
 
 % -------------------------------------------------------------------------------------
 \section{The formation library}
@@ -104,8 +104,8 @@ and on hardware.
 \begin{table}[t]
   \centering
   \caption{The formation library. Scenarios marked $\dagger$ carry elevated risk and are gated
-    behind an explicit acknowledgement; those marked $\ast$ are null conditions in which no
-    inter-vehicle interaction is expected.}
+    behind an explicit acknowledgement; those marked $\ast$ are controls with no vertical overlap,
+    in which no downwash is expected (C2 also probes the wake behind a vehicle).}
   \label{tab:setup-scenarios}
   \small
   \begin{tabular}{@{}llp{0.46\linewidth}@{}}
@@ -129,7 +129,7 @@ and on hardware.
     \midrule
     \multicolumn{3}{@{}l}{\emph{Controls and coverage}}\\
     C1 & Side-by-side coplanar $\ast$ & A residual here, and not in A1, is not downwash \\
-    C2 & Leader--follower line $\ast$ & Wake rather than wash \\
+    C2 & Leader--follower line $\ast$ & The wake behind a moving vehicle, not the downwash below it \\
     C3 & Equilateral triangle $\ast$  & Coplanar three-body control \\
     C4 & Docking approach $\dagger$   & Simultaneous lateral and vertical closure \\
     C5 & Near-ground pass, one vehicle & Ground effect alone, separable from downwash \\
@@ -163,9 +163,10 @@ makes ``outside the training distribution'' a measurable condition rather than a
 
 \begin{quote}
 \textbf{Requirement for data collection: the set must excite lateral relative motion.}
-A purely vertical scenario holds the lateral components of the relative state constant, so a model
-trained only on such data has seen no variation in half of its six inputs and is extrapolating the
-first time a formation moves sideways. \textbf{The collection set must therefore include A4, A5
+The six network inputs are the relative position and the relative velocity of a neighbour, three
+components each. A purely vertical scenario holds the four lateral components (relative $x$ and $y$,
+position and velocity) nearly constant, so a model trained only on such data has seen almost no
+variation in four of its six inputs and is extrapolating the first time a formation moves sideways. \textbf{The collection set must therefore include A4, A5
 and A7 --- not only the vertical stacks A1, A2 and A3.} This is not a preference about coverage; a
 set without them produces a model that cannot be evaluated on the scenarios it will meet.
 \end{quote}
@@ -230,7 +231,8 @@ No data collected before the following sequence passes is used. The gate is not 
 is the check that nothing is broken, so that what is measured afterwards means something.
 
 \begin{enumerate}
-  \item \textbf{Validate.} Single vehicle, geometric first and then INDI, on the trajectory ladder.
+  \item \textbf{Validate.} Single vehicle, geometric first and then INDI, on a sequence of trajectories from hover to the
+        formation trajectories.
         Confirm the gains read back as configured.
   \item \textbf{Tune, then freeze.} Any remaining attitude tuning happens here and only here. The
         gains are then frozen for the remainder of the campaign.
@@ -288,7 +290,8 @@ that visible. The logging configuration described in Section~\ref{sec:setup-reco
 attitude but not $e_R$ itself; that signal will be added before the comparison campaign.
 
 \paragraph{Residual rejection.} The error in the \emph{separation between vehicles}, measured
-against the commanded separation. Downwash acts as a bias, the lower vehicle sags, closing the
+against the commanded separation. This is a separation error, not the residual itself; the residual
+that remains is reported next to it. Downwash acts as a bias, the lower vehicle sags, closing the
 gap, so the mean error is reported as the primary quantity and the spread as secondary. A
 compensator that works moves the mean back toward the commanded value. Reporting only the spread
 would hide precisely the effect being studied.
@@ -337,7 +340,7 @@ No result in the two-robot results chapter or~the multi-robot results chapter re
     Training/test leakage & Held-out scenarios; split by contiguous flight segment, never by sample & --- \\
     Session effects & Strategies interleaved within a session; repeated conditions & --- \\
     Silent loss of the residual & $a_{\mathrm{res}} \neq 0$ verified at the start of every session & --- \\
-    Radio vs onboard clock & uSD logs at \SI{500}{\hertz}; analysis uses merged uSD and firmware \texttt{ctrltarget.*} where available & Residual-time alignment across vehicles depends on merge quality; \texttt{merge\_usd\_logs.py} aborts above \SI{15}{\centi\metre} RMS role check \\
+    Radio vs onboard clock & uSD logs at \SI{500}{\hertz}; analysis uses merged uSD and firmware \texttt{ctrltarget.*} where available & Residual-time alignment across vehicles depends on merge quality; the merge tool aborts above \SI{15}{\centi\metre} RMS in its role check \\
     Mocap identity / marker swap & Pre-takeoff EKF-vs-mocap gate; role verification from merge & Residual risk if a session bypasses the gate \\
     Simulation-to-hardware gap & No claim rests on simulation & --- \\
     Single airframe & --- & \textbf{Not mitigated.} Generalisation beyond this platform is discussed, not demonstrated \\

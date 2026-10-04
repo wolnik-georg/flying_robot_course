@@ -38,14 +38,15 @@ chapter describes the control strategies compared in this thesis, and in each ca
 at which knowledge of the interaction enters the control law.
 
 Four controllers: an uncompensated baseline (Strategy~0), flown in every scenario as the
-reference condition, and the three strategies compared against it (Strategies~1--3).
+reference condition (``uncompensated'' means that it does not use the residual), and the three strategies compared against it (Strategies~1--3).
 Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter takes them in order.
 
 \begin{table}[t]
   \centering
   \caption{The strategies compared, and the implementation status of each at the time of writing.
     ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction
-    of it, both, or neither.}
+    of it, both, or neither. ``Enters at'' is the quantity the residual is subtracted from, and
+    ``Rotor speed'' says whether the strategy needs rotor-speed sensing.}
   \label{tab:ctrl-summary}
   \small
   \begin{tabular}{@{}clllcc@{}}
@@ -53,8 +54,8 @@ Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter takes them 
     \# & Strategy & Knows & Enters at & Rotor speed & Status \\
     \midrule
     0 & Geometric baseline           & nothing    & ---                        & no  & flying \\
-    1 & Pure INDI                    & measured   & $a_{\mathrm{des}}$, torque & yes & flying \\
-    2 & Geometric + NN               & predicted  & $a_{\mathrm{des}}$         & no  & implemented, unflown \\
+    1 & Pure INDI                    & measured   & $a_{\mathrm{cmd}}$, torque & yes & flying \\
+    2 & Geometric + NN               & predicted  & $a_{\mathrm{cmd}}$         & no  & implemented, unflown \\
     3 & FBL + NN                     & predicted  & linearising law            & no  & not implemented \\
     \bottomrule
   \end{tabular}
@@ -68,7 +69,9 @@ after tuning, stated precisely in Section~\ref{sec:ctrl-fairness}.
 Each strategy is described in two parts, kept deliberately separate: what is implemented here, and
 the published method it follows. They follow published \emph{families}, and the deviations from
 each source paper are listed in that strategy's section — none is a bit-identical replica.
-Strategies whose author code has not yet arrived stay unimplemented rather than guessed.
+Strategies whose author code has not yet arrived stay unimplemented rather than guessed. Each family
+is represented by one implementation of our own, so results are statements about these
+implementations, not about the families.
 
 % -------------------------------------------------------------------------------------
 \section{The position and attitude loop}
@@ -81,10 +84,10 @@ section. Strategy~3 uses feedback linearisation instead; it has its own section.
 
 \subsection{Position loop}
 
-The desired acceleration is
+The commanded acceleration is
 %
 \begin{equation}
-  a_{\mathrm{des}}
+  a_{\mathrm{cmd}}
   \;=\; \underbrace{a_{\mathrm{ff}}}_{\text{trajectory}}
       + K_p e_p + K_v e_v + K_i \!\int\! e_p \,\mathrm{d}t
       + g e_3
@@ -94,10 +97,13 @@ The desired acceleration is
 \end{equation}
 %
 with $e_p = p_{\mathrm{des}} - p$ and $e_v = v_{\mathrm{des}} - v$, and gains diagonal but distinct
-in the horizontal and vertical axes. The commanded thrust vector is $m\,a_{\mathrm{des}}$; its
+in the horizontal and vertical axes. Here $a_{\mathrm{cmd}}$ includes gravity compensation and the two residual terms. The
+trajectory-demanded part $a_{\mathrm{ff}} + K_p e_p + K_v e_v + K_i \!\int\! e_p \,\mathrm{d}t$ is the
+$a_{\mathrm{des}}$ of Chapter~\ref{ch:model}. The commanded thrust vector is $m\,a_{\mathrm{cmd}}$; its
 magnitude projected onto the body $z$-axis gives the collective thrust, and its direction, together
 with the desired yaw, gives the desired attitude $R_{\mathrm{des}}$ through the usual flatness
-construction.
+construction. In words: the thrust vector fixes the direction of the body $z$-axis, and the desired
+yaw fixes the rotation about that axis.
 
 The last two terms of \eqref{eq:ctrl-ades} are the whole subject of this thesis, and both are
 subtracted, for the reason derived in Section~\ref{sec:model-sign}. \emph{Which residual
@@ -110,18 +116,21 @@ the feedback-linearising law of Section~\ref{sec:ctrl-s3}.
 
 The attitude error is the standard geometric one,
 $e_R = \tfrac{1}{2}\left(R_{\mathrm{des}}^\top R - R^\top R_{\mathrm{des}}\right)^\vee$, with
-$e_\omega = \omega - \omega_{\mathrm{des}}$. In the geometric configuration the torque is
+$e_\omega = \omega - \omega_{\mathrm{des}}$, where $\omega_{\mathrm{des}}$ is the desired body angular
+velocity that follows from the desired attitude trajectory. In the geometric configuration the torque is
 %
 \begin{equation}
-  \tau = -K_R e_R - K_\omega e_\omega + \omega \times J\omega
+  \tau = -K_R^{\mathrm{geo}} e_R - K_\omega^{\mathrm{geo}} e_\omega + \omega \times J\omega
          - k_{i,\mathrm{att}} \textstyle\int e_R \, \mathrm{d}t,
   \label{eq:ctrl-tau-geo}
 \end{equation}
 %
-the third term compensating the gyroscopic coupling. This is a reduced form of the law
+the third term compensating the gyroscopic coupling. Here $K_R^{\mathrm{geo}}$ and
+$K_\omega^{\mathrm{geo}}$ are gains from attitude error and rate error to torque. This is a reduced form of the law
 in~\cite{lee2010geometrictracking}: it drops that work's angular-feedforward bracket and adds an
 integral term the source does not have --- see \eqref{eq:ctrl-tau-lee} and the discussion in
-Section~\ref{sec:ctrl-s0}. The INDI configurations replace
+Section~\ref{sec:ctrl-s0}. The symbols of that work map to ours as $k_R \to K_R^{\mathrm{geo}}$,
+$k_\Omega \to K_\omega^{\mathrm{geo}}$, $\Omega \to \omega$ and $\Omega_d \to \omega_{\mathrm{des}}$. The INDI configurations replace
 \eqref{eq:ctrl-tau-geo} with an incremental law, described in Section~\ref{sec:ctrl-s1}.
 
 \subsection{Runtime selection}
@@ -129,7 +138,8 @@ Section~\ref{sec:ctrl-s0}. The INDI configurations replace
 
 The control law is selected by a parameter at runtime rather than by recompiling: one bit enables
 the measured residual in the position loop, another selects the incremental attitude law, and a
-third parameter enables the learned prediction. All are pushed to the vehicle at connection time
+third parameter enables the learned prediction. Strategy~0 has all three off. Strategy~1 has both
+INDI bits on. Strategy~2 has only the prediction on. All are pushed to the vehicle at connection time
 from a single configuration file.
 
 This matters more than it may appear. Comparing strategies that require different firmware
@@ -191,12 +201,13 @@ replaced by an incremental one. A reference angular acceleration is formed from 
 errors,
 %
 \begin{equation}
-  \alpha_{\mathrm{ref}} = \alpha_{\mathrm{des}} - K_R e_R - K_\omega e_\omega,
+  \alpha_{\mathrm{ref}} = \alpha_{\mathrm{des}} - K_R^{\mathrm{INDI}} e_R - K_\omega^{\mathrm{INDI}} e_\omega,
   \label{eq:ctrl-alpharef}
 \end{equation}
 %
 where $\alpha_{\mathrm{des}}$ is the feedforward angular acceleration obtained from trajectory snap
-by differential flatness. The achieved angular acceleration $\alpha_{\mathrm{meas}}$ is obtained by
+by differential flatness. The INDI gains $K_R^{\mathrm{INDI}}$ and $K_\omega^{\mathrm{INDI}}$ map
+errors to angular acceleration, so their units differ from the geometric gains, which map to torque. The achieved angular acceleration $\alpha_{\mathrm{meas}}$ is obtained by
 differentiating the gyro signal and low-pass filtering it, and the torque currently being applied,
 $\tau_{\mathrm{cur}}$, is reconstructed from measured rotor speeds. The command is then the
 increment
@@ -206,7 +217,8 @@ increment
   \label{eq:ctrl-indi-tau}
 \end{equation}
 %
-Because \eqref{eq:ctrl-indi-tau} corrects relative to what is actually being achieved, it rejects
+In words: the controller compares the angular acceleration it wants with the one it actually got, and
+changes the torque by the difference. Because \eqref{eq:ctrl-indi-tau} corrects relative to what is actually being achieved, it rejects
 any disturbance appearing in $\alpha_{\mathrm{meas}}$ without needing a model of it. The
 differentiation and filtering are the source of the delay identified in
 Section~\ref{sec:model-measure-fail}; the filter cutoff sets the trade-off between that delay and
@@ -271,7 +283,7 @@ Neural-Swarm2.
 \section{Strategy 3: feedback linearisation with a flatness-preserving residual}
 \label{sec:ctrl-s3}
 
-\paragraph{Implemented.} \textbf{Not implemented.} The controller code was requested from the
+\paragraph{Implementation status.} \textbf{Not implemented.} The controller code was requested from the
 authors and had not been received at the time of writing. The strategy does not block the others,
 and its absence is a scope limitation rather than a failure of the comparison
 (the discussion chapter).

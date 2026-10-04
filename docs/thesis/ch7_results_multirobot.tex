@@ -55,25 +55,23 @@ tracking/residual metrics to Strategy~0 on the same scenarios.}
 \section{Extension to four and five vehicles}
 \label{sec:res3-n4sketch}
 
-A Priority~D/E scenario sketch (proposed IDs F4a, D1, E1, etc.) describes how n$\geq$4 formations
-would stress superposition and asymmetric wash without replacing the frozen A--C library. That sketch
-is a validation template only: geometries must pass \texttt{run\_formation --check} and supervisor
-sign-off before any sim or hardware run. No results from Tier~1 smoke matrices are claimed here.
+A sketch of scenarios with four or more vehicles describes how such formations would stress
+superposition and asymmetric wash without replacing the frozen scenario library. The sketch is a
+template only: its geometries must pass the pre-flight check and the supervisor's approval before any
+simulation or flight. No results from it are claimed here.
 
 The primary thesis comparison remains two- and three-robot; n$\geq$4 is documented so a future
-campaign can reuse the same logging, merge, and \texttt{plot\_comparison.py} tooling.
+campaign can reuse the same logging, merge and analysis tools.
 
 % -------------------------------------------------------------------------------------
 \section{Limitation if three-robot data are incomplete}
 \label{sec:res3-limitation}
 
-\paragraph{Fallback narrative (primary path if B-series C.4 is not completed).}
-If three-robot comparison flights are not obtained in time, RQ3 is answered from \emph{logged}
-three-robot data only: open-loop prediction and residual statistics on B1/B2/B3 (or a subset) under
-Strategy~0 collection, without requiring a working three-robot compensating controller in the loop.
-The transfer penalty is then reported as a modelling error on held-out relative geometries, not as
-a closed-loop ranking. This matches the project note that RQ3 can be resolved from C.1 logs plus
-offline evaluation even when the three-robot control campaign is descoped.
+\paragraph{If the third vehicle arrives too late.}
+RQ3 needs flights with three vehicles, because the effect it asks about, the overlap of two wakes,
+does not exist in two-vehicle data. If the third vehicle is not available in time, RQ3 is not
+answered on hardware, and the thesis says so. Two-vehicle logs can only check how the network behaves
+on one neighbour at a time. They say nothing about the summed prediction for two neighbours.
 
 The limitation is stated plainly: without repeated three-robot compensated flights, the thesis
 cannot rank Strategies~1--3 at $N=3$ with the same confidence as at $N=2$; the summed-architecture

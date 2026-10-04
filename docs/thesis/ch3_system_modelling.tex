@@ -79,9 +79,9 @@ $k_t$, as well as the inter-vehicle aerodynamic interaction that is the subject 
 That the residual is a catch-all rather than a physical quantity has two consequences that matter
 for the experiments. First, a residual measured in isolated free flight is not zero; it is whatever
 the nominal model gets wrong about a single vehicle. Second, the interaction can only be isolated
-by \emph{differencing}, comparing the residual measured in formation against the residual
-measured alone under the same trajectory. The coplanar control scenarios in
-Chapter~\ref{ch:setup} exist for exactly this purpose.
+by \emph{comparison}: the residual measured in formation is compared with the residual measured
+without a neighbour. The coplanar control scenarios in Chapter~\ref{ch:setup} exist for exactly
+this purpose.
 
 \paragraph{Scope: force, not moment}
 
@@ -117,7 +117,7 @@ actuation actually applied. Rearranging \eqref{eq:model-trans},
 \end{equation}
 %
 Both terms are available onboard. The measured acceleration comes from the accelerometer, which
-senses specific force in the body frame and therefore excludes gravity by construction; rotating it
+senses specific force (the acceleration that is not due to gravity) in the body frame and therefore excludes gravity by construction; rotating it
 into the world frame and subtracting $g e_3$ gives $a_{\mathrm{meas}}$. The model acceleration
 requires the applied thrust, which is reconstructed from measured rotor speeds as
 $f_i = \sum_{k=1}^{4} k_{t,k}\varpi_k^2$.
@@ -143,7 +143,7 @@ implementation, the absence of a rotor-speed source causes $a_{\mathrm{res}}$ to
 flight in which no interaction occurred. Verifying that $a_{\mathrm{res}} \neq 0$ is therefore the
 first check of every experimental session (Chapter~\ref{ch:setup}).
 
-\paragraph{It is delayed.} $a_{\mathrm{meas}}$ is differentiated from noisy inertial measurement
+\paragraph{It is delayed.} $a_{\mathrm{meas}}$ comes from a noisy accelerometer signal
 and must be filtered; the reconstructed thrust inherits the rotor-speed sensing delay. The estimate
 therefore exists only after the disturbance has begun to act. No amount of tuning removes this: it
 is the structural property that motivates prediction.
@@ -158,7 +158,8 @@ model error, not interaction.
 \label{sec:model-sign}
 
 The compensation enters with a sign that is easy to get wrong and whose error is not obvious in
-flight. From \eqref{eq:model-trans}, holding a desired acceleration $a_{\mathrm{des}}$ requires
+flight. From \eqref{eq:model-trans}, holding a desired acceleration $a_{\mathrm{des}}$ (the acceleration the
+trajectory demands, without gravity and without the residual) requires
 %
 \begin{equation}
   f_i R_i e_3 \;=\; m\,a_{\mathrm{des}} + m g e_3 - f_{\mathrm{res},i},
@@ -175,8 +176,9 @@ The resulting behaviour is a stable, well-controlled vehicle that tracks slightl
 formation. An uncompensated vehicle can look the same. In single-vehicle flight the error is
 invisible altogether, since $f_{\mathrm{res}} \approx 0$ with no neighbour present. With the sign
 correct, position-INDI compensation must \emph{reduce} the formation-induced displacement. With
-the sign inverted, the displacement must be approximately twice the uncompensated value. The
-two-robot results chapter can check that prediction.
+the sign inverted, the displacement must be larger, approximately twice the uncompensated value
+in a quasi-static stack in the linear regime. With thrust saturation or filter delay the factor
+need not be exactly two. The two-robot results chapter can check that prediction.
 
 % -------------------------------------------------------------------------------------
 \section{Predicting the residual from relative state}
@@ -214,7 +216,7 @@ point in the control loop.
 
 \paragraph{What is borrowed and what is ours.} The \emph{family} is the permutation-invariant deep
 set used by Neural-Swarm and Neural-Swarm2~\cite{shi2020neuralswarm,shi2022neuralswarm2}. The layer
-widths and the resulting \num{987} parameters are ours, sized for the STM32 control period. This is
+widths and the resulting \num{987} parameters are ours, sized for the control period of the onboard STM32 microcontroller. This is
 not the network of Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi}, and it is not a copy of
 Neural-Swarm2's layers. Spectral normalisation is not used here. An architecture ablation would be a
 separate study and is out of scope unless time remains after the comparison.
@@ -239,8 +241,10 @@ system that was never flown.
 \subsection{The superposition assumption}
 \label{sec:model-superposition}
 
-Equation~\eqref{eq:model-deepsets} assumes the aggregate interaction is a sum of per-neighbour
-contributions in the latent space of $\phi$. This is more general than summing forces directly,
+In words: each neighbour is turned into a short list of numbers by the network $\phi$, the lists of
+all neighbours are added, and a second network $\rho$ turns the sum into one force. The short list
+is called the latent space (or embedding). Equation~\eqref{eq:model-deepsets} assumes the aggregate
+interaction is a sum of per-neighbour contributions in the latent space of $\phi$. This is more general than summing forces directly,
 $\rho$ is free to be nonlinear in the sum, but it is still an assumption, and the literature
 states plainly that it does not hold exactly. Shi et al.~\cite{shi2020neuralswarm} report that with
 more than two vehicles the aerodynamic effect is not a simple superposition of each pair, and Gielis
@@ -261,10 +265,10 @@ chapter measures that.
 Two guards are applied to the inputs of $\phi$, and both are part of the model rather than
 defensive programming, because they change the function being learned.
 
-A neighbour farther than \SI{2}{\metre} is excluded from the sum. Beyond that distance the
-interaction is below the noise floor of the measurement, and including such neighbours would ask
-the network to learn that distant vehicles do nothing, spending capacity on a region where the
-answer is known.
+A neighbour farther than \SI{2}{\metre} is excluded from the sum. The distance is chosen
+conservatively: beyond it the interaction is expected to be small, and the null scenarios C1--C3
+check this. Including such neighbours would ask the network to learn that distant vehicles do
+nothing, spending capacity on a region where the answer is known.
 
 A separation closer than \SI{4}{\centi\metre} is clamped to that value, preserving direction. Below
 it the model would extrapolate beyond anything the training data can contain, since the vehicles are

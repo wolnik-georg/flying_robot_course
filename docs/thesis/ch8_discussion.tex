@@ -28,7 +28,7 @@ a failed experiment.
 
 RQ1 asks, under identical hardware, trajectories, formations and separations, how reactive and
 predictive interaction-force compensation compare to the uncompensated baseline in trajectory-tracking
-accuracy and residual-force rejection. Evidence comes from Chapter~\ref{sec:res2-tracking} and
+accuracy and residual-force rejection. Evidence comes from Section~\ref{sec:res2-tracking} and
 residual magnitudes on the same flights. If compensating strategies do not separate from one another
 but all beat Strategy~0, the practical conclusion shifts toward ``compensation matters; family
 matters less,'' and RQ4 dominates the engineering decision. If they separate strongly, this chapter
@@ -58,7 +58,7 @@ and train/test splits across classes.}
 RQ3 asks how large the transfer penalty is for a summed per-neighbour model trained on two-vehicle
 data when used on three-vehicle formations, and whether that penalty is small enough to keep the
 summed architecture. The question presupposes non-superposition; the contribution is quantitative.
-Chapter~\ref{sec:res3-transfer} supplies the numbers; here they are interpreted against deployment
+Section~\ref{sec:res3-transfer} supplies the numbers; here they are interpreted against deployment
 cost (single weight set, permutation invariance) versus retraining or per-formation models.
 
 \todo[color=red!25]{PLACEHOLDER: Interpret open-loop and (if available) closed-loop three-robot
@@ -69,7 +69,7 @@ penalty; tie to Section~\ref{sec:res3-limitation} if only logs exist.}
 \label{sec:disc-rq4}
 
 RQ4 asks, for each compared strategy, what sensing, onboard compute and training data are required,
-and how those costs sit next to tracking and rejection. Chapter~\ref{sec:res2-effort} and the
+and how those costs sit next to tracking and rejection. Section~\ref{sec:res2-effort} and the
 predictive-path subsection supply performance-side numbers; cost includes RPM sourcing, SD logging,
 upload vs flash-resident weights, tuning time per strategy (Table~\ref{tab:setup-threats}), and
 C.1 collection burden for Strategy~2/3.
@@ -100,7 +100,7 @@ Chapter~\ref{ch:results3}.}
 \section{Threats to validity, revisited}
 \label{sec:disc-validity}
 
-Chapter~\ref{sec:setup-validity} and Table~\ref{tab:setup-threats} listed threats and mitigations
+Section~\ref{sec:setup-validity} and Table~\ref{tab:setup-threats} listed threats and mitigations
 at design time. After flights, the discussion closes the loop: which mitigations held in practice,
 which residual risks materialised, and which limitations remain unavoidable.
 

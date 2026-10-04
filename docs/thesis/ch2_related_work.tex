@@ -286,16 +286,21 @@ residual that keeps the joint multi-quadrotor system differentially flat and usi
 structure to design a feedback-linearising controller that cancels the disturbance by feedforward.
 Their abstract reports a \SI{31}{\percent} reduction in average tracking error against nominal
 baselines; the body does not restate that aggregate, reporting instead, on hardware, \SI{24}{\percent}
-RMSE and \SI{30}{\percent} maximum-\(z\) improvement for ROM-FBL over nominal FBL, and a further
+RMSE and \SI{30}{\percent} maximum-\(z\) improvement for reduced-order-model feedback linearisation (ROM-FBL) over nominal feedback linearisation (FBL), and a further
 \SI{29}{\percent} RMSE and \SI{43}{\percent} maximum-\(z\) improvement for learned FBL over
-ROM-FBL. On hardware they match the approximately \SI{5}{\centi\metre} RMSE and \SI{10}{\centi\metre}
+ROM-FBL.
+
+On hardware they match the approximately \SI{5}{\centi\metre} RMSE and \SI{10}{\centi\metre}
 maximum-\(z\) error \emph{published} by Chee et al.~\cite{chee2024knodedwmpc}, rather than
 comparing the two methods on one rig; in their simulation study the flatness-based controller's
-maximum-\(z\) error can be worse than that of nonlinear model predictive control. The \num{20}-fold
-reduction in solve time (about \SI{1}{\milli\second} against \SI{27}{\milli\second} at equal
-residual) is a \emph{simulation} figure; the introduction separately quotes a sevenfold compute
-reduction, and the abstract an order of magnitude. Training uses \SI{28}{\second} of hardware data
-and \SI{18}{\second} in simulation. Two qualifications matter for our purposes: the hardware
+maximum-\(z\) error can be worse than that of nonlinear model predictive control (NMPC).
+
+The \num{20}-fold reduction in solve time (about \SI{1}{\milli\second} against
+\SI{27}{\milli\second} at equal residual) is a \emph{simulation} figure. The abstract and the
+introduction state an order of magnitude less computation. Training uses \SI{28}{\second} of hardware data
+and \SI{18}{\second} in simulation.
+
+Two qualifications matter for our purposes: the hardware
 experiments use two Crazyflie~2.1 quadrotors with thrust-upgrade bundles --- very nearly the
 platform used in this thesis --- and the controller runs \emph{off-board}, on an Intel~i5 laptop
 streaming commands over a Crazyradio link at \SI{400}{\hertz}, rather than on the vehicle. Their
@@ -311,10 +316,11 @@ decision taken in Chapter~\ref{ch:model}. Their simulation study does still mode
 The residual can instead form part of the prediction model that an optimiser reasons over, so that
 the controller plans against a disturbance it expects to meet rather than cancelling the one
 present now. Chee et al.~\cite{chee2024knodedwmpc} embed a learned component inside the prediction
-constraint of a nonlinear MPC; Li et al.~\cite{li2023ndpnmpc} inject a predicted downwash-force
+constraint of a nonlinear MPC (NMPC); Li et al.~\cite{li2023ndpnmpc} inject a predicted downwash-force
 sequence into the optimiser's prediction model; and Hsieh et al.~\cite{hsieh2025onlineadaptation}
-add an $\mathcal{L}_1$ online estimate to the same family. All three run the optimisation
-off-board or on a companion computer rather than on the vehicle. This injection point is not among
+add an $\mathcal{L}_1$ online estimate to the same family. Chee et al. and Hsieh et al. run the
+optimisation off-board or on a companion computer. Li et al. run their controller on a TX2 NX
+computer carried by the vehicle. None of the three runs on a Crazyflie-class vehicle. This injection point is not among
 the strategies evaluated here --- its onboard feasibility on a Crazyflie-class platform is itself
 open --- but it is retained in this survey because its evaluation conditions form part of the
 argument in Section~\ref{sec:rw-eval}.
@@ -422,7 +428,7 @@ they were obtained.
     and a trajectory class.}
   \label{tab:rw-conditions}
   \small
-  \begin{tabular}{@{}llll@{}}
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.26\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}@{}}
     \toprule
     Work & Team size & Separation & Reported quantity \\
     \midrule
@@ -433,13 +439,13 @@ they were obtained.
     Smith et al.~\cite{smith2023so2equivariant} & 2                  & \SIrange{0.6}{0.8}{\metre} eval.\ (train.\ to $\approx$\SI{0.5}{\metre}) & 3D and vertical tracking \\
     Gielis et al.~\cite{gielis2023aggregate}    & up to 4 total (rig sufferer $+\leq3$ flyers) & test rig, sufferer not in free flight & force-prediction accuracy \\
     Yang et al.~\cite{yang2025flatnessresiduals} & 1, planar (sim.\ only) & n/a & simulation only \\
-    Hsieh et al.~\cite{hsieh2026flatness}       & 2                  & \makecell[l]{\SI{0.3}{\metre} and \SI{0.4}{\metre}\\ vert.\textsuperscript{\ddag}} & RMSE and max.\ $z$ error \\
-    Chee et al.~\cite{chee2024knodedwmpc}       & 2, Crazyflie~2.1   & \makecell[l]{commanded \SIrange{0.2}{0.4}{\metre};\\ tight case \(\approx\)\SI{0.08}{\metre}} & \makecell[l]{RMSE / max.\ $z$ vs.\\ nominal MPC; off-board} \\
-    Li et al.~\cite{li2023ndpnmpc}               & 2, custom          & neighbour-relative & \makecell[l]{NMPC with predicted\\ force sequence; Jetson + mocap} \\
+    Hsieh et al.~\cite{hsieh2026flatness}       & 2                  & \SI{0.3}{\metre} and \SI{0.4}{\metre} vert.\textsuperscript{\ddag} & RMSE and max.\ $z$ error \\
+    Chee et al.~\cite{chee2024knodedwmpc}       & 2, Crazyflie~2.1   & commanded \SIrange{0.2}{0.4}{\metre}; tight case \(\approx\)\SI{0.08}{\metre} & RMSE / max.\ $z$ vs. nominal MPC; off-board \\
+    Li et al.~\cite{li2023ndpnmpc}               & 2, custom          & neighbour-relative & NMPC with predicted force sequence; onboard TX2 NX + mocap \\
     Hsieh et al.~\cite{hsieh2025onlineadaptation} & 3                & V-stack and I-stack; pairwise \SI{0.2}{\metre} & tracking vs.\ MPC family \\
-    Shankar et al.~\cite{shankar2023docking}    & 2, custom (\(\approx\)\SI{0.27}{\metre}) & dock \(\approx\)\SI{0.36}{\metre} & \makecell[l]{terminal vert.\ error /\\ dock success; onboard Pi, mocap} \\
+    Shankar et al.~\cite{shankar2023docking}    & 2, custom (\(\approx\)\SI{0.27}{\metre}) & dock \(\approx\)\SI{0.36}{\metre} & terminal vert.\ error / dock success; onboard Pi, mocap \\
     Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} & 1 (+ payload) & n/a                 & position tracking error \\
-    Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \makecell[l]{\SI{0.50}{\metre} vert.\ hover/circle;\\ dock to \SI{0.10}{\metre}, release at \SI{0.05}{\metre}} & position and attitude error \\
+    Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \SI{0.50}{\metre} vert.\ hover/circle; dock to \SI{0.10}{\metre}, release at \SI{0.05}{\metre} & position and attitude error \\
     \bottomrule
   \end{tabular}
 
@@ -491,6 +497,7 @@ component is the learning modules executing on an embedded computer in the loop 
 which measures latency rather than flight, and the authors list validation on a real quadrotor as
 future work.
 
+% UNVERIFIED (review P-010): no PDF of Abro et al. in docs/papers; check this paragraph against the paper.
 Its approach to fairness is nonetheless directly relevant. They tune the parametric models --- the
 extreme learning machine, the radial-basis-function network and the echo state network --- to their
 own optima by Bayesian optimisation under otherwise consistent conditions, so that each operates

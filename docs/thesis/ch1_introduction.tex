@@ -7,8 +7,8 @@
 %  to be checked against.
 %
 %  RULES FOR THIS CHAPTER.
-%  1. No result is claimed. Nothing has flown. The contribution is stated as what the thesis
-%     sets out to establish, not as what it found.
+%  1. No result is claimed. The contribution is stated as what the thesis sets out to establish,
+%     not as what it found.
 %  2. THIS FILE IS THE SOURCE OF TRUTH for every claim it makes about prior work. Verify a
 %     claim against the paper itself, never against a summary or ledger in docs/.
 %  3. The contribution list must match docs/19_Contribution_Statement.md, including its
@@ -25,9 +25,9 @@
 \section{Motivation}
 \label{sec:intro-motivation}
 
-When several quadrotors fly close together, the downwash of the upper vehicle can destabilise the
+When several quadrotors fly close together, the downwash of the upper vehicle (the air its rotors push down) can destabilise the
 one below. The usual remedy is to stay far enough apart that the interaction can be ignored. For a
-Crazyflie~2.0 (\SI{9}{\centi\metre} rotor-to-rotor) that conservative planning gap has been taken
+Crazyflie~2.0 (about \SI{9}{\centi\metre} rotor-to-rotor, vendor data sheet) that conservative planning gap has been taken
 as about \SI{60}{\centi\metre}; Shi et al.~\cite{shi2020neuralswarm} cite that figure from earlier
 planning work as one such example.
 
@@ -91,26 +91,51 @@ on its own trajectories, under its own metrics.
 \section{Gap}
 \label{sec:intro-gap}
 
-\emph{Representative methods exist for reactive compensation, for predictive compensation, and for
-their hybrid, and each is individually validated, but, to the best of our knowledge, they have
-not been evaluated against one another under identical conditions, and the field's reporting conventions make such a comparison
-impossible to assemble after the fact.} A \SI{36}{\percent} improvement measured on two vehicles in
-close proximity and a \SI{31}{\percent} improvement measured in a tight formation are not the same
-quantity; neither can be subtracted from the other, and their ordering says nothing about which
-method would prevail if both were flown under the same conditions.
+\emph{Representative methods exist for reactive compensation, for predictive compensation and for
+their hybrid. Each is validated on its own. To the best of our knowledge, they have not been
+evaluated against one another under identical conditions. The field's reporting conventions make
+such a comparison impossible to assemble after the fact.} This thesis compares the first two;
+the hybrid is outside its scope. A \SI{36}{\percent} improvement measured on two vehicles in close
+proximity~\cite{smith2023so2equivariant} and a \SI{31}{\percent} improvement reported in the
+abstract of a tight-formation study~\cite{hsieh2026flatness} are not the same quantity. Neither can
+be subtracted from the other, and their ordering says nothing about which method would prevail if
+both were flown under the same conditions.
 
 This is not a criticism of any individual work. Each is internally valid, and none violated a
 convention of the field. It is a property of the literature taken as a whole: the results were not
 designed to compose, and establishing a ranking requires an experiment built for that purpose.
 
 Two narrower gaps follow. The hybrid has been demonstrated only where the residual is
-\emph{self-induced}: a single vehicle, with blade flapping, drag, ground forces, or an optional
-slung payload. It has not been shown where other vehicles produce the residual and relative state
+\emph{self-induced}: a single vehicle, with blade flapping (the up-and-down motion of the rotor blades in forward flight), drag, ground forces, or an optional
+slung payload (a payload hanging below the vehicle on a cable). It has not been shown where other vehicles produce the residual and relative state
 is measurable. That is where the predictive component has the most to contribute. Multi-robot
 evaluation of such hybrids is outside this thesis. The summation that predictive architectures use
 to aggregate per-neighbour contributions is known to be an
 approximation~\cite{shi2020neuralswarm,gielis2023aggregate}. The size of the penalty on a deployed
 model is not reported.
+
+% -------------------------------------------------------------------------------------
+\section{The compared strategies}
+\label{sec:intro-strategies}
+
+Four control strategies are compared. Chapter~\ref{ch:control} describes them in detail.
+
+\begin{description}
+  \item[Strategy 0, geometric baseline.] A geometric tracking controller that does not use the
+    residual force. It records the residual so that the other strategies can be compared against it.
+  \item[Strategy 1, pure INDI.] Incremental nonlinear dynamic inversion (INDI). It measures the
+    residual online, from the acceleration the vehicle actually had and the rotor speeds, and
+    corrects for it. This is the reactive strategy.
+  \item[Strategy 2, geometric + neural network (NN).] The geometric controller plus a neural network
+    that predicts the residual from the states of the neighbouring vehicles. This is the
+    predictive strategy.
+  \item[Strategy 3, feedback linearisation (FBL) + NN.] A feedback-linearising controller with the
+    same kind of prediction. It stays in the comparison table only until the authors' code is
+    available.
+\end{description}
+
+A hybrid of Strategies 1 and 2 exists in the literature. It is discussed in Chapter~\ref{ch:related}
+and is not compared here.
 
 % -------------------------------------------------------------------------------------
 \section{Research questions}
@@ -133,8 +158,9 @@ model is not reported.
     applies to the predictive strategies (Strategy~2 and, if implemented, Strategy~3). It does not
     apply to a purely reactive law.
 
-  \item[RQ4] For each compared strategy, what sensing, onboard compute and training data does it
-    require, and how do those costs sit next to the tracking and rejection it delivers?
+  \item[RQ4] For each compared strategy, what sensing, onboard compute, training data and tuning
+    effort does it require, and how do those costs sit next to the tracking and rejection it
+    delivers?
 \end{description}
 
 RQ1 is the primary question and the one the experimental design serves. RQ2 carries the most
@@ -142,10 +168,8 @@ engineering value, because it converts a ranking into a rule about when to use w
 the magnitude of the transfer penalty on a deployed model, not whether superposition holds.
 RQ4 compares cost against performance for every compared strategy.
 
-The questions are stated with falsifiable hypotheses in Chapter~\ref{ch:related} and
-Chapter~\ref{ch:setup}; each is answerable by the experiments described in
-Chapter~\ref{ch:setup}, and a negative answer to any of them is reported as a result rather
-than as a failure.
+Each question is answerable by the experiments described in Chapter~\ref{ch:setup}. A negative
+answer to any of them is reported as a result, not as a failure.
 
 % -------------------------------------------------------------------------------------
 \section{Contributions}
@@ -170,8 +194,8 @@ Chapter~\ref{ch:setup} and, once flown, belong in the results chapters.
     already established in the literature~\cite{shi2020neuralswarm,gielis2023aggregate}; the
     contribution is its magnitude for a deployed model, not the finding that it exists.
 
-  \item \textbf{An engineering account of cost}: sensing prerequisites, onboard computation and
-    training-data requirements, reported alongside performance so that the comparison supports a
+  \item \textbf{An engineering account of cost}: sensing prerequisites, onboard computation,
+    training-data requirements and tuning effort, reported alongside performance so that the comparison supports a
     decision rather than only a ranking.
 
 \end{enumerate}
@@ -244,6 +268,7 @@ published method it follows.
 \textbf{Chapter~\ref{ch:setup}} describes the platform, the frozen scenario library, the
 measurement chain and the protocol, and states the threats to validity the design is built against, including those it does not eliminate.
 
-\textbf{The two- and multi-robot results chapters} report the two- and three-vehicle results.
-\textbf{The discussion chapter} interprets them against the research questions and the stated
-assumptions, and \textbf{the concluding chapter} concludes.
+\textbf{Chapter~\ref{ch:results2}} reports the two-vehicle results and \textbf{Chapter~\ref{ch:results3}}
+the three-vehicle results. \textbf{Chapter~\ref{ch:discussion}} interprets them against the research
+questions and the stated assumptions. \textbf{Chapter~\ref{ch:conclusion}} answers the research
+questions and lists future work.

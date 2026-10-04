@@ -20,8 +20,8 @@
 
 This thesis set out to compare interaction-force compensation strategies for tight multirotor
 formation flight on a common platform, trajectory set and logging pipeline, holding reactive and
-predictive families under the same residual definition and null-flight measurement floor. Strategies~0--3
-were implemented and specified in Chapters~\ref{ch:model}--\ref{ch:control}; the experimental
+predictive families under the same residual definition and null-flight measurement floor. Strategies~0--2
+are implemented, and Strategy~3 is specified but not implemented, in Chapters~\ref{ch:model}--\ref{ch:control}; the experimental
 campaign is described in Chapter~\ref{ch:setup} and reported in Chapters~\ref{ch:results2}
 and~\ref{ch:results3}. The comparison is deliberately conditional: the useful outcome is guidance
 on when to pay for prediction, measurement, or neither, not a claim of universal superiority.
@@ -31,13 +31,13 @@ on when to pay for prediction, measurement, or neither, not a claim of universal
 \label{sec:conclusion-rq}
 
 \todo[color=red!25]{PLACEHOLDER (RQ1): One-sentence headline answer --- reactive vs predictive vs
-baseline under identical conditions, once Chapter~\ref{sec:res2-tracking} is populated.}
+baseline under identical conditions, once Section~\ref{sec:res2-tracking} is populated.}
 
 \todo[color=red!25]{PLACEHOLDER (RQ2): One-sentence headline --- regime dependence or absence thereof,
 referencing Section~\ref{sec:res2-summary}.}
 
 \todo[color=red!25]{PLACEHOLDER (RQ3): One-sentence headline --- transfer penalty magnitude and
-whether summed architecture remains justified, referencing Chapter~\ref{sec:res3-transfer}.}
+whether summed architecture remains justified, referencing Section~\ref{sec:res3-transfer}.}
 
 \todo[color=red!25]{PLACEHOLDER (RQ4): One-sentence headline --- cost vs performance trade-off across
 strategies (sensing, compute, data).}
@@ -63,17 +63,17 @@ Several extensions are already scoped in project documentation and do not depend
     collection on cf5; run the systematic comparison matrix with frozen gains and documented $n$
     per cell.
   \item \textbf{Three-robot scaling.} Fly or analyse B1/B2/B3 under the fallback protocol in
-    Section~\ref{sec:res3-limitation}; optional Priority~D/E sketches (docs/36) for n$\geq$4 remain
-    smoke-tier only until core A--C library and C.4 close.
-  \item \textbf{Retrained NA-INDI / LINDI reference.} Related-work and desk notes (docs/26) describe
+    Section~\ref{sec:res3-limitation}; optional sketches for four or more vehicles remain
+    a sketch until the core library and the comparison are finished.
+  \item \textbf{Retrained NA-INDI / LINDI reference.} Our notes describe
     a retrain path for the Cobo-Briesewitz hybrid; it is out of the primary compared set but remains
     a candidate extension if hardware budget allows.
-  \item \textbf{Residual RL strategies (Strategy~5/7).} Explicitly deferred in the project convention:
+  \item \textbf{Residual reinforcement-learning strategies.} Explicitly deferred in the project convention:
     reinforcement-learning residual policies are not part of this comparison and would require a
     separate safety and data budget before any flight claim.
   \item \textbf{Hardware validation of onboard prediction.} SIL and desk parity do not substitute for
     \texttt{rnn.en=1} flight logs on the brushless pair; flash-resident vs upload deployment trades
-    reflash cost against lab iteration speed (docs/45).
+    reflash cost against lab iteration speed.
 \end{itemize}
 
 % -------------------------------------------------------------------------------------

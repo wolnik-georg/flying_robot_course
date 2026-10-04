@@ -69,19 +69,19 @@ the comparison matrix. Statistics: mean $\pm$ std across repeats.}
     \toprule
     Scenario & Strategy & RMSE $x$ & RMSE $y$ & RMSE $z$ & Peak $\|\mathbf{e}\|$ & $n$ \\
     \midrule
-    \multicolumn{7}{@{}l@{}}{\textit{--- populated from phase metrics / \texttt{plot\_comparison.py} ---}} \\
+    \multicolumn{7}{@{}l@{}}{\textit{--- populated from the phase metrics ---}} \\
     \makecell{Placeholder} & S0 & --- & --- & --- & --- & --- \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \todo[color=red!25]{PLACEHOLDER: Figure (grouped bars) --- controllers $\times$ metrics with SEM
-error bars; source \texttt{plot\_comparison.py} on phase CSV. One panel per metric family (position
+error bars; source: the analysis scripts on the phase metrics. One panel per metric family (position
 RMSE, peak error).}
 
 \todo[color=red!25]{PLACEHOLDER: Figure (time series) --- commanded vs achieved position or
 separation for one representative scenario (e.g.\ A8 or A4), overlay Strategies~0--3 on the same
-axes; source \texttt{plot\_flight.py} or dashboard export.}
+axes; source: the single-flight plotting script.}
 
 A short subsection will contrast geometric tracking (Strategy~0), our INDI implementation
 (Strategy~1), and any reference INDI flights included for context, without treating reference
