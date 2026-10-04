@@ -1,0 +1,45 @@
+{
+  "n_csv_scanned": 1269,
+  "n_indi_flights_in_meta": 963,
+  "n_controller6_ctrl_mode_ge1": 945,
+  "unique_indi_kr_in_radio_meta": [
+    2400.0
+  ],
+  "unique_pos_kp_xy_in_radio_meta": [
+    64.0
+  ],
+  "lab_documented_kr_retunes": [
+    [
+      "2026-09-11",
+      483,
+      "stage 2e attempt 3\u20134",
+      "docs/FLIGHT_CARD_VALIDATION.md, lab_sessions/2026-09-11.md"
+    ],
+    [
+      "2026-09-11",
+      987,
+      "stage 2e attempt 1\u20132",
+      "docs/FLIGHT_CARD_VALIDATION.md"
+    ],
+    [
+      "2026-09-11",
+      632,
+      "planned rung, not confirmed flown",
+      "docs/lab_sessions/2026-09-16.md"
+    ],
+    [
+      "2026-07-19",
+      600,
+      "ladder (pre-meta era)",
+      "crazyflies.yaml comments ~554\u2013563"
+    ]
+  ],
+  "answers": {
+    "lowest_kr_in_radio_meta": 2400.0,
+    "lowest_kr_documented_anywhere": 483,
+    "res_sign_minus_one_flown": false,
+    "res_sign_evidence": "lib.rs:1886 NEVER FLOWN; 2026-09-09 hard-coded flip diverged (docs/lab_sessions/2026-09-09.md); default +1 traj_iface.c:441",
+    "softer_kp_with_indi_in_meta": [],
+    "typical_combo": "kr/kw 2400/170 + pos 64/48/5/7 when meta populated (yaml all: block)"
+  }
+}

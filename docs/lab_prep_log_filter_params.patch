@@ -1,0 +1,25 @@
+diff --git a/crazyflie_examples/crazyflie_examples/flight.py b/crazyflie_examples/crazyflie_examples/flight.py
+--- a/crazyflie_examples/crazyflie_examples/flight.py
++++ b/crazyflie_examples/crazyflie_examples/flight.py
+@@ -380,6 +380,10 @@
+             "j_scale",
+             "notch_f0",
+             "notch_bw",
++            "filt_dt_us",
++            "filt_prewarp",
++            "dt_usec",
++            "rpm_source",
+         )
+         if k in indi
+     }
+@@ -575,6 +579,10 @@
+             "j_scale",
+             "notch_f0",
+             "notch_bw",
++            "filt_dt_us",
++            "filt_prewarp",
++            "dt_usec",
++            "rpm_source",
+         ):
+             if k in _yaml_indi_gains:
+                 f.write(f"# meta:indi_{k}={_yaml_indi_gains[k]}\n")

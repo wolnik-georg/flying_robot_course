@@ -1,0 +1,327 @@
+{
+  "f_osc_hz": 6.3,
+  "motor_tau_s": 0.044,
+  "motor_fc_hz": 3.6171577975430766,
+  "variants": {
+    "Stock Bitcraze INDI (ctrl=3)": {
+      "f_hz": 6.3,
+      "terms": [
+        {
+          "name": "Actuator (1st-order lag, bench \u03c4=44 ms)",
+          "time_ms": 26.51570744093856,
+          "phase_deg": 60.13762447604865,
+          "source": "measured",
+          "confidence": "HIGH",
+          "note": "fc\u22483.62 Hz; cited investigation \u00a716 / handoff"
+        },
+        {
+          "name": "Attitude INDI ZOH (500 Hz effective update)",
+          "time_ms": 1.0,
+          "phase_deg": 2.268,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "Controller law / torque increment updated on decimated ticks"
+        },
+        {
+          "name": "INDI Butterworth chain (fc=70 Hz, design fs=500 Hz)",
+          "time_ms": 3.0075600181557056,
+          "phase_deg": 6.82114612117714,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "2\u00d7 BW on \u03b1/\u03c4 paths (Omar/NA/stock pos-INDI); ours uses custom biquad"
+        },
+        {
+          "name": "IMU gyro onboard LPF (80 Hz @ 1 kHz)",
+          "time_ms": 1.9853394848272412,
+          "phase_deg": 4.502749951588183,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "sensors_bmi088_bmp3xx.c GYRO_LPF_CUTOFF_FREQ=80"
+        },
+        {
+          "name": "EKF predict / mocap-heavy state (100 Hz predict)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Upper bound ZOH; attitude quaternion still updated every 1 ms read"
+        },
+        {
+          "name": "HLC / external setpoint (100 Hz)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "RATE_HL_COMMANDER=100 Hz; hover uses cmdFullState stream from CS2"
+        },
+        {
+          "name": "RPM\u2192force path (conservative 50 Hz hold, DShot telem)",
+          "time_ms": 10.0,
+          "phase_deg": 22.68,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Oct-02 flights meta indi_rpm_source=1; exact telem rate not read in this pass"
+        }
+      ],
+      "sum_phase_deg": 119.08952054881397,
+      "sum_time_ms_equiv": 52.50860694392151,
+      "note": "Sum of listed terms is NOT a rigorous loop Nyquist margin \u2014 terms overlap."
+    },
+    "Ours OOT (ctrl=6, ctrl_mode=3)": {
+      "f_hz": 6.3,
+      "terms": [
+        {
+          "name": "Actuator (1st-order lag, bench \u03c4=44 ms)",
+          "time_ms": 26.51570744093856,
+          "phase_deg": 60.13762447604865,
+          "source": "measured",
+          "confidence": "HIGH",
+          "note": "fc\u22483.62 Hz; cited investigation \u00a716 / handoff"
+        },
+        {
+          "name": "Control output sample period (1000 Hz stabilizer)",
+          "time_ms": 0.5,
+          "phase_deg": 1.134,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "Law runs every tick; still one sample actuator hold"
+        },
+        {
+          "name": "INDI Butterworth chain (fc=206 Hz, design fs=1000 Hz)",
+          "time_ms": 0.9339884205115474,
+          "phase_deg": 2.1182857377201896,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "2\u00d7 BW on \u03b1/\u03c4 paths (Omar/NA/stock pos-INDI); ours uses custom biquad"
+        },
+        {
+          "name": "IMU gyro onboard LPF (80 Hz @ 1 kHz)",
+          "time_ms": 1.9853394848272412,
+          "phase_deg": 4.502749951588183,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "sensors_bmi088_bmp3xx.c GYRO_LPF_CUTOFF_FREQ=80"
+        },
+        {
+          "name": "EKF predict / mocap-heavy state (100 Hz predict)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Upper bound ZOH; attitude quaternion still updated every 1 ms read"
+        },
+        {
+          "name": "HLC / external setpoint (100 Hz)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "RATE_HL_COMMANDER=100 Hz; hover uses cmdFullState stream from CS2"
+        },
+        {
+          "name": "RPM\u2192force path (conservative 50 Hz hold, DShot telem)",
+          "time_ms": 10.0,
+          "phase_deg": 22.68,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Oct-02 flights meta indi_rpm_source=1; exact telem rate not read in this pass"
+        }
+      ],
+      "sum_phase_deg": 113.25266016535703,
+      "sum_time_ms_equiv": 49.935035346277346,
+      "note": "Sum of listed terms is NOT a rigorous loop Nyquist margin \u2014 terms overlap."
+    },
+    "Omar C (ctrl=9)": {
+      "f_hz": 6.3,
+      "terms": [
+        {
+          "name": "Actuator (1st-order lag, bench \u03c4=44 ms)",
+          "time_ms": 26.51570744093856,
+          "phase_deg": 60.13762447604865,
+          "source": "measured",
+          "confidence": "HIGH",
+          "note": "fc\u22483.62 Hz; cited investigation \u00a716 / handoff"
+        },
+        {
+          "name": "Attitude INDI ZOH (500 Hz effective update)",
+          "time_ms": 1.0,
+          "phase_deg": 2.268,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "Controller law / torque increment updated on decimated ticks"
+        },
+        {
+          "name": "INDI Butterworth chain (fc=30 Hz, design fs=500 Hz)",
+          "time_ms": 7.504761407282001,
+          "phase_deg": 17.020798871715577,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "2\u00d7 BW on \u03b1/\u03c4 paths (Omar/NA/stock pos-INDI); ours uses custom biquad"
+        },
+        {
+          "name": "IMU gyro onboard LPF (80 Hz @ 1 kHz)",
+          "time_ms": 1.9853394848272412,
+          "phase_deg": 4.502749951588183,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "sensors_bmi088_bmp3xx.c GYRO_LPF_CUTOFF_FREQ=80"
+        },
+        {
+          "name": "EKF predict / mocap-heavy state (100 Hz predict)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Upper bound ZOH; attitude quaternion still updated every 1 ms read"
+        },
+        {
+          "name": "HLC / external setpoint (100 Hz)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "RATE_HL_COMMANDER=100 Hz; hover uses cmdFullState stream from CS2"
+        },
+        {
+          "name": "RPM\u2192force path (conservative 50 Hz hold, DShot telem)",
+          "time_ms": 10.0,
+          "phase_deg": 22.68,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Oct-02 flights meta indi_rpm_source=1; exact telem rate not read in this pass"
+        }
+      ],
+      "sum_phase_deg": 129.2891732993524,
+      "sum_time_ms_equiv": 57.0058083330478,
+      "note": "Sum of listed terms is NOT a rigorous loop Nyquist margin \u2014 terms overlap."
+    },
+    "Omar Rust (ctrl=10)": {
+      "f_hz": 6.3,
+      "terms": [
+        {
+          "name": "Actuator (1st-order lag, bench \u03c4=44 ms)",
+          "time_ms": 26.51570744093856,
+          "phase_deg": 60.13762447604865,
+          "source": "measured",
+          "confidence": "HIGH",
+          "note": "fc\u22483.62 Hz; cited investigation \u00a716 / handoff"
+        },
+        {
+          "name": "Attitude INDI ZOH (500 Hz effective update)",
+          "time_ms": 1.0,
+          "phase_deg": 2.268,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "Controller law / torque increment updated on decimated ticks"
+        },
+        {
+          "name": "INDI Butterworth chain (fc=30 Hz, design fs=500 Hz)",
+          "time_ms": 7.504761407282001,
+          "phase_deg": 17.020798871715577,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "2\u00d7 BW on \u03b1/\u03c4 paths (Omar/NA/stock pos-INDI); ours uses custom biquad"
+        },
+        {
+          "name": "IMU gyro onboard LPF (80 Hz @ 1 kHz)",
+          "time_ms": 1.9853394848272412,
+          "phase_deg": 4.502749951588183,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "sensors_bmi088_bmp3xx.c GYRO_LPF_CUTOFF_FREQ=80"
+        },
+        {
+          "name": "EKF predict / mocap-heavy state (100 Hz predict)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Upper bound ZOH; attitude quaternion still updated every 1 ms read"
+        },
+        {
+          "name": "HLC / external setpoint (100 Hz)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "RATE_HL_COMMANDER=100 Hz; hover uses cmdFullState stream from CS2"
+        },
+        {
+          "name": "RPM\u2192force path (conservative 50 Hz hold, DShot telem)",
+          "time_ms": 10.0,
+          "phase_deg": 22.68,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Oct-02 flights meta indi_rpm_source=1; exact telem rate not read in this pass"
+        }
+      ],
+      "sum_phase_deg": 129.2891732993524,
+      "sum_time_ms_equiv": 57.0058083330478,
+      "note": "Sum of listed terms is NOT a rigorous loop Nyquist margin \u2014 terms overlap."
+    },
+    "NA-INDI port (ctrl=7/8, ref ctrl=7/8)": {
+      "f_hz": 6.3,
+      "terms": [
+        {
+          "name": "Actuator (1st-order lag, bench \u03c4=44 ms)",
+          "time_ms": 26.51570744093856,
+          "phase_deg": 60.13762447604865,
+          "source": "measured",
+          "confidence": "HIGH",
+          "note": "fc\u22483.62 Hz; cited investigation \u00a716 / handoff"
+        },
+        {
+          "name": "Attitude INDI ZOH (500 Hz effective update)",
+          "time_ms": 1.0,
+          "phase_deg": 2.268,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "Controller law / torque increment updated on decimated ticks"
+        },
+        {
+          "name": "INDI Butterworth chain (fc=40 Hz, design fs=500 Hz)",
+          "time_ms": 5.541962818266985,
+          "phase_deg": 12.569171671829519,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "2\u00d7 BW on \u03b1/\u03c4 paths (Omar/NA/stock pos-INDI); ours uses custom biquad"
+        },
+        {
+          "name": "IMU gyro onboard LPF (80 Hz @ 1 kHz)",
+          "time_ms": 1.9853394848272412,
+          "phase_deg": 4.502749951588183,
+          "source": "calculation",
+          "confidence": "MEDIUM",
+          "note": "sensors_bmi088_bmp3xx.c GYRO_LPF_CUTOFF_FREQ=80"
+        },
+        {
+          "name": "EKF predict / mocap-heavy state (100 Hz predict)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Upper bound ZOH; attitude quaternion still updated every 1 ms read"
+        },
+        {
+          "name": "HLC / external setpoint (100 Hz)",
+          "time_ms": 5.0,
+          "phase_deg": 11.34,
+          "source": "calculation",
+          "confidence": "HIGH",
+          "note": "RATE_HL_COMMANDER=100 Hz; hover uses cmdFullState stream from CS2"
+        },
+        {
+          "name": "RPM\u2192force path (conservative 50 Hz hold, DShot telem)",
+          "time_ms": 10.0,
+          "phase_deg": 22.68,
+          "source": "assumption",
+          "confidence": "LOW",
+          "note": "Oct-02 flights meta indi_rpm_source=1; exact telem rate not read in this pass"
+        }
+      ],
+      "sum_phase_deg": 124.83754609946635,
+      "sum_time_ms_equiv": 55.04300974403279,
+      "note": "Sum of listed terms is NOT a rigorous loop Nyquist margin \u2014 terms overlap."
+    }
+  }
+}

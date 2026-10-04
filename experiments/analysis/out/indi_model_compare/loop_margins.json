@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "assumptions": [
+      "Single-axis roll, small-angle \u03b8",
+      "Plant: torque\u2192angle via J s\u00b2 and first-order actuator \u03c4=44 ms",
+      "Pade delay 2 ms on actuator path",
+      "Ours: inner INDI approximated as PD on \u03b8 through alpha loop (\u2212J(kr \u03b8 + kw \u03b8\u0307))",
+      "Omar: geometric \u2212KR \u03b8 \u2212 KW \u03b8\u0307 only; additive INDI path omitted in this linear model",
+      "Filters: 2nd-order Butterworth at flown cutoffs"
+    ],
+    "investigation_kr_ceiling_calc": 2386.378649755582,
+    "flown_kr_over_ceiling": 1.0057079584775086
+  },
+  "variants": [
+    {
+      "omega_c_rad_s": 744.7834934674925,
+      "f_c_hz": 118.53597451860178,
+      "phase_margin_deg": 557.1268012501555,
+      "gain_margin_db": NaN,
+      "omega_n_nominal_rad_s": 48.98979485566356,
+      "zeta_nominal": 1.7350552344714179,
+      "predicted_osc_hz_nominal_sqrt_kr": 7.7969680123367615,
+      "variant": "Ours full INDI (flown kr/kw)",
+      "kr_kw_source": "crazyflies.yaml + Oct-02 meta"
+    },
+    {
+      "omega_c_rad_s": 429.60153044466364,
+      "f_c_hz": 68.37320713011158,
+      "phase_margin_deg": 585.1344146894285,
+      "gain_margin_db": NaN,
+      "omega_n_nominal_rad_s": 28.284271247461902,
+      "zeta_nominal": 1.7350552344714176,
+      "predicted_osc_hz_nominal_sqrt_kr": 4.501581580785531,
+      "variant": "Ours @ investigation kr\u2248800 ceiling"
+    },
+    {
+      "omega_c_rad_s": 32.73466970652601,
+      "f_c_hz": 5.209884494274138,
+      "phase_margin_deg": 644.4064945384778,
+      "gain_margin_db": NaN,
+      "omega_n_nominal_rad_s": 20.552533164400685,
+      "zeta_nominal": 1.6882437956471987,
+      "predicted_osc_hz_nominal_sqrt_KR_over_J": 3.2710372461744828,
+      "variant": "Omar C/Rust geometric core (500 Hz, 30 Hz filt)"
+    }
+  ]
+}

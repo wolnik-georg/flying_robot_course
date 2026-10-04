@@ -1,0 +1,126 @@
+run dead0_lpf0_ours
+run dead0_lpf0_omar
+run dead0_lpf1_ours
+run dead0_lpf1_omar
+run dead0.5_lpf0_ours
+run dead0.5_lpf0_omar
+run dead0.5_lpf1_ours
+run dead0.5_lpf1_omar
+run dead1_lpf0_ours
+run dead1_lpf0_omar
+run dead1_lpf1_ours
+run dead1_lpf1_omar
+run dead1.5_lpf0_ours
+run dead1.5_lpf0_omar
+run dead1.5_lpf1_ours
+run dead1.5_lpf1_omar
+run dead2_lpf0_ours
+run dead2_lpf0_omar
+run dead2_lpf1_ours
+run dead2_lpf1_omar
+run dead3_lpf0_ours
+run dead3_lpf0_omar
+run dead3_lpf1_ours
+run dead3_lpf1_omar
+run dead4_lpf0_ours
+run dead4_lpf0_omar
+run dead4_lpf1_ours
+run dead4_lpf1_omar
+run margin_kr2400_d0
+run margin_kr2400_d0.5
+run margin_kr2400_d1
+run margin_kr2400_d1.5
+run margin_kr2400_d2
+run margin_kr2400_d3
+run margin_kr2400_d4
+run margin_kr1200_d0
+run margin_kr1200_d0.5
+run margin_kr1200_d1
+run margin_kr1200_d1.5
+run margin_kr1200_d2
+run margin_kr1200_d3
+run margin_kr1200_d4
+run margin_kr987_d0
+run margin_kr987_d0.5
+run margin_kr987_d1
+run margin_kr987_d1.5
+run margin_kr987_d2
+run margin_kr987_d3
+run margin_kr987_d4
+run margin_kr600_d0
+run margin_kr600_d0.5
+run margin_kr600_d1
+run margin_kr600_d1.5
+run margin_kr600_d2
+run margin_kr600_d3
+run margin_kr600_d4
+run margin_kr483_d0
+run margin_kr483_d0.5
+run margin_kr483_d1
+run margin_kr483_d1.5
+run margin_kr483_d2
+run margin_kr483_d3
+run margin_kr483_d4
+run omar_margin_d0
+run omar_margin_d0.5
+run omar_margin_d1
+run omar_margin_d1.5
+run omar_margin_d2
+run omar_margin_d3
+run omar_margin_d4
+run baseline_budget_ours
+run baseline_budget_omar
+run baseline_budget_ours_spool125
+run baseline_budget_ours_spool130
+run baseline_dead2_lpf80_only
+run grid_rs1_kr2400_flown
+run grid_rs1_kr2400_card_geom
+run grid_rs1_kr2400_card_matched
+run grid_rs1_kr987_flown
+run grid_rs1_kr987_card_geom
+run grid_rs1_kr987_card_matched
+run grid_rs1_kr483_flown
+run grid_rs1_kr483_card_geom
+run grid_rs1_kr483_card_matched
+run grid_rs-1_kr2400_flown
+run grid_rs-1_kr2400_card_geom
+run grid_rs-1_kr2400_card_matched
+run grid_rs-1_kr987_flown
+run grid_rs-1_kr987_card_geom
+run grid_rs-1_kr987_card_matched
+run grid_rs-1_kr483_flown
+run grid_rs-1_kr483_card_geom
+run grid_rs-1_kr483_card_matched
+done {
+  "plant_validity": "partly_validated",
+  "hardware_delay_ms_nominal": 5.750116359410379,
+  "hardware_delay_ms_range": [
+    2.0,
+    8.0
+  ],
+  "margin_at_kr2400_ms": 0.0,
+  "margins_per_kr": {
+    "2400": 0.0,
+    "1200": 0.5,
+    "987": 1.0,
+    "600": 1.0,
+    "483": 0.0
+  },
+  "best_baseline_label": "baseline_budget_ours_spool125",
+  "best_baseline_metrics": {
+    "gyro_rms_deg_s": 180.48465413625868,
+    "gyro_x_rms_deg_s": 138.05542381329295,
+    "roll_rms_deg": 2.6084000789533612,
+    "pitch_rms_deg": 8.062244322864933,
+    "mean_z_err_cm": -49.77147403801443,
+    "lateral_rms_cm": 3.930948203536528,
+    "dominant_hz_gyro_x": 5.333333333333921,
+    "regime": "diverging",
+    "steady_window_s": [
+      6.0,
+      13.0
+    ]
+  },
+  "flight_repro_score_max": 2,
+  "cmd_dead_method": "linear_interp_on_rpm_history"
+}

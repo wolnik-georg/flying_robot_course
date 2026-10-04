@@ -1,0 +1,142 @@
+{
+  "assumptions": [
+    "Linear SISO models; Omar additive INDI path omitted in attitude row",
+    "Residual path uses scalar lag tau_res=55ms and k_tilt coupling (ASSUMPTION)",
+    "Butterworth on measurement path only"
+  ],
+  "residual_path": [
+    {
+      "omega_c_rad_s": 0.8725441274274083,
+      "f_c_hz": 0.13886971094587663,
+      "pm_deg": 88.95354832364347,
+      "stable_guess": true,
+      "kp_z": 64,
+      "kv_z": 5,
+      "res_sign": 1,
+      "model": "residual_to_tilt"
+    },
+    {
+      "omega_c_rad_s": 0.8725441274274083,
+      "f_c_hz": 0.13886971094587663,
+      "pm_deg": 268.9535483236435,
+      "stable_guess": true,
+      "kp_z": 64,
+      "kv_z": 5,
+      "res_sign": -1,
+      "model": "residual_to_tilt"
+    },
+    {
+      "omega_c_rad_s": 0.38232195287939863,
+      "f_c_hz": 0.060848428653302984,
+      "pm_deg": 91.73725608065175,
+      "stable_guess": true,
+      "kp_z": 28,
+      "kv_z": 5,
+      "res_sign": 1,
+      "model": "residual_to_tilt"
+    },
+    {
+      "omega_c_rad_s": 0.38232195287939863,
+      "f_c_hz": 0.060848428653302984,
+      "pm_deg": 271.7372560806517,
+      "stable_guess": true,
+      "kp_z": 28,
+      "kv_z": 5,
+      "res_sign": -1,
+      "model": "residual_to_tilt"
+    },
+    {
+      "omega_c_rad_s": 0.09553315055014518,
+      "f_c_hz": 0.015204573139197826,
+      "pm_deg": 92.58281133806467,
+      "stable_guess": true,
+      "kp_z": 7,
+      "kv_z": 4,
+      "res_sign": 1,
+      "model": "residual_to_tilt"
+    },
+    {
+      "omega_c_rad_s": 0.09553315055014518,
+      "f_c_hz": 0.015204573139197826,
+      "pm_deg": 272.5828113380647,
+      "stable_guess": true,
+      "kp_z": 7,
+      "kv_z": 4,
+      "res_sign": -1,
+      "model": "residual_to_tilt"
+    }
+  ],
+  "attitude_loop": [
+    {
+      "omega_c_rad_s": 744.7756890771117,
+      "f_c_hz": 118.53473241129485,
+      "pm_deg": 630.4830744130713,
+      "stable_guess": true,
+      "variant": "ours_indi",
+      "kr": 2400,
+      "kw": 170,
+      "J": 2.3951e-05,
+      "Jkr_Nm_per_rad": 0.0574824,
+      "omega_n_hz": 7.7969680123367615,
+      "zeta": 1.7350552344714179
+    },
+    {
+      "omega_c_rad_s": 525.4775217482958,
+      "f_c_hz": 83.6323450699202,
+      "pm_deg": 631.1328204875033,
+      "stable_guess": true,
+      "variant": "ours_indi",
+      "kr": 1200,
+      "kw": 120,
+      "J": 2.3951e-05,
+      "Jkr_Nm_per_rad": 0.0287412,
+      "omega_n_hz": 5.513288954217921,
+      "zeta": 1.7320508075688772
+    },
+    {
+      "omega_c_rad_s": 301.58734947475637,
+      "f_c_hz": 47.9991174428904,
+      "pm_deg": 632.7116704855449,
+      "stable_guess": true,
+      "variant": "ours_indi",
+      "kr": 420,
+      "kw": 69,
+      "J": 2.3951e-05,
+      "Jkr_Nm_per_rad": 0.010059420000000001,
+      "omega_n_hz": 3.2617057320435063,
+      "zeta": 1.6834276258362197
+    },
+    {
+      "omega_c_rad_s": 209.2107751027269,
+      "f_c_hz": 33.29692900568581,
+      "pm_deg": 633.9090730536093,
+      "stable_guess": true,
+      "variant": "ours_indi",
+      "kr": 290,
+      "kw": 48,
+      "J": 2.3951e-05,
+      "Jkr_Nm_per_rad": 0.00694579,
+      "omega_n_hz": 2.710311017958915,
+      "zeta": 1.4093285268352882
+    },
+    {
+      "omega_c_rad_s": 32.73446574125684,
+      "f_c_hz": 5.20985203219333,
+      "pm_deg": 648.1563341308074,
+      "stable_guess": true,
+      "variant": "omar_geo_core",
+      "KR": 0.007,
+      "KW": 0.00115,
+      "J": 1.657171e-05,
+      "KR_Nm_per_rad": 0.007,
+      "omega_n_hz": 3.2710372461744828,
+      "zeta": 1.6882437956471987,
+      "kr_equiv_ours_units": 422.40661947379
+    }
+  ],
+  "unit_conversion": {
+    "omar_KR_to_kr_ours": "kr_equiv = KR / J_ours",
+    "KR_0.007_over_J_ours": 292.2633710492255,
+    "KR_0.007_over_J_omar": 422.40661947379
+  }
+}

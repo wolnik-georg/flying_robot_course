@@ -1,0 +1,36 @@
+{
+  "mixer": {
+    "arm_m": 0.035355339050000004,
+    "thrust2torque_m": 0.0056927884,
+    "thrust_max_per_motor_N": 0.2,
+    "roll_torque_per_N_differential": 0.035355339050000004,
+    "yaw_torque_per_N_differential": 0.0056927884,
+    "source_mixer": "crazyflie-firmware power_distribution_quadrotor.c:95-107"
+  },
+  "thrust_model": {
+    "omar_scalar_MOTORRPM2FORCE": 3.91194027330774e-08,
+    "ours_kt_mean_N_per_RPM2": 4.10905e-10,
+    "kt_mean_over_scalar_equiv": 0.9578378055454446,
+    "pct_diff_kt_vs_scalar": -4.216219445455538,
+    "note": "Same RPM\u2192force at mean kt if scalar matches; per-motor spread ~\u00b11.3% on flown kts."
+  },
+  "inertia": {
+    "ours_Jxx_kgm2": 2.3951e-05,
+    "omar_Jxx_kgm2": 1.657171e-05,
+    "ratio_ours_over_omar": 1.4452944204309635,
+    "ours_j_scale_flown": 1.0,
+    "effective_indi_J_scale_vs_omar": 1.4452944204309635
+  },
+  "mass": {
+    "ours_flown_kg": 0.041,
+    "omar_rust_const_kg": 0.0427,
+    "omar_c_CF_MASS_build_kg": 0.0427,
+    "pct_ours_vs_omar_mass": -3.9812646370023463
+  },
+  "effectiveness": {
+    "mixer_path_identical": true,
+    "torque_cmd_to_motor_force_gain_roll": 0.035355339050000004,
+    "assumption": "If ESC/mixer is linear below saturation, g_torque\u22481 for all variants at same SI torque cmd.",
+    "indi_internal_torque_estimate_ratio_ours_over_omar_J": 1.4452944204309635
+  }
+}

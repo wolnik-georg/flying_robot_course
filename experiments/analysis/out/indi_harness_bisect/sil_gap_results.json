@@ -1,0 +1,531 @@
+{
+  "validity": {
+    "flight_reproduced": false,
+    "best_ours": "cmd_dead_2_ours",
+    "best_ours_gyro": 233.35776888838305
+  },
+  "results": [
+    {
+      "label": "sil_baseline_ours",
+      "config": {
+        "label": "sil_baseline_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {}
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.6843116601607976,
+        "gyro_x_rms_deg_s": 0.4519801151145265,
+        "roll_rms_deg": 0.0007756299151401787,
+        "pitch_rms_deg": 0.06024584559870249,
+        "mean_z_err_cm": -0.41025451613079716,
+        "lateral_rms_cm": 0.01937801314898125,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0010784090759234177,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {}
+    },
+    {
+      "label": "sil_baseline_omar",
+      "config": {
+        "label": "sil_baseline_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {}
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.014917523403324267,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {}
+    },
+    {
+      "label": "cmd_dead_2_ours",
+      "config": {
+        "label": "cmd_dead_2_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "cmd_dead_ticks": 2
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 233.35776888838305,
+        "gyro_x_rms_deg_s": 191.59172666421262,
+        "roll_rms_deg": 2.3562424106844886,
+        "pitch_rms_deg": 6.3375819633463735,
+        "mean_z_err_cm": -36.06423393958612,
+        "lateral_rms_cm": 6.935283724442582,
+        "dominant_hz_gyro_x": 7.428571428568947,
+        "gyro_band_energy": 14207.055708619413,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2
+      }
+    },
+    {
+      "label": "cmd_dead_2_omar",
+      "config": {
+        "label": "cmd_dead_2_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "cmd_dead_ticks": 2
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.012039314378058134,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2
+      }
+    },
+    {
+      "label": "rpm_lag_1_ours",
+      "config": {
+        "label": "rpm_lag_1_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "rpm_lag_samples": 1
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.6920760425758348,
+        "gyro_x_rms_deg_s": 0.45659504801197504,
+        "roll_rms_deg": 0.0007710923075063276,
+        "pitch_rms_deg": 0.06103171067236853,
+        "mean_z_err_cm": -0.4102564548405388,
+        "lateral_rms_cm": 0.019624491083383194,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0011459856229845196,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "rpm_lag_samples": 1
+      }
+    },
+    {
+      "label": "rpm_lag_1_omar",
+      "config": {
+        "label": "rpm_lag_1_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "rpm_lag_samples": 1
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.014822125617251684,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "rpm_lag_samples": 1
+      }
+    },
+    {
+      "label": "dead2_rpm_lag1_ours",
+      "config": {
+        "label": "dead2_rpm_lag1_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "cmd_dead_ticks": 2,
+          "rpm_lag_samples": 1
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 182.2300814378854,
+        "gyro_x_rms_deg_s": 145.34399058068672,
+        "roll_rms_deg": 0.9288275634208932,
+        "pitch_rms_deg": 4.799212278670259,
+        "mean_z_err_cm": -38.7433759434532,
+        "lateral_rms_cm": 4.525625665392514,
+        "dominant_hz_gyro_x": 6.857142857140566,
+        "gyro_band_energy": 18031.28594111532,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2,
+        "rpm_lag_samples": 1
+      }
+    },
+    {
+      "label": "dead2_rpm_lag1_omar",
+      "config": {
+        "label": "dead2_rpm_lag1_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "cmd_dead_ticks": 2,
+          "rpm_lag_samples": 1
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.011949605124404359,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2,
+        "rpm_lag_samples": 1
+      }
+    },
+    {
+      "label": "hold_500_ours",
+      "config": {
+        "label": "hold_500_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "output_hold_500hz": true
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.6870722324854334,
+        "gyro_x_rms_deg_s": 0.44801922485751655,
+        "roll_rms_deg": 0.0007701723970036366,
+        "pitch_rms_deg": 0.06117583598071102,
+        "mean_z_err_cm": -0.41026765108235097,
+        "lateral_rms_cm": 0.01952332295312788,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0009034544659122516,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "output_hold_500hz": true
+      }
+    },
+    {
+      "label": "hold_500_omar",
+      "config": {
+        "label": "hold_500_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "output_hold_500hz": true
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.014917523403324267,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "output_hold_500hz": true
+      }
+    },
+    {
+      "label": "spool_125_ours",
+      "config": {
+        "label": "spool_125_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "spool_asym": 1.25
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.6869135111780819,
+        "gyro_x_rms_deg_s": 0.4498473693591849,
+        "roll_rms_deg": 0.0007759350207717406,
+        "pitch_rms_deg": 0.0608216174163428,
+        "mean_z_err_cm": -0.42578431816203793,
+        "lateral_rms_cm": 0.0194360945633353,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0009796421705643888,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "spool_asym": 1.25
+      }
+    },
+    {
+      "label": "spool_125_omar",
+      "config": {
+        "label": "spool_125_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "spool_asym": 1.25
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": 0.009881752533031363,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "spool_asym": 1.25
+      }
+    },
+    {
+      "label": "combo_harness_like_ours",
+      "config": {
+        "label": "combo_harness_like_ours",
+        "bottom_controller": "oot",
+        "ctrl_mode": 3,
+        "res_sign": 1,
+        "indi_overrides": {
+          "kr": 2400,
+          "kw": 170,
+          "fc_bw": 206,
+          "filt_dt_us": 1000,
+          "filt_prewarp": 1
+        },
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "ki_z": 0,
+        "gap": {
+          "cmd_dead_ticks": 2,
+          "rpm_lag_samples": 1,
+          "spool_asym": 1.25
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 196.55745254955144,
+        "gyro_x_rms_deg_s": 116.64571159546115,
+        "roll_rms_deg": 1.423409921342381,
+        "pitch_rms_deg": 6.462404693310584,
+        "mean_z_err_cm": -40.101892739024244,
+        "lateral_rms_cm": 3.469042642960928,
+        "dominant_hz_gyro_x": 6.857142857140566,
+        "gyro_band_energy": 8306.710997311242,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2,
+        "rpm_lag_samples": 1,
+        "spool_asym": 1.25
+      }
+    },
+    {
+      "label": "combo_harness_like_omar",
+      "config": {
+        "label": "combo_harness_like_omar",
+        "bottom_controller": "oot4",
+        "kp_xy": 64,
+        "kp_z": 48,
+        "kv_xy": 5,
+        "kv_z": 7,
+        "gap": {
+          "cmd_dead_ticks": 2,
+          "rpm_lag_samples": 1,
+          "spool_asym": 1.25
+        }
+      },
+      "metrics": {
+        "gyro_rms_deg_s": 0.0,
+        "gyro_x_rms_deg_s": 0.0,
+        "roll_rms_deg": 0.0,
+        "pitch_rms_deg": 0.0,
+        "mean_z_err_cm": -0.005331555081000639,
+        "lateral_rms_cm": 0.0,
+        "dominant_hz_gyro_x": 2.285714285713522,
+        "gyro_band_energy": 0.0,
+        "regime": "divergence",
+        "steady_window_s": [
+          6.0,
+          13.0
+        ]
+      },
+      "gap": {
+        "cmd_dead_ticks": 2,
+        "rpm_lag_samples": 1,
+        "spool_asym": 1.25
+      }
+    }
+  ]
+}

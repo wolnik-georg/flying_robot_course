@@ -1,0 +1,71 @@
+{
+  "operating_freq_hz_for_gd": 6.0,
+  "gyro_lpf_group_delay_ms": 3.250116359410379,
+  "accel_lpf_group_delay_ms": 5.492360712551716,
+  "command_path_extra_ms_nominal": 2.5,
+  "command_path_range_ms": [
+    1.0,
+    4.0
+  ],
+  "sensor_path_extra_ms_nominal": 3.250116359410379,
+  "total_extra_dead_equiv_ms_nominal": 5.750116359410379,
+  "total_uncertainty_ms": [
+    2.0,
+    8.0
+  ],
+  "bench_tau_44ms_contains": "Rotor speed dynamics; investigation states separate ~4 ms dead beyond pole fit.",
+  "items": [
+    {
+      "path": "gyro \u2192 controller",
+      "element": "BMI088 software LPF 80 Hz (2nd order lpf2p)",
+      "delay_ms_at_6hz": 3.250116359410379,
+      "source": "sensors_bmi088_bmp3xx.c:140,555; scipy biquad group delay",
+      "confidence": "MEDIUM",
+      "evidence": "FACT constants; SIMULATION group delay"
+    },
+    {
+      "path": "gyro \u2192 controller",
+      "element": "Stabilizer tick order (sample then controller same 1 kHz tick)",
+      "delay_ms_at_6hz": 0.0,
+      "source": "stabilizer.c:319-350",
+      "confidence": "HIGH",
+      "evidence": "FACT",
+      "note": "No extra full-tick delay within loop; sensor task queue not modelled here."
+    },
+    {
+      "path": "accel \u2192 INDI residual",
+      "element": "Accel LPF 30 Hz",
+      "delay_ms_at_6hz": 5.492360712551716,
+      "source": "sensors_bmi088_bmp3xx.c:141,556",
+      "confidence": "MEDIUM",
+      "evidence": "FACT + SIMULATION"
+    },
+    {
+      "path": "controller \u2192 thrust",
+      "element": "DShot burst after controller (same tick)",
+      "delay_ms_at_6hz": 0.5,
+      "source": "stabilizer.c:350-357; JUDGEMENT",
+      "confidence": "LOW",
+      "evidence": "JUDGEMENT",
+      "note": "Sub-ms compute + DMA; not separately measured."
+    },
+    {
+      "path": "controller \u2192 thrust",
+      "element": "ESC/DShot frame + commutation (investigation \u00a716)",
+      "delay_ms_at_6hz": 2.0,
+      "source": "investigation_indi_oscillation_2026-07-21.md \u00a716 (~4 ms dead cited for 500 Hz model)",
+      "confidence": "MEDIUM",
+      "evidence": "JUDGEMENT from prior analysis",
+      "note": "Distinct from motor_tau=44 ms pole in SIL plant."
+    },
+    {
+      "path": "controller \u2192 thrust",
+      "element": "Motor first-order lag \u03c4=44 ms",
+      "delay_ms_at_6hz": null,
+      "source": "SIL plant motor_tau; bench ID",
+      "confidence": "HIGH",
+      "evidence": "MEASUREMENT bench",
+      "note": "Already in plant; not added again as dead time."
+    }
+  ]
+}
