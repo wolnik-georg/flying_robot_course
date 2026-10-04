@@ -195,14 +195,24 @@ footer{
 </div>
 
 <section>
-  <div class="sec-head"><h2>Snapshot — executive summary (updated 29 Sep 2026)</h2></div>
+  <div class="sec-head"><h2>Snapshot — executive summary (updated 5 Oct 2026)</h2></div>
   <p class="note" style="font-style:normal; color:var(--ink-2); margin-bottom:14px">
     Executive summary only. Day-to-day detail lives in <code>docs/07</code>,
     <code>docs/next_flight_card.html</code>, and <code>docs/lab_sessions/2026-09-28_alt_indi_shakedown.md</code> /
     <code>2026-09-24_to_26.md</code>.
   </p>
   <ul style="margin:0 0 8px; padding-left:1.2em; max-width:72ch">
-    <li><strong>29 Sep close-out (lab + desk):</strong> <strong>controller=9 flown and working.</strong>
+    <li><strong>Current state (5 Oct, meeting doc <code>docs/meetings/2026-10-05.md</code>) — supersedes older bullets below where they differ:</strong>
+      <strong>Pure INDI</strong> (bottom drone, mean / max z error): A1 Ours −17…−19 / 29–38 cm, Omar C +2…+4 / 6–9,
+      Omar Rust −11 / 18; A8 Ours +3.4 / ~8, Omar C +22 / 30, Omar Rust +19 / 26 — no clear winner, variant choice pending
+      (depends on the comparison scenarios). <strong>Z-integral</strong> (<code>ki_z=16</code>, geometric) is
+      <strong>validated on hardware</strong>: steady z within ≈2&nbsp;cm (the 26 Sep “do not enable” recommendation is obsolete);
+      A8 bottom drone dips 7–8 cm at crossings (downwash). <strong>RPM deck vs DShot</strong> (top drone only, 32 motor-rows):
+      bias −0.22 %, RMSE 104 RPM, r 0.92, DShot 0–2 ms later; spike rule <code>|DShot − deck| &gt; 2000 RPM</code>.
+      <strong>NS2</strong>: first hardware flights crashed <code>cf5</code>; likely cause = network at 1 kHz, rate cut to 100 Hz
+      (sim fine) — <strong>next lab question: does 100 Hz stop the crashes?</strong> (<code>docs/next_flight_card.html</code>,
+      <code>docs/next_steps_checklist.md</code>). Open decisions: thesis “Pure INDI” variant, comparison scenarios, FBL email follow-up.</li>
+    <li><strong>29 Sep close-out (lab + desk) — history:</strong> <strong>controller=9 flown and working.</strong>
       Real connect crash was a missing firmware param (<code>deck.bcRpm</code>); same evening found
       shipped <code>indi=0</code> (SIL had always used <code>indi=3</code>) — fixed in yaml. First
       hardware comparison on A1 dz=0.30: our geometric ~<strong>0.17&nbsp;m</strong> separation error,
@@ -236,14 +246,14 @@ footer{
       on <code>cf_second</code> that the existing (tilt-only) Stage E gate doesn't catch —
       <strong>do not fly <code>rnn.en=1</code></strong> until this is resolved. Needs A4 data or real
       hardware <code>rnn.en=0</code> logs, not more desk work. See <code>docs/40</code>, <code>docs/45</code>.</li>
-    <li><strong>RPM dual-source quality (desk, reopened 29 Sep):</strong> full C.1 glob
+    <li><strong>RPM dual-source quality (desk, reopened 29 Sep — numbers superseded 5 Oct, see top bullet):</strong> full C.1 glob
       (<strong>38</strong> merges, <strong>272</strong> motor-rows). Headline tracking error is
       spike-filtered RMSE ~<strong>128 RPM</strong> (median motor-row); raw with-spikes diagnostic
       ~803 RPM. Cross-correlation: <strong>deck faster</strong> — positive lag = DShot lags deck.
       Rare DShot-only telemetry spikes (best-fit decode glitches, not confirmed); analysis excludes
       them; firmware <code>rpm_get_all()</code> guard protects future flights only. A2 top deck
       dropout unchanged. <code>docs/43</code>.</li>
-    <li><strong>Position-integral Z-bias investigation (desk, 26 Sep):</strong> real logs show a
+    <li><strong>Position-integral Z-bias investigation (desk, 26 Sep — OBSOLETE: Z-only integral later validated on hardware, see top bullet):</strong> real logs show a
       consistent, scenario-scaled below-setpoint Z bias on <code>cf5</code> (~2&nbsp;cm solo C5 up to
       ~17–20&nbsp;cm A1 under top) — but a working SIL ON/OFF comparison (verified distinct binaries)
       shows the existing joint XY+Z integral (<code>KI_P=0.05</code>) trims &lt;1&nbsp;mm even at
@@ -251,7 +261,7 @@ footer{
       — the bias looks like downwash/formation physics, not a controller offset an integral term fixes.
       <code>docs/50</code>.</li>
     <li><strong>C.4 repeats + statistics:</strong> desk prep/metrics toolchain ready (27 Sep);
-      <strong>flight campaign not started</strong> — blocked on mocap + lab access.</li>
+      <strong>flight campaign not started</strong> — now waits on the NS2 outcome and the INDI-variant/scenario decision (mocap is fixed).</li>
     <li><strong>Correction (27 Sep) — supersedes 26 Sep C.2 “open finding” bullets above:</strong>
       ~0.47&nbsp;m Stage&nbsp;E overshoot and near-zero SIL correlation were <strong>SIL upload-protocol
       bugs</strong> (fixed <code>256fc22</code>), not model failure — re-validated corr ≈0.83, overshoot
@@ -269,7 +279,7 @@ footer{
       bank) waits on <strong>mocap + flight time</strong>, not desk work.</li>
     <li><strong>Parallel INDI implementations (Strategy 1):</strong> <code>controller=9</code>
       (Omar literal C) — <strong>flown 29 Sep</strong>, first A1 data above; <code>controller=10</code>
-      (Rust port) — built and numerically verified, hardware retry pending; <code>controller=7/8</code>
+      (Rust port) — flown 30 Sep after the enum-size fix (hover + figure-8); <code>controller=7/8</code>
       — sim-clean, hardware paused or out of scope per <code>docs/41</code>. Not all are C.4 rows yet.</li>
   </ul>
 </section>
@@ -281,8 +291,8 @@ footer{
     structure exists (27 Sep). <strong>Mocap fault resolved, lab flying resumed 28 Sep — C.1 collection is
     now COMPLETE</strong> (full bank incl. A4 ×4). The lab track's current bottleneck is the
     <strong>alt-INDI shakedown</strong> (controller=9 flown and working; controller=10 built, first hardware
-    attempt failed, solo retry staged) plus a staged <strong>Z-only integral</strong> hardware test — see
-    <code>docs/07</code> Next-action. <strong>Desk engineering is closed (29 Sep)</strong>; merge/analysis/
+    attempt failed, solo retry staged) plus a staged <strong>Z-only integral</strong> hardware test — <em>(28–29 Sep status; both
+    since resolved — current state: top bullet of the Snapshot above and <code>docs/07</code> Next-action)</em>. <strong>Desk engineering is closed</strong>; merge/analysis/
     metrics prep for C.4 is validated on real logs.
   </p>
 
@@ -532,7 +542,7 @@ footer{
 </section>
 
 <footer>
-  Updated 29&nbsp;Sep (c=9 flown, c=10 retry, RPM + Z-integral desk) · SSOT: <code>docs/07</code> History (73) ·
+  Updated 5&nbsp;Oct (INDI / Z-integral / RPM results final, NS2 100 Hz test next) · SSOT: <code>docs/07</code> History (77) ·
   Lab: <code>docs/next_flight_card.html</code>, <code>docs/25</code> ·
   C.2: <code>docs/40</code>, <code>docs/13</code> ·
   Analysis: <code>docs/28</code>, <code>docs/27</code> ·
