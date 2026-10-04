@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Task 3 — optical deck RPM vs DShot (airborne-clean, Hampel glitch removal).
+"""Task 3 — optical deck RPM vs DShot (airborne-clean, DShot spike threshold).
 
 Run:
   ~/.pyenv/versions/flying_robots/bin/python experiments/analysis/meeting_simple_rpm_deck_dshot.py
@@ -19,8 +19,7 @@ from meeting_simple_common import OUT_ASSETS, OUT_TABLES, apply_meeting_style
 
 LOGS = Path(__file__).resolve().parents[2] / "experiments/logs"
 FS = 500.0
-SPIKE_ERR_RPM = 10_000.0
-DSHOT_INVALID = 60_000.0
+SPIKE_DELTA_RPM = 2_000.0
 AIRBORNE_RPM_MIN = 8_000.0
 SHUTDOWN_RPM = 5_000.0
 SHUTDOWN_MIN_S = 0.5
@@ -155,15 +154,9 @@ def hampel_outlier_mask(delta: np.ndarray) -> np.ndarray:
 
 
 def glitch_masks(deck: np.ndarray, dshot: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    delta = dshot - deck
-    hampel = hampel_outlier_mask(delta)
-    abs_big = np.abs(delta) > SPIKE_ERR_RPM
-    invalid = dshot >= DSHOT_INVALID
-    bad = hampel | abs_big | invalid
-    dshot_high = bad & (dshot > deck + 500)
-    deck_glitch = bad & ~dshot_high
-    old_bad = abs_big | invalid
-    return bad, old_bad, dshot_high, deck_glitch
+    """Spike = |DShot - deck| > SPIKE_DELTA_RPM (normal noise < 500 RPM, spikes > 5000 RPM off)."""
+    bad = np.abs(dshot - deck) > SPIKE_DELTA_RPM
+    return bad, bad, bad, np.zeros_like(bad)
 
 
 def interp_series(t: np.ndarray, y: np.ndarray, bad: np.ndarray) -> np.ndarray:
@@ -376,9 +369,31 @@ def plot_overlay_and_delta(path: Path, prefix: str, motor: int, meta: dict, out_
     plot_segments(ax, td, diff, color="#2E6DA4", lw=0.8, label="DShot − deck")
     ax.axhline(0, color="black", lw=0.8)
     ax.set_xlabel("time (s)"); ax.set_ylabel("DShot − deck (RPM)")
-    ax.set_title("Difference DShot − deck: noise around 0, no drift")
+    ax.set_title("DShot minus RPM deck: noise around 0")
     ax.legend(loc="upper right")
     fig.tight_layout(); fig.savefig(out_delta, bbox_inches="tight"); plt.close(fig)
+
+
+def plot_summary(included: list[dict], highlight: dict, out_png: Path) -> None:
+    """One dot per motor-row (flight x motor): shows the single plotted motor is (or is not) typical."""
+    flights = list(dict.fromkeys(r["flight"] for r in included))
+    xs = {f: i for i, f in enumerate(flights)}
+    panels = [("bias_pct", "bias (%)"), ("rmse", "RMSE (RPM)"), ("r", "correlation r"), ("lag_ms", "lag (ms)")]
+    fig, axes = plt.subplots(1, 4, figsize=(13, 3.6))
+    for ax, (key, lab) in zip(axes, panels):
+        for r in included:
+            x = xs[r["flight"]] + (r["motor"] - 2.5) * 0.12
+            ax.plot(x, r[key], "o", ms=4.5, color="#2E6DA4", alpha=0.8)
+        vals = np.array([r[key] for r in included], dtype=float)
+        ax.axhline(np.median(vals), color="black", lw=1.0, ls="--", label=f"median {np.median(vals):.2f}")
+        ax.plot(xs[highlight["flight"]] + (highlight["motor"] - 2.5) * 0.12, highlight[key], "o", ms=11,
+                mfc="none", mec="#D1495B", mew=2, label="plotted motor")
+        ax.set_title(lab)
+        ax.set_xlabel("flight (1–8)")
+        ax.set_xticks(range(len(flights)), [str(i + 1) for i in range(len(flights))])
+        ax.legend(fontsize=8, loc="best")
+    fig.suptitle("All 32 motor-rows: one dot per motor (4 per flight)", y=1.02)
+    fig.tight_layout(); fig.savefig(out_png, bbox_inches="tight"); plt.close(fig)
 
 
 def a3_spike_check(path: Path, prefix: str, motor: int, meta: dict) -> dict:
@@ -472,19 +487,27 @@ def main() -> None:
             a3_checks = a3_spike_check(row["path"], row["prefix"], 1, row)
             break
     # one flight is enough for the meeting: the stable-lag pick -> overlay + delta figures
-    # figure flight = the calmest one (smallest deck RPM std), so the plot does not look like an unstable hover
-    row = min(included, key=lambda r: r["deck_std"])
+    # figure motor = the one closest to the median on all four metrics (distance in IQR units, worst metric counts)
+    keys = ("bias_pct", "rmse", "r", "lag_ms")
+    mat = np.array([[r[k] for k in keys] for r in included], dtype=float)
+    med = np.median(mat, axis=0)
+    iqr = np.subtract(*np.percentile(mat, [75, 25], axis=0))
+    iqr[iqr == 0] = 1.0
+    row = included[int(np.argmin(np.abs((mat - med) / iqr).max(axis=1)))]
     out_ov = OUT_ASSETS / "fig_rpm_overlay.png"
     out_dl = OUT_ASSETS / "fig_rpm_delta.png"
     plot_overlay_and_delta(row["path"], row["prefix"], row["motor"], row, out_ov, out_dl)
     written += [out_ov, out_dl]
     print(f"wrote {out_ov}\nwrote {out_dl}")
+    out_sm = OUT_ASSETS / "fig_rpm_summary.png"
+    plot_summary(included, row, out_sm)
+    print(f"wrote {out_sm}")
     total_new = sum(r["n_bad"] for r in included)
     total_old = sum(r["n_bad_old"] for r in included)
     fast_frac = sum(r["n_bad_on_fast_deck"] for r in included) / max(total_new, 1)
 
     md = [
-        "# Table — deck vs DShot RPM (airborne-clean, Hampel Δ filter)",
+        "# Table — deck vs DShot RPM (airborne-clean, DShot spike threshold)",
         "",
         "## Formulas (metrics on glitch-removed aligned samples, deck & DShot > 0)",
         "- **bias** = mean(s − d) [RPM]; **bias %** = 100 · mean(s − d) / mean(d)",
@@ -496,16 +519,12 @@ def main() -> None:
         f"- Raw deck > {AIRBORNE_RPM_MIN:.0f} RPM and raw DShot > {AIRBORNE_RPM_MIN:.0f} RPM; contiguous first→last.",
         f"- Exclude RPM < {SHUTDOWN_RPM:.0f} for > {SHUTDOWN_MIN_S} s while z > 0.3 m, or airborne segment < {MIN_AIRBORNE_S:.0f} s.",
         "",
-        "## Glitch removal (Hampel on Δ = DShot − deck)",
-        f"- Flag if |Δ − median(Δ, centred {HAMPEL_WIN}-sample window)| > max({HAMPEL_FLOOR_RPM:.0f} RPM, "
-        f"{HAMPEL_K} · 1.4826 · MAD(Δ)), or |Δ| > {SPIKE_ERR_RPM:.0f}, or DShot ≥ {DSHOT_INVALID:.0f}.",
+        "## Glitch removal (simple threshold)",
+        f"- Spike = |DShot − deck| > {SPIKE_DELTA_RPM:.0f} RPM (normal noise < 500 RPM; spikes are > 5000 RPM off).",
         "- Remove flagged samples from **both** series (gaps in plots); metrics on remaining samples.",
         "- **Lag:** linear interpolation of both series at removed times, then ±50 ms cross-correlation.",
         "",
-        "## Old |Δ|>10k rule vs Hampel (included motor-rows)",
-        f"- Total removed samples: **{total_new}** (Hampel+rules) vs **{total_old}** (|Δ|>10k only).",
-        f"- Removed on top-1% |d(deck)/dt| samples: **{sum(r['n_bad_on_fast_deck'] for r in included)}** "
-        f"({100*fast_frac:.1f}% of removals) — should stay low so real transients remain.",
+        f"- Total removed samples: **{total_new}**.",
         "",
     ]
     if a3_checks:
