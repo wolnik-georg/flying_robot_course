@@ -69,7 +69,7 @@ bottom.
 | | |
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
-| **Next action — lab** | **⬅️ IN PROGRESS (updated 2026-10-03 session close, supersedes everything below for now).**
+| **Next action — lab** | **⬅️ 2026-10-05 update (see `docs/lab_sessions/2026-10-05.md`): NS2 100 Hz works (rnn_pred≈measured residual); crashes were tracker pose swaps (identical markers) and cf_second battery collapse, NOT the network. Next: A8 repeats with fresh batteries + pose bag, then `res_sign=-1`, then A1 rnn.en=0 baseline.** Older state: **IN PROGRESS (updated 2026-10-03 session close).**
 
 **2026-10-03 desk update (later, supersedes the NS2 "Next (desk)" line below — desk work is DONE):**
 
