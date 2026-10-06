@@ -111,15 +111,19 @@ footer{
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">Flight card — updated 2026-10-05 · flights and bench only · other next steps: <code>docs/next_steps_checklist.md</code></div>
+  <div class="eyebrow">Flight card — updated 2026-10-05 (late, after the lab session) · flights and bench only · other next steps: <code>docs/next_steps_checklist.md</code></div>
   <h1>Next Flight Card</h1>
-  <p class="lede"><strong>One question for the next lab session:</strong> does running the NS2 network at
-    <strong>100 Hz</strong> (instead of 1 kHz) stop the <strong>cf5</strong> crashes? Bench first, flights second.</p>
+  <p class="lede"><strong>State after 2026-10-05:</strong> 100 Hz works and the network predicts the residual well
+    (corr 0.85–0.92); the crashes were <strong>tracker pose swaps and a dying cf_second battery</strong>, not the network.
+    With fresh batteries 3 of 3 A8 flights were clean. <strong>One question for the next session:</strong> does flipping the
+    network term's sign (<code>res_sign=-1</code>) cut the crossing dips (now −10.9 cm with the network vs −5.9 cm without)?</p>
   <p class="refline">
+    <strong>Commands</strong> · <code>docs/lab_session_pack_2026-10-06.md</code> ·
+    Checklist · <code>docs/next_steps_checklist.md</code> ·
     Meeting · <code>docs/meetings/2026-10-05.md</code> ·
-    Protocol (pass/fail, commands) · <code>docs/ns2_next_lab_protocol.md</code> ·
+    Protocol · <code>docs/ns2_next_lab_protocol.md</code> ·
     Bench cheat sheet · <code>docs/lab_bench_cheatsheet_2026-10-03.md</code> ·
-    Last session · <code>docs/lab_sessions/2026-10-03.md</code>
+    Last session · <code>docs/lab_sessions/2026-10-05.md</code>
   </p>
 </header>
 
@@ -127,7 +131,8 @@ footer{
   <h2>0 — Before you fly (every session)</h2>
   <div class="panel next">
     <ul class="plain">
-      <li><strong>Batteries charged</strong> in both drones (10-03: <code>cf5</code> sagged to 3.0 V).</li>
+      <li><strong>Fresh batteries in both drones, rest voltage ≥ 4.1 V</strong> (10-05: <code>cf_second</code> collapsed to 2.5 V and crashed two flights; swap again if either starts below 4.0 V). Check <code>vbat</code> min in the radio CSV after every flight.</li>
+      <li><strong>Record the pose bag every flight session:</strong> <code>ros2 bag record -o &lt;name&gt; /poses /cf5/pose /cf_second/pose</code>.</li>
       <li><strong>Pull both repos</strong> on the lab PC (<code>flying_robot_course</code> + <code>crazyswarm2</code>); a stale yaml ruined flight 1 on 10-03.</li>
       <li>Build from the workspace root <code>~/georg/ros2_ws</code>; launch <code>ros2 launch crazyflie launch.py</code> (<code>cpp</code>), check <code>CS2_CONNECT_PARAM_PACE_V1</code>.</li>
       <li><strong>Card THESIS1:</strong> <code>umount</code> + <code>fsck.vfat -a</code>; both cards: <code>config.txt</code> = <code>usd_thesis_config.txt</code>, <code>check_usd_deck.py</code> on each drone.</li>
@@ -139,15 +144,9 @@ footer{
 </section>
 
 <section>
-  <h2>1 — Bench, motors OFF</h2>
-  <div class="panel next">
-    <table class="compact">
-      <tr><th>Step</th><th>What</th><th>Pass</th></tr>
-      <tr><td>A</td><td>Flash <strong>default</strong> build on <code>cf5</code>, launch</td><td><code>/cf5/pose</code> publishes, no rate warnings, no assert</td></tr>
-      <tr><td>B</td><td>Flash <strong>100 Hz + timing</strong> build, <code>read_rnn_timing.py</code> (CS2 stopped)</td><td><code>rnn.us_max</code> well below 1000 µs, warnings gone, pose OK</td></tr>
-      <tr><td>C</td><td>Tracker flip test: both drones on the floor ~0.5 m apart, <code>ros2 topic echo /poses</code>, flip <code>cf5</code> by hand</td><td>Shows whether the <code>cf5</code> pose jumps onto <code>cf_second</code> (tracker hypothesis)</td></tr>
-    </table>
-    <p class="note"><strong>If B fails</strong> (network too heavy even at 100 Hz): stop, no NS2 flight; next is a smaller network or off-board evaluation.</p>
+  <h2>1 — Bench: done 2026-10-05</h2>
+  <div class="panel">
+    <p class="note">Bench A, B, C passed on 10-05 (default and 100 Hz builds, hash-checked, flashed with <code>~/Desktop/lab_bins/flash_cf5.sh</code>). Nothing to repeat unless the firmware changes.</p>
   </div>
 </section>
 
@@ -155,11 +154,23 @@ footer{
   <h2>2 — Flights, in order</h2>
   <div class="panel next">
     <ul class="plain">
-      <li><strong>1 — A8, network off (<code>rnn.en=0</code>), 100 Hz build</strong>, <code>cf5</code> geometric (<code>ki_z=16</code>), yaml pulled. Pass: no crash; <code>rnn_pred_x/y/z</code> non-zero <strong>and varying with the neighbour's motion</strong>; <code>cf5</code> position ≠ <code>cf_second</code> position.</li>
-      <li><strong>2 — A8 with default firmware, <code>ki_z</code> 16 vs 0</strong> (same drone, same session). Separates the <code>ki_z</code> theory from the network load.</li>
-      <li><strong>3 — Network on (<code>rnn.en=1</code>)</strong> on A1 / A3, only if flights 1–2 are clean (Checklist G). Pass: non-zero predictions, stable flight.</li>
+      <li><strong>1 — A8, network on, <code>indi_gains.res_sign=-1</code> for <code>cf5</code></strong> (geometric, <code>ctrl_mode=0</code>, so only the network term flips; runtime param, no reflash), 3 flights, pose bag running. Pass: clean flights and the crossing dip (cf5 z error) clearly shallower than (a smaller dip, not a deeper one) the network-off baseline of about −5.9 cm, ranges not overlapping. Current network-on, <code>res_sign=+1</code>: −10.9 cm.</li>
+      <li><strong>2 — A8, network off (<code>rnn.en=0</code>), 2 flights</strong> for a larger baseline (so far 2 flights, 8 crossings).</li>
+      <li><strong>3 — A1, network off</strong>: baseline for the cf5 ±40° oscillation seen in A1 with the network on. Needed before any A1 network flight.</li>
     </ul>
-    <p class="note"><strong>After every flight:</strong> check the new <code>thesisNN</code> on the card covers the full flight; copy with <code>copy_usd_log.py</code> (never assume a card log and a radio CSV belong together).</p>
+    <p class="note"><strong>After every flight:</strong> copy the card logs with explicit names and <code>cmp</code> (the run tag in the log must match the <code>.meta.json</code> <code>usd_run_tag</code>), then archive on the card. Insert <code>cf_second</code>'s card first. Merge with <code>merge_usd_logs.py --roles bottom top --meta …</code>.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Gate: when is NS2 ready for the comparative study?</h2>
+  <div class="panel">
+    <ul class="plain">
+      <li>A8 with <code>res_sign=-1</code>: crossing dip clearly shallower than (a smaller dip, not a deeper one) the network-off baseline (−5.9 cm), clean flights.</li>
+      <li>A1 with the network on and <code>-1</code> stable, after an A1 network-off baseline settles whether the ±40° oscillation is the geometric controller or NS2.</li>
+      <li>No over-compensation (dip not overshooting upward; otherwise a gain factor on the network term).</li>
+      <li>Scenario set decided with the supervisor (checked so far: A8, A1). Rules for every comparison flight: fresh batteries, pose bag, <code>vbat</code> min checked.</li>
+    </ul>
   </div>
 </section>
 
@@ -168,7 +179,8 @@ footer{
   <div class="panel warn">
     <ul class="plain">
       <li>Any <code>Assert failed</code>, <code>rate is off</code>, or silent <code>/cf5/pose</code>: land / power-cycle, send the log, do not fly.</li>
-      <li><code>cf5</code> tumbles again: stop; do not retry the same config. Compare against the default-firmware flight (flight 2).</li>
+      <li><code>cf5</code> tumbles again: stop; do not retry the same config. Check the pose bag (did a pose jump onto the other drone?) and <code>vbat</code> first.</li>
+      <li>Abort at |roll/pitch| &gt; 25° for 0.5 s or z &lt; 0.25 m. Stop after 2 crashes.</li>
       <li>After a crash: toggle <code>stabilizer.estimator</code> 1 → 2 before the next flight (stuck EKF).</li>
       <li>Never broadcast <code>usec.reset</code> mid-flight.</li>
     </ul>

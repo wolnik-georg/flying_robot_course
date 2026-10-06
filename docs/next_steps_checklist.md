@@ -1,25 +1,34 @@
 # Next steps checklist
 
-Simple lab + desk list (as of **2026-10-05**, meeting prepared 2026-10-03, after the NS2 first hardware attempt — see
-[`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). Update when items move. Grouped by topic, then desk vs lab.
+Simple lab + desk list (as of **2026-10-06**, meeting [`meetings/2026-10-05.md`](meetings/2026-10-05.md), after the NS2 first hardware attempt and the 2026-10-05 session —
+[`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). **Lab session plan + copy-paste commands:**
+[`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md). Update when items move.
 
-**One-paragraph state:** NS2 did **not** validate. `cf5` crashed on both A8 flights; `cf_second` was clean.
-The flash-RNN firmware evaluates the network every **1 kHz** tick from boot (reference ≈ 550 µs/network ⇒ only feasible
-at ≈ 100 Hz) → stack overflow (patched, 8×) and probable MCU overload (unproven). Separately, `cf5`'s position estimate locked onto `cf_second`'s late in both flights — **a consequence of the flip** (tracker re-assignment, hypothesis), not the cause; why `cf5` tumbled first is the real open question. `cf5` is currently flashed with the flash-RNN + stack-8×
-build and is unstable; the default build is the known-good fallback. `cpp` is the only backend (`cflib` abandoned).
+**One-paragraph state (2026-10-05, lab session closed — `lab_sessions/2026-10-05.md`):** the 100 Hz network works and predicts the residual well
+(corr 0.85–0.92, A1 stack −1.61 vs measured −1.60 m/s²). The earlier crashes were **tracker pose swaps** (identical marker patterns; trigger unknown)
+and **`cf_second` battery collapse** (2.5 V → fell on `cf5` in A1) — not the network; with fresh batteries 3 of 3 A8 flights were clean. **Open:** the
+network term is added with `res_sign=+1` (reinforcing): crossing dips −10.9 cm with the network vs −5.9 cm without. Next: `res_sign=-1`. `cpp` is the only backend.
 
 ---
 
 ## WHAT'S NEXT — by area (2026-10-05, from the meeting doc [`meetings/2026-10-05.md`](meetings/2026-10-05.md))
 
-Flight-day steps only: [`next_flight_card.html`](next_flight_card.html). Everything else is here.
+Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md).
 
-**Lab (next session) — one question: does 100 Hz stop the `cf5` crashes?**
-- [ ] Fix card THESIS1 (fsck), flash the rebuilt binaries.
-- [ ] Bench, motors off: default build → 100 Hz build + timing → tracker flip test.
-- [ ] A8 with network off (`rnn.en=0`) + position-identity check.
-- [ ] Default-firmware `ki_z` 16 vs 0.
-- [ ] Only then network on (`rnn.en=1`, Checklist G).
+**NS2 "ready for the comparative study" gate (set 2026-10-05):** (1) A8 with `res_sign=-1`: crossing dip clearly shallower than (a smaller dip, not a deeper one) the network-off baseline (−5.9 cm), clean flights; (2) A1 with the network on and `-1` stable, after an A1 `rnn.en=0` baseline shows whether cf5's ±40° oscillation is the geometric controller or NS2; (3) no over-compensation (dip not overshooting upward; else a gain factor on the network term); (4) scenario set decided with the supervisor (checked so far: A8, A1 only); (5) operating rules for every comparison flight: fresh batteries (rest ≥ 4.1 V), pose bag, `vbat` min checked. Network is z-only by design (as in the reference); 100 Hz vs faster not compared (meeting question).
+
+**Lab (next session) — NS2 sign test** (commands: `next_flight_card.html`)
+- [x] Bench A–C, A8 `rnn.en=0` (2 clean), A8 `rnn.en=1` (crashes explained: tracker swap / battery), 3 clean A8 with fresh batteries — **done 2026-10-05**
+- [ ] Fresh batteries (rest ≥ 4.1 V), pose bag recording, `cf_second` card first.
+- [ ] **A8, network on, `indi_gains.res_sign=-1` (cf5 yaml), 3 flights** — pass: dip clearly shallower than (a smaller dip, not a deeper one) −5.9 cm.
+- [ ] **A8 `rnn.en=0`, 2 more flights** (baseline stats).
+- [ ] **A1 `rnn.en=0` baseline** (cf5 ±40° oscillation seen with the network on).
+- [ ] Only if swaps recur with healthy batteries: firmware jump gate (reject >30 cm single-sample jump, count rejections).
+
+**After lab or in parallel (do not block NS2 gate)**
+- [ ] Finish **`docs/62`** + NS2 closed-loop SIL matrix (stopped mid-run 2026-10-05).
+- [ ] INDI docs 53–61 / `docs/56` — desk final unless lab contradicts; SIL: fix shared-gain top-drone artefact before trusting 2-drone results.
+- [ ] Supervisor: Pure INDI variant + scenario set; FBL email; writing (INDI/RPM now, NS2 after lab).
 
 **Lab, after the NS2 test — INDI oscillation (investigation closed for now; details `docs/56`)**
 - [ ] Bench: measure command → thrust latency (and gyro-to-controller latency); the one number that pins down the delay budget.
@@ -31,18 +40,15 @@ Flight-day steps only: [`next_flight_card.html`](next_flight_card.html). Everyth
 - [ ] Which scenarios go into the comparative study (temporary downwash favours ours, constant downwash favours Omar's) — decide together with the INDI variant.
 - [ ] Is 100 Hz enough for the network, or try higher?
 
-**Desk**
-- [ ] INDI investigation docs 53–61 and tables `docs/56` are final for now (untracked, not yet committed). Only reopen if the bench latency or the A1 flights contradict them. If the simulation is continued: fix the shared-parameter artifact (top drone 220 °/s in every Omar-bottom run) first.
-- [ ] After the INDI decision: fix the constant z offset of Omar C/Rust, or one more look at the oscillation in ours (unlikely to find anything).
-- [ ] Only if 100 Hz does not fit: smaller retrained network or off-board evaluation (D8).
-- [ ] After the lab: retrain only if the data say so.
+**Desk (parallel OK)**
+- [ ] INDI investigation docs 53–61 — reopen only if bench latency or A1 flights contradict.
+- [ ] **INDI input replay across ours / Omar C / Omar Rust — PARKED 2026-10-06:** on-policy check fails (A8 −10%, A1 +50% vs the flown command); only Omar C ≡ Rust is validated; do not use ours-vs-Omar numbers; reopen only if the INDI variant decision needs it (see `docs/64` review notes). — plan `docs/63_INDI_Input_Replay_Plan.md`, Cursor prompt `docs/cursor_prompt_indi_input_replay_2026-10-05.md` (step 1 = interface map first; results to `docs/64`).
+- [ ] After INDI decision: Omar C/Rust z offset; optional second look at our oscillation.
+- [ ] D8 contingencies only if bench **B** fails; retrain only if data say so.
 
-**Email**
-- [ ] Follow up the FBL-controller email (~2 weeks old; Strategy 3 is blocked without it).
-
-**Writing**
-- [ ] Write up INDI, Z tracking and RPM results (Ch. 6–9) now; NS2 results after the lab.
-- [ ] Ch. 6–9 content for the comparison waits on C.4 data.
+**Email / writing (parallel OK)**
+- [ ] FBL-controller follow-up (~2 weeks).
+- [ ] Ch.6–9: INDI, Z, RPM now; NS2 + comparison after lab / decisions.
 
 ---
 

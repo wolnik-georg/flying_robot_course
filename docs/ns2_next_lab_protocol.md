@@ -1,8 +1,22 @@
 # NS2 / Checklist G — next lab protocol (desk draft, 2026-10-02)
 
+**2026-10-06:** Session order and **copy-paste commands** are consolidated in
+[`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md) (synced with
+[`next_steps_checklist.md`](next_steps_checklist.md)). This file remains the pass/fail rationale and build notes.
+
 Use after pulling both repos. **Do not fly A8 or enable `rnn.en=1` until Step 4 passes.**
 
-## STATUS 2026-10-03 — read this first (supersedes the order below)
+## STATUS 2026-10-05 (evening) — read this first (supersedes the 10-03 status below)
+
+Bench A/B/C **passed**; the 100 Hz build works (`lab_sessions/2026-10-05.md`). A8 `rnn.en=0` clean; `rnn.en=1` flights crashed only through
+**tracker pose swaps** (identical markers) and **`cf_second` battery collapse (2.5 V)**; with fresh batteries 3 of 3 A8 flights were clean (poses and
+batteries verified in rosbags/radio/uSD). Network vs measured residual: corr 0.85–0.92. **Open: sign.** Crossing dip −10.9 cm with the network
+(`res_sign=+1`, 16 crossings) vs −5.9 cm without (8 crossings). Next: A8 `res_sign=-1` (cf5 yaml, `ctrl_mode=0` ⇒ only the network term flips),
+then `rnn.en=0` repeats, then an A1 `rnn.en=0` baseline. Rules: fresh batteries (rest ≥ 4.1 V), pose bag every session.
+
+**NS2 "ready for the comparative study" gate (set 2026-10-05):** (1) A8 with `res_sign=-1`: crossing dip clearly shallower than (a smaller dip, not a deeper one) the network-off baseline (−5.9 cm), clean flights; (2) A1 with the network on and `-1` stable, after an A1 `rnn.en=0` baseline shows whether cf5's ±40° oscillation is the geometric controller or NS2; (3) no over-compensation (dip not overshooting upward; else a gain factor on the network term); (4) scenario set decided with the supervisor (checked so far: A8, A1 only); (5) operating rules for every comparison flight: fresh batteries (rest ≥ 4.1 V), pose bag, `vbat` min checked. Network is z-only by design (as in the reference); 100 Hz vs faster not compared (meeting question).
+
+## STATUS 2026-10-03 — HISTORICAL (superseded by the 2026-10-05 status above; kept for the bench rationale. Commands below use `humble` / `cflib` from that day — current commands: `lab_session_pack_signtest.md`)
 
 First hardware attempt did **not** validate (`lab_sessions/2026-10-03.md`). `cf5` crashed on both A8 flights; its
 onboard position was identical to `cf_second`'s; the flash-RNN build evaluates the network on **every 1 kHz tick**

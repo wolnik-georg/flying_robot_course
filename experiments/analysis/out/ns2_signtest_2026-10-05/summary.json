@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-05",
+  "cohorts": {
+    "en0": [
+      "cf5_A8_thesis00_2026-10-05_17-44-01.bin",
+      "cf5_A8_thesis01_2026-10-05_17-44-01.bin"
+    ],
+    "en1": [
+      "cf5_A8rnn1_thesis02_2026-10-05_18-05-08.bin",
+      "cf5_A8_thesis00_2026-10-05_19-17-04.bin",
+      "cf5_A8_thesis01_2026-10-05_19-19-27.bin",
+      "cf5_A8_thesis02_2026-10-05_19-23-26.bin"
+    ]
+  },
+  "stats_by_cohort": {
+    "en0": {
+      "n": 8,
+      "mean_cm": -5.900987610220909,
+      "std_cm": 0.6381724849676199,
+      "min_cm": -7.185825705528259,
+      "max_cm": -5.3638845682144165
+    },
+    "en1": {
+      "n": 16,
+      "mean_cm": -10.955342650413513,
+      "std_cm": 0.8181283926273736,
+      "min_cm": -12.198320031166077,
+      "max_cm": -9.900912642478943
+    }
+  },
+  "comparison": {
+    "ranges_overlap": false,
+    "welch_t": 16.596974819070834,
+    "welch_p": 3.2310564270304506e-12,
+    "mannwhitney_u": 128.0,
+    "mannwhitney_p": 2.719345834166133e-06,
+    "ref_en0_mean_cm": -5.9,
+    "ref_en1_rs_plus_mean_cm": -10.9
+  },
+  "pass_fail_vs_baseline": {
+    "criterion": "Pass: the crossing dip (cf5 z error, a negative number) is clearly SHALLOWER than the network-off baseline of about \u22125.9 cm (mean at least MIN_IMPROVEMENT_CM less negative), ranges not overlapping, no over-compensation. Current network-on, res_sign=+1: \u221210.9 cm (DEEPER = worse).",
+    "baseline_label": "en0",
+    "test_label": "en1",
+    "baseline_mean_cm": -5.900987610220909,
+    "test_mean_cm": -10.955342650413513,
+    "ranges_overlap": false,
+    "clearly_shallower_than_baseline": false,
+    "worse_than_baseline": true,
+    "over_compensation_mean_dip_positive": false,
+    "pass": false
+  },
+  "per_flight_correlations": [
+    {
+      "file": "cf5_A8_thesis00_2026-10-05_17-44-01.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.8999200448768808,
+      "corr_pred_at_crossing_vs_dip_residual": 0.9030166006730224
+    },
+    {
+      "file": "cf5_A8_thesis01_2026-10-05_17-44-01.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.921524068910447,
+      "corr_pred_at_crossing_vs_dip_residual": 0.2321400952215237
+    },
+    {
+      "file": "cf5_A8rnn1_thesis02_2026-10-05_18-05-08.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.8597429015748401,
+      "corr_pred_at_crossing_vs_dip_residual": -0.9226608139768345
+    },
+    {
+      "file": "cf5_A8_thesis00_2026-10-05_19-17-04.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.8964382413282073,
+      "corr_pred_at_crossing_vs_dip_residual": 0.7139225007596898
+    },
+    {
+      "file": "cf5_A8_thesis01_2026-10-05_19-19-27.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.8914015531209908,
+      "corr_pred_at_crossing_vs_dip_residual": -0.5018649237130176
+    },
+    {
+      "file": "cf5_A8_thesis02_2026-10-05_19-23-26.bin",
+      "n_crossings": 4,
+      "corr_pred_a_res_full_log": 0.8483156347337221,
+      "corr_pred_at_crossing_vs_dip_residual": 0.2629627121118763
+    }
+  ]
+}

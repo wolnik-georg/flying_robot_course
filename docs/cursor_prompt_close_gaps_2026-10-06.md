@@ -1,0 +1,24 @@
+# Cursor prompt — close the open gaps before the next lab session (2026-10-06)
+
+Repo: `~/Desktop/flying_robot_course`. You start fresh. Read first: `docs/lab_sessions/2026-10-05.md` (all sections), `docs/next_flight_card.html`, `docs/lab_session_pack_signtest.md`, `docs/post_flight_check.md`, and the tail of `docs/cursor_prompt_indi_input_replay_2026-10-05.md` (steps 7-9).
+
+## Rules
+- **Do not edit:** `docs/meetings/**`, `docs/07_*`, `docs/next_*`, `docs/lab_sessions/**`, `docs/ns2_next_lab_protocol.md`, `docs/lab_session_pack_signtest.md`, `docs/post_flight_check.md`. Report problems you find in them; Claude fixes them. No firmware edits, nothing in `~/Desktop/crazyswarm2` or `~/Desktop/crazyflie-firmware`, no commits, no pushes. Read-only on `experiments/logs/**`.
+- Replay work: system `python3` (3.10.12) + `PYTHONPATH=~/Desktop/crazyflie-firmware/build`. Other scripts: `~/.pyenv/versions/flying_robots/bin/python`.
+- Do not tune anything to make numbers agree. If a check fails, report the numbers and stop that task.
+- Do the tasks in order; report after each.
+
+## Task 1 — INDI replay: finish step 9 (reject the trim, compare against the flown command)
+Follow **step 9** at the end of `docs/cursor_prompt_indi_input_replay_2026-10-05.md` exactly: remove `z_tracking_trim_m` from the validated path (debug flag only, default off), compare replay-ours against the flown **command** from `motor_m1..m4` (firmware mapping, read-only, state the formula and constants), rerun A8 and A1 untrimmed, rerun `indi_replay_validate.py` (gate = command-based), `indi_replay_compare.py`, `indi_replay_plot_svg.py`, check that A1 uses the same steady-window definition as A8, refresh the manifests to the dict format with `params_by_side_level`, update `docs/64_INDI_Input_Replay_Results.md` (PRELIMINARY banner only removed if the pass criterion holds; keep the review note about the rejected trim). Also fix the stale A8/A1 `on_policy_check.json` / `compare_summary.json` by regenerating them.
+
+## Task 2 — NS2 sign-test analysis script, ready before the lab day
+Create `experiments/analysis/ns2_signtest_analysis.py` (reuse `ns2_2026_10_05_crossing_dip.py`; do not duplicate its logic, import it). Input: a session date and an explicit cohort mapping per flight stamp, e.g. `--cohort 'res_sign=-1:19-20-01,19-22-10,19-24-30' --cohort 'en0:...'` (flight stamps, because the meta does not record `res_sign`). Output: per-crossing cf5 z-error dips (same definition as the 2026-10-05 table: 4 crossings, ±1 s window, uSD cf5), cohort statistics, and a comparison against the 2026-10-05 reference cohorts (rnn.en=0: 8 crossings, mean −5.9 cm; rnn.en=1 `res_sign=+1`: 16 crossings, mean −10.9 cm), Welch and Mann-Whitney, an SVG figure, a markdown summary, and the per-flight predicted-vs-measured residual correlation. It must also print the pass criterion from `docs/next_flight_card.html` ("dip clearly below −5.9 cm, ranges not overlapping") as pass/fail, and flag over-compensation (mean dip positive, i.e. above the setpoint). Test it by running it with the 2026-10-05 data as stand-in cohorts (`en0` = the 17:44 flights, `+1` = the four network-on flights) and show that it reproduces −5.9 / −10.9 cm. Do not predict the `-1` outcome.
+
+## Task 3 — lab pack verification
+Update `flying_drone_stack/tools/lab_session_pack_verify.sh` so it verifies the **new** pack `docs/lab_session_pack_signtest.md` (not the superseded one) and run it: every script/file path in the pack exists; `merge_usd_logs.py --help` and `post_flight_check.py --help` exit 0; `run_formation.py --list` and its flags exist in `~/Desktop/crazyswarm2/crazyflie_examples/crazyflie_examples/run_formation.py`; parse `~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml` and assert cf5 has `controller: 6`, `indi_gains.ctrl_mode: 0`, `indi_gains.res_sign: -1`, `rnn.en: 1` and cf_second has `controller: 6`, `indi_gains.ctrl_mode: 0`; run `post_flight_check.py --date 2026-10-05` and compare the verdicts to the acceptance table in `docs/post_flight_check.md`; check that `docs/lab_session_pack_signtest.md` contains no `humble`. Report pass/fail per item.
+
+## Task 4 — stale-statement sweep (report only)
+Search `docs/lab_sessions/2026-10-05.md`, `docs/next_flight_card.html`, `docs/next_steps_checklist.md`, `docs/ns2_next_lab_protocol.md`, `docs/lab_bench_cheatsheet_2026-10-03.md`, `docs/lab_session_pack_signtest.md` and `docs/post_flight_check.md` for statements that contradict the 2026-10-05 results: "NS2 did not validate", cf5 "unstable", "1 kHz" as the current state, "THESIS1 fsck first", "humble", `backend:=cflib`, a_nn sign claimed correct, or the old 2-3 cm estimate-vs-tracker figure. Output a table: file, line, quoted text, why it is stale. Do not edit.
+
+## Report back
+Per task: files created or changed, numbers, anything that failed or was skipped and why. No interpretation beyond what the numbers show.
