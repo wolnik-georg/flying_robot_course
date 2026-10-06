@@ -11,6 +11,8 @@ network term is added with `res_sign=+1` (reinforcing): crossing dips −10.9 cm
 
 ---
 
+**Decisions 2026-10-06:** tracker pose swaps are treated as battery-related for now (if a swap recurs: check batteries first, keep the pose bag running); the `FSCK*.REC` files are dropped; no HTML twin for the lab docs.
+
 ## WHAT'S NEXT — by area (2026-10-05, from the meeting doc [`meetings/2026-10-05.md`](meetings/2026-10-05.md))
 
 Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md).
@@ -26,7 +28,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] Only if swaps recur with healthy batteries: firmware jump gate (reject >30 cm single-sample jump, count rejections).
 
 **After lab or in parallel (do not block NS2 gate)**
-- [ ] Finish **`docs/62`** + NS2 closed-loop SIL matrix (stopped mid-run 2026-10-05).
+- [ ] **NS2 closed-loop SIL — MUST WORK:** reproduce the hardware crossing dips (off −5.9 cm; on, `res_sign=+1` −10.9 cm; one calibrated scalar from the off cohort only), then predict `res_sign=-1`. Prompt `docs/cursor_prompt_ns2_closed_loop_sil_2026-10-06.md`; writes `docs/62_NS2_Closed_Loop_SIL.md`.
 - [ ] INDI docs 53–61 / `docs/56` — desk final unless lab contradicts; SIL: fix shared-gain top-drone artefact before trusting 2-drone results.
 - [ ] Supervisor: Pure INDI variant + scenario set; FBL email; writing (INDI/RPM now, NS2 after lab).
 
@@ -42,7 +44,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 
 **Desk (parallel OK)**
 - [ ] INDI investigation docs 53–61 — reopen only if bench latency or A1 flights contradict.
-- [ ] **INDI input replay across ours / Omar C / Omar Rust — PARKED 2026-10-06:** on-policy check fails (A8 −10%, A1 +50% vs the flown command); only Omar C ≡ Rust is validated; do not use ours-vs-Omar numbers; reopen only if the INDI variant decision needs it (see `docs/64` review notes). — plan `docs/63_INDI_Input_Replay_Plan.md`, Cursor prompt `docs/cursor_prompt_indi_input_replay_2026-10-05.md` (step 1 = interface map first; results to `docs/64`).
+- [ ] **INDI input replay across ours / Omar C / Omar Rust — MUST WORK (not parked):** on-policy check fails today (A8 −10%, A1 +50% vs the flown command), so something concrete is wrong. Prompt `docs/cursor_prompt_indi_replay_root_cause_2026-10-06.md` (ladder: input path → geometric on-policy → full-INDI on-policy → only then ours-vs-Omar). Only Omar C ≡ Rust is validated so far (`docs/64`).
 - [ ] After INDI decision: Omar C/Rust z offset; optional second look at our oscillation.
 - [ ] D8 contingencies only if bench **B** fails; retrain only if data say so.
 
@@ -65,7 +67,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [x] **D6 — `docs/13`** controller call rate 1 kHz + 100 Hz hold documented.
 - [x] **D7 — identity scan** (`check_estimator_identity.py`, `lock_on_scan.py`).
 - [ ] **D8 — contingencies sketched** (only if 100 Hz still doesn't fit): smaller retrained network (C.2 retrain), or off-board evaluation.
-
+1. [x] **Charge/swap batteries; fix card THESIS1** — done 2026-10-05 (cards fixed; fresh batteries are now a per-session rule, see the flight card).
 ### Lab — next session (bench BEFORE flight; criteria in `ns2_next_lab_protocol.md` §0)
 1. [ ] **Charge/swap batteries; fix card THESIS1** (`umount` + `fsck.vfat -a`), finish its on-card archive/reset.
 2. [ ] **Bench A:** flash **default** build on `cf5` → `cpp` launch → `/cf5/pose` publishes, no rate warnings/assert.

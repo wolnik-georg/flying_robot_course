@@ -1,0 +1,25 @@
+# Cursor prompt — NS2 closed-loop SIL: make it work and validate it against the hardware (2026-10-06)
+
+Repo: `~/Desktop/flying_robot_course`. You start fresh. Read first: `docs/lab_sessions/2026-10-05.md` (sections 6-8), `experiments/analysis/ns2_closed_loop_sil_*.py` and `experiments/analysis/out/ns2_closed_loop_sil/summary.json`, `docs/52_NS2_Reference_Comparison.md`, `docs/next_flight_card.html`.
+
+## Goal
+A two-drone closed-loop SIL (bottom = cf5 geometric + network, top = cf_second geometric) that **reproduces the hardware** crossing dips, so its prediction for `res_sign = -1` can be trusted before the lab day. Hardware reference (cf5 z-error dip at the 4 crossings, A8, `--dz 0.5 --height 0.5`, 100 Hz network): network off −5.9 cm (8 crossings, range −7.2…−5.4); network on, `res_sign=+1` −10.9 cm (16 crossings, range −12.2…−9.9). Network-vs-measured residual correlation 0.85-0.92; `rnn_pred_z` ≈ −0.6 m/s² at the crossings, ≈ −1.6 m/s² in the A1 stack.
+
+## Rules
+- No firmware/crazyswarm2/crazyflie-firmware edits, no commits/pushes, read-only on `experiments/logs/**`. New/edit only under `experiments/analysis/` (`ns2_closed_loop_sil_*`), `experiments/analysis/out/ns2_closed_loop_sil/`, and a new `docs/62_NS2_Closed_Loop_SIL.md`. Do not edit `docs/meetings/**`, `docs/07_*`, `docs/next_*`, `docs/lab_sessions/**`.
+- Fresh subprocess per episode (controller `State` persists). System `python3` environment as in the existing runner.
+- **Allowed calibration: exactly one scalar (the plant downwash scale), fixed from the network-off cohort only.** The network-on `+1` cohort is the **test** and must not be used to tune anything. If it is not reproduced, stop and report.
+
+## Known state (verify, do not assume)
+`summary.json` says `isolation_verified: false`, `baseline_sanity_pass: false`; the A1 baseline results are nonsense (rms z 48 cm, gyro 84-154 deg/s). `BASE_INDI` in `ns2_closed_loop_sil_sim.py` carries full-INDI gains (kr 2400…) although the drones must fly **geometric** (`ctrl_mode=0`, pos gains `kp_xy 40, kp_z 30, kv_xy 8, kv_z 10` from `GEOMETRIC_POS_GAINS`, geometric attitude gains `kr_geo/kw_geo`, `ki_z 16`, mass 0.041). Earlier notes: the SIL fed 1 kHz peer stamps (`crazyflie_sil.py` ~L735) and `run_ns2_div_sim.py` kept peer state by slot only (shared across drones); real hardware delivers peer packets at ~100 Hz with their own timestamps.
+
+## Steps (stop at the first failing gate and diagnose before continuing)
+1. **Per-drone isolation.** Two vehicles in one process must not share controller or peer state. Prove it: change the bottom drone's network setting and show the top drone's trajectory differs only through the physical (downwash) coupling and not at all when the coupling is disabled (bit-identical top-drone output). Fix the harness until `isolation_verified` is true. Peer path: ~100 Hz packets, per-drone slot, true timestamps; state exactly what is fed.
+2. **No-downwash baseline sanity.** Geometric flight of A8 with correct geometric gains and **no** downwash and no network: both drones track within the hardware values (hardware network-off steady z error ≈ 0 ±2 cm outside crossings; roll/pitch peaks 24-30°; no oscillation). Pass criterion stated before running; report numbers.
+3. **Downwash plant.** State which model you use. Prefer one the hardware supports: a disturbance on the bottom drone as a function of relative position/velocity fitted from the 26-flight bank used for training (`experiments/analysis/out/c2_e2e_2026-10-01/full_bank_c1_complete.npz`), or the NeuralSwarm2 `compute_Fa` (reference) rescaled by ONE scalar. Calibrate that scalar so the **network-off** cohort gives a crossing dip of −5.9 ± 0.8 cm (≥ 3 noise seeds, same dip definition as `experiments/analysis/ns2_2026_10_05_crossing_dip.py`: per crossing, minimum e_z in ±1 s).
+4. **The test (no further tuning):** network on at 100 Hz, `res_sign=+1`. Expected from hardware: −10.9 ± 1.5 cm. **If it does not reproduce, stop and report the numbers and the most likely reasons (delay, downwash shape, network scaling); do not proceed to the prediction.**
+5. **Only if step 4 passes — predictions (≥ 3 seeds each, same definition):** `res_sign=-1` (A8), and network off / `+1` / `-1` on A1 (`--dz 0.5 --height 0.5 --hold 15`). Report the dip table with the hardware cohorts alongside, and the sensitivity to the one calibrated scalar (±20%).
+6. Write `docs/62_NS2_Closed_Loop_SIL.md`: what was fixed (isolation, gains, peer path), the plant model and its one scalar, the validation (steps 2-4) with numbers, the predictions (only if validated), the limits (host timing is not STM32 timing; the plant is a model), and a clear verdict: "validated / not validated".
+
+## Report back
+Per step: files changed, numbers, pass/fail against the stated criteria, and for any failure the concrete cause with numbers. No prediction presented as a result unless step 4 passed.
