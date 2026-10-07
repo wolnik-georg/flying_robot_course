@@ -23,3 +23,11 @@ A two-drone closed-loop SIL (bottom = cf5 geometric + network, top = cf_second g
 
 ## Report back
 Per step: files changed, numbers, pass/fail against the stated criteria, and for any failure the concrete cause with numbers. No prediction presented as a result unless step 4 passed.
+
+## Amendments (2026-10-07, from the INDI-replay lessons) — these apply on top of the steps above
+- **Simulate full flights from takeoff** (takeoff → scenario → landing), not mid-flight windows: the geometric controller carries a z-integral (`ki_z = 16`) and other hidden state that only exists correctly if the run starts at arm. Use the same scenario timing as the hardware flights (A8 26 s scenario, `--dz 0.5 --height 0.5`; A1 `--hold 15`). The dip window must exclude the takeoff transient the same way the hardware cohorts do (crossings only).
+- **Fresh process per episode** and **cache results per config** (a full 2-drone episode takes minutes; the earlier z-sp sweep took 28 min). Run long jobs in the background; write each episode's result to disk as it finishes so a failure does not repeat earlier work.
+- **Dip definition and pass semantics (do not invert):** dips are negative numbers; a *shallower* dip (less negative) is better. Hardware: network off −5.9 cm, network on `res_sign=+1` −10.9 cm (deeper = worse). Use `experiments/analysis/ns2_signtest_analysis.py` / `ns2_2026_10_05_crossing_dip.py` for the dip statistics so SIL and hardware use identical code.
+- **Thrust/force bookkeeping:** if you compare any thrust or force numbers with logged hardware data, note that logged `motor.m*` are post battery-compensation values (see `docs/64`); do not compare SIL `thrustSi` with a linear `pwm/65535·0.2 N` reconstruction.
+- **Network input fidelity:** the network sees neighbour relative position/velocity from peer packets at ~100 Hz (hold between packets, resync after gaps, as in `rnn_predict_eval`). State in `docs/62` exactly what the SIL feeds, and that the weights are the flashed ones (19,297 weights; `full_bank_c1_complete.npz`).
+- **Stop rule unchanged:** if step 4 (the `+1` network-on test, no tuning) does not reproduce −10.9 ± 1.5 cm, stop, document, and do not publish predictions. A documented "SIL not validated" is an acceptable outcome; an unvalidated prediction presented as a result is not.
