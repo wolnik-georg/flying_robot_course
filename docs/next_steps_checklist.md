@@ -44,7 +44,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 
 **Desk (parallel OK)**
 - [ ] INDI investigation docs 53–61 — reopen only if bench latency or A1 flights contradict.
-- [ ] **INDI input replay across ours / Omar C / Omar Rust — MUST WORK (not parked):** on-policy check fails today (A8 −10%, A1 +50% vs the flown command), so something concrete is wrong. Prompt `docs/cursor_prompt_indi_replay_root_cause_2026-10-06.md` (ladder: input path → geometric on-policy → full-INDI on-policy → only then ours-vs-Omar). Only Omar C ≡ Rust is validated so far (`docs/64`).
+- [x] **INDI input replay — CLOSED 2026-10-07 (not reproducible from the logs):** Omar C ≡ Omar Rust validated (~1e-7 / 1e-9); our full-INDI replay does not reproduce the 10-02 flights (A8 −11%, A1 +46%; the flown A1 law commanded 0.448 N where the replay saturates at 0.8 N) after four rounds (input path, mapping incl. battery compensation, setpoint source, parameters, build, hidden state). Ours-vs-Omar tables are NOT VALID; the INDI variant decision rests on the flight comparison (`docs/56`), not on the replay. Details `docs/64`.
 - [ ] After INDI decision: Omar C/Rust z offset; optional second look at our oscillation.
 - [ ] D8 contingencies only if bench **B** fails; retrain only if data say so.
 

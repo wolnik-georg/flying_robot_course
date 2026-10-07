@@ -1,7 +1,7 @@
 # INDI input replay across the three controllers — plan (2026-10-05)
 
 **Origin:** meeting 2026-10-05, next steps: "take input data for INDI from different flights and let all 3 controllers run exactly the same input numbers and compare output numbers; theoretically all should agree, if not there are differences in code / gains / filters."
-**Status:** plan + Cursor prompt (`cursor_prompt_indi_input_replay_2026-10-05.md`). Desk only, no lab, no firmware change. Feeds the "which INDI variant is the thesis Pure INDI" decision; runs after the NS2 sign-test lab session is planned, in parallel with it.
+**Status:** plan + results (`docs/64`). **2026-10-07 Round 3:** bat-comp flown-command inverse in `indi_replay_command.py`; rung 1 dynamic gate for `ki_z=16`; rung 2 full INDI + forensics; no geometric `ki_z=0` candidate in Sep15–Oct1. Harness: `indi_replay_ladder.py --rung 0|1|2`. Desk only, no firmware change.
 
 ## Question
 Given the **same measured inputs per tick** (state, gyro, acceleration, commanded setpoint, per-motor RPM), do **ours** (controller 6, `ctrl_mode=3`), **Omar C** (controller 9) and **Omar Rust** (controller 10) produce the same thrust and torque outputs? If not: which difference (gains, filters, structure) explains it?
@@ -35,6 +35,10 @@ Given the **same measured inputs per tick** (state, gyro, acceleration, commande
 - Our-vs-Omar differences attributed to gains, filters or structure with evidence, or explicitly left unexplained.
 - Omar C ≡ Omar Rust re-confirmed on the same inputs (sanity check of the harness).
 - Written up as `docs/64_INDI_Input_Replay_Results.md`; one paragraph for the INDI-variant decision (what the replay does and does not say).
+
+## Round 4 stop (2026-10-07)
+
+On-policy ladder complete through rung 2 + Round 4 root-cause pass. **Full-INDI replay is not reproducible from uSD/radio logs alone** (see `docs/64` Round 4). **No further rounds.** Ours-vs-Omar tables are **not valid**; only **Omar C ≡ Omar Rust** remains validated.
 
 ## Not in scope
 Closed-loop SIL (separate, `docs/58`–`61`), gain tuning, firmware changes, new flights.

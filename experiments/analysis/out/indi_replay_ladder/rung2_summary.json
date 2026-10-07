@@ -1,0 +1,318 @@
+[
+  {
+    "label": "A8_19-09-54",
+    "ctrl_mode": 3,
+    "ki_z": 0.0,
+    "git_audit": {
+      "since": "2026-10-02 19:00",
+      "commits": [
+        "54d81afc NS2 firmware: resync peer velocity after >=500 ms gaps / backwards timestamps (fixes frozen dv after a dropout); host tests for dropout, stale velocity, timestamp rollback",
+        "75aded38 NS2 firmware: evaluate network at 100 Hz (rnn.div) with hold, peer-velocity hold, static scratch buffers, timing log (rnn.us_*); host tests 28/28; patches for all local crazyflie-firmware edits",
+        "9098e194 NS2 lab prep: flash-RNN build target, ghost-neighbour peer fix, lab protocol + patches, meeting doc 2026-10-03"
+      ],
+      "control_law_change_judgement": "Commits are NS2/RNN peer-sync and 100 Hz hold (rnn.en=0 on these flights). No intentional change to geometric/INDI f_d/clamps in lib.rs for 2026-10-02 flights; host .so is current source \u2014 no firmware rebuild performed."
+    },
+    "thrust_vs_command": {
+      "n": 26060,
+      "mean_command_N": 0.37300522787531776,
+      "mean_replay_N": 0.3334148031457149,
+      "mean_offset_N": -0.039590424729602836,
+      "mean_err_pct": 10.613906125393598,
+      "corr": 0.8200848978435393,
+      "regression_slope": 0.8387591540889139,
+      "regression_intercept_N": 0.020553253742271013,
+      "implied_extra_f_d_z_mps2": -0.9656201153561667,
+      "pass": false,
+      "criterion": "ki_z=0: mean err<=3%, corr>0.98"
+    },
+    "forensics": [
+      {
+        "tick_name": "mid_hover",
+        "tick": 13830,
+        "pos_z": 0.543016791343689,
+        "ctrltarget_z": 0.5,
+        "scenario_sp_z": 0.5,
+        "ctrltarget_minus_scenario_z_m": 0.0,
+        "flown_command_N": 0.3314521884667768,
+        "replay_thrustSi_N": 0.3251330256462097,
+        "oot_get_a_res": [
+          -0.18058227002620697,
+          -0.3713175058364868,
+          0.1867246776819229
+        ],
+        "oot_get_tau": [
+          0.0018312823958694935,
+          -0.00011601031292229891,
+          -0.00019154710753355175
+        ],
+        "oot_get_e_r": [
+          -0.023861922323703766,
+          -0.0011790094431489706,
+          0.0023579553235322237
+        ],
+        "hand_f_d": {
+          "ep_m": [
+            0.003914597909897566,
+            0.004973083734512329,
+            -0.043016791343688965
+          ],
+          "ev_mps": [
+            -0.007710461039096117,
+            -0.008970998509998315,
+            -2.889090864999336e-05
+          ],
+          "f_d_terms_mps2": {
+            "sp_acc": [
+              0.0,
+              6.865318994164852e-05,
+              -5.972623685609325e-25
+            ],
+            "Kp_ep": [
+              0.2505342662334442,
+              0.31827735900878906,
+              -2.0648059844970703
+            ],
+            "Kv_ev": [
+              -0.038552305195480585,
+              -0.044854992549991576,
+              -0.00020223636054995353
+            ],
+            "g_z": 9.81,
+            "a_indi_res_sign": [
+              -0.18058227002620697,
+              -0.3713175058364868,
+              0.1867246776819229
+            ]
+          },
+          "f_d_sum_mps2": [
+            0.03139969101175666,
+            -0.0978264861877477,
+            7.931716456824303
+          ],
+          "thrust_vec_N": [
+            0.0012873873314820231,
+            -0.004010885933697656,
+            0.3252003747297964
+          ],
+          "thrust_body_z_N_hand": 0.3251316766430369,
+          "clamp_en_bits": 11,
+          "clamp_active_hand": []
+        },
+        "thrust_max_param_N": 0.8,
+        "replay_at_thrust_max": false
+      },
+      {
+        "tick_name": "crossing",
+        "tick": 17178,
+        "pos_z": 0.42862918972969055,
+        "ctrltarget_z": 0.5,
+        "scenario_sp_z": 0.5,
+        "ctrltarget_minus_scenario_z_m": 0.0,
+        "flown_command_N": 0.552343433253465,
+        "replay_thrustSi_N": 0.551002562046051,
+        "oot_get_a_res": [
+          -0.35566383600234985,
+          -0.8556060791015625,
+          -0.9294455051422119
+        ],
+        "oot_get_tau": [
+          -0.002917357487604022,
+          -0.0017012355383485556,
+          -0.0007377538713626564
+        ],
+        "oot_get_e_r": [
+          0.06920130550861359,
+          0.03405820578336716,
+          -0.009387990459799767
+        ],
+        "hand_f_d": {
+          "ep_m": [
+            -2.0557426978484727e-06,
+            0.016363590955734253,
+            0.07137081027030945
+          ],
+          "ev_mps": [
+            0.0021858459804207087,
+            0.09558369926085836,
+            0.16513630747795105
+          ],
+          "f_d_terms_mps2": {
+            "sp_acc": [
+              0.0,
+              -0.07829437428284342,
+              5.464346923652985e-13
+            ],
+            "Kp_ep": [
+              -0.00013156753266230226,
+              1.0472698211669922,
+              3.4257988929748535
+            ],
+            "Kv_ev": [
+              0.010929229902103543,
+              0.4779184963042918,
+              1.1559541523456573
+            ],
+            "g_z": 9.81,
+            "a_indi_res_sign": [
+              -0.35566383600234985,
+              -0.8556060791015625,
+              -0.9294455051422119
+            ]
+          },
+          "f_d_sum_mps2": [
+            -0.3448661736329086,
+            0.591287864086878,
+            13.462307540178845
+          ],
+          "thrust_vec_N": [
+            -0.014139513118949254,
+            0.024242802427561997,
+            0.5519546091473326
+          ],
+          "thrust_body_z_N_hand": 0.5509843111887767,
+          "clamp_en_bits": 11,
+          "clamp_active_hand": []
+        },
+        "thrust_max_param_N": 0.8,
+        "replay_at_thrust_max": false
+      }
+    ],
+    "a1_segments": null,
+    "pass": false
+  },
+  {
+    "label": "A1_19-15-47",
+    "ctrl_mode": 3,
+    "ki_z": 0.0,
+    "git_audit": {
+      "since": "2026-10-02 19:00",
+      "commits": [
+        "54d81afc NS2 firmware: resync peer velocity after >=500 ms gaps / backwards timestamps (fixes frozen dv after a dropout); host tests for dropout, stale velocity, timestamp rollback",
+        "75aded38 NS2 firmware: evaluate network at 100 Hz (rnn.div) with hold, peer-velocity hold, static scratch buffers, timing log (rnn.us_*); host tests 28/28; patches for all local crazyflie-firmware edits",
+        "9098e194 NS2 lab prep: flash-RNN build target, ghost-neighbour peer fix, lab protocol + patches, meeting doc 2026-10-03"
+      ],
+      "control_law_change_judgement": "Commits are NS2/RNN peer-sync and 100 Hz hold (rnn.en=0 on these flights). No intentional change to geometric/INDI f_d/clamps in lib.rs for 2026-10-02 flights; host .so is current source \u2014 no firmware rebuild performed."
+    },
+    "thrust_vs_command": {
+      "n": 15036,
+      "mean_command_N": 0.4907376849130371,
+      "mean_replay_N": 0.7178411866560772,
+      "mean_offset_N": 0.22710350174304011,
+      "mean_err_pct": 46.27798286630912,
+      "corr": 0.07544210120271723,
+      "regression_slope": 0.1078886605086823,
+      "regression_intercept_N": 0.6648961551696777,
+      "implied_extra_f_d_z_mps2": 5.539109798610735,
+      "pass": false,
+      "criterion": "ki_z=0: mean err<=3%, corr>0.98"
+    },
+    "forensics": [
+      {
+        "tick_name": "mid_hold",
+        "tick": 8318,
+        "pos_z": 0.1759859025478363,
+        "ctrltarget_z": 0.5,
+        "scenario_sp_z": 0.5,
+        "ctrltarget_minus_scenario_z_m": 0.0,
+        "flown_command_N": 0.44790991325771773,
+        "replay_thrustSi_N": 0.800000011920929,
+        "oot_get_a_res": [
+          0.8837826251983643,
+          -1.0450959205627441,
+          -1.5826513767242432
+        ],
+        "oot_get_tau": [
+          -0.018220501020550728,
+          0.00104206008836627,
+          -0.000885122804902494
+        ],
+        "oot_get_e_r": [
+          0.22858932614326477,
+          -0.2488890290260315,
+          0.0026562921702861786
+        ],
+        "hand_f_d": {
+          "ep_m": [
+            -0.006592136807739735,
+            0.011426521465182304,
+            0.3240140974521637
+          ],
+          "ev_mps": [
+            0.09802516549825668,
+            -0.15914025902748108,
+            0.05346954986453056
+          ],
+          "f_d_terms_mps2": {
+            "sp_acc": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Kp_ep": [
+              -0.421896755695343,
+              0.7312973737716675,
+              15.552676677703857
+            ],
+            "Kv_ev": [
+              0.4901258274912834,
+              -0.7957012951374054,
+              0.37428684905171394
+            ],
+            "g_z": 9.81,
+            "a_indi_res_sign": [
+              0.8837826251983643,
+              -1.0450959205627441,
+              -1.5826513767242432
+            ]
+          },
+          "f_d_sum_mps2": [
+            0.9520116969943047,
+            -1.109499841928482,
+            24.15431215003133
+          ],
+          "thrust_vec_N": [
+            0.03903247957676649,
+            -0.04548949351906777,
+            0.9903267981512845
+          ],
+          "thrust_body_z_N_hand": 0.9331318085353496,
+          "clamp_en_bits": 11,
+          "clamp_active_hand": [
+            "thrust_ceiling (bit3) at g_indi_thrust_max=0.8 N"
+          ]
+        },
+        "thrust_max_param_N": 0.8,
+        "replay_at_thrust_max": true
+      }
+    ],
+    "a1_segments": {
+      "first_3s_after_steady": {
+        "n": 3000,
+        "mean_command_N": 0.4991693089588418,
+        "mean_replay_N": 0.7177439859112104,
+        "mean_offset_N": 0.21857467695236854,
+        "mean_err_pct": 43.7876834631179,
+        "corr": 0.0726845135429793,
+        "regression_slope": 0.059272406319768774,
+        "regression_intercept_N": 0.6881570198082436,
+        "implied_extra_f_d_z_mps2": 5.331089681765087,
+        "pass": false,
+        "criterion": "ki_z=0: mean err<=3%, corr>0.98"
+      },
+      "hold_after_3s": {
+        "n": 12036,
+        "mean_command_N": 0.4886360837052094,
+        "mean_replay_N": 0.7178654141597829,
+        "mean_offset_N": 0.2292293304545735,
+        "mean_err_pct": 46.9120758982664,
+        "corr": 0.07757853896734851,
+        "regression_slope": 0.11923507400630708,
+        "regression_intercept_N": 0.6596028545570399,
+        "implied_extra_f_d_z_mps2": 5.590959279379841,
+        "pass": false,
+        "criterion": "ki_z=0: mean err<=3%, corr>0.98"
+      }
+    },
+    "pass": false
+  }
+]

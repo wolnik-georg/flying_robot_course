@@ -1,0 +1,66 @@
+{
+  "round": 4,
+  "date": "2026-10-07",
+  "verdict": "full_indi_replay_not_reproducible_from_logs",
+  "check_a_setpoint": {
+    "mode_b": "g_traj_mode==0: pd from setpoint->position (HLC poly4d / ctrltarget_* logs)",
+    "mode_d": "g_traj_mode==1 && TRAJ_T0>0: pd.z from g_traj_hover_z + eval_traj_onboard (not ctrltarget z)",
+    "a1_logged_ctrltarget_z_m": 0.5,
+    "a1_scenario_bottom_z_m": 0.5,
+    "a1_scenario_source": "anchor [0,0,0.5] + bottom slot [0,0,0]; formations.A1(dz=0.5)",
+    "counterfactual_z_sp_identification_m": {
+      "mid_hold_tick_8318_hand_with_logged_a_res": 0.24,
+      "steady_mean_pd_only_grid_subsample": 0.335,
+      "hand_pd_only_first_5000_steady_ticks": 0.36,
+      "cffirmware_full_flight_constant_z_sp_sweep_14pt": {
+        "method": "tick 0..end, Init() per z_sp, mean thrustSi on steady window only",
+        "target_flown_mean_N": 0.491,
+        "z_sp_0.325_mean_replay_N": 0.468,
+        "z_sp_0.346_mean_replay_N": 0.506,
+        "identified_z_sp_m": 0.34,
+        "z_sp_0.50_extrapolation_note": "logged sp; cached replay ~0.718 N at z_sp=0.5"
+      },
+      "cffirmware_constant_z_sp_last_4000_ticks_reinit_each_run": {
+        "caveat": "Each z_sp run calls controllerOutOfTreeInit() at sub_start — not full-flight hidden state",
+        "z_sp_0.35_mean_replay_N": 0.483,
+        "z_sp_0.50_mean_replay_N": 0.683,
+        "flown_mean_steady_N": 0.491
+      },
+      "note": "Identification only — not applied in replay; does not match any commanded scenario height for bottom (0.5 m)"
+    },
+    "mid_hold_tick_8318": {
+      "pos_z_m": 0.176,
+      "flown_command_N": 0.448,
+      "replay_thrustSi_N": 0.8,
+      "implied_ep_z_for_flown_scalar_m": 0.023
+    },
+    "explains_rung2_fail": false
+  },
+  "check_b_params_not_in_replay": "Flight also sets stabilizer.controller, per-robot yaml overrides, locSrv.extPos/QuatStdDev, commander.enHighLevel; geometric kr_geo/kw_geo; traj g_traj_* (default mode 0 passthrough); rnn.* (en=0 on 10-02). Replay applies INDI_G_KEYS + POS_G_KEYS + ctrl_mode + res_sign + rnn.en only.",
+  "check_d_build": "git flying_drone_stack/firmware_app since 2026-10-02 19:00: 54d81afc, 75aded38, 9098e194 — NS2/RNN peer/timing only; no position-law change on ep/f_d with rnn.en=0.",
+  "check_c_hidden_state": {
+    "integrators_filters": [
+      "i_ez (z integral, reset at Init)",
+      "i_ep (XY position integral if enabled)",
+      "i_error_att",
+      "tau_prev, tau_act (actuator/clamp dynamics)",
+      "bw_x/y/z, bw_pre_*, bw_tau_*, bw_ref_*, bw_acc_*, bw_vel_*, bw_gyro_*",
+      "notch_* / notch_tau_* / notch_ref_*",
+      "bw_res_m/d (residual filters)",
+      "omega_filt_prev, omega_prev, rpm_prev",
+      "peer_prev/peer_vel, rnn_hold"
+    ],
+    "a1_first_3s_after_steady": {
+      "corr": 0.073,
+      "mean_command_N": 0.499,
+      "mean_replay_N": 0.718,
+      "diverges_from_start": true
+    },
+    "a1_hold_after_3s": {
+      "corr": 0.078
+    }
+  },
+  "rung1_slope_sensitivity": "experiments/analysis/out/indi_replay_ladder/round4_rung1_slope_sensitivity.json",
+  "ours_vs_omar_tables": "not_valid",
+  "omar_c_rust": "validated_only_result"
+}
