@@ -36,3 +36,8 @@ rnn: {en: 0}
 
 ## After the session
 Restore cf5 yaml (`ctrl_mode 0`, `res_sign -1`, `ki_z 16`), reflash `cf21bl_rnn_100hz.bin` if NS2 flights follow, process cards as usual (cf_second first).
+
+## Added 2026-10-09 — prepared material
+- **Unified study firmware (network + `kpos_iz` + filter), laptop only (`build_artifacts/`):** `cf21bl_study_rnn_iz_sentinel_ON.bin` sha256 `989e5150f4d68690d319fa9320c1f947e36f7996caca329db669a512d3079121` (`RPM_FILTER_HOLD_SENTINEL=1`), `cf21bl_study_rnn_iz_sentinel_OFF.bin` sha256 `9dafe3489c15a584874b9da37786a1405e0354fe582e384101e2c013d1c83e1d`. Flash 484 676 / 484 668 B (47 %), RAM 76 %. NOT yet bench-validated: after flashing run `read_rnn_timing.py` (expect `us_max` ≪ 1000 µs as before) and one hover, then one NS2 sanity flight (A8, `res_sign -1`, expect ≈ −3 cm) before using it for data. Build: `make DRONE=bl all-rnn-flash [RPM_FILTER_HOLD_SENTINEL=1]`.
+- **Yaml patch (temporary INDI config), applies cleanly:** `cd ~/georg/ros2_ws/src/crazyswarm2 && git apply ~/georg/flying_robot_course/docs/lab_prep_ours_indi_filter_yaml.patch` (and `git checkout crazyflie/config/crazyflies.yaml` to undo). Claude can also push it as a commit on request.
+- **Analysis after the flights:** `~/.pyenv/versions/flying_robots/bin/python experiments/analysis/rpm_sentinel_motor_response.py --label "ours ON" experiments/logs/usd_raw/cf5_A8_thesis0*_<date>_<stamp>.bin` (reference: Rust ON 10-08 → ratio 1.01; legacy Rust 10-02 1.05; ours legacy 10-02 1.03).
