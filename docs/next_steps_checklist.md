@@ -19,6 +19,8 @@ network term is added with `res_sign=+1` (reinforcing): crossing dips −10.9 cm
 3. **Later lab items:** bench command→thrust latency, logging patch (`f_d`, applied gains, rpm source — also settles the 1.14 thrust factor and the A8 ours-vs-Omar offset), A1 yaml flights for our oscillation.
 4. **RPM filter on the next INDI flight:** active for ours (ctrl_mode 3) and Omar Rust via `rpm_get_all()` (abs cap 28 000 RPM, 10 000 RPM jump, hold-last-good; 0xFFFF sentinel → 0); NOT active for Omar C (reads optical deck `rpm.m1..4` directly).
 
+**2026-10-09 desk work done:** A8 variant comparison (`docs/71`), simulation showcase (`docs/72`: NS2 SIL vs hardware within ≈ 1 cm, animation; ours INDI not feasible in the SIL, Omar dips not reproduced), crossing-detector fix (`a8_crossings.py`). Open: RPM-filter confirmation on ours INDI, same-session Omar-exact + ours baselines, comparative-study protocol, unified-firmware bench check — plan: `docs/plan_2026-10-09_comparison_and_study.md`.
+
 ## WHAT'S NEXT — by area (2026-10-05, from the meeting doc [`meetings/2026-10-05.md`](meetings/2026-10-05.md))
 
 Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md).

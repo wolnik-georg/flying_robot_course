@@ -2,7 +2,8 @@
 
 State going in: NS2 sign + Omar z topics closed (docs/study_parameter_decisions.md); only the RPM-filter confirmation on OUR INDI is open. Lab tomorrow.
 
-## A. A8 variant comparison (desk, start now) — same style as the last meeting (`experiments/analysis/meeting_simple_*.py`, radio CSV + uSD)
+## A. A8 variant comparison — DONE 2026-10-09 (docs/71, crossing-detector bug found and fixed)
+## (original plan) A. A8 variant comparison — same style as the last meeting (`experiments/analysis/meeting_simple_*.py`, radio CSV + uSD)
 **Comparable set (all: A8, `--dz 0.5 --height 0.5 --passes 4`, 26 s, cf5 bottom, cf_second geometric top; flights from the meta files):**
 | Variant | Flights (stamps) | n | Notes |
 |---|---|---|---|
@@ -24,7 +25,8 @@ Excluded by rule: dz ≠ 0.5, height ≠ 0.5, passes ≠ 4, crash/pose-swap, abo
 Method rules (so the comparison is fair): identical window (liftoff + 6 s … end − 4 s), uSD preferred (radio fallback, state which), per-flight values AND pooled mean ± sd, battery/firmware/day column, dips as negative numbers (shallower = better), no flight deleted silently (exclusion list printed).
 **Gap to close in the lab (tomorrow):** same-session baselines for "Omar exact" (kpos 0) ×2 each and ours INDI ×2 (the old ones are 10-02/03 on older firmware) — they double as the RPM-filter flights for ours.
 
-## B. Simulation showcase (desk) — "can we show the simulation?"
+## B. Simulation showcase (desk) — DONE 2026-10-09 (docs/72, validated; ours INDI not feasible in the harness, Omar dips not reproduced)
+## (original plan) B. Simulation showcase — "can we show the simulation?"
 Have: NS2 closed-loop SIL (docs/62; A8 off −5.84 / +1 −9.89 / −1 −2.3 vs hardware −5.9 / −11.0 / −3.4), Omar SIL with NS2 plant (docs/66), CS2 SIL for geometric/INDI.
 To do: (1) refresh the NS2 SIL figure with the hardware −1 result (SIL vs hardware per sign); (2) SIL A8 for geometric / ours INDI / Omar Rust / Omar C on the SAME plant, with hardware overlays; (3) short animation (3-D trajectory GIF/MP4) of A8 two-drone swap with the downwash dip for the NS2 off/−1 cases; (4) state the known mismatches (tilt p99, A1 too pessimistic, Omar dips not reproduced). Output: `docs/meetings/assets/2026-10-09/sim_*.png|gif`, `docs/72_Simulation_Showcase.md`.
 

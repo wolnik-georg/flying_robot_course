@@ -1,0 +1,38 @@
+[
+  {
+    "topic": "NS2 A8 dips (sign effect)",
+    "sil": "off -5.83, +1 -9.96, \u22121 -2.29 cm",
+    "hw": "off \u22125.9, +1 \u221211.0, \u22121 \u22123.15 cm",
+    "verdict": "matches within ~1 cm per cohort (see step1_table)"
+  },
+  {
+    "topic": "Roll p99 bottom",
+    "sil": "~16.9\u00b0 (c=0.0032)",
+    "hw": "~22.9\u00b0 away from crossings (docs/62)",
+    "verdict": "mismatch \u2014 SIL rolls shorter/smaller p99"
+  },
+  {
+    "topic": "A1 network on",
+    "sil": "not re-run here (docs/62: unstable 38\u201348\u00b0)",
+    "hw": "34\u201340\u00b0 oscillation, not network-caused (docs/68)",
+    "verdict": "not validated"
+  },
+  {
+    "topic": "Omar crossing dips in SIL",
+    "sil": "Omar+NS2 plant via omar_z_integral_sil (step2 json)",
+    "hw": "Large Omar exact dips not reproduced (docs/71)",
+    "verdict": "mismatch for Omar exact; Iz improves level not HW dip depth"
+  },
+  {
+    "topic": "Ours INDI level (+4.2 cm HW)",
+    "sil": "harness geometric only",
+    "hw": "+4.17 cm steady (2 flights)",
+    "verdict": "SIL not run \u2014 cannot compare"
+  },
+  {
+    "topic": "Host vs STM32 timing",
+    "sil": "1 kHz loop, no jitter model",
+    "hw": "500 Hz log, measured dt_us",
+    "verdict": "limitation"
+  }
+]
