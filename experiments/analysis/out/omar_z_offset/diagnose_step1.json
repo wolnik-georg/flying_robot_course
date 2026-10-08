@@ -1,0 +1,38 @@
+{
+  "step": 1,
+  "pass": "partial — solo hover table complete; A8 SIL (no downwash) does not reach HW +22 cm",
+  "targets_cm": {
+    "solo_hover_hw": 16.0,
+    "a8_omar_c_hw": 22.0,
+    "a8_omar_rust_hw": 19.0
+  },
+  "method": "indi=3, Kpos_P/D=7/4, plant-only perturbations; solo @ 1 m; A8 two-drone HLC, top geometric, no NS2 downwash",
+  "acc_z_bias_g_calibrated_for_16cm": {
+    "oot4": -0.11422443436458707,
+    "oot5": -0.1142245545051992
+  },
+  "solo_hover_rows": [
+    {"controller": "oot4", "case": "baseline", "solo_mean_z_err_cm": -0.008},
+    {"controller": "oot5", "case": "baseline", "solo_mean_z_err_cm": -0.008},
+    {"controller": "oot4", "case": "plant_kt_p4pct", "kt_mult": 1.04, "solo_mean_z_err_cm": -5.4},
+    {"controller": "oot4", "case": "plant_kt_p8pct", "kt_mult": 1.08, "solo_mean_z_err_cm": -10.4},
+    {"controller": "oot4", "case": "plant_kt_m8pct", "kt_mult": 0.92, "solo_mean_z_err_cm": 12.2},
+    {"controller": "oot4", "case": "plant_kt_m12pct", "kt_mult": 0.88, "solo_mean_z_err_cm": 19.1},
+    {"controller": "oot4", "case": "plant_mass_p8pct", "mass_mult": 1.08, "solo_mean_z_err_cm": -0.01},
+    {"controller": "oot4", "case": "acc_bias_cal_16cm", "acc_z_bias_g": -0.114224, "solo_mean_z_err_cm": 16.0},
+    {"controller": "oot5", "case": "acc_bias_cal_16cm", "acc_z_bias_g": -0.114225, "solo_mean_z_err_cm": 16.0},
+    {"controller": "oot4", "case": "f_ext_0.05N_indi3", "solo_mean_z_err_cm": -0.009, "note": "INDI rejects constant world force"}
+  ],
+  "a8_rows": [
+    {"controller": "oot4", "case": "baseline", "mean_z_err_cm": -0.01},
+    {"controller": "oot4", "case": "plant_kt_m8pct", "kt_mult": 0.92, "mean_z_err_cm": -0.01},
+    {"controller": "oot4", "case": "acc_bias_cal_16cm", "acc_z_bias_g": -0.114224, "mean_z_err_cm": 16.0}
+  ],
+  "verdict": {
+    "H1_missing_integral": "With Kpos_I=0, any sustained DC pos_e from H2/H3 is not trimmed; a z-only integral is a plausible fix path, not proof that missing I is the hardware root cause.",
+    "H2_thrust_constants": "Mass ±8%: ~0 cm at indi=3. Plant kt undervalued vs Omar MOTORRPM2FORCE reproduces upward offset on solo hover (+12.2 cm @ kt×0.92, +19.1 cm @ 0.88). kt overvalued (+4/+8%) flies low. Same kt error does NOT lift A8 mean z in this no-downwash harness.",
+    "H3_imu_a_indi_bias": "state.acc.z bias ≈ −0.114 g reproduces +16 cm solo and +16 cm A8 (no downwash); does not reach HW A8 +22 cm without extra plant effects.",
+    "nominal_sil_vs_hw": "Matched plant (omar mass/kt): ~0 cm offset — hardware +16/+22 cm NOT reproduced without injected error."
+  },
+  "recommendation_before_step2": "Offset is not purely 'turn on integral'; pick whether lab hypothesis is RPM/thrust mismatch (H2) or IMU/RPM split (H3). Integral may trim either in SIL; docs/41 warns SIL may not transfer 1:1."
+}

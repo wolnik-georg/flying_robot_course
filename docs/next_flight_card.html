@@ -199,6 +199,18 @@ footer{
 </section>
 
 <section>
+  <h2>Later 2 (after the NS2 test): INDI "Omar + Iz" — plan preserved 2026-10-08</h2>
+  <div class="panel">
+    <ul class="plain">
+      <li><strong>Why:</strong> Omar's INDI hovers 16–25&nbsp;cm too high (commanded vs delivered thrust gap ≈&nbsp;14&nbsp;%); opt-in z integral <code>ctrlOot5.kpos_iz</code> (Rust, controller 10) / <code>ctrlOmarIndi.Kpos_Iz</code> (C, controller 9), default 0&nbsp;= Omar exact. Docs: <code>docs/65</code>, <code>docs/66</code>.</li>
+      <li><strong>Order:</strong> hover 1&nbsp;m 20&nbsp;s at <code>kpos_iz</code> 0&nbsp;→&nbsp;1.0&nbsp;→&nbsp;1.5, then A8&nbsp;×2, then A1&nbsp;×2 with the best value. Abort at |roll/pitch|&nbsp;&gt;&nbsp;25° for 0.5&nbsp;s or z&nbsp;&lt;&nbsp;0.25&nbsp;m. Exact yaml in <code>lab_session_pack_signtest.md</code> §4b.</li>
+      <li><strong>Watch:</strong> mean z within ±3&nbsp;cm; Omar's crossing dips (hardware 11–26&nbsp;cm below its own level) are not removed by the integral — record them.</li>
+      <li><strong>RPM:</strong> Rust reads DShot through the spike filter; Omar C reads the optical deck directly (no filter).</li>
+    </ul>
+  </div>
+</section>
+
+<section>
   <h2>Not now</h2>
   <div class="not-this-week">
     <ul>

@@ -1,0 +1,109 @@
+{
+  "pass": true,
+  "hardware_reference": {
+    "flights": [
+      {
+        "merged": "merged_A8_rnn0_2026-10-05_17-39-27.csv",
+        "bottom": {
+          "lat_rms_cm": 1.6899621857298146,
+          "mean_z_err_cm": 0.4611891710966727,
+          "rms_z_cm": 0.7058977451498198,
+          "max_tilt_deg": 12.457532
+        },
+        "top": {
+          "lat_rms_cm": 0.7375306938196655,
+          "mean_z_err_cm": -0.010129993016759981,
+          "rms_z_cm": 0.10524532499005623,
+          "max_tilt_deg": 2.551698
+        }
+      },
+      {
+        "merged": "merged_A8_rnn0_2026-10-05_17-41-09.csv",
+        "bottom": {
+          "lat_rms_cm": 1.59307603608885,
+          "mean_z_err_cm": 0.5153930119176598,
+          "rms_z_cm": 0.6905362426978285,
+          "max_tilt_deg": 13.340307
+        },
+        "top": {
+          "lat_rms_cm": 0.5698221450910457,
+          "mean_z_err_cm": -0.014607975667455336,
+          "rms_z_cm": 0.09931193841559098,
+          "max_tilt_deg": 2.330871
+        }
+      }
+    ],
+    "reference": {
+      "bottom_lat_rms_cm": 1.6415191109093323,
+      "top_lat_rms_cm": 0.6536764194553556,
+      "top_max_tilt_deg": 2.551698
+    }
+  },
+  "a8_setpoint_compare_12s": [
+    {
+      "mode": "cmd_fd",
+      "bot_lat_rms_cm": 0.3137049078133049,
+      "top_lat_rms_cm": 0.31370639676311435,
+      "bot_mean_z_cm": 0.07667338147671772,
+      "top_max_tilt_deg": 1.2760336003943846
+    },
+    {
+      "mode": "hlc",
+      "bot_lat_rms_cm": 0.02251048530420339,
+      "top_lat_rms_cm": 0.02250661227473086,
+      "bot_mean_z_cm": 0.0766105664891069,
+      "top_max_tilt_deg": 1.219090475148993
+    }
+  ],
+  "criterion": "no dw/rnn; outside crossings: lat rms<5 cm, |mean z|<5 cm, rms_z<8 cm; top max tilt<=7.7 deg (hw top ~2.7); bottom tilt not gated at step 2",
+  "runs": [
+    {
+      "label": "baseline_A8_no_dw",
+      "partner_ok": true,
+      "bottom_mean_z_cm": 0.041565104357063454,
+      "bottom_rms_z_cm": 0.11502180593368214,
+      "bottom_rms_lat_cm": 0.009623379649385734,
+      "bottom_max_tilt_deg": 1.2192470233755113,
+      "top_mean_z_cm": 0.03574412260129689,
+      "top_rms_z_cm": 0.09762606418314251,
+      "top_rms_lat_cm": 0.009605586999321014,
+      "top_max_tilt_deg": 1.2192958209096578,
+      "bottom_gyro": 0.8228811953942743,
+      "top_gyro": 0.82289596453125,
+      "final_pos_bot": [
+        -4.861666002498106e-09,
+        -0.5000011725177369,
+        0.4999993827428227
+      ],
+      "final_pos_top": [
+        3.805114984176873e-09,
+        0.5000012086546957,
+        0.9999988138282053
+      ]
+    },
+    {
+      "label": "baseline_A1_no_dw",
+      "partner_ok": true,
+      "bottom_mean_z_cm": 0.05114589684326729,
+      "bottom_rms_z_cm": 0.1244117144579398,
+      "bottom_rms_lat_cm": 0.0,
+      "bottom_max_tilt_deg": 0.0,
+      "top_mean_z_cm": 0.04413133090474178,
+      "top_rms_z_cm": 0.10563877654522051,
+      "top_rms_lat_cm": 0.0,
+      "top_max_tilt_deg": 0.0,
+      "bottom_gyro": 1.1317841134160611e-11,
+      "top_gyro": 1.0787690439611134e-11,
+      "final_pos_bot": [
+        0.0,
+        0.0,
+        0.5000000241517912
+      ],
+      "final_pos_top": [
+        0.0,
+        0.0,
+        1.000000058969053
+      ]
+    }
+  ]
+}

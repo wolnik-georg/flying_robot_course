@@ -1,0 +1,15 @@
+{
+  "solo_h4_cmd_gain": [
+    {"cmd_gain": 1.0, "mean_z_err_cm": -0.008},
+    {"cmd_gain": 1.10, "mean_z_err_cm": 12.73},
+    {"cmd_gain": 1.136, "mean_z_err_cm": 16.77},
+    {"cmd_gain": 1.14, "mean_z_err_cm": 17.20},
+    {"note": "oot4=oot5 to printed digit; direct harness sqrt(cmd_gain) on delivered RPM"}
+  ],
+  "a8_ns2_bank_sym_c0.0032": [
+    {"cmd_gain": 1.10, "mean_z_err_cm": 12.91, "hw_ref_cm": 22},
+    {"cmd_gain": 1.14, "mean_z_err_cm": 17.50, "hw_ref_cm": 22},
+    {"cmd_gain": 1.17, "mean_z_err_cm": 20.73, "hw_ref_cm": 22},
+    {"note": "CrazyflieSIL path: scale executeController RPM by sqrt(cmd_gain) before plant step; RPM meas from plant state"}
+  ]
+}

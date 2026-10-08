@@ -1,0 +1,42 @@
+# Omar C / Omar Rust constant z offset — plan (2026-10-08)
+
+**Decision (2026-10-08, with the user):** the thesis "Pure INDI" choice (ours / Omar C / Omar Rust) depends on whether the constant z offset of Omar's controllers can be fixed. Omar's controllers stay **as close to Omar's original as possible**; a z integral is acceptable only if nothing else breaks. In the thesis the modified controller is labelled **"Omar + Iz"** next to **"Omar exact"**; default behaviour (integral gain 0) must stay bit-identical to Omar.
+
+## Facts (verified 2026-10-08)
+- Hardware (10-02, `docs/56`, `docs/lab_sessions/2026-10-02.md`): mean z error on A8 — ours +3 cm, **Omar C +22 cm, Omar Rust +19 cm** (max 30 / 26 cm); A1 — Omar C +2…+4 cm, Omar Rust −11 cm; Omar Rust solo hover (09-30) **+16 cm** (1.162 m vs 1.000 m). Offset is *above* the setpoint.
+- Omar C (`controller_omar_indi.c`): `Kpos_I = {0,0,0}` default, runtime params `ctrlOmarIndi.Kpos_Ix/y/z` exist; `i_error_pos += dt·pos_e` every position-mode tick (line ~214), `Kpos_I_limit` exists as a parameter but is **not applied** to `i_error_pos`; reset only in `controllerOmarIndiReset`. No code change is needed to *try* a gain on C (param only), but there is no anti-windup.
+- Omar Rust (`omar_indi_rust.rs`): `KPOS_I` is a **compile-time const (0)**, same unclamped accumulation, `KPOS_P = 7`, `KPOS_D = 4`, `MASS = 0.0427` (ours 0.041).
+- Earlier SIL work (`docs/41` §18–20.5): P/D sweeps ±30 %/±75 % did not remove the bias; in the IMU-bias *proxy* a nonzero `Kpos_I.z` at 3–4× of an illustrative value trimmed the mean but rang; the proxy was **not validated** against the real +16 cm. Replay (`docs/64` addendum 2): using Omar's mass in our law raises our thrust by 0.03 N, i.e. a mass/thrust-constant mismatch is a candidate contributor.
+- Pattern (inference only, not verified): Omar C A8 +22 vs A1 +3 and Rust solo +16 are consistent with a DC upward bias of roughly +15…+20 cm that the constant downwash in A1 partly hides. Rust A1 (−11 cm) does not fit, so treat as a hypothesis.
+
+## Hypotheses to separate (SIL, then data)
+H1 missing integral (any DC thrust error stays uncorrected at `kp_z = 7`); H2 thrust-model constants (mass 0.0427, `MOTORRPM2FORCE`) differ from the airframe; H3 RPM/IMU-based `a_indi` bias (`indi=3` uses `acc_z` and RPM force).
+Method: put a known DC thrust error into the SIL plant (mass and force-constant mismatch of +4 %, +8 %) and see which reproduces +16 cm solo hover at Omar's gains; then check what the integral does to it.
+
+## Implementation rules ("do not break anything")
+1. **Default unchanged:** integral gain 0 ⇒ outputs bit-identical to today (Rust vs C tests 7/7, ~1e-9; replay at gain 0 unchanged; existing SIL results unchanged).
+2. **Rust:** make the z integral gain a runtime parameter (like `g_oot5_indi`: C wrapper in `traj_iface.c` + extern in Rust, yaml param name proposal `omar_rust.kpos_iz`), default 0; **z axis only**; anti-windup clamp (`KPOS_I_LIMIT`-style, applied to `i_error_pos.z`); zero `i_error_pos` when not in position mode / at takeoff and landing; no change to x/y.
+3. **C (controller 9):** use the existing `Kpos_Iz` param; the missing clamp/reset must be added only behind the same default-off behaviour (patch preserved in `crazyflie-firmware`, not forked); re-check C ≡ Rust with the integral on (target ≤ 1e-6).
+4. Keep a plain "Omar exact" configuration selectable at runtime (gain 0).
+5. Gain choice by SIL grid starting low (ringing seen at 3–4× in the proxy); selection criterion: mean z error on solo hover, A8 and A1 within ±3 cm, no new oscillation (gyro RMS, tilt), crossing dips not worse than "Omar exact".
+
+## Order
+1. SIL diagnosis H1/H2/H3 → 2. Rust runtime param + tests → 3. C clamp/reset (default off) + C≡Rust → 4. SIL gain grid (solo hover, A8, A1, figure-8) → 5. replay/host regression at gain 0 → 6. lab: INDI hover → A8 → A1 with chosen gain (after the NS2 gate), abort criteria as for the A1 package flights (`docs/58`).
+
+## Independent validation of Cursor step 1 and revised diagnosis (2026-10-08, Claude)
+Cursor's step-1 file: `experiments/analysis/omar_z_offset_diagnose.py`, `out/omar_z_offset/diagnose_step1.json`, `docs/66_Omar_Z_Integral_Results.md` (step 1 only). Checked and found:
+1. **The "IMU bias −0.114 g reproduces +16 cm" row is circular:** the bias value is solved by bisection to hit +16.0 cm (`calibrate_acc_bias`), and the same −0.116 g was already the calibration of `docs/41`. On hardware there is **no such bias**: steady-hover `acc_z` is **1.000–1.003 g** on every logged flight (ours and Omar's, 09-30…10-05). **H3 (IMU bias) is refuted.**
+2. **The A8 rows are not comparable to the solo rows:** in the `CrazyflieSIL` path the controller thrust goes through the SIL's own thrust→PWM→RPM chain (`crazyflie_sil.py` ~L335 notes it is inconsistent with Omar's constants), so a plant `kt ×0.92` has no effect there (−0.01 cm) while it gives +12.2 cm in the solo harness. "A8 +22 cm not reproduced" is a harness property, not a result.
+3. **H2 as injected (plant kt ≠ Omar's `MOTORRPM2FORCE`) does not match hardware either:** in the logged Omar hover flights (10-02 `cf5_thesis58/59`, mean z 0.71/0.75 m vs 0.5 m setpoint) `a_imu_fz` = 0.007 and `a_rpm_fz` = 0.010 m/s² — the RPM-based force and the IMU agree (INDI residual ≈ 0), which a kt mismatch would break.
+4. **What the hardware data DO show (H4, commanded-vs-delivered thrust):** in those flights the controller's logged `thrustSi` is **0.354 / 0.343 N** while the airframe hovers (|vz| < 0.05) — i.e. 12–15 % **below the weight** (0.402 N at 0.041 kg). With Omar's law `thrust = MASS·(g + kp·pos_e + …)` and kp = 7 this needs `pos_e = (0.354/0.0427 − 9.81)/7 = −0.217 m`, and the logged `error_posz` is **−0.214 m** (−0.252 for the second flight, thrust 0.343). The offset is exactly the position error the controller needs in order to command less thrust than the drone really needs — a DC mismatch between commanded and delivered thrust (factor ≈ 1.14: stock thrust→PWM / battery-compensation path vs Omar's platform constants), invisible to INDI because RPM and IMU agree.
+5. **SIL confirmation of H4** (scratch run, not committed; solo hover, both controllers, RPM→force kept consistent, only delivered thrust scaled by the factor): command→thrust gain 1.00 → 0.0 cm; 1.05 → +6.7; 1.10 → +12.7; **1.136 → +16.8 (hardware +16)**; 1.15 → +18.3; oot4 = oot5 to the printed digit.
+**Consequence:** the missing integral *is* the right fix path: Omar's law has no mechanism that sees a command→thrust DC mismatch, so an integral on the position error is the minimal addition. The SIL injection to use from now on is `cmd_gain` (delivered/commanded thrust ≈ 1.10–1.17), not plant kt and not an IMU bias. Follow-up prompt: `docs/cursor_prompt_omar_z_integral_followup_2026-10-08.md`.
+
+## Status
+- 2026-10-08: plan written; step 1 corrected (above); steps 2–5 delivered by Cursor and independently validated (`docs/66` last section): opt-in `kpos_iz` in Rust + C, default-off bit-identical, SIL: Iz = 1.0 brings A8 +17.5 → +1.1 cm and A1 to +1.6 cm at cmd_gain 1.14 (robust 1.10–1.17), solo +3.3 cm (1.5 → +1.2). Closed afterwards (docs/66 'Closure checks'): ARM CF21BL build OK (flash 39 %, RAM 75 %), windup/landing OK, real figure-8 OK (Iz does not change xy/tilt/gyro), A1 baseline, both controllers identical; recommended `kpos_iz = 1.5` (1.0 cautious). **Open (hardware only): the SIL shows no crossing dips for Omar but the 10-02 hardware flights dip 11–26 cm below their own steady level — the integral removes the offset, not those dips (expect ≈ −15…−25 cm absolute at crossings on A8).** Patch file `controller_omar_indi.c.patch` repaired.
+
+## RPM source / filter coverage (checked 2026-10-08)
+- Omar Rust (controller 10) and our INDI get RPM from `rpm_get_all()` (`traj_iface.c`): `rpm_source=1` = DShot with the 28 000 RPM cap, 10 000 RPM jump check and hold-last-good; the 0xFFFF sentinel becomes 0 (open item).
+- Omar C (controller 9, `controller_omar_indi.c`) reads `logGetUint(rpm.m1..m4)` — the optical deck — directly, requires `deck.bcRpm == 1`, no filter, no DShot. On hardware C and Rust therefore do **not** see the same RPM signal (the replay feeds both the same RPM, which is why they are identical there). The deck dropped 2 of 4 motors in earlier 2-drone flights.
+## Lab block (preserved)
+See `docs/lab_session_pack_signtest.md` §4b and `docs/next_steps_checklist.md` "LAB SEQUENCE".

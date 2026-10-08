@@ -1,7 +1,7 @@
 # Thesis Progress Checklist
 **Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams**
 
-**Last updated:** 5 October 2026
+**Last updated:** 8 October 2026
 
 > **Compared set (2026-09-22, matches thesis Ch. 1–5):** Strategy **0** geometric baseline · **1**
 > pure INDI · **2** geometric + learned residual (Neural-Swarm line) · **3** FBL + residual (in the
@@ -69,7 +69,7 @@ bottom.
 | | |
 |---|---|
 | **Phase** | **Transitioning: Preparation (complete) → Core Experimental Work.** Two parallel tracks — see ⇄ TWO PARALLEL TRACKS below |
-| **Next action — lab** | **⬅️ 2026-10-05 (lab closed, `docs/lab_sessions/2026-10-05.md`): NS2 100 Hz works, predictions corr 0.85–0.92; crashes were tracker pose swaps + cf_second battery collapse, NOT the network; 3/3 fresh-battery A8 clean. Open: network term sign (dips −10.9 cm vs −5.9 cm without). Next: A8 `res_sign=-1`, rnn.en=0 repeats, A1 rnn.en=0 baseline.** **NS2 ready for the comparative study once: sign test passes on A8 + A1, A1 oscillation attributed, no over-compensation, scenario set decided (gate in `docs/next_steps_checklist.md`).** Older state: **IN PROGRESS (updated 2026-10-03 session close).**
+| **Next action — lab** | **⬅️ 2026-10-08 update: NS2 closed-loop SIL validated for A8 (`docs/62`: off −5.84 cm, `+1` test −9.89 cm vs hw −10.9; `−1` predicted ≈ −2.3 cm); INDI replay valid where unsaturated (`docs/64`); decisions: all scenarios stay (A1 included), 100 Hz enough, Omar's controllers kept original, INDI variant hinges on the Omar z-offset fix (opt-in z integral, plan `docs/65`, Cursor prompt `docs/cursor_prompt_omar_z_integral_2026-10-08.md`). Lab order unchanged: A8 `res_sign=-1` ×3, A8 network off ×2, A1 network off ×1, then A1 `-1` only if A8 passes.** Older: **2026-10-05 (lab closed, `docs/lab_sessions/2026-10-05.md`): NS2 100 Hz works, predictions corr 0.85–0.92; crashes were tracker pose swaps + cf_second battery collapse, NOT the network; 3/3 fresh-battery A8 clean. Open: network term sign (dips −10.9 cm vs −5.9 cm without). Next: A8 `res_sign=-1`, rnn.en=0 repeats, A1 rnn.en=0 baseline.** **NS2 ready for the comparative study once: sign test passes on A8 + A1, A1 oscillation attributed, no over-compensation, scenario set decided (gate in `docs/next_steps_checklist.md`).** Older state: **IN PROGRESS (updated 2026-10-03 session close).**
 
 **2026-10-03 desk update (later, supersedes the NS2 "Next (desk)" line below — desk work is DONE):**
 

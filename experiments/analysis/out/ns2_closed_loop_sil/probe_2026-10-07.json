@@ -1,0 +1,421 @@
+{
+  "tilt_unit_test_deg_30": 29.999999999999993,
+  "a1_after_init_reconfigure": {
+    "tracking_bottom_cm": {
+      "rms_z_cm": 0.1244117144579398,
+      "rms_lateral_cm": 0.0,
+      "mean_z_err_cm": 0.05114589684326729,
+      "max_z_dip_cm": 2.016829958595423e-06,
+      "max_tilt_proxy_deg": NaN,
+      "max_tilt_deg": 0.0
+    },
+    "tracking_top_cm": {
+      "rms_z_cm": 0.10563877654522051,
+      "rms_lateral_cm": 0.0,
+      "mean_z_err_cm": 0.04413133090474178,
+      "max_z_dip_cm": 4.501875561224722e-06,
+      "max_tilt_proxy_deg": NaN,
+      "max_tilt_deg": 0.0
+    },
+    "final_pos_bot": [
+      0.0,
+      0.0,
+      0.5000000241517912
+    ],
+    "final_pos_top": [
+      0.0,
+      0.0,
+      1.000000058969053
+    ],
+    "gain_audit": {
+      "after_configure_before_cfs": [
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 0
+        },
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 1
+        }
+      ],
+      "after_cfs_ctor": [
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 0
+        },
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 1
+        }
+      ],
+      "before_controllerOutOfTreeInit": [
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 0
+        },
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 1
+        }
+      ],
+      "after_controllerOutOfTreeInit": [
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 0
+        },
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 1
+        }
+      ],
+      "after_reconfigure_post_init": [
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 0
+        },
+        {
+          "g_kp_xy": 40.0,
+          "g_kp_z": 30.0,
+          "g_kv_xy": 8.0,
+          "g_kv_z": 10.0,
+          "g_ki_z": 16.0,
+          "g_ki_z_limit": 1.5,
+          "g_controller_mode": 0.0,
+          "g_indi_res_sign": 1.0,
+          "drone": 1
+        }
+      ]
+    }
+  },
+  "a8_bisect_12s": [
+    {
+      "mode": "cmd_fd",
+      "converge_s": 0.0,
+      "bot_lat_rms_cm": 219.71091931573272,
+      "top_lat_rms_cm": 88.51515293699171,
+      "bot_mean_z_err_cm": -41.86613197506608,
+      "top_mean_z_err_cm": -13.508731753352816,
+      "first_lat_gt_10cm_bot": {
+        "t_s": 4.0,
+        "t_sc_s": 0.0,
+        "lat_err_bot_cm": 50.0,
+        "cmd_vel_bot_m_s": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cmd_acc_bot_m_s2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "final_pos_bot": [
+        1.5903418006078627e-12,
+        -2.183690051313391,
+        0.0
+      ],
+      "final_pos_top": [
+        1.7442281040437751e-10,
+        0.5000010152220876,
+        1.0018029995871707
+      ],
+      "max_tilt_bot_deg": 80.69176305194443,
+      "max_tilt_top_deg": 80.69226008740169,
+      "gain_audit": {
+        "after_configure_before_cfs": [
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 0
+          },
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 1
+          }
+        ],
+        "after_cfs_ctor": [
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 0
+          },
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 1
+          }
+        ],
+        "before_controllerOutOfTreeInit": [
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 0
+          },
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 1
+          }
+        ],
+        "after_controllerOutOfTreeInit": [
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 0
+          },
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 1
+          }
+        ],
+        "after_reconfigure_post_init": [
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 0
+          },
+          {
+            "g_kp_xy": 40.0,
+            "g_kp_z": 30.0,
+            "g_kv_xy": 8.0,
+            "g_kv_z": 10.0,
+            "g_ki_z": 16.0,
+            "g_ki_z_limit": 1.5,
+            "g_controller_mode": 0.0,
+            "g_indi_res_sign": 1.0,
+            "drone": 1
+          }
+        ]
+      }
+    },
+    {
+      "mode": "cmd_analytic",
+      "converge_s": 0.0,
+      "bot_lat_rms_cm": 219.6994048310716,
+      "top_lat_rms_cm": 145.9095653152461,
+      "bot_mean_z_err_cm": -41.84997549286899,
+      "top_mean_z_err_cm": -46.440173052764685,
+      "first_lat_gt_10cm_bot": {
+        "t_s": 4.0,
+        "t_sc_s": 0.0,
+        "lat_err_bot_cm": 50.0,
+        "cmd_vel_bot_m_s": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cmd_acc_bot_m_s2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "final_pos_bot": [
+        -1.3273904200190878e-12,
+        -2.1835540866967427,
+        0.0
+      ],
+      "final_pos_top": [
+        5.699479954483481e-11,
+        2.3807678744024043,
+        0.001599855820919805
+      ],
+      "max_tilt_bot_deg": 80.692459685441,
+      "max_tilt_top_deg": 89.63990506961778,
+      "gain_audit": null
+    },
+    {
+      "mode": "hlc",
+      "converge_s": 3.5,
+      "bot_lat_rms_cm": 17.186569779528902,
+      "top_lat_rms_cm": 17.18658199637951,
+      "bot_mean_z_err_cm": 0.09539976362845135,
+      "top_mean_z_err_cm": 0.06609644030275541,
+      "first_lat_gt_10cm_bot": {
+        "t_s": 4.0,
+        "t_sc_s": 0.0,
+        "lat_err_bot_cm": 50.0,
+        "cmd_vel_bot_m_s": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cmd_acc_bot_m_s2": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "final_pos_bot": [
+        -3.5549966884893216e-10,
+        0.17697638383106595,
+        0.5000037465644793
+      ],
+      "final_pos_top": [
+        2.966124762286536e-10,
+        -0.1769769725152492,
+        1.0000033583762924
+      ],
+      "max_tilt_bot_deg": 1.7906091488184215,
+      "max_tilt_top_deg": 1.7907895321128067,
+      "gain_audit": null
+    }
+  ],
+  "a8_hlc_full_33s": {
+    "tracking_bottom_cm": {
+      "rms_z_cm": 0.09802090701447855,
+      "rms_lateral_cm": 11.065709627679487,
+      "mean_z_err_cm": 0.031759301336050386,
+      "max_z_dip_cm": -0.0003492572368923863,
+      "max_tilt_proxy_deg": NaN,
+      "max_tilt_deg": 1.7905484274301593
+    },
+    "tracking_top_cm": {
+      "rms_z_cm": 0.08320571693708419,
+      "rms_lateral_cm": 11.065714852918914,
+      "mean_z_err_cm": 0.027396258941892338,
+      "max_z_dip_cm": -0.00035925073692544274,
+      "max_tilt_proxy_deg": NaN,
+      "max_tilt_deg": 1.7907514761518792
+    },
+    "partner_ok": true,
+    "final_pos_bot": [
+      7.553532137816905e-10,
+      -0.49862443138520285,
+      0.5000025149340188
+    ],
+    "final_pos_top": [
+      1.7830858692354362e-09,
+      0.49862502186438085,
+      1.000002950521576
+    ]
+  },
+  "hardware_ref": {
+    "flight": "A8_2026-10-05_17-39-27 (cf5, network-off cohort)",
+    "max_tilt_deg": 1385.0915506272934,
+    "max_abs_roll_deg": 1385.0915506272934,
+    "max_abs_pitch_deg": 880.645928694372,
+    "z_err_mean_cm": -2.629254827586206,
+    "z_err_min_cm": -52.399499999999996
+  }
+}

@@ -161,6 +161,17 @@ python3 "$REPO/flying_drone_stack/tools/merge_usd_logs.py" \
 
 ---
 
+## 4b — AFTER the NS2 gate only: INDI "Omar + Iz" block (added 2026-10-08, preserved plan)
+Do NOT start this block before the NS2 sign test is done (pack §2 Blocks 1–3). Plan and rationale: `docs/65_Omar_Z_Offset_Plan.md`, `docs/66_Omar_Z_Integral_Results.md`. Firmware must contain the `kpos_iz` change: flash the build from the laptop tree (`make DRONE=bl` / the usual flash recipe), check with `ros2 param get` that `ctrlOot5.kpos_iz` (Rust) or `ctrlOmarIndi.Kpos_Iz` (C) exists.
+- **Which controller first:** Omar **Rust** (`controller: 10`) — it reads RPM through `rpm_get_all()` (DShot, `rpm_source: 1`, spike filter active). Omar **C** (`controller: 9`) only if C is chosen later: it reads the *optical deck* `rpm.m1..4` directly (needs `deck.bcRpm`, no filter, deck dropped 2 of 4 motors in earlier 2-drone flights).
+- **yaml on cf5 (exact nesting as in crazyflies.yaml):** `controller: 10`, `ctrlOot5: {indi: 3, kpos_iz: <value>}` (for C: `controller: 9`, `ctrlOmarIndi: {indi: 3, Kpos_Iz: <value>}`); `indi_gains.rpm_source: 1`; cf_second unchanged (geometric). `kpos_iz` values in this order: **0 → 1.0 → 1.5**. Keep the `res_sign` line out of this block (irrelevant for controller 10).
+- **Flights (fresh batteries, pose bag, uSD tags as in §2/§3):**
+  1. Single-drone hover 1.0 m, 20 s, `kpos_iz = 0` (Omar exact: expect ≈ +16 cm), then `1.0`, then `1.5` (stop if |roll/pitch| > 25° for 0.5 s or z < 0.25 m).
+  2. A8 ×2 with the best value (expected from SIL: mean z within ±1–3 cm; **crossing dips of Omar remain ≈ 15–25 cm below its own level — record them, this is the variant-decision evidence**).
+  3. A1 ×2 with the same value.
+- **Pass:** hover/A8/A1 mean z error within ±3 cm, no new oscillation (gyro RMS not above the 10-02 Omar level), no windup at takeoff/landing (watch the first 3 s and the descent).
+- **Record for Claude:** run tags, `kpos_iz` per flight, vbat min, crossing dips relative to the steady level and absolute.
+
 ## 4 — Close-out (send back to Claude)
 
 - Pose bag path(s) under `experiments/logs/rosbags/`

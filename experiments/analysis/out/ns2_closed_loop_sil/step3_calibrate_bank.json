@@ -1,0 +1,59 @@
+{
+  "downwash_plant": "bank",
+  "meas_noise": {
+    "enabled_for_seeds": true,
+    "pos_std_m": [
+      0.0036,
+      0.01,
+      0.0053
+    ],
+    "gyro_std_deg_s": [
+      25.6,
+      12.5,
+      2.3
+    ],
+    "source": "merged_A8_rnn0_2026-10-05_17-39-27 cf5 pos err & gyro std outside crossings"
+  },
+  "hardware_dip_target_cm": -5.9,
+  "hardware_dip_range_cm": [
+    -7.2,
+    -5.4
+  ],
+  "dip_curve": [
+    {
+      "scale": 1.0,
+      "dip_cm_mean": -4.233388771683055
+    }
+  ],
+  "calibrated_scale": 1.0,
+  "note": "bank plant uses full_bank weights at scale 1.0 (no NS2 scalar search)",
+  "seed_dips_cm": [
+    -4.2161565547311,
+    -4.196693834417897,
+    -4.2557530750489345
+  ],
+  "seed_dips_spread_cm": {
+    "mean": -4.22286782139931,
+    "std": 0.024573417903601544,
+    "min": -4.2557530750489345,
+    "max": -4.196693834417897
+  },
+  "plausibility": {
+    "scale_1.0": {
+      "fa_az_crossings_m_s2": -0.49967633433510905,
+      "fa_az_a1_hold_m_s2": -2.55350356522962
+    },
+    "hardware_ref_m_s2": {
+      "rnn_pred_z_crossings": -0.6,
+      "rnn_pred_z_a1_stack": -1.6
+    }
+  },
+  "plausibility_ok_factor_1p5": false,
+  "bottom_tilt_check": {
+    "p99_deg": 1.231899021511953,
+    "max_deg": 1.2357391759554095,
+    "hw_p99_deg": 23.0,
+    "hw_max_deg": 28.0
+  },
+  "step3_pass": false
+}

@@ -1,0 +1,56 @@
+{
+  "follow_up": "2026-10-07 step3 calibration extended",
+  "meas_noise": {
+    "enabled_for_seeds": true,
+    "pos_std_m": [0.0036, 0.01, 0.0053],
+    "gyro_std_deg_s": [25.6, 12.5, 2.3],
+    "source": "merged_A8_rnn0_2026-10-05_17-39-27 cf5 pos/gyro std outside crossings (tracking error proxy)"
+  },
+  "hardware_dip_target_cm": -5.9,
+  "hardware_dip_tol_cm": 0.8,
+  "hardware_dip_range_cm_8_crossings": [-7.2, -5.4],
+  "dip_curve": [
+    {"scale": 1.0, "dip_cm_mean": -1.27},
+    {"scale": 2.0, "dip_cm_mean": -2.60},
+    {"scale": 3.0, "dip_cm_mean": -4.10},
+    {"scale": 3.75, "dip_cm_mean": -5.58, "note": "bisect"},
+    {"scale": 3.85, "dip_cm_mean": -5.81},
+    {"scale": 3.92, "dip_cm_mean": -5.97, "seed_mean_with_noise": -5.97, "seed_std_cm": 0.07},
+    {"scale": 4.0, "dip_cm_mean": -6.17, "seed_dips_with_noise": [-6.08, -6.26, -6.15]},
+    {"scale": 4.5, "dip_cm_mean": -7.49},
+    {"scale": 5.0, "dip_cm_mean": -8.85},
+    {"scale": 6.0, "dip_cm_mean": -18.40, "note": "NS2 Fa nonlinear / too strong"}
+  ],
+  "calibrated_scale_dip_only": 3.92,
+  "calibrated_scale_alt_bisect": 3.75,
+  "seed_dips_cm_at_3.75": [-5.49, -5.65, -5.56],
+  "seed_dips_cm_at_3.92": [-5.88, -6.06, -5.96],
+  "seed_dips_spread_at_3.92": {
+    "mean": -5.966,
+    "std": 0.070,
+    "min": -6.055,
+    "max": -5.884
+  },
+  "plausibility_m_s2": {
+    "hardware_ref": {"a8_crossings_rnn_pred_z": -0.6, "a1_stack_rnn_pred_z": -1.6},
+    "scale_1.0_plant_fa_az": {"a8_crossings": -0.25, "a1_hold": -1.97},
+    "scale_3.92_plant_fa_az": {"a8_crossings": -1.04, "a1_hold": -7.60},
+    "scale_3.75_plant_fa_az": {"a8_crossings": -0.99, "a1_hold": -7.27}
+  },
+  "plausibility_ok_within_factor_1p5": false,
+  "plausibility_verdict": "Dip-matched scalar (~3.9) makes A1 plant Fa_z ~4.7x hardware rnn_pred_z; scale 1.0 matches A1 (~1.2x) but A8 dip too shallow. Single global NS2 Fa scale cannot satisfy both.",
+  "recommended_next_plant": "Disturbance from training bank full_bank_c1_complete.npz (26-flight residuals vs relative pos/vel), not one Fa scalar.",
+  "bottom_tilt_check_at_3.92": {
+    "sil_p99_deg": 1.14,
+    "sil_max_deg": 1.14,
+    "hardware_network_off_p99_deg": 23,
+    "hardware_network_off_max_deg": 28,
+    "note": "NS2 Fa is pure body force; does not reproduce hardware attitude coupling from downwash."
+  },
+  "step3_pass_dip_band": true,
+  "step3_pass_plausibility": false,
+  "step3_pass_bottom_tilt_vs_hw": false,
+  "step3_pass_overall": false,
+  "step4_run": false,
+  "step4_reason": "Gates 1-4 not all consistent; do not run network-on test."
+}

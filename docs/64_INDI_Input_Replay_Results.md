@@ -1,3 +1,5 @@
+> **FINAL STATUS (2026-10-07, supersedes the Round 4 verdict below): the replay is VALID where the comparison is valid.** The A1 "failure" was a comparison error: in the 10-02 A1 flight **96.4 % of the steady samples have a motor at the PWM ceiling (65 535)** and gyro_x std is **253 deg/s** (the full-INDI oscillation of `docs/56`), so the summed motor command is *not* the controller's `thrustSi` and cannot be used as a reference. On the **unsaturated** A1 samples (n = 540) the replay agrees with the flown command: **corr 0.928, mean 0.537 vs 0.560 N (−4 %)**. A8 (97.3 % unsaturated): corr 0.79–0.82, −10 % (within the ±~10 % uncertainty of the battery-compensated thrust reconstruction); a direct regression of the flown A8 thrust on `ep_z, ev_z, a_res_z` gives R² = 0.97. Ours-vs-Omar numbers are now available as **same-input output differences** (section "Closure addendum 2"), not as on-policy claims. Older rung-2 "FAIL" rows and the banner below are kept for history.
+
 # INDI input replay — results (2026-10-07)
 
 > **Ladder Round 2 (2026-10-07) — STOP at rung 1 (geometric on-policy).** Flights: 2026-10-05 geometric A8 `17-39-27` / `17-41-09`, uSD `cf5_A8_thesis00/01_*_17-44-01.bin`, yaml rev **`c13546a`** (yaml `all:` pos 64/48 is **not** what the host applies). **`globals_applied` snapshot** (from `apply_ours_globals`, meta wins on pos): `g_controller_mode=0`, `g_kp_xy=40`, `g_kp_z=30`, `g_kv_xy=8`, `g_kv_z=10`, `g_ki_z=16`, `g_ki_z_limit=1.5`, `g_indi_mass=0.041`, `g_indi_res_fc=80`, `g_indi_res_clamp=10`, `g_indi_res_sign=1`, `g_rnn_en=0`, `g_indi_fc_bw=206`, `g_indi_filt_dt_us=1000`, `g_indi_clamp_en=11`, `g_indi_rpm_source=1`, full dict in `rung0_summary.json`. Steady: `sp_z ≥ 0.9·max(sp_z)`, even 1 kHz ticks for 500 Hz `a_res`.
@@ -180,3 +182,37 @@ Per-run snapshots: `experiments/analysis/out/indi_replay/{A8,A1}/manifest.json` 
 ## INDI-variant decision
 
 **Stopped Round 4:** full-INDI replay cannot be validated from logs (hidden state + A1 thrust/clamp mismatch). No INDI-variant decision from ours-vs-Omar. No compensation terms added.
+
+## Closure addendum (2026-10-07, Claude) — three extra discriminating checks on the 10-02 full-INDI flights
+
+Status after these checks: **still not reproducible, but the failure is now narrowed.** Script: `experiments/analysis/indi_replay_gain_sweep.py` (system `python3`, `PYTHONPATH=…/crazyflie-firmware/build`); constant overrides only, no data-derived trim.
+
+1. **Not a position-gain error.** A1 19-15-47, mean thrust vs flown (bat-comp 0.491 N): `kp_z` 48 → 0.718 N (46 %, corr 0.075); 24 → 0.552 N (12.5 %, corr −0.005); 12 → 0.427 N (13 %, corr −0.034); 8 → 0.384 N (22 %, corr −0.042). A gain near 17 would match the *mean*, but **no gain gives any correlation** (|corr| < 0.08 everywhere).
+2. **Not a timing/alignment error.** Replay shifted by −150…+150 ms against the flown command: best corr on A1 is 0.10 (corr@0 0.075); A8 peaks at lag 0 (0.82).
+3. **The input path is fine.** With the repo's alignment convention (`t_radio = t_usd − t_usd[0] + lag_s`), replayed `a_res` matches the flown (radio-logged) `a_res` in mean and spread on both flights: A1 z mean −1.79 vs −2.05 m/s², std 0.94 vs 0.87; y mean −0.18 vs −0.16, std 0.51 vs 0.51; A8 z mean −0.02 vs −0.01, std 0.47 vs 0.44. (Sample-level correlation against the 20 Hz radio log is ~0 even on A8, so the radio↔uSD alignment is too coarse for correlation; the statistics are what this check uses.)
+
+**Conclusion (superseded by addendum 2, which found the actual cause: motor saturation in A1).** The measured inputs and the residual estimate reproduce; the position gain and the timing do not explain the gap; yet the host law returns 0.72 N where the drone flew 0.49 N at a 0.26 m height error, and the flown thrust has a time structure the replay does not follow. What remains is a difference **inside the flown control law or its applied parameters/binary** (not observable from these logs). The only decisive step is to log the controller internals in flight (`f_d` before clamp, `thrust_si`, applied `kp_z`, mode flags) — this is the already-listed lab logging patch, **not a desk task**. Until then: no ours-vs-Omar replay comparison, no claim about the flown full-INDI law from the replay. Omar C ≡ Omar Rust (1e-7 / 1e-9) remains the only validated replay result.
+
+
+## Closure addendum 2 (2026-10-07) — why A1 "failed" and what the replay does show
+
+**A1 root cause of the mismatch: motor saturation, not a controller difference.**
+| Flight | steady n | any motor ≥ 65 000 PWM | gyro_x std [deg/s] | unsaturated subset: corr / mean cmd vs replay |
+|---|---|---|---|---|
+| A8 19-09-54 | 26 060 | 2.7 % | 32 | corr 0.789, 0.369 vs 0.328 N (−11 %) |
+| A1 19-15-47 | 15 036 | **96.4 %** | **253** | n = 540, **corr 0.928, 0.560 vs 0.537 N (−4 %)** |
+Regression of the flown (bat-comp) vertical-acceleration demand on `[ep_z, ev_z, a_res_z, 1]` (50 ms smoothing): A8 R² = 0.97 with effective [kp_z 39.8, kv_z 4.7, a_res gain 0.6] (nominal 48 / 7 / 1; the 17–33 % lower values can come from noise attenuation and are not interpreted as a gain error); A1 R² = 0.03 because the clipped, oscillating motor command carries no information about the position law. Also consistent with the earlier checks: gain sweep (no gain gives correlation), lag scan (peak at 0 on A8), replayed `a_res` statistics equal the flown ones.
+
+**Ours-vs-Omar C, same inputs, open loop (`indi_replay_harmonize.py`).** The earlier L1–L3 "harmonisation levels" were no-ops (`host_mappable: False`; all four levels gave identical numbers). Replacement: make *ours* use Omar's mass (0.0427 kg) — settable on the host.
+| Flight | variant | thrust RMS vs Omar C [N] | mean(ours−Omar) [N] | corr |
+|---|---|---|---|---|
+| A8 | ours native | 0.080 | −0.079 | 0.968 |
+| A8 | ours + Omar mass | **0.052** | −0.048 | 0.969 |
+| A8 | ours + Omar mass + kt_equiv | 0.069 | −0.067 | 0.968 |
+| A1 | ours native | 0.152 | +0.127 | 0.743 |
+| A1 | ours + Omar mass | 0.164 | +0.149 | 0.733 |
+Reading: on the calm flight (A8) the two laws agree in shape (corr 0.97) and differ by a ~0.05–0.08 N level offset, of which about one third is the mass constant; the rest is law/gain structure (e.g. Omar has no z-integral and flew +19…+22 cm high on A8 in the 10-02 comparison, ours +3 cm). On A1 both laws are driven far outside their design point (drone 26 cm below the setpoint while oscillating at saturation), so their outputs diverge (corr 0.74) and no attribution is made. `kt_equiv` is not a like-for-like constant, so that row is informational only.
+
+**What this does and does not settle.** Settled: the replay harness reproduces the flown law on valid samples; Omar C ≡ Omar Rust; the ours-vs-Omar output difference on A8 is a level offset with a mass contribution. Not settled: the exact origin of the remaining A8 offset (needs the in-flight logging of `f_d` / applied gains, a lab item), and the INDI-variant choice, which stays based on the flight comparison (`docs/56`), not on the replay.
+
+**How far apart are ours and Omar (same inputs, A8, native settings, `compare_summary.json`)?** Thrust: ours mean 0.333 N vs Omar 0.412 N (−19 %), RMS difference 0.080 N, correlation 0.97 (spread: ours 0.058, Omar 0.049 N). Torques (RMS ours / Omar / RMS of the difference): roll 0.00126 / 0.00122 / 0.00129 N·m (corr 0.39), pitch 0.00202 / 0.00073 / 0.00183 (corr 0.40; ours ~2.8× larger), yaw 0.00149 / 0.00136 / 0.00113 (corr 0.69). Reading: the thrust law has the same shape with a level offset (about a third from the mass constant); the attitude torques are different laws (different gains and filters), only loosely correlated. On A1 (saturated, oscillating flight) both are outside their design point: ours 0.718 N vs Omar 0.591 N, corr 0.74; torque RMS ours 0.010/0.013 vs Omar 0.0055/0.0056 N·m — not interpreted.
