@@ -494,7 +494,7 @@ def _md_table(reports: list[FlightReport]) -> str:
             f"| {r.stamp} | {r.scenario} | {r.verdict} | {r.cause} | {r.duration_s:.1f}s | "
             f"{r.max_step_cf5_cm:.1f} cm | {r.vbat_min_cf5 or float('nan'):.2f} | "
             f"{r.vbat_min_cf_second or float('nan'):.2f} | "
-            f"{r.log_end_gap_s:+.1f}s | {r.bag_name or '—'} | {r.evidence[:80]} |"
+            f"{(r.log_end_gap_s if r.log_end_gap_s is not None else float('nan')):+.1f}s | {r.bag_name or '—'} | {r.evidence[:80]} |"
         )
     return "\n".join(lines) + "\n"
 

@@ -14,7 +14,7 @@ network term is added with `res_sign=+1` (reinforcing): crossing dips −10.9 cm
 **Decisions 2026-10-06:** tracker pose swaps are treated as battery-related for now (if a swap recurs: check batteries first, keep the pose bag running); the `FSCK*.REC` files are dropped; no HTML twin for the lab docs.
 
 ## LAB SEQUENCE (preserved 2026-10-08) — one place to read what happens in the lab
-1. **NS2 sign test (pack `lab_session_pack_signtest.md` §2):** fresh batteries (rest ≥ 4.1 V), pull crazyswarm2 + check printed cf5 config, pose bag; A8 `res_sign=-1` ×3 (abort ready on the first; SIL expects ≈ −2.3 cm vs −5.9 cm off, pass = ≥ 1 cm shallower), A8 `rnn.en=0` ×2 (Claude pushes it on request), A1 `rnn.en=0` ×1; A1 network-on `-1` only if A8 passes and the A1 baseline is clean (SIL unstable there). Then Claude pushes `res_sign: 1`, you run `post_flight_check.py` + `ns2_signtest_analysis.py`.
+1. **NS2 sign test — DONE 2026-10-08 (`docs/68`, `lab_sessions/2026-10-08.md`): A8 `res_sign=-1` −3.15 cm vs off −6.10 vs `+1` −10.4; A1 stable, oscillation same with network off/on.** Original plan: **(pack `lab_session_pack_signtest.md` §2):** fresh batteries (rest ≥ 4.1 V), pull crazyswarm2 + check printed cf5 config, pose bag; A8 `res_sign=-1` ×3 (abort ready on the first; SIL expects ≈ −2.3 cm vs −5.9 cm off, pass = ≥ 1 cm shallower), A8 `rnn.en=0` ×2 (Claude pushes it on request), A1 `rnn.en=0` ×1; A1 network-on `-1` only if A8 passes and the A1 baseline is clean (SIL unstable there). Then Claude pushes `res_sign: 1`, you run `post_flight_check.py` + `ns2_signtest_analysis.py`.
 2. **INDI "Omar + Iz" (pack §4b, only after 1):** Omar Rust (controller 10) hover `kpos_iz` 0 → 1.0 → 1.5, A8 ×2, A1 ×2; Omar C only if C is chosen.
 3. **Later lab items:** bench command→thrust latency, logging patch (`f_d`, applied gains, rpm source — also settles the 1.14 thrust factor and the A8 ours-vs-Omar offset), A1 yaml flights for our oscillation.
 4. **RPM filter on the next INDI flight:** active for ours (ctrl_mode 3) and Omar Rust via `rpm_get_all()` (abs cap 28 000 RPM, 10 000 RPM jump, hold-last-good; 0xFFFF sentinel → 0); NOT active for Omar C (reads optical deck `rpm.m1..4` directly).
@@ -27,10 +27,10 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 
 **Lab (next session) — NS2 sign test** (commands: `next_flight_card.html`)
 - [x] Bench A–C, A8 `rnn.en=0` (2 clean), A8 `rnn.en=1` (crashes explained: tracker swap / battery), 3 clean A8 with fresh batteries — **done 2026-10-05**
-- [ ] Fresh batteries (rest ≥ 4.1 V), pose bag recording, `cf_second` card first.
-- [ ] **A8, network on, `indi_gains.res_sign=-1` (cf5 yaml), 3 flights** — pass: dip clearly shallower than (a smaller dip, not a deeper one) −5.9 cm.
-- [ ] **A8 `rnn.en=0`, 2 more flights** (baseline stats).
-- [ ] **A1 `rnn.en=0` baseline** (cf5 ±40° oscillation seen with the network on).
+- [x] Fresh batteries, pose bag, `cf_second` card first — **done 2026-10-08**
+- [x] **A8, network on, `res_sign=-1`: 4 flights, dip −3.15 cm (n=16) vs −6.10 off (n=8, same session), `+1` −10.4 — PASS (2026-10-08, `docs/68`).**
+- [x] **A8 `rnn.en=0`, 2 flights** — −6.10 cm, reproduces 10-05.
+- [x] **A1 `rnn.en=0` ×2 and `rnn.en=1` `res_sign=-1` ×3** — oscillation ±35–40° is the same with the network off → NOT NS2; network-on stable. **NS2 gate items (1),(2),(3) met; (4) scenario set decided (all stay); (5) rules held. Open: default `res_sign` in yaml (-1 for the study), thesis note on why -1.**
 - [ ] Only if swaps recur with healthy batteries: firmware jump gate (reject >30 cm single-sample jump, count rejections).
 
 **After lab or in parallel (do not block NS2 gate)**
