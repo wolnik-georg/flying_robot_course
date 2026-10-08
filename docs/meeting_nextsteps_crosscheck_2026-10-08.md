@@ -12,4 +12,4 @@
 | 7 | INDI comparison: fix z integral / z error | **DONE** | = #3 |
 | 8 | Replay same inputs through all controllers | **DONE** | `docs/64`: Omar C ≡ Rust (1e-7 / 1e-9); ours differs; A1 invalid due to motor saturation |
 | 9 | RPM filter in the control loop + validate on real flights | **PARTIAL** | filter exists since 09-29 (DShot users: ours, Omar Rust); extracted + unit-tested; sentinel fix flag; Rust flights with fix ON: no detectable effect (ratio 1.01). **Open: our INDI ON (and optionally OFF/ON pair) → `docs/lab_session_pack_rpm_filter.md`** |
-| 10 | Prepare NS2 sim for next session | **DONE** | `docs/62`: validated for A8 dips (SIL −2.3 vs hardware −3.15 for `res_sign=-1`); not validated for A1 (SIL too pessimistic) |
+| 10 | Prepare NS2 sim for next session | **DONE** | `docs/62`: validated for A8 dips (SIL −2.3 vs hardware −3.4 for `res_sign=-1`); not validated for A1 (SIL too pessimistic) |

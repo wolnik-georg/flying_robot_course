@@ -1,28 +1,32 @@
 # NS2 sign test — Block 1 result (2026-10-08)
 
+> **Correction 2026-10-09:** the first version of this document used a crossing detector (minima of |y|) that mislocated a crossing in several radio flights (a takeoff/positioning artefact was counted as a crossing). All dip numbers below were recomputed with the zero-crossing detector `experiments/analysis/a8_crossings.py` (script `ns2_signtest_2026_10_08_radio.py`); radio and uSD now agree to 0.1 cm. Old → new: `res_sign=−1` −3.15 → **−3.4 cm**, network off −6.10 → **−5.9**, `+1` −10.4 → **−11.0**; Δ(−1 vs off) 2.9 → **2.5 cm**. Conclusion unchanged: −1 is the right sign.
+
+
 **Config (from meta/yaml):** cf5 `controller 6, ctrl_mode 0, res_sign -1, rnn.en 1`, 100 Hz network, A8 `--dz 0.5 --height 0.5 --passes 4`; cf_second geometric. No reflash (10-05 firmware). Commit 35958ad.
 
 ## Flights
 | Stamp | Verdict | cf5 vbat min (loaded) | Dips (cm) | Mean |
 |---|---|---|---|---|
-| 17-16-27 | battery sag on cf5 (2.52 V), flight completed | 2.52 | | −3.02 |
-| 17-18-40 | clean; cf_second radio log ended 8 s early (telemetry drop) | 3.18 | −2.5/−2.8/+0.2/−2.9 (uSD) | −2.71 (radio) |
-| 17-22-13 | clean | 2.79 | | −3.16 |
-| 17-24-54 | clean | 2.68 | | −3.72 |
+| 17-16-27 | battery sag on cf5 (2.52 V), radio log ends before pass 4 | 2.52 | | −2.94 (3 crossings) |
+| 17-18-40 | clean; radio log ends before pass 4 | 3.18 | −2.5/−2.8/−3.0/−2.9 (uSD) | −2.45 (radio, 3) |
+| 17-22-13 | clean | 2.79 | | −3.34 |
+| 17-24-54 | clean | 2.68 | | −4.54 (last crossing −6.8) |
 3 further attempts aborted at start (empty radio logs, no uSD).
 
-## Result (cf5 crossing dip, same definition as docs/52, negative = below setpoint, shallower is better)
-| Cohort | n | mean | sd | range |
+## Result (cf5 crossing dip, same definition as docs/52, negative = below setpoint, shallower is better; corrected 2026-10-09)
+| Cohort | crossings | mean | sd | range |
 |---|---|---|---|---|
-| network off (10-05) | 8 | −5.5 (uSD ref −5.9) | 1.0 | −7.2…−4.2 |
-| `res_sign=+1` (10-05) | 12 | −10.4 (uSD ref −10.9) | 1.6 | −12.2…−7.1 |
-| **`res_sign=−1` (10-08)** | 16 | **−3.15** | 0.69 | −4.5…−2.1 |
+| network off (10-05, radio) | 7 | −5.94 (uSD ref −5.9) | 0.66 | −7.2…−5.3 |
+| network off (10-08, radio) | 8 | −5.92 (uSD −5.93) | 0.67 | −7.0…−5.1 |
+| `res_sign=+1` (10-05, radio) | 12 | −10.97 (uSD ref −10.9) | 0.86 | −12.2…−9.9 |
+| **`res_sign=−1` (10-08, radio)** | 14 | **−3.41** | 1.22 | −6.8…−2.1 |
 
-- Monotone in the sign: +1 −10.4 → off −5.5 → −1 −3.2 cm. Welch p = 1e-4 vs network off, 4e-10 vs +1.
-- SIL prediction (docs/62): −2.3 ± 0.1; hardware −3.15. Direction and size confirmed; the SIL is ~0.9 cm too optimistic.
-- Strict pack criterion "ranges not overlapping" is missed by 0.3 cm (−4.5 vs −4.2); the means differ by 2.3 cm.
-- Method check: radio-CSV dips (20 Hz, z_sp = 0.5) reproduce the 10-05 uSD cohorts within 0.5 cm.
-- uSD cross-check on 17-18-40 (only cf5 uSD flight): −2.5/−2.8/+0.2/−2.9; the +0.2 is one crossing, probably mis-detected (t=28.8).
+- Monotone in the sign: +1 −11.0 → off −5.9 → −1 −3.4 cm. Welch p = 4e-6 for −1 vs off (same session).
+- The ranges overlap by one crossing (−6.8 at the last crossing of 17-24-54); the cohort means differ by 2.5 cm. The strict pack criterion "ranges not overlapping" is therefore not met, the mean criterion (≥ 1 cm shallower) clearly is.
+- SIL prediction (docs/62): −2.3 ± 0.1; hardware −3.4. Direction and size confirmed; the SIL is ~1.1 cm too optimistic.
+- Method check: radio-CSV dips (20 Hz, z_sp = 0.5) reproduce the 10-05 uSD cohorts to 0.1 cm with the corrected detector.
+- Radio logs of 17-16-27 and 17-18-40 end before the fourth pass (3 crossings each); uSD 17-18-40 (all 4 crossings): −2.5/−2.8/**−3.0**/−2.9 (the third was mislocated before the correction).
 - Safety: cf5 roll peak 24–28°, pitch ≤ 11°, min z ≥ 0.30 m, cf_second roll ≤ 5° — same as network-off A8.
 
 ## Caveats
@@ -40,8 +44,8 @@
 | 17-37-04 | −6.6/−6.0/−5.3/−5.8 | −5.91 | −5.96 | 3.65 | 24°/9° |
 | 17-38-50 | −7.0/−5.1/−6.2/−5.5 | −5.95 | −6.23 | 3.58 | 28°/14° |
 
-- Network off today: radio mean −6.10 (n=8, sd 0.57, −7.0…−5.2), uSD mean −5.93 — reproduces 10-05 (−5.9).
-- `res_sign=−1` network on −3.15 vs network off −6.10: Δ = 2.9 cm shallower, Welch p = 4e-9, **ranges do not overlap** (−4.5…−2.1 vs −7.0…−5.2). Pack criterion met against the same-session baseline.
+- Network off today: radio mean −5.92 (n=8, sd 0.67, −7.0…−5.1), uSD mean −5.93 — reproduces 10-05 (−5.9).
+- `res_sign=−1` network on −3.4 vs network off −5.9 (same session): Δ = 2.5 cm shallower, Welch p = 4e-6; ranges overlap by one crossing (−6.8 vs −7.0…−5.1), the mean criterion is met.
 - Both cards complete this time (cf5 and cf_second, 2 files each, run tags match); merged CSVs for both flights (alignment RMS ≤ 2.6 cm, clock agreement 20 ms). The network still runs with `rnn.en=0` (logged `rnn_pred_z` ≈ −0.4…−0.6 m/s² at crossings) but its output is not applied.
 - Files: `experiments/logs/merged_A8_2026-10-08_17-{37-04,38-50}.csv`, bags `ns2_pose_a8_en0_{1,2}`.
 

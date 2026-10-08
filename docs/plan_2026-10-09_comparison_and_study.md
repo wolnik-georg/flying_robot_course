@@ -25,7 +25,7 @@ Method rules (so the comparison is fair): identical window (liftoff + 6 s … en
 **Gap to close in the lab (tomorrow):** same-session baselines for "Omar exact" (kpos 0) ×2 each and ours INDI ×2 (the old ones are 10-02/03 on older firmware) — they double as the RPM-filter flights for ours.
 
 ## B. Simulation showcase (desk) — "can we show the simulation?"
-Have: NS2 closed-loop SIL (docs/62; A8 off −5.84 / +1 −9.89 / −1 −2.3 vs hardware −5.9 / −10.4 / −3.15), Omar SIL with NS2 plant (docs/66), CS2 SIL for geometric/INDI.
+Have: NS2 closed-loop SIL (docs/62; A8 off −5.84 / +1 −9.89 / −1 −2.3 vs hardware −5.9 / −11.0 / −3.4), Omar SIL with NS2 plant (docs/66), CS2 SIL for geometric/INDI.
 To do: (1) refresh the NS2 SIL figure with the hardware −1 result (SIL vs hardware per sign); (2) SIL A8 for geometric / ours INDI / Omar Rust / Omar C on the SAME plant, with hardware overlays; (3) short animation (3-D trajectory GIF/MP4) of A8 two-drone swap with the downwash dip for the NS2 off/−1 cases; (4) state the known mismatches (tilt p99, A1 too pessimistic, Omar dips not reproduced). Output: `docs/meetings/assets/2026-10-09/sim_*.png|gif`, `docs/72_Simulation_Showcase.md`.
 
 ## C. RPM filter — finalize for tomorrow

@@ -6,6 +6,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "flying_drone_stack/tools")); sys.path.insert(0, str(REPO / "experiments/analysis"))
 import decode_usd_log as d
 import ns2_2026_10_05_crossing_dip as ns2
+from a8_crossings import zero_crossings  # robust detector (2026-10-09 audit)
 FL = [("18-40-18","thesis00",1.0),("18-42-05","thesis01",1.0),("18-45-11","thesis02",1.5),("18-47-48","thesis03",1.5),("18-49-37","thesis04",2.0),("18-51-15","thesis05",2.0)]
 rows = []
 hdr = "stamp  Iz | steady z err (excl crossings) cm | z sd | crossing dip abs (4) | dip rel to steady | roll/pitch p99 | gyro_x sd | z_err 0-4s after liftoff max | landing z_err min | motor max"
@@ -14,7 +15,7 @@ for st, th, iz in FL:
     r = d.load(str(REPO / f"experiments/logs/usd_raw/cf5_A8_{th}_2026-10-08_{st}.bin"))
     t = r["t"] - r["t"][0]; z = r["z"]; sp = r["ctrltarget_z"]; ez = (z - sp) * 100
     up = z > 0.3; t0 = t[up][0]; t1 = t[up][-1]
-    cross = ns2.find_crossing_times(t[up], r["y"][up])
+    cross = zero_crossings(t[up], r["y"][up])
     scen = up & (t > t0 + 6) & (t < t1 - 4)
     nocross = scen.copy()
     for tc in cross: nocross &= ~((t > tc - 1.5) & (t < tc + 1.5))

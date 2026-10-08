@@ -8,6 +8,7 @@ import numpy as np, pandas as pd
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "experiments/analysis"))
 import ns2_2026_10_05_crossing_dip as ns2
+from a8_crossings import zero_crossings  # robust detector (2026-10-09 audit)
 
 STAMPS = ["17-16-27", "17-18-40", "17-22-13", "17-24-54"]
 res = {}
@@ -20,7 +21,7 @@ for st in STAMPS:
     up = z > 0.3
     vb = d.vbat.values
     rows = []
-    for tc in ns2.find_crossing_times(t[up], y[up]):
+    for tc in zero_crossings(t[up], y[up]):
         m = (t >= tc - 1) & (t <= tc + 1)
         e = (z[m] - 0.5) * 100
         rows.append(dict(t_cross=round(tc, 1), dip_cm=round(float(e.min()), 2), n=int(m.sum())))
