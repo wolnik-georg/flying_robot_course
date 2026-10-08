@@ -1,0 +1,18 @@
+# Cursor prompt — RPM filter: sentinel handling + unit test, prepared only (2026-10-08)
+
+Repo `~/Desktop/flying_robot_course`. Standing rules as in `docs/cursor_prompt_state_sync_2026-10-08.md` (no commits, no Co-Authored-By, no edits of `docs/meetings/*`, `docs/lab_bench_cheatsheet_2026-10-03.md`, `docs/07_*`, `docs/next_*`, `docs/lab_sessions/**`, read-only `experiments/logs/**`). Read first: `docs/43_RPM_Source_Quality.md` (esp. the control-path section), `docs/65_Omar_Z_Offset_Plan.md` (section "RPM source / filter coverage"), `flying_drone_stack/firmware_app/traj_iface.c` `rpm_get_all()` (~L650–700).
+
+## Facts (verified)
+- `rpm_get_all()` serves our INDI and Omar Rust. For DShot (`g_indi_rpm_source != 0`): `0xFFFF` is mapped to **0** (not held); values > 28 000 RPM and jumps > 10 000 RPM vs `rpm_prev` are rejected with hold-last-good. Omar C (controller 9) does not use this function (reads the optical deck `rpm.m1..4`) — do not change it.
+- Real flight RPM max is 22–24 k (10-05 logs); in clean A8 flights 26–42 samples per flight (0.05–0.08 % of motor samples) are the 0xFFFF sentinel.
+- Geometric `ctrl_mode=0` (NS2 flights) never uses RPM for control.
+
+## Task (prepare, do NOT flash, do NOT change defaults for non-sentinel inputs)
+1. Extract the per-motor filter step into a pure function in a new header `flying_drone_stack/firmware_app/rpm_filter.h` (static inline, no firmware dependencies) used by `rpm_get_all()` in `traj_iface.c`. First commit-free refactor: **bit-identical behaviour** to today for all inputs including `0xFFFF`. Prove it with a host C test (pattern: `host/test_oot4_dispatch_wrapper.sh` + `.c`) that runs the OLD logic (copied verbatim into the test) and the extracted function on ≥ 10⁶ random and edge-case inputs (0, 1, 500, 501, 12 000, 27 999, 28 000, 28 001, 65 534, 65 535; sequences with jumps of 9 999 / 10 000 / 10 001) for both `rpm_source` 0 and 1 and require identical outputs and identical `rpm_prev` state.
+2. Then add the behaviour change **only for the 0xFFFF sentinel with `rpm_source != 0`**: hold last good (`rpm_prev`) if `rpm_prev > 0`, else 0; `rpm_prev` unchanged. Extend the test: all non-sentinel inputs still identical to the old logic; sentinel cases produce hold-last-good; no sequence can output a value outside [0, 28 000].
+3. Quantify on real data (no hardware): from the 10-05 uSD logs (`experiments/logs/usd_raw/cf5_A8*_2026-10-05_19-*.bin`, `…17-44-01.bin`; loader `flying_drone_stack/tools/decode_usd_log.py`; DShot channels `motor_m1_rpm…m4_rpm`) replay the old and new filter per motor and report: number of sentinel samples, run lengths, the maximum |RPM difference| between old and new output, and the effect on a thrust proxy `Σ kt·rpm²` (ours kt 4.1e-10) in N at those ticks (old = 0 for one motor, new = held value).
+4. Verify the ARM build still links without touching the repo build dir: `rsync` `firmware_app` (excluding `target`, `build`, `*.o`) to a scratch dir and run `make -j4` there (CF21BL, expect flash ≈ 39 %, RAM ≈ 75 %), and confirm the host bindings in `~/Desktop/crazyflie-firmware/build` are NOT modified (check mtime before/after). Do not rebuild the host bindings unless the Rust/C interface changed (it must not).
+5. Write `docs/67_RPM_Sentinel_Filter.md`: facts, the diff (summary), test results, data quantification, the recommendation (apply or not, and when: **not before the NS2 sign test; before the INDI "Omar + Iz" block**), risks. Add one line to `docs/65` is NOT needed.
+
+## Report back
+Files, commands, numbers, pass/fail per gate (bit-identical refactor, sentinel change, data quantification, ARM link, host bindings untouched). If the refactor cannot be proven bit-identical, stop and report.

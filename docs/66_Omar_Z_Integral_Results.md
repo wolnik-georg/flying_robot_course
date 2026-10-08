@@ -88,7 +88,7 @@ cd ~/Desktop/crazyflie-firmware && rm -f build/_cffirmware*.so && make bindings_
 
 **Matched plant:** `cmd_gain=1.0`, `Kpos_Iz=1.0` solo → **+1.2 cm** (integral does not blow up on nominal plant).
 
-**Recommended lab/SIL starting gain:** **`ctrlOot5.kpos_iz = 1.0`** (yaml) / **`ctrlOmarIndi.Kpos_Iz = 1.0`**. Consider **1.5** if solo hover still >3 cm after full takeoff segment check.
+**Recommended gain (final, see 'Closure checks' item 6): `kpos_iz = 1.5`; `1.0` as the cautious first step. Lab order: hover at 0 → 1.0 → 1.5, then A8/A1 with the best value. Parameter names: `ctrlOot5.kpos_iz` / `ctrlOmarIndi.Kpos_Iz`.**
 
 **Figure-8:** not in grid (script stub only); extend `omar_z_integral_sil.py` with `oot5_bounded_gain_sweep` trajectory if needed before lab.
 
