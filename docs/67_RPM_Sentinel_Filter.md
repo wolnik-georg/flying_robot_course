@@ -101,3 +101,7 @@ No Rust/SWIG interface change; **do not** rebuild host bindings for this patch a
 ## Claude review and final form (2026-10-08)
 - The sentinel hold-last-good is now behind a compile-time flag **`RPM_FILTER_HOLD_SENTINEL`, default 0** (`rpm_filter.h`): the **default firmware build behaves exactly as the firmware flown on 10-02/10-05** (test mode 1: 0 mismatches vs the verbatim legacy logic on edges, jump sequences and 10⁶ random inputs; scratch ARM build of the default: flash 402 372 B / text 391 536 B, identical to the build before this change). Enable with `-DRPM_FILTER_HOLD_SENTINEL=1` (test mode 2 passes) — only after the NS2 sign test and before the Omar + Iz INDI block.
 - Reason: the NS2 sign test must run on unchanged firmware; geometric `ctrl_mode=0` does not use RPM for control anyway.
+
+
+## In-flight check 2026-10-08 (flag ON, Omar Rust, 6 A8 flights)
+184 raw DShot sentinels (0.057 % of airborne motor samples); controller thrust within 4 ticks of a sentinel: median 0.005 N, p95 0.013 N, max 0.029 N (zeroing a motor would be 0.10–0.15 N). No flight anomalies. Not covered: same-flight A/B with the flag off; the >28 000 RPM and >10 000 RPM-jump paths did not fire (no spikes in these flights). Omar C does not use this filter (deck RPM, no dropouts in 6 flights).
