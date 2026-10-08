@@ -11,6 +11,10 @@ CRATE_NAME := cf_controller_rs
 # Tell Kbuild to include app.o (Rust staticlib) and traj_iface.o (C param glue) in the build
 obj-y += app.o traj_iface.o
 
+# Optional: make RPM_FILTER_HOLD_SENTINEL=1 -> hold-last-good on the 0xFFFF DShot sentinel (docs/67).
+# Unset = legacy (sentinel -> 0), bit-identical to the 10-02/10-05 firmware.
+ccflags-y += $(if $(RPM_FILTER_HOLD_SENTINEL),-DRPM_FILTER_HOLD_SENTINEL=$(RPM_FILTER_HOLD_SENTINEL))
+
 # Explicit compile rule for traj_iface.c — required because the OOT Kbuild
 # implicit C rule does not reliably resolve files in $(src) for all CF fw versions.
 $(obj)/traj_iface.o: $(src)/traj_iface.c FORCE
