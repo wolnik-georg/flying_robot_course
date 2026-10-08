@@ -1,9 +1,9 @@
 diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
 new file mode 100644
-index 00000000..f345dc95
+index 00000000..9ecf5198
 --- /dev/null
 +++ b/src/modules/src/controller/controller_omar_indi.c
-@@ -0,0 +1,568 @@
+@@ -0,0 +1,584 @@
 +/*
 +The MIT License (MIT)
 +
@@ -204,6 +204,13 @@ index 00000000..f345dc95
 +  struct vec xc = mkvec(cosf(desiredYaw), sinf(desiredYaw), 0);
 +  struct vec yc = mkvec(-sinf(desiredYaw), cosf(desiredYaw), 0);
 +
++  if (self->Kpos_I.z != 0.0f
++      && setpoint->mode.x != modeAbs
++      && setpoint->mode.y != modeAbs
++      && setpoint->mode.z != modeAbs) {
++    self->i_error_pos.z = 0.0f;
++  }
++
 +  // Position controller
 +  if (   setpoint->mode.x == modeAbs
 +      || setpoint->mode.y == modeAbs
@@ -218,15 +225,24 @@ index 00000000..f345dc95
 +    struct vec pos_e = vclampscl(vsub(pos_d, statePos), -self->Kpos_P_limit, self->Kpos_P_limit);
 +    struct vec vel_e = vclampscl(vsub(vel_d, stateVel), -self->Kpos_D_limit, self->Kpos_D_limit);
 +    self->i_error_pos = vadd(self->i_error_pos, vscl(dt, pos_e));
++    if (self->Kpos_I.z != 0.0f) {
++      self->i_error_pos.z = clamp(self->i_error_pos.z, -self->Kpos_I_limit, self->Kpos_I_limit);
++    }
 +    self->p_error = pos_e;
 +    self->v_error = vel_e;
 +
 +    // desired acceleration
++    struct vec i_term = veltmul(self->Kpos_I, self->i_error_pos);
++    if (self->Kpos_I.z != 0.0f) {
++      i_term.x = 0.0f;
++      i_term.y = 0.0f;
++      i_term.z = self->Kpos_I.z * self->i_error_pos.z;
++    }
 +    struct vec a_d = vadd4(
 +      acc_d,
 +      veltmul(self->Kpos_D, vel_e),
 +      veltmul(self->Kpos_P, pos_e),
-+      veltmul(self->Kpos_I, self->i_error_pos));
++      i_term);
 +
 +    struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
 +    struct mat33 R = quat2rotmat(q);

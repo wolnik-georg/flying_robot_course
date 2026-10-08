@@ -50,6 +50,8 @@ def run_c(fw, case):
     ctrl = fw.controllerOmarIndi_t()
     fw.controllerOmarIndiInit(ctrl)
     ctrl.indi = 3
+    kiz = float(case.get("kpos_iz", 0.0))
+    ctrl.Kpos_I = fw.mkvec(0.0, 0.0, kiz)
     fw.oot_set_rpm(*case["rpm"])
     sp, sensors, st = build_sp_sensors_state(fw, case)
     control = fw.control_t()
@@ -61,6 +63,7 @@ def run_c(fw, case):
 def run_rust(fw, case):
     fw.controllerOutOfTree5Init()
     fw.omar_indi_rust_set_indi(3)
+    fw.omar_indi_rust_set_kpos_iz(float(case.get("kpos_iz", 0.0)))
     fw.oot_set_rpm(*case["rpm"])
     sp, sensors, st = build_sp_sensors_state(fw, case)
     control = fw.control_t()

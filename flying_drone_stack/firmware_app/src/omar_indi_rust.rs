@@ -38,6 +38,7 @@ extern "C" {
     // ctrlOmarIndi.indi for controller=9 -- see docs/41 §13 for why c=9 shipping with this
     // defaulting to 0 silently flew plain geometric instead of INDI for two days.
     static g_oot5_indi: u8;
+    static g_oot5_kpos_iz: f32;
 }
 
 const ATTITUDE_RATE: f32 = 500.0;
@@ -291,7 +292,13 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
     let mut thrust_si = 0.0_f32;
     let mut branch_mode_abs = 0.0_f32;
 
-    if sp.mode.x == mode_abs || sp.mode.y == mode_abs || sp.mode.z == mode_abs {
+    let kpos_iz = unsafe { g_oot5_kpos_iz };
+    let in_pos_mode = sp.mode.x == mode_abs || sp.mode.y == mode_abs || sp.mode.z == mode_abs;
+    if !in_pos_mode && kpos_iz != 0.0 {
+        s.i_error_pos.z = 0.0;
+    }
+
+    if in_pos_mode {
         branch_mode_abs = 1.0;
         let pos_d = Vec3::new(sp.position.x, sp.position.y, sp.position.z);
         let vel_d = Vec3::new(sp.velocity.x, sp.velocity.y, sp.velocity.z);
@@ -306,11 +313,17 @@ unsafe fn step_inner(s: &mut State, control: &mut control_s, sp: &setpoint_s, se
         let pos_e = vclampscl(pos_d.sub(state_pos), -KPOS_P_LIMIT, KPOS_P_LIMIT);
         let vel_e = vclampscl(vel_d.sub(state_vel), -KPOS_D_LIMIT, KPOS_D_LIMIT);
         s.i_error_pos = s.i_error_pos.add(pos_e.scale(dt));
+        if kpos_iz != 0.0 {
+            s.i_error_pos.z = libm::fmaxf(-KPOS_I_LIMIT, libm::fminf(KPOS_I_LIMIT, s.i_error_pos.z));
+        }
+
+        let mut i_term = veltmul(KPOS_I, s.i_error_pos);
+        i_term.z = kpos_iz * s.i_error_pos.z;
 
         let a_d = acc_d
             .add(veltmul(KPOS_D, vel_e))
             .add(veltmul(KPOS_P, pos_e))
-            .add(veltmul(KPOS_I, s.i_error_pos));
+            .add(i_term);
 
         let qw = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q3;
         let qx = st.attitudeQuaternion.__bindgen_anon_1.__bindgen_anon_1.q0;

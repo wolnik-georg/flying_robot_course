@@ -588,9 +588,16 @@ PARAM_GROUP_STOP(pos_gains)
  * with the equivalent defaulting to 0 and silently flew plain geometric on its first two
  * days of hardware attempts before this was caught -- see docs/41 §9 and §13. */
 uint8_t g_oot5_indi = 3;
+float g_oot5_kpos_iz = 0.0f;
+
+void omar_indi_rust_set_kpos_iz(float gain)
+{
+  g_oot5_kpos_iz = gain;
+}
 
 PARAM_GROUP_START(ctrlOot5)
   PARAM_ADD(PARAM_UINT8, indi, &g_oot5_indi)
+  PARAM_ADD(PARAM_FLOAT, kpos_iz, &g_oot5_kpos_iz)
 PARAM_GROUP_STOP(ctrlOot5)
 
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */

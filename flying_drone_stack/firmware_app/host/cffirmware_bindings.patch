@@ -86,6 +86,7 @@ index d4ae77ca..1623731b 100755
 +                                const sensorData_t *sensors, const state_t *state,
 +                                const uint32_t tick);
 +extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
 +extern bool oot_rpm_logs_available(void);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
@@ -127,6 +128,7 @@ index d4ae77ca..1623731b 100755
 +                                const sensorData_t *sensors, const state_t *state,
 +                                const uint32_t tick);
 +extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
 +extern bool oot_rpm_logs_available(void);
 +extern void oot5_select_drone(int idx);
 +%}
@@ -169,6 +171,7 @@ index d4ae77ca..1623731b 100755
 +                                const sensorData_t *sensors, const state_t *state,
 +                                const uint32_t tick);
 +extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
 +extern bool oot_rpm_logs_available(void);
 +float oot_inertia(int axis);
 +void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
