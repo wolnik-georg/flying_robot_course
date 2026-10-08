@@ -45,6 +45,7 @@
 #include "log.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "rpm_filter.h"
 
 /* ── Position coefficient buffer ─────────────────────────────────────────── */
 /* 14 = 12-segment periodic cores (oval/tilted_oval) + 1 entry + 1 exit segment
@@ -668,39 +669,11 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     }
 
     static uint16_t rpm_prev[4] = {0, 0, 0, 0};
-    /* DShot-only sanity (2026-09-29, docs/43): reject implausible telemetry spikes that pass
-     * the 0xFFFF check but would corrupt thrust/torque reconstruction (C.1 logs: ~50–59k RPM
-     * bursts while deck stays ~12–16k). Hold last good sample — do not zero (keeps INDI alive). */
-    const uint16_t dshot_rpm_abs_max = 28000u;
-    const uint16_t dshot_slew_max_rpm = 10000u;
 
     uint16_t v[4];
     for (int i = 0; i < 4; i++) {
         v[i] = logVarIdIsValid(ids[i]) ? (uint16_t)logGetUint(ids[i]) : 0u;
-        /* DShot telemetry uses UINT16_MAX as the "invalid / no value" sentinel;
-           treat it as absent so INDI falls back instead of using garbage RPM.
-           (CF2.1 optical RPM never reaches this value, so this is a no-op there.) */
-        if (v[i] == 0xffffu) v[i] = 0u;
-
-        if (g_indi_rpm_source != 0 && v[i] > 0u) {
-            bool reject = false;
-            if (v[i] > dshot_rpm_abs_max) {
-                reject = true;
-            } else if (rpm_prev[i] > 500u) {
-                uint16_t lo = v[i] < rpm_prev[i] ? v[i] : rpm_prev[i];
-                uint16_t hi = v[i] < rpm_prev[i] ? rpm_prev[i] : v[i];
-                if ((uint16_t)(hi - lo) > dshot_slew_max_rpm) {
-                    reject = true;
-                }
-            }
-            if (reject && rpm_prev[i] > 0u) {
-                v[i] = rpm_prev[i];
-            } else if (!reject) {
-                rpm_prev[i] = v[i];
-            }
-        } else if (g_indi_rpm_source == 0 && v[i] > 0u) {
-            rpm_prev[i] = v[i];
-        }
+        v[i] = rpm_filter_step(v[i], g_indi_rpm_source, &rpm_prev[i]);
     }
     *m1 = v[0]; *m2 = v[1]; *m3 = v[2]; *m4 = v[3];
 }
