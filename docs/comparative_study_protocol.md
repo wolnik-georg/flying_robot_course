@@ -81,6 +81,8 @@ INDI on A1 (Omar C untested there, ours saturates/oscillates) — flown anyway �
 ## 10. Before the first study flight
 1. Protocol v1.0 frozen (after the shakedown) incl. exact parameter table. 2. Pure-INDI decision (S1) and NS2 weights decision. 3. Logging changes (section 5) done and tested. 4. yaml commits tagged `study-S0/S1/S2`. 5. Processing extended and tested on 10-09 data. 6. Shakedown done: every scenario once per strategy, go/no-go table per cell, throughput measured, speed-0.5 feasibility known.
 
+**Status 2026-10-09:** none of the six items is done yet; readiness per controller and the open-work list are in `roadmap_to_comparative_study.md` §1b.
+
 ## 11. Open decisions
 S1 final (Omar C + Iz 1.5 vs ours) · NS2 retrain or keep · tier 2/3 go/no-go · exact speed↔parameter mapping per scenario · whether ours INDI is flown as a supplementary 4th column in tier 1 · cf_second firmware hash.
 

@@ -13,6 +13,18 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 | Analysis tooling | robust crossing detector (`a8_crossings.py`; the old one was wrong in 8/29 flights), one comparison script, SIL showcase + animation | docs/71, 72 |
 | Frozen rules | `res_sign` −1 only for `ctrl_mode 0`; integral 1.5; 100 Hz; all scenarios stay; fresh batteries, pose bag, uSD check | study_parameter_decisions |
 
+
+## 1b. Readiness per controller and open items (status 2026-10-09 evening)
+| Controller | Validated with the final config | NOT yet flown with the final config |
+|---|---|---|
+| S0 geometric | A8 (4 flights, +0.8 cm), A1 | A2, A3, A4, A5, A7 (the C.1 flights used an older gain setup, so they are not study data) |
+| S2 NS2 (`res_sign −1`) | A8 (−3.4 cm), A1 (stable, 3 flights), unified-firmware sanity (−2.98 cm) | A2, A3, A4, A5, A7 |
+| S1 Omar C + Iz 1.5 | A8 only (4 flights, 2 days, +2.4 cm) | A1 and all other scenarios; deck RPM never tried on other moving 2-drone scenarios |
+| Ours INDI (supplementary) | A8 only (+1.9 cm) | everything else; weak on A1 |
+**Decisions still open:** (1) Pure INDI — Omar C + Iz 1.5 expected (supervisor); (2) NS2 retrain or keep — must be decided **before the shakedown**, then weights frozen; also tier 2/3 go/no-go, exact speed↔parameter mapping, ours as supplementary column.
+**Work still open before data collection:** logging changes (SD `config.txt` Omar C channels; `run_formation` meta with the full yaml block + hashes), tag yaml commits `study-S0/S1/S2`, extend `metrics.py`/`aggregate.py` to the sweep cells, the shakedown session (every scenario × controller once, throughput, speed 0.5 feasibility), protocol v1.0 freeze.
+**Verdict:** ready for the shakedown, not yet for the data collection.
+
 ## 2. Next steps, in order
 **Phase A — desk, now (no lab needed)**
 1. **Study protocol** (`docs/comparative_study_protocol.md`): scenario list (A1, A2, A3, A4, A5, A7, A8, C5 — the 2-drone library; A6/C4 dropped), controllers/strategies and their frozen configs (yaml + firmware sha), repeats (≥ 3 clean flights per scenario × controller), interleaved order, metrics (steady z error, z RMS, crossing dip, lateral RMS, max tilt, saturation, vbat) with the fixed definitions of docs/71, abort/battery/pose-bag rules, file naming, exclusion rules (crash, pose swap, abort — always listed, never silent).
