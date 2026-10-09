@@ -13,13 +13,17 @@
 |---|---:|---|---|---:|---:|---:|---|---:|---:|---|---:|---:|---:|
 | Geometric baseline | 4 | usd | +0.78 ± 0.04 | 0.41 | 1.44 | 7.2 | -5.92 ± 0.61 | -6.70 | 0.022 | 21 / 8 | 50 | 0.000 | 3.48 |
 | NS2 off (= geometric) | 4 | usd | +0.78 ± 0.04 | 0.41 | 1.44 | 7.2 | -5.92 ± 0.61 | -6.70 | 0.022 | 21 / 8 | 50 | 0.000 | 3.48 |
-| NS2 res_sign −1 | 4 | mixed | +0.23 ± 0.01 | 0.19 | 0.87 | 6.8 | -3.37 ± 1.14 | -3.58 | 0.020 | 20 / 6 | 50 | 0.000 | 2.52 |
+| NS2 res_sign −1 | 6 | mixed | +0.26 ± 0.05 | 0.21 | 0.83 | 6.8 | -3.24 ± 1.00 | -3.48 | 0.022 | 21 / 7 | 51 | 0.000 | 2.52 |
 | NS2 res_sign +1 | 3 | usd | +1.50 ± 0.04 | 0.87 | 2.67 | 12.2 | -11.00 ± 0.83 | -12.50 | 0.024 | 22 / 8 | 57 | 0.000 | 3.57 |
-| Ours INDI | 2 | usd | +4.17 ± 0.03 | 0.56 | 4.34 | 8.5 | -7.41 ± 0.30 | -11.58 | 0.009 | 7 / 4 | 30 | 0.007 | 3.48 |
-| Omar C exact (Kpos_Iz 0) | 2 | usd | +23.16 ± 1.30 | 2.59 | 21.33 | 27.6 | +3.47 ± 2.53 | -19.69 | 0.026 | 26 / 9 | 103 | 0.003 | 3.63 |
-| Omar C + Iz 1.0 | 2 | usd | +2.21 ± 0.16 | 1.38 | 3.26 | 10.2 | -9.05 ± 2.15 | -11.26 | 0.031 | 14 / 8 | 52 | 0.009 | 3.27 |
+| Ours INDI (10-09 filter ON) | 2 | usd | +1.85 ± 0.08 | 0.49 | 2.60 | 10.3 | -9.25 ± 0.95 | -11.10 | 0.008 | 7 / 4 | 49 | 0.009 | 3.43 |
+| Omar C + Iz 1.5 (10-09) | 2 | usd | +2.64 ± 0.11 | 2.00 | 4.50 | 16.4 | -10.66 ± 2.84 | -13.30 | 0.031 | 22 / 12 | 72 | 0.001 | 3.62 |
 | Omar C + Iz 1.5 | 2 | usd | +2.18 ± 0.19 | 1.61 | 3.53 | 12.5 | -9.88 ± 3.32 | -12.06 | 0.028 | 14 / 8 | 58 | 0.011 | 3.21 |
+| Ours INDI (10-09 filter OFF) | 2 | usd | +1.28 ± 0.23 | 0.74 | 3.06 | 13.4 | -12.04 ± 1.82 | -13.31 | 0.008 | 8 / 5 | 87 | 0.037 | 3.15 |
+| Ours INDI | 2 | usd | +4.17 ± 0.03 | 0.56 | 4.34 | 8.5 | -7.41 ± 0.30 | -11.58 | 0.009 | 7 / 4 | 30 | 0.007 | 3.48 |
+| Omar C + Iz 1.0 | 2 | usd | +2.21 ± 0.16 | 1.38 | 3.26 | 10.2 | -9.05 ± 2.15 | -11.26 | 0.031 | 14 / 8 | 52 | 0.009 | 3.27 |
 | Omar C + Iz 2.0 | 2 | usd | +1.46 ± 0.39 | 1.36 | 2.54 | 8.9 | -6.06 ± 1.55 | -7.52 | 0.031 | 17 / 7 | 60 | 0.001 | 3.54 |
+| Omar C exact (Kpos_Iz 0) | 2 | usd | +23.16 ± 1.30 | 2.59 | 21.33 | 27.6 | +3.47 ± 2.53 | -19.69 | 0.026 | 26 / 9 | 103 | 0.003 | 3.63 |
+| Omar Rust exact (10-09 same day) | 2 | usd | +13.29 ± 0.23 | 1.07 | 12.34 | 15.4 | +2.06 ± 2.49 | -11.24 | 0.034 | 20 / 7 | 73 | 0.001 | 3.50 |
 | Omar Rust exact (kpos_iz 0) | 2 | usd | +21.88 ± 0.15 | 2.29 | 20.22 | 25.5 | -0.38 ± 2.67 | -22.26 | 0.031 | 26 / 10 | 95 | 0.014 | 3.39 |
 | Omar Rust + Iz 1.0 | 2 | usd | +6.29 ± 0.23 | 2.72 | 7.33 | 18.1 | -15.94 ± 3.50 | -22.23 | 0.032 | 21 / 10 | 67 | 0.010 | 3.48 |
 | Omar Rust + Iz 1.5 | 2 | usd | +1.52 ± 0.27 | 1.72 | 2.99 | 10.2 | -7.61 ± 1.79 | -9.13 | 0.030 | 16 / 7 | 60 | 0.001 | 3.57 |
@@ -31,7 +35,8 @@
 ![Omar Iz ladder](../experiments/analysis/out/a8_compare_2026-10-09/figs/omar_iz_ladder.png)
 ![Geometric baseline](../experiments/analysis/out/a8_compare_2026-10-09/figs/geometric_z.png)
 ![NS2 network off / +1 / -1](../experiments/analysis/out/a8_compare_2026-10-09/figs/ns2_on_off.png)
-![All variants](../experiments/analysis/out/a8_compare_2026-10-09/figs/all_variants.png)
+![Study variants (geometric, NS2, ours INDI, Omar C + Iz 1.5)](../experiments/analysis/out/a8_compare_2026-10-09/figs/study_variants.png)
+![All variants incl. history](../experiments/analysis/out/a8_compare_2026-10-09/figs/all_variants.png)
 
 ## Cross-checks (tolerance 0.3 cm; reference = independent re-runs of `omar_iz_a8_2026_10_08.py`, `omar_c_iz_a8_2026_10_08.py` and the radio NS2 analysis with the same robust detector; NS2 −1 reference is radio-only, the table mixes 3 radio + 1 uSD)
 - Omar Rust Iz 1.0: got +6.29 expected +6.29 → reproduced
@@ -44,16 +49,16 @@
 - Omar C exact (older meeting-doc value, other window): got +23.16 expected +22.00 → differs by 1.16 cm
 - NS2 off dips 10-08: got -5.93 expected -5.92 → reproduced
 - NS2 +1 dips: got -11.00 expected -10.97 → reproduced
-- NS2 −1 dips: got -3.37 expected -3.41 → reproduced
+- NS2 −1 dips: got -3.24 expected -3.41 → reproduced
 
-## Factual reading (A8 cf5, this dataset)
-- **Within ±2 cm steady (mean across flights):** geometric / NS2 −1 cohorts (~+0.1…+0.8 cm); Omar C/Rust + Iz 1.5–2.0 (~+1.5…+2.2 cm); C already at 1.0 (+2.2 cm); not Omar exact (+20…+24 cm) nor ours INDI (~+4 cm).
-- **Smallest steady spread (pooled sd ≈ 0.4 cm):** geometric baseline (ki_z 16).
-- **Iz effect (Omar):** exact → +Iz pulls steady level from ~+20 cm toward ~+1 cm; Rust 1.0 still ~+6 cm (under-corrected vs C 1.0 ~+2.2 cm); from 1.5 on both ports sit at +1.5…+2.2 cm (C flat 1.0–2.0).
-- **NS2 sign:** +1 deepest crossing dips (~−11 cm uSD); network-off geometric ~−6 cm; −1 shallowest (~−3.4 cm), consistent with sign test.
-- **Flight-to-flight spread:** Omar Rust exact differs ~3 cm between two 10-02 flights; Omar + Iz 2.0 Rust spans ~2.4 cm steady mean.
-- **Lateral tracking (uSD):** ours INDI is the tightest (≈ 0.9 cm RMS in the A8 window), geometric/NS2 ≈ 2 cm, Omar variants ≈ 2.6–3.2 cm.
-- **Dip columns:** the absolute dip of the "exact" Omar variants is positive because their level sits ≈ +20 cm high; compare variants with the column "dip rel. to steady" (level-independent). Dips are negative numbers, shallower is better.
+## Factual reading (A8 cf5, this dataset; updated 2026-10-09 evening)
+**Study variants** (final configurations, uSD): geometric baseline, NS2 `res_sign −1`, ours INDI (filter ON, unified firmware), **Omar C + Iz 1.5 (the only Omar variant of the study, decision 2026-10-09)**. The other rows are reference / history.
+- **Steady z error:** geometric +0.8 cm, NS2 −1 +0.3, ours INDI +1.9, Omar C + Iz 1.5 +2.2 (10-08) and +2.6 (10-09; four flights over two days: +2.4). All within ≈ 2.6 cm of the command.
+- **Ours INDI vs Omar C + Iz 1.5:** same level, but ours is much tighter — z sd 0.5 vs 1.6–2.0 cm, lateral RMS 0.8 vs ≈ 3 cm, roll p99 7° vs 14–22° — and its crossing dips are ≈ 1.5 cm shallower (−9.3 vs −10.7 cm; relative −11.1 vs −13.3). Omar C + Iz 1.5 reproduces across days (+2.2 → +2.6 cm). Ours is weak on A1 (saturation, oscillation) — not part of this table.
+- **Geometric and NS2 are the tightest in z** (dips −5.9 cm and −3.2 cm).
+- **Omar without the integral:** the offset is not fixed — +21.9 (Rust, 10-02), +23.2 (C, 10-02), +13.3 (Rust, 10-09 same-day baseline, fresh battery); with the integral +1.5…+2.6 cm. History only, no longer a study variant.
+- **Ours INDI, filter OFF vs ON (same day):** same level and dips within the battery confound (OFF #2 sagged to 3.15 V); the 10-02 level (+4.2 cm) is 2.3 cm higher than both 10-09 groups (docs/lab_sessions/2026-10-09.md).
+- **Dip columns:** the absolute dip of the "exact" Omar variants is positive/small because their level sits +13…+23 cm high; compare variants with "dip rel. to steady". Dips are negative numbers, shallower is better.
 - **Network off = geometric:** the NS2 "network off" cohort IS the geometric baseline (same controller, `rnn.en 0`), so both rows are identical by construction.
 
 ## Excluded flights
@@ -68,6 +73,7 @@
 - 10-05 18-02-38 (c6/m0): candidate not used
 - 10-05 18-18-58 (c6/m0): candidate not used
 - 10-05 18-34-10 (c6/m0): candidate not used
+- 10-09 17-28-52 (c6/m0): candidate not used
 
 Notes: 10-03 `13-15-00` is a genuine tumble on both logs (radio roll up to 180°, z error +43 cm in the window), not a gate artefact; 10-02 `19-08-13` ours INDI was an early abort (airborne ≈ 13 s); 10-03 `13-10-32` ours INDI ended in a crash after ≈ 12 s; the 10-05 flights listed as "candidate not used" are the crash / pose-swap attempts of that session.
 

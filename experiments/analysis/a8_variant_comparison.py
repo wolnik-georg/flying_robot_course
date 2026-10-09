@@ -38,15 +38,21 @@ Z_CMD_M = 0.5
 PWM_CEIL = 65000
 
 TABLE_ORDER = [
+    # study variants (2026-10-09 decision: Omar INDI = Omar C + Iz 1.5)
     "Geometric baseline",
     "NS2 off (= geometric)",
     "NS2 res_sign −1",
     "NS2 res_sign +1",
-    "Ours INDI",
-    "Omar C exact (Kpos_Iz 0)",
-    "Omar C + Iz 1.0",
+    "Ours INDI (10-09 filter ON)",
+    "Omar C + Iz 1.5 (10-09)",
+    # reference / history
     "Omar C + Iz 1.5",
+    "Ours INDI (10-09 filter OFF)",
+    "Ours INDI",
+    "Omar C + Iz 1.0",
     "Omar C + Iz 2.0",
+    "Omar C exact (Kpos_Iz 0)",
+    "Omar Rust exact (10-09 same day)",
     "Omar Rust exact (kpos_iz 0)",
     "Omar Rust + Iz 1.0",
     "Omar Rust + Iz 1.5",
@@ -72,6 +78,16 @@ CANDIDATES: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("2026-10-08", "17-18-40", {}),
         ("2026-10-08", "17-22-13", {}),
         ("2026-10-08", "17-24-54", {}),
+        ("2026-10-09", "17-30-16", {"yaml_note": "unified firmware, rnn.en=1 res_sign=-1"}),
+        ("2026-10-09", "17-31-47", {"yaml_note": "unified firmware, rnn.en=1 res_sign=-1"}),
+    ],
+    "Ours INDI (10-09 filter ON)": [
+        ("2026-10-09", "17-40-36", {}),
+        ("2026-10-09", "17-42-12", {}),
+    ],
+    "Ours INDI (10-09 filter OFF)": [
+        ("2026-10-09", "17-56-07", {}),
+        ("2026-10-09", "17-57-38", {"flag": "battery_sag"}),
     ],
     "Ours INDI": [
         ("2026-10-02", "19-08-13", {"check_abort": True}),
@@ -86,6 +102,10 @@ CANDIDATES: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
     "Omar Rust exact (kpos_iz 0)": [
         ("2026-10-02", "18-45-09", {}),
         ("2026-10-02", "18-46-45", {}),
+    ],
+    "Omar Rust exact (10-09 same day)": [
+        ("2026-10-09", "18-09-45", {}),
+        ("2026-10-09", "18-11-15", {}),
     ],
     "Omar Rust + Iz 1.0": [
         ("2026-10-08", "18-17-33", {"kpos_iz": 1.0}),
@@ -111,6 +131,10 @@ CANDIDATES: dict[str, list[tuple[str, str, dict[str, Any]]]] = {
         ("2026-10-08", "18-49-37", {"Kpos_Iz": 2.0}),
         ("2026-10-08", "18-51-15", {"Kpos_Iz": 2.0}),
     ],
+    "Omar C + Iz 1.5 (10-09)": [
+        ("2026-10-09", "18-38-06", {"Kpos_Iz": 1.5}),
+        ("2026-10-09", "18-39-35", {"Kpos_Iz": 1.5}),
+    ],
 }
 
 EXPECTED_CTRL: dict[str, tuple[int, int, float | None]] = {
@@ -118,6 +142,10 @@ EXPECTED_CTRL: dict[str, tuple[int, int, float | None]] = {
     "NS2 res_sign +1": (6, 0, 16.0),
     "NS2 res_sign −1": (6, 0, 16.0),
     "Ours INDI": (6, 3, 0.0),
+    "Ours INDI (10-09 filter ON)": (6, 3, 0.0),
+    "Ours INDI (10-09 filter OFF)": (6, 3, 0.0),
+    "Omar Rust exact (10-09 same day)": (10, 0, None),
+    "Omar C + Iz 1.5 (10-09)": (9, 0, 16.0),
     "Omar C exact (Kpos_Iz 0)": (9, 0, None),
     "Omar Rust exact (kpos_iz 0)": (10, 0, None),
     "Omar Rust + Iz 1.0": (10, 0, 16.0),
@@ -570,6 +598,10 @@ VARIANT_COLOR = {
     "NS2 res_sign −1": "#009E73",
     "NS2 res_sign +1": "#CC79A7",
     "Ours INDI": "#E69F00",
+    "Ours INDI (10-09 filter ON)": "#D55E00",
+    "Ours INDI (10-09 filter OFF)": "#F0B000",
+    "Omar C + Iz 1.5 (10-09)": "#005AB5",
+    "Omar Rust exact (10-09 same day)": "#E8825A",
     "Omar C exact (Kpos_Iz 0)": "#9ECAE1",
     "Omar C + Iz 1.0": "#4292C6",
     "Omar C + Iz 1.5": "#08519C",
@@ -617,7 +649,7 @@ def save_figures(rows: list[FlightMetrics]) -> None:
                     label=f"{v} (n={len(fl)}){label_suffix}" if i == 0 else None)
 
     # 1 INDI variants
-    indi = ["Ours INDI", "Omar C exact (Kpos_Iz 0)", "Omar C + Iz 1.5", "Omar Rust exact (kpos_iz 0)", "Omar Rust + Iz 1.5"]
+    indi = ["Ours INDI (10-09 filter ON)", "Ours INDI", "Omar C + Iz 1.5 (10-09)", "Omar C + Iz 1.5", "Omar C exact (Kpos_Iz 0)"]
     fig, axes = plt.subplots(2, 1, figsize=(11, 6.5), sharex=True)
     for v in indi:
         draw_variant(axes[0], v, ez_only=False)
@@ -723,6 +755,33 @@ def save_figures(rows: list[FlightMetrics]) -> None:
     axl = fig.add_subplot(gs[1, :]); axl.axis("off")
     axl.legend(handles=handles, loc="center", ncol=5, fontsize=8, frameon=False)
     fig.tight_layout(); fig.savefig(FIGS / "all_variants.png"); plt.close(fig)
+
+    # 6 study variants only (decision 2026-10-09: Omar INDI = Omar C + Iz 1.5; its flights of both days are pooled here)
+    study = [("Geometric baseline", ["Geometric baseline"], "#4D4D4D"),
+             ("NS2 res_sign −1", ["NS2 res_sign −1"], "#009E73"),
+             ("Ours INDI (filter ON, 10-09)", ["Ours INDI (10-09 filter ON)"], "#D55E00"),
+             ("Omar C + Iz 1.5 (10-08 + 10-09)", ["Omar C + Iz 1.5", "Omar C + Iz 1.5 (10-09)"], "#005AB5")]
+    fig = plt.figure(figsize=(17, 7))
+    gs = fig.add_gridspec(2, 4, width_ratios=[2.6, 1, 1, 1], height_ratios=[1, 1])
+    axt = fig.add_subplot(gs[:, 0]); axs = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]), fig.add_subplot(gs[0, 3]), fig.add_subplot(gs[1, 1])]
+    stats = {}
+    for lab, keys, col in study:
+        fl = [r for k in keys for r in by.get(k, [])]
+        mat = np.vstack([on_grid(r) for r in fl])
+        axt.fill_between(T_GRID, np.nanpercentile(mat, 10, axis=0), np.nanpercentile(mat, 90, axis=0), color=col, alpha=0.15)
+        axt.plot(T_GRID, np.nanmedian(mat, axis=0), color=col, lw=2.0, label=f"{lab} (n={len(fl)})")
+        stats[lab] = dict(col=col, steady=[r.steady_mean_cm for r in fl], dip=[d for r in fl for d in r.dips_cm],
+                          zsd=[r.steady_sd_cm for r in fl], lat=[r.lat_rms_m * 100 for r in fl if r.lat_rms_m is not None])
+    band(axt); axt.set_ylim(-16, 8); axt.set_xlabel("time since scenario start (s)"); axt.set_ylabel("z error (cm)")
+    axt.set_title("Study variants on A8 — median z error (band: 10–90 %)"); axt.legend(loc="lower right", fontsize=9)
+    for ax, key, ttl in zip(axs, ("steady", "dip", "zsd", "lat"), ("steady z error (cm)", "crossing dip (cm)", "z sd, steady (cm)", "lateral RMS (cm)")):
+        for i, (lab, st) in enumerate(stats.items()):
+            v = np.asarray(st[key], float)
+            ax.bar(i, v.mean(), yerr=(v.std(ddof=1) if len(v) > 1 else 0), color=st["col"], capsize=3)
+            ax.text(i, v.mean() + (0.15 if v.mean() >= 0 else -0.15), f"{v.mean():+.1f}" if key in ("steady", "dip") else f"{v.mean():.1f}", ha="center", va="bottom" if v.mean() >= 0 else "top", fontsize=8)
+        ax.set_xticks(range(len(stats))); ax.set_xticklabels(["geo", "NS2−1", "ours", "Omar C"], fontsize=8); ax.set_title(ttl, fontsize=10); ax.axhline(0, color="k", lw=0.5)
+    fig.suptitle("Study variants, A8 bottom drone (uSD where available; mean ± sd over flights, dips over crossings)")
+    fig.tight_layout(); fig.savefig(FIGS / "study_variants.png"); plt.close(fig)
 
 
 def write_tables(rows: list[FlightMetrics], excluded: list[dict]) -> None:
@@ -849,19 +908,20 @@ def write_doc71(rows: list[FlightMetrics], excluded: list[dict], cross: list[str
 ![Omar Iz ladder](../experiments/analysis/out/a8_compare_2026-10-09/figs/omar_iz_ladder.png)
 ![Geometric baseline](../experiments/analysis/out/a8_compare_2026-10-09/figs/geometric_z.png)
 ![NS2 network off / +1 / -1](../experiments/analysis/out/a8_compare_2026-10-09/figs/ns2_on_off.png)
-![All variants](../experiments/analysis/out/a8_compare_2026-10-09/figs/all_variants.png)
+![Study variants (geometric, NS2, ours INDI, Omar C + Iz 1.5)](../experiments/analysis/out/a8_compare_2026-10-09/figs/study_variants.png)
+![All variants incl. history](../experiments/analysis/out/a8_compare_2026-10-09/figs/all_variants.png)
 
 ## Cross-checks (tolerance 0.3 cm; reference = independent re-runs of `omar_iz_a8_2026_10_08.py`, `omar_c_iz_a8_2026_10_08.py` and the radio NS2 analysis with the same robust detector; NS2 −1 reference is radio-only, the table mixes 3 radio + 1 uSD)
 """
     body += "\n".join(f"- {line}" for line in cross) + "\n\n"
-    body += """## Factual reading (A8 cf5, this dataset)
-- **Within ±2 cm steady (mean across flights):** geometric / NS2 −1 cohorts (~+0.1…+0.8 cm); Omar C/Rust + Iz 1.5–2.0 (~+1.5…+2.2 cm); C already at 1.0 (+2.2 cm); not Omar exact (+20…+24 cm) nor ours INDI (~+4 cm).
-- **Smallest steady spread (pooled sd ≈ 0.4 cm):** geometric baseline (ki_z 16).
-- **Iz effect (Omar):** exact → +Iz pulls steady level from ~+20 cm toward ~+1 cm; Rust 1.0 still ~+6 cm (under-corrected vs C 1.0 ~+2.2 cm); from 1.5 on both ports sit at +1.5…+2.2 cm (C flat 1.0–2.0).
-- **NS2 sign:** +1 deepest crossing dips (~−11 cm uSD); network-off geometric ~−6 cm; −1 shallowest (~−3.4 cm), consistent with sign test.
-- **Flight-to-flight spread:** Omar Rust exact differs ~3 cm between two 10-02 flights; Omar + Iz 2.0 Rust spans ~2.4 cm steady mean.
-- **Lateral tracking (uSD):** ours INDI is the tightest (≈ 0.9 cm RMS in the A8 window), geometric/NS2 ≈ 2 cm, Omar variants ≈ 2.6–3.2 cm.
-- **Dip columns:** the absolute dip of the "exact" Omar variants is positive because their level sits ≈ +20 cm high; compare variants with the column "dip rel. to steady" (level-independent). Dips are negative numbers, shallower is better.
+    body += """## Factual reading (A8 cf5, this dataset; updated 2026-10-09 evening)
+**Study variants** (final configurations, uSD): geometric baseline, NS2 `res_sign −1`, ours INDI (filter ON, unified firmware), **Omar C + Iz 1.5 (the only Omar variant of the study, decision 2026-10-09)**. The other rows are reference / history.
+- **Steady z error:** geometric +0.8 cm, NS2 −1 +0.3, ours INDI +1.9, Omar C + Iz 1.5 +2.2 (10-08) and +2.6 (10-09; four flights over two days: +2.4). All within ≈ 2.6 cm of the command.
+- **Ours INDI vs Omar C + Iz 1.5:** same level, but ours is much tighter — z sd 0.5 vs 1.6–2.0 cm, lateral RMS 0.8 vs ≈ 3 cm, roll p99 7° vs 14–22° — and its crossing dips are ≈ 1.5 cm shallower (−9.3 vs −10.7 cm; relative −11.1 vs −13.3). Omar C + Iz 1.5 reproduces across days (+2.2 → +2.6 cm). Ours is weak on A1 (saturation, oscillation) — not part of this table.
+- **Geometric and NS2 are the tightest in z** (dips −5.9 cm and −3.2 cm).
+- **Omar without the integral:** the offset is not fixed — +21.9 (Rust, 10-02), +23.2 (C, 10-02), +13.3 (Rust, 10-09 same-day baseline, fresh battery); with the integral +1.5…+2.6 cm. History only, no longer a study variant.
+- **Ours INDI, filter OFF vs ON (same day):** same level and dips within the battery confound (OFF #2 sagged to 3.15 V); the 10-02 level (+4.2 cm) is 2.3 cm higher than both 10-09 groups (docs/lab_sessions/2026-10-09.md).
+- **Dip columns:** the absolute dip of the "exact" Omar variants is positive/small because their level sits +13…+23 cm high; compare variants with "dip rel. to steady". Dips are negative numbers, shallower is better.
 - **Network off = geometric:** the NS2 "network off" cohort IS the geometric baseline (same controller, `rnn.en 0`), so both rows are identical by construction.
 
 ## Excluded flights
