@@ -1,0 +1,20 @@
+diff --git crazyflie/config/crazyflies.yaml tmp/y_omar_rust_iz15.yaml
+index ba2b23c..3d2998b 100644
+--- a/crazyflie/config/crazyflies.yaml
++++ tmp/y_omar_rust_iz15.yaml
+@@ -195,13 +195,14 @@ robots:
+     type: cf21_active  # 4-marker active_deck, confirmed mounted
+     firmware_params:
+       stabilizer:
+-        controller: 6   # DEFAULT = geometric (+NS2 network). Study variants (docs/study_parameter_decisions.md): Omar Rust = controller 10 + ctrlOot5.kpos_iz 1.5; Omar C = controller 9 + ctrlOmarIndi.Kpos_Iz 1.5; both need firmware cf21bl_omar_iz_sentinel.bin (kpos_iz does not exist in the 10-03 rnn/default builds).
++        controller: 10  # TEMP: Omar Rust + z integral
+                          # final leg of the A8/A1 3-way comparison (Omar C=9 done, Omar Rust=10
+                          # done, ours now). accumulate_z_integral() runs inside controller_step(),
+                          # shared by all ctrl_mode values -- ki_z=16 (inherited from all:) applies
+                          # here same as it did for cf_second's plain geometric, confirmed in code.
+       ctrlOot5:
+         indi: 3
++        kpos_iz: 1.5    # TEMP study value
+       ctrlOmarIndi:
+         # Dormant while controller=6 — neither Omar C (c=9) nor the Rust port (c=10) selected.
+         # 2026-09-29: REQUIRED to actually get Omar's INDI. His controller defaults
