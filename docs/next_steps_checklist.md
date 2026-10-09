@@ -4,6 +4,8 @@ Simple lab + desk list (as of **2026-10-06**, meeting [`meetings/2026-10-05.md`]
 [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). **Lab session plan + copy-paste commands:**
 [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md). Update when items move.
 
+**STATE 2026-10-09 (end of the lab validation day, `lab_sessions/2026-10-09.md`):** NS2 and the Omar z offset are closed; the unified firmware, the RPM-filter fix and the A8 comparison are validated. **Study variants (A8):** geometric +0.8 cm / NS2 `res_sign −1` +0.3 / ours INDI +1.9 / **Omar C + Iz 1.5** +2.4 (Omar Rust and the no-integral variants dropped). **Next, in order:** (1) study protocol, (2) "Pure INDI" decision (ours vs Omar C + Iz 1.5), (3) scenario readiness check + one processing script, (4) lab shakedown (every scenario × controller once), (5) data collection ≈ 100 flights, (6) analysis + chapters 6–9. Details and calendar: [`roadmap_to_comparative_study.md`](roadmap_to_comparative_study.md); overview + results table: [`overview_2026-10-09.md`](overview_2026-10-09.md).
+
 **One-paragraph state (2026-10-05, lab session closed — `lab_sessions/2026-10-05.md`):** the 100 Hz network works and predicts the residual well
 (corr 0.85–0.92, A1 stack −1.61 vs measured −1.60 m/s²). The earlier crashes were **tracker pose swaps** (identical marker patterns; trigger unknown)
 and **`cf_second` battery collapse** (2.5 V → fell on `cf5` in A1) — not the network; with fresh batteries 3 of 3 A8 flights were clean. **Open:** the
