@@ -21,7 +21,7 @@ network term is added with `res_sign=+1` (reinforcing): crossing dips −10.9 cm
 
 **2026-10-09 desk work done:** A8 variant comparison (`docs/71`), simulation showcase (`docs/72`: NS2 SIL vs hardware within ≈ 1 cm, animation; ours INDI not feasible in the SIL, Omar dips not reproduced), crossing-detector fix (`a8_crossings.py`). Open: RPM-filter confirmation on ours INDI, same-session Omar-exact + ours baselines, comparative-study protocol, unified-firmware bench check — plan: `docs/plan_2026-10-09_comparison_and_study.md`.
 
-**OVERVIEW + LAB DAY 2026-10-09:** full overview and table in [`overview_2026-10-09.md`](overview_2026-10-09.md); today's lab plan with commands in [`lab_sessions/2026-10-09.md`](lab_sessions/2026-10-09.md) (yaml patches `lab_prep_*_yaml.patch`).
+**DECISION 2026-10-09: the Omar INDI of the study = Omar C + z integral 1.5 only (Rust and the no-integral variants dropped).** **OVERVIEW + LAB DAY 2026-10-09:** full overview and table in [`overview_2026-10-09.md`](overview_2026-10-09.md); today's lab plan with commands in [`lab_sessions/2026-10-09.md`](lab_sessions/2026-10-09.md) (yaml patches `lab_prep_*_yaml.patch`).
 
 ## WHAT'S NEXT — by area (2026-10-05, from the meeting doc [`meetings/2026-10-05.md`](meetings/2026-10-05.md))
 

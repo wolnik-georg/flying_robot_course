@@ -1,5 +1,8 @@
 # Study parameter decisions (frozen 2026-10-08) — read before changing any of these
 
+> **DECISION 2026-10-09 (user): the only Omar INDI in the study is "Omar C + z integral 1.5" (controller 9, `ctrlOmarIndi.Kpos_Iz 1.5`) — the new default Omar INDI.** Omar Rust (controller 10) is dropped (was slightly worse, more oscillation, same code as C) and the variants without the integral ("exact") are no longer considered (offset unfixed). Existing Rust/exact data stays in the repo as history only. Candidates for "Pure INDI" in the study: ours vs Omar C + Iz 1.5.
+
+
 ## 1. `indi_gains.res_sign` (sign of the residual-force term)
 | `ctrl_mode` | controller | value | why |
 |---|---|---|---|
