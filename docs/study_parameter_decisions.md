@@ -18,6 +18,8 @@ The yaml keeps `res_sign: -1` for cf5 because cf5's default is `ctrl_mode: 0` �
 # Omar C:     stabilizer.controller: 9  ; ctrlOmarIndi: {indi: 3, Kpos_Iz: 1.5} ; needs deck.bcRpm == 1
 ```
 
+**In the comparative study Omar always runs WITH the integral (1.5 for both ports); the exact variants (`kpos_iz`/`Kpos_Iz` 0) are only a reference to show the effect of the integral (same-day exact baselines 2026-10-09: Rust +13.3 cm, see `docs/lab_sessions/2026-10-09.md`).** The size of the exact-variant offset varies with day/battery (+13…+22 cm); with the integral it was +1.5…+2.2 cm on 10-08.
+
 ## 3. Firmware artifacts
 | file | content | use |
 |---|---|---|
