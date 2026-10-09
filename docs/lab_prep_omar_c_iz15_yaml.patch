@@ -1,7 +1,7 @@
-diff --git crazyflie/config/crazyflies.yaml tmp/y_omar_c_iz15.yaml
-index ba2b23c..1b306c8 100644
+diff --git crazyflie/config/crazyflies.yaml tmp/y2_omar_c_iz15.yaml
+index a8a835e..c450997 100644
 --- a/crazyflie/config/crazyflies.yaml
-+++ tmp/y_omar_c_iz15.yaml
++++ tmp/y2_omar_c_iz15.yaml
 @@ -195,7 +195,7 @@ robots:
      type: cf21_active  # 4-marker active_deck, confirmed mounted
      firmware_params:
@@ -19,3 +19,12 @@ index ba2b23c..1b306c8 100644
          # 2026-09-29: REQUIRED to actually get Omar's INDI. His controller defaults
          # `.indi = 0` in controller_omar_indi.c (line 76) and gates EVERY INDI term behind it:
          #   line 179  if (self->indi && rpm_deck_available)
+@@ -237,7 +238,7 @@ robots:
+                          # where ki_z=16 caused the liftoff tumble). Never pair 16 with ctrl_mode=3.
+         ki_z_limit: 1.5
+       rnn:
+-        en: 1           # 2026-10-09 lab: NS2 sanity flight on the unified firmware (res_sign -1, ctrl_mode 0). Set 0 for every non-NS2 block (docs/lab_sessions/2026-10-09.md)
++        en: 0           # TEMP: network off for non-NS2 blocks
+     # 2026-09-21: radio RPM on cf5 only (same rule as cf231_active had) -- motor.m*_rpm is
+     # firmware_app-only; cf_second stock firmware must not inherit this topic.
+     firmware_logging:

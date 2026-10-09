@@ -1,7 +1,7 @@
-diff --git crazyflie/config/crazyflies.yaml tmp/y_new.yaml
-index ba2b23c..5b5da8e 100644
+diff --git crazyflie/config/crazyflies.yaml tmp/y2_ours_indi_filter.yaml
+index a8a835e..721e8ea 100644
 --- a/crazyflie/config/crazyflies.yaml
-+++ tmp/y_new.yaml
++++ tmp/y2_ours_indi_filter.yaml
 @@ -219,11 +219,11 @@ robots:
          # terms stay off silently even with this set.
          indi: 3
@@ -16,7 +16,7 @@ index ba2b23c..5b5da8e 100644
        pos_gains:
          # 2026-10-02: DIRECT TEST of the operator's hypothesis -- full INDI (ctrl_mode=3) crashed
          # on A8 tonight with the exact same 0.65s-post-liftoff tumble signature as every A1/A6
-@@ -233,7 +233,7 @@ robots:
+@@ -233,11 +233,11 @@ robots:
          # validated. ki_z=0 here isolates that: if the tumble goes away, ki_z is implicated
          # specifically for ctrl_mode=3, not a general controller=6 problem. kp_xy/kp_z/kv_xy/kv_z
          # still inherit from all: (64/48/5/7) -- only the integral term is disabled.
@@ -25,3 +25,8 @@ index ba2b23c..5b5da8e 100644
                           # where ki_z=16 caused the liftoff tumble). Never pair 16 with ctrl_mode=3.
          ki_z_limit: 1.5
        rnn:
+-        en: 1           # 2026-10-09 lab: NS2 sanity flight on the unified firmware (res_sign -1, ctrl_mode 0). Set 0 for every non-NS2 block (docs/lab_sessions/2026-10-09.md)
++        en: 0           # TEMP: network off for non-NS2 blocks
+     # 2026-09-21: radio RPM on cf5 only (same rule as cf231_active had) -- motor.m*_rpm is
+     # firmware_app-only; cf_second stock firmware must not inherit this topic.
+     firmware_logging:
