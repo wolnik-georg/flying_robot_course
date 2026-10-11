@@ -130,6 +130,111 @@ def scan_launch_log(path: Path) -> list[str]:
     return notes
 
 
+# ---------------------------------------------------------------------------------------------------------------- study profile
+THESIS = Path(__file__).resolve().parents[2]
+USDDECK = Path.home() / "Desktop" / "crazyflie-firmware" / "src" / "deck" / "drivers" / "src" / "usddeck.c"
+
+
+def _sha256(path: Path) -> str | None:
+    import hashlib
+    if not path.is_file():
+        return None
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
+
+
+def study_checks(strategy: str, cfg: dict, yaml_path: Path, repo_root: Path, sd_config: Path | None) -> tuple[list[str], list[str]]:
+    """Study preflight (2026-10-11): yaml of cf5 against the frozen block of the strategy, manifest, tag, uSD config. -> (errors, warnings)."""
+    import json
+    errs: list[str] = []
+    warns: list[str] = []
+    # 1. cf5 yaml against the frozen block
+    strat_file = repo_root / "crazyflie" / "config" / "study_strategies.json"
+    manifest_file = repo_root / "crazyflie" / "config" / "study_manifest.json"
+    if not strat_file.is_file():
+        return [f"study_strategies.json not found next to the yaml ({strat_file})"], warns
+    frozen = json.loads(strat_file.read_text()).get(strategy)
+    if frozen is None:
+        return [f"unknown strategy {strategy!r}"], warns
+    fp = effective_robot(cfg, "cf5").get("firmware_params") or {}
+    print(f"--- study preflight, strategy {strategy} ---")
+    for key, want in frozen.items():
+        if key.startswith("_"):
+            continue
+        if key.startswith("deck."):
+            print(f"  cf5 {key:28s} read-only deck flag: checked from the drone readback by run_formation --study")
+            continue
+        group, name = key.split(".", 1)
+        got = dig(fp, group, name)
+        if got is None and group == "pos_gains":
+            got = dig(fp, "indi_gains", "pos_gains", name)
+        ok = got is not None and abs(float(got) - float(want)) < 1e-3
+        print(f"  cf5 {key:28s} yaml={got!s:8s} frozen={want!s:6s} {'OK' if ok else 'MISMATCH'}")
+        if not ok:
+            errs.append(f"cf5 {key}: yaml {got} != frozen {want} for {strategy} (select the strategy's yaml / tag)")
+    # 2. manifest
+    if manifest_file.is_file():
+        man = json.loads(manifest_file.read_text())
+        for drone in ("cf5", "cf_second"):
+            blk = man.get(drone) or {}
+            if not blk.get("firmware_sha256"):
+                errs.append(f"manifest: {drone} firmware_sha256 missing (--study refuses to take off)")
+                continue
+            fw = blk.get("firmware_file") or ""
+            path = Path(fw) if fw.startswith("/") else (repo_root / "crazyflie" / fw if fw else None)
+            disk = _sha256(path) if path else None
+            if disk is None:
+                warns.append(f"manifest: {drone} firmware file not on this machine ({fw or 'no path'}): hash unverified (the flashed image cannot be read back)")
+            elif disk != blk["firmware_sha256"]:
+                errs.append(f"manifest: {drone} firmware file on disk != manifest sha256")
+    else:
+        errs.append("study_manifest.json missing")
+    # 3. yaml tag
+    tag = f"study-{strategy}" if strategy in ("S0", "S1", "S2") else None
+    if tag:
+        r = subprocess.run(["git", "-C", str(repo_root), "rev-parse", "-q", "--verify", f"refs/tags/{tag}"], capture_output=True, text=True)
+        if r.returncode != 0:
+            warns.append(f"git tag {tag} does not exist yet (created after the NS2 / Pure-INDI decisions)")
+        else:
+            d = subprocess.run(["git", "-C", str(repo_root), "diff", "--quiet", tag, "--", "crazyflie/config/crazyflies.yaml"])
+            if d.returncode != 0:
+                errs.append(f"crazyflies.yaml differs from tag {tag}")
+    dirty = subprocess.run(["git", "-C", str(repo_root), "diff", "--quiet"]).returncode != 0
+    if dirty:
+        warns.append("crazyswarm2 working tree has uncommitted changes (the meta records dirty=true)")
+    # 4. uSD config: variable count against the firmware cap, decoder names, copy on the card
+    cfg_path = THESIS / "flying_drone_stack" / "tools" / "usd_study_config.txt"
+    lines = [l.strip() for l in cfg_path.read_text().splitlines()]
+    variables = [l for l in lines[7:] if l]
+    cap = None
+    if USDDECK.is_file():
+        m = re.search(r"#define\s+MAX_USD_LOG_VARIABLES_PER_EVENT\s+\((\d+)\)", USDDECK.read_text())
+        cap = int(m.group(1)) if m else None
+    print(f"  uSD config: {len(variables)} variables, firmware cap {cap}")
+    if cap is None:
+        warns.append("could not read MAX_USD_LOG_VARIABLES_PER_EVENT from the firmware tree")
+    elif len(variables) > cap:
+        errs.append(f"usd_study_config.txt has {len(variables)} variables > firmware cap {cap}: the parser silently drops the rest")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import decode_usd_log as dec
+        unmapped = [v for v in variables if "." in v and v not in dec.RENAME]
+        if unmapped:
+            warns.append(f"decoder has no short name for: {unmapped}")
+    except Exception as exc:  # noqa: BLE001
+        warns.append(f"decoder check skipped: {exc}")
+    if sd_config is not None:
+        if _sha256(sd_config) != _sha256(cfg_path):
+            errs.append(f"SD card config {sd_config} differs from the repo's usd_study_config.txt")
+        else:
+            print(f"  SD card config {sd_config}: identical to the repo file")
+    else:
+        warns.append("SD card config not checked (pass --sd-config /media/<card>/config.txt for each card)")
+    print("  radio checks to run next: python3 flying_drone_stack/tools/check_usd_deck.py radio://0/80/2M/<uri> (both drones)")
+    return errs, warns
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Pre-flight crazflies.yaml checker (read-only)")
     ap.add_argument(
@@ -142,6 +247,8 @@ def main() -> int:
     ap.add_argument("--expect-geometric-cf5", action="store_true", help="Fail if cf5 ctrl_mode != 0")
     ap.add_argument("--allow-rnn-en", action="store_true", help="Allow rnn.en=1 in yaml")
     ap.add_argument("--launch-log", type=Path, default=None, help="Optional launch stdout log to scan")
+    ap.add_argument("--study", choices=("S0", "S1", "S2", "ours"), default=None, help="study profile: frozen block, manifest, tag, uSD config")
+    ap.add_argument("--sd-config", type=Path, default=None, help="with --study: config.txt on a mounted SD card, compared with usd_study_config.txt")
     args = ap.parse_args()
 
     tool_cfg = load_config(args.config.expanduser())
@@ -182,6 +289,13 @@ def main() -> int:
         print(f"Launch log: {args.launch_log}")
         for line in scan_launch_log(args.launch_log):
             print(f"  {line}")
+        print()
+
+    if args.study:
+        s_errs, s_warns = study_checks(args.study, cfg, yaml_path, repo_root, args.sd_config)
+        all_errs.extend(s_errs)
+        for w in s_warns:
+            print(f"WARN: {w}")
         print()
 
     if all_errs:

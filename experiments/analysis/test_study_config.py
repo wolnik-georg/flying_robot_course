@@ -20,6 +20,10 @@ def main():
     assert any("res_sign" in p for p in sc.validate_intended("S2", {**s2, "indi": {"res_sign": 1.0}}))
     assert sc.validate_intended("S1", {"controller": 9, "ctrl_mode": 0, "indi": {}, "pos": {}}) == []
     assert any("controller" in p for p in sc.validate_intended("S1", {"controller": 6, "ctrl_mode": 0, "indi": {}, "pos": {}}))
+    # ours: ctrl_mode 3 must never run with ki_z 16 (liftoff tumble 2026-10-02)
+    ours = {"controller": 6, "ctrl_mode": 3, "indi": {"res_sign": 1.0}, "pos": {"ki_z": 0.0}}
+    assert sc.validate_intended("ours", ours) == []
+    assert any("ki_z" in p for p in sc.validate_intended("ours", {**ours, "pos": {"ki_z": 16.0}}))
     # static (yaml-only) keys, before takeoff
     ok = {"rnn_en": 1.0}
     assert sc.validate_readback("S2", ok, static_only=True) == []

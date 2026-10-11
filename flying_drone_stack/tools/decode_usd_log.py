@@ -47,6 +47,8 @@ RENAME = {
     "indi.dt_us": "dt_us",
     "pm.vbat": "vbat",
     "usd.runTag": "run_tag",
+    "indi.oot5_branch": "oot5_branch", "indi.oot5_thrust_si": "oot5_thrust_si", "indi.oot5_sp_mode_x": "oot5_sp_mode_x",
+    "indi.oot5_sp_mode_y": "oot5_sp_mode_y", "indi.oot5_sp_mode_z": "oot5_sp_mode_z", "indi.oot5_sp_thrust": "oot5_sp_thrust",
     # --- usd_study_config.txt additions (2026-10-11): one superset for every controller ---
     "stateEstimate.qx": "est_qx", "stateEstimate.qy": "est_qy", "stateEstimate.qz": "est_qz", "stateEstimate.qw": "est_qw",
     "ctrltarget.vx": "ctrltarget_vx", "ctrltarget.vy": "ctrltarget_vy", "ctrltarget.vz": "ctrltarget_vz",
