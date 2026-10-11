@@ -163,6 +163,99 @@ def paired_compare(df: pd.DataFrame, metric: str, baseline: str, treatment: str,
     return res
 
 
+def parse_cell(spec: str) -> tuple[str, str, str]:
+    parts = [p.strip() for p in spec.split(",")]
+    if len(parts) != 3:
+        raise ValueError("cell must be scenario,setting,strategy")
+    return parts[0], parts[1], parts[2]
+
+
+def _flight_values(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """One value per FLIGHT (unit of analysis): the subject drone (cf5) row of every flight, with its decision."""
+    sub = df.copy()
+    if "vehicle_id" in sub.columns:
+        sub = sub[sub["vehicle_id"] == "cf5"]
+    keys = [c for c in ("date", "stamp") if c in sub.columns]
+    sub = sub.drop_duplicates(subset=keys) if keys else sub
+    sub["_decision"] = sub["decision"].fillna("") if "decision" in sub.columns else ""
+    return sub
+
+
+def summarise_study_cell(df: pd.DataFrame, metric: str) -> dict:
+    """One cell: statistics over FLIGHTS. clean = decision 'clean' (all flights count as clean, with decision_unknown set,
+    when the decisions file has no entry at all). 'not_reached' = 8 attempts and fewer than 5 clean flights (protocol section 4)."""
+    sub = _flight_values(df, metric)
+    n_attempts = len(sub)
+    decided = bool((sub["_decision"] != "").any())
+    clean = sub[sub["_decision"].eq("clean")] if decided else sub
+    vals = clean[metric].dropna().astype(float) if metric in clean.columns else pd.Series(dtype=float)
+    n_clean = int(len(clean))
+    return {
+        "n_clean": n_clean,
+        "n_attempts": n_attempts,
+        "failure_rate": float(1 - n_clean / n_attempts) if n_attempts else float("nan"),
+        "mean": float(vals.mean()) if len(vals) else float("nan"),
+        "std": float(vals.std(ddof=1)) if len(vals) > 1 else float("nan"),
+        "median": float(vals.median()) if len(vals) else float("nan"),
+        "incomplete": n_clean < 5,
+        "not_reached": bool(n_attempts >= 8 and n_clean < 5),
+        "decision_unknown": not decided,
+    }
+
+
+def _boot_unpaired(a: np.ndarray, b: np.ndarray, n_boot: int = N_BOOT, seed: int = 0):
+    """Unpaired bootstrap (flights of two strategies are independent): 95 % CI of mean(a)-mean(b) and mean(a)/mean(b)."""
+    a = np.asarray(a, float); b = np.asarray(b, float)
+    if len(a) < 2 or len(b) < 2:
+        return (float("nan"),) * 4
+    rng = np.random.default_rng(seed)
+    ra = a[rng.integers(0, len(a), size=(n_boot, len(a)))].mean(axis=1)
+    rb = b[rng.integers(0, len(b), size=(n_boot, len(b)))].mean(axis=1)
+    diff = ra - rb
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(rb != 0, ra / rb, np.nan)
+    ratio = ratio[np.isfinite(ratio)]
+    rlo, rhi = (np.percentile(ratio, 2.5), np.percentile(ratio, 97.5)) if len(ratio) else (float("nan"),) * 2
+    return float(np.percentile(diff, 2.5)), float(np.percentile(diff, 97.5)), float(rlo), float(rhi)
+
+
+def study_table(df: pd.DataFrame, metric: str, baseline: str = "S0") -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """(cells, vs_baseline, metric_vs_setting). Cell = scenario x setting x strategy; statistics over flights."""
+    d = df.copy()
+    d["setting"] = d["setting_key"].fillna("") if "setting_key" in d.columns else ""
+    d["strategy"] = d["strategy"].fillna("") if "strategy" in d.columns else ""
+    d = d[d["strategy"] != ""]
+    cells, vs, per_setting = [], [], []
+    for (scen, setting), g in d.groupby(["scenario", "setting"]):
+        per_strat = {}
+        for strat, gg in g.groupby("strategy"):
+            st = summarise_study_cell(gg, metric)
+            cells.append({"scenario": scen, "setting": setting, "strategy": strat, **st})
+            fv = _flight_values(gg, metric)
+            if not st["decision_unknown"]:
+                fv = fv[fv["_decision"].eq("clean")]
+            per_strat[strat] = fv[metric].dropna().astype(float).values if metric in fv.columns else np.array([])
+            per_setting.append({"scenario": scen, "setting": setting, "strategy": strat, "mean": st["mean"], "std": st["std"], "n_clean": st["n_clean"]})
+        base = per_strat.get(baseline)
+        if base is None or not len(base):
+            continue
+        for strat, vals in per_strat.items():
+            if strat == baseline or not len(vals):
+                continue
+            dlo, dhi, rlo, rhi = _boot_unpaired(vals, base)
+            vs.append({"scenario": scen, "setting": setting, "strategy": strat, "baseline": baseline,
+                       "n": len(vals), "n_baseline": len(base), "mean_diff": float(vals.mean() - base.mean()),
+                       "diff_ci_lo": dlo, "diff_ci_hi": dhi, "ratio": float(vals.mean() / base.mean()) if base.mean() != 0 else float("nan"),
+                       "ratio_ci_lo": rlo, "ratio_ci_hi": rhi,
+                       "note": "n<5 in a group: descriptive only" if min(len(vals), len(base)) < 5 else ""})
+    cells_df = pd.DataFrame(cells)
+    vs_df = pd.DataFrame(vs)
+    ps = pd.DataFrame(per_setting)
+    mvs = ps.pivot_table(index=["scenario", "strategy"], columns="setting", values="mean") if len(ps) else pd.DataFrame()
+    return cells_df, vs_df, mvs
+
+
+
 def format_compare(r: dict) -> str:
     if not r.get("n_pairs"):
         return f"{r['metric']}: {r.get('note', 'no pairs')}"
@@ -197,9 +290,49 @@ def main():
     ap.add_argument("--vehicle", default=None, help="restrict to one vehicle_id")
     ap.add_argument("--group-by", default="controller",
                     help="column for summarise / paired_compare grouping (e.g. study_controller)")
+    ap.add_argument("--cell", default=None,
+                    help="study cell filter: scenario,setting_key,strategy (e.g. A8,speed=0.4,S0)")
+    ap.add_argument("--study-metric", default="primary_metric",
+                    help="metric column when using --cell (default primary_metric)")
+    ap.add_argument("--cell-csv", type=Path, default=None,
+                    help="write the per-cell summary table (with --study-table) for plotting")
+    ap.add_argument("--study-table", action="store_true",
+                    help="study mode: per-cell table (scenario x setting x strategy, stats over flights), strategy-vs-baseline per setting "
+                         "(unpaired bootstrap CI), metric-vs-setting table; uses study_rows.csv with a `strategy` column")
+    ap.add_argument("--baseline-strategy", default="S0")
     args = ap.parse_args()
 
     df = pd.read_csv(args.rows)
+    if args.study_table:
+        metric = args.study_metric if args.study_metric in df.columns else args.metric
+        cells, vs, mvs = study_table(df, metric, args.baseline_strategy)
+        pd.set_option("display.width", 250); pd.set_option("display.max_columns", 30)
+        print(f"metric = {metric}; unit = one flight (cf5); baseline = {args.baseline_strategy}\n")
+        print("== cells ==\n" + (cells.round(3).to_string(index=False) if len(cells) else "(no rows with a strategy)"))
+        print("\n== strategy vs baseline per setting (unpaired bootstrap 95 % CI) ==\n" + (vs.round(3).to_string(index=False) if len(vs) else "(none)"))
+        print("\n== metric vs setting (mean over flights) ==\n" + (mvs.round(3).to_string() if len(mvs) else "(none)"))
+        if args.cell_csv:
+            cells.to_csv(args.cell_csv, index=False)
+            vs.to_csv(args.cell_csv.with_name(args.cell_csv.stem + "_vs_baseline.csv"), index=False)
+            if len(mvs):
+                mvs.to_csv(args.cell_csv.with_name(args.cell_csv.stem + "_metric_vs_setting.csv"))
+        return
+    if args.cell:
+        scen, setting, strategy = parse_cell(args.cell)
+        if "scenario" in df.columns:
+            df = df[df["scenario"] == scen]
+        if "setting_key" in df.columns:
+            df = df[df["setting_key"] == setting]
+        if "strategy" in df.columns:
+            df = df[df["strategy"] == strategy]
+        metric = args.study_metric if args.study_metric in df.columns else args.metric
+        stats = summarise_study_cell(df, metric)
+        print(f"cell {args.cell} metric={metric}: {stats}")
+        if args.baseline and args.treatment and "strategy" in df.columns:
+            wide = df[df["strategy"].isin([args.baseline, args.treatment])]
+            print(format_compare(paired_compare(wide, metric, args.baseline, args.treatment,
+                                                pair_on=("date", "stamp"), controller_col="strategy")))
+        return
     gcol = args.group_by if args.group_by in df.columns else "controller"
     if args.phase and "phase" in df.columns:
         df = df[df["phase"] == args.phase]

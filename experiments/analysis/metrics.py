@@ -315,8 +315,16 @@ def load_usd(path: Path, name: str | None = None) -> VehicleLog:
     a_res = vec3("a_res")
     a_hat = vec3("rnn_pred")
     e_r = vec3("e_r")
+    tau = vec3("tau")
+    gyro = vec3("gyro")
+    mkeys = [f"motor_m{i}" for i in (1, 2, 3, 4)]
+    motor = (np.stack([d[k] for k in mkeys], axis=1)
+             if all(k in d for k in mkeys) and n_raw else None)
+    if gyro is None and all(f"gyro_{a}" in d for a in "xyz") and n_raw:
+        gyro = np.stack([d[f"gyro_{a}"] for a in "xyz"], axis=1)
     return VehicleLog(name or path.stem, "usd", np.asarray(d.get("t", [])), pos,
-                       pos_des, a_res, a_hat, e_r, n_raw, str(path))
+                       pos_des, a_res, a_hat, e_r, n_raw, str(path),
+                       tau=tau, motor=motor, gyro=gyro)
 
 
 def load_any(paths: list[str]) -> dict[str, VehicleLog]:

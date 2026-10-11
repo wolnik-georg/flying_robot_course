@@ -42,6 +42,8 @@ wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see
 | `run_analysis.py` | Per-flight metrics + report |
 | `plot_flight.py` / `plot_interaction.py` | Dashboard + downwash interaction figures |
 | `aggregate.py` / `plot_comparison.py` | Cross-flight comparison (docs/27 P3–P4) |
+| `study_metrics.py` | Comparative study: per-flight × per-drone rows (`study_rows.csv`, protocol §6) |
+| `build_study_readiness.py` | Regenerates `docs/study_readiness_matrix.md` + inventory JSON |
 | `run_c4_desk_prep.py` | One-shot desk run: `phase_metrics_c4_compare.csv` (geo+INDI only) → summarise + figures (`docs/31`, [`35`](../../docs/35_Desk_Parallel_Audit_Closeout.md)) |
 | `batch_plot_two_drone_merged.py` | All merged **2-drone** uSD logs → `plot_flight` + `plot_interaction` in `out/two_drone_plot_gallery/` (stable filenames + `index.json`) |
 
@@ -201,10 +203,38 @@ zero-valued samples produce a real 0.
 what `test_metrics.py`'s end-to-end test does); they are not a substitute for the C.0
 hardware-validation flights, and the `report.md` header says so on every run.
 
+## Comparative study metrics (2026-10-11, reworked after validation)
+Protocol: `docs/comparative_study_protocol.md` §3–8. **Unit of analysis = one flight** (cf5 row of every flight); both drones get rows.
+
+```bash
+PY=~/.pyenv/versions/flying_robots/bin/python
+# 1. per-flight x per-drone rows (all study scenarios with uSD logs); decisions give strategy + clean/excluded
+$PY experiments/analysis/study_metrics.py --all --decisions experiments/logs/flight_decisions_history_a8.csv \
+    --out experiments/analysis/out/study_metrics/study_rows.csv
+# 2. study tables: cells (scenario x setting x strategy), strategy vs S0 per setting, metric vs setting
+$PY experiments/analysis/aggregate.py experiments/analysis/out/study_metrics/study_rows.csv \
+    --study-table --study-metric primary_metric --cell-csv experiments/analysis/out/study_metrics/cells.csv
+# regression: the A8 numbers of docs/71 from the new code (36 uSD rows, tolerance 0.05 cm)
+$PY experiments/analysis/study_metrics.py --regression-a8
+# tests (synthetic): setting extraction, attitude convention, pass dips, cell logic; and the crazyswarm2 --study gate
+$PY experiments/analysis/test_study_setting.py; $PY experiments/analysis/test_study_metrics.py; $PY experiments/analysis/test_study_config.py
+```
+
+- **Decisions:** `experiments/logs/flight_decisions.csv` (study; header only until the first study flight, appended with `crazyflie_examples/scripts/flight_decision.py` at the card pull) and `flight_decisions_history_a8.csv` (A8 history 10-02…10-09 seeded from docs/71 by `build_flight_decisions_history.py`; strategy S0/S1/S2/ours, other variants `other:*`).
+  A cell is *incomplete* with n_clean < 5 and *not reached* with ≥ 8 attempts and n_clean < 5. Strategy-vs-baseline uses an unpaired bootstrap (flights of two strategies are independent); groups with n < 5 are marked descriptive.
+- **Primary metric per scenario** (`primary_metric_name`): A1 steady z error · A8 crossing dip (zero-crossings) · A3 dip per pass (local minima of the horizontal separation < 0.25 m) · A2/A5 tracking RMSE (`pos_rmse_m`) · A4 lateral RMS · A7 separation error RMS (+ `min_separation_m`).
+  Only A1 (30 rows, old flights), A5 (8) and A8 have data today; the A2/A3/A4/A7 code paths are not exercised on study data (no flight with the study configuration yet).
+- **Battery:** `vbat_min_v` from the uSD `pm.vbat` (new config), else the radio CSV (`vbat_source`), else the decisions file.
+- **Attitude:** measured roll/pitch/yaw RMS and p99 for every controller. `att_vs_nom_ref_*` = deviation from the nominal attitude of the commanded acceleration (yaw 0), controller-independent; it includes the tilt the position feedback commands, so it is not the controller's own error. Convention verified on real A2/A3/A4 flights: thrust towards +y needs negative roll, towards +x positive pitch; logged `stabilizer.pitch` = −pitch_standard. Measured angles from the quaternion when logged (`usd_study_config.txt`), else from `stabilizer.roll/pitch`. Reference acceleration from `ctrltarget.a*` or the 0.3 s Savitzky-Golay second derivative of `ctrltarget.x/y` (`att_ref_source`).
+  `e_r_*_rms_deg` (ours / Omar Rust) and `omar_att_err_*` (Omar C, raw units) are **controller-internal and not comparable across controllers** (Omar Rust's `e_r` follows the measured angle, Omar C does not log `e_r`).
+- **Separation / relative metrics** use the common clock of the two uSD logs (`usec.reset` on the ground, `sync_method = usd_pair_interp`); the pose bag is not used offline yet.
+- **Open:** the pose-bag clock; A2/A3/A4/A5/A7 primary metrics are untested on study data; `strategy` is only filled where a decisions file has the flight.
+
 ## Tests
 
 ```bash
 python3 experiments/analysis/test_metrics.py
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/test_study_setting.py
 ```
 
 Six checks: zero RMSE when position exactly matches the commanded trajectory, a known
