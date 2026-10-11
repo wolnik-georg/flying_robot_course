@@ -89,20 +89,20 @@ Training bank: 26 of the 26 manifest flights loaded (gated samples: 125437; unsi
 Violations that remain even with `--allow-extreme`: none.
 
 ## 4. Known risks (with source)
-- **A1 under the geometric controller oscillates.** cf5 swings ±35–40° (roll/pitch sd 19–22°, ~1.5 Hz, xy rms 7–8 cm) with the network off *and* on, n = 2 vs 3 flights on 2026-10-08 (`docs/68`, `a1_usd_summary.json`); attributed to the geometric controller under the stacked downwash, cf5 solo hover is calm. The protocol abort rule (|roll| or |pitch| > 25° for 0.5 s) would trigger on these flights — an A1 abort rule is needed before the shakedown.
+- **A1 under the geometric controller oscillated on 2026-10-08.** cf5 swings ±35–40° (roll/pitch sd 19–22°, ~1.5 Hz, xy rms 7–8 cm) with the network off *and* on, n = 2 vs 3 flights on 2026-10-08 (`docs/68`, `a1_usd_summary.json`); attributed to the geometric controller under the stacked downwash, cf5 solo hover is calm. Not expected; to be re-checked in the shakedown (the protocol abort rule applies unchanged).
 - **Our INDI saturates / oscillates on A1** (96 % of the steady samples with a motor at the PWM ceiling on 2026-10-02, `docs/64`); Omar C + Iz 1.5 has **never flown A1**.
 - **Omar C reads the unfiltered optical-deck RPM**: no dropout in 12 flights (A8 only); never tried in the moving 2-drone scenarios.
 - **Tracker pose swaps and battery** caused the 2026-10-05 crashes, not the network (`docs/lab_sessions/2026-10-05.md`); fresh batteries and the pose bag per flight.
 - **NS2 coverage (table 2):** the network can act during 8%–9% of an A8 flight (A8 is not in the training bank); the bank is thin near dz 0.75 m (0.5% of its samples within ±0.05 m, against 13.4% at 0.5 m and 10.6% at 0.25 m).
 
 ## 5. Shakedown test list (prioritised, from the facts above)
-1. **A1 with S0, S2, S1, ours** — the abort rule problem and untested Omar C; fly each once, record roll p99.
+1. **A1 with S0, S2, S1, ours** — untested for Omar C, the 10-08 oscillation is to be re-checked; fly each once, record roll p99.
 2. **S1 (Omar C + Iz 1.5) on the moving scenarios A2, A3, A4, A5, A7** — never flown; check deck RPM dropouts and the z offset (one flight each, speed 0.4).
 3. **S0 and S2 on A2, A3, A4, A5, A7 with the study gains and `ki_z 16`** — only older-gain C.1 flights exist.
 4. **Speed 0.5 and dz 0.25 / 0.75** — settings tagged or flagged in tables 2–3 (A7 is extreme-tagged).
 5. **S0 anchor on A8** bookends the session.
 
-Abort criteria: |roll| or |pitch| > 25° for 0.5 s (revisit for A1, see risks), z < 0.25 m, pose jump, 2 crashes stop the block; fresh batteries (rest ≥ 4.1 V).
+Abort criteria: |roll| or |pitch| > 25° for 0.5 s, z < 0.25 m, pose jump, 2 crashes stop the block; fresh batteries (rest ≥ 4.1 V).
 
 ## 6. Could not be determined
 - Clean/excluded per flight outside the curated sources (decided at the card pull, `flight_decisions.csv`).

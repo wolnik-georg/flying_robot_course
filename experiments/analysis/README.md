@@ -47,7 +47,6 @@ wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see
 | `study_flight_plan.py` | Validated `run_formation --study` commands for every setting; writes `docs/study_shakedown_card.md`, `out/study_plan/` (settings, tier cells) |
 | `study_report.py` | Protocol §8 report: z error vs time per strategy and metric vs setting per scenario (`out/study_report/`) |
 | `pose_bag.py` | Mocap pose bag (mcap) reader; separation metrics on the bag clock; `--validate` against the uSD-pair values (needs `pip install mcap mcap-ros2-support`) |
-| `a1_abort_rule_analysis.py` | Tilt statistics of all cf5 uSD flights → `docs/a1_abort_rule_analysis.md` (oscillation vs tumble) |
 | `sil_study_screening.py` | Two-drone closed-loop SIL screen of the study settings (S0 / S2) → `docs/sil_study_screening.md` (A8 validated, others a screen only) |
 | `run_c4_desk_prep.py` | One-shot desk run: `phase_metrics_c4_compare.csv` (geo+INDI only) → summarise + figures (`docs/31`, [`35`](../../docs/35_Desk_Parallel_Audit_Closeout.md)) |
 | `batch_plot_two_drone_merged.py` | All merged **2-drone** uSD logs → `plot_flight` + `plot_interaction` in `out/two_drone_plot_gallery/` (stable filenames + `index.json`) |

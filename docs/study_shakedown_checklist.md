@@ -1,6 +1,6 @@
 # Shakedown checklist (2026-10-11)
 
-Goal: fly every scenario once with every strategy, find what breaks, measure the real flight rate, check that the 92-variable uSD logging works, then freeze protocol v1.0. Flight list with validated commands: `docs/study_shakedown_card.md` (regenerate with `python3 experiments/analysis/study_flight_plan.py`). Abort/classification rule: `docs/a1_abort_rule_analysis.md`.
+Goal: fly every scenario once with every strategy, find what breaks, measure the real flight rate, check that the 92-variable uSD logging works, then freeze protocol v1.0. Flight list with validated commands: `docs/study_shakedown_card.md` (regenerate with `python3 experiments/analysis/study_flight_plan.py`).
 
 ## A. Before the lab (desk) — status
 | item | status |
@@ -9,7 +9,6 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 | Pure-INDI choice (can go into the shakedown as S1 + ours) | open — decision (not blocking) |
 | yaml tags `study-S0/S1/S2/ours`: variants as patches in crazyswarm2 `crazyflie/config/study/` (verified), tags with `crazyflie/config/study/make_tags.sh --execute`, `git push origin --tags` | patches ready; tags after the two decisions |
 | `study_manifest.json`: cf5 and cf_second `firmware_sha256` of the image flashed | at the flash (step B1) |
-| A1 abort rule agreed (tilt > 45° for 0.2 s instead of 25° / 0.5 s) | proposed in `a1_abort_rule_analysis.md` |
 | crazyswarm2 pulled on the lab PC (`--study`, `--duration`, manifest, strategies) | after push |
 | Preflight tool: `python3 flying_drone_stack/tools/lab_preflight.py --yaml <crazyflies.yaml> --study S0 --sd-config /media/<card>/config.txt` | ready |
 
@@ -23,7 +22,7 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 ## C. Every session
 - Fresh batteries (rest ≥ 4.1 V; swap if either drone < 4.0 V). `git pull`, build, launch (check the pacing marker), `lab_preflight.py --study <S>` per controller block, yaml of the block (`git checkout study-S<k> -- crazyflie/config/crazyflies.yaml`, relaunch).
 - Pose bag per flight (`/poses /cf5/pose /cf_second/pose`). One line per flight with `crazyflie_examples/scripts/flight_decision.py --csv experiments/logs/flight_decisions.csv …` (clean / excluded / attempt-aborted, reason, vbat min).
-- Abort / stop the block: tilt > 45° for 0.2 s, z < 0.25 m, pose jump, 2 crashes. After a crash toggle `stabilizer.estimator` 1→2. Human pilot ready; a tumble is over in < 1 s.
+- Abort / stop the block (protocol §4): |roll| or |pitch| > 25° for 0.5 s, z < 0.25 m, 2 crashes. After a crash toggle `stabilizer.estimator` 1→2. Human pilot ready.
 
 ## D. After each block (cards)
 1. Cards: `cf_second` first, then `cf5` (`copy_usd_log.py /media/<mount> <drone>`, never `cp`); archive on the card; merge (`merge_usd_logs.py --meta … --roles bottom top`).
@@ -32,7 +31,7 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 
 ## E. Exit criteria of the shakedown (then freeze protocol v1.0)
 - Every scenario × strategy cell: flown / failed (reason) / needs a rule — documented in `docs/study_readiness_matrix.md`.
-- A1: roll/pitch p99 per strategy recorded; abort rule confirmed.
+- A1: roll/pitch p99 per strategy recorded (the 10-08 flights oscillated ±35°; not expected, re-check).
 - Omar C on the moving scenarios: no deck RPM dropout, z offset ≈ +2 cm.
 - Speed 0.5 and dz 0.25 / 0.75: feasible or documented exclusion; A7 needs `--allow-extreme`.
 - uSD: no clear increase of gaps with 92 variables; fallback decided.

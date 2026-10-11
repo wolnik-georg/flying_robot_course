@@ -109,7 +109,7 @@ def main():
         L.append("")
     L += ["## Reading", "",
           "- **A8 (validated plant):** all four speeds stay stable, bottom tilt ≤ 15°, network on shrinks the crossing dip at every speed (e.g. −6.1 → −3.9 cm at 0.4 m/s, matching the hardware ordering of `docs/72`).",
-          "- **A1 is not reproduced:** the hardware oscillation (±35–40°, ~1.5 Hz, `docs/68`) does not appear in the simulation (bottom tilt 25–49°), so the simulation says nothing about A1 stability or the A1 abort rule.",
+          "- **A1 is not reproduced:** the hardware oscillation (±35–40°, ~1.5 Hz, `docs/68`) does not appear in the simulation (bottom tilt 25–49°), so the simulation says nothing about A1 stability.",
           "- **Top-drone tilt of 80–174° in every non-A8 cell is a harness start-up transient (finite-difference setpoints instead of the HLC trajectory), not a result;** only the bottom drone is judged.",
           "- **Seed noise dominates the flags:** none of the three seed-0 flags repeats in the 9 repeats (all ok by the criteria); the repeats show sporadic large z dips (−40 … −50 cm) for S0 on A5 (0.4) and A7 (0.5), which is the one thing worth watching on the real drone (A7 is extreme-tagged anyway).",
           "- **Not covered:** Omar C and our INDI (cannot run here), battery, mocap pose swaps, the real deck RPM.", ""]

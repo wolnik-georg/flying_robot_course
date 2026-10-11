@@ -2,7 +2,7 @@
 
 31 flights, controller-grouped (S0 → S2 → S1 → ours → S0 anchor). Every command was validated with the scenario generator and the geofence check as flown (`--auto-center`, height 0.5).
 Before each block: select the strategy's yaml (`git checkout study-S<k> -- crazyflie/config/crazyflies.yaml` once the tags exist), relaunch the server, check `--study` prints the config block.
-Abort and classification rule: `docs/a1_abort_rule_analysis.md` (tilt > 45° for 0.2 s, z < 0.25 m, pose jump; stop the block after 2 crashes). Fresh batteries (rest ≥ 4.1 V). One line per flight in the decisions file (`flight_decision.py`).
+Abort rule (protocol §4): |roll| or |pitch| > 25° for 0.5 s, or z < 0.25 m; stop the block after 2 crashes. Fresh batteries (rest ≥ 4.1 V). One line per flight in the decisions file (`flight_decision.py`).
 
 | # | block | kind | scenario | setting | peak v (m/s) | duration (s) | command | done | clean/excl | vbat min | notes |
 |---|---|---|---|---|---:|---:|---|---|---|---|---|
