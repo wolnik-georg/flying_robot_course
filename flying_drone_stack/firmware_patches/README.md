@@ -10,7 +10,7 @@ PATCH=$HOME/Desktop/flying_robot_course/flying_drone_stack/firmware_patches
 cd "$FW"
 for p in \
   stabilizer_stack_8x.patch \
-  usddeck_56_variables.patch \
+  usddeck_96_variables.patch \
   controller_indi_cf21bl.patch \
   controller_oot_slots.patch \
   controller_omar_indi.h.patch \

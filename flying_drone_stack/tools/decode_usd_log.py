@@ -47,6 +47,19 @@ RENAME = {
     "indi.dt_us": "dt_us",
     "pm.vbat": "vbat",
     "usd.runTag": "run_tag",
+    # --- usd_study_config.txt additions (2026-10-11): one superset for every controller ---
+    "stateEstimate.qx": "est_qx", "stateEstimate.qy": "est_qy", "stateEstimate.qz": "est_qz", "stateEstimate.qw": "est_qw",
+    "ctrltarget.vx": "ctrltarget_vx", "ctrltarget.vy": "ctrltarget_vy", "ctrltarget.vz": "ctrltarget_vz",
+    "ctrltarget.ax": "ctrltarget_ax", "ctrltarget.ay": "ctrltarget_ay", "ctrltarget.az": "ctrltarget_az",
+    "locSrv.x": "locsrv_x", "locSrv.y": "locsrv_y", "locSrv.z": "locsrv_z", "locSrvZ.tick": "locsrv_tick",
+    "ctrlOmarIndi.a_rpm_fx": "omar_a_rpm_fx", "ctrlOmarIndi.a_rpm_fy": "omar_a_rpm_fy", "ctrlOmarIndi.a_rpm_fz": "omar_a_rpm_fz",
+    "ctrlOmarIndi.a_imu_fx": "omar_a_imu_fx", "ctrlOmarIndi.a_imu_fy": "omar_a_imu_fy", "ctrlOmarIndi.a_imu_fz": "omar_a_imu_fz",
+    "ctrlOmarIndi.torquex": "omar_tau_x", "ctrlOmarIndi.torquey": "omar_tau_y", "ctrlOmarIndi.torquez": "omar_tau_z",
+    "ctrlOmarIndi.thrustSi": "omar_thrust_si", "ctrlOmarIndi.f_rpm": "omar_f_rpm",
+    "ctrlOmarIndi.rpyx": "omar_rpy_x", "ctrlOmarIndi.rpyy": "omar_rpy_y", "ctrlOmarIndi.rpyz": "omar_rpy_z",
+    "ctrlOmarIndi.rpydx": "omar_rpyd_x", "ctrlOmarIndi.rpydy": "omar_rpyd_y", "ctrlOmarIndi.rpydz": "omar_rpyd_z",
+    "ctrlOmarIndi.error_posx": "omar_err_pos_x", "ctrlOmarIndi.error_posy": "omar_err_pos_y", "ctrlOmarIndi.error_posz": "omar_err_pos_z",
+    "ctrlOmarIndi.error_velx": "omar_err_vel_x", "ctrlOmarIndi.error_vely": "omar_err_vel_y", "ctrlOmarIndi.error_velz": "omar_err_vel_z",
 }
 
 

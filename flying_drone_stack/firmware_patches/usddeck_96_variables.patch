@@ -1,23 +1,28 @@
 diff --git a/src/deck/drivers/src/usddeck.c b/src/deck/drivers/src/usddeck.c
-index 1d505958..195c1d8d 100644
+index 1d505958..2d3d74ff 100644
 --- a/src/deck/drivers/src/usddeck.c
 +++ b/src/deck/drivers/src/usddeck.c
-@@ -90,7 +90,13 @@
+@@ -90,8 +90,17 @@
  #define SPI_END_TRANSACTION     spiEndTransaction
  #endif
  
 -#define MAX_USD_LOG_VARIABLES_PER_EVENT   (20)
+-#define MAX_USD_LOG_EVENTS                (20)
 +// LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Raised from the stock 20.
 +// Thesis uSD config (flying_drone_stack/tools/usd_thesis_config.txt) lists 52 variables
 +// per fixedFrequency event as of 2026-09-30 (incl. indi.oot5_* diagnostics + usd.runTag).
 +// Parser silently skips any line beyond this cap (DEBUG_PRINT only). Was 48 until 2026-09-30
-+// when 4 oot5 fields were dropped — including runTag if pushed past slot 48. See
++// when 4 oot5 fields were dropped — including runTag if pushed past slot 48.
++// 2026-10-11: raised 56 -> 96 for usd_study_config.txt (92 variables: one superset for every controller)
++// and MAX_USD_LOG_EVENTS 20 -> 4 to pay for it. See
 +// flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
-+#define MAX_USD_LOG_VARIABLES_PER_EVENT   (56)
- #define MAX_USD_LOG_EVENTS                (20)
++#define MAX_USD_LOG_VARIABLES_PER_EVENT   (96)
++// Only the single fixedFrequency event is used by the thesis configs; 20 events x 96 variables would waste ~RAM.
++#define MAX_USD_LOG_EVENTS                (4)
  #define FIXED_FREQUENCY_EVENT_ID          (0xFFFF)
  #define FIXED_FREQUENCY_EVENT_NAME        "fixedFrequency"
-@@ -238,6 +244,9 @@ static ringBuffer_t logBuffer;
+ 
+@@ -238,6 +247,9 @@ static ringBuffer_t logBuffer;
  static TaskHandle_t xHandleWriteTask;
  
  static bool enableLogging;
@@ -27,7 +32,7 @@ index 1d505958..195c1d8d 100644
  static uint32_t lastFileSize = 0;
  static crc32Context_t crcContext;
  
-@@ -1108,6 +1117,7 @@ PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, canLog, &initSuccess)
+@@ -1108,6 +1120,7 @@ PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, canLog, &initSuccess)
   * @brief Controls if logging to the SD-card is active. Set to 1 to start logging, set to 0 to stop logging (default).
   */
  PARAM_ADD_CORE(PARAM_UINT8, logging, &enableLogging) /* use to start/stop logging*/
@@ -35,7 +40,7 @@ index 1d505958..195c1d8d 100644
  PARAM_GROUP_STOP(usd)
  
  /**
-@@ -1126,4 +1136,5 @@ STATS_CNT_RATE_LOG_ADD(spiReBps, &spiReadRate)
+@@ -1126,4 +1139,5 @@ STATS_CNT_RATE_LOG_ADD(spiReBps, &spiReadRate)
   * @brief Data write rate to the SD card [bytes/s]
   */
  STATS_CNT_RATE_LOG_ADD(fatWrBps, &fatWriteRate)
