@@ -374,6 +374,21 @@ def process_flight(meta_path: Path, decisions_path: Path) -> list[dict]:
         r["decision"] = dec.get("decision", "") if dec else ""
         r["meta_path"] = str(meta_path.relative_to(REPO))
         rows.append(r)
+    # mocap pose bag (common clock, protocol section 5): bag_* columns next to the uSD-pair ones when a bag matches the flight
+    try:
+        import pose_bag
+        bag_dir = pose_bag.find_bag(date, stamp)
+        if bag_dir is not None:
+            dz_cmd_b = float((meta.get("params") or {}).get("dz", meta.get("param_dz", 0.5)) or 0.5)
+            bm = pose_bag.relative_metrics(pose_bag.load_pose_bag(bag_dir), dz_cmd_b)
+            for r in rows:
+                r["bag_path"] = str(bag_dir.relative_to(REPO)) if bm else ""
+                r.update(bm)
+    except ImportError:
+        pass   # mcap / mcap-ros2-support not installed: uSD-pair separation only
+    except Exception as exc:  # noqa: BLE001 - a broken bag must not remove the flight's other metrics
+        for r in rows:
+            r["notes"] = f"pose bag failed: {exc}"
     if len(logs) >= 2:
         a, b = logs[names[0]], logs[names[1]]
         grid, _, sync_m = sync_pair(a, b)
