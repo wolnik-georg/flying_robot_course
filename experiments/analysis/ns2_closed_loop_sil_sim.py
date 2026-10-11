@@ -224,6 +224,8 @@ def build_scenario(sid: str, cfg: dict) -> object:
             settle=float(cfg.get("settle_s", 2.0)),
             passes=int(cfg.get("passes", 4)),
         )
+    if sid in ("A2", "A3", "A4", "A5", "A7"):   # study screening (2026-10-11): generic builder, parameters in cfg["scenario_kwargs"]
+        return FSC.build(sid, **dict(cfg.get("scenario_kwargs", {})))
     raise ValueError(sid)
 
 
