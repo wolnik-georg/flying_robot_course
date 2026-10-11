@@ -22,7 +22,7 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 | S1 Omar C + Iz 1.5 | A8 only (4 flights, 2 days, +2.4 cm) | A1 and all other scenarios; deck RPM never tried on other moving 2-drone scenarios |
 | Ours INDI (supplementary) | A8 only (+1.9 cm) | everything else; weak on A1 |
 **Decisions still open:** (1) Pure INDI — Omar C + Iz 1.5 expected (supervisor); (2) NS2 retrain or keep — must be decided **before the shakedown**, then weights frozen; also tier 2/3 go/no-go, exact speed↔parameter mapping, ours as supplementary column.
-**Work still open before data collection:** logging changes (SD `config.txt` Omar C channels; `run_formation` meta with the full yaml block + hashes), tag yaml commits `study-S0/S1/S2`, extend `metrics.py`/`aggregate.py` to the sweep cells, the shakedown session (every scenario × controller once, throughput, speed 0.5 feasibility), protocol v1.0 freeze.
+**Work still open before data collection (2026-10-11: uSD superset config + firmware cap 96 prepared, binary built, not yet flashed/flown; metrics/aggregate sweep cells, `run_formation --study` meta/gate and the readiness matrix DONE and validated 2026-10-11 (`docs/cursor_prompt_study_prep_2026-10-11.md`, `docs/study_readiness_matrix.md`)):** logging changes (`run_formation` meta with the full yaml block + hashes — prompt B; SD superset config — prepared), tag yaml commits `study-S0/S1/S2`, extend `metrics.py`/`aggregate.py` to the sweep cells, the shakedown session (every scenario × controller once, throughput, speed 0.5 feasibility), protocol v1.0 freeze.
 **Verdict:** ready for the shakedown, not yet for the data collection.
 
 ## 2. Next steps, in order
