@@ -2,6 +2,20 @@
 
 Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric baseline · **1** pure INDI (candidates: ours, Omar C + Iz 1.5) · **2** geometric + NS2 residual (`res_sign −1`) · **3** FBL + residual (blocked: authors' code not received). NA-INDI is not compared (supervisor decision).
 
+## 0. State 2026-10-12 — the desk phase is finished, what is left is decisions and the lab
+**Done (2026-10-11, committed and pushed; nothing flown yet)**
+- uSD logging: one 92-variable config for all controllers, firmware limit 96, binary built (`cf21bl_study_usd96_rnn_iz_sentinel_ON.bin`, not flashed), quality checker `check_usd_log_quality.py`.
+- `run_formation --study`: checks the configuration before takeoff, lands first if it is wrong in the air, writes the full configuration into the meta; `--duration` sets the A8 speed (all earlier A8 flights used 0.365 m/s).
+- Analysis: `study_metrics.py`, `aggregate.py --study-table`, `study_report.py`, pose-bag clock (`pose_bag.py`); A8 regression matches `docs/71`.
+- Shakedown material: `study_shakedown_card.md` (31 validated flights), `study_shakedown_checklist.md`, `lab_preflight.py --study`, yaml variants + `make_tags.sh` (dry run), `study_readiness_matrix.md`, protocol v0.2.
+- NS2 numbers (`ns2_retrain_options.md`): the unused earlier flights give no gain (R² 0.934 vs 0.944), the bank is thin at dz 0.75, the network acts in ~8 % of an A8 flight. SIL screening of the settings: `sil_study_screening.md` (A8 validated, A1 not reproduced).
+
+**Left**
+- *Decisions (supervisor meeting, `meetings/2026-10-12.md`):* NS2 keep / retrain; Pure INDI (ours or Omar C + Iz 1.5, both fly in the shakedown); FBL (send the eight questions, scope of Strategy 3); tiers 2 and 3.
+- *Desk, after the decisions:* `make_tags.sh --execute` + push tags; manifest hashes (both drones) after the flash; protocol v1.0 after the shakedown.
+- *Lab:* flash usd96 on both drones + bench timing; config on both SD cards + ground logging test + `check_usd_deck.py`; fly the shakedown card with `--study`; quality check and metrics after every card; measure flights per hour; then freeze v1.0 and start the data collection.
+- Writing stays off until it is asked for.
+
 ## 1. What is finished (state 2026-10-09)
 | Area | Result | Where |
 |---|---|---|
@@ -26,7 +40,7 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 **Verdict:** ready for the shakedown, not yet for the data collection.
 
 ## 2. Next steps, in order
-**Phase A — desk, now (no lab needed)**
+**Phase A — desk (status 2026-10-12: items 1, 3, 4 done, see section 0; 2 and 5 are the decisions)**
 1. **Study protocol** (`docs/comparative_study_protocol.md`): scenario list (A1, A2, A3, A4, A5, A7, A8, C5 — the 2-drone library; A6/C4 dropped), controllers/strategies and their frozen configs (yaml + firmware sha), repeats (≥ 3 clean flights per scenario × controller), interleaved order, metrics (steady z error, z RMS, crossing dip, lateral RMS, max tilt, saturation, vbat) with the fixed definitions of docs/71, abort/battery/pose-bag rules, file naming, exclusion rules (crash, pose swap, abort — always listed, never silent).
 2. **"Pure INDI" decision** (you + supervisor): ours vs Omar C + Iz 1.5. Evidence: A8 — same level (+1.9 vs +2.4 cm), ours tighter (z sd 0.5 vs 1.8 cm, lateral 0.8 vs 3.0 cm); ours weak on A1 (saturation, oscillation); Omar C needs the optical deck and is unfiltered (no dropouts in 12 flights). Option: carry both into the shakedown and decide with data.
 3. **Scenario readiness check** per controller: which scenarios have any flight with the final configs (only A8 for all; A1 for geometric/NS2/ours); is the NS2 network covered by its training bank for each scenario; scenario params fixed (dz, speed, height).
