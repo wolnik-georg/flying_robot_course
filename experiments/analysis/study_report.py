@@ -22,7 +22,7 @@ from a8_crossings import zero_crossings  # noqa: E402
 import aggregate as ag  # noqa: E402
 
 OUT = HERE / "out" / "study_report"
-COL = {"S0": "#4D4D4D", "S1": "#005AB5", "S2": "#009E73", "ours": "#D55E00"}
+COL = {"S0": "#4D4D4D", "S1": "#005AB5", "S2": "#009E73", "ours": "#D55E00", "TK": "#CC79A7", "TKC": "#999933"}
 GRID = np.arange(0, 26, 0.05)
 
 

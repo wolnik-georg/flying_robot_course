@@ -247,7 +247,7 @@ def main() -> int:
     ap.add_argument("--expect-geometric-cf5", action="store_true", help="Fail if cf5 ctrl_mode != 0")
     ap.add_argument("--allow-rnn-en", action="store_true", help="Allow rnn.en=1 in yaml")
     ap.add_argument("--launch-log", type=Path, default=None, help="Optional launch stdout log to scan")
-    ap.add_argument("--study", choices=("S0", "S1", "S2", "ours"), default=None, help="study profile: frozen block, manifest, tag, uSD config")
+    ap.add_argument("--study", choices=("S0", "S1", "S2", "ours", "TK", "TKC"), default=None, help="study profile: frozen block, manifest, tag, uSD config")
     ap.add_argument("--sd-config", type=Path, default=None, help="with --study: config.txt on a mounted SD card, compared with usd_study_config.txt")
     args = ap.parse_args()
 
