@@ -12,7 +12,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "flying_drone_stack" / "tools"))
 import decode_usd_log as dec
 
-ap = argparse.ArgumentParser(); ap.add_argument("log"); ap.add_argument("--motor", type=int, default=0); ap.add_argument("--out", default=None); a = ap.parse_args()
+ap = argparse.ArgumentParser(); ap.add_argument("log"); ap.add_argument("--motor", type=int, default=0); ap.add_argument("--out", default=None); ap.add_argument("--deck", action="store_true", help="also draw the optical deck RPM as a reference"); a = ap.parse_args()
 r = dec.load(a.log)
 if "rpmf_m1" not in r: sys.exit("this log has no rpmf.m1..m4 (needs the usd96+rpmf firmware and usd_study_config.txt)")
 up = r["z"] > 0.3; t = r["t"] - r["t"][0]
@@ -24,8 +24,8 @@ for i in range(1, 5):
 m = a.motor or int(np.argmax([(up & (r[f'motor_m{i}_rpm'] > 28000)).sum() for i in range(1, 5)])) + 1
 raw = r[f"motor_m{m}_rpm"].astype(float); used = r[f"rpmf_m{m}"].astype(float); deck = r[f"rpm_m{m}"].astype(float)
 fig, ax = plt.subplots(2, 1, figsize=(11, 6.4), sharex=True, sharey=True)
-ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label="raw DShot reading (no filter)")
-ax[1].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[1].plot(t, used, color="#009E73", lw=0.9, label="RPM filter applied (used by the controller, logged on the drone)")
+(ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)") if a.deck else None); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label="raw DShot reading (no filter)")
+(ax[1].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)") if a.deck else None); ax[1].plot(t, used, color="#009E73", lw=0.9, label="RPM filter applied (used by the controller, logged on the drone)")
 for x in ax: x.set_ylim(0, 70000); x.set_ylabel(f"motor {m} RPM"); x.legend(fontsize=9, loc="center right"); x.grid(alpha=0.3)
-ax[1].set_xlim(t[up][0] - 0.3, t[up][-1] + 0.3); ax[1].set_xlabel("time (s)"); ax[0].set_title("Before / after the RPM filter")
+ax[1].set_xlim(t[up][0] - 0.3, t[up][-1] + 0.3); ax[1].set_xlabel("time (s)"); ax[0].set_title("Before / after the RPM filter applied")
 fig.tight_layout(); out = a.out or str(Path(a.log).with_suffix(".rpm_filter.png")); fig.savefig(out, dpi=150); print("wrote", out)
