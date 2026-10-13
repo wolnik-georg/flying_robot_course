@@ -159,7 +159,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 **Decisions (supervisor / you)**
 - [ ] NS2: keep or retrain the network (numbers `ns2_retrain_options.md`); note the SIL benefit is an upper bound.
 - [ ] Pure INDI for the study: ours or Omar C + Iz 1.5; and whether the Tal & Karaman INDI (11/12) joins as a candidate or stays a side comparison.
-- [ ] FBL: send the eight questions, scope of Strategy 3. Tiers 2 and 3.
+- [ ] FBL: send the question (training script + data format + settings, hardware checkpoint + gains), scope of Strategy 3. Tiers 2 and 3.
 **Desk (no lab needed)**
 - [ ] Optional: oval path in the TK SIL; sensitivity of the TK law to `kt` ±14 % and to a 2 kHz-vs-1 kHz change.
 - [ ] After the decisions: `make_tags.sh --execute` + push tags; protocol v1.0 after the shakedown.
