@@ -57,6 +57,7 @@ RENAME = {
     "locSrv.x": "locsrv_x", "locSrv.y": "locsrv_y", "locSrv.z": "locsrv_z", "locSrvZ.tick": "locsrv_tick",
     "ctrlOmarIndi.a_rpm_fx": "omar_a_rpm_fx", "ctrlOmarIndi.a_rpm_fy": "omar_a_rpm_fy", "ctrlOmarIndi.a_rpm_fz": "omar_a_rpm_fz",
     "ctrlOmarIndi.a_imu_fx": "omar_a_imu_fx", "ctrlOmarIndi.a_imu_fy": "omar_a_imu_fy", "ctrlOmarIndi.a_imu_fz": "omar_a_imu_fz",
+    "ctrlTk.thrust": "tk_thrust", "ctrlTk.rpm_ok": "tk_rpm_ok", "ctrlTk.ns": "tk_ns", "ctrlTk.tau_f": "tk_tau_f",
     "ctrlOmarIndi.torquex": "omar_tau_x", "ctrlOmarIndi.torquey": "omar_tau_y", "ctrlOmarIndi.torquez": "omar_tau_z",
     "ctrlOmarIndi.thrustSi": "omar_thrust_si", "ctrlOmarIndi.f_rpm": "omar_f_rpm",
     "ctrlOmarIndi.rpyx": "omar_rpy_x", "ctrlOmarIndi.rpyy": "omar_rpy_y", "ctrlOmarIndi.rpyz": "omar_rpy_z",
