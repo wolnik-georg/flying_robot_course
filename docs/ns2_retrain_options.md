@@ -1,6 +1,6 @@
 # NS2: keep the weights or retrain? — numbers for the decision (2026-10-11)
 
-The decision itself is open (protocol §11). The weights are frozen at the shakedown. This page only collects what the data says.
+**Decision 2026-10-13: keep (K); no v2.** v1 is preserved as `flying_drone_stack/tools/residual/weights/ns2_v1.npz` (sha256 `8a43b5b5…`). (Was open: protocol §11.) The weights are frozen at the shakedown. This page only collects what the data says.
 
 ## Current weights
 `experiments/analysis/out/c2_e2e_2026-10-01/full_bank_c1_complete.npz` (sha256 `8a43b5b5…`), trained on 26 geometric two-drone flights (A1–A7 C.1 flights, no A8): R² = 0.944, 81.7 % reduction against predict-zero, leave-one-out OK on every new fold (`project_ns2_lab_fastpath_2026-10-01`).
