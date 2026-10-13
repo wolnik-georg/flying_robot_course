@@ -8,6 +8,9 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 - **Tal & Karaman:** first attempts silently ran controller 6 (wrong image on cf5), after the reflash it flips at takeoff 2/2. One more lab attempt (takeoff on the geometric ramp, switch at altitude) plus one day of SIL work, then decide; the gain variants are parked.
 - **Next:** next lab session with ours and Tal & Karaman at Omar's parameter values (plan `docs/lab_sessions/next_session_plan.md`: check both firmwares, restore the study SD config, ours with Omar's values, Tal & Karaman with Omar's values), then the Pure-INDI and NS2 decisions. Ours is frozen in `docs/77`.
 
+## 0b. Beyond the decisions (preserved 2026-10-13)
+Study: protocol v1.0 and tags after the decisions → study size (tiers) → `--study` flights per strategy → analysis chain (`study_metrics.py`, `aggregate.py`, `study_report.py`) → FBL only if the authors' code arrives. Thesis draft: Chapters 1–5 are being revised with a stronger model (prompt `docs/thesis_revision_prompt.md`, no flown / lab / simulation results in the draft yet); Chapters 6–9 wait for the study. Deadline 26 Feb 2027, last 4–6 weeks for writing.
+
 ## 0. State 2026-10-12 — the desk phase is finished, what is left is decisions and the lab
 **Done (2026-10-11, committed and pushed; nothing flown yet)**
 - uSD logging: one 96-variable config for all controllers (92 + `rpmf.m1..m4` = filtered RPM next to the raw DShot value, 2026-10-13; exactly the firmware limit 96), binary built (`cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin`, not flashed), quality checker `check_usd_log_quality.py`.

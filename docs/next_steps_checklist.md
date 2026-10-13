@@ -170,7 +170,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] Shakedown card (31 flights) with `--study`; quality check and metrics after every card.
 - [ ] Only if the TK INDI is wanted: flash the `_tk.bin` image on one drone, check `kt`/mass in the yaml, C.0 gate: hover → A8 → circle/figure-8; first fallback `ctrlTk.jrz 0`; Rust (11) first, C (12) only as cross-check.
 - [ ] Optional NS2 bench follow-up: measure the real-vs-network force ratio at the crossings (1.14–1.49×) to see whether a retrain at dz 0.5 helps.
-**Writing** stays off until you ask.
+**Writing:** see the thesis-draft block below.
 
 ## NEXT STEPS grouped (2026-10-13 night, decisions of the user; supersedes the list above)
 **Done on 2026-10-13 (desk)**
@@ -190,3 +190,17 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] Fly ours with Omar's values, `keepfilters` patch first (hover, then A8; then with the z integral 1.5), compare with ours frozen (dip −9.4 cm) and Omar C (−9.1 cm).
 - [ ] Fly Tal & Karaman with Omar's values (handover patch first: hover, then A8).
 **Writing** stays off until you ask.
+
+## Beyond the INDI / NS2 / FBL decisions (preserved 2026-10-13)
+**Study**
+- [ ] Freeze protocol v1.0 once INDI and NS2 are settled; create the strategy yaml tags (`make_tags.sh --execute`, only on the user's go) and push them.
+- [ ] Decide the study size (tier 1: 36 settings ≈ 180 clean flights; tier 1+2: 270; all: 405) and plan the lab sessions from it.
+- [ ] Study flights with `--study` for geometric, geometric + NS2 v1, the chosen Pure INDI (and Strategy 3 only if the FBL code arrives); archive the SD cards after every session (backups in `~/Desktop/sd_backups/`).
+- [ ] Run the analysis chain on the first study flights: `study_metrics.py`, `aggregate.py --study-table`, `study_report.py`.
+- [ ] FBL: depends on the authors' answer (port 4–6 weeks if the code arrives); otherwise decide the scope of Strategy 3 with the supervisor.
+**Timeline:** deadline 26 Feb 2027 (about 19 weeks from 2026-10-13); reserve the last 4–6 weeks for writing.
+## Thesis-draft track (decided 2026-10-13; independent of the study)
+- [ ] Write `docs/thesis_revision_prompt.md`: one very detailed prompt for a more capable model to revise Chapters 1–5 (main target) and the Ch. 6–9 skeletons: details, correctness, completeness, academic standard, explainability for students, related work and references. Constraints: no flown / lab / simulation results in the draft; citation discipline (`docs/17`, `docs/20_Verified_Claims.md`); locked decisions (`memory/project_writing_track.md`); keep the build clean (`latexmk -pdf thesis_draft.tex`).
+- [ ] Run it, review the output against the source ledger, merge chapter by chapter; Ch. 5 stays future tense until the study has run.
+- [ ] Chapters 6–9 keep their placeholders until the study results exist.
+
