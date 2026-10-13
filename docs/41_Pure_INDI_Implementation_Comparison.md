@@ -1,5 +1,7 @@
 # 41 — Pure INDI: four implementations compared
 
+> **2026-10-12:** the gains, filters and sign conventions in this early comparison are partly outdated (gains of 2026-09, `res_sign`, filters). The current term-by-term comparison of our INDI and Omar C, checked against the code with line references, is `docs/74_INDI_Control_Law_Comparison.md`.
+
 **Status: investigation only, no decision made, nothing executed.** Triggered by the supervisor
 sharing his own working repos (`~/Desktop/crazyflie-firmware-omar`,
 `~/Desktop/crazyswarm2-omar`) as a source-of-truth reference, in the context of the still-open

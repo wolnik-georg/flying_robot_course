@@ -1,8 +1,8 @@
 diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
-index 4854009b..eaebfc85 100644
+index 4854009b..8b3a83c5 100644
 --- a/src/modules/interface/controller/controller.h
 +++ b/src/modules/interface/controller/controller.h
-@@ -37,6 +37,42 @@ typedef enum {
+@@ -37,6 +37,50 @@ typedef enum {
    ControllerTypeLee,
  #ifdef CONFIG_CONTROLLER_OOT
    ControllerTypeOot,
@@ -42,10 +42,18 @@ index 4854009b..eaebfc85 100644
 +  // ControllerTypeOot4 / stabilizer.controller=9). Separate enum, dispatch row, and module
 +  // (firmware_app/src/omar_indi_rust.rs). See LOCAL_MODIFICATIONS.md and docs/41 §13.
 +  ControllerTypeOot5,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT6
++  // 2026-10-12: sixth out-of-tree slot -- Tal & Karaman INDI (firmware_app/src/tk_indi.rs).
++  ControllerTypeOot6,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT7
++  // 2026-10-12: seventh out-of-tree slot -- C version of the Tal & Karaman INDI (controller_tk_indi.c).
++  ControllerTypeOot7,
  #endif
    ControllerType_COUNT,
  } ControllerType;
-@@ -57,4 +93,31 @@ bool controllerOutOfTreeTest(void);
+@@ -57,4 +101,43 @@ bool controllerOutOfTreeTest(void);
  void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
  #endif
  
@@ -76,12 +84,24 @@ index 4854009b..eaebfc85 100644
 +void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
 +#endif
 +
++#ifdef CONFIG_CONTROLLER_OOT7
++void controllerOutOfTree7Init(void);
++bool controllerOutOfTree7Test(void);
++void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT6
++void controllerOutOfTree6Init(void);
++bool controllerOutOfTree6Test(void);
++void controllerOutOfTree6(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
  #endif //__CONTROLLER_H__
 diff --git a/src/modules/src/Kconfig b/src/modules/src/Kconfig
-index 0a5b4a9e..4f73c509 100644
+index 0a5b4a9e..94ddc9f1 100644
 --- a/src/modules/src/Kconfig
 +++ b/src/modules/src/Kconfig
-@@ -53,6 +53,52 @@ config CONTROLLER_OOT
+@@ -53,6 +53,69 @@ config CONTROLLER_OOT
      bool "Out-of-tree controller"
      default n
  
@@ -131,23 +151,41 @@ index 0a5b4a9e..4f73c509 100644
 +        Numerically verified against the C reference before SIL; never flown without the
 +        hardware gate. See docs/41 section 13.
 +
++config CONTROLLER_OOT6
++    bool "Sixth out-of-tree controller (2026-10-12: Tal & Karaman INDI, controller=11)"
++    default n
++    help
++        Sixth independent out-of-tree slot: the INDI controller of Tal & Karaman (2020),
++        firmware_app/src/tk_indi.rs. Selects ControllerTypeOot6 (stabilizer.controller=11
++        when OOT/OOT2/OOT3/OOT4/OOT5 are also enabled). See docs/74.
++
++config CONTROLLER_OOT7
++    bool "Seventh out-of-tree controller (2026-10-12: Tal & Karaman INDI in C, controller=12)"
++    default n
++    help
++        Seventh independent out-of-tree slot: the C version of the Tal & Karaman (2020) INDI,
++        controller_tk_indi.c, same law and parameters as CONTROLLER_OOT6 (Rust). Selects
++        ControllerTypeOot7 (stabilizer.controller=12 when OOT..OOT6 are also enabled).
++        Reads the ctrlTk params and the RPM bridge of the app's traj_iface.c. See docs/74.
++
  config ESTIMATOR_KALMAN_ENABLE
      bool "Enable Kalman Estimator"
      default y
 diff --git a/src/modules/src/controller/Kbuild b/src/modules/src/controller/Kbuild
-index 33401b23..cc518911 100644
+index 33401b23..6e6d1351 100644
 --- a/src/modules/src/controller/Kbuild
 +++ b/src/modules/src/controller/Kbuild
-@@ -7,3 +7,4 @@ obj-y += controller_brescianini.o
+@@ -7,3 +7,5 @@ obj-y += controller_brescianini.o
  obj-y += position_controller_indi.o
  obj-y += position_controller_pid.o
  obj-y += controller_lee.o
 +obj-$(CONFIG_CONTROLLER_OOT4) += controller_omar_indi.o
++obj-$(CONFIG_CONTROLLER_OOT7) += controller_tk_indi.o
 diff --git a/src/modules/src/controller/controller.c b/src/modules/src/controller/controller.c
-index e260ae8f..12d8e178 100644
+index e260ae8f..b11ebb24 100644
 --- a/src/modules/src/controller/controller.c
 +++ b/src/modules/src/controller/controller.c
-@@ -33,6 +33,21 @@ static ControllerFcns controllerFunctions[] = {
+@@ -33,6 +33,27 @@ static ControllerFcns controllerFunctions[] = {
    #ifdef CONFIG_CONTROLLER_OOT
    {.init = controllerOutOfTreeInit, .test = controllerOutOfTreeTest, .update = controllerOutOfTree, .name = "OutOfTree"},
    #endif
@@ -165,6 +203,12 @@ index e260ae8f..12d8e178 100644
 +  #endif
 +  #ifdef CONFIG_CONTROLLER_OOT5
 +  {.init = controllerOutOfTree5Init, .test = controllerOutOfTree5Test, .update = controllerOutOfTree5, .name = "OutOfTree5"},
++  #endif
++  #ifdef CONFIG_CONTROLLER_OOT6
++  {.init = controllerOutOfTree6Init, .test = controllerOutOfTree6Test, .update = controllerOutOfTree6, .name = "OutOfTree6"},
++  #endif
++  #ifdef CONFIG_CONTROLLER_OOT7
++  {.init = controllerOutOfTree7Init, .test = controllerOutOfTree7Test, .update = controllerOutOfTree7, .name = "OutOfTree7"},
 +  #endif
  };
  

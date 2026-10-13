@@ -20,6 +20,7 @@ class BankPlantDisturbance:
             raise ValueError(f"expected {N_WEIGHTS} weights, got {self.w.size}")
 
     symmetrize: bool = False  # average over x/y mirror images (physical symmetry of the downwash)
+    above_only: bool = True   # only a neighbour above the drone produces downwash on it (see _fa_raw)
 
     def _fa_raw(
         self,
@@ -35,6 +36,11 @@ class BankPlantDisturbance:
         rel = []
         for j, (p, v) in enumerate(zip(positions, velocities)):
             if j == index:
+                continue
+            # 2026-10-12: the learned downwash acts on the drone that has the other one ABOVE it (the network was trained only with
+            # a neighbour above, dz > 0). Without this gate the TOP drone was evaluated with a neighbour below, extrapolated and
+            # received a spurious downward force (-10 cm dip at every A8 crossing in the simulation, -0.2 cm on hardware).
+            if self.above_only and float(np.asarray(p, float)[2]) <= float(pos[2]):
                 continue
             rel.append((np.asarray(p, float) - pos, np.asarray(v, float) - vel))
         acc, _clamped = reference(self.w, rel, float(pos[2]), vel, float(mass))

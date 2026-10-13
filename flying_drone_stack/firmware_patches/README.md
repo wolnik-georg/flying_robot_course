@@ -15,6 +15,7 @@ for p in \
   controller_oot_slots.patch \
   controller_omar_indi.h.patch \
   controller_omar_indi.c.patch \
+  controller_tk_indi.c.patch \
   naindi_gyro_no_lpf_math3d.patch \
   platform_cf21bl_omar_constants.patch \
   rpm_deck_bcRpm.patch \

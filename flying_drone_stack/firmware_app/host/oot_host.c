@@ -220,6 +220,10 @@ extern unsigned char *oot3_state_ptr(void);
 extern size_t oot3_state_size(void);
 extern unsigned char *oot5_state_ptr(void);
 extern size_t oot5_state_size(void);
+extern unsigned char *oot6_state_ptr(void);
+extern size_t oot6_state_size(void);
+extern unsigned char *oot7_state_ptr(void);
+extern size_t oot7_state_size(void);
 
 typedef struct {
   unsigned char *slot[OOT_MAX_DRONES];
@@ -254,6 +258,8 @@ static oot_swap_pool_t g_pool_oot  = { .current = -1 };
 static oot_swap_pool_t g_pool_oot2 = { .current = -1 };
 static oot_swap_pool_t g_pool_oot3 = { .current = -1 };
 static oot_swap_pool_t g_pool_oot5 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot6 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot7 = { .current = -1 };
 
 void oot_select_drone(int idx)
 {
@@ -273,6 +279,16 @@ void naindi_hybrid_select_drone(int idx)
 void oot5_select_drone(int idx)
 {
   oot_swap_select(&g_pool_oot5, oot5_state_ptr(), oot5_state_size(), idx);
+}
+
+void oot6_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot6, oot6_state_ptr(), oot6_state_size(), idx);
+}
+
+void oot7_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot7, oot7_state_ptr(), oot7_state_size(), idx);
 }
 
 /* ---- Peer positions, host simulator only ----------------------------------

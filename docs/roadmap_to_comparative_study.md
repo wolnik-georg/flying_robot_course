@@ -14,6 +14,7 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 - *Decisions (supervisor meeting, `meetings/2026-10-12.md`):* NS2 keep / retrain; Pure INDI (ours or Omar C + Iz 1.5, both fly in the shakedown); FBL (send the eight questions, scope of Strategy 3); tiers 2 and 3.
 - *Desk, after the decisions:* `make_tags.sh --execute` + push tags; manifest hashes (both drones) after the flash; protocol v1.0 after the shakedown.
 - *Lab:* flash usd96 on both drones + bench timing; config on both SD cards + ground logging test + `check_usd_deck.py`; fly the shakedown card with `--study`; quality check and metrics after every card; measure flights per hour; then freeze v1.0 and start the data collection.
+- *Added 2026-10-12 evening:* NS2 SIL plant fixed (SIL now overstates the `−1` benefit, `docs/72`); isolated Tal & Karaman INDI (`controller 11` Rust / `12` C, `docs/74` §6) built and software-verified, `_tk.bin` image not flashed. Open: does it join the Pure-INDI candidates (needs the C.0 gate: hover → A8 → circle/figure-8) or stay out. Not in the shakedown card.
 - Writing stays off until it is asked for.
 
 ## 1. What is finished (state 2026-10-09)

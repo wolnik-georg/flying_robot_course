@@ -47,6 +47,7 @@ wait on ad-hoc pandas. Added 2026-09-08, desk work while lab-blocked (see
 | `study_flight_plan.py` | Validated `run_formation --study` commands for every setting; writes `docs/study_shakedown_card.md`, `out/study_plan/` (settings, tier cells) |
 | `study_report.py` | Protocol §8 report: z error vs time per strategy and metric vs setting per scenario (`out/study_report/`) |
 | `pose_bag.py` | Mocap pose bag (mcap) reader; separation metrics on the bag clock; `--validate` against the uSD-pair values (needs `pip install mcap mcap-ros2-support`) |
+| `ns2_a8_sim_check.py` | Run the closed-loop A8 simulation yourself: geometric vs NS2 `res_sign −1`, dips per seed next to the hardware numbers (~2 min) |
 | `sil_study_screening.py` | Two-drone closed-loop SIL screen of the study settings (S0 / S2) → `docs/sil_study_screening.md` (A8 validated, others a screen only) |
 | `run_c4_desk_prep.py` | One-shot desk run: `phase_metrics_c4_compare.csv` (geo+INDI only) → summarise + figures (`docs/31`, [`35`](../../docs/35_Desk_Parallel_Audit_Closeout.md)) |
 | `batch_plot_two_drone_merged.py` | All merged **2-drone** uSD logs → `plot_flight` + `plot_interaction` in `out/two_drone_plot_gallery/` (stable filenames + `index.json`) |
@@ -248,3 +249,8 @@ zero-row `ros`-format CSV handled cleanly instead of crashing, and the real sim 
 (`fixtures/merged_sim_snippet.csv`, a trimmed 200-row slice of
 `experiments/sim_validation/residual_collect.csv`) running through the full CLI to
 confirm it exits 0 and writes all three output files.
+
+## Tal & Karaman INDI (controller 11 / 12, docs/74 §6)
+- `tk_indi_reference.py` — literal NumPy version of every equation (NED / FRD inside, ENU / FLU at the interface); `test_tk_indi_reference.py` checks the flatness feed-forward (14)/(15) against a true trajectory.
+- `tk_indi_sil_run.py` — closed-loop SIL of the compiled controller, one drone (`--scenario hover|A1|A8 --noise --controller oot6|oot7 --set g_tk_jrz=...`; system `python3`).
+- Rust / C vs the reference: `flying_drone_stack/firmware_app/host/test_tk_indi_rust_vs_ref.py`.

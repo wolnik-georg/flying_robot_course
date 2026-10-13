@@ -1,3 +1,67 @@
 {
-  "step2_done": true
+  "wall_sim_s": 0.10715603828430176,
+  "step0": {
+    "detector_rows": [],
+    "all_agree": true,
+    "dip_summary_zero_crossing": {
+      "network_off": {
+        "n_crossings": 0,
+        "dip_mean_cm": NaN,
+        "dip_sd_cm": 0.0
+      },
+      "res_sign_plus1": {
+        "n_crossings": 0,
+        "dip_mean_cm": NaN,
+        "dip_sd_cm": 0.0
+      },
+      "res_sign_minus1": {
+        "n_crossings": 0,
+        "dip_mean_cm": NaN,
+        "dip_sd_cm": 0.0
+      }
+    },
+    "docs62_expected": {
+      "off": -5.85,
+      "plus1": -9.96,
+      "minus1": -2.3
+    }
+  },
+  "step1_pass": {
+    "rows": [
+      {
+        "cohort": "network_off",
+        "sil_dip_mean": NaN,
+        "sil_dip_sd": NaN,
+        "hw_dip_mean": -5.9,
+        "delta_dip": NaN,
+        "sil_steady_mean": NaN,
+        "hw_steady_mean": 0.8,
+        "sil_roll_p99": NaN,
+        "pass_dip_1p5cm": false
+      },
+      {
+        "cohort": "res_sign_plus1",
+        "sil_dip_mean": NaN,
+        "sil_dip_sd": NaN,
+        "hw_dip_mean": -11.0,
+        "delta_dip": NaN,
+        "sil_steady_mean": NaN,
+        "hw_steady_mean": 1.5,
+        "sil_roll_p99": NaN,
+        "pass_dip_1p5cm": false
+      },
+      {
+        "cohort": "res_sign_minus1",
+        "sil_dip_mean": NaN,
+        "sil_dip_sd": NaN,
+        "hw_dip_mean": -3.15,
+        "delta_dip": NaN,
+        "sil_steady_mean": NaN,
+        "hw_steady_mean": 0.2,
+        "sil_roll_p99": NaN,
+        "pass_dip_1p5cm": false
+      }
+    ],
+    "ordering_plus1_off_minus1": false
+  }
 }

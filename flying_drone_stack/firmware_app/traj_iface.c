@@ -601,6 +601,45 @@ PARAM_GROUP_START(ctrlOot5)
   PARAM_ADD(PARAM_FLOAT, kpos_iz, &g_oot5_kpos_iz)
 PARAM_GROUP_STOP(ctrlOot5)
 
+/* controller=11 (tk_indi.rs): Tal & Karaman 2020 INDI, Table III gains + 30 Hz Butterworth as
+ * defaults. All runtime-settable (yaml firmware_params: ctrlTk.*); read live every tick. */
+float g_tk_kx_xy = 18.0f,  g_tk_kx_z = 13.5f;
+float g_tk_kv_xy = 7.8f,   g_tk_kv_z = 5.9f;
+float g_tk_ka_xy = 0.5f,   g_tk_ka_z = 0.3f;
+float g_tk_kxi_xy = 175.0f, g_tk_kxi_z = 82.0f;
+float g_tk_kom_xy = 19.5f, g_tk_kom_z = 19.2f;
+float g_tk_fc = 30.0f;     /* 2nd-order Butterworth cutoff on motor speeds and IMU [Hz] */
+float g_tk_jrz = 2.5e-8f;  /* rotor + propeller inertia about the spin axis [kg m^2]; regression on 2026-10-08 A8 logs, docs/74 */
+uint8_t g_tk_yaw_lit = 1;  /* 1 = Eq. (25) as printed, 0 = half-angle form */
+
+PARAM_GROUP_START(ctrlTk)
+  PARAM_ADD(PARAM_FLOAT, kx_xy, &g_tk_kx_xy)
+  PARAM_ADD(PARAM_FLOAT, kx_z, &g_tk_kx_z)
+  PARAM_ADD(PARAM_FLOAT, kv_xy, &g_tk_kv_xy)
+  PARAM_ADD(PARAM_FLOAT, kv_z, &g_tk_kv_z)
+  PARAM_ADD(PARAM_FLOAT, ka_xy, &g_tk_ka_xy)
+  PARAM_ADD(PARAM_FLOAT, ka_z, &g_tk_ka_z)
+  PARAM_ADD(PARAM_FLOAT, kxi_xy, &g_tk_kxi_xy)
+  PARAM_ADD(PARAM_FLOAT, kxi_z, &g_tk_kxi_z)
+  PARAM_ADD(PARAM_FLOAT, kom_xy, &g_tk_kom_xy)
+  PARAM_ADD(PARAM_FLOAT, kom_z, &g_tk_kom_z)
+  PARAM_ADD(PARAM_FLOAT, fc, &g_tk_fc)
+  PARAM_ADD(PARAM_FLOAT, jrz, &g_tk_jrz)
+  PARAM_ADD(PARAM_UINT8, yaw_lit, &g_tk_yaw_lit)
+PARAM_GROUP_STOP(ctrlTk)
+
+static float log_tk_thrust, log_tk_rpm_ok, log_tk_ns, log_tk_tau_f;
+void tk_diag_write(float thrust, float rpm_ok, float ns, float tau_f)
+{
+    log_tk_thrust = thrust; log_tk_rpm_ok = rpm_ok; log_tk_ns = ns; log_tk_tau_f = tau_f;
+}
+LOG_GROUP_START(ctrlTk)
+  LOG_ADD(LOG_FLOAT, thrust, &log_tk_thrust)
+  LOG_ADD(LOG_FLOAT, rpm_ok, &log_tk_rpm_ok)
+  LOG_ADD(LOG_FLOAT, ns, &log_tk_ns)
+  LOG_ADD(LOG_FLOAT, tau_f, &log_tk_tau_f)
+LOG_GROUP_STOP(ctrlTk)
+
 /* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
 /* Exposes per-motor RPM via the Crazyflie log system. Two possible sources,
  * selected at RUNTIME by indi_gains.rpm_source (added 2026-09-11):

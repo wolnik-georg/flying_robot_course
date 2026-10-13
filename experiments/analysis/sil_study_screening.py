@@ -75,7 +75,7 @@ def main():
             rows.append(dict(scenario=s, setting=st, strategy=strat, status="ERROR: " + str(r["error"])[:80])); continue
         b, t = r.get("tracking_bottom_full_cm") or {}, r.get("tracking_top_full_cm") or {}
         tb = (r.get("tracking_bottom_cm") or {}).get("max_tilt_deg"); tt = (r.get("tracking_top_cm") or {}).get("max_tilt_deg")
-        mx = tb   # subject drone only; the top drone's tilt is reported separately (it is the same non-A8 start-up transient in every cell)
+        mx = tb   # subject drone only; the top drone's tilt is reported separately (2-6 deg after the plant fix, docs/72)
         fb = r.get("final_pos_bot") or [0, 0, 0]
         diverged = (mx is not None and mx > 60) or fb[2] < 0.3 or (b.get("rms_z_cm") or 0) > 30
         rows.append(dict(scenario=s, setting=st, strategy=strat, status="DIVERGED" if diverged else "ok", max_tilt_deg=mx, top_max_tilt_deg=tt,
@@ -108,10 +108,9 @@ def main():
             L.append(f"| {sc} | {st} | {strat} | {sd} | {'DIVERGED' if div else 'ok'} | {f1(tb,0)} | {f1(b.get('rms_z_cm'))} | {f1(b.get('max_z_dip_cm'))} |")
         L.append("")
     L += ["## Reading", "",
-          "- **A8 (validated plant):** all four speeds stay stable, bottom tilt ≤ 15°, network on shrinks the crossing dip at every speed (e.g. −6.1 → −3.9 cm at 0.4 m/s, matching the hardware ordering of `docs/72`).",
-          "- **A1 is not reproduced:** the hardware oscillation (±35–40°, ~1.5 Hz, `docs/68`) does not appear in the simulation (bottom tilt 25–49°), so the simulation says nothing about A1 stability.",
-          "- **Top-drone tilt of 80–174° in every non-A8 cell is a harness start-up transient (finite-difference setpoints instead of the HLC trajectory), not a result;** only the bottom drone is judged.",
-          "- **Seed noise dominates the flags:** none of the three seed-0 flags repeats in the 9 repeats (all ok by the criteria); the repeats show sporadic large z dips (−40 … −50 cm) for S0 on A5 (0.4) and A7 (0.5), which is the one thing worth watching on the real drone (A7 is extreme-tagged anyway).",
+          "- **Re-run 2026-10-12 with the corrected plant (`above_only`, `docs/72`):** the top drone is no longer pushed by its own wake, its tilt is 2–6° in every cell. The earlier reading that the top drone's 80–174° tilt was a start-up transient of the finite-difference setpoints was **wrong: it was the plant artifact.**",
+          "- **A8 (validated plant):** all four speeds stay stable, bottom tilt ≤ 27°, network on shrinks the crossing dip at every speed (e.g. −5.3 → −1.5 cm at 0.4 m/s). The size of the network benefit is an upper bound: the plant overstates it (hardware −5.9 → −3.2 cm at 0.4 m/s, `docs/72` Step 1).",
+          "- **All other scenarios: no conclusion.** Outside A8 the harness feeds finite-difference setpoints and the bottom drone shows a start-up transient even when the run is `ok` (bottom tilt 38–42°, A3 31–41°); about one seed in three diverges (A1 dz 0.25/0.5, A2, A5, A7 in S0 and S2, deterministic for A1 dz 0.25 and A7 0.4). A1 dz 0.5 flew on the hardware (with the ±35–40° oscillation of `docs/68`), so these divergences are not evidence about the real drone.",
           "- **Not covered:** Omar C and our INDI (cannot run here), battery, mocap pose swaps, the real deck RPM.", ""]
     (REPO / "docs" / "sil_study_screening.md").write_text("\n".join(L) + "\n")
     print(f"{len(rows)} cells, flagged {len(bad)}")

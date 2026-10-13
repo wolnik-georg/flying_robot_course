@@ -1,0 +1,408 @@
+diff --git a/src/modules/src/controller/controller_tk_indi.c b/src/modules/src/controller/controller_tk_indi.c
+new file mode 100644
+index 00000000..5566f9fd
+--- /dev/null
++++ b/src/modules/src/controller/controller_tk_indi.c
+@@ -0,0 +1,402 @@
++/**
++ * controller_tk_indi.c -- stabilizer.controller=12 (ControllerTypeOot7): C version of the INDI
++ * controller of Tal & Karaman (2020), arXiv 1809.04048v2. Same law, same parameters and the same
++ * numbers as firmware_app/src/tk_indi.rs (controller=11); checked against both that file and the
++ * literal NumPy reference experiments/analysis/tk_indi_reference.py.
++ *
++ * The law is written in the paper's own frames (world NED, body FRD, xi = body->world, specific
++ * thrust tau < 0); only inputs and outputs are converted from / to the firmware frames
++ * (world ENU, body FLU). Equation numbers are the paper's.
++ *
++ * NOT in the law: clamps, notch, velocity low-pass, integral action. Additions, all marked GUARD:
++ * division-by-zero guards, priming of the filters with the first sample. The motor loop (32)-(36)
++ * of the paper (encoders) does not exist: thrust and torque go to the stock mixer, motor speeds
++ * come from DShot telemetry (rpm_get_all, provided by the app's traj_iface.c).
++ */
++#include <math.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <string.h>
++
++#include "controller.h"
++#include "stabilizer_types.h"
++
++/* The host (SIL) build renames traj_iface.c's versions of these with -D<name>=<name>_fw_unused for
++ * every source file, and oot_host.c provides the host ones. This file must call the host ones, so
++ * undo the rename here (on the drone the macros do not exist, so this is a no-op). */
++#undef rpm_get_all
++#undef indi_tau_write
++#undef indi_a_res_write
++#undef indi_e_r_write
++
++extern void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4);
++extern bool oot_rpm_logs_available(void);
++extern void indi_tau_write(float tx, float ty, float tz);
++extern void indi_a_res_write(float ax, float ay, float az);
++extern void indi_e_r_write(float ex, float ey, float ez, float norm);
++extern void tk_diag_write(float thrust, float rpm_ok, float ns, float tau_f);
++extern float g_indi_mass, g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_tk_kx_xy, g_tk_kx_z, g_tk_kv_xy, g_tk_kv_z, g_tk_ka_xy, g_tk_ka_z;
++extern float g_tk_kxi_xy, g_tk_kxi_z, g_tk_kom_xy, g_tk_kom_z, g_tk_fc, g_tk_jrz;
++extern uint8_t g_tk_yaw_lit;
++
++#define GRAV 9.81f
++#define DT (1.0f / 1000.0f)   /* the stock stabilizer calls the controller every 1 kHz tick */
++#define PI_F 3.14159265358979f
++#define DEG2RAD (PI_F / 180.0f)
++#define ARM_M 0.0353553f
++#define T2T 0.0056928f
++#ifdef CONFIG_PLATFORM_CF21BL
++static const float J[3] = {23.951e-6f, 23.951e-6f, 32.347e-6f};
++#else
++static const float J[3] = {16.571710e-6f, 16.655602e-6f, 29.261652e-6f};
++#endif
++static const float MIX_X[4] = {-1, -1, 1, 1};
++static const float MIX_Y[4] = {-1, 1, 1, -1};
++static const float MIX_Z[4] = {-1, 1, -1, 1};
++static const float CB[3] = {1, -1, -1};   /* FLU <-> FRD */
++
++typedef float V[3];
++typedef float M[3][3];
++
++static float dot(const float *a, const float *b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
++static void cross(const float *a, const float *b, float *o) {
++  o[0] = a[1]*b[2] - a[2]*b[1]; o[1] = a[2]*b[0] - a[0]*b[2]; o[2] = a[0]*b[1] - a[1]*b[0];
++}
++static float nrm(const float *a) { return sqrtf(dot(a, a)); }
++static void mv(const M m, const float *v, float *o) { for (int i = 0; i < 3; i++) o[i] = dot(m[i], v); }
++static void mtv(const M m, const float *v, float *o) {
++  for (int i = 0; i < 3; i++) o[i] = m[0][i]*v[0] + m[1][i]*v[1] + m[2][i]*v[2];
++}
++static void mm(const M a, const M b, M o) {
++  for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
++    o[i][j] = 0; for (int k = 0; k < 3; k++) o[i][j] += a[i][k]*b[k][j];
++  }
++}
++static void col(const M m, int c, float *o) { o[0] = m[0][c]; o[1] = m[1][c]; o[2] = m[2][c]; }
++static void skew(const float *v, M o) {
++  o[0][0] = 0; o[0][1] = -v[2]; o[0][2] = v[1];
++  o[1][0] = v[2]; o[1][1] = 0; o[1][2] = -v[0];
++  o[2][0] = -v[1]; o[2][1] = v[0]; o[2][2] = 0;
++}
++static const M SKIZ_T = {{0, 1, 0}, {-1, 0, 0}, {0, 0, 0}};   /* [iz]x^T */
++
++static void qmul(const float *a, const float *b, float *o) {
++  o[0] = a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3];
++  o[1] = a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2];
++  o[2] = a[0]*b[2] - a[1]*b[3] + a[2]*b[0] + a[3]*b[1];
++  o[3] = a[0]*b[3] + a[1]*b[2] - a[2]*b[1] + a[3]*b[0];
++}
++static void quat_to_rot(float w, float x, float y, float z, M r) {
++  r[0][0] = 1 - 2*(y*y + z*z); r[0][1] = 2*(x*y - w*z);     r[0][2] = 2*(x*z + w*y);
++  r[1][0] = 2*(x*y + w*z);     r[1][1] = 1 - 2*(x*x + z*z); r[1][2] = 2*(y*z - w*x);
++  r[2][0] = 2*(x*z - w*y);     r[2][1] = 2*(y*z + w*x);     r[2][2] = 1 - 2*(x*x + y*y);
++}
++
++typedef struct {
++  float a0, a1, b0, b1, i[2], o[2];
++  bool primed;
++} Bq;
++
++/* 2nd-order Butterworth, same design as the Bitcraze lpf2p / Omar's filter (q = 0.7071) */
++static void bq_design(Bq *f, float fc, float dt) {
++  float tau = 1.0f / (2.0f * PI_F * fc);
++  float q = 0.7071f;
++  float k = tanf(dt / (2.0f * tau));
++  float poly = k*k + k/q + 1.0f;
++  f->a0 = 2.0f * (k*k - 1.0f) / poly;
++  f->a1 = (k*k - k/q + 1.0f) / poly;
++  f->b0 = k*k / poly;
++  f->b1 = 2.0f * f->b0;
++}
++static float bq_update(Bq *f, float x) {
++  if (!f->primed) {   /* GUARD (not in the paper): start the filter at the first sample */
++    f->i[0] = f->i[1] = x; f->o[0] = f->o[1] = x; f->primed = true;
++  }
++  float y = f->b0*x + f->b1*f->i[0] + f->b0*f->i[1] - f->a0*f->o[0] - f->a1*f->o[1];
++  f->i[1] = f->i[0]; f->i[0] = x; f->o[1] = f->o[0]; f->o[0] = y;
++  return y;
++}
++
++typedef struct {
++  Bq f_a[3], f_s[3], f_w2[4], f_w[4], f_om[3];
++  float prev_om[3], prev_w[4], prev_tau;
++  bool have_prev;
++  float fc_applied;
++  bool initialized;
++} State;
++
++static State ST;
++
++static void design_all(State *s, float fc) {
++  for (int i = 0; i < 3; i++) { bq_design(&s->f_a[i], fc, DT); bq_design(&s->f_s[i], fc, DT); bq_design(&s->f_om[i], fc, DT); }
++  for (int i = 0; i < 4; i++) { bq_design(&s->f_w2[i], fc, DT); bq_design(&s->f_w[i], fc, DT); }
++  s->fc_applied = fc;
++}
++static void reprime(State *s) {
++  for (int i = 0; i < 3; i++) { s->f_a[i].primed = s->f_s[i].primed = s->f_om[i].primed = false; }
++  for (int i = 0; i < 4; i++) { s->f_w2[i].primed = s->f_w[i].primed = false; }
++  s->have_prev = false;
++}
++
++/* Solve the 4x4 system A x = b (Gaussian elimination, partial pivoting). false if singular. */
++static bool solve4(float a[4][4], float b[4], float x[4]) {
++  for (int c = 0; c < 4; c++) {
++    int p = c;
++    for (int r = c + 1; r < 4; r++) if (fabsf(a[r][c]) > fabsf(a[p][c])) p = r;
++    if (fabsf(a[p][c]) < 1e-12f) return false;
++    if (p != c) {
++      for (int k = 0; k < 4; k++) { float t = a[c][k]; a[c][k] = a[p][k]; a[p][k] = t; }
++      float t = b[c]; b[c] = b[p]; b[p] = t;
++    }
++    for (int r = c + 1; r < 4; r++) {
++      float f = a[r][c] / a[c][c];
++      for (int k = c; k < 4; k++) a[r][k] -= f * a[c][k];
++      b[r] -= f * b[c];
++    }
++  }
++  for (int r = 3; r >= 0; r--) {
++    float acc = b[r];
++    for (int k = r + 1; k < 4; k++) acc -= a[r][k] * x[k];
++    x[r] = acc / a[r][r];
++  }
++  return true;
++}
++
++/* Eqs. (14), (15): Omega_ref, Omegadot_ref in the body frame. GUARD: |tau| < 0.5 or singular -> 0. */
++static void feedforward(const M r, float tau, float taud, const float *om, const float *j, const float *sn,
++                        float psid, float psidd, float *om_ref, float *omd_ref) {
++  for (int i = 0; i < 3; i++) om_ref[i] = omd_ref[i] = 0.0f;
++  V bx, by, bz;
++  col(r, 0, bx); col(r, 1, by); col(r, 2, bz);
++  float d = bx[0]*bx[0] + bx[1]*bx[1];
++  float n[2] = {-bx[1], bx[0]};
++  float p[2][3] = {{0, -bz[0], by[0]}, {0, -bz[1], by[1]}};
++  float np_[3];
++  for (int k = 0; k < 3; k++) np_[k] = n[0]*p[0][k] + n[1]*p[1][k];
++  if (fabsf(tau) < 0.5f || d < 1e-9f) return;
++  float sv[3] = {np_[0]/d, np_[1]/d, np_[2]/d};
++  M rs; mm(r, SKIZ_T, rs);
++  float a[4][4];
++  for (int i = 0; i < 3; i++) {
++    for (int k = 0; k < 3; k++) a[i][k] = tau * rs[i][k];
++    a[i][3] = bz[i];
++  }
++  a[3][0] = sv[0]; a[3][1] = sv[1]; a[3][2] = sv[2]; a[3][3] = 0.0f;
++  float a_copy[4][4]; memcpy(a_copy, a, sizeof(a));
++  float b1[4] = {j[0], j[1], j[2], psid}, sol[4];
++  if (!solve4(a, b1, sol)) return;
++  for (int i = 0; i < 3; i++) om_ref[i] = sol[i];
++  /* (15): rhs = [s_ref; psidd] - [R (2 taud + tau [Om]x) [iz]x^T Om ; Sdot Om] */
++  V w, cw, t1, aa;
++  mv(SKIZ_T, om, w);
++  cross(om, w, cw);
++  for (int i = 0; i < 3; i++) t1[i] = 2.0f * taud * w[i] + tau * cw[i];
++  mv(r, t1, aa);
++  M sk, rd; skew(om, sk); mm(r, sk, rd);
++  V dbx, dby, dbz;
++  col(rd, 0, dbx); col(rd, 1, dby); col(rd, 2, dbz);
++  float nd[2] = {-dbx[1], dbx[0]};
++  float pd[2][3] = {{0, -dbz[0], dby[0]}, {0, -dbz[1], dby[1]}};
++  float dd = 2.0f * (bx[0]*dbx[0] + bx[1]*dbx[1]);
++  float sdot[3];
++  for (int k = 0; k < 3; k++) {
++    float t = nd[0]*p[0][k] + nd[1]*p[1][k] + n[0]*pd[0][k] + n[1]*pd[1][k];
++    sdot[k] = t / d - np_[k] * dd / (d * d);
++  }
++  float sdom = dot(sdot, om);
++  float rhs[4] = {sn[0] - aa[0], sn[1] - aa[1], sn[2] - aa[2], psidd - sdom}, sol2[4];
++  if (!solve4(a_copy, rhs, sol2)) return;
++  for (int i = 0; i < 3; i++) omd_ref[i] = sol2[i];
++}
++
++static void w_ned(float x, float y, float z, float *o) { o[0] = y; o[1] = x; o[2] = -z; }
++
++static void step_inner(State *s, control_t *control, const setpoint_t *sp, const sensorData_t *sensors, const state_t *st) {
++  bool in_pos_mode = sp->mode.x == modeAbs || sp->mode.y == modeAbs || sp->mode.z == modeAbs;
++  if (!in_pos_mode) {
++    /* only the position-mode setpoints of the study are supported; everything else = motors off */
++    control->controlMode = controlModeForceTorque;
++    control->thrustSi = 0; control->torqueX = 0; control->torqueY = 0; control->torqueZ = 0;
++    reprime(s);
++    return;
++  }
++
++  float kx[3] = {g_tk_kx_xy, g_tk_kx_xy, g_tk_kx_z};
++  float kv[3] = {g_tk_kv_xy, g_tk_kv_xy, g_tk_kv_z};
++  float ka[3] = {g_tk_ka_xy, g_tk_ka_xy, g_tk_ka_z};
++  float kxi[3] = {g_tk_kxi_xy, g_tk_kxi_xy, g_tk_kxi_z};
++  float kom[3] = {g_tk_kom_xy, g_tk_kom_xy, g_tk_kom_z};
++  float fc = g_tk_fc;
++  if (fc != s->fc_applied && fc > 0.0f) design_all(s, fc);
++  float m = g_indi_mass;
++  float kt[4] = {g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4};
++
++  /* inputs: ENU/FLU -> NED/FRD. R_ned = C_W R_enu C_B, C_W: (e,n,u) -> (n,e,-u) */
++  M r_enu, r;
++  quat_to_rot(st->attitudeQuaternion.w, st->attitudeQuaternion.x, st->attitudeQuaternion.y, st->attitudeQuaternion.z, r_enu);
++  for (int j = 0; j < 3; j++) {
++    r[0][j] = r_enu[1][j] * CB[j];
++    r[1][j] = r_enu[0][j] * CB[j];
++    r[2][j] = -r_enu[2][j] * CB[j];
++  }
++  V x, v, om, ab, iz = {0, 0, 1};
++  w_ned(st->position.x, st->position.y, st->position.z, x);
++  w_ned(st->velocity.x, st->velocity.y, st->velocity.z, v);
++  om[0] = sensors->gyroNoLpf.x * DEG2RAD * CB[0];
++  om[1] = sensors->gyroNoLpf.y * DEG2RAD * CB[1];
++  om[2] = sensors->gyroNoLpf.z * DEG2RAD * CB[2];
++  ab[0] = sensors->acc.x * GRAV * CB[0];
++  ab[1] = sensors->acc.y * GRAV * CB[1];
++  ab[2] = sensors->acc.z * GRAV * CB[2];
++
++  /* filtered measurements (Fig. 4) */
++  V rab, a_f, om_f;
++  mv(r, ab, rab);
++  for (int i = 0; i < 3; i++) {
++    a_f[i] = bq_update(&s->f_a[i], rab[i] + GRAV * iz[i]);   /* (16) */
++    om_f[i] = bq_update(&s->f_om[i], om[i]);
++  }
++  bool rpm_ok = oot_rpm_logs_available();
++  uint16_t m1 = 0, m2 = 0, m3 = 0, m4 = 0;
++  if (rpm_ok) rpm_get_all(&m1, &m2, &m3, &m4);
++  float rpm[4] = {(float)m1, (float)m2, (float)m3, (float)m4};
++  V bz, s_f;
++  col(r, 2, bz);
++  float tau_f, w_f[4] = {0, 0, 0, 0};
++  V mu_f_flu = {0, 0, 0};
++  if (rpm_ok) {
++    float t_i[4], tsum = 0.0f;
++    for (int i = 0; i < 4; i++) { t_i[i] = kt[i] * rpm[i] * rpm[i]; tsum += t_i[i]; }
++    float tau_raw = -tsum / m;
++    for (int i = 0; i < 3; i++) s_f[i] = bq_update(&s->f_s[i], tau_raw * bz[i]);
++    float w2sum = 0.0f, tx = 0.0f, ty = 0.0f, tz = 0.0f;
++    for (int i = 0; i < 4; i++) {
++      float w2f = bq_update(&s->f_w2[i], t_i[i]);
++      w_f[i] = bq_update(&s->f_w[i], rpm[i] * 2.0f * PI_F / 60.0f);
++      w2sum += w2f;
++      tx += MIX_X[i] * w2f; ty += MIX_Y[i] * w2f; tz += MIX_Z[i] * w2f;
++    }
++    tau_f = -w2sum / m;
++    mu_f_flu[0] = ARM_M * tx; mu_f_flu[1] = ARM_M * ty; mu_f_flu[2] = T2T * tz;
++  } else {
++    /* GUARD: no motor-speed source -> IMU-only increment (s_f from the measured acceleration) */
++    for (int i = 0; i < 3; i++) s_f[i] = a_f[i] - GRAV * iz[i];
++    tau_f = -nrm(s_f);
++    for (int i = 0; i < 4; i++) { bq_update(&s->f_w2[i], 0.0f); bq_update(&s->f_w[i], 0.0f); }
++  }
++  V omd_f = {0, 0, 0};
++  float wd_f[4] = {0, 0, 0, 0}, taud_f = 0.0f;
++  if (s->have_prev) {
++    for (int i = 0; i < 3; i++) omd_f[i] = (om_f[i] - s->prev_om[i]) / DT;
++    for (int i = 0; i < 4; i++) wd_f[i] = (w_f[i] - s->prev_w[i]) / DT;
++    taud_f = (tau_f - s->prev_tau) / DT;
++  }
++  for (int i = 0; i < 3; i++) s->prev_om[i] = om_f[i];
++  for (int i = 0; i < 4; i++) s->prev_w[i] = w_f[i];
++  s->prev_tau = tau_f;
++  s->have_prev = true;
++  /* mu_f = G1 (w^2)_f + G2 wdot_f (5); the rotor-inertia term G2 acts on the yaw row only */
++  V mu_f;
++  if (rpm_ok) {
++    float jz = 0.0f;
++    for (int i = 0; i < 4; i++) jz += MIX_Z[i] * wd_f[i];
++    float mfz = mu_f_flu[2] + g_tk_jrz * jz;
++    mu_f[0] = mu_f_flu[0] * CB[0]; mu_f[1] = mu_f_flu[1] * CB[1]; mu_f[2] = mfz * CB[2];
++  } else {
++    for (int i = 0; i < 3; i++) mu_f[i] = J[i] * omd_f[i];
++  }
++
++  /* position / acceleration (17), (20), (21) */
++  V xr, vr, ar, jr, sr;
++  w_ned(sp->position.x, sp->position.y, sp->position.z, xr);
++  w_ned(sp->velocity.x, sp->velocity.y, sp->velocity.z, vr);
++  w_ned(sp->acceleration.x, sp->acceleration.y, sp->acceleration.z, ar);
++  w_ned(sp->jerk.x, sp->jerk.y, sp->jerk.z, jr);
++  w_ned(sp->snap.x, sp->snap.y, sp->snap.z, sr);
++  V a_c, s_c;
++  for (int i = 0; i < 3; i++) {
++    a_c[i] = kx[i] * (xr[i] - x[i]) + kv[i] * (vr[i] - v[i]) + ka[i] * (ar[i] - a_f[i]) + ar[i];
++    s_c[i] = s_f[i] + (a_c[i] - a_f[i]);   /* (20) */
++  }
++  float ns = nrm(s_c);
++  float t_c = m * ns;   /* (21) */
++
++  /* incremental attitude (22)-(27) */
++  V u, v_b;
++  if (ns > 1e-6f) { for (int i = 0; i < 3; i++) u[i] = s_c[i] / ns; mtv(r, u, v_b); }
++  else { v_b[0] = 0; v_b[1] = 0; v_b[2] = -1; }   /* (22) GUARD */
++  V cz; cross(iz, v_b, cz);
++  float qbar[4] = {1.0f - dot(iz, v_b), -cz[0], -cz[1], -cz[2]};   /* (23) */
++  float nq = sqrtf(qbar[0]*qbar[0] + qbar[1]*qbar[1] + qbar[2]*qbar[2] + qbar[3]*qbar[3]);
++  if (nq > 1e-9f) { for (int k = 0; k < 4; k++) qbar[k] /= nq; }
++  else { qbar[0] = 0; qbar[1] = 1; qbar[2] = 0; qbar[3] = 0; }   /* GUARD: opposite direction */
++  M rbar, rr;
++  quat_to_rot(qbar[0], qbar[1], qbar[2], qbar[3], rbar);
++  mm(r, rbar, rr);
++  float psi = PI_F / 2.0f - sp->attitude.yaw * DEG2RAD;   /* ENU yaw -> NED heading */
++  V nvec = {sinf(psi), -cosf(psi), 0.0f}, nbar;
++  mtv(rr, nvec, nbar);   /* (24) */
++  float qpsi[4] = {1, 0, 0, 0};
++  if (fabsf(nbar[1]) > 1e-9f) {
++    if (g_tk_yaw_lit) {
++      qpsi[3] = -nbar[0] / nbar[1];   /* (25) as printed */
++    } else {
++      float phi = atanf(-nbar[0] / nbar[1]);
++      qpsi[0] = cosf(phi / 2.0f); qpsi[3] = sinf(phi / 2.0f);
++    }
++  }
++  float nqp = sqrtf(qpsi[0]*qpsi[0] + qpsi[3]*qpsi[3]);
++  qpsi[0] /= nqp; qpsi[3] /= nqp;
++  float qc[4];
++  qmul(qbar, qpsi, qc);   /* (26) */
++  float w = fmaxf(-1.0f, fminf(1.0f, qc[0]));
++  float sq = sqrtf(fmaxf(0.0f, 1.0f - w * w));
++  float kk = sq > 1e-6f ? 2.0f * acosf(w) / sq : 2.0f;
++  V xi_e = {kk * qc[1], kk * qc[2], kk * qc[3]};   /* (27) */
++
++  /* feed-forward (14), (15) with the measured tau_f, xi, Omega_f */
++  V om_ref, omd_ref;
++  feedforward(r, tau_f, taud_f, om_f, jr, sr, -sp->attitudeRate.yaw * DEG2RAD, -sp->attitudeAcc.yaw * DEG2RAD, om_ref, omd_ref);
++  V omd_c, mu_c, mu;
++  for (int i = 0; i < 3; i++) {
++    omd_c[i] = kxi[i] * xi_e[i] + kom[i] * (om_ref[i] - om_f[i]) + omd_ref[i];   /* (28) */
++    mu_c[i] = mu_f[i] + J[i] * (omd_c[i] - omd_f[i]);   /* (31) */
++    mu[i] = mu_c[i] * CB[i];   /* FRD -> FLU */
++  }
++
++  /* a_res = a_meas - a_model [ENU], same definition as controller 6 / 9 / 10 */
++  V ares;
++  for (int i = 0; i < 3; i++) ares[i] = a_f[i] - (s_f[i] + GRAV * iz[i]);
++  indi_a_res_write(ares[1], ares[0], -ares[2]);
++  indi_tau_write(mu[0], mu[1], mu[2]);
++  indi_e_r_write(xi_e[0], -xi_e[1], -xi_e[2], nrm(xi_e));
++  tk_diag_write(t_c, rpm_ok ? 1.0f : 0.0f, ns, tau_f);
++
++  control->controlMode = controlModeForceTorque;
++  control->thrustSi = t_c;
++  control->torqueX = mu[0];
++  control->torqueY = mu[1];
++  control->torqueZ = mu[2];
++}
++
++unsigned char *oot7_state_ptr(void) { return (unsigned char *)&ST; }
++size_t oot7_state_size(void) { return sizeof(State); }
++
++void controllerOutOfTree7Init(void) {
++  memset(&ST, 0, sizeof(ST));
++  design_all(&ST, g_tk_fc > 0.0f ? g_tk_fc : 30.0f);
++  reprime(&ST);
++  ST.initialized = true;
++}
++
++bool controllerOutOfTree7Test(void) { return true; }
++
++void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors,
++                          const state_t *state, const stabilizerStep_t stabilizerStep) {
++  (void)stabilizerStep;
++  if (!ST.initialized) controllerOutOfTree7Init();
++  step_inner(&ST, control, setpoint, sensors, state);
++}
++

@@ -1,5 +1,7 @@
 # 72 — Simulation showcase (2026-10-09, validated rebuild)
 
+> **Correction 2026-10-12 — read first.** The plant applied the learned downwash to the **top** drone as well when its neighbour was below it, which is unphysical (only the lower drone sits in the upper drone's wake). In the SIL the top drone dipped −10 cm at the A8 crossings, on the hardware it dips −0.2 cm. Fix: `above_only` in `ns2_closed_loop_sil_plant_bank.py` (a neighbour produces force only on a drone that is below it). After the fix the top drone dips −0.29 cm; the fitted torque coefficient c = 0.0032 was re-validated (bottom dip −5.45 cm, roll peaks ±22–23°), all cohorts below were regenerated (5 seeds each, none failed). Result: network off and `res_sign +1` still agree with the hardware within 0.4 cm, but `res_sign −1` does not any more — **the simulation now overstates the NS2 benefit (SIL −0.97 cm, hardware −3.24 cm)**. The earlier −1 agreement was partly the artifact. The hardware residual at the crossings is 1.14–1.49× the network prediction (a single downwash scale does not reproduce both the +1 and the −1 hardware numbers), so this is a structural plant mismatch, not a tuning offset. Everything that says "PASS" or "−2.30" below is the state before this correction; the corrected table is Step 1.
+
 Figures, animation and numbers: `experiments/analysis/out/sim_showcase_2026-10-09/` · code: `experiments/analysis/sim_showcase.py` (simulate), `sim_showcase_finalize.py` (all numbers, figures, animation), `sim_showcase_ours_indi*.py` (ours-INDI attempts). Everything below is evaluated with `a8_crossings.zero_crossings` and the same window/dip definitions as `docs/71` (steady window 6–22 s of the scenario with ±1.5 s around crossings excluded; dip = minimum of e_z within ±1 s of a crossing).
 
 ## What the SIL is
@@ -8,21 +10,23 @@ Two-drone A8 closed loop on the host (`ns2_closed_loop_sil_sim.py`): bottom dron
 ## Step 0 — crossing-detector audit of the SIL (done independently of the first report)
 Old SIL detector (`ns2_closed_loop_sil_metrics.find_crossing_times`) vs `zero_crossings` on the bottom-drone y trace of every canonical episode: maximum difference 0.024 s (off), 0.016 s (+1), 0.019 s (−1); crossing times 8.97/14.97/20.97/26.97 s (4 s takeoff + 5/11/17/23 s). **SIL dips of docs/62 are unchanged** (the SIL trajectory has no takeoff artefact, unlike the radio logs). Hardware numbers were the ones that needed correcting (docs/68, 71).
 
-## Step 1 — NS2 SIL vs hardware (A8, bottom drone) — PASS
-Hardware = corrected zero-crossing values of docs/71 (uSD where available, radio otherwise).
+## Step 1 — NS2 SIL vs hardware (A8, bottom drone) — corrected plant, 2026-10-12
+Hardware = corrected zero-crossing values of docs/71 (uSD where available, radio otherwise; the `−1` cohort now has 6 flights).
 | Cohort | SIL seeds (crossings) | SIL dip (cm) | HW flights (crossings) | HW dip (cm) | Δ SIL−HW | steady SIL / HW (cm) |
 |---|---|---|---|---|---|---|
-| network off | 5 (20) | -5.85 ± 0.07 | 4 (16) | -5.92 ± 0.63 | +0.06 | +0.54 / +0.78 |
-| res_sign +1 | 4 (16) | -9.96 ± 1.37 | 3 (12) | -11.00 ± 0.87 | +1.04 | +0.91 / +1.50 |
-| res_sign −1 | 5 (20) | -2.30 ± 1.19 | 4 (15) | -3.37 ± 1.19 | +1.07 | +0.12 / +0.23 |
-- Criteria: |Δ| ≤ 1.5 cm per cohort — met (0.06 / 1.04 / 1.07); ordering `+1` (deepest) < off < `−1` (shallowest) — met in SIL and hardware. The SIL is 1.0–1.1 cm too shallow for both network-on cohorts.
-- SIL seeds: 0–4; seed 2 of the `+1` cohort failed with the known host-binding exception (`kalmanCoreUpdateWithPose`, ≈ 1 in 10 runs) and is excluded; network off has 10 cached seeds (seeds 0–4 shown, identical result −5.85 ± 0.09 for all 10).
+| network off | 5 (20) | -5.51 ± 0.10 | 4 (16) | -5.92 ± 0.63 | +0.40 | +0.63 / +0.78 |
+| res_sign +1 | 5 (20) | -10.61 ± 0.39 | 3 (12) | -11.00 ± 0.87 | +0.39 | +0.98 / +1.50 |
+| res_sign −1 | 5 (20) | -0.97 ± 0.27 | 6 (23) | -3.24 ± 1.02 | **+2.26** | +0.09 / +0.26 |
+- Criteria: |Δ| ≤ 1.5 cm per cohort — met for network off and `+1`, **not met for `−1`** (2.26 cm); ordering `+1` (deepest) < off < `−1` (shallowest) — met in SIL and hardware.
+- Reading: the network cancels the downwash perfectly in the SIL because the plant *is* the network; on the hardware the real force at the crossings is 1.14–1.49× the prediction, so the same compensation leaves more error. The SIL benefit of NS2 `−1` (−5.5 → −1.0 cm) is therefore an upper bound; the hardware value is −5.9 → −3.2 cm.
+- Roll p99 of the bottom drone 17–18° (hardware 21–22°, docs/71).
+- Step-0 detector audit (below) was done on the pre-correction episodes; the crossing times do not depend on the plant fix (same trajectories).
 - Figures: `figs/sim_vs_hw_dips.png` (cohort bars), `figs/sim_vs_hw_traces.png` (e_z traces, SIL seeds and mean over the hardware flights, aligned on the first crossing).
 
 ## Step 2 — controller variants in the same SIL
 | Variant | SIL steady | SIL dip rel. to steady | HW steady (docs/71) | HW dip rel. to steady |
 |---|---|---|---|---|
-| Geometric (= NS2 off) | +0.5 | -6.4 | +0.8 | −6.7 |
+| Geometric (= NS2 off) | +0.6 | -6.1 | +0.8 | −6.7 |
 | Omar Rust exact | +17.5 | -0.0 | +21.9 | −22.3 |
 | Omar Rust + Iz 1.5 | +0.7 | +0.2 | +1.5 | −9.1 |
 | Omar C exact | +17.5 | -0.0 | +23.2 | −19.7 |
@@ -49,8 +53,9 @@ Host gains are process-global (`oot_select_drone` only swaps the controller stat
 ## Mismatch table
 | Item | SIL | Hardware | Verdict |
 |---|---|---|---|
-| NS2 A8 dips | −5.85 / −9.96 / −2.30 cm (off / +1 / −1) | −5.9 / −11.0 / −3.4 | matches within ≈ 1 cm, ordering identical, SIL slightly optimistic for network-on |
-| Roll p99 bottom | ≈ 17° (first report, not independently re-verified; docs/62: 13°) | 21–22° (docs/71) | SIL rolls less |
+| NS2 A8 dips | −5.51 / −10.61 / −0.97 cm (off / +1 / −1) | −5.9 / −11.0 / −3.2 | off and +1 within 0.4 cm, ordering identical, **−1: SIL overstates the benefit by 2.3 cm** |
+| Roll p99 bottom | 17–18° (5 seeds) | 21–22° (docs/71) | SIL rolls less |
+| Top-drone dip at the crossings | −0.29 cm (after the `above_only` fix; −10 cm before) | −0.2 cm | matches |
 | A1 with network on | unstable 38–48° (docs/62, not re-run) | stable, 34–40° oscillation also without the network (docs/68) | not validated; SIL too pessimistic |
 | Omar crossing dips | none (−0.0 … +0.2 cm) | −9 … −22 cm | NOT reproduced |
 | Omar level without Iz | +17.5 cm | +22…+23 cm | 4–6 cm low (mismatch factor not retuned) |

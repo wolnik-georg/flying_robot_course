@@ -1,5 +1,7 @@
 # NS2 closed-loop SIL (2026-10-07)
 
+> **Correction 2026-10-12:** the plant also pushed the *top* drone with the learned downwash (neighbour below it), an artifact (top dip −10 cm in the SIL, −0.2 cm on hardware). Fixed with `above_only`; with the fix the verdict below holds for network off and `+1` (within 0.4 cm) but **not for `−1`: SIL −0.97 cm vs hardware −3.24 cm, the SIL overstates the NS2 benefit.** Corrected numbers: `docs/72` Step 1. The text below is the state before this correction.
+
 Two-drone closed-loop SIL: **bottom (cf5)** geometric + optional 100 Hz RNN; **top (cf_second)** geometric only. Goal: reproduce hardware A8 crossing z-dips before trusting `res_sign=-1` predictions.
 
 **Verdict (final, 2026-10-08): VALIDATED for the A8 crossing dips (network off fitted; network on `res_sign=+1` reproduced without tuning; per-crossing pattern, roll amplitude and ordering consistent).** Plant = trained-bank vertical force **made mirror-symmetric**, plus one calibrated roll/pitch-torque scalar `c = 0.0032 m²` (fitted on the network-OFF cohort only). Network off −5.84 cm (hardware −5.9), `+1` test −9.89 ± 0.05 cm (hardware −10.9 ± 1.5, range −12.2…−9.9; |Δ| 1.0 < 1.5), `−1` prediction −2.34 ± 0.07 cm (stable, 5/5 seeds). **Not validated / not predicted:** the A1 stack with the network on (SIL unstable-looking, hardware also crashed there) and the absolute size of the `−1` benefit beyond ±~1.5 cm. Earlier plants (z-force only, unsymmetrized torque) are kept below as history.

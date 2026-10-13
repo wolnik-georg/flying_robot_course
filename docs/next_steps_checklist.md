@@ -4,6 +4,8 @@ Simple lab + desk list (as of **2026-10-06**, meeting [`meetings/2026-10-05.md`]
 [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). **Lab session plan + copy-paste commands:**
 [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md). Update when items move.
 
+**STATE 2026-10-12 (evening, desk):** (a) NS2 SIL downwash artifact fixed (`above_only`, top drone no longer pushed): network off and `+1` agree with the hardware within 0.4 cm, `−1` does not (SIL −1.0 vs hardware −3.2 cm), so the SIL overstates the NS2 benefit (`docs/72`); non-A8 SIL screening carries no information. (b) New isolated Tal & Karaman INDI built, `controller 11` (Rust) / `12` (C), software-verified only, image `cf21bl_study_usd96_rnn_iz_sentinel_ON_tk.bin` not flashed, never flown (`docs/74` §6). Not part of the shakedown or the study unless decided.
+
 **STATE 2026-10-12:** the desk preparation for the comparative study is finished and pushed (logging superset, `--study` gate, metrics/report tools, shakedown card and checklist, readiness matrix, protocol v0.2); what is left is the supervisor decisions (NS2 keep/retrain, Pure INDI, FBL scope, tiers) and the lab shakedown — details in [`roadmap_to_comparative_study.md`](roadmap_to_comparative_study.md) section 0.
 
 **STATE 2026-10-09 (end of the lab validation day, `lab_sessions/2026-10-09.md`):** NS2 and the Omar z offset are closed; the unified firmware, the RPM-filter fix and the A8 comparison are validated. **Study variants (A8):** geometric +0.8 cm / NS2 `res_sign −1` +0.3 / ours INDI +1.9 / **Omar C + Iz 1.5** +2.4 (Omar Rust and the no-integral variants dropped). **Readiness:** ready for the shakedown, not yet for data collection (S0/S2 validated on A8 + A1, S1 Omar C + Iz 1.5 on A8 only; open: Pure-INDI choice, NS2 retrain decision, logging changes, yaml tags, processing extension — `roadmap_to_comparative_study.md` §1b; protocol draft v0.1 `comparative_study_protocol.md`). **Next, in order:** (1) study protocol, (2) "Pure INDI" decision (ours vs Omar C + Iz 1.5), (3) scenario readiness check + one processing script, (4) lab shakedown (every scenario × controller once), (5) data collection ≈ 100 flights, (6) analysis + chapters 6–9. Details and calendar: [`roadmap_to_comparative_study.md`](roadmap_to_comparative_study.md); overview + results table: [`overview_2026-10-09.md`](overview_2026-10-09.md).
@@ -152,3 +154,19 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [x] NS2 desk blockers: `cload-rnn-flash`, `backend=cpp`, ghost-neighbour `id==0`; stack patch 8× (`firmware_patches/`).
 - [x] Reference research: `aerorobotics/neural-swarm` public (NS1+NS2, `hardware/nn-export`); firmware submodule private.
 - [x] uSD cards archived (PC + on-card) and reset 10-03 (card THESIS1 on-card step pending, read-only).
+
+## NEXT STEPS grouped (2026-10-12 evening)
+**Decisions (supervisor / you)**
+- [ ] NS2: keep or retrain the network (numbers `ns2_retrain_options.md`); note the SIL benefit is an upper bound.
+- [ ] Pure INDI for the study: ours or Omar C + Iz 1.5; and whether the Tal & Karaman INDI (11/12) joins as a candidate or stays a side comparison.
+- [ ] FBL: send the eight questions, scope of Strategy 3. Tiers 2 and 3.
+**Desk (no lab needed)**
+- [ ] Optional: oval path in the TK SIL; sensitivity of the TK law to `kt` ±14 % and to a 2 kHz-vs-1 kHz change.
+- [ ] After the decisions: `make_tags.sh --execute` + push tags; protocol v1.0 after the shakedown.
+- [ ] Commit and push this session's work (nothing committed yet: docs, TK controller, plant fix, firmware patches in `crazyflie-firmware` stay local).
+**Lab**
+- [ ] Flash usd96 on both drones, bench timing, SD config, ground logging test, `check_usd_deck.py`, manifest hashes.
+- [ ] Shakedown card (31 flights) with `--study`; quality check and metrics after every card.
+- [ ] Only if the TK INDI is wanted: flash the `_tk.bin` image on one drone, check `kt`/mass in the yaml, C.0 gate: hover → A8 → circle/figure-8; first fallback `ctrlTk.jrz 0`; Rust (11) first, C (12) only as cross-check.
+- [ ] Optional NS2 bench follow-up: measure the real-vs-network force ratio at the crossings (1.14–1.49×) to see whether a retrain at dz 0.5 helps.
+**Writing** stays off until you ask.

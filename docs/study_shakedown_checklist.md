@@ -12,6 +12,8 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 | crazyswarm2 pulled on the lab PC (`--study`, `--duration`, manifest, strategies) | after push |
 | Preflight tool: `python3 flying_drone_stack/tools/lab_preflight.py --yaml <crazyflies.yaml> --study S0 --sd-config /media/<card>/config.txt` | ready |
 
+- Tal & Karaman INDI (controller 11/12, `docs/74` §6): image `cf21bl_study_usd96_rnn_iz_sentinel_ON_tk.bin`, NOT in the 31-flight card; optional, only if decided; the image flashed in B1 does not contain it.
+
 ## B. Lab setup (once)
 1. **Flash both drones** (stop CS2 first, power-cycle after) with `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rnn_iz_sentinel_ON.bin` (laptop only, sha256 `14575bacacccc8e50fbcab0d01aa789adaae4966033bf7397b3cff167db4be3c`, built 2026-10-11 with `RPM_FILTER_HOLD_SENTINEL=1`, NS2 weights `8a43b5b5…`):
    `cfloader flash <file> stm32-fw -w radio://0/80/2M/E7E7E7BB02` (cf5) and `… radio://0/80/2M/E7E7E7E7E9` (cf_second). `sha256sum` the file on the machine you flash from, write the hash of the flashed image into `study_manifest.json` for both drones, commit, push, pull on the lab PC.

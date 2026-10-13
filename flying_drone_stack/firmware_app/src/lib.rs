@@ -24,6 +24,7 @@ mod naindi_hybrid;
 mod naindi_hybrid_weights;
 // controller=10 (ControllerTypeOot5): Rust port of controller_omar_indi.c — see omar_indi_rust.rs.
 mod omar_indi_rust;
+mod tk_indi;
 
 // ── Vector3 helpers ────────────────────────────────────────────────────────
 #[derive(Copy, Clone)]
