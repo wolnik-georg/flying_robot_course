@@ -40,3 +40,6 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 - uSD: no clear increase of gaps with 96 variables; fallback decided.
 - Flights per hour measured → session count for tier 1 / 2 / 3 → tier go/no-go with the supervisor.
 - Protocol v1.0: settings table (A8 `--duration`, A2/A5 period, A3/A4 speed, A1 dz), manifest hashes, yaml tags, decisions file path.
+
+## Status 2026-10-13 (after the lab day)
+Done: B1 flash (cf5 needed a second flash with the `_tk` image), B2 bench timing, B3 SD cards and ground logging test, B4 RPM filter proof (both drones), B5 `a_res` / deck RPM / `rpmf` checks. Flown: A8 only, with the usual command (not `--study`): 11 flights for geometric, geometric + NS2 v1, Omar C + Iz 1.5, our INDI, Omar Rust. Not done on purpose: the rest of the 31-flight card, flights per hour, the `--study` chain on a real flight, the never-flown settings (A1 dz 0.25 / 0.75, A2 and A8 at 0.5 m/s, A7), NS2 thin spots. Protocol v1.0 stays open until at least one `--study` flight and the Pure-INDI / NS2 decisions. Account: `lab_sessions/2026-10-13.md`.

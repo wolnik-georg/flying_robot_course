@@ -2,6 +2,12 @@
 
 Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric baseline · **1** pure INDI (candidates: ours, Omar C + Iz 1.5) · **2** geometric + NS2 residual (`res_sign −1`) · **3** FBL + residual (blocked: authors' code not received). NA-INDI is not compared (supervisor decision).
 
+## 0a. State 2026-10-13 (evening) — shakedown lab day done, Tal & Karaman open
+- **Done:** image with the `rpmf` log flashed on both drones, SD logging validated, RPM filter proven on the drone, A8 flown for geometric, geometric + NS2 v1, Omar C + Iz 1.5, our INDI and Omar Rust (11 flights; `lab_sessions/2026-10-13.md` §5, §7). Raw logs backed up in `~/Desktop/sd_backups/2026-10-13_lab/`.
+- **Not done / skipped on purpose:** rest of the 31-flight card, flights per hour, optional blocks 7–9.
+- **Tal & Karaman:** first attempts silently ran controller 6 (wrong image on cf5), after the reflash it flips at takeoff 2/2. One more lab attempt (takeoff on the geometric ramp, switch at altitude) plus one day of SIL work, then decide; the gain variants are parked.
+- **Next:** desk comparison of the 11 A8 flights, the Pure-INDI and NS2 decisions, restore the study SD config, then the optional `--study` chain run and the never-flown settings; protocol v1.0 and tags after that.
+
 ## 0. State 2026-10-12 — the desk phase is finished, what is left is decisions and the lab
 **Done (2026-10-11, committed and pushed; nothing flown yet)**
 - uSD logging: one 96-variable config for all controllers (92 + `rpmf.m1..m4` = filtered RPM next to the raw DShot value, 2026-10-13; exactly the firmware limit 96), binary built (`cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin`, not flashed), quality checker `check_usd_log_quality.py`.

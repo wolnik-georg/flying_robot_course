@@ -171,3 +171,23 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] Only if the TK INDI is wanted: flash the `_tk.bin` image on one drone, check `kt`/mass in the yaml, C.0 gate: hover → A8 → circle/figure-8; first fallback `ctrlTk.jrz 0`; Rust (11) first, C (12) only as cross-check.
 - [ ] Optional NS2 bench follow-up: measure the real-vs-network force ratio at the crossings (1.14–1.49×) to see whether a retrain at dz 0.5 helps.
 **Writing** stays off until you ask.
+
+## NEXT STEPS grouped (2026-10-13 evening, after the shakedown lab day; supersedes the 2026-10-12 list above)
+**Decisions (you / supervisor)**
+- [ ] Pure INDI for the study: ours or Omar C + Iz 1.5 (both dip about 9 cm on A8; Omar C offset +0.3 cm, ours +1.5 cm and one liftoff failure in 3 flights); Tal & Karaman only joins if it hovers (see Tal & Karaman).
+- [ ] NS2: confirm v1 (the 2026-10-13 hardware dip −3.3 cm agrees with the earlier −3.2).
+- [ ] FBL: send the single question; tiers 2 and 3.
+- [ ] After the decisions: `make_tags.sh --execute` + push tags; protocol v1.0.
+**Desk (no lab needed)**
+- [ ] One-page A8 comparison of the 11 flights (dips, offsets, tracking, `a_res`) from the SD logs; the flights are not `--study`, so use `a8_crossings.py` and the merged CSVs in `experiments/logs/usd_raw/`.
+- [ ] Our INDI liftoff failure (flight 1): look at cf5's SD log `cf5_A8_ours_1` (idle PWM 7000, target 0.5 m, thrust command 0) and the first seconds before it.
+- [ ] Replace the offline RPM-filter plot in the meeting doc by the on-drone one (`rpm_filter_check_flight.py`, PNGs in `experiments/logs/usd_raw/`).
+- [ ] Tal & Karaman: reproduce the takeoff flip in the SIL (ground start, idle RPM asymmetry, RPM-based torque estimate vs measured angular acceleration). Time-box: 1 day. Optional: what a thrust/torque limit or a ground guard would change.
+- [ ] Optional: motor-2 raw vs used RPM difference (sampling time).
+**Lab (next session)**
+- [ ] Restore the study config on the cf5 SD card (`config_study96_rpmf_2026-10-13.bak.txt` → `config.txt`); verify both cards with `lab_preflight.py --sd-config`.
+- [ ] Check cf_second's image with `check_active_controller.py` (11/12 must print their console lines if it carries `_tk`; it only matters for the manifest).
+- [ ] After every flash: `check_active_controller.py <uri> 6 10 11 12 6`; fresh batteries at ≥ 4.1 V.
+- [ ] Tal & Karaman, one attempt only: takeoff on the geometric ramp and switch at altitude (hover → A8 at the paper gains). If it flips at the switch or does not hover, stop and report "not flyable on this platform without ground handling/limits"; the gain variants in `crazyswarm2/crazyflie/config/study/tk_variants/` stay parked (they were designed for the oscillation that turned out to be controller 6).
+- [ ] Optional blocks 7–9 of the lab plan: one A8 with `--study` (manifest gate, metadata, merge, metrics), never-flown settings (A1 dz 0.25 / 0.75, A2 and A8 at 0.5 m/s, A7), NS2 thin spots (A1 dz 0.75, A7).
+**Writing** stays off until you ask.
