@@ -21,7 +21,7 @@ for i in range(1, 5):
     bad = up & (raw > 28000)
     print(f"motor {i}: bad raw readings {int(bad.sum())}, max raw {raw[up].max():,.0f}, max used {used[up].max():,.0f}, "
           f"valid samples changed {int((up & (raw < 28000) & (raw != used)).sum())} of {int((up & (raw < 28000)).sum())}")
-m = a.motor or int(np.argmax([(up & (r[f'motor_m{i}_rpm'] > 28000)).sum() for i in range(1, 5))]) + 1
+m = a.motor or int(np.argmax([(up & (r[f'motor_m{i}_rpm'] > 28000)).sum() for i in range(1, 5)])) + 1
 raw = r[f"motor_m{m}_rpm"].astype(float); used = r[f"rpmf_m{m}"].astype(float); deck = r[f"rpm_m{m}"].astype(float)
 fig, ax = plt.subplots(2, 1, figsize=(11, 6.4), sharex=True, sharey=True)
 ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label="raw DShot reading (no filter)")
