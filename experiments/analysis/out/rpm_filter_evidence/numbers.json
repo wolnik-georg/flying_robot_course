@@ -1,0 +1,82 @@
+{
+ "ares_response": {
+  "A: before the spike guard | dip (>10000 below deck)": {
+   "n": 19,
+   "median_da": 0.024195194244384766,
+   "p95_da": 0.08466196060180664,
+   "base_median": 0.022979725152254105,
+   "base_p95": 0.10764813423156738
+  },
+  "A: before the spike guard | huge (>28000)": {
+   "n": 4,
+   "median_da": 1.5576971173286438,
+   "p95_da": 1.7888903990387917,
+   "base_median": 0.022979725152254105,
+   "base_p95": 0.10764813423156738
+  },
+  "A: before the spike guard | invalid 0xFFFF": {
+   "n": 1048,
+   "median_da": 0.44452571123838425,
+   "p95_da": 1.1197421550750732,
+   "base_median": 0.022979725152254105,
+   "base_p95": 0.10764813423156738
+  },
+  "B: spike guard | dip (>10000 below deck)": {
+   "n": 164,
+   "median_da": 0.06150853633880615,
+   "p95_da": 1.5055402517318717,
+   "base_median": 0.020008742809295654,
+   "base_p95": 0.08692257404327389
+  },
+  "B: spike guard | huge (>28000)": {
+   "n": 6,
+   "median_da": 0.030361436307430267,
+   "p95_da": 0.039897918701171875,
+   "base_median": 0.020008742809295654,
+   "base_p95": 0.08692257404327389
+  },
+  "B: spike guard | invalid 0xFFFF": {
+   "n": 948,
+   "median_da": 0.4333196748048067,
+   "p95_da": 0.9170876741409302,
+   "base_median": 0.020008742809295654,
+   "base_p95": 0.08692257404327389
+  },
+  "C: spike guard + sentinel hold | dip (>10000 below deck)": {
+   "n": 0,
+   "median_da": null,
+   "p95_da": null,
+   "base_median": 0.024423256516456604,
+   "base_p95": 0.10627659857273097
+  },
+  "C: spike guard + sentinel hold | huge (>28000)": {
+   "n": 3,
+   "median_da": 0.02216699719429016,
+   "p95_da": 0.07878156304359435,
+   "base_median": 0.024423256516456604,
+   "base_p95": 0.10627659857273097
+  },
+  "C: spike guard + sentinel hold | invalid 0xFFFF": {
+   "n": 275,
+   "median_da": 0.04090523719787598,
+   "p95_da": 0.5556779116392137,
+   "base_median": 0.024423256516456604,
+   "base_p95": 0.10627659857273097
+  }
+ },
+ "filter_over_all_flights": {
+  "ticks": 3503808,
+  "raw_over_28000_valid": 13,
+  "raw_invalid": 120039,
+  "filtered_over_28000": 0,
+  "changed_by_filter": 140,
+  "max_raw_valid": 62535.0,
+  "max_filtered": 25316.0
+ },
+ "example": {
+  "flight": "cf5_thesis06_2026-09-28_17-38-15.bin",
+  "motor": 3,
+  "raw_peak": 62535.0,
+  "filtered_peak": 17730.0
+ }
+}
