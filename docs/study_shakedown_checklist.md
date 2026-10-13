@@ -1,6 +1,6 @@
 # Shakedown checklist (2026-10-11)
 
-Goal: fly every scenario once with every strategy, find what breaks, measure the real flight rate, check that the 92-variable uSD logging works, then freeze protocol v1.0. Flight list with validated commands: `docs/study_shakedown_card.md` (regenerate with `python3 experiments/analysis/study_flight_plan.py`).
+Goal: fly every scenario once with every strategy, find what breaks, measure the real flight rate, check that the 96-variable uSD logging works, then freeze protocol v1.0. Flight list with validated commands: `docs/study_shakedown_card.md` (regenerate with `python3 experiments/analysis/study_flight_plan.py`).
 
 ## A. Before the lab (desk) — status
 | item | status |
@@ -12,14 +12,15 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 | crazyswarm2 pulled on the lab PC (`--study`, `--duration`, manifest, strategies) | after push |
 | Preflight tool: `python3 flying_drone_stack/tools/lab_preflight.py --yaml <crazyflies.yaml> --study S0 --sd-config /media/<card>/config.txt` | ready |
 
-- Tal & Karaman INDI (controller 11/12, `docs/74` §6): image `cf21bl_study_usd96_rnn_iz_sentinel_ON_tk.bin`, NOT in the 31-flight card; optional, only if decided; the image flashed in B1 does not contain it.
+- Tal & Karaman INDI (controller 11/12, `docs/74` §6): image `cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk.bin`, NOT in the 31-flight card; optional, only if decided; the image flashed in B1 does not contain it.
 
 ## B. Lab setup (once)
-1. **Flash both drones** (stop CS2 first, power-cycle after) with `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rnn_iz_sentinel_ON.bin` (laptop only, sha256 `14575bacacccc8e50fbcab0d01aa789adaae4966033bf7397b3cff167db4be3c`, built 2026-10-11 with `RPM_FILTER_HOLD_SENTINEL=1`, NS2 weights `8a43b5b5…`):
+1. **Flash both drones** (stop CS2 first, power-cycle after) with the NEW image `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin` (sha256 in the manifest step; adds the log group `rpmf.m1..m4` = filtered RPM; the older `…usd96_rnn_iz_sentinel_ON.bin` has no `rpmf`) (laptop only, sha256 `a0ac7c6fb4f31863cfb2b6fb7dfe53a577a7ca6c7ac90049fa5f78463373302d`, built 2026-10-13 with `RPM_FILTER_HOLD_SENTINEL=1`, NS2 weights `8a43b5b5…`):
    `cfloader flash <file> stm32-fw -w radio://0/80/2M/E7E7E7BB02` (cf5) and `… radio://0/80/2M/E7E7E7E7E9` (cf_second). `sha256sum` the file on the machine you flash from, write the hash of the flashed image into `study_manifest.json` for both drones, commit, push, pull on the lab PC.
 2. **Bench timing:** `python3 flying_drone_stack/tools/read_rnn_timing.py radio://0/80/2M/E7E7E7BB02` (CS2 stopped). Old image: 504 µs mean / 533 µs max; expect the same ± few µs (only the uSD driver changed).
 3. **SD cards (both):** `cp flying_drone_stack/tools/usd_study_config.txt /media/<card>/config.txt`; `lab_preflight.py … --sd-config` confirms it is identical. **Ground logging test:** `python3 flying_drone_stack/tools/check_usd_deck.py radio://0/80/2M/<uri>` for both drones (needs `usd.canLog` 1). If a card does not log at all, the 8192 B buffer allocation failed: set line 2 of the card's `config.txt` to `4096`.
-4. Verify on the first flight that `a_res` ≠ 0, the deck RPM is present, and `--study` prints the config block of the strategy (both drones, before takeoff and airborne).
+4. **RPM filter proof (first flight with the new image):** `python3 experiments/analysis/rpm_filter_check_flight.py <log.bin>` — raw `motor.mN_rpm` against used `rpmf.mN` from the same log; needs a DShot-source controller (not Omar C, it does not call the filter). Spikes are rare (a few per flight), so look at all flights of the session; paste the plot into the meeting doc section 4.
+5. Verify on the first flight that `a_res` ≠ 0, the deck RPM is present, and `--study` prints the config block of the strategy (both drones, before takeoff and airborne).
 
 ## C. Every session
 - Fresh batteries (rest ≥ 4.1 V; swap if either drone < 4.0 V). `git pull`, build, launch (check the pacing marker), `lab_preflight.py --study <S>` per controller block, yaml of the block (`git checkout study-S<k> -- crazyflie/config/crazyflies.yaml`, relaunch).
@@ -36,6 +37,6 @@ Goal: fly every scenario once with every strategy, find what breaks, measure the
 - A1: roll/pitch p99 per strategy recorded (the 10-08 flights oscillated ±35°; not expected, re-check).
 - Omar C on the moving scenarios: no deck RPM dropout, z offset ≈ +2 cm.
 - Speed 0.5 and dz 0.25 / 0.75: feasible or documented exclusion; A7 needs `--allow-extreme`.
-- uSD: no clear increase of gaps with 92 variables; fallback decided.
+- uSD: no clear increase of gaps with 96 variables; fallback decided.
 - Flights per hour measured → session count for tier 1 / 2 / 3 → tier go/no-go with the supervisor.
 - Protocol v1.0: settings table (A8 `--duration`, A2/A5 period, A3/A4 speed, A1 dz), manifest hashes, yaml tags, decisions file path.

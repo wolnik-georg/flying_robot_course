@@ -687,6 +687,17 @@ bool oot_rpm_logs_available(void)
 }
 #endif
 
+/* Filtered RPM (output of rpm_filter_step, i.e. what thrust / torque reconstruction uses), logged next to the raw
+ * DShot value (motor.mN_rpm) so one flight shows raw and filtered side by side. Written whenever a controller calls
+ * rpm_get_all() (controllers 6, 7, 8, 10, 11, 12; Omar C reads the deck itself and does not call it). */
+static uint16_t log_rpmf[4];
+LOG_GROUP_START(rpmf)
+  LOG_ADD(LOG_UINT16, m1, &log_rpmf[0])
+  LOG_ADD(LOG_UINT16, m2, &log_rpmf[1])
+  LOG_ADD(LOG_UINT16, m3, &log_rpmf[2])
+  LOG_ADD(LOG_UINT16, m4, &log_rpmf[3])
+LOG_GROUP_STOP(rpmf)
+
 void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
 {
     static logVarId_t ids_deck[4]  = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
@@ -713,6 +724,7 @@ void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
     for (int i = 0; i < 4; i++) {
         v[i] = logVarIdIsValid(ids[i]) ? (uint16_t)logGetUint(ids[i]) : 0u;
         v[i] = rpm_filter_step(v[i], g_indi_rpm_source, &rpm_prev[i]);
+        log_rpmf[i] = v[i];   /* 2026-10-13: the value the controller actually uses, for the uSD log (rpmf.m1..m4) */
     }
     *m1 = v[0]; *m2 = v[1]; *m3 = v[2]; *m4 = v[3];
 }

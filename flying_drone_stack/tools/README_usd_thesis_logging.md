@@ -163,7 +163,7 @@ whole uSD investigation had to do because this wasn't recorded at the time.
 
 ## Study config (2026-10-11): one superset for every controller
 
-`tools/usd_study_config.txt` — **92 variables at 500 Hz, ring buffer 8192 B**, the same file for geometric, NS2, our INDI and Omar C
+`tools/usd_study_config.txt` — **96 variables at 500 Hz, ring buffer 8192 B** (96 = the firmware cap, no headroom; `rpmf.m1..m4` added 2026-10-13: the RPM the controller actually uses after the filter, next to the raw `motor.mN_rpm`), the same file for geometric, NS2, our INDI and Omar C
 (a group that belongs to a controller that is not running simply stays constant). On top of `usd_thesis_config.txt` it adds:
 `stateEstimate.q*` (attitude quaternion), `pm.vbat` (battery, so the uSD no longer depends on the radio log), `ctrltarget.v*/a*`
 (reference velocity/acceleration, a common reference for all controllers), `locSrv.x/y/z` + `locSrvZ.tick` (raw mocap pose and its age,
@@ -175,7 +175,7 @@ desired attitude `rpyd`**, position/velocity errors).
   Lines beyond the cap are silently skipped, so after any config change count the variable lines.
 - **Check after the first flight** (new firmware + config): `python3 flying_drone_stack/tools/check_usd_log_quality.py <file.bin>` — sample gaps, missing
   columns, which groups carry data. Baseline of the old 54-variable config (26 flights of 10-08/10-09): 0.08 % of the samples are gaps, mostly one or two
-  30–50 ms stalls per flight, 6 flights with 20–70 gaps. With 92 variables an event is ~378 B instead of ~232 B, so stalls cost more; if gaps clearly increase,
+  30–50 ms stalls per flight, 6 flights with 20–70 gaps. With 96 variables an event is ~390 B instead of ~232 B, so stalls cost more; if gaps clearly increase,
   fall back by dropping, in this order: `ctrlOmarIndi.error_*` (6, derivable), `locSrv*` (4), `ctrltarget.a*` (3), `stateEstimate.q*` (4).
 - **Risk to check on the bench:** the 8192 B buffer is a `pvPortMalloc` at deck init; if it fails the deck does not log at all (0-byte file / `usd.canLog` 0 in
   `check_usd_deck.py`). Fall back to `4096` in line 2 of the config.

@@ -2,6 +2,8 @@
 
 Single operator document for the next lab session.
 
+**2026-10-06:** Ordered plan + consolidated copy-paste block → [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md). This file keeps step-by-step detail (merge, ki_z A/B, etc.).
+
 ```bash
 # Lab PC (ROS 2 Jazzy, CS2 build)
 REPO=~/georg/flying_robot_course          # e.g. /home/flyingrobots/georg/flying_robot_course
