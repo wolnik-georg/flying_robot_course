@@ -35,3 +35,6 @@ ros2 launch crazyflie launch.py
 ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --height 0.5 --passes 4 --auto-center --yes
 ```
 Firmware: flash an image that contains the controller (any of the `rpmf` images); check the yaml against `docs/frozen/…/resolved_cf5_parameters.json` before the first flight.
+
+## Variants derived from it (not frozen, may change)
+`crazyswarm2/crazyflie/config/study/ours_omar_values_keepfilters(.iz).patch` and `ours_omar_values_30hz(.iz).patch`: ours with Omar's parameter values (`docs/76`, `docs/lab_sessions/next_session_plan.md`).

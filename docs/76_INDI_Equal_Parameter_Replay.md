@@ -51,5 +51,13 @@ Thrust RMS diff to Omar C: native 0.074 N (corr 0.63) → after residual sign 0.
 
 Thrust: all three agree to 0.001–0.005 N (≤ 1 %). Torque: ours adjusted is the closest to Omar C (correlation 0.9 on x / y); Tal & Karaman's attitude law stays further away (correlation 0.3–0.65) and its yaw is uncorrelated (≈ 0) with both. The gyroscopic term is 0.002 mN m RMS here (negligible), the rate feed-forward is inactive in the replay (no jerk / snap in the inputs); the remaining torque difference is mostly high-frequency (smoothing both over 50 ms leaves 0.24–0.29 mN m on x / y and 0.05 on yaw), consistent with Omar's unfiltered attitude reference against ours filtered at 30 Hz (not proven).
 
+## Closed-loop check before the lab (single drone, 2026-10-13)
+`experiments/analysis/indi_variants_sil_check.py` (airborne start, measurement noise on, real vehicle as plant incl. 44 ms motor lag; hover, A8 bottom path, circle; `out/indi_variants_sil_check_airborne/summary.md`) and `indi_ours_sil_sweep.py` (one parameter group at a time).
+- **Ours with Omar's values and ours' own 206 Hz filters is stable and flies like Omar C:** xy RMS 0.4–0.5 cm, z offset −1.5 cm (0.0 cm with the z integral 1.5), tilt ≤ 4°; Omar C: 0.4 cm, −0.3 cm (0.0 with the integral).
+- **Lowering ours' filter cutoff destabilises it** (30, 60 and 100 Hz all diverge, faster than the frozen 206 Hz); ours with all of Omar's values including the 30 Hz filters diverges in the three scenarios. Candidate reason (not proven): ours low-passes its attitude reference as well, which adds lag in the feedback path; Omar's reference is unfiltered.
+- Tal & Karaman, native and with Omar's values: stable (0.2–0.5 cm, tilt ≤ 5°).
+- Ours frozen falls in this simulation after 1–5 s although it flies 27 s on the drone: the simulation is harsher than the hardware for ours; only the ordering is used.
+- Consequence for the lab: first flight of ours with Omar's values keeps ours' own filters (`ours_omar_values_keepfilters.patch`); the 30 Hz variant last, if at all (`docs/lab_sessions/next_session_plan.md`).
+
 ## Limits
 Open loop and off-policy; one scenario (A8) and two flights; the `K_I` = 0 reference differs from Omar's shipped configuration in the torque only; inertia z and Tal & Karaman's inertia not matched.

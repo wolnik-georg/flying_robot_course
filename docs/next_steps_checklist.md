@@ -175,7 +175,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 ## NEXT STEPS grouped (2026-10-13 night, decisions of the user; supersedes the list above)
 **Done on 2026-10-13 (desk)**
 - [x] Our INDI frozen with every parameter: `docs/77`, `docs/frozen/ours_indi_2026-10-13/`, tag `ours-indi-frozen-2026-10-13` in both repos.
-- [x] Ours with Omar's values prepared: `crazyswarm2/crazyflie/config/study/ours_omar_values.patch` (z integral 0) and `ours_omar_values_iz.patch` (z integral 1.5); Tal & Karaman with Omar's values: `TK_omar_values.patch` and `TK_omar_values_handover.patch` (takeoff on the geometric ramp, switch at altitude). Closed-loop single-drone check of all of them: `experiments/analysis/indi_variants_sil_check.py`.
+- [x] Ours with Omar's values prepared: `crazyswarm2/crazyflie/config/study/ours_omar_values_keepfilters.patch` (Omar's mass, k_t, position gains, residual sign, attitude gains and inertia scale, ours' own filters; predicted stable by the simulation), `…_keepfilters_iz.patch` (z integral 1.5), `ours_omar_values_30hz*.patch` (also his 30 Hz filters, predicted unstable); Tal & Karaman with Omar's values: `TK_omar_values.patch` and `TK_omar_values_handover.patch` (takeoff on the geometric ramp, switch at altitude). Closed-loop single-drone check: `experiments/analysis/indi_variants_sil_check.py` (`docs/76`).
 - [x] Equal-parameter replay (`docs/76`), simulation explanation (`docs/75`), restore tool for the SD config (`flying_drone_stack/tools/restore_study_sd_config.py`).
 **Decisions (you / supervisor)**
 - [ ] Pure INDI for the study (ours / Omar C + Iz 1.5): after the Omar's-values flights; NS2 v1 confirm; FBL question.
@@ -187,6 +187,6 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 **Next lab session** (plan with commands: `docs/lab_sessions/next_session_plan.md`)
 - [ ] Check both firmwares with `check_active_controller.py` (cf5 and cf_second); flash the `_tk` image where the console line for 11 / 12 is missing.
 - [ ] Restore the study SD config on the cf5 card (`restore_study_sd_config.py`).
-- [ ] Fly ours with Omar's values (hover, then A8; then with the z integral 1.5), compare with ours frozen (dip −9.4 cm) and Omar C (−9.1 cm).
+- [ ] Fly ours with Omar's values, `keepfilters` patch first (hover, then A8; then with the z integral 1.5), compare with ours frozen (dip −9.4 cm) and Omar C (−9.1 cm).
 - [ ] Fly Tal & Karaman with Omar's values (handover patch first: hover, then A8).
 **Writing** stays off until you ask.

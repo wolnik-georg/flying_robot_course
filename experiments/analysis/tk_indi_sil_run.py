@@ -38,7 +38,7 @@ class RotorQuad(Quadrotor):
 
 def run(scenario="hover", seconds=12.0, takeoff_s=4.0, sets=None, motor_tau=0.044, seed=0,
         noise=False, verbose=True, slot=(0.0, 0.0, 0.5), controller="oot6", plant_jrz=2.5e-8,
-        acc_std_g=0.03, rpm_std=60.0, kwargs=None):
+        acc_std_g=0.03, rpm_std=60.0, kwargs=None, post_setup=None, airborne=False):
     sets = dict(sets or {})
     c = firm.cvar
     c.g_indi_mass = LAB_INDI["mass"]
@@ -50,16 +50,23 @@ def run(scenario="hover", seconds=12.0, takeoff_s=4.0, sets=None, motor_tau=0.04
         sc = build_scenario(scenario, {"scenario_kwargs": dict(kwargs or {})})
     anchor = np.array([0.0, 0.0, 0.5])
     slot = np.asarray(sc.robots[0].slot if sc is not None else slot, float)
-    p0 = ground_pos(anchor + slot)
+    p0 = (anchor + slot).copy() if airborne else ground_pos(anchor + slot)   # airborne: start in hover at the commanded height (no ground start)
     t_box = [0.0]
+    CrazyflieSIL._oot_count = 0
     CrazyflieSIL._oot6_count = 0
     CrazyflieSIL._oot7_count = 0
     cf = CrazyflieSIL("cf5", p0, controller, lambda: t_box[0])
-    ph = dict(mass=LAB_INDI["mass"], kt=[c.g_indi_kt1, c.g_indi_kt2, c.g_indi_kt3, c.g_indi_kt4],
+    if post_setup is not None:
+        post_setup(cf)
+    # the PLANT is the real vehicle (flown mass and k_t); the controller may believe other constants (Omar's), as on the drone
+    ph = dict(mass=LAB_INDI["mass"], kt=[LAB_INDI["kt1"], LAB_INDI["kt2"], LAB_INDI["kt3"], LAB_INDI["kt4"]],
               arm_length=float(firm.oot_arm_length()), t2t=float(firm.oot_thrust2torque()),
               inertia=[firm.oot_inertia(i) for i in range(3)], motor_tau=motor_tau)
     RotorQuad.jrz = plant_jrz
     quad = RotorQuad(State(pos=p0.copy()), ph)
+    if airborne:   # hover RPM so the RPM-based torque / acceleration reconstruction is valid from tick 0
+        rpm_h = np.sqrt(ph["mass"] * 9.81 / (4.0 * np.asarray(ph["kt"], float)))
+        quad.state.rpm = rpm_h.copy(); quad._rpm = rpm_h.copy()
     z_hover = float((anchor + slot)[2])
     cf.takeoff(z_hover, takeoff_s)
     rng = np.random.default_rng(seed)
