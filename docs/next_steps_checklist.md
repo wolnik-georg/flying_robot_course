@@ -200,7 +200,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] FBL: depends on the authors' answer (port 4–6 weeks if the code arrives); otherwise decide the scope of Strategy 3 with the supervisor.
 **Timeline:** deadline 26 Feb 2027 (about 19 weeks from 2026-10-13); reserve the last 4–6 weeks for writing.
 ## Thesis-draft track (decided 2026-10-13; independent of the study)
-- [ ] Write `docs/thesis_revision_prompt.md`: one very detailed prompt for a more capable model to revise Chapters 1–5 (main target) and the Ch. 6–9 skeletons: details, correctness, completeness, academic standard, explainability for students, related work and references. Constraints: no flown / lab / simulation results in the draft; citation discipline (`docs/17`, `docs/20_Verified_Claims.md`); locked decisions (`memory/project_writing_track.md`); keep the build clean (`latexmk -pdf thesis_draft.tex`).
+- [x] Written (2026-10-13): `docs/thesis_revision_prompt.md` — one very detailed prompt for a more capable model to revise Chapters 1–5 (main target) and the Ch. 6–9 skeletons: details, correctness, completeness, academic standard, explainability for students, related work and references. Constraints: no flown / lab / simulation results in the draft; citation discipline (`docs/_archive/citation_notes/17_…`, `…/20_Verified_Claims.md`); locked decisions (`memory/project_writing_track.md`); keep the build clean (`latexmk -pdf thesis_draft.tex`).
 - [ ] Run it, review the output against the source ledger, merge chapter by chapter; Ch. 5 stays future tense until the study has run.
 - [ ] Chapters 6–9 keep their placeholders until the study results exist.
 
