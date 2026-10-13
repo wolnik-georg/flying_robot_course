@@ -98,19 +98,17 @@ def main():
             n_all.setdefault("max_raw_valid", 0.0); n_all["max_raw_valid"] = max(n_all["max_raw_valid"], float(rw[u & (rw < 65000)].max()))
             n_all.setdefault("max_filtered", 0.0); n_all["max_filtered"] = max(n_all["max_filtered"], float(fl[u].max()))
     print(n_all)
-    k0 = int(np.argmax(np.where(up & (raw < 65000), raw, 0)))
-    fig, ax = plt.subplots(2, 2, figsize=(13, 7), gridspec_kw=dict(width_ratios=[1.6, 1]))
-    rp = np.where(raw >= 65000, np.nan, raw)
-    for a, y, ttl, c in ((ax[0, 0], rp, "raw DShot reading (0xFFFF = invalid not drawn)", "#0072B2"), (ax[1, 0], filt, "after the firmware filter (rpm_filter.h, the code that runs on the drone)", "#009E73")):
-        a.plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); a.plot(t, y, color=c, lw=0.9, label=ttl)
-        a.set_ylim(0, 62000); a.set_ylabel(f"motor {i} RPM"); a.legend(fontsize=8, loc="upper right"); a.grid(alpha=0.3)
-    ax[1, 0].set_xlabel("time (s)  —  full flight, same y-axis"); ax[0, 0].set_title(f"cf5 {stamp[:10]}, motor {i}: whole flight, raw vs filtered")
-    w = slice(max(0, k0 - 30), k0 + 31); tz = (t[w] - t[k0]) * 1e3
-    for a, y, c, ttl in ((ax[0, 1], raw, "#0072B2", "raw"), (ax[1, 1], filt, "#009E73", "filtered")):
-        a.plot(tz, deck[w], color="#888888", lw=1.4, label="deck"); a.plot(tz, y[w], color=c, lw=1.4, marker=".", label=ttl)
-        a.set_ylim(0, 62000); a.set_xlabel("ms around the largest spike"); a.legend(fontsize=8); a.grid(alpha=0.3)
-    ax[0, 1].set_title(f"zoom: raw peak {mx:,.0f} RPM"); ax[1, 1].set_title(f"zoom: filtered peak {filt[w].max():,.0f} RPM")
+    # figure: the flight/motor with the most bad readings on one motor (several off-scale readings in one flight)
+    f = [x for x in F if "cf5_thesis06_2026-09-28_17-38-15" in x[1]][0][1]; r = [x for x in F if x[1] == f][0][2]; i = 4
+    raw = r[f"motor_m{i}_rpm"].astype(float); deck = r[f"rpm_m{i}"].astype(float); filt = run_filter(L1, raw); t = r["t"] - r["t"][0]; up = r["z"] > 0.3
+    nbad = int((up & (raw > 28000)).sum()); mx = raw[up].max()
+    fig, ax = plt.subplots(2, 1, figsize=(11, 6.4), sharex=True, sharey=True)
+    ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label=f"raw DShot reading ({nbad} readings above 28,000, up to {mx:,.0f})")
+    ax[1].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[1].plot(t, filt, color="#009E73", lw=0.9, label="after the firmware filter (rpm_filter.h)")
+    for a_ in ax: a_.set_ylim(0, 70000); a_.set_ylabel(f"motor {i} RPM"); a_.legend(fontsize=9, loc="center right"); a_.grid(alpha=0.3)
+    ax[1].set_xlim(-0.3, 17.9); ax[1].set_xlabel("time (s)"); ax[0].set_title(f"cf5, {os.path.basename(f)[-23:-4]}, motor {i}: whole flight, raw vs filtered")
     fig.tight_layout(); fig.savefig(OUT / "rpm_spikes_raw_vs_filtered.png", dpi=150); plt.close(fig)
+    mx = float(mx); w = slice(0, 1); k0 = 0
     # ---- on-drone effect plot: grouped bars, spike type x firmware step
     types = [("huge (>28000)", "huge spike (> 28,000 RPM)"), ("invalid 0xFFFF", "invalid reading (0xFFFF)")]
     pers = [("A: before the spike guard", "#CC0000", "before the filter"), ("B: spike guard", "#E6A100", "spike filter (from 09-29)"), ("C: spike guard + sentinel hold", "#009E73", "spike filter + invalid-reading fix (from 10-09)")]
@@ -124,7 +122,7 @@ def main():
     ax.set_xticks(range(len(types))); ax.set_xticklabels([l for _, l in types]); ax.set_ylabel("change of the residual a_res_z at the spike tick (m/s², median)")
     ax.set_ylim(0, 1.9); ax.legend(fontsize=8); ax.grid(alpha=0.3, axis="y"); ax.set_title("Does a bad RPM reading reach the control residual? (cf5 flights, uSD, RPM from DShot)")
     fig.tight_layout(); fig.savefig(OUT / "rpm_spike_effect_on_ares.png", dpi=150); plt.close(fig)
-    (OUT / "numbers.json").write_text(json.dumps(dict(ares_response=res, filter_over_all_flights=n_all, example=dict(flight=os.path.basename(f), motor=i, raw_peak=float(mx), filtered_peak=float(filt[w].max()))), indent=1))
+    (OUT / "numbers.json").write_text(json.dumps(dict(ares_response=res, filter_over_all_flights=n_all, example=dict(flight=os.path.basename(f), motor=i, raw_peak=float(mx), filtered_peak=float(filt[up].max()), n_bad_raw=nbad)), indent=1))
 
 
 if __name__ == "__main__":
