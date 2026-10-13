@@ -103,10 +103,10 @@ def main():
     raw = r[f"motor_m{i}_rpm"].astype(float); deck = r[f"rpm_m{i}"].astype(float); filt = run_filter(L1, raw); t = r["t"] - r["t"][0]; up = r["z"] > 0.3
     nbad = int((up & (raw > 28000)).sum()); mx = raw[up].max()
     fig, ax = plt.subplots(2, 1, figsize=(11, 6.4), sharex=True, sharey=True)
-    ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label=f"raw DShot reading ({nbad} readings above 28,000, up to {mx:,.0f})")
-    ax[1].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[1].plot(t, filt, color="#009E73", lw=0.9, label="after the firmware filter (rpm_filter.h)")
+    ax[0].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[0].plot(t, raw, color="#0072B2", lw=0.9, label="raw DShot reading (no filter)")
+    ax[1].plot(t, deck, color="#888888", lw=0.8, label="optical deck RPM (reference)"); ax[1].plot(t, filt, color="#009E73", lw=0.9, label="RPM filter applied")
     for a_ in ax: a_.set_ylim(0, 70000); a_.set_ylabel(f"motor {i} RPM"); a_.legend(fontsize=9, loc="center right"); a_.grid(alpha=0.3)
-    ax[1].set_xlim(-0.3, 17.9); ax[1].set_xlabel("time (s)"); ax[0].set_title(f"cf5, {os.path.basename(f)[-23:-4]}, motor {i}: whole flight, raw vs filtered")
+    ax[1].set_xlim(-0.3, 17.9); ax[1].set_xlabel("time (s)"); ax[0].set_title("Before / after the RPM filter")
     fig.tight_layout(); fig.savefig(OUT / "rpm_spikes_raw_vs_filtered.png", dpi=150); plt.close(fig)
     mx = float(mx); w = slice(0, 1); k0 = 0
     # ---- on-drone effect plot: grouped bars, spike type x firmware step
