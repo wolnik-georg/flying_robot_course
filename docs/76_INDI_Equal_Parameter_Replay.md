@@ -40,5 +40,16 @@ Thrust RMS diff to Omar C: native 0.074 N (corr 0.63) → after residual sign 0.
 4. **Tal & Karaman's attitude law is a different law:** its torques correlate poorly with Omar's even with his values (0.66 / 0.32 / −0.26), because of its own attitude-error definition, feed-forward and fixed inertia.
 5. **Consequence for the INDI choice:** ours and Omar C are the same thrust law with different parameter sets (and different attitude-loop stiffness), not two different controllers. The flight difference (A8 dips −9.4 vs −9.1 cm, ours with an overshoot, Omar's slower recovery) comes from the parameters: ours flies with the opposite residual sign and 7–9× stiffer position gains. Open: ours with `res_sign −1` diverged in hover on 2026-09-09 (cause never isolated), while Omar's textbook sign flies. A flight of ours with Omar's parameter set (position gains 7 / 4, `res_sign −1`, attitude gains 421 / 69, 30 Hz filters) would show whether the two then fly the same.
 
+## Final comparison with all parameters equal (reference Omar C, K_I = 0; thrust RMS [N] / corr, torque RMS x / y / z [mN m] / corr)
+| | A8 2026-10-02 | A8 today (ours on-policy) |
+|---|---|---|
+| ours native | 0.090 / 0.62 · 1.8 / 2.7 / 1.2 · 0.37 / 0.42 / 0.69 | 0.074 / 0.63 · 2.4 / 3.6 / 1.0 · 0.89 / 0.63 / 0.70 |
+| **ours adjusted** (mass, k_t, position gains, residual sign, attitude gains, inertia, 30 Hz filters) | **0.005 / 0.99** · 0.35 / 0.39 / 1.0 · 0.94 / 0.89 / 0.78 | **0.004 / 1.00** · 0.61 / 0.49 / 0.74 · 0.92 / 0.90 / 0.77 |
+| Tal & Karaman native | 0.029 / 0.99 · 0.8 / 0.8 / 1.6 · 0.64 / 0.33 / −0.44 | 0.025 / 0.99 · 1.4 / 1.1 / 1.3 · 0.49 / 0.30 / −0.53 |
+| **Tal & Karaman with Omar's values** | **0.0013 / 1.00** · 0.8 / 0.9 / 1.35 · 0.66 / 0.32 / −0.26 | **0.0014 / 1.00** · 1.4 / 1.1 / 1.0 · 0.51 / 0.29 / −0.22 |
+| ours adjusted vs Tal & Karaman with Omar's values | 0.005 / 0.99 · 0.6 / 0.7 / 0.4 · 0.81 / 0.62 / 0.03 | 0.004 / 0.99 · 1.0 / 0.9 / 0.3 · 0.78 / 0.65 / 0.07 |
+
+Thrust: all three agree to 0.001–0.005 N (≤ 1 %). Torque: ours adjusted is the closest to Omar C (correlation 0.9 on x / y); Tal & Karaman's attitude law stays further away (correlation 0.3–0.65) and its yaw is uncorrelated (≈ 0) with both. The gyroscopic term is 0.002 mN m RMS here (negligible), the rate feed-forward is inactive in the replay (no jerk / snap in the inputs); the remaining torque difference is mostly high-frequency (smoothing both over 50 ms leaves 0.24–0.29 mN m on x / y and 0.05 on yaw), consistent with Omar's unfiltered attitude reference against ours filtered at 30 Hz (not proven).
+
 ## Limits
 Open loop and off-policy; one scenario (A8) and two flights; the `K_I` = 0 reference differs from Omar's shipped configuration in the torque only; inertia z and Tal & Karaman's inertia not matched.
