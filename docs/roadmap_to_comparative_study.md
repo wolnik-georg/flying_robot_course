@@ -4,9 +4,9 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 
 ## 0a. State 2026-10-13 (evening) — shakedown lab day done, Tal & Karaman open
 - **Done:** image with the `rpmf` log flashed on both drones, SD logging validated, RPM filter proven on the drone, A8 flown for geometric, geometric + NS2 v1, Omar C + Iz 1.5, our INDI and Omar Rust (11 flights; `lab_sessions/2026-10-13.md` §5, §7). Raw logs backed up in `~/Desktop/sd_backups/2026-10-13_lab/`.
-- **Not done / skipped on purpose:** rest of the 31-flight card, flights per hour, optional blocks 7–9.
+- **Dropped on purpose:** rest of the 31-flight card, flights per hour, the optional blocks 7–9 (`--study` chain run, never-flown settings, NS2 thin spots).
 - **Tal & Karaman:** first attempts silently ran controller 6 (wrong image on cf5), after the reflash it flips at takeoff 2/2. One more lab attempt (takeoff on the geometric ramp, switch at altitude) plus one day of SIL work, then decide; the gain variants are parked.
-- **Next:** desk comparison of the 11 A8 flights, the Pure-INDI and NS2 decisions, restore the study SD config, then the optional `--study` chain run and the never-flown settings; protocol v1.0 and tags after that.
+- **Next:** next lab session with ours and Tal & Karaman at Omar's parameter values (plan `docs/lab_sessions/next_session_plan.md`: check both firmwares, restore the study SD config, ours with Omar's values, Tal & Karaman with Omar's values), then the Pure-INDI and NS2 decisions. Ours is frozen in `docs/77`.
 
 ## 0. State 2026-10-12 — the desk phase is finished, what is left is decisions and the lab
 **Done (2026-10-11, committed and pushed; nothing flown yet)**
