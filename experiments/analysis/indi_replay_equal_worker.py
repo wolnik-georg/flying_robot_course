@@ -101,6 +101,14 @@ def main() -> None:
         st.position.x, st.position.y, st.position.z = float(p[0]), float(p[1]), float(p[2])
         st.velocity.x, st.velocity.y, st.velocity.z = float(v[0]), float(v[1]), float(v[2])
         st.attitudeQuaternion.w, st.attitudeQuaternion.x, st.attitudeQuaternion.y, st.attitudeQuaternion.z = map(float, q)
+        # Omar C reads the ESTIMATOR acceleration state->acc (world frame, Gs, gravity removed: kalman_core.c externalize: R·acc_body − [0,0,1]).
+        # The earlier replay harness never set it (zero), so Omar's measured acceleration was missing. Ours reads the body accelerometer (sens.acc) and ignores it.
+        qw, qx, qy, qz = (float(x) for x in q)
+        Rm = np.array([[1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw)],
+                       [2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw)],
+                       [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy)]])
+        aw = Rm @ np.array([float(a[0]), float(a[1]), float(a[2])]) - np.array([0.0, 0.0, 1.0])
+        st.acc.x, st.acc.y, st.acc.z = float(aw[0]), float(aw[1]), float(aw[2])
         r = z["rpm"][tick]
         fw.oot_set_rpm(int(r[0]), int(r[1]), int(r[2]), int(r[3]))
         step(tick)

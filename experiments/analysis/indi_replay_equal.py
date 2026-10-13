@@ -62,14 +62,18 @@ def ours_ladder() -> list[tuple[str, dict]]:
     return steps
 
 
-def tk_variants() -> list[tuple[str, str, dict]]:
+def tk_variants(flight_indi: dict | None = None) -> list[tuple[str, str, dict]]:
+    # "native" = the paper gains and 30 Hz with the FLOWN mass and kt of the drone (the host defaults 0.0364 kg / 1.48e-10 are not what the yaml sets)
+    fl = {}
+    if flight_indi:
+        fl = {"g_indi_mass": float(flight_indi["mass"]), **{f"g_indi_kt{i}": float(flight_indi[f"kt{i}"]) for i in range(1, 5)}}
     omar_common = {"g_indi_mass": OM_MASS, **{f"g_indi_kt{i}": OM_KT for i in range(1, 5)},
                    "g_tk_kx_xy": OM_KPOS_P, "g_tk_kx_z": OM_KPOS_P, "g_tk_kv_xy": OM_KPOS_D, "g_tk_kv_z": OM_KPOS_D,
                    "g_tk_ka_xy": 0.0, "g_tk_ka_z": 0.0, "g_tk_jrz": 0.0, "g_tk_fc": 30.0}
     torque = {"g_tk_kxi_xy": float(np.mean([OM_KR[0], OM_KR[1]])) / TK_J[0], "g_tk_kom_xy": float(np.mean([OM_KW[0], OM_KW[1]])) / TK_J[0],
               "g_tk_kxi_z": OM_KR[2] / TK_J[2], "g_tk_kom_z": OM_KW[2] / TK_J[2]}
     accel = {"g_tk_kxi_xy": KR_XY, "g_tk_kom_xy": KW_XY, "g_tk_kxi_z": KR_Z, "g_tk_kom_z": KW_Z}
-    return [("tk_rust_native", "tk_rust", {}), ("tk_c_native", "tk_c", {}),
+    return [("tk_rust_native", "tk_rust", dict(fl)), ("tk_c_native", "tk_c", dict(fl)),
             ("tk_rust_omar_values_torque", "tk_rust", {**omar_common, **torque}), ("tk_c_omar_values_torque", "tk_c", {**omar_common, **torque}),
             ("tk_rust_omar_values_accel", "tk_rust", {**omar_common, **accel})]
 
@@ -132,7 +136,8 @@ def main() -> None:
     ]
     for nm, ov in ours_ladder():
         jobs.append({"name": nm, "side": "ours", "overrides": {"ours_native": True, "cvar": ov}})
-    for nm, side, ov in tk_variants():
+    fcfg_json = json.loads(fcfg.read_text())
+    for nm, side, ov in tk_variants(fcfg_json["indi"]):
         jobs.append({"name": nm, "side": side, "overrides": {"cvar": ov}})
     for j in jobs:
         j["force"] = a.force

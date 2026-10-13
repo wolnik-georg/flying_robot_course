@@ -54,6 +54,8 @@ So the structure is the same; the differences are in the reference, the gains, t
 | loop rate | every stabilizer tick, 1 kHz | `RATE_DO_EXECUTE(ATTITUDE_RATE)` = 500 Hz, output held in between |
 | `τ_rpm` constants | per-motor `kₜ`, arm 0.0354 m, yaw ratio 0.005693 | one `MOTORRPM2FORCE`, arm `0.707·0.050`, `THRUST2TORQUE` 0.005693 (same mixer) |
 
+> **Correction 2026-10-13:** the replay numbers quoted in this section used a harness without the estimator acceleration for Omar C; see `docs/76` (equal-parameter replay) for the corrected comparison: with equal parameters the thrust law of ours, Omar C and Tal & Karaman agrees to 0.005 N / 0.0013 N.
+
 ## 4. What this says about the replay result (`docs/64`, meeting §3)
 - **Thrust, ours 19 % lower (0.333 vs 0.412 N), same shape and same peaks:** about one third of the level difference is the mass (0.041 vs 0.0427 kg; replaying ours with Omar's mass cuts the RMS difference from 0.080 to 0.052 N, `indi_replay_harmonize.py`). The rest comes from the law: opposite residual sign, different position gains and different residual filtering. These were not separated one by one.
 - **Torques, different correlation (≈ 0.4):** the attitude reference, gain scale and filters differ (table above): ours is 5.7× / 2.5× stiffer, Omar C adds the gyroscopic and integral terms and filters only the measurement side. Which of these causes the 2.8× larger pitch torque of ours was not isolated.
