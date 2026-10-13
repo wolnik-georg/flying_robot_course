@@ -4,7 +4,7 @@ Deadline **26 Feb 2027** (≈ 20 weeks). Strategies (docs/07): **0** geometric b
 
 ## 0. State 2026-10-12 — the desk phase is finished, what is left is decisions and the lab
 **Done (2026-10-11, committed and pushed; nothing flown yet)**
-- uSD logging: one 92-variable config for all controllers, firmware limit 96, binary built (`cf21bl_study_usd96_rnn_iz_sentinel_ON.bin`, not flashed), quality checker `check_usd_log_quality.py`.
+- uSD logging: one 96-variable config for all controllers (92 + `rpmf.m1..m4` = filtered RPM next to the raw DShot value, 2026-10-13; exactly the firmware limit 96), binary built (`cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin`, not flashed), quality checker `check_usd_log_quality.py`.
 - `run_formation --study`: checks the configuration before takeoff, lands first if it is wrong in the air, writes the full configuration into the meta; `--duration` sets the A8 speed (all earlier A8 flights used 0.365 m/s).
 - Analysis: `study_metrics.py`, `aggregate.py --study-table`, `study_report.py`, pose-bag clock (`pose_bag.py`); A8 regression matches `docs/71`.
 - Shakedown material: `study_shakedown_card.md` (31 validated flights), `study_shakedown_checklist.md`, `lab_preflight.py --study`, yaml variants + `make_tags.sh` (dry run), `study_readiness_matrix.md`, protocol v0.2.

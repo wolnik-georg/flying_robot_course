@@ -171,7 +171,7 @@ for tracker pose swaps), and the Omar C group `ctrlOmarIndi.*` (thrust, torques,
 desired attitude `rpyd`**, position/velocity errors).
 
 - **Needs the patched firmware:** `MAX_USD_LOG_VARIABLES_PER_EVENT` **96**, `MAX_USD_LOG_EVENTS` 4 (`firmware_patches/usddeck_96_variables.patch`).
-  Binary: `build_artifacts/cf21bl_study_usd96_rnn_iz_sentinel_ON.bin` (laptop only; **built, not yet flashed or flown**).
+  Binary: `build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin` (2026-10-13, adds `rpmf`; the older `…usd96_rnn_iz_sentinel_ON.bin` has no `rpmf`) (laptop only; **built, not yet flashed or flown**).
   Lines beyond the cap are silently skipped, so after any config change count the variable lines.
 - **Check after the first flight** (new firmware + config): `python3 flying_drone_stack/tools/check_usd_log_quality.py <file.bin>` — sample gaps, missing
   columns, which groups carry data. Baseline of the old 54-variable config (26 flights of 10-08/10-09): 0.08 % of the samples are gaps, mostly one or two

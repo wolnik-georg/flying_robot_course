@@ -165,7 +165,8 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] After the decisions: `make_tags.sh --execute` + push tags; protocol v1.0 after the shakedown.
 - [ ] Commit and push this session's work (nothing committed yet: docs, TK controller, plant fix, firmware patches in `crazyflie-firmware` stay local).
 **Lab**
-- [ ] Flash usd96 on both drones, bench timing, SD config, ground logging test, `check_usd_deck.py`, manifest hashes.
+- [ ] Flash the NEW usd96 image `cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON.bin` (logs the filtered RPM `rpmf.m1..m4`) on both drones, bench timing, new `config.txt` (96 variables) on both SD cards, ground logging test, `check_usd_deck.py`, manifest hashes.
+- [ ] RPM filter proof: after the first flights run `rpm_filter_check_flight.py <log.bin>` (raw vs used RPM from the drone), paste the plot into the meeting doc section 4 (replaces the offline plot).
 - [ ] Shakedown card (31 flights) with `--study`; quality check and metrics after every card.
 - [ ] Only if the TK INDI is wanted: flash the `_tk.bin` image on one drone, check `kt`/mass in the yaml, C.0 gate: hover → A8 → circle/figure-8; first fallback `ctrlTk.jrz 0`; Rust (11) first, C (12) only as cross-check.
 - [ ] Optional NS2 bench follow-up: measure the real-vs-network force ratio at the crossings (1.14–1.49×) to see whether a retrain at dz 0.5 helps.
