@@ -333,6 +333,8 @@ and Bauersfeld (2024 → 2025) change in the bibliography; prose that says "Hsie
 
 ## D-11 — Which INDI controller Strategy 1 is (new, closing pass)
 
+**DECIDED 2026-10-14 by the author: option (b), Strategy 1 = Omar C + Iz 1.5 (controller 9). Supervisor not yet consulted. D-01 moot for Strategy 1; D-02, D-06 to be re-read for controller 9.**
+
 **Facts.** Ch4 §4.1.3 and §4.3 describe Strategy 1 as the INDI inside `firmware_app/src/lib.rs:controller_step`
 (ctrl_mode 3: position INDI by the measured residual, incremental torque law eqs. ctrl-alpharef/ctrl-indi-tau). The
 frozen study parameter blocks (`crazyswarm2/crazyflie/config/study_strategies.json`) define **S1** as

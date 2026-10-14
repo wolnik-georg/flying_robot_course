@@ -5,7 +5,7 @@ State as of 2026-10-14: **revision work finished, nothing merged, all decisions 
 Chapters 6–9 stay skeletons until the study data exists.
 
 ## What to do, in this order
-1. **Decide D-11 with the supervisor — first.** Which INDI is Strategy 1: Omar C + Iz (frozen block `S1` = controller 9, as in
+1. **D-11: decided 2026-10-14 by the author — Strategy 1 = Omar C + Iz 1.5 (controller 9), option (b); supervisor not yet consulted.** Next: apply (b) — rewrite Ch4 §4.3 "Implemented" and dependent sentences, describe `indi.a_res` logging with the controller-9 caveat; D-01 is moot for Strategy 1; re-read D-02 and D-06 for controller 9. Original question: Which INDI is Strategy 1: Omar C + Iz (frozen block `S1` = controller 9, as in
    `crazyswarm2/crazyflie/config/study_strategies.json`) or ours (`ours` block = controller 6, ctrl_mode 3, which Ch4 describes)?
    This is the project's open "Pure INDI" decision. It settles D-01, D-02 and D-06.
 2. Go through `author_decisions.md` D-01 … D-10; every option has paste-ready text with line numbers in `revised/`.

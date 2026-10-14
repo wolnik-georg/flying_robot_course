@@ -9,7 +9,7 @@ Compare control strategies for interaction-force-aware multirotor teams under do
 | ID | Strategy | Status |
 |---|---|---|
 | S0 | geometric baseline (uncompensated) | frozen |
-| S1 | pure INDI = **Omar C + z integral 1.5** (controller 9) | assumed (decision with supervisor pending); ours INDI stays supplementary (10-09 data) |
+| S1 | pure INDI = **Omar C + z integral 1.5** (controller 9) | **decided 2026-10-14 (author; supervisor not yet consulted)**; ours INDI stays supplementary (10-09 data, frozen `docs/77`) |
 | S2 | geometric + NS2 learned residual, `res_sign −1`, 100 Hz | frozen config; weights decision open (section 2) |
 | S3 | FBL + residual | blocked (authors' code not received); added by amendment if it arrives |
 **Subject drone:** `cf5` (bottom, carries the strategy). `cf_second` (top) is always geometric (S0 config) and identical in every flight. **Both drones' data are recorded and analysed** (per-drone and relative metrics).

@@ -158,7 +158,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 ## NEXT STEPS grouped (2026-10-12 evening)
 **Decisions (supervisor / you)**
 - [ ] NS2: keep or retrain the network (numbers `ns2_retrain_options.md`); note the SIL benefit is an upper bound.
-- [ ] Pure INDI for the study: ours or Omar C + Iz 1.5; and whether the Tal & Karaman INDI (11/12) joins as a candidate or stays a side comparison.
+- [x] Pure INDI for the study: Omar C + Iz 1.5 (decided 2026-10-14); Tal & Karaman INDI (11/12) stays a parked side comparison.
 - [ ] FBL: send the question (training script + data format + settings, hardware checkpoint + gains), scope of Strategy 3. Tiers 2 and 3.
 **Desk (no lab needed)**
 - [ ] Optional: oval path in the TK SIL; sensitivity of the TK law to `kt` ±14 % and to a 2 kHz-vs-1 kHz change.
@@ -178,17 +178,17 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [x] Ours with Omar's values prepared: `crazyswarm2/crazyflie/config/study/ours_omar_values_keepfilters.patch` (Omar's mass, k_t, position gains, residual sign, attitude gains and inertia scale, ours' own filters; predicted stable by the simulation), `…_keepfilters_iz.patch` (z integral 1.5), `ours_omar_values_30hz*.patch` (also his 30 Hz filters, predicted unstable); Tal & Karaman with Omar's values: `TK_omar_values.patch` and `TK_omar_values_handover.patch` (takeoff on the geometric ramp, switch at altitude). Closed-loop single-drone check: `experiments/analysis/indi_variants_sil_check.py` (`docs/76`).
 - [x] Equal-parameter replay (`docs/76`), simulation explanation (`docs/75`), restore tool for the SD config (`flying_drone_stack/tools/restore_study_sd_config.py`).
 **Decisions (you / supervisor)**
-- [ ] Pure INDI for the study (ours / Omar C + Iz 1.5): after the Omar's-values flights; NS2 v1 confirm; FBL question.
+- [x] **Pure INDI for the study: Omar C + Iz 1.5 (controller 9) — DECIDED 2026-10-14 by the author** (supervisor not yet consulted). Ours stays frozen (`docs/77`) as supplementary. Open: NS2 v1 confirm; FBL question.
 **Needs more data, not worked on now**
-- [ ] Why ours and Omar C dip −9 cm while the simulation shows none for Omar: could be an outlier of this dataset; collect more A8 flights before drawing a conclusion.
+- [ ] (optional, no longer a gate) why ours and Omar C dip −9 cm while the simulation shows none for Omar: could be an outlier; more A8 flights come with the study data.
 **Closed / dropped**
 - Our INDI liftoff failure (flight 1): outlier. Comparison page of the 11 A8 flights: not wanted. RPM filter motor-2 detail: closed. Optional `--study` chain run, never-flown settings and NS2 thin spots: dropped. Battery start voltage: as fresh as possible, nothing more to do.
 - Tal & Karaman: parked; the only thing prepared is the run with Omar's values (above).
-**Next lab session** (plan with commands: `docs/lab_sessions/next_session_plan.md`)
-- [ ] Check both firmwares with `check_active_controller.py` (cf5 and cf_second); flash the `_tk` image where the console line for 11 / 12 is missing.
-- [ ] Restore the study SD config on the cf5 card (`restore_study_sd_config.py`).
-- [ ] Fly ours with Omar's values, `keepfilters` patch first (hover, then A8; then with the z integral 1.5), compare with ours frozen (dip −9.4 cm) and Omar C (−9.1 cm).
-- [ ] Fly Tal & Karaman with Omar's values (handover patch first: hover, then A8).
+**Next lab session** (reworked 2026-10-14, plan with commands: `docs/lab_sessions/next_session_plan.md`)
+- [ ] Check both firmwares (`check_active_controller.py`, cf5: 6 and 9); restore the study SD config on the cf5 card (`restore_study_sd_config.py`).
+- [ ] Gates on your go: NS2 v1 confirm, `make_tags.sh --execute` + push tags.
+- [ ] Reduced shakedown, 21 flights: S0, S2, S1 (Omar C + Iz 1.5) × A8, A1, A2, A3, A4, A5, A7 (card rows 1–7, 13–19, 21–27); then quality check, metrics, protocol v1.0, data collection.
+- Dropped 2026-10-14: ours with Omar's values, Tal & Karaman with Omar's values (patches parked), extremes and ours rows of the card.
 **Writing** stays off until you ask.
 
 ## Beyond the INDI / NS2 / FBL decisions (preserved 2026-10-13)
