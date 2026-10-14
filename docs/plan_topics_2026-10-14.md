@@ -1,5 +1,7 @@
 # Plan topics collected after the 2026-10-14 meeting (decisions so far; work not started)
 
+**Detailed plan for topics 1 and 2: `docs/plan_omar_tree_ns2_2026-10-14.md` (Phase 0 desk reading done).**
+
 Three topics. Topics 1 and 2 are decided in outline; topic 3 is the FBL follow-up. Status: **collecting; no work started** (author's instruction 2026-10-14). Replaces the "reduced shakedown" in `lab_sessions/next_session_plan.md` (obsolete, see the banner there).
 
 ## Topic 1 — One controller tree: Omar's C controller (controller 9) with NS2 on top
