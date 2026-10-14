@@ -29,7 +29,8 @@ WARMUP_TICKS = 800
 def main() -> None:
     side, npz_path, out_csv, ov_path = sys.argv[1:5]
     flight_cfg_path = sys.argv[5] if len(sys.argv) > 5 else str(Path(npz_path).parent / "flight_config.json")
-    sys.path.insert(0, "/home/georg/Desktop/crazyflie-firmware/build")
+    import os
+    sys.path.insert(0, os.environ.get("CFFIRMWARE_DIR", "/home/georg/Desktop/crazyflie-firmware/build"))
     import cffirmware as fw  # noqa: E402
 
     ov = json.loads(Path(ov_path).read_text())

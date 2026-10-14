@@ -1,9 +1,9 @@
 diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
 new file mode 100644
-index 00000000..cf888b6a
+index 00000000..027e080a
 --- /dev/null
 +++ b/src/modules/src/controller/controller_omar_indi.c
-@@ -0,0 +1,597 @@
+@@ -0,0 +1,598 @@
 +/*
 +The MIT License (MIT)
 +
@@ -125,6 +125,7 @@ index 00000000..cf888b6a
 +  // copy default values (bindings), or NOP (firmware)
 +  *self = g_self;
 +  ns2_reset(&self->ns2);
++  ns2_publish_ready();
 +
 +  paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
 +  logVarRpm1 = logGetVarId("rpm", "m1");

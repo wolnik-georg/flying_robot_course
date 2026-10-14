@@ -1,9 +1,9 @@
 diff --git a/src/modules/interface/ns2_residual.h b/src/modules/interface/ns2_residual.h
 new file mode 100644
-index 00000000..88e6ef02
+index 00000000..a0a33363
 --- /dev/null
 +++ b/src/modules/interface/ns2_residual.h
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,66 @@
 +/*
 + * NS2 (Neural-Swarm 2) learned interaction residual, C implementation for the Omar C controller tree.
 + *
@@ -61,7 +61,12 @@ index 00000000..88e6ef02
 + * The result is in s->hold. Always evaluates (and logs), whatever rnn.en says. */
 +void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick);
 +
-+/* rnn.en != 0 and the weights are present: the prediction may be used by the controller. */
++/* Firmware only: publish rnn.ready = 1 (the weights are in flash). Called at controller init and from ns2_update so the
++ * flag reads 1 as soon as controller 9 is selected, before any setpoint. No-op in host/SIL builds, where rnn.* globals
++ * are shared between drones and controllers and must not be touched as a side effect. */
++void ns2_publish_ready(void);
++
++/* rnn.en != 0 and the weights are present (firmware: and rnn.ready): the prediction may be used by the controller. */
 +bool ns2_active(void);
 +
 +#endif // __NS2_RESIDUAL_H__
@@ -79,10 +84,10 @@ index 874f9640..b6019916 100644
  obj-$(CONFIG_POWER_DISTRIBUTION_QUADROTOR) += power_distribution_quadrotor.o
 diff --git a/src/modules/src/ns2_residual.c b/src/modules/src/ns2_residual.c
 new file mode 100644
-index 00000000..73ca02d1
+index 00000000..443b5183
 --- /dev/null
 +++ b/src/modules/src/ns2_residual.c
-@@ -0,0 +1,270 @@
+@@ -0,0 +1,293 @@
 +/*
 + * NS2 learned interaction residual -- C implementation (see ns2_residual.h).
 + * Exact counterpart of flying_drone_stack/firmware_app/src/residual_nn.rs and the peer logic in src/lib.rs.
@@ -303,18 +308,33 @@ index 00000000..73ca02d1
 +  ns2_eval_rel((const float (*)[3])rel_p, (const float (*)[3])rel_v, n, pos[2], vel, mass, out_accel, clamped);
 +}
 +
++void ns2_publish_ready(void)
++{
++#ifndef UNIT_TEST_MODE
++  if (&g_rnn_ready != 0) {
++    g_rnn_ready = ns2_weights_present() ? 1 : 0;
++  }
++#endif
++}
++
 +bool ns2_active(void)
 +{
-+  return ns2_weights_present() && (&g_rnn_en != 0) && (&g_rnn_ready != 0) && (g_rnn_en != 0) && (g_rnn_ready != 0);
++  if (!ns2_weights_present() || (&g_rnn_en == 0) || (g_rnn_en == 0)) {
++    return false;
++  }
++#ifndef UNIT_TEST_MODE
++  if ((&g_rnn_ready == 0) || (g_rnn_ready == 0)) {
++    return false;
++  }
++#endif
++  return true;
 +}
 +
 +void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick)
 +{
 +  /* Weights are in flash: the network is ready from boot (the Rust rnn_service that sets this for controller 6
-+   * does not run while controller 9 is selected). */
-+  if (&g_rnn_ready != 0) {
-+    g_rnn_ready = ns2_weights_present() ? 1 : 0;
-+  }
++   * does not run while controller 9 is selected). Firmware builds only, see ns2_publish_ready(). */
++  ns2_publish_ready();
 +
 +  uint32_t div = 10;
 +  if (&g_rnn_div != 0) {
@@ -323,16 +343,23 @@ index 00000000..73ca02d1
 +
 +  const bool do_eval = (s->started == 0) || ((tick % div) == 0);
 +  if (do_eval) {
++#ifndef UNIT_TEST_MODE
 +    const uint64_t t0 = usecTimestamp();
++#endif
 +    float out[3];
 +    uint8_t cl = 0;
 +    ns2_eval(s, pos, vel, mass, out, &cl);
++#ifndef UNIT_TEST_MODE
 +    const uint64_t t1 = usecTimestamp();
++#endif
 +    s->hold[0] = out[0]; s->hold[1] = out[1]; s->hold[2] = out[2];
 +    s->hold_clamped = cl;
 +    s->started = 1;
 +
-+    /* Timing, same bookkeeping as rnn_record_timing in lib.rs. */
++    /* Timing, same bookkeeping as rnn_record_timing in lib.rs. Skipped in host builds: the host's usecTimestamp()
++     * stub advances a fake clock by 2000 us per CALL, so two extra calls here would change the dt that the
++     * Omar INDI derives from the same clock (a simulation artifact, not a hardware effect). */
++#ifndef UNIT_TEST_MODE
 +    if (&g_rnn_us_last != 0 && &g_rnn_us_max != 0 && &g_rnn_us_avg != 0) {
 +      if (&g_rnn_rst != 0 && g_rnn_rst != 0) {
 +        g_rnn_us_max = 0;
@@ -347,6 +374,7 @@ index 00000000..73ca02d1
 +      }
 +      g_rnn_us_avg = g_rnn_us_avg * (15.0f / 16.0f) + ((float)us) * (1.0f / 16.0f);
 +    }
++#endif
 +  }
 +
 +  if (rnn_pred_write != 0) {

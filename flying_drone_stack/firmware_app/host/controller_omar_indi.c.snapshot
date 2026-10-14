@@ -119,6 +119,7 @@ void controllerOmarIndiInit(controllerOmarIndi_t* self)
   // copy default values (bindings), or NOP (firmware)
   *self = g_self;
   ns2_reset(&self->ns2);
+  ns2_publish_ready();
 
   paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
   logVarRpm1 = logGetVarId("rpm", "m1");
