@@ -34,3 +34,5 @@ The yaml keeps `res_sign: -1` for cf5 because cf5's default is `ctrl_mode: 0` â€
 Fresh batteries (rest â‰¥ 4.1 V), pose bag, `check_usd_deck.py`, cf_second card first, never touch `res_sign` and `rnn.en` mid-session without writing it into the lab session doc.
 
 **DECISION 2026-10-14 (author): Pure INDI of the study = Omar C + z integral 1.5 (controller 9).** Ours stays frozen as supplementary (`docs/77`); the Omar's-values variants of ours and of Tal & Karaman are not flown.
+
+**UPDATE 2026-10-14 (night): all four study strategies run on Omar's controller tree** (controller 9 on both drones): `Kpos_P 7 / Kpos_D 4` (his defaults, shared), `Kpos_Iz 1.5` in all four, mass 0.0427, his k_t and 30 Hz filters, deck RPM; NS2 (C, flash weights) subtracted like his INDI term; `res_sign`, `ki_z 16` and the controller-6 gains no longer apply to the study.

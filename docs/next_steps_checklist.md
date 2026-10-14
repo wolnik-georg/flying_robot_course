@@ -184,12 +184,17 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 **Closed / dropped**
 - Our INDI liftoff failure (flight 1): outlier. Comparison page of the 11 A8 flights: not wanted. RPM filter motor-2 detail: closed. Optional `--study` chain run, never-flown settings and NS2 thin spots: dropped. Battery start voltage: as fresh as possible, nothing more to do.
 - Tal & Karaman: parked; the only thing prepared is the run with Omar's values (above).
-**⚠ 2026-10-14 evening: plan replaced by `docs/plan_topics_2026-10-14.md` (Omar C tree S0–S3 with NS2 ported to C, NS2 retrain with diverse data + random-waypoint script, FBL follow-up); the list below is obsolete.**
-**Next lab session** (reworked 2026-10-14, plan with commands: `docs/lab_sessions/next_session_plan.md`)
-- [ ] Check both firmwares (`check_active_controller.py`, cf5: 6 and 9); restore the study SD config on the cf5 card (`restore_study_sd_config.py`).
-- [ ] Gates on your go: NS2 v1 confirm, `make_tags.sh --execute` + push tags.
-- [ ] Reduced shakedown, 21 flights: S0, S2, S1 (Omar C + Iz 1.5) × A8, A1, A2, A3, A4, A5, A7 (card rows 1–7, 13–19, 21–27); then quality check, metrics, protocol v1.0, data collection.
-- Dropped 2026-10-14: ours with Omar's values, Tal & Karaman with Omar's values (patches parked), extremes and ours rows of the card.
+**NEXT LAB SESSION — Omar C controller tree with NS2 (state 2026-10-14 night; full commands `docs/lab_sessions/next_session_plan.md`; plan `docs/plan_omar_tree_ns2_2026-10-14.md`)**
+Desk work for the tree is DONE (NS2 in C bit-identical to the Rust flight code, rnn.en = 0 bit-identical to the old Omar C on four logged flights, closed-loop SIL direction, ARM image, yaml patches, strategy blocks, bench tool, label adapter, 66-flight training card); results `docs/ns2_c_phase3_5_results_2026-10-14.md`. **Nothing flashed, nothing flown on the tree.**
+- [ ] 1. Pull both repos; flash BOTH drones with `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin` (sha256 `dfac761a…2d5`, 532 960 B); power-cycle.
+- [ ] 2. Bench per drone: `flying_drone_stack/tools/ns2c_bench_check.py <uri>` (static, no setpoint). Any FAIL → stop and report.
+- [ ] 3. Copy the candidate manifest blocks (`docs/frozen/omar_ns2c_tree/study_manifest_ns2c_candidate.json`) into `crazyswarm2/crazyflie/config/study_manifest.json`; commit + push both repos. Restore the study SD config on both cards.
+- [ ] 4. Fly the tree validation (`tree_S0..S3.patch`, both drones pinned to controller 9): S0 solo hover → S0 A8 → S2 A1 + A8 → S1 solo hover (**INDI takeoff from the ground with Omar's controller is new**) → S1 A8 → S3 A1 + A8. Card `docs/study_shakedown_card.md`. Abort rule protocol §4.
+- [ ] 5. After flying: `ns2c_bench_check.py <uri> --post-flight` (reads `rnn.us_max`); define the timing limit; copy uSD logs (cf_second first), quality check, archive cards.
+- [ ] 6. Then, if clean: dedicated NS2 training flights `docs/ns2_training_flight_card.md` (66 flights, S0, session `ns2_train`; includes R1 random-waypoint flights), merge with `merge_usd_logs.py --meta … --roles … --omar-labels deck`, retrain (`run_c2_lab_retrain.py`), LOO gate, `export_weights_c.py` → new `ns2_weights.c` → new image → new manifest hash; only then S2/S3 study flights with the new weights.
+- [ ] 7. Re-fly baselines on the tree (tier 1: 48 cells, 240 clean flights) after protocol v1.0 is re-frozen for S0–S3.
+- Open decisions / risks: INDI takeoff from the ground (fallback: takeoff with indi 0, switch to 3 at altitude — framework change not yet made); timing limit for `rnn.us_max`; RPM source for the final labels (deck vs DShot); NS2 v1 stays only until the retrain; supervisor not yet consulted about Pure INDI = Omar C and the unified tree.
+- Dropped / parked (do not re-propose): ours with Omar's values, Tal & Karaman with Omar's values, `--study` chain run with controller 6, Omar Rust, the reduced controller-6 shakedown (obsolete).
 **Writing** stays off until you ask.
 
 ## Beyond the INDI / NS2 / FBL decisions (preserved 2026-10-13)

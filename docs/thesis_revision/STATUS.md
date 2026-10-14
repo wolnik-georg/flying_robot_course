@@ -26,6 +26,9 @@ Chapters 6–9 stay skeletons until the study data exists.
 4. Merge chapter by chapter in the order of `followup_report.md` (Ch3, Ch4, Ch5, Ch2, Ch1, Ch6–7, bib last), rebuild after each.
 5. Examiner weak points W1–W5 and student questions: ready fixes in `followup_examiner.md`.
 
+## Update 2026-10-14 night (after the revision)
+The study moved to ONE Omar C controller tree (S0 geometric, S1 INDI, S2 geometric + NS2, S3 INDI + NS2, FBL = S4; `docs/plan_topics_2026-10-14.md`). Consequences for the draft, to apply only after the tree is validated on the drones: Ch4 describes Omar's controller (one law with an `indi` switch, shared position gains, z integral) for all strategies and the NS2 term entering as `a_d − a_nn`; the Ch4 table needs the four strategies (hybrid S3 now in scope, Ch1 scope/gap sentences change; FBL becomes S4); D-01 (residual sign) is moot because Omar's controller subtracts the residual; D-02 integrals = Omar's `Kpos_Iz`; D-06 filters = Omar's 30 Hz; the logging statement ("one residual definition under every controller") needs the caveat that `indi.a_res` is not computed on the tree and the residual is `a_imu_f − a_rpm_f` (reconstructed offline for indi 0). No flown results enter the draft.
+
 ## Files
 `author_decisions.md` (decisions + V items), `followup_report.md` (open items, merge order), `followup_verify_closure.md`,
 `followup_bib_corrections.md`, `followup_diff_audit*.md`, `followup_examiner.md`, `revised/` (chapters + `thesis_draft.tex`),
