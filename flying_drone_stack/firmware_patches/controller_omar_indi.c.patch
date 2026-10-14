@@ -1,9 +1,9 @@
 diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
 new file mode 100644
-index 00000000..9ecf5198
+index 00000000..cf888b6a
 --- /dev/null
 +++ b/src/modules/src/controller/controller_omar_indi.c
-@@ -0,0 +1,584 @@
+@@ -0,0 +1,597 @@
 +/*
 +The MIT License (MIT)
 +
@@ -124,6 +124,7 @@ index 00000000..9ecf5198
 +{
 +  // copy default values (bindings), or NOP (firmware)
 +  *self = g_self;
++  ns2_reset(&self->ns2);
 +
 +  paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
 +  logVarRpm1 = logGetVarId("rpm", "m1");
@@ -243,6 +244,18 @@ index 00000000..9ecf5198
 +      veltmul(self->Kpos_D, vel_e),
 +      veltmul(self->Kpos_P, pos_e),
 +      i_term);
++
++    // NS2 learned residual (2026-10-14). Evaluated and logged under every strategy (rnn.* group of traj_iface.c),
++    // used only when rnn.en = 1: the prediction estimates the measured residual and is subtracted, the same sign
++    // as Omar's own INDI term below. With rnn.en = 0 a_d is untouched (bit-identical to the unpatched controller).
++    {
++      const float ns2_pos[3] = {state->position.x, state->position.y, state->position.z};
++      const float ns2_vel[3] = {state->velocity.x, state->velocity.y, state->velocity.z};
++      ns2_update(&self->ns2, ns2_pos, ns2_vel, self->mass, tick);
++      if (ns2_active()) {
++        a_d = vsub(a_d, mkvec(self->ns2.hold[0], self->ns2.hold[1], self->ns2.hold[2]));
++      }
++    }
 +
 +    struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
 +    struct mat33 R = quat2rotmat(q);

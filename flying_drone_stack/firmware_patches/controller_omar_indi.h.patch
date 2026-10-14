@@ -1,9 +1,9 @@
 diff --git a/src/modules/interface/controller/controller_omar_indi.h b/src/modules/interface/controller/controller_omar_indi.h
 new file mode 100644
-index 00000000..cff702a0
+index 00000000..f9236c56
 --- /dev/null
 +++ b/src/modules/interface/controller/controller_omar_indi.h
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,97 @@
 +/*
 +The MIT License (MIT)
 +
@@ -31,6 +31,7 @@ index 00000000..cff702a0
 +#define __CONTROLLER_OMAR_INDI_H__
 +
 +#include "stabilizer_types.h"
++#include "ns2_residual.h"
 +
 +// This structure contains the mutable state and inmutable parameters
 +typedef struct controllerOmarIndi_s {
@@ -77,6 +78,9 @@ index 00000000..cff702a0
 +    struct vec omega_r;
 +    struct vec u;
 +    struct vec omega_des_dot;
++
++    // NS2 learned residual (2026-10-14, additive; inert unless rnn.en = 1)
++    ns2_state_t ns2;
 +} controllerOmarIndi_t;
 +
 +

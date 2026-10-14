@@ -118,6 +118,7 @@ void controllerOmarIndiInit(controllerOmarIndi_t* self)
 {
   // copy default values (bindings), or NOP (firmware)
   *self = g_self;
+  ns2_reset(&self->ns2);
 
   paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
   logVarRpm1 = logGetVarId("rpm", "m1");
@@ -198,6 +199,13 @@ void controllerOmarIndi(controllerOmarIndi_t* self, control_t *control, const se
   struct vec xc = mkvec(cosf(desiredYaw), sinf(desiredYaw), 0);
   struct vec yc = mkvec(-sinf(desiredYaw), cosf(desiredYaw), 0);
 
+  if (self->Kpos_I.z != 0.0f
+      && setpoint->mode.x != modeAbs
+      && setpoint->mode.y != modeAbs
+      && setpoint->mode.z != modeAbs) {
+    self->i_error_pos.z = 0.0f;
+  }
+
   // Position controller
   if (   setpoint->mode.x == modeAbs
       || setpoint->mode.y == modeAbs
@@ -212,15 +220,36 @@ void controllerOmarIndi(controllerOmarIndi_t* self, control_t *control, const se
     struct vec pos_e = vclampscl(vsub(pos_d, statePos), -self->Kpos_P_limit, self->Kpos_P_limit);
     struct vec vel_e = vclampscl(vsub(vel_d, stateVel), -self->Kpos_D_limit, self->Kpos_D_limit);
     self->i_error_pos = vadd(self->i_error_pos, vscl(dt, pos_e));
+    if (self->Kpos_I.z != 0.0f) {
+      self->i_error_pos.z = clamp(self->i_error_pos.z, -self->Kpos_I_limit, self->Kpos_I_limit);
+    }
     self->p_error = pos_e;
     self->v_error = vel_e;
 
     // desired acceleration
+    struct vec i_term = veltmul(self->Kpos_I, self->i_error_pos);
+    if (self->Kpos_I.z != 0.0f) {
+      i_term.x = 0.0f;
+      i_term.y = 0.0f;
+      i_term.z = self->Kpos_I.z * self->i_error_pos.z;
+    }
     struct vec a_d = vadd4(
       acc_d,
       veltmul(self->Kpos_D, vel_e),
       veltmul(self->Kpos_P, pos_e),
-      veltmul(self->Kpos_I, self->i_error_pos));
+      i_term);
+
+    // NS2 learned residual (2026-10-14). Evaluated and logged under every strategy (rnn.* group of traj_iface.c),
+    // used only when rnn.en = 1: the prediction estimates the measured residual and is subtracted, the same sign
+    // as Omar's own INDI term below. With rnn.en = 0 a_d is untouched (bit-identical to the unpatched controller).
+    {
+      const float ns2_pos[3] = {state->position.x, state->position.y, state->position.z};
+      const float ns2_vel[3] = {state->velocity.x, state->velocity.y, state->velocity.z};
+      ns2_update(&self->ns2, ns2_pos, ns2_vel, self->mass, tick);
+      if (ns2_active()) {
+        a_d = vsub(a_d, mkvec(self->ns2.hold[0], self->ns2.hold[1], self->ns2.hold[2]));
+      }
+    }
 
     struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
     struct mat33 R = quat2rotmat(q);

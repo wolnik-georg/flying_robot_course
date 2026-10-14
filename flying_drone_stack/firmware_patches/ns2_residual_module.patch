@@ -1,0 +1,355 @@
+diff --git a/src/modules/interface/ns2_residual.h b/src/modules/interface/ns2_residual.h
+new file mode 100644
+index 00000000..88e6ef02
+--- /dev/null
++++ b/src/modules/interface/ns2_residual.h
+@@ -0,0 +1,61 @@
++/*
++ * NS2 (Neural-Swarm 2) learned interaction residual, C implementation for the Omar C controller tree.
++ *
++ * Reproduces flying_drone_stack/firmware_app/src/residual_nn.rs (ResidualNet::eval) and the peer handling in
++ * src/lib.rs (rnn_predict_eval / rnn_predict). Specification: docs/ns2_c_module_spec.md in flying_robot_course.
++ *
++ * Output is a world-frame acceleration, z component only, in m/s^2: the network's estimate of the measured
++ * residual (a_meas - a_model). The Omar controller subtracts it (a_d - a_nn), the same sign as its own INDI term.
++ *
++ * Weights are flash-resident, generated from the frozen .npz by tools/residual/export_weights_c.py into
++ * firmware_app/ns2_weights.c (symbols ns2_w_phi_s / ns2_w_phi_g / ns2_w_rho_s). Parameters and logs are the
++ * existing rnn.* group of traj_iface.c; this module only reads/writes those globals.
++ */
++#ifndef __NS2_RESIDUAL_H__
++#define __NS2_RESIDUAL_H__
++
++#include <stdint.h>
++#include <stdbool.h>
++
++#define NS2_MAX_NEIGHBOURS 3
++
++typedef struct {
++  float x, y, z;
++  uint32_t ts;
++} ns2_peer_prev_t;
++
++typedef struct {
++  ns2_peer_prev_t prev[NS2_MAX_NEIGHBOURS];  // previous peer sample (position, timestamp ms)
++  float vel[NS2_MAX_NEIGHBOURS][3];          // last peer velocity estimate
++  float hold[3];                             // last evaluated prediction (world frame, m/s^2)
++  uint8_t hold_clamped;                      // clamp / fault flag of the held evaluation
++  uint8_t started;                           // 0 until the first evaluation
++} ns2_state_t;
++
++void ns2_reset(ns2_state_t *s);
++
++/* True when the flash weights are linked into this image. */
++bool ns2_weights_present(void);
++
++/* Full evaluation from peer_get_all(); updates the peer-velocity history in s.
++ * pos/vel: own position (m) and velocity (m/s), world frame. mass: kg. */
++void ns2_eval(ns2_state_t *s, const float pos[3], const float vel[3], float mass,
++              float out_accel[3], uint8_t *clamped);
++
++/* Same, with relative states given explicitly (no peer history). rel_p[k] = peer position - own position,
++ * rel_v[k] = peer velocity - own velocity, k < n <= NS2_MAX_NEIGHBOURS. own_z / own_vel feed the ground term. */
++void ns2_eval_rel(const float rel_p[][3], const float rel_v[][3], int n,
++                  float own_z, const float own_vel[3], float mass,
++                  float out_accel[3], uint8_t *clamped);
++
++/* Controller glue, called once per executed controller tick with the main-loop tick:
++ *  - sets rnn.ready (weights are in flash), honours rnn.div / rnn.rst,
++ *  - evaluates on the first call and whenever tick % rnn.div == 0, otherwise republishes the held value,
++ *  - writes rnn.pred_x/y/z, rnn.clamped, rnn.us_*.
++ * The result is in s->hold. Always evaluates (and logs), whatever rnn.en says. */
++void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick);
++
++/* rnn.en != 0 and the weights are present: the prediction may be used by the controller. */
++bool ns2_active(void);
++
++#endif // __NS2_RESIDUAL_H__
+diff --git a/src/modules/src/Kbuild b/src/modules/src/Kbuild
+index 874f9640..b6019916 100644
+--- a/src/modules/src/Kbuild
++++ b/src/modules/src/Kbuild
+@@ -27,6 +27,7 @@ obj-y += msp.o
+ obj-y += param_logic.o
+ obj-y += param_task.o
+ obj-y += peer_localization.o
++obj-y += ns2_residual.o
+ obj-y += planner.o
+ obj-y += platformservice.o
+ obj-$(CONFIG_POWER_DISTRIBUTION_QUADROTOR) += power_distribution_quadrotor.o
+diff --git a/src/modules/src/ns2_residual.c b/src/modules/src/ns2_residual.c
+new file mode 100644
+index 00000000..73ca02d1
+--- /dev/null
++++ b/src/modules/src/ns2_residual.c
+@@ -0,0 +1,270 @@
++/*
++ * NS2 learned interaction residual -- C implementation (see ns2_residual.h).
++ * Exact counterpart of flying_drone_stack/firmware_app/src/residual_nn.rs and the peer logic in src/lib.rs.
++ */
++#include <math.h>
++#include <string.h>
++
++#include "ns2_residual.h"
++#include "usec_time.h"
++
++/* The host SIL build renames peer_get_all (-Dpeer_get_all=peer_get_all_fw_unused, for traj_iface.c). This module
++ * must call the real one (the injected stub on the host, traj_iface.c on the drone), like host/oot_host.c does. */
++#undef peer_get_all
++
++#define PHI_IN_S 6
++#define PHI_IN_G 4
++#define PHI_L1 25
++#define PHI_L2 40
++#define PHI_L3 40
++#define HIDDEN 20
++#define RHO_L1 40
++#define RHO_L2 40
++#define RHO_L3 40
++#define N_PHI_S 3675
++#define N_PHI_G 3625
++#define N_RHO 4161
++
++#define GATE_DXY 0.2f
++#define GATE_DVX 1.5f
++#define GRAMS_TO_NEWTONS (9.81f / 1000.0f)
++#define OUT_CLAMP 8.0f
++
++/* Symbols provided by firmware_app (traj_iface.c, ns2_weights.c). Weak so that a build without the app still
++ * links; the module is then inert (no weights, rnn.* untouched). */
++extern const float ns2_w_phi_s[N_PHI_S] __attribute__((weak));
++extern const float ns2_w_phi_g[N_PHI_G] __attribute__((weak));
++extern const float ns2_w_rho_s[N_RHO] __attribute__((weak));
++extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max) __attribute__((weak));
++extern void rnn_pred_write(float x, float y, float z, uint8_t clamped) __attribute__((weak));
++extern uint8_t g_rnn_en __attribute__((weak));
++extern uint8_t g_rnn_ready __attribute__((weak));
++extern uint8_t g_rnn_div __attribute__((weak));
++extern uint8_t g_rnn_rst __attribute__((weak));
++extern uint16_t g_rnn_us_last __attribute__((weak));
++extern uint16_t g_rnn_us_max __attribute__((weak));
++extern float g_rnn_us_avg __attribute__((weak));
++
++/* Scratch (single caller: the stabilizer task; the host runs drones sequentially in one thread). */
++static float phi_h1[PHI_L1];
++static float phi_h2[PHI_L2];
++static float phi_h3[PHI_L3];
++static float phi_out[HIDDEN];
++static float rho_h1[RHO_L1];
++static float rho_h2[RHO_L2];
++static float rho_h3[RHO_L3];
++static float rho_out[1];
++static float rho_in[HIDDEN];
++
++bool ns2_weights_present(void)
++{
++  return (&ns2_w_phi_s[0] != 0) && (&ns2_w_phi_g[0] != 0) && (&ns2_w_rho_s[0] != 0);
++}
++
++/* One fully-connected layer with ReLU: n_out rows of n_in weights, then n_out biases (nn.Linear). Returns the
++ * offset just past the weights it consumed. */
++static int layer_relu(const float *w, int off, const float *x, int n_in, float *y, int n_out)
++{
++  for (int j = 0; j < n_out; j++) {
++    float acc = w[off + n_out * n_in + j];
++    const int row = off + j * n_in;
++    for (int i = 0; i < n_in; i++) {
++      acc += w[row + i] * x[i];
++    }
++    y[j] = (acc > 0.0f) ? acc : 0.0f;
++  }
++  return off + n_out * n_in + n_out;
++}
++
++static int layer_linear(const float *w, int off, const float *x, int n_in, float *y, int n_out)
++{
++  for (int j = 0; j < n_out; j++) {
++    float acc = w[off + n_out * n_in + j];
++    const int row = off + j * n_in;
++    for (int i = 0; i < n_in; i++) {
++      acc += w[row + i] * x[i];
++    }
++    y[j] = acc;
++  }
++  return off + n_out * n_in + n_out;
++}
++
++static void phi_forward(const float *w, const float *x, int n_in)
++{
++  int o = 0;
++  o = layer_relu(w, o, x, n_in, phi_h1, PHI_L1);
++  o = layer_relu(w, o, phi_h1, PHI_L1, phi_h2, PHI_L2);
++  o = layer_relu(w, o, phi_h2, PHI_L2, phi_h3, PHI_L3);
++  (void)layer_linear(w, o, phi_h3, PHI_L3, phi_out, HIDDEN);
++}
++
++static float rho_forward(const float *w, const float *x)
++{
++  int o = 0;
++  o = layer_relu(w, o, x, HIDDEN, rho_h1, RHO_L1);
++  o = layer_relu(w, o, rho_h1, RHO_L1, rho_h2, RHO_L2);
++  o = layer_relu(w, o, rho_h2, RHO_L2, rho_h3, RHO_L3);
++  (void)layer_linear(w, o, rho_h3, RHO_L3, rho_out, 1);
++  return rho_out[0];
++}
++
++void ns2_reset(ns2_state_t *s)
++{
++  memset(s, 0, sizeof(*s));
++}
++
++void ns2_eval_rel(const float rel_p[][3], const float rel_v[][3], int n,
++                  float own_z, const float own_vel[3], float mass,
++                  float out_accel[3], uint8_t *clamped)
++{
++  *clamped = 0;
++  out_accel[0] = out_accel[1] = out_accel[2] = 0.0f;
++  if (!ns2_weights_present()) {
++    return;
++  }
++
++  for (int i = 0; i < HIDDEN; i++) {
++    rho_in[i] = 0.0f;
++  }
++
++  /* Ground interaction -- unconditional, every evaluation, regardless of neighbours. */
++  {
++    const float ground_x[PHI_IN_G] = {0.0f - own_z, -own_vel[0], -own_vel[1], -own_vel[2]};
++    phi_forward(ns2_w_phi_g, ground_x, PHI_IN_G);
++    for (int i = 0; i < HIDDEN; i++) {
++      rho_in[i] += phi_out[i];
++    }
++  }
++
++  /* Neighbours: every vehicle here is "small", so always phi_S / rho_S. */
++  const int nn = (n < NS2_MAX_NEIGHBOURS) ? n : NS2_MAX_NEIGHBOURS;
++  for (int k = 0; k < nn; k++) {
++    const float *dp = rel_p[k];
++    const float *dv = rel_v[k];
++    const bool gated = (fabsf(dp[0]) < GATE_DXY) && (fabsf(dp[1]) < GATE_DXY) && (fabsf(dv[0]) < GATE_DVX);
++    if (!gated) {
++      continue;
++    }
++    const float x[PHI_IN_S] = {dp[0], dp[1], dp[2], dv[0], dv[1], dv[2]};
++    phi_forward(ns2_w_phi_s, x, PHI_IN_S);
++    for (int i = 0; i < HIDDEN; i++) {
++      rho_in[i] += phi_out[i];
++    }
++  }
++
++  const float faz_grams = rho_forward(ns2_w_rho_s, rho_in);
++  float faz_accel = (faz_grams * GRAMS_TO_NEWTONS) / mass;
++
++  if (!isfinite(faz_accel)) {
++    *clamped = 1;
++    return;
++  }
++  const float mag = fabsf(faz_accel);
++  if (mag > OUT_CLAMP) {
++    *clamped = 1;
++    faz_accel = faz_accel * (OUT_CLAMP / mag);
++  }
++  out_accel[2] = faz_accel;
++}
++
++void ns2_eval(ns2_state_t *s, const float pos[3], const float vel[3], float mass,
++              float out_accel[3], uint8_t *clamped)
++{
++  float xs[NS2_MAX_NEIGHBOURS] = {0}, ys[NS2_MAX_NEIGHBOURS] = {0}, zs[NS2_MAX_NEIGHBOURS] = {0};
++  uint32_t ts[NS2_MAX_NEIGHBOURS] = {0};
++  float rel_p[NS2_MAX_NEIGHBOURS][3] = {{0}};
++  float rel_v[NS2_MAX_NEIGHBOURS][3] = {{0}};
++  int n = 0;
++
++  if (peer_get_all != 0) {
++    n = (int)peer_get_all(xs, ys, zs, ts, NS2_MAX_NEIGHBOURS);
++  }
++  if (n > NS2_MAX_NEIGHBOURS) {
++    n = NS2_MAX_NEIGHBOURS;
++  }
++
++  for (int k = 0; k < n; k++) {
++    float v_peer[3];
++    const uint32_t pt = s->prev[k].ts;
++    const uint32_t ts_new = ts[k];
++    const uint32_t dt_ms = ts_new - pt;  /* wraps like u32::wrapping_sub */
++
++    if (pt == 0) {
++      /* First time seen: no baseline yet, zero relative velocity. */
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++      v_peer[0] = v_peer[1] = v_peer[2] = 0.0f;
++    } else if (ts_new == pt) {
++      /* Timestamp has not advanced: reuse the last estimate. */
++      v_peer[0] = s->vel[k][0]; v_peer[1] = s->vel[k][1]; v_peer[2] = s->vel[k][2];
++    } else if (dt_ms > 0 && dt_ms < 500) {
++      const float inv = 1000.0f / (float)dt_ms;
++      v_peer[0] = (xs[k] - s->prev[k].x) * inv;
++      v_peer[1] = (ys[k] - s->prev[k].y) * inv;
++      v_peer[2] = (zs[k] - s->prev[k].z) * inv;
++      s->vel[k][0] = v_peer[0]; s->vel[k][1] = v_peer[1]; s->vel[k][2] = v_peer[2];
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++    } else {
++      /* Timestamp advanced but the gap is invalid (>= 500 ms, wrap, backwards): resync like first-seen. */
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++      v_peer[0] = v_peer[1] = v_peer[2] = 0.0f;
++    }
++
++    rel_p[k][0] = xs[k] - pos[0]; rel_p[k][1] = ys[k] - pos[1]; rel_p[k][2] = zs[k] - pos[2];
++    rel_v[k][0] = v_peer[0] - vel[0]; rel_v[k][1] = v_peer[1] - vel[1]; rel_v[k][2] = v_peer[2] - vel[2];
++  }
++
++  ns2_eval_rel((const float (*)[3])rel_p, (const float (*)[3])rel_v, n, pos[2], vel, mass, out_accel, clamped);
++}
++
++bool ns2_active(void)
++{
++  return ns2_weights_present() && (&g_rnn_en != 0) && (&g_rnn_ready != 0) && (g_rnn_en != 0) && (g_rnn_ready != 0);
++}
++
++void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick)
++{
++  /* Weights are in flash: the network is ready from boot (the Rust rnn_service that sets this for controller 6
++   * does not run while controller 9 is selected). */
++  if (&g_rnn_ready != 0) {
++    g_rnn_ready = ns2_weights_present() ? 1 : 0;
++  }
++
++  uint32_t div = 10;
++  if (&g_rnn_div != 0) {
++    div = (g_rnn_div == 0) ? 1 : g_rnn_div;
++  }
++
++  const bool do_eval = (s->started == 0) || ((tick % div) == 0);
++  if (do_eval) {
++    const uint64_t t0 = usecTimestamp();
++    float out[3];
++    uint8_t cl = 0;
++    ns2_eval(s, pos, vel, mass, out, &cl);
++    const uint64_t t1 = usecTimestamp();
++    s->hold[0] = out[0]; s->hold[1] = out[1]; s->hold[2] = out[2];
++    s->hold_clamped = cl;
++    s->started = 1;
++
++    /* Timing, same bookkeeping as rnn_record_timing in lib.rs. */
++    if (&g_rnn_us_last != 0 && &g_rnn_us_max != 0 && &g_rnn_us_avg != 0) {
++      if (&g_rnn_rst != 0 && g_rnn_rst != 0) {
++        g_rnn_us_max = 0;
++        g_rnn_us_avg = 0.0f;
++        g_rnn_rst = 0;
++      }
++      uint32_t us = (uint32_t)(t1 - t0);
++      const uint16_t us16 = (us > 65535u) ? 65535u : (uint16_t)us;
++      g_rnn_us_last = us16;
++      if (us16 > g_rnn_us_max) {
++        g_rnn_us_max = us16;
++      }
++      g_rnn_us_avg = g_rnn_us_avg * (15.0f / 16.0f) + ((float)us) * (1.0f / 16.0f);
++    }
++  }
++
++  if (rnn_pred_write != 0) {
++    rnn_pred_write(s->hold[0], s->hold[1], s->hold[2], s->hold_clamped);
++  }
++}

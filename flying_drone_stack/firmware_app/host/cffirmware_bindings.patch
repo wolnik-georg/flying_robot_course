@@ -256,7 +256,7 @@ index d4ae77ca..90771dc4 100755
  %include "axis3fSubSampler.h"
  %include "outlierFilterTdoa.h"
 diff --git a/bindings/setup.py b/bindings/setup.py
-index 5f650752..24aa5336 100644
+index 5f650752..1349051c 100644
 --- a/bindings/setup.py
 +++ b/bindings/setup.py
 @@ -2,8 +2,30 @@
@@ -290,7 +290,7 @@ index 5f650752..24aa5336 100644
  include = [
      "src/modules/interface",
      "src/modules/interface/controller",
-@@ -42,6 +64,10 @@ fw_sources = [
+@@ -42,6 +64,11 @@ fw_sources = [
      "src/modules/src/controller/controller_mellinger.c",
      "src/modules/src/controller/controller_brescianini.c",
      "src/modules/src/controller/controller_lee.c",
@@ -298,10 +298,11 @@ index 5f650752..24aa5336 100644
 +    "src/modules/src/controller/position_controller_indi.c",
 +    "src/modules/src/controller/controller_omar_indi.c",
 +    "src/modules/src/controller/controller_tk_indi.c",
++    "src/modules/src/ns2_residual.c",   # NS2 in C for the Omar tree (weak links to the app symbols)
      "src/utils/src/pid.c",
      "src/utils/src/filter.c",
      "src/utils/src/num.c",
-@@ -57,17 +83,59 @@ fw_sources = [
+@@ -57,17 +84,60 @@ fw_sources = [
      "src/modules/src/kalman_core/mm_distance.c",
  ]
  
@@ -310,6 +311,7 @@ index 5f650752..24aa5336 100644
 +    oot_sources = [
 +        os.path.join(OOT_DIR, "traj_iface.c"),   # gains/globals, single source of truth
 +        os.path.join(OOT_DIR, "host/oot_host.c"),  # RPM injection + log sinks
++        os.path.join(OOT_DIR, "ns2_weights.c"),    # flash weights of the C NS2 (generated from ns2_v1.npz)
 +    ]
 +    oot_objects = [OOT_LIB]
 +    # traj_iface.c's rpm_get_all reads the RPM deck through the firmware log system,

@@ -25,6 +25,7 @@ SOFTWARE.
 #define __CONTROLLER_OMAR_INDI_H__
 
 #include "stabilizer_types.h"
+#include "ns2_residual.h"
 
 // This structure contains the mutable state and inmutable parameters
 typedef struct controllerOmarIndi_s {
@@ -71,6 +72,9 @@ typedef struct controllerOmarIndi_s {
     struct vec omega_r;
     struct vec u;
     struct vec omega_des_dot;
+
+    // NS2 learned residual (2026-10-14, additive; inert unless rnn.en = 1)
+    ns2_state_t ns2;
 } controllerOmarIndi_t;
 
 
