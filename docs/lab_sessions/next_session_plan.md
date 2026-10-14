@@ -1,3 +1,5 @@
+> **OBSOLETE 2026-10-14 (later the same day):** the study moves to one Omar C controller tree (S0–S3 incl. NS2 on top) and NS2 is retrained; see `docs/plan_topics_2026-10-14.md`. The shakedown below targets controller 6 and will not be flown.
+
 # Next lab session — plan (reworked 2026-10-14, date open) — PLANNED
 
 ## 0. What changed

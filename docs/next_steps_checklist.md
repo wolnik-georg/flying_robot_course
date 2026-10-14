@@ -184,6 +184,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 **Closed / dropped**
 - Our INDI liftoff failure (flight 1): outlier. Comparison page of the 11 A8 flights: not wanted. RPM filter motor-2 detail: closed. Optional `--study` chain run, never-flown settings and NS2 thin spots: dropped. Battery start voltage: as fresh as possible, nothing more to do.
 - Tal & Karaman: parked; the only thing prepared is the run with Omar's values (above).
+**⚠ 2026-10-14 evening: plan replaced by `docs/plan_topics_2026-10-14.md` (Omar C tree S0–S3 with NS2 ported to C, NS2 retrain with diverse data + random-waypoint script, FBL follow-up); the list below is obsolete.**
 **Next lab session** (reworked 2026-10-14, plan with commands: `docs/lab_sessions/next_session_plan.md`)
 - [ ] Check both firmwares (`check_active_controller.py`, cf5: 6 and 9); restore the study SD config on the cf5 card (`restore_study_sd_config.py`).
 - [ ] Gates on your go: NS2 v1 confirm, `make_tags.sh --execute` + push tags.
