@@ -1,3 +1,5 @@
+**Current state and what is left: see `STATUS.md`.**
+
 # Thesis revision runs
 
 Prompts: **one end-to-end prompt `docs/thesis_revision_prompt_full.md`** (single run, seven phases, APPLY / DECISION filter instead of a gate) and the staged set `docs/thesis_revision_prompt.md` (stage-gated: 0 draft audit → 1 source reading → 1b reconcile → 2 coverage and gaps → 3 plan, **gate: author approves** → 4 rewrite per chapter → 5 consistency → 6 examiner and student test). Rules: no flown, lab or simulation results in the draft; citation discipline; one stage per run.

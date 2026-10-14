@@ -1,0 +1,755 @@
+% =====================================================================================
+%  Chapter 2 — Background and Related Work
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT, 23 August 2026 (writing-track item W.5).
+%  REVISED 2026-10-14 (thesis-revision run, Phase 4). Markers: % NEW, % CHANGED, % DECISION,
+%  % VERIFY. Plan rows P2-xx refer to docs/thesis_revision/stage3_revision_plan.md; every changed
+%  prior-work sentence was re-checked against the held PDF (records R01-R18 in
+%  docs/thesis_revision/stage1_sources.md).
+%
+%  CITATION DISCIPLINE — read before editing.
+%  THIS FILE IS THE SOURCE OF TRUTH for every factual claim about prior work. Verify a claim
+%  against the paper itself. Do NOT verify it against, or import it from, any summary, matrix,
+%  ledger or review brief in docs/ — those are stale working notes, archived on 2026-08-27 to
+%  docs/_archive/citation_notes/, and where they disagree with this file, THIS FILE WINS.
+%  Three misattributions in this project came from treating such a note as a source.
+%
+%  A number belongs here only with what it is a number OF: which axis, which training set,
+%  which platform, which experiment, and whether it comes from the abstract or the body.
+%  That distinction — not arithmetic — is what every correction pass has turned on.
+%
+%  Bibliography: docs/references.bib (generated from the arXiv API).
+%
+%  The Lee et al. citation is RESOLVED: CDC 2010 is the primary reference; its equations were
+%  verified against the companion arXiv paper. The remaining \todo{} in §2.9 is a PROVENANCE
+%  NOTE recording which audits support the gap claim, not outstanding work.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+%  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
+% =====================================================================================
+
+\chapter{Background and Related Work}
+\label{ch:related}
+
+Multirotors flying in close proximity disturb one another aerodynamically. The disturbance is
+large enough to destabilise a vehicle, and conventional practice avoids it by keeping the vehicles
+far apart: a Crazyflie~2.0 measures \SI{9}{\centi\metre} rotor-to-rotor, and when the interaction
+between vehicles is left unmodelled, planners have adopted conservative separations, Shi et
+al.~\cite{shi2020neuralswarm} cite \SI{60}{\centi\metre} from earlier planning work as one such
+example. Removing that margin is what makes dense
+formation flight possible, and doing so requires a controller that accounts for the interaction
+rather than avoiding it.
+
+This chapter surveys how that has been attempted. It is organised as an argument rather than a
+catalogue. Section~\ref{sec:rw-physics} establishes what the disturbance is.
+Sections~\ref{sec:rw-reactive} and~\ref{sec:rw-predictive} cover online measurement and offline
+prediction. Section~\ref{sec:rw-inject} treats where a prediction enters the control law;
+Section~\ref{sec:rw-rl} treats learning a corrective action without an explicit force estimate;
+Section~\ref{sec:rw-hybrid} treats combining measurement and prediction.
+Section~\ref{sec:rw-eval} examines how these methods are evaluated. The field's reporting
+conventions make the individual results impossible to compose into a comparison.
+
+Families this thesis does not implement --- direct action learning (Section~\ref{sec:rw-rl}) and
+residuals inside a predictive horizon (Section~\ref{sec:rw-inject}) --- are described briefly.
+Chapter~\ref{ch:control} states where this thesis's compared strategies end.
+
+% -------------------------------------------------------------------------------------
+\section{Multirotor dynamics and baseline control}
+\label{sec:rw-baseline}
+
+Each vehicle $i$ in a team is modelled as a rigid body,
+%
+\begin{align}
+  \dot{p}_i &= v_i, &
+  m\,\dot{v}_i &= -m g e_3 + f_i R_i e_3 + f_{\mathrm{res},i}, \label{eq:rw-trans}\\
+  \dot{R}_i &= R_i \hat{\omega}_i, &
+  J\dot{\omega}_i &= -\omega_i \times J\omega_i + \tau_i + \tau_{\mathrm{res},i},
+  \label{eq:rw-rot}
+\end{align}
+%
+in a world frame with $e_3$ pointing up, where $f_i$ and $\tau_i$ are the collective thrust and
+body torque produced by the rotors. The
+terms $f_{\mathrm{res},i}$ and $\tau_{\mathrm{res},i}$ collect every force and moment the nominal
+model omits. This chapter is concerned with the case in which they are dominated by the
+aerodynamic interaction with neighbouring vehicles. The formulation is developed in
+Chapter~\ref{ch:model}.
+
+% NEW (P2-24): background for the reader on rotations and the attitude error.
+\paragraph{Rotations and the attitude error.}
+The attitude $R_i$ is a rotation matrix: an element of the special orthogonal group $SO(3)$, the
+$3\times3$ matrices with $R^\top R = I$ and $\det R = 1$, which maps vectors from the body frame
+to the world frame. Its third column $R_i e_3$ is therefore the direction of the thrust in the
+world, which is why the thrust appears as $f_i R_i e_3$ in~\eqref{eq:rw-trans}. Position and
+attitude together form the pose, an element of $SE(3)$. The hat map $\hat{\omega}$ in~\eqref{eq:rw-rot}
+turns a vector into the skew-symmetric matrix with $\hat{\omega} x = \omega \times x$; its inverse
+is the vee map $(\cdot)^\vee$. Working with $R$ directly, rather than with three Euler angles,
+avoids the singular configurations at which a three-angle description loses a degree of
+freedom~\cite{lee2010geometricse3}. A geometric controller measures how far $R$ is from a desired
+attitude $R_d$ with the error function $\Psi(R, R_d) = \tfrac12 \operatorname{tr}(I - R_d^\top R)$
+and the attitude error vector $e_R = \tfrac12 (R_d^\top R - R^\top R_d)^\vee$~\cite{lee2010geometricse3}.
+For two attitudes that differ by a rotation of angle $\theta$ about some axis, $\Psi = 1 - \cos\theta$:
+zero when they coincide, one at \SI{90}{\degree} and two at \SI{180}{\degree}. Chapter~\ref{ch:control}
+uses both.
+
+The baseline against which interaction-aware methods are measured is a geometric tracking
+controller on $SE(3)$, which tracks a position trajectory and a single heading direction
+coordinate-free, avoiding the representation singularities of a local attitude
+parameterisation~\cite{lee2010geometrictracking}. Its guarantees are regional rather than global:
+exponential stability for initial attitude errors below \SI{90}{\degree}, and almost-global
+exponential attractiveness below \SI{180}{\degree}. It is the controller three of the
+strategies compared in this thesis build upon, and the one used uncompensated as a reference
+condition. The attitude error function is that work's, verified equation-by-equation against its
+companion arXiv paper, of which version~4 is held~\cite{lee2010geometricse3}; the torque law implemented here is a
+\emph{reduced} form of it, and Chapter~\ref{ch:control} states exactly which terms differ.
+% VERIFY (CDC 2010 not held): the 90/180 degree regions are checked against the companion v4
+%   (Propositions 3 and 4 there); the numbering in the CDC paper is not checked.
+
+A second property of the quadrotor is used throughout: differential flatness. Position and yaw,
+together with their derivatives, determine the full state and the inputs, which allows a
+feedforward term to be computed directly from a planned trajectory. Tal and
+Karaman~\cite{tal2018indi} exploit this to track position and yaw derivatives up to fourth order,
+using flatness-derived feedforward for angular rate and angular acceleration in order to follow
+jerk and snap.
+% NEW (P2-25): what each derivative fixes, from the dynamics above.
+The chain follows from~\eqref{eq:rw-trans} and~\eqref{eq:rw-rot} with the residual set to zero. The
+desired acceleration fixes the thrust vector $f R e_3 = m(\ddot p + g e_3)$, hence the collective
+thrust and the body $z$-axis; the yaw angle then fixes the remaining rotation about that axis, so
+that $R$ is determined. Differentiating once more, the jerk fixes the angular velocity, and the
+snap fixes the angular acceleration and with it, through~\eqref{eq:rw-rot}, the
+torque~\cite{tal2018indi,hsieh2026flatness}. Position and yaw are therefore called the \emph{flat
+outputs}. Flatness recurs in Section~\ref{sec:rw-inject} as a structure that a learned
+correction can either preserve or destroy.
+
+% -------------------------------------------------------------------------------------
+\section{Aerodynamic interaction in multirotor teams}
+\label{sec:rw-physics}
+
+% CHANGED (P2-01): the properties carry their sources.
+The dominant interaction in a vertically stacked formation is the downwash of the upper vehicle
+acting on the lower one. Two properties make it difficult to handle. It is strongly nonlinear,
+growing sharply as the vehicles close and decaying quickly with lateral offset; and it is
+asymmetric, since the vehicle above is affected far less than the one below. On a rig with two
+mounted Crazyflies, the lower vehicle's thrust drops to \SI{65}{\percent} of its hover value at
+the closest vertical separation they report, four centre-to-motor distances (about
+\SI{13}{\centi\metre}), while the upper one retains
+\SI{90}{\percent}; laterally the lower vehicle's thrust is unaltered from an offset of about three
+centre-to-motor distances, whereas vertically the effect persists to about nineteen~\cite{kiran2025downwash}.
+Measurements on a load stand likewise find a downwash that stays concentrated beneath the vehicle
+that produces it, with negligible influence on neighbours outside it apart from small, chaotic
+lateral forces~\cite{gielis2023aggregate}.
+% CHANGED (closing pass, diff audit): 13 cm marked as derived (Delta z / l = 4, l = 32.5 mm, R11);
+%   Gielis' caveat on lateral forces added (R03 Sec. 5).
+
+% CHANGED (P2-02): PIV plane; Gielis sufferer mass; Gielis evaluates its own models.
+Recent experimental work characterises the effect directly rather than inferring it from tracking
+error. Kiran et al.~\cite{kiran2025downwash} measure forces \emph{and} torques with load cells on
+mounted Crazyflies whose roll and yaw are locked and whose motors are driven at a constant hover
+voltage, and use particle image velocimetry in a light sheet through the centre of the front two
+rotors to resolve the wake, for
+a single quadrotor and for a pair; the dynamic cases traverse one vehicle on a rail rather than
+flying it. Gielis et al.~\cite{gielis2023aggregate} measure
+six-degree-of-freedom exogenous forces on a \SI{700}{\gram} multirotor held on a purpose-built
+load stand at hover
+thrust, while up to three further vehicles fly freely around it, and report strong nonlinearities
+in how those interactions aggregate. The vehicle experiencing the disturbance is therefore
+constrained rather than in free flight. Both measure the disturbance as a transducer load rather
+than inferring it from a flight controller's residual, actuation is still present in each, at
+hover thrust, which makes them, \emph{in our reading}, the natural ground truth against which a
+% CHANGED (P2-02): Gielis evaluates its own learned models (R03 Sec. 4.4).
+learned model should be checked. Neither paper makes that claim. Gielis et al.\ evaluate their own
+learned aggregation models against the stand; neither paper evaluates a model learned from
+flight-controller residuals.
+
+Simplified physical models exist. Bauersfeld et al.~\cite{bauersfeld2024airflow} analyse roughly
+\SI{16}{\hour} of hover data across six platforms spanning \SIrange{0.23}{6.3}{\kilo\gram}, and
+show that once the individual propeller wakes have merged the mean flow is well approximated by a
+turbulent jet --- beyond about \num{2.5} motor-to-motor distances $l$ below the vehicle, a length
+scale the abstract renders as ``drone-diameters''. That gives a computationally light alternative
+to computational fluid dynamics. What it estimates is the \emph{time-averaged magnitude} of the
+induced flow \emph{in hover}, not an instantaneous six-degree-of-freedom wrench on a follower. For
+the near field the authors report no closed-form first-principles model and point to computational
+fluid dynamics instead. Formation flight operates in exactly that near field --- our observation,
+not theirs --- which is the practical argument for learning the residual from data rather than
+deriving it.
+% NEW (P2-27): the model's own closed-loop demonstration.
+The model is nonetheless enough for a first-principles predictive compensator in the far field:
+used as a feedforward correction of the throttle while one vehicle passes \SI{1}{\metre} and
+\SI{2}{\metre} below another, it lowered the height RMSE by a factor of about three to
+five~\cite{bauersfeld2024airflow}.
+
+% -------------------------------------------------------------------------------------
+\section{Reactive compensation: measuring the residual online}
+\label{sec:rw-reactive}
+
+The first family estimates the residual from its effect and requires no prior model of the
+interaction. Incremental nonlinear dynamic inversion (INDI) compares measured acceleration with the
+acceleration the nominal model predicts for the actuation actually applied, and attributes the
+difference to unmodelled forces, which it then cancels incrementally.% NEW (P2-06): terminology.
+\footnote{``Reactive'' is used in this thesis for methods that \emph{measure} the residual from its
+effect, whether by INDI or by another online estimator such as an $\mathcal{L}_1$-adaptive
+module~\cite{hsieh2025onlineadaptation}, an adaptive scheme that estimates the disturbance from the
+mismatch between a predicted and a measured state. Part of the model predictive control (MPC)
+literature uses the word differently, for any
+controller that compensates only the disturbance at the current time step, including feedforward
+of a learned model~\cite{chee2024knodedwmpc}; in this thesis such controllers are predictive.}
+
+% NEW (P2-04): how the increment forms the residual, and why the filters must match.
+The mechanism can be stated in one line. If the actuation currently applied produces, according to
+the nominal model, an acceleration $a_{\mathrm{model}}$, and the accelerometer reports
+$a_{\mathrm{meas}}$, the difference is whatever the model omits. INDI does not compute the
+command from the model alone but increments the current one: the new command is the current
+actuation plus the actuation needed to move the measured acceleration to the desired one, so that
+the unmodelled part is carried along inside the measurement rather than being
+modelled~\cite{tal2018indi,smeur2017cascadedindi}. The measured acceleration is noisy and must be
+low-pass filtered, which delays it. The estimate of the current actuation must then be passed
+through an identical filter, so that both terms incur the same phase
+lag~\cite{tal2018indi,smeur2017cascadedindi}; otherwise their difference contains a term produced by
+the unequal delay rather than by a force.
+% CHANGED (closing pass, diff audit): the sources state the requirement; the explanation of the
+%   artefact is the thesis's reasoning and is no longer attributed to them. This requirement recurs in Chapter~\ref{ch:control}.
+
+% CHANGED (P2-03): the 4 Hz position updates belong to the wind-tunnel experiment.
+Smeur et al.~\cite{smeur2017cascadedindi} cascade an inner angular-acceleration INDI loop with an
+outer linear-acceleration INDI loop on a single Parrot Bebop running Paparazzi at
+\SI{512}{\hertz}; the position and velocity loops feeding the acceleration reference remain
+proportional-derivative rather than a third incremental stage. They demonstrate disturbance
+rejection indoors by flying in and out of a \SI{10}{\metre\per\second} open-jet exhaust every
+\SI{14}{\second}, and in that same experiment the motion-capture position reached the vehicle at
+only \SI{4}{\hertz}. A separate outdoor experiment, taking off and holding position on a consumer
+GNSS module in roughly \SI{5.1}{\metre\per\second} average wind, likewise shows that the method
+does not depend on frequent, precise position updates. Tal and Karaman~\cite{tal2018indi} use INDI for robust tracking of
+linear and angular accelerations in aggressive flight on a single custom \SI{609}{\gram} vehicle,
+and state the property that defines the family: no parametric model of the aerodynamic effects is
+required. That claim is narrower than it sounds. Mass, inertia, the motor time constant, control
+effectiveness and the throttle map are still identified. What is dropped is the drag model.
+
+The same work also exposes the family's cost. Tracking snap requires direct control of body torque,
+which those authors achieve using closed-loop motor speed control based on optical encoders on
+their own vehicle's motors~\cite{tal2018indi}; encoders are what \emph{that} snap-and-torque path
+required, not a general prerequisite for INDI. Reconstructing the applied wrench well enough to
+difference it against measurement does, however, generally require some form of rotor-speed
+feedback, Smeur et al.\ likewise use motor-speed
+measurement~\cite{smeur2017cascadedindi}, which is additional hardware or firmware support that
+must be fitted, calibrated and maintained on every vehicle.
+% NEW (P2-05): direct evidence for the sensing requirement on this platform class.
+On a Crazyflie~2.1, an INDI controller that reconstructed the thrust from the motor commands
+instead of measured rotor speeds tracked worse than the uncompensated geometric controller it was
+meant to improve~\cite{cobobriesewitz2026lindi}.
+A second limitation is structural rather than
+practical: the estimate is delayed by the sensing and filtering chain, and it exists only once the
+disturbance has already perturbed the vehicle. A reactive controller cannot, even in principle, act
+before the disturbance arrives.
+% NEW (P2-05): the same limitation as stated by the predictive literature, with its caveat.
+Gielis et al.\ make the same point as a motivation for prediction, that reactive controllers cannot
+reject the interaction without first observing it~\cite{gielis2023aggregate}. Shankar et al.\ note
+that a vehicle docking beneath a leader meets a downwash that a disturbance observer struggles to
+estimate because its convergence time is finite~\cite{shankar2023docking}, and Neural-Swarm2 reports
+that a simple online estimate-and-compensate scheme quickly crashed the vehicle in their
+experiments~\cite{shi2022neuralswarm2}. The last is a single remark without the estimator, its filter
+or data, and is evidence about that scheme rather than about INDI.
+
+That the sensing requirement is not fundamental has since been shown. Cobo-Briesewitz et
+al.~\cite{cobobriesewitz2026lindi} demonstrate that a neural network can generate smooth
+approximations of INDI's residual estimate without rotor-speed measurement, which is discussed in Section~\ref{sec:rw-hybrid}.
+
+% -------------------------------------------------------------------------------------
+\section{Predictive compensation: learning the residual from relative state}
+\label{sec:rw-predictive}
+
+The second family predicts the residual before it acts, from the relative states of the
+neighbours, using a model learned offline from flight data. Because the interaction is a function
+of the team's relative configuration, a model with the right inputs can act ahead of the
+disturbance rather than after it.
+
+% CHANGED (P2-07): the attitude loop.
+Shi et al.~\cite{shi2020neuralswarm} combine a nominal dynamics model with a regularised
+permutation-invariant deep neural network that learns multi-vehicle interaction, and use the
+learned model as a feed-forward term in a decentralised nonlinear tracking position controller;
+the design leaves the attitude controller open, and the experiments use the nonlinear attitude
+tracking controller of Lee et al. The learned
+force itself is the vertical component \(f_{a,z}\), evaluated onboard the STM32. Training
+separate networks on data from two, three and four vehicles respectively, they report worst-case
+height error reduced by a factor of two or better, and up to four times smaller in the most
+favourable case. In a two-vehicle swapping task the baseline reaches \SI{9.4}{\centi\metre};
+the network trained on \emph{four} vehicles brings this to \SI{2.4}{\centi\metre}, while the
+network trained on two vehicles reaches \SI{2.7}{\centi\metre}. The swap experiments use vertical
+neighbour spacings of \SIrange{0.20}{0.25}{\metre}, with \SI{25}{\centi\metre} stated explicitly
+for the three-vehicle case. Generalisation is directional rather than universal: networks trained
+on three or four vehicles improved five-vehicle flight, whereas a network trained only on two
+vehicles did \emph{not} generalise, performing worse than the baseline on three- and four-vehicle
+tests.
+
+% CHANGED (P2-08, P2-26): where each figure is reported; the upgraded-motor qualifier; SN defined.
+Neural-Swarm2~\cite{shi2022neuralswarm2} extends this to heterogeneous teams using heterogeneous
+deep sets, whose permutation-invariant architecture accepts any number of neighbours. That is a
+structural property rather than an accuracy claim: the networks are trained on at most three
+vehicles (at most two neighbours), and the paper describes prediction at sixteen robots as
+relatively less accurate. Two design choices are worth noting. Spectral normalisation is applied:
+it bounds the Lipschitz constant of a network, the largest factor by which its output can change
+relative to a change in its input, by constraining the spectral norm of each weight
+matrix~\cite{shi2020neuralswarm}. The abstract describes this as yielding stability and generalisation
+guarantees; in the body this
+rests on Lipschitz bounds together with empirical generalisation and a bounded-residual assumption
+used in the proofs, rather than a formal guarantee on unseen data. The learned residual is used in
+interaction-aware motion planning as well as in tracking control. The abstract reports up to a
+threefold reduction in worst-case tracking error against a baseline nonlinear tracking controller
+with the interaction force set to zero; the introduction and its first figure report a
+heterogeneous team of sixteen robots flown at a minimum vertical distance of
+\SI{24}{\centi\metre}. We do not assume the two describe the same experiment: on the sixteen-robot
+flight itself the body reports the maximum \(z\)-error of one small vehicle with upgraded motors,
+in one of the vertical rings, falling from \SI{15}{\centi\metre} to \SI{10}{\centi\metre}, a factor
+of about \num{1.5}.
+
+% CHANGED (P2-09): where the 56 % is stated; position and velocity; the leader's position.
+Subsequent work has focused on making these models cheaper to obtain rather than larger. Smith et
+al.~\cite{smith2023so2equivariant} exploit the rotational symmetry of the problem with an
+$SO(2)$-equivariant model, and report that five minutes of real-world flight data attains a lower
+validation error than learning baselines trained on more than fifteen --- a data-efficiency result
+on prediction accuracy rather than a closed-loop tracking one. Deployed online within an optimal
+feedback (LQR) controller on two identical vehicles, the model reduces three-dimensional tracking
+error by \SI{36}{\percent} and, as the abstract states, vertical tracking error by
+\SI{56}{\percent} on average.\footnote{The paper is internally inconsistent on whether the
+\SI{36}{\percent} figure is three-dimensional or lateral: we follow the abstract and the
+translation-result body, which give three-dimensional and vertical. Its contributions list instead
+calls the \SI{36}{\percent} figure lateral. The \SI{56}{\percent} figure appears in the abstract
+and the contributions only; the body reports \SI{55}{\percent} for the translation experiment and
+about \SI{51}{\percent} for the lemniscate.} On a lateral transect flown beneath the hovering
+vehicle they report mean three-dimensional position error falling from \SI{0.154}{\metre} to
+\SI{0.098}{\metre}, close to \SI{36}{\percent}, with vertical improvements of \SI{55}{\percent} in
+position and \SI{49}{\percent} in velocity. The
+platform is not a Crazyflie but a custom quadrotor of roughly \SI{0.26}{\metre} span and
+\SI{0.7}{\kilo\gram}, tracked by OptiTrack and controlled from a Raspberry~Pi at \SI{50}{\hertz}
+with a \SI{45}{\hertz} network update. The closest \emph{training} stage is about
+\SI{0.5}{\metre} --- some two body-lengths --- while the evaluation manoeuvres are flown at
+% CHANGED (P2-09): the hovering vehicle is the leader at NED z = -2.5 m (R04 Sec. V-C).
+\SIrange{0.6}{0.8}{\metre}, together with a lemniscate flown beneath the leader hovering at a
+height of \SI{2.5}{\metre} (\(z = \SI{-2.5}{\metre}\) in their downward-pointing frame). The authors
+attribute the efficiency to exploiting the problem's latent geometry rather than learning it from
+data.
+
+\label{sec:rw-superposition}
+\paragraph{The superposition assumption}
+
+The deep-sets architectures above aggregate per-neighbour terms by summation, which commits them
+to a form of superposition. The literature is explicit that this is an approximation.
+Shi et al.~\cite{shi2020neuralswarm} observe that with more than two vehicles the aerodynamic
+effect is not a simple superposition of each pair. Gielis et al.~\cite{gielis2023aggregate} make
+the same point as their motivation, an accurate model of the downwash from one vehicle is
+unlikely to suffice for predicting the aggregate from several. Their abstract frames this as
+modelling the formation as a graph; the implementation learns the aggregation function with a
+sum-pooling deep-sets predictor, contrasted against a linear-summation baseline.
+% CHANGED (P2-10): "explore", and K = 3 neighbours is four vehicles in total.
+The abstract announces an exploration of how the models generalise when a fourth vehicle is added;
+the largest reported case is three neighbours around the stand, four vehicles in total, and the
+conclusion cautions that the deep-sets model may be incapable of generalising beyond three
+neighbours, so we do not treat generalisation to larger formations as a demonstrated result.
+
+Their measurements refine the picture rather than simply refuting summation. They report that
+interactions fall into three regimes depending on the formation and its location in the state
+space: a chaotic, noise-dominated regime; a linear regime \emph{well estimated by linear
+summation}; and a nonlinear regime requiring a nonlinear model. Superposition is therefore not
+uniformly wrong but regime-dependent, which makes the practical question one of how much accuracy
+is lost, and where. This is their own load-stand result, obtained independently of Shi et al.'s
+free-flight observation cited above.
+% NEW (P2-13 context): the same paper is cited in support of summation elsewhere.
+Both readings are in use: Hsieh et al.\ cite the same measurements in support of approximating the
+aggregate force on a vehicle as a pairwise sum~\cite{hsieh2025onlineadaptation}.
+
+Summed architectures nevertheless remain in wide use, because a controller does not require an
+exact model, only one whose remaining residual is smaller than the one it removes. What is not
+reported is the size of the penalty that the simplification carries for a deployed model, which is
+the question this thesis takes up in the multi-robot results chapter.
+
+% -------------------------------------------------------------------------------------
+\section{Injecting the prediction: the controller matters}
+\label{sec:rw-inject}
+
+A predicted residual is inert until it enters a control law, and the manner of entry differs by
+controller family. Treating ``predictive compensation'' as a single method would obscure
+differences that are as large as those between the families themselves.
+
+% CHANGED (P2-11): the closest published instance of a learned residual fed forward into an SE(3) controller.
+\paragraph{Feedforward into a geometric controller.}
+The simplest injection adds the predicted force to the desired force of the baseline controller,
+leaving its structure unchanged. This is the form used with the permutation-invariant models of
+Section~\ref{sec:rw-predictive}, whose baseline is a nonlinear tracking
+controller~\cite{shi2020neuralswarm,shi2022neuralswarm2}. The closest published instance with a
+geometric controller on $SE(3)$ is a configuration in the hardware study of Hsieh et
+al.~\cite{hsieh2026flatness}: on two Crazyflie~2.1 vehicles, feeding a learned residual forward into
+an $SE(3)$ controller reduced the tracking RMSE by \SI{43.7}{\percent} against the nominal $SE(3)$
+controller, with the controller computed off-board.
+
+\paragraph{Feedback linearisation with a flatness-preserving residual.}
+A learned correction added to a nominal model can destroy differential flatness, and with it the
+applicability of flatness-based planning and control. Yang et al.~\cite{yang2025flatnessresiduals}
+show that residuals with a lower-triangular structure preserve both the local flatness of the system
+and its original flat output for systems whose nominal model admits a pure-feedback form, and give
+a constructive procedure for recovering the diffeomorphism of the augmented system. The residual
+there is a \emph{structured correction inside the state derivative} rather than a free
+six-degree-of-freedom wrench --- in their worked example it appears only in the velocity equation.
+Their validation is in simulation on a planar, two-dimensional quadrotor; there is no hardware, no
+three-dimensional vehicle and no multi-robot downwash experiment, and they list a physical quadrotor
+as future work. Hsieh et
+al.~\cite{hsieh2026flatness} apply the idea to tight formation flight, learning a physics-informed
+residual that keeps the joint multi-quadrotor system differentially flat and using the preserved
+structure to design a feedback-linearising controller that cancels the disturbance by feedforward.
+Their abstract reports a \SI{31}{\percent} reduction in average tracking error against nominal
+baselines; the body does not restate that aggregate, reporting instead, on hardware, \SI{24}{\percent}
+RMSE and \SI{30}{\percent} maximum-\(z\) improvement for reduced-order-model feedback linearisation (ROM-FBL) over nominal feedback linearisation (FBL), and a further
+\SI{29}{\percent} RMSE and \SI{43}{\percent} maximum-\(z\) improvement for learned FBL over
+ROM-FBL.
+
+% CHANGED (P2-12): the introduction's wording against the body's.
+On hardware they match the approximately \SI{5}{\centi\metre} RMSE and \SI{10}{\centi\metre}
+maximum-\(z\) error \emph{reported} by Chee et al.~\cite{chee2024knodedwmpc}, rather than
+comparing the two methods on one rig, although their introduction describes the comparison as
+made in an identical hardware setup; the head-to-head comparison with nonlinear model predictive
+control (NMPC) is in their simulation study, where the flatness-based controller's
+maximum-\(z\) error can be worse than that of NMPC.
+
+The \num{20}-fold reduction in solve time (about \SI{1}{\milli\second} against
+\SI{27}{\milli\second} at equal residual) is a \emph{simulation} figure. The abstract and the
+introduction state an order of magnitude less computation. Training uses \SI{28}{\second} of hardware data
+and \SI{18}{\second} in simulation.
+
+Two qualifications matter for our purposes: the hardware
+experiments use two Crazyflie~2.1 quadrotors with thrust-upgrade bundles --- very nearly the
+platform used in this thesis --- and the controller runs \emph{off-board}, on an Intel~i5 laptop
+streaming commands over a Crazyradio link at \SI{400}{\hertz}, rather than on the vehicle. Their
+\SI{5}{\milli\second} loop is therefore an abstract-level, off-board figure, and the claim it
+supports is that the method is cheap enough to be worth porting, not that it has been shown to run
+onboard.
+
+On hardware they also compensate residual \emph{forces} only, commanding thrust and angular
+velocity, and delegating residual torques to the vehicle's own rate controller, the same scoping
+decision taken in Chapter~\ref{ch:model}. Their simulation study does still model residual torques.
+
+% CHANGED (P2-13): Hsieh et al. 2025 described as what it is; the onboard qualifier.
+\paragraph{Inside a model predictive control horizon.}
+The residual can instead form part of the prediction model that an optimiser reasons over, so that
+the controller plans against a disturbance it expects to meet rather than cancelling the one
+present now. Chee et al.~\cite{chee2024knodedwmpc} embed a learned component inside the prediction
+constraint of a nonlinear MPC (NMPC); Li et al.~\cite{li2023ndpnmpc} inject a predicted downwash-force
+sequence into the optimiser's prediction model. Hsieh et al.~\cite{hsieh2025onlineadaptation} add to
+the MPC of Chee et al.\ an $\mathcal{L}_1$-adaptive module that estimates the residual acceleration
+online, and fly three Crazyflies in two stacked formations with no compensation, the online
+estimate only, the learned prediction only and both. The combination performs best, and for the
+middle vehicle the online estimate alone outperforms the learned prediction alone; the authors
+also note that the estimate without a downwash model responds more slowly when a vehicle enters or
+leaves the wake. Chee et al.\ and Hsieh et al.\ fly Crazyflies but run the
+optimisation off-board. Li et al.\ run their controller on a TX2 NX
+computer carried by the vehicle, which is not of the Crazyflie class. None of the three runs its
+optimiser onboard a Crazyflie-class vehicle. This injection point is not among
+the strategies evaluated here --- its onboard feasibility on a Crazyflie-class platform is itself
+open --- but it is retained in this survey because its evaluation conditions form part of the
+argument in Section~\ref{sec:rw-eval}.
+
+\paragraph{Inside an optimal feedback controller for a docking task.}
+A further instance is worth separating because its task differs in kind. Shankar et
+al.~\cite{shankar2023docking} embed a learned lumped downwash force online in an infinite-horizon
+LQR acting on a feedforward-linearised follower, beneath an inner attitude loop, and use it for
+vertical docking: a leader--follower manoeuvre in which the vehicles close to within one or two
+body-lengths, so that the disturbance is not incidental to the task but constitutive of it. The
+platforms are two custom quadrotors of roughly \SI{0.27}{\metre} diagonal and \SI{0.7}{\kilo\gram},
+not the Crazyflie class, and the free-flight dock is performed at a vertical offset of about
+\SI{0.36}{\metre} --- close to one body-length --- with a curriculum descending to around
+\SI{0.5}{\metre}. The model itself is the $SO(2)$-equivariant one of their prior work, trained
+offline from about five minutes of data and queried online on an onboard Raspberry~Pi, with pose
+from motion capture; the evaluation is hardware only. Reported accuracy depends on the manoeuvre:
+the abstract gives terminal error below \SI{0.06}{\metre}, the body reports terminal vertical error
+typically below \SI{0.1}{\metre} for a hovering leader, and for a moving leader below
+\SI{0.05}{\metre} with the model against more than \SI{0.2}{\metre} without it. Physical docks
+succeeded in eight of ten attempts against a hovering leader at \SI{0.36}{\metre}; against a leader
+moving at \SI{0.25}{\metre\per\second} success was limited, which the authors attribute to the
+follower's oscillation preventing the gripper from closing, and to the gripper's actuation
+latency.
+% CHANGED (P2-14): failure attribution as stated in the paper.
+It is the closest published setting to the tightest
+scenarios of Chapter~\ref{ch:setup}, and the regime in which --- on our reading ---
+compensation ceases to be an accuracy improvement and becomes a precondition for the manoeuvre.
+
+% -------------------------------------------------------------------------------------
+\section{Learning the compensation directly}
+\label{sec:rw-rl}
+
+A third stance declines to model the force at all and learns the corrective action instead. Zhang
+et al.~\cite{zhang2024proxfly} train a residual reinforcement-learning module on top of a cascaded
+controller, compensating the disturbance and thrust loss caused by downwash without forming an
+explicit force estimate at any point. Two properties distinguish the stance sharply from
+Section~\ref{sec:rw-predictive}. The policy observes only tracking error, the baseline controller's
+command and its own previous action --- no neighbour state and no inter-vehicle communication ---
+which removes a bandwidth requirement and a failure mode, at the cost of being unable to anticipate
+a neighbour it cannot perceive. And giving up the explicit force estimate removes the
+predicted-against-measured comparison that every other learned method here is evaluated by, which
+makes failures correspondingly harder to attribute.
+
+This family is not among the strategies evaluated here, for that second reason as much as for
+scope: the evaluation built in Chapter~\ref{ch:setup} rests on the residual being a measurable
+quantity, and a method that never forms one is assessed on tracking performance alone. It remains
+the most natural direction in which to extend the comparison.
+
+% -------------------------------------------------------------------------------------
+\section{Hybrid reactive and predictive compensation}
+\label{sec:rw-hybrid}
+
+% CHANGED (P2-16): the multi-vehicle MPC instance.
+Measurement and prediction are complementary in principle. Prediction is available before the
+disturbance acts but is valid only over the configurations its training data covered; measurement
+is general but delayed. Combining them is therefore natural. It has been done with INDI for a single
+vehicle, described below, and, inside an off-board model predictive controller with an
+$\mathcal{L}_1$ estimate, for a team of three (Section~\ref{sec:rw-inject})~\cite{hsieh2025onlineadaptation}.
+
+Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} propose two methods. In the first, LINDI, a
+neural network replaces INDI's residual estimate entirely, trained on smoothed data obtained by
+spline fitting. In the second, NA-INDI, the total residual is written \(f_a = f_{a,\mathrm{NN}} +
+f_{a,\mathrm{INDI}}\): the network predicts a component and the incremental term reasons about the
+remaining mismatch. Both are evaluated on a single quadrotor, with and without
+a slung payload, on figure-of-eight and circular trajectories, neither of which was in the
+training set.
+
+The headline result concerns sensing rather than the hybrid: a network can generate smooth
+approximations of INDI's output without requiring rotor-speed sensors at LINDI's runtime, which
+removes the hardware prerequisite identified in Section~\ref{sec:rw-reactive} from that method's
+deployment --- though rotor speeds are still needed to produce the training labels, and NA-INDI
+retains an incremental branch that uses them. Without a payload, residual compensation of any kind
+reduces tracking error by around \SI{40}{\percent} relative to the geometric baseline; with a
+payload the reductions are smaller, in the range of \SIrange{19}{24}{\percent}. The hybrid's own
+advantage is real but modest: without a payload it gives the best performance, though the authors
+describe the margin as small, and with a payload the authors describe it as remaining
+\emph{similar} to INDI alone. They also observe a slight drop in performance on the circular
+trajectory --- for LINDI, in the no-payload case --- attributing it to that trajectory being out of
+distribution relative to the training data, a direct instance of the limitation that defines the
+predictive family.
+
+% CHANGED (P2-15, P2-16): residual sources as the paper states them; the team instance.
+Two features of this setting bear on whether the result transfers. The residual there comes from
+the vehicle itself --- the authors list blade flapping, drag and ground forces among the sources of
+such residuals --- and, in the payload experiments, from a slung payload, and it is predicted from
+the vehicle's own state and motor commands. In a multi-robot team the residual is produced by other
+vehicles and is a function of a measurable relative state, which gives the predictive component an
+input the single-vehicle setting does not provide. Whether that turns a small margin into a
+decisive one has been examined on a team only inside an off-board MPC with an $\mathcal{L}_1$
+estimate~\cite{hsieh2025onlineadaptation}, not for an INDI-based hybrid. This thesis does not
+fly such hybrids in the multi-robot campaign.
+
+% -------------------------------------------------------------------------------------
+\section{How these methods are evaluated}
+\label{sec:rw-eval}
+
+% CHANGED (P2-28): where the Smith 56 % comes from.
+The preceding sections describe a field with strong results. Shi et al.~\cite{shi2020neuralswarm}
+report up to a fourfold reduction in worst-case height error. Neural-Swarm2~\cite{shi2022neuralswarm2}
+reports up to a threefold reduction in worst-case tracking error against a zero-interaction
+baseline in one experiment; the sixteen-robot flight is a separate report.
+Smith et al.~\cite{smith2023so2equivariant} report \SI{36}{\percent} three-dimensional and, in the
+abstract, \SI{56}{\percent} vertical tracking improvements. Hsieh et al.~\cite{hsieh2026flatness} state
+\SI{31}{\percent} against nominal baselines in the abstract; the hardware body gives other figures.
+Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} report roughly \SI{40}{\percent} for
+residual compensation without a payload. Taken individually, each result is credible.
+
+They cannot, however, be composed. Table~\ref{tab:rw-conditions} lists the conditions under which
+they were obtained.
+
+% CHANGED (P2-23): caption claim checked against the rows; rows completed.
+\begin{table}[t]
+  \centering
+  \caption{Evaluation conditions across the interaction-force literature. Each result is reported
+    against that work's own baseline; rows that share a platform and team size still differ in
+    baseline controller, separation or reported metric.}
+  \label{tab:rw-conditions}
+  \small
+  \begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.26\linewidth}>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}@{}}
+    \toprule
+    Work & Team size & Separation & Reported quantity \\
+    \midrule
+    Tal and Karaman~\cite{tal2018indi}          & 1                  & n/a (no formation) & aggressive tracking \\
+    Smeur et al.~\cite{smeur2017cascadedindi}   & 1                  & n/a & jet / GNSS position error \\
+    Shi et al.~\cite{shi2020neuralswarm}        & 2--4 train, 2--5 test & \SIrange{0.20}{0.25}{\metre} vert. & max.\ $|z|$ error \\
+    Neural-Swarm2~\cite{shi2022neuralswarm2}    & 16, heterogeneous  & \SI{24}{\centi\metre} vert. & worst-case tracking error\textsuperscript{\dag} \\
+    % CHANGED (P2-23): Smith, Gielis, Hsieh 2026, Hsieh 2025 rows completed (R04, R03, R05, R10).
+    Smith et al.~\cite{smith2023so2equivariant} & 2, custom \SI{0.7}{\kilo\gram} & \SIrange{0.6}{0.8}{\metre} eval.\ (train.\ to $\approx$\SI{0.5}{\metre}) & 3D and vertical tracking; onboard Pi, mocap \\
+    Gielis et al.~\cite{gielis2023aggregate}    & up to 4 total (rig sufferer $+\leq3$ flyers) & test rig, \SI{700}{\gram} sufferer not in free flight & force-prediction accuracy \\
+    Yang et al.~\cite{yang2025flatnessresiduals} & 1, planar (sim.\ only) & n/a & simulation only \\
+    Hsieh et al.~\cite{hsieh2026flatness}       & 2, Crazyflie~2.1   & \SI{0.3}{\metre} and \SI{0.4}{\metre} vert.\textsuperscript{\ddag} & RMSE and max.\ $z$ error vs.\ nominal FBL/$SE(3)$; off-board \\
+    Chee et al.~\cite{chee2024knodedwmpc}       & 2, Crazyflie~2.1   & commanded \SIrange{0.2}{0.4}{\metre}; tight case \(\approx\)\SI{0.08}{\metre} & RMSE / max.\ $z$ vs. nominal MPC; off-board \\
+    Li et al.~\cite{li2023ndpnmpc}               & 2, custom          & neighbour-relative & NMPC with predicted force sequence; onboard TX2 NX + mocap \\
+    Hsieh et al.~\cite{hsieh2025onlineadaptation} & 3, Crazyflie~2.1 & V-stack and I-stack; \SI{0.2}{\metre} and \SIrange{0.3}{0.4}{\metre} vert. & RMSE / max.\ $z$; estimate, prediction and both, in MPC; off-board \\
+    Shankar et al.~\cite{shankar2023docking}    & 2, custom (\(\approx\)\SI{0.27}{\metre}) & dock \(\approx\)\SI{0.36}{\metre} & terminal vert.\ error / dock success; onboard Pi, mocap \\
+    Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi} & 1 (+ payload) & n/a                 & position tracking error \\
+    Zhang et al.~\cite{zhang2024proxfly}        & 2, heterogeneous   & \SI{0.50}{\metre} vert.\ hover/circle; dock to \SI{0.10}{\metre}, release at \SI{0.05}{\metre} & position and attitude error \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.4em}
+  \begin{minipage}{\linewidth}\footnotesize
+    \textsuperscript{\dag}~The sixteen-robot flight and the threefold reduction are separate
+    reports; on the sixteen-robot flight the body gives a factor of about \num{1.5}.
+    \textsuperscript{\ddag}~Hardware tracking comparisons are at commanded
+    \(\Delta z = \SI{0.3}{\metre}\) and \SI{0.4}{\metre}; the \SIrange{0.2}{0.5}{\metre} range
+    belongs to the simulation and prediction evaluation.
+  \end{minipage}
+\end{table}
+
+A \SI{36}{\percent} improvement measured on two vehicles in close proximity and a
+\SI{31}{\percent} improvement measured in a tight formation are not the same quantity: they differ
+in what was flown, on what airframe, at what separation, against what baseline, and under what
+metric. Neither can be subtracted from the other, and their ordering carries no information about
+which method would prevail if both were flown under the same conditions. The difficulty compounds
+where the baselines themselves differ, since an improvement relative to a weaker baseline is
+easier to obtain.
+
+% NEW (P2-17): evaluation practice, described as practice rather than fault.
+The practice behind the rows has common features. Most results are within-paper ablations: one
+controller with the learned term switched on and off, so that each improvement is relative to that
+paper's own nominal
+controller~\cite{shi2020neuralswarm,shi2022neuralswarm2,chee2024knodedwmpc,li2023ndpnmpc,hsieh2026flatness}.
+Metrics converge on a root-mean-square error and a maximum vertical error, but over windows that
+differ --- a whole flight, a crossing, a terminal approach. Repetitions are few, between three and
+twenty per condition~\cite{li2023ndpnmpc,shi2020neuralswarm,hsieh2026flatness,shankar2023docking,cobobriesewitz2026lindi}.
+Separations are mostly reported as commanded; Chee et al.\ report the achieved separation as well,
+which in their tightest case differed markedly from the commanded one~\cite{chee2024knodedwmpc}.
+Data are split for validation in different ways: by contiguous pieces of flight in
+Neural-Swarm2~\cite{shi2022neuralswarm2}, by shuffled samples in Li et al.~\cite{li2023ndpnmpc}, by
+held-out trajectories or separations
+elsewhere~\cite{cobobriesewitz2026lindi,hsieh2026flatness}. Simulation, a processor in the loop with
+a simulator, and flight are different kinds of evidence~\cite{gu2025comparative,yang2025flatnessresiduals},
+as are onboard and off-board execution when computational cost is claimed. And the baselines are
+rarely tuned for themselves; where tuning for fairness is explicit, it is the exception~\cite{gu2025comparative}.
+
+This is not a criticism of any individual work. Each is internally valid, and there is no
+convention in the field that any of them violated. It is a limitation of the literature taken as a
+whole: the results are not designed to compose, and no amount of careful reading assembles them
+into a ranking. A ranking requires an experiment built for that purpose. That is what distinguishes
+a comparison from a survey.
+
+\label{sec:rw-existing-comparisons}
+\paragraph{Comparisons that do exist}
+
+% DECISION D-03: the next sentence ("two recent ones bound what remains open") and the paragraph
+%   that closes this subsection describe only Gu et al. and Abro et al. Hsieh et al. (2025) flies an
+%   online estimate, a learned prediction and both on one three-vehicle rig (Section rw-inject);
+%   Zhang et al. compare a learned residual policy with a model-based relative-position compensator
+%   on one pair. Options and recommended wording in author_decisions.md. Text left unchanged.
+The field does conduct systematic comparisons, and two recent ones bound what remains open.
+
+Gu et al.~\cite{gu2025comparative} benchmark four online-learning uncertainty estimators ---
+extreme learning machines, radial-basis-function networks, echo state networks and Gaussian
+processes --- inside a single modular framework in which a nominal controller is paired with a
+swappable residual-learning module. They treat the uncertainty as a lumped additive wrench
+\((f_a, \tau_a)\) recovered by inverting the discrete Newton--Euler dynamics --- analogous to the
+residual acceleration used here, though not identical to it a priori. They evaluate estimation accuracy, tracking
+performance and computational cost, and reach the kind of conclusion a comparison should: not a
+winner, but a set of trade-offs, with Gaussian processes most accurate yet limited by cubic
+training complexity, the lightweight parametric models fast but sensitive to initialisation, and
+echo state networks the most balanced.
+
+Two things separate it from the present work. Its subject is a \emph{single} quadrotor under
+generic uncertainty, and all four methods learn \emph{online}; it therefore compares estimators
+\emph{within} one family rather than the families of Sections~\ref{sec:rw-reactive}
+to~\ref{sec:rw-hybrid}. And its evaluation is in simulation throughout: the reported hardware
+component is the learning modules executing on an embedded computer in the loop with a simulator,
+which measures latency rather than flight, and the authors list validation on a real quadrotor as
+future work.
+
+% CHANGED (P2-21): the "no PDF" comment that stood here concerned Abro et al.; this paragraph is
+%   about Gu et al. and was checked against the held PDF (R18 Sec. 1, 5.1).
+Its approach to fairness is nonetheless directly relevant. They tune the parametric models --- the
+extreme learning machine, the radial-basis-function network and the echo state network --- to their
+own optima by Bayesian optimisation under otherwise consistent conditions, so that each operates
+near its best achievable performance. This thesis tunes each compared strategy on the hardware gate
+and then freezes those gains before the comparison and training-collection flights; gains are not
+required to be identical across families. Both answer the same objection --- that an observed
+difference might reflect tuning effort rather than method --- and Section~\ref{sec:ctrl-fairness}
+returns to why the choice is genuinely open.
+
+% UNVERIFIED (review P-010): no PDF of Abro et al. in docs/papers; check this paragraph against the paper.
+% VERIFY (P2-22): every clause of the next paragraph (methods compared, close-proximity and downwash
+%   motivation, number of vehicles, simulation or hardware) against the full text.
+Abro et al.~\cite{abro2025fractional} compare fractional-order PID, fractional-order LQR and
+integral state feedback on close-proximity flight, explicitly motivated by downwash and by the
+excessive safety distances that neglecting it imposes.\footnote{Cited for the methods compared and
+for that motivation; the abstract's quantitative improvement figure and its claim about larger
+swarms are not used here.} This is a controller comparison in our setting: multiple vehicles, and
+downwash-aware. Of the three, only integral state feedback is classical; the fractional-order laws
+are not. All three are nonetheless feedback regulators: they do not present a learned or
+first-principles predictor of the interaction force in the sense of the works above, so the
+reactive, predictive and hybrid families remain uncompared against one another.
+
+% DECISION D-03: the paragraph below states the gap as "the families ... have not been placed under
+%   common conditions"; Hsieh et al. (2025) places all three information sources under common
+%   conditions inside one MPC. Text left unchanged.
+Together these delimit the gap precisely. It is not that close-proximity control is uncompared, nor
+that the field lacks the methodology. It is that the specific families defined by \emph{how they
+obtain information about the interaction force}, measure it, predict it, or both, have not
+been placed under common conditions.
+
+Such an experiment has requirements that follow directly from the failure modes above: a single
+airframe; identical trajectories and formations across all methods; per-strategy gains frozen after
+tuning before data collection, so that a difference cannot be a tuning artefact; a single definition
+of the residual, measured identically under every controller
+including those that do not use it; and a null condition in which no interaction is present, to
+establish the measurement floor and so distinguish a real effect from noise. Chapter~\ref{ch:setup}
+describes the resulting design.
+
+% -------------------------------------------------------------------------------------
+\section{Summary and gap}
+\label{sec:rw-gap}
+
+A controller can obtain information about the interaction force in two ways. It can measure the
+residual online, which requires no prior model and generalises to disturbances never seen, but is
+delayed and, in its established form, depends on rotor-speed sensing. Or it can predict the
+residual from the relative states of its neighbours using a model learned offline, which acts ahead
+of the disturbance but is valid only where the training data reached. A third approach learns the
+corrective action directly, forgoing an explicit force estimate and, in at least one instance,
+inter-vehicle communication as well. Representative methods exist for each, and each is
+individually validated.
+
+Three gaps follow from this survey.
+
+% DECISION D-03: first gap. Recommended replacement (Stage 2 Sec. 3): "To the best of our knowledge,
+%   no study has compared rotor-speed-based reactive compensation (INDI) with learned per-neighbour
+%   feedforward prediction in onboard controllers on one airframe, across a fixed library of
+%   interaction regimes, with the residual logged under every controller and the transfer of the
+%   summed model from two to three vehicles quantified. The closest study compares an online
+%   L1 estimate, a learned downwash model and their combination inside one off-board MPC on three
+%   vehicles in two stacked formations~\cite{hsieh2025onlineadaptation}." Text left unchanged.
+First, and principally, to the best of our knowledge the reactive, predictive and hybrid families
+have not been evaluated against one another under identical conditions. Systematic comparisons in
+adjacent territory exist --- of online-learning estimators on a single vehicle, and of classical
+regulators for close-proximity swarms (Section~\ref{sec:rw-existing-comparisons}) --- but none
+spans the families distinguished by how they obtain the interaction force. The individual results are strong; what the field lacks is not strong results
+but comparable ones, and its reporting conventions --- improvements against each work's own
+baseline, on its own platform, at its own separations --- make the comparison impossible to
+assemble after the fact. This thesis compares the uncompensated baseline, reactive compensation
+(INDI) and predictive compensation (geometric+NN, and FBL+NN if implemented). Multi-robot
+evaluation of a reactive--predictive hybrid is outside the scope of this thesis, as already stated
+above.
+
+% CHANGED (P2-20): minimal factual correction; restructuring of this gap is part of D-03.
+Second, the hybrid of measurement and prediction has been demonstrated with INDI only for a single
+vehicle, where the residual is self-induced and its advantage was described as small without a
+payload and as leaving performance similar to the reactive method with
+one~\cite{cobobriesewitz2026lindi}. On a team it has been flown inside an off-board model predictive
+controller with an $\mathcal{L}_1$ estimate, where the combination performed
+best~\cite{hsieh2025onlineadaptation}. An INDI-based hybrid on a team, in which the residual is
+larger and is a function of a measurable relative state, remains untested; evaluating it is
+outside the scope of this thesis.
+
+% CHANGED (D-03 context, factual): the summed model has been deployed on three vehicles.
+Third, the summation used to aggregate per-neighbour predictions is known to be an
+approximation~\cite{shi2020neuralswarm,gielis2023aggregate}, yet the magnitude of the penalty it
+carries for a deployed model, evaluated on teams larger than those it was trained on, is not
+reported. A summed model trained on two-vehicle data has been flown on three
+vehicles~\cite{hsieh2025onlineadaptation}, but the penalty was not isolated.
+
+% DECISION D-03: the provenance note below records audits that did not classify Hsieh et al.
+%   (2025) as spanning the families; the author should revise it together with the gap. Unchanged.
+\todo[color=green!25]{\textbf{Provenance, not pending work.} Supported by two audits: an arXiv keyword sweep, and a
+cross-database sweep over OpenAlex, Crossref and DBLP including a citation-graph scan of 157 works
+citing the Neural-Swarm line. Both found adjacent comparisons but none spanning these families.
+Neither is exhaustive; keep the ``to the best of our knowledge'' phrasing.}
+
+Chapter~\ref{ch:model} formalises the residual wrench these methods estimate or predict, and
+Chapter~\ref{ch:control} describes the strategies compared in this thesis and the point at
+which each injects its knowledge of the interaction into the control law.

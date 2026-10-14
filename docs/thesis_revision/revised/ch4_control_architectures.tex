@@ -1,0 +1,594 @@
+% =====================================================================================
+%  Chapter 4 — Control Architectures
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT, 23 August 2026 (writing-track item W.8). Source: docs/18_Strategy_Descriptions.md.
+%  REVISED 2026-10-14 (thesis-revision run, Phase 4). Markers: % NEW, % CHANGED, % DECISION,
+%  % VERIFY, % REMOVED. Plan rows P4-xx refer to docs/thesis_revision/stage3_revision_plan.md.
+%
+%  THE RULE THIS CHAPTER MUST NOT BREAK.
+%  Each strategy is presented in two separated parts: what WE implement (verifiable against
+%  firmware_app/src/lib.rs and residual_nn.rs) and the REFERENCE METHOD it follows (cited,
+%  with deviations stated). These are never merged into one sentence. Our implementation is
+%  not the paper's method, and writing as though it were would misrepresent both -- and
+%  would undermine RQ1, whose validity rests on each strategy being a defensible
+%  representative of its family rather than a reproduction of a specific paper.
+%
+%  Implementation status is stated honestly per strategy. Several are not implemented.
+%  Do not describe an unimplemented strategy as though it exists.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+%  After that date: only NEW cites or EDITED prior-work sentences need re-checking.
+%
+%  Numbering (current): Strategy 0 = uncompensated geometric baseline; 1 = pure INDI;
+%  2 = geometric + learned residual; 3 = feedback linearisation + flatness-preserving residual.
+%  No other strategy is compared (supervisor decision); further methods appear only as related
+%  work in Chapter 2. (CHANGED P4-22: the earlier note on a seven-strategy numbering is obsolete.)
+% =====================================================================================
+
+\chapter{Control Architectures}
+\label{ch:control}
+
+Chapter~\ref{ch:model} defined the residual wrench and the two ways of obtaining it. This
+chapter describes the control strategies compared in this thesis, and in each case the point
+at which knowledge of the interaction enters the control law.
+
+Four controllers: an uncompensated baseline (Strategy~0), flown in every scenario as the
+reference condition (``uncompensated'' means that it does not use the residual), and the three strategies compared against it (Strategies~1--3).
+Table~\ref{tab:ctrl-summary} lists them, and the rest of the chapter takes them in order.
+
+% DECISION D-05 (H9, lab status): the "Status" column and the phrase "at the time of writing" in the
+%   caption report project progress ("flying", "implemented, unflown"). Options: (i) delete the
+%   column; (ii) replace by a design statement; (iii) neutral wording "implemented in the flight
+%   code: yes / yes / yes / no" (recommended). Text left unchanged.
+% CHANGED (P4-16): footnote a on the rotor-speed column (training labels need rotor speeds).
+\begin{table}[t]
+  \centering
+  \caption{The strategies compared, and the implementation status of each at the time of writing.
+    ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction
+    of it, both, or neither. ``Enters at'' is the quantity the residual is subtracted from, and
+    ``Rotor speed'' says whether the strategy needs rotor-speed sensing at run time.}
+  \label{tab:ctrl-summary}
+  \small
+  \begin{tabular}{@{}clllcc@{}}
+    \toprule
+    \# & Strategy & Knows & Enters at & Rotor speed & Status \\
+    \midrule
+    0 & Geometric baseline           & nothing    & ---                        & no  & flying \\
+    1 & Pure INDI                    & measured   & $a_{\mathrm{cmd}}$, torque & yes & flying \\
+    % CHANGED (P4-21, B4-2): footnote a, training labels need rotor speeds (R07 Sec. 5.4.1).
+    2 & Geometric + NN               & predicted  & $a_{\mathrm{cmd}}$         & no\textsuperscript{a}  & implemented, unflown \\
+    3 & FBL + NN                     & predicted  & linearising law            & no\textsuperscript{a}  & not implemented \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.4em}
+  \begin{minipage}{0.9\linewidth}\footnotesize
+    \textsuperscript{a}~Not at run time. Producing the training labels requires the measured
+    residual \eqref{eq:model-ares}, and therefore rotor-speed sensing on the vehicles that collect
+    the data, as for the learned method of Cobo-Briesewitz et al.~\cite{cobobriesewitz2026lindi}.
+  \end{minipage}
+\end{table}
+
+The chapter treats each strategy as its own controller. What makes the comparison fair is not a
+claimed shared implementation, but the experimental conditions held constant for every one of them — the same
+airframe, trajectories, formations, separations, residual definition and gains frozen per strategy
+after tuning, stated precisely in Section~\ref{sec:ctrl-fairness}.
+
+Each strategy is described in two parts, kept deliberately separate: what is implemented here, and
+the published method it follows. They follow published \emph{families}, and the deviations from
+each source paper are listed in that strategy's section — none is a bit-identical replica.
+Strategies whose author code has not yet arrived stay unimplemented rather than guessed. Each family
+is represented by one implementation of our own, so results are statements about these
+implementations, not about the families.
+
+% -------------------------------------------------------------------------------------
+\section{The position and attitude loop}
+\label{sec:ctrl-common}
+
+Strategies~0, 1 and~2 (the geometric baseline, pure INDI and geometric+NN) share one geometric
+position loop and an attitude law for the commanded thrust direction. Strategy~1 replaces the
+attitude law's inner term with an incremental one. The shared equations are stated once in this
+section. Strategy~3 uses feedback linearisation instead; it has its own section.
+
+\subsection{Position loop}
+
+The commanded acceleration is
+%
+\begin{equation}
+  a_{\mathrm{cmd}}
+  \;=\; \underbrace{a_{\mathrm{ff}}}_{\text{trajectory}}
+      + K_p e_p + K_v e_v + K_i \!\int\! e_p \,\mathrm{d}t
+      + g e_3
+      \;\underbrace{-\; a_{\mathrm{res}}}_{\text{measured}}
+      \;\underbrace{-\; \hat{a}_{\mathrm{res}}}_{\text{predicted}},
+  \label{eq:ctrl-ades}
+\end{equation}
+% DECISION D-02 (integral terms): the flight code does not contain the vector integral K_i * int(e_p)
+%   in the control law (ENABLE_POSITION_INTEGRAL = false, lib.rs:525; term zeroed in
+%   controller_step, L1865-1869). It contains a vertical-only integral k_{i,z} * int(e_z) e_3, enabled at
+%   compile time (ENABLE_Z_INTEGRAL = true, lib.rs:535; accumulate_z_integral L1548-1569 with
+%   conditional anti-windup and a 1.5 m s limit; term added at L1880), whose gain is a run-time
+%   parameter (pos_gains.ki_z): the study configuration sets 16 for the geometric controller
+%   (Strategies 0 and 2) and 0 for our INDI (Strategy 1) (crazyflies.yaml:237, study/ours.patch:22-23).
+%   Options: (a) rewrite to the code (recommended); (b) keep the general form and state which terms
+%   are zero; (c) leave. Equation left unchanged.
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+% DECISION D-01 (residual sign): the code adds res_sign * a_res and res_sign * a_nn
+%   (lib.rs:1930-1931); default res_sign = +1 (traj_iface.c:442); study: +1 for Strategy 1, -1 for
+%   Strategy 2. The two "minus" signs above hold for Strategy 2 only as configured. Equation left
+%   unchanged.
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+%
+with $e_p = p_{\mathrm{des}} - p$ and $e_v = v_{\mathrm{des}} - v$, and gains diagonal but distinct
+in the horizontal and vertical axes. Here $a_{\mathrm{cmd}}$ includes gravity compensation and the two residual terms. The
+trajectory-demanded part $a_{\mathrm{ff}} + K_p e_p + K_v e_v + K_i \!\int\! e_p \,\mathrm{d}t$ is the
+$a_{\mathrm{des}}$ of Chapter~\ref{ch:model}. The commanded thrust vector is $m\,a_{\mathrm{cmd}}$; its
+magnitude projected onto the body $z$-axis gives the collective thrust, and its direction, together
+with the desired yaw, gives the desired attitude $R_{\mathrm{des}}$ through the usual flatness
+construction. In words: the thrust vector fixes the direction of the body $z$-axis, and the desired
+yaw fixes the rotation about that axis.
+% NEW (P4-04): the construction, and the conditioning of the velocity error, from the code.
+Concretely, with $\psi_{\mathrm{des}}$ the desired yaw and
+$x_c = [\cos\psi_{\mathrm{des}},\, \sin\psi_{\mathrm{des}},\, 0]^\top$ the desired heading, the
+columns of $R_{\mathrm{des}}$ are
+\begin{equation*}
+  z_{\mathrm{des}} = \frac{a_{\mathrm{cmd}}}{\lVert a_{\mathrm{cmd}} \rVert}, \qquad
+  y_{\mathrm{des}} = \frac{z_{\mathrm{des}} \times x_c}{\lVert z_{\mathrm{des}} \times x_c \rVert}, \qquad
+  x_{\mathrm{des}} = y_{\mathrm{des}} \times z_{\mathrm{des}},
+\end{equation*}
+the construction of Lee et al.\ for the position-and-heading mode~\cite{lee2010geometricse3}, and the
+collective thrust is $f = m\,a_{\mathrm{cmd}}^\top R e_3$, clipped at zero. Before the velocity
+error enters $K_v e_v$, its horizontal components are limited to \SI{0.6}{\metre\per\second} in
+magnitude and passed through a second-order low-pass filter at \SI{10}{\hertz}; both measures
+reduce the effect of a single corrupted motion-capture sample, and the vertical component is left
+untouched.\footnote{\texttt{firmware\_app/src/lib.rs}, \texttt{desired\_rot},
+\texttt{condition\_vel\_error} and \texttt{controller\_step}.}
+% CHANGED: code, lib.rs:desired_rot (L1463-1473), condition_vel_error (L1504-1521) with
+%   ENABLE_POSE_GLITCH_GUARD / ENABLE_VEL_FB_FILTER (L564-574), controller_step thrust (L1949-1950).
+
+The last two terms of \eqref{eq:ctrl-ades} are the whole subject of this thesis, and both are
+subtracted, for the reason derived in Section~\ref{sec:model-sign}. \emph{Which residual
+information is present is what distinguishes Strategies 0, 1 and 2 from one another}, and nothing
+else about the position loop changes between them: Strategy~0 has neither term, Strategy~1 the
+measured one, and Strategy~2 the predicted one. Strategy~3 injects its prediction elsewhere, in
+the feedback-linearising law of Section~\ref{sec:ctrl-s3}.
+% DECISION D-01 / D-02: "both are subtracted" and "nothing else about the position loop changes"
+%   are not true of the study configuration as it stands: the residual sign and the vertical
+%   integral gain differ between Strategy 1 and Strategies 0/2 (see the comments under the equation).
+
+\subsection{Attitude loop}
+
+The attitude error is the standard geometric one,
+$e_R = \tfrac{1}{2}\left(R_{\mathrm{des}}^\top R - R^\top R_{\mathrm{des}}\right)^\vee$, with
+$e_\omega = \omega - \omega_{\mathrm{des}}$, where $\omega_{\mathrm{des}}$ is the desired body angular
+velocity that follows from the desired attitude trajectory. In the geometric configuration the torque is
+%
+\begin{equation}
+  \tau = -K_R^{\mathrm{geo}} e_R - K_\omega^{\mathrm{geo}} e_\omega + \omega \times J\omega
+         - k_{i,\mathrm{att}} \textstyle\int e_R \, \mathrm{d}t,
+  \label{eq:ctrl-tau-geo}
+\end{equation}
+% DECISION D-02: the attitude integral is disabled in the flight code (ENABLE_ATTITUDE_INTEGRAL =
+%   false, lib.rs:540; k_i,att = 0 in controller_step, L2225). Equation left unchanged.
+%
+% CHANGED (P4-07): units of the gains.
+the third term compensating the gyroscopic coupling. Here $K_R^{\mathrm{geo}}$ and
+$K_\omega^{\mathrm{geo}}$ are gains from attitude error and rate error to torque, in
+\si{\newton\metre} per unit of $e_R$ and \si{\newton\metre\second} per unit of $e_\omega$; $k_{i,\mathrm{att}}$ is the gain of an
+integral of the attitude error. This is a reduced form of the law
+in~\cite{lee2010geometrictracking}: it drops that work's angular-feedforward bracket and adds an
+integral term the source does not have --- see \eqref{eq:ctrl-tau-lee} and the discussion in
+Section~\ref{sec:ctrl-s0}. The symbols of that work map to ours as $k_R \to K_R^{\mathrm{geo}}$,
+$k_\Omega \to K_\omega^{\mathrm{geo}}$, $\Omega \to \omega$ and $\Omega_d \to \omega_{\mathrm{des}}$. The INDI configurations replace
+\eqref{eq:ctrl-tau-geo} with an incremental law, described in Section~\ref{sec:ctrl-s1}.
+% CHANGED: code, traj_iface.c g_indi_kr_geo/kw_geo comments (L266-280, torque units).
+
+\subsection{Runtime selection}
+\label{sec:ctrl-runtime}
+
+% CHANGED (P4-08): what the configuration selects, stated completely.
+% DECISION D-11: this paragraph and Sec. ctrl-s1 describe Strategy 1 as the INDI of controller_step
+%   (both INDI bits on). The frozen S1 block of study_strategies.json selects controller 9 instead.
+%   Text left unchanged; see author_decisions.md D-11.
+The control law is selected by a parameter at runtime rather than by recompiling: one bit enables
+the measured residual in the position loop, another selects the incremental attitude law, and a
+third parameter enables the learned prediction. Strategy~0 has all three off. Strategy~1 has both
+INDI bits on. Strategy~2 has only the prediction on. All are pushed to the vehicle at connection time
+from the configuration, as one frozen parameter set per strategy, together with each strategy's own gains, the sign with which the
+residual terms enter (Section~\ref{sec:model-sign}) and the gain of the vertical integral term. The
+prediction itself is computed whenever a complete weight set is loaded, whatever the third
+parameter says; the parameter decides only whether it enters \eqref{eq:ctrl-ades}.
+% CHANGED: code, traj_iface.c PARAM_GROUP indi_gains / pos_gains / rnn (L203-214, L522-582);
+%   lib.rs:controller_step (L1752-1756, L1837, L1851-1855, L2175).
+% CHANGED (V3): the study keeps one configuration file (crazyswarm2/crazyflie/config/crazyflies.yaml)
+%   and one frozen parameter block per strategy (crazyswarm2/crazyflie/config/study_strategies.json,
+%   blocks S0, S1, S2, ...; documentation string: checked against the read-back values before
+%   take-off), so "a single configuration file" is replaced by "one frozen parameter set per
+%   strategy". See D-11 for which controller the S1 block selects.
+
+This matters more than it may appear. Comparing strategies that require different firmware
+introduces a confound that is impossible to rule out afterwards, a flash cycle changes more than
+the control law, and strategies flown on different days meet different battery states, different
+temperatures and different motion-capture calibrations. Runtime selection allows the strategies to
+be interleaved within a single session, which is what makes the comparison a paired one.
+
+% -------------------------------------------------------------------------------------
+\section{Strategy 0: uncompensated geometric baseline}
+\label{sec:ctrl-s0}
+
+\paragraph{Implemented.} Equations~\eqref{eq:ctrl-ades} and \eqref{eq:ctrl-tau-geo} with both
+residual terms zero. No knowledge of the interaction whatsoever.
+% NEW (P4-06): the desired-rate error used in the code.
+The rate error uses the desired body rate directly, $e_\omega = \omega - \omega_{\mathrm{des}}$,
+where $\omega_{\mathrm{des}}$ follows from the trajectory's jerk by differential flatness or is taken
+from the setpoint; it is not transported into the current body frame by $R^\top R_{\mathrm{des}}$ as
+in the source (below). The two definitions coincide when the attitude error is zero.
+% CHANGED: code, lib.rs:controller_step geometric branch (L2219-2235), omega_desired (L1417-1428).
+
+\paragraph{Reference.} Geometric tracking on $SE(3)$~\cite{lee2010geometrictracking}, which tracks
+a position trajectory together with a single heading direction, four outputs, not a full
+six-degree-of-freedom pose. The attitude error of \eqref{eq:ctrl-tau-geo} is that work's
+$e_R = \tfrac{1}{2}(R_d^\top R - R^\top R_d)^\vee$, verified against the source rather than
+reproduced from memory.
+% NEW (P4-05): frame mapping.
+Lee et al.\ write the translational dynamics with the third axis pointing \emph{down},
+$m\dot v = mge_3 - fRe_3$, and define the position error as $e_x = x - x_d$, the opposite of the
+$e_p = p_{\mathrm{des}} - p$ used here~\cite{lee2010geometricse3}. Position-loop terms therefore change
+sign when transcribed into this thesis' east-north-up convention, whereas the attitude error and
+the torque law, written in body coordinates, carry over unchanged.
+
+\paragraph{The implemented torque law is a reduced form, and is labelled as such.} The law in the
+source is
+%
+\begin{equation}
+  M = -k_R e_R - k_\Omega e_\Omega + \Omega \times J\Omega
+      - J\!\left( \hat{\Omega}\, R^\top R_d \Omega_d - R^\top R_d \dot{\Omega}_d \right),
+  \label{eq:ctrl-tau-lee}
+\end{equation}
+%
+with $e_\Omega = \Omega - R^\top R_d \Omega_d$. Equation~\eqref{eq:ctrl-tau-geo} retains the
+proportional, damping and gyroscopic terms but omits the final feedforward bracket, and adds an
+integral term on attitude error that the source does not contain. It is therefore a
+\emph{reduced} law in the same family, not the torque law of~\cite{lee2010geometrictracking}, and
+no stability result proved there transfers to it unexamined. Restoring the feedforward bracket
+would be a firmware change rather than a wording change, and is outside the scope of this draft.
+% DECISION D-02: "adds an integral term" -- the term exists in the code but is disabled.
+
+\paragraph{What the source proves.} Not global asymptotic tracking. With the attitude error
+function $\Psi$, exponential stability is established on $\Psi(0) < 1$, initial attitude errors
+below \SI{90}{\degree}, and almost-global exponential attractiveness on $1 \le \Psi < 2$,
+below \SI{180}{\degree}. The distinction matters here only in that this thesis claims neither: the
+baseline is flown as a reference condition, not as a certified controller.
+% NEW: definition of Psi for the reader (R15, eq. 6).
+Here $\Psi(R, R_d) = \tfrac{1}{2}\operatorname{tr}(I - R_d^\top R)$, which equals $1 - \cos\theta$
+for a rotation by the angle $\theta$ between $R$ and $R_d$, so $\Psi = 1$ at \SI{90}{\degree} and
+$\Psi = 2$ at \SI{180}{\degree}~\cite{lee2010geometricse3}.
+% VERIFY: the regions are attributed to the CDC paper (no PDF held); they are verified against the
+%   held companion arXiv:1003.2005v4 (Propositions 3 and 4 there).
+
+\paragraph{Role.} Strategy~0 is the uncompensated baseline of Table~\ref{tab:ctrl-summary}. It is
+flown in every scenario so that ``how much did compensation help'' has a denominator, and so that
+the interaction can be separated from the model error discussed in
+Section~\ref{sec:model-measure-fail}. It is also the controller under
+which all training data is collected, precisely because it does not compensate: a residual observed
+under a compensating controller is the residual that survived compensation, which is not what a
+predictive model should be fitted to.
+% DECISION D-04: the last clause contradicts the measurement property stated in Ch3 Sec. 3.3.1
+%   (fourth paragraph) and Shi et al. 2020 Sec. III-C: for a residual formed from measured rotor
+%   speeds, compensation changes the commanded thrust but not the residual at a given state. Valid
+%   reasons for collecting under Strategy 0 are listed in author_decisions.md. Text left unchanged.
+
+% -------------------------------------------------------------------------------------
+\section{Strategy 1: pure INDI}
+\label{sec:ctrl-s1}
+% DECISION D-11: which INDI implementation this section describes must match the one Strategy 1
+%   flies (controller_step INDI, ctrl_mode 3, vs controller 9); see author_decisions.md.
+
+\paragraph{Implemented.} The measured residual of \eqref{eq:model-ares} enters the position loop as
+$-a_{\mathrm{res}}$ in \eqref{eq:ctrl-ades}. In the attitude loop the geometric torque law is
+replaced by an incremental one. A reference angular acceleration is formed from the geometric
+errors,
+%
+\begin{equation}
+  \alpha_{\mathrm{ref}} = \alpha_{\mathrm{des}} - K_R^{\mathrm{INDI}} e_R - K_\omega^{\mathrm{INDI}} e_\omega,
+  \label{eq:ctrl-alpharef}
+\end{equation}
+% DECISION D-01: "enters the position loop as -a_res" holds only for res_sign = -1; the study
+%   configuration of Strategy 1 uses +1 (study/ours.patch:13-14).
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+%
+where $\alpha_{\mathrm{des}}$ is the feedforward angular acceleration obtained from trajectory snap
+by differential flatness. The INDI gains $K_R^{\mathrm{INDI}}$ and $K_\omega^{\mathrm{INDI}}$ map
+errors to angular acceleration, in \si{\per\second\squared} and \si{\per\second}, so their units
+differ from the geometric gains, which map to torque. The achieved angular acceleration $\alpha_{\mathrm{meas}}$ is obtained by
+differentiating the gyro signal and low-pass filtering it, and the torque currently being applied,
+$\tau_{\mathrm{cur}}$, is reconstructed from measured rotor speeds. The command is then the
+increment
+%
+\begin{equation}
+  \tau = \tau_{\mathrm{cur}} + J\left(\alpha_{\mathrm{ref}} - \alpha_{\mathrm{meas}}\right).
+  \label{eq:ctrl-indi-tau}
+\end{equation}
+%
+In words: the controller compares the angular acceleration it wants with the one it actually got, and
+changes the torque by the difference. Because \eqref{eq:ctrl-indi-tau} corrects relative to what is actually being achieved, it rejects
+any disturbance appearing in $\alpha_{\mathrm{meas}}$ without needing a model of it. The
+differentiation and filtering are the source of the delay identified in
+Section~\ref{sec:model-measure-fail}; the filter cutoff sets the trade-off between that delay and
+the noise admitted from the gyro.
+
+% NEW (P4-10): what the code adds to eq. (ctrl-indi-tau).
+In the implementation, $\alpha_{\mathrm{ref}}$ passes through the same second-order Butterworth
+filter as $\alpha_{\mathrm{meas}}$ before the difference is taken, so that both terms of the
+difference carry the same lag; $\tau_{\mathrm{cur}}$ is obtained by inverting the motor mixer, that
+is, from the four rotor thrusts $k_{t,k}\varpi_k^2$, the moment arm and the ratio of rotor drag
+torque to thrust; the increment is multiplied by an effectiveness factor that defaults to one;
+and the resulting torque can be limited per axis. No gyroscopic term is added: the increment
+already contains whatever the measured angular acceleration contains.
+% CHANGED: code, lib.rs:controller_step (alpha_ref filter L2075-2080; INDI branch L2175-2218),
+%   rpms_to_torque (L1481-1493), clamp_torque (L1651-1664); traj_iface.c g_indi_j_scale (L350),
+%   g_indi_clamp_en (L370).
+% DECISION D-06: the filter cut-off actually realised (filt_dt_us, filt_prewarp; traj_iface.c:444-478)
+%   and whether tau_cur is filtered (filt_tau, default 0, traj_iface.c:342) are configuration facts
+%   the author should state for the study configuration.
+
+% NEW (P4-09): where eq. (ctrl-indi-tau) comes from, and its translational counterpart.
+\paragraph{Why the increment rejects disturbances.} Write the rotational dynamics
+\eqref{eq:model-rot} as $J\dot\omega = \tau + \delta$, where
+$\delta = \tau_{\mathrm{res}} - \omega\times J\omega$ collects everything the controller does not
+command. At the last sample the vehicle applied $\tau_{\mathrm{cur}}$ and experienced
+$\alpha_{\mathrm{meas}}$, so $J\alpha_{\mathrm{meas}} \approx \tau_{\mathrm{cur}} + \delta$, and the
+unknown is estimated as $\delta \approx J\alpha_{\mathrm{meas}} - \tau_{\mathrm{cur}}$. Requiring
+$J\alpha_{\mathrm{ref}} = \tau + \delta$ and substituting the estimate gives
+\eqref{eq:ctrl-indi-tau}. This is the derivation of Tal and Karaman, who state the assumptions it
+needs: $\delta$ changes slowly compared with the filter and the sample period, and the measured
+quantities are filtered alike~\cite{tal2018indi}. Their analysis also shows that, under these
+assumptions, the closed-loop angular acceleration follows its reference with the dynamics of the
+motors, and that an error in $J$ affects the transient rather than the final value. A one-axis
+example with illustrative numbers: with $J = 1$, a constant unknown torque $\delta = 0.3$ and
+$\alpha_{\mathrm{ref}} = 0$, a vehicle that applied $\tau_{\mathrm{cur}} = 0$ measures
+$\alpha_{\mathrm{meas}} = 0.3$ and commands $\tau = -0.3$, which cancels $\delta$ at the next step;
+with motor lag the cancellation takes as long as the motors need to reach the new command.
+
+The position loop of Strategy~1 is the same idea written without an explicit increment.
+Substituting \eqref{eq:model-ares} into \eqref{eq:model-sign} gives
+\begin{equation*}
+  f R e_3 = m\,a_{\mathrm{des}} + mg e_3 - m\left(a_{\mathrm{meas}} - a_{\mathrm{model}}\right)
+          = f_{\mathrm{cur}} R e_3 + m\left(a_{\mathrm{des}} - a_{\mathrm{meas}}\right),
+\end{equation*}
+where $f_{\mathrm{cur}}$ is the thrust reconstructed from the measured rotor speeds: the new thrust
+vector is the current one corrected by the acceleration error, which is the linear-acceleration
+increment of Tal and Karaman and of Smeur et al.~\cite{tal2018indi,smeur2017cascadedindi}.
+% DECISION D-01: this equivalence holds for the residual SUBTRACTED; with the configured res_sign = +1
+%   of Strategy 1 the position term is not this increment.
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+
+The position and attitude increments are independently selectable, giving four configurations:
+geometric, position-INDI only, attitude-INDI only, and full INDI. Strategy~1 refers to the full
+configuration, and that is the controller the comparison reports. The intermediate ones are
+diagnostic bits used in the two-robot results chapter to attribute an effect to one loop or the
+other. They are not additional strategies and will not be reported as Strategy~1.
+
+\paragraph{Reference.} The incremental formulation with flatness-derived
+feedforward follows Tal and Karaman~\cite{tal2018indi}; the cascaded arrangement of position and
+attitude INDI follows Smeur et al.~\cite{smeur2017cascadedindi}.
+
+% CHANGED (P4-12): the rotor-speed source and the filtering deviations, from the code.
+\paragraph{Deviations.} The airframe, gains and filter cutoffs are ours and were identified for
+this platform. Tal and Karaman obtain rotor speed from optical encoders~\cite{tal2018indi}; this
+implementation uses the rotor speeds that the electronic speed controllers report over the DShot
+protocol, or an optical rotor-speed deck, after a plausibility filter (Section~\ref{sec:model-measure}).
+Two further deviations concern filtering. Tal and Karaman require identical low-pass filters on the
+measured acceleration and on the thrust it is compared with~\cite{tal2018indi}; in the position
+loop the implementation filters the accelerometer and, by default, not the rotor-speed thrust. In
+the attitude loop they filter the moment reconstructed from rotor speeds~\cite{tal2018indi}, whereas
+the implementation filters the reference $\alpha_{\mathrm{ref}}$ and, by default, not
+$\tau_{\mathrm{cur}}$. Finally, Tal and Karaman note that the incremental structure removes the
+need for integral action in their design~\cite{tal2018indi}. No claim is made that this
+implementation reproduces the tracking performance reported in either work, that would require a
+like-for-like replication which is not part of this thesis.
+% CHANGED: code, traj_iface.c rpm_get_all and g_indi_rpm_source (L508-520, L701-730); lib.rs
+%   ENABLE_ACC_PREFILTER (L545) and res_fc default 0 (traj_iface.c:493); filt_tau default 0 (L342).
+% DECISION D-02: whether Strategy 1 runs a vertical integral (study configuration: gain 0) should
+%   be stated here once D-02 is resolved.
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+
+\paragraph{Requirements.} Rotor-speed sensing, without which $\tau_{\mathrm{cur}}$ and
+$a_{\mathrm{res}}$ are both unavailable and the method degrades silently
+(Section~\ref{sec:model-measure-fail}). The method needs no training data; the residual is formed
+online from inertial and rotor-speed measurements.
+
+% -------------------------------------------------------------------------------------
+\section{Strategy 2: geometric with a learned residual}
+\label{sec:ctrl-s2}
+
+% CHANGED (P4-13): evaluation rate, input source and deployment from the code.
+\paragraph{Implemented.} The geometric controller of Section~\ref{sec:ctrl-s0} with the deep-sets
+prediction $\hat{a}_{\mathrm{res}}$ of \eqref{eq:model-deepsets} subtracted in
+\eqref{eq:ctrl-ades}. The network is evaluated onboard at every tenth control step, about
+\SI{100}{\hertz}, from the relative states of the neighbours: their positions arrive in the
+motion-capture broadcast that the flight stack already uses, so the input requires no additional
+communication, and their velocities are differenced onboard (Section~\ref{sec:model-deepsets}).
+The prediction is a vertical acceleration; the horizontal residual is not compensated by this
+strategy. Weights are trained offline on data collected under Strategy~0 and compiled into the
+flight image before flight.
+% CHANGED: code, traj_iface.c g_rnn_div (L132); lib.rs:rnn_predict_eval (L839-873), rnn_service
+%   (flash build, L922-926); residual_nn.rs:eval (vertical output, L302).
+% DECISION D-01: "subtracted" holds for the study configuration of Strategy 2 (res_sign = -1,
+%   crazyflies.yaml:227).
+
+The prediction is computed and logged \emph{whether it is enabled or not}. This is what makes the
+model's own accuracy measurable independently of its effect on the vehicle: on a flight where the
+prediction is not driving the controller, predicted and measured residuals are two independent
+quantities and their comparison is meaningful. Once the prediction is driving the controller, the
+measured residual is the one that survived compensation and the comparison no longer isolates model
+quality. Both flights are therefore needed, and Chapter~\ref{ch:setup} schedules them.
+% DECISION D-04: "the measured residual is the one that survived compensation" contradicts Ch3
+%   Sec. 3.3.1 (fourth paragraph): the measured residual at a given state does not depend on
+%   compensation. What changes when the prediction drives the controller is the state visited (the
+%   lower vehicle no longer sags), so prediction-on flights test the model on a different state
+%   distribution. Text left unchanged.
+
+\paragraph{Reference.} The approach of predicting the interaction from relative states with a
+permutation-invariant network and applying it as feedforward follows the Neural-Swarm
+line~\cite{shi2020neuralswarm,shi2022neuralswarm2}.
+% NEW (P2-11 cross-reference): the closest published instance of exactly this structure.
+The closest published instance of the structure used here, a learned residual added as
+feedforward to a geometric $SE(3)$ controller, is a secondary configuration in the hardware
+experiments of Hsieh et al., whose main controller is the feedback-linearising one of
+Strategy~3~\cite{hsieh2026flatness}.
+
+% CHANGED (P4-15): deviations rewritten for the implemented network.
+\paragraph{Deviations.} These are substantial and are stated plainly. The network architecture is
+Neural-Swarm2's own (Section~\ref{sec:model-deepsets}), but four things differ from that paper.
+First, Neural-Swarm2 applies spectral normalisation, which its abstract associates with stability
+and generalisation guarantees and on which the bounded-error assumption of its analysis
+rests~\cite{shi2022neuralswarm2}; this implementation is trained without it, and the guarantees
+that would follow are correspondingly not claimed. Second, Neural-Swarm2 uses the learned residual
+in motion planning as well as control~\cite{shi2022neuralswarm2}, whereas here the trajectories are
+planned in advance and the residual is used for control only. Third, Neural-Swarm2's tracking
+controller has its own attitude law and an explicit compensation of motor delay~\cite{shi2022neuralswarm2};
+here the prediction enters the geometric controller of Section~\ref{sec:ctrl-common} unchanged.
+Fourth, the model is trained on this project's two-vehicle data, it predicts only the vertical
+component, its output is bounded at \SI{8}{\metre\per\second\squared}, at most three neighbours are
+considered, and it is evaluated at about \SI{100}{\hertz} rather than at every control step. This
+strategy is a representative of the predictive family, and should be read as such rather than as an
+evaluation of Neural-Swarm2.
+% REMOVED (P4-15): "The architecture here is a deep-sets model of our own sizing, 987 parameters,
+%   rather than a reproduction of any published network. Neural-Swarm2 applies spectral
+%   normalisation to obtain stability and generalisation guarantees~\cite{shi2022neuralswarm2};"
+%   (wrong for the current code; the guarantee sentence also dropped the abstract/body distinction).
+
+% CHANGED (P4-16): rotor speeds for the labels.
+\paragraph{Requirements.} Neighbour relative states; training data. No rotor-speed sensing at run
+time; the training labels, being the measured residual, require rotor-speed sensing on the
+vehicles that collect the data.
+
+% -------------------------------------------------------------------------------------
+\section{Strategy 3: feedback linearisation with a flatness-preserving residual}
+\label{sec:ctrl-s3}
+
+% DECISION D-05 (H9): "requested from the authors and had not been received at the time of writing"
+%   reports project status. Recommended neutral wording: "Not implemented in the flight code. The
+%   reference method is described below." Text left unchanged.
+\paragraph{Implementation status.} \textbf{Not implemented.} The controller code was requested from the
+authors and had not been received at the time of writing. The strategy does not block the others,
+and its absence is a scope limitation rather than a failure of the comparison
+(the discussion chapter).
+
+\paragraph{Reference.} Hsieh et al.~\cite{hsieh2026flatness}, building on the theory of Yang et
+al.~\cite{yang2025flatnessresiduals}. The distinguishing property is where the prediction enters:
+not as a feedforward term added to a desired acceleration, but inside a feedback-linearising law
+whose validity depends on the augmented system remaining differentially flat. A generic learned
+residual can destroy that flatness; residuals with a lower-triangular structure, a structured
+correction inside the state derivative, not a free wrench, preserve it, and with it the original
+flat output~\cite{yang2025flatnessresiduals}. That theory is established in simulation on a planar
+quadrotor; the hardware demonstration is Hsieh et al.'s.
+% NEW: what the structure means concretely in Hsieh et al. (R05 Sec. 3.2).
+In Hsieh et al.\ the structure takes a simple form: the learned residual may depend only on the
+positions and velocities of the vehicles, not on thrust or attitude, so that thrust and attitude
+can still be computed algebraically from the flat outputs, position and yaw, and their
+derivatives~\cite{hsieh2026flatness}.
+
+% CHANGED (P4-18): simulation and hardware results separated, as in Ch2 Sec. 2.5.
+Its relevance to this comparison is that it is the strongest published counter-argument to treating
+``predictive compensation'' as one method. Hsieh et al.'s abstract reports a \SI{31}{\percent}
+reduction in average tracking error. On hardware the body reports \SI{24}{\percent} RMSE for
+ROM-FBL over nominal FBL and a further \SI{29}{\percent} for learned FBL over ROM-FBL, and an
+average RMSE of about \SI{5}{\centi\metre} that the authors describe as matching the reported
+performance of the nonlinear model predictive controller of Chee et al.; the direct comparison with
+that controller, using the same learned residual, is in simulation, where the flatness-based
+controller needs about one twentieth of the computation time~\cite{hsieh2026flatness}. The abstract
+adds that tight formation flight was achieved with under \SI{30}{\second} of training data and a
+\SI{5}{\milli\second} loop rate; on hardware that loop ran \emph{off-board}, on a laptop streaming
+commands over the radio~\cite{hsieh2026flatness}.
+Those are the figures a predictive strategy in this class should be measured against. None of them
+was produced by a controller running on the vehicle.
+% REMOVED (P4-18): "In simulation they match the tracking error published by Chee et al. for
+%   nonlinear model predictive control at an order of magnitude less computation, from under 30 s
+%   of training data, at a 5 ms loop rate obtained off-board" (conflated the hardware match with
+%   published figures and the simulation head-to-head; R05).
+
+\paragraph{Requirements.} Neighbour relative states; training data. No rotor-speed sensing at run
+time; as for Strategy~2, the training labels require it.
+
+% -------------------------------------------------------------------------------------
+\section{What makes the comparison fair, and what it does not guarantee}
+\label{sec:ctrl-fairness}
+
+\paragraph{What is held constant.} The airframe, the trajectories, the formations, the
+separations, the residual definition and the estimator. Each strategy is tuned for itself; those
+gains are then frozen before the comparison flights. This holds uniformly for every strategy — none
+is exempted or held to a looser standard on the tasks or the measurement pipeline.
+
+% NEW (P4-21): what differs between strategies by design.
+\paragraph{What differs by design.} Because each strategy is tuned for itself, more than the
+interaction information differs between them. The attitude law differs (geometric for Strategies~0
+and~2, incremental for Strategy~1); the gain sets differ, and the geometric and incremental gains
+are not even in the same units; the filter settings of the incremental law apply only to
+Strategy~1; and each strategy's configuration fixes the sign with which residual terms enter and
+the gain of the vertical integral term (Section~\ref{sec:ctrl-runtime}). These differences are
+listed here so that a difference in outcome is read against all of them, not only against the
+residual information.
+% DECISION D-01 / D-02: the configured values (Strategy 1: res_sign +1, ki_z 0; Strategies 0/2:
+%   res_sign -1 where the network is used, ki_z 16) should be stated here once decided.
+%   CLOSING PASS (D-11): the values above for Strategy 1 are those of the 'ours' block (controller_step INDI,
+%   ctrl_mode 3). The frozen S1 block of crazyswarm2/crazyflie/config/study_strategies.json selects a
+%   different INDI controller (stabilizer.controller 9, controller_omar_indi.c), which subtracts the
+%   residual (L260, L268) with matched filters and runs a vertical integral (Kpos_Iz 1.5). Which one
+%   Strategy 1 is, is decision D-11.
+
+\paragraph{What this does not guarantee.} Two limitations are worth stating before results are
+presented rather than after.
+
+Every strategy follows a published \emph{family}, not a paper reproduced exactly. The deviations
+from each source are listed in that strategy's section. Strategies whose author code has not yet
+arrived stay unimplemented rather than guessed. Each strategy is its own controller. ``Identical
+conditions'' therefore means identical trajectories, formations, hardware and separations. It does
+not mean identical control structure or one gain set on every law. A difference in outcome could
+reflect the controller structure itself, not only how it uses interaction-force information. That
+applies to every strategy.
+
+Geometric tracking, INDI and feedback linearisation are different laws and are tuned separately.
+After that tuning, every strategy's gains are frozen for the comparison flights so a later gap is
+not mid-campaign retuning. The cost of per-strategy tuning is in scope for RQ4. The discussion
+chapter reports where a frozen gain appears to have disadvantaged a strategy.
+
+% -------------------------------------------------------------------------------------
+\section{Summary}
+\label{sec:ctrl-summary}
+
+Three strategies (1--3: pure INDI, geometric+NN and FBL+NN), plus the uncompensated baseline
+(Strategy~0) flown as the reference condition under all of them, each its own controller,
+distinguished by what they know about the interaction force, when they know it, and where that
+knowledge enters. All three are compared under the same experimental conditions: identical
+trajectories, formations, hardware and separations, with each strategy's gains frozen after its own
+tuning, not identical control structure.
+
+% DECISION D-05 (H9): the next paragraph reports project progress ("two strategies fly", "one is
+%   implemented and unflown"). Recommended neutral wording: "Strategies 0, 1 and 2 are implemented
+%   in the flight code; Strategy 3 is not." Text left unchanged.
+At the time of writing, two strategies fly (the baseline and pure INDI), one is implemented and
+unflown (geometric+NN), and one is not implemented (FBL+NN). Chapter~\ref{ch:setup} describes the experimental
+design; the two- and multi-robot results chapters report what was flown.

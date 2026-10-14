@@ -170,7 +170,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - [ ] Shakedown card (31 flights) with `--study`; quality check and metrics after every card.
 - [ ] Only if the TK INDI is wanted: flash the `_tk.bin` image on one drone, check `kt`/mass in the yaml, C.0 gate: hover → A8 → circle/figure-8; first fallback `ctrlTk.jrz 0`; Rust (11) first, C (12) only as cross-check.
 - [ ] Optional NS2 bench follow-up: measure the real-vs-network force ratio at the crossings (1.14–1.49×) to see whether a retrain at dz 0.5 helps.
-**Writing:** see the thesis-draft block below.
+**Writing:** revision finished, decisions open — see `docs/thesis_revision/STATUS.md` (first: D-11 Pure INDI with supervisor), then the thesis-draft block below.
 
 ## NEXT STEPS grouped (2026-10-13 night, decisions of the user; supersedes the list above)
 **Done on 2026-10-13 (desk)**
