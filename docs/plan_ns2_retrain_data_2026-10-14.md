@@ -1,6 +1,6 @@
 # Topic 2 — NS2 retrain and diverse training data on the Omar C tree (desk preparation, 2026-10-14)
 
-Parent plans: `docs/plan_topics_2026-10-14.md`, `docs/plan_omar_tree_ns2_2026-10-14.md`. Status: **desk preparation only; no flight, nothing built.**
+Parent plans: `docs/plan_topics_2026-10-14.md`, `docs/plan_omar_tree_ns2_2026-10-14.md`. Status: **desk preparation; decisions of §6 taken by the author 2026-10-14 (all four proposals accepted); R1 random-waypoint scenario and the 66-flight training card written and desk-validated; label adapter and retrain not built; no flight.**
 Depends on: lab phases 7–8 (`docs/lab_sessions/next_session_plan.md`) — the data must be flown on the validated tree.
 
 ## 1. Two findings that shape the plan
@@ -33,3 +33,9 @@ Source script validated 2026-10-14 (`docs/plan_topics_2026-10-14.md` §Topic 2):
 2. **Label route:** offline replay reconstruction (recommended) vs flights with `indi = 1`.
 3. **Coverage numbers** of §3, and whether the old 26 flights are used at all.
 4. **Arena box and stack bias** for the random flights (§4).
+
+## 7. Done 2026-10-14 (after the four decisions)
+- **R1 scenario** (`crazyswarm2/.../formations/scenarios.py`, `run_formation --scenario R1 --seed N --total 40 --bias 0.7`): a random-waypoint flight **planned offline** instead of the IMRCLab script's online buffered-Voronoi avoidance (firmware `colAv`). Same data goal, but the complete trajectory goes through `safety.check()` before upload, is exactly reproducible from the seed (recorded in the meta like every scenario parameter), and the top vehicle is ≥ `dz_min` (0.25 m) above the bottom one at every waypoint, so with simultaneous legs it is above it at every instant; no reliance on a module we have never flown. Legs are rest-to-rest degree-7 smoothsteps (the library's standard curve) between random waypoints, both vehicles return to their slots at the end.
+- **Coverage statistics** (`experiments/analysis/random_flight_coverage.py`, 40 seeds, 40 s each, auto-centred, height 0.5): all 40 pass the safety gate (min separation 0.27 m, peak speed 0.50 m/s, peak acceleration 0.82 m/s²). With stack bias 0.7 the pair is inside the NS2 gate **68 % of the time (34 s per flight)** against 17 % unbiased (the original script's behaviour). dz in the gate q5/q50/q95 = 0.29 / 0.47 / 0.68 m. **Limit:** because every leg is rest-to-rest, the bottom vehicle's speed in the gate is mostly low (median 0.07 m/s, q95 0.30 m/s); the high-speed coverage must come from the grid flights (A8, A2, A3, A5, A7 at 0.4–0.5 m/s).
+- **Training card** (`experiments/analysis/ns2_training_flight_card.py` → `docs/ns2_training_flight_card.md`): 66 flights (A1 × 5 dz × 2, A4 offsets 0 / 0.05 / 0.10 / 0.15 × dz 0.25 / 0.5 / 0.75, A8 × 4 speeds × 2, A2 / A3 / A5 / A7 × 4 speeds, R1 seeds 101–120), strategy S0, session `ns2_train`, all commands validated; ≈ 32 min of flight time, ≈ 5.5 h with overheads.
+- **Not done:** the label adapter (offline replay → `a_res_z` column), the retrain, any flight. The old 26 flights are kept out of the new fit (different residual definition) unless you say otherwise.
