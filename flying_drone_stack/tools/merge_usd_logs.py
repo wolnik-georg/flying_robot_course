@@ -336,6 +336,11 @@ def main():
     ap.add_argument("--rate", type=float, default=DEFAULT_RATE)
     ap.add_argument("--mass", type=float, default=0.041)
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--omar-labels", choices=("deck", "dshot", "rpmf"), default=None,
+                    help="Omar C controller tree (2026-10-14): replace each drone's a_res_x/y/z by the label reconstructed "
+                         "offline from the raw channels with Omar's own controller code (residual/omar_labels.py; indi 0 flights "
+                         "log no a_imu_f/a_rpm_f). The value is the RPM source: deck = Omar's definition. Needs the system "
+                         "python3 (3.10 host bindings).")
     ap.add_argument("--meta", default=None,
                     help="scenario .meta.json. With --roles, aligns each drone by correlating "
                          "it against ITS OWN commanded trajectory instead of cross-correlating "
@@ -482,6 +487,16 @@ def main():
                 if off is not None:
                     print(f"   {n}: uSD vs radio offset {off*1000:+.1f} ms (corr {pk:.2f})")
 
+    if a.omar_labels:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "residual"))
+        from omar_labels import reconstruct_a_res
+        for n, l in zip(names, logs):
+            ar, _, _, valid = reconstruct_a_res(l, a.omar_labels)
+            ar[~valid] = 0.0                 # warm-up transient of the filters: exact zeros are dropped by dataset.build
+            for k, ax in enumerate("xyz"):
+                l[f"a_res_{ax}"] = ar[:, k]
+            print(f"[merge] {n}: a_res_* reconstructed offline (Omar C, rpm={a.omar_labels}); "
+                  f"{int(valid.sum())}/{len(valid)} samples valid")
     data = merge(logs, names, a.rate, a.mass)
     write_csv(a.out, data, t_zero="scenario_start" if a.meta else None)
     print(f"\n[merge] {len(data['t'])} rows x {len(data)} cols @ {a.rate:.0f} Hz -> {a.out}")
