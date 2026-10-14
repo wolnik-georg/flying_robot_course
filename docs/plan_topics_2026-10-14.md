@@ -34,6 +34,7 @@ Three topics. Topics 1 and 2 are decided in outline; topic 3 is the FBL follow-u
 **Open:** which (dz, speed, offset) grid is the core; how many random flights; label definition details (decided: Omar's); retrain pipeline script (`run_c2_lab_retrain.py` is the old pipeline, to be adapted to Omar's labels).
 
 ## Topic 3 — FBL controller follow-up (Hsieh et al. 2026; `docs/73`)
+**Decided 2026-10-14 (author): ask the authors only for the training script (+ why: retrain on our platform). The meeting doc question is reduced to that; licence and singularity handling are not asked, the rest is figured out by us.**
 **Position (to confirm with the supervisor):**
 - What we have: inference side only (114-parameter downwash residual with analytic derivatives, FBL control mapping, acceleration estimator, a sample *simulation* checkpoint). Verified against the paper (`docs/73`).
 - **Needed for our platform: the training script** (KNODE loss, ODE solver, data format), because the residual must be retrained on our vehicle and data; the bundle's constants are hard-coded for a 30 g Crazyflie 2.x and the sample net fits one specific simulated plant.
