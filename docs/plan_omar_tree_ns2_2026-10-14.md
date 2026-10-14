@@ -1,6 +1,6 @@
 # Plan — Omar C controller tree with NS2 on top (Topic 1), then NS2 retrain and data (Topic 2)
 
-Created 2026-10-14. Parent document: `docs/plan_topics_2026-10-14.md` (decisions). Status: **Phase 0 (desk reading) done; Phase 1 not started.**
+Created 2026-10-14. Parent document: `docs/plan_topics_2026-10-14.md` (decisions). Status: **Phase 0 (desk reading) and Phase 1 (spec: `docs/ns2_c_module_spec.md`) done; waiting for your read of the spec before Phase 2.** Confirmed 2026-10-14: the five proposals of §3.
 
 ## 0. Ground rules (do not break)
 1. **Do not touch any other controller.** Not our controller 6 / `lib.rs`, not Omar Rust (10), not Tal & Karaman (11, 12), not the frozen ours (`docs/77`, tag `ours-indi-frozen-2026-10-13`). Their behaviour, parameters and flown results stay exactly as they are.
