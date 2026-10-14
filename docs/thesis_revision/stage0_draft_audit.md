@@ -154,3 +154,16 @@ Ch. 1 L221 (provenance, green), Ch. 2 L571 (provenance, green), Ch. 2 L500 (`% U
 - Rule H1 was corrected: Chapter 5 is **not** written in the future tense; the rule is now "design description in present / future tense, no past-tense claim of what was done or found".
 - "Contributions C1–C5 in Chapter 1" was wrong: Chapter 1 lists three; `docs/19` has five.
 - Stage 0 got an explicit item for **statements derived from the project's own simulations or lab sessions** (H1/H9) and for **internal vocabulary** (file names, nicknames, S0–S3, C.1/C.4).
+
+---
+
+## Addendum (2026-10-14): code-vs-draft check, part 14 of the prompt (done after the code access was added)
+| Item | Draft says | Code says (location) | Verdict |
+|---|---|---|---|
+| (a) network | φ 6→16→16→8, ρ 8→16→16→3, 987 parameters, vector output, 2 m exclusion, 4 cm clamp, no spectral normalisation (Ch. 3 §3.4, Ch. 4 Strategy 2) | `residual_nn.rs` header and constants: φ 6→25→40→40→20, ρ 20→40→40→40→1, ground-effect branch (4 inputs), 19,297 weights, scalar vertical force, gate \|dx\|<0.2 \|dy\|<0.2 \|dvx\|<1.5, `MAX_NEIGHBOURS = 3`, `OUT_CLAMP = 8.0`; the 987-parameter network is stated to be gone | **stale** |
+| (b) residual sign | residual subtracted (Ch. 3 eq. 3.7, Ch. 4 eq. 4.1) | `lib.rs` ~L1856–1915: `res_sign` from `g_indi_res_sign`, default `+1` ("frozen / flight-proven"), `-1` "derivation-correct sign"; configuration decides | **author decision** |
+| (c) integrals | eq. 4.1 has $K_i\int e_p$ (vector), eq. 4.2 has $k_{i,\mathrm{att}}\int e_R$; text says the attitude integral is an addition "the source does not have" | `lib.rs` L525 `ENABLE_POSITION_INTEGRAL = false`, L535 `ENABLE_Z_INTEGRAL = true` (vertical only, `accumulate_z_integral`, `ki_z`), L540 `ENABLE_ATTITUDE_INTEGRAL = false` | **mismatch**: only a vertical integral is enabled; wording is an author decision |
+| (d) INDI increment and filters | eq. 4.4–4.5 incremental law with a filtered angular acceleration | consistent in structure (`controller_step`); filter orders and cutoffs are parameters (`fc_bw`, `filt_order`, …) | consistent; the draft names no cutoff, no filter order (completeness) |
+| (e) loop rate | "control loop runs at 500 Hz" (Ch. 5 L66) | `lib.rs` ~L2248: "The loop actually runs at 1000 Hz"; some services (network upload) at 500 Hz | **verify / stale** |
+| (f) logged variables | 35 at 500 Hz (Ch. 5 L190, L368) | `usd_study_config.txt`: 96 variables at 500 Hz | **stale** |
+| (g) scenario library | 16 scenarios (A1–A8, B1–B3, C1–C5) | `crazyswarm2` repo not part of this audit | not checked |
