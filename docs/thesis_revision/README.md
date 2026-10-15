@@ -22,3 +22,6 @@ Prompts: **one end-to-end prompt `docs/thesis_revision_prompt_full.md`** (single
 | 4 Ch. 6–9 | | | | | |
 | 5 | | | | `stage5_consistency.md` | |
 | 6 | | | | `stage6_final_report.md` | |
+
+## Round 2 (2026-10-15)
+Prompt `docs/thesis_revision_prompt_round2.md`: targeted pass on `revised/` after the study moved to one controller with switches (S0–S3) and FBL = S4. Outputs: `round2/` (audit, change log, open items, report, `revised/`). Not run yet.
