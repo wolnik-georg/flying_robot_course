@@ -32,6 +32,9 @@ The study moved to ONE Omar C controller tree (S0 geometric, S1 INDI, S2 geometr
 ## Round 2 (prepared 2026-10-15)
 Targeted update of the revised draft for the final study controllers (one controller with three switches: S0 geometric, S1 INDI, S2 geometric + NS2, S3 INDI + NS2, S4 FBL; no implementation names, no verification text, no results; edit now, three places `% CONFIRM-AFTER-LAB`). Prompt: `docs/thesis_revision_prompt_round2.md` (paste between its markers). Output goes to `docs/thesis_revision/round2/`; D-03 and D-05 stay open.
 
+## Round 2 result (2026-10-15)
+Done and validated (62 pages, 0 undefined, no forbidden names in visible text, 20 bib keys all present, originals untouched). Outputs `round2/`. New decisions: **D-12** (how the measured and predicted terms combine in S3: they add; the prediction becomes an offset of the INDI acceleration reference; options keep / partition / drop) and **D-13** (protocol flies two vehicles; null scenarios C1–C3, RQ3, contribution 2 and Ch7 assume three). D-03, D-05, [VERIFY] V-items (inertia from a Crazyflie 2.0 identification, mass 42.7 g vs 41 g) and three `% CONFIRM-AFTER-LAB` places remain.
+
 ## Files
 `author_decisions.md` (decisions + V items), `followup_report.md` (open items, merge order), `followup_verify_closure.md`,
 `followup_bib_corrections.md`, `followup_diff_audit*.md`, `followup_examiner.md`, `revised/` (chapters + `thesis_draft.tex`),
