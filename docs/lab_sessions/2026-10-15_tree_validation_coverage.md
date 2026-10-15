@@ -78,3 +78,6 @@ Bottom vehicle z error (target − measured, cm) in A8 while the vehicles are > 
 | S3 INDI + NS2 | +0.3 | +0.2, +0.4 | −0.1 |
 Geometric and INDI agree (shared Kpos_Iz 1.5 / gains), so INDI itself adds no offset. The two NS2 strategies sit ≈ 1.7 cm lower, the always-on ground-effect input of the network (not the neighbour term). The crossing dip is defined relative to this offset, so it is already offset-corrected; the uncorrected minimum differs by at most ≈ 2 cm out of 14–16 cm.
 Plot-ready data: `experiments/results/tree_validation_2026-10-15/` (`tree_validation_export.py`).
+
+## NS2 timing on the drone (cf5, read after the S2 block, no power cycle)
+`rnn.us_last` 495 µs, `rnn.us_avg` 501.6 µs, `rnn.us_max` **526 µs** per evaluation (100 Hz, one neighbour in the gate) = about 26 % of Omar's 2 ms slot; the old Rust path measured 504 / 533 µs. Not measured: three neighbours. At rest on the ground the last prediction read `pred_z` 8.0 (clamp active, drone on the floor, ground-effect input); the clamped fraction in flight is not yet checked. After the block the drone reads back `controller 6, indi 0, rnn.en 0` (flight framework restores defaults at the end).
