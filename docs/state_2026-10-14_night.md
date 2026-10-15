@@ -33,3 +33,6 @@ Small open items: send the FBL question; consult the supervisor about Pure INDI 
 
 ## Where things are
 Plans: `plan_topics_2026-10-14.md`, `plan_omar_tree_ns2_2026-10-14.md`, `ns2_c_module_spec.md`, `plan_ns2_retrain_data_2026-10-14.md`. Code: `crazyflie-firmware` (patched tree, patches preserved), `flying_drone_stack/firmware_app/ns2_weights.c`, `tools/residual/omar_labels.py`, `experiments/analysis/{omar_ns2_closed_loop_sil,random_flight_coverage,study_yaml_tree_variants,ns2_training_flight_card}.py`. Memory: `reference_omar_tree_ns2_facts_2026-10-14.md`.
+
+## Naming of the build artifacts (2026-10-15)
+The tree image is `flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin` (sha256 `dfac761a…2d5`; was `cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin`). Convention: `study_tree_v<N>.bin`, N counts the NS2 weight sets (v1 = frozen ns2_v1; the retrained network becomes v2). Older images keep their names (they are named in the live manifest).

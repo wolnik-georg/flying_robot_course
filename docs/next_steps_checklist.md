@@ -186,7 +186,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 - Tal & Karaman: parked; the only thing prepared is the run with Omar's values (above).
 **NEXT LAB SESSION — Omar C controller tree with NS2 (state 2026-10-14 night; full commands `docs/lab_sessions/next_session_plan.md`; plan `docs/plan_omar_tree_ns2_2026-10-14.md`)**
 Desk work for the tree is DONE (NS2 in C bit-identical to the Rust flight code, rnn.en = 0 bit-identical to the old Omar C on four logged flights, closed-loop SIL direction, ARM image, yaml patches, strategy blocks, bench tool, label adapter, 66-flight training card); results `docs/ns2_c_phase3_5_results_2026-10-14.md`. **Nothing flashed, nothing flown on the tree.**
-- [ ] 1. Pull both repos; flash BOTH drones with `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin` (sha256 `dfac761a…2d5`, 532 960 B); power-cycle.
+- [ ] 1. Pull both repos; flash BOTH drones with `flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin` (sha256 `dfac761a…2d5`, 532 960 B); power-cycle.
 - [ ] 2. Bench per drone: `flying_drone_stack/tools/ns2c_bench_check.py <uri>` (static, no setpoint). Any FAIL → stop and report.
 - [ ] 3. Copy the candidate manifest blocks (`docs/frozen/omar_ns2c_tree/study_manifest_ns2c_candidate.json`) into `crazyswarm2/crazyflie/config/study_manifest.json`; commit + push both repos. Restore the study SD config on both cards.
 - [ ] 4. Fly the tree validation (`tree_S0..S3.patch`, both drones pinned to controller 9): S0 solo hover → S0 A8 → S2 A1 + A8 → S1 solo hover (**INDI takeoff from the ground with Omar's controller is new**) → S1 A8 → S3 A1 + A8. Card `docs/study_shakedown_card.md`. Abort rule protocol §4.

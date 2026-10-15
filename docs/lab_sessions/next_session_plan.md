@@ -7,15 +7,15 @@ Validate the unified controller tree on the drones: **S0 Omar geometric, S1 Omar
 Desk gates passed before this session (details in the plan doc §Phases): C module = Rust flight code bit-identical (Phase 4), NS2-off outputs byte-identical to the old Omar C on four logged flights (Phase 3), closed-loop SIL direction/sign (Phase 5), image built from the patch list (Phase 6).
 
 ## 1. Image and manifest (Phase 6 result)
-- Image: `flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin`, sha256 `dfac761a16d115c9a20ef29e320f7d9ff5a76300b85e475548b285fac24fc2d5` (532 960 B; flash 52 %, RAM 75 %). Candidate manifest: `docs/frozen/omar_ns2c_tree/study_manifest_ns2c_candidate.json` — **not active**; copy its `cf5` / `cf_second` blocks into `crazyswarm2/crazyflie/config/study_manifest.json` only at the flash step (below).
+- Image: `flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin`, sha256 `dfac761a16d115c9a20ef29e320f7d9ff5a76300b85e475548b285fac24fc2d5` (532 960 B; flash 52 %, RAM 75 %). Candidate manifest: `docs/frozen/omar_ns2c_tree/study_manifest_ns2c_candidate.json` — **not active**; copy its `cf5` / `cf_second` blocks into `crazyswarm2/crazyflie/config/study_manifest.json` only at the flash step (below).
 - The previous study image (`…_ON_tk.bin`, `cb38f3f4…`) stays as the fallback; flashing it returns to the old tree.
 
 ## 2. Setup (no motors)
 ```bash
 cd ~/Desktop/flying_robot_course && git pull && cd ~/Desktop/crazyswarm2 && git pull     # lab PC, CS2 stopped
 # flash BOTH drones (cf5 E7E7E7BB02, cf_second E7E7E7E7E9), power-cycle each afterwards
-cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
-cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk_ns2c.bin stm32-fw -w radio://0/80/2M/E7E7E7E7E9
+cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
+cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin stm32-fw -w radio://0/80/2M/E7E7E7E7E9
 # Phase 7 bench check (static, sends NO setpoint), once per drone
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7E7E9
