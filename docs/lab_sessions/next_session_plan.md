@@ -23,7 +23,7 @@ Dedicated training flights (never study repeats) for the retrained NS2 that serv
 | 1 | Back up both cards, **reformat, then `restore_study_sd_config.py` on both**, then `check_usd_deck.py` before the first flight | lab | today's write gaps (1.3 % mean) and empty files; reformat removes the config |
 | 2 | Batteries: charge everything, change below ≈ 4.1 V resting (four S2 flights were lost to 2.6 V cut-offs) | lab | each lost flight is lost training data |
 | 3 | Bench check on both drones (`ns2c_bench_check.py`), confirm `Using OutOfTree4 (9)` after any flash/power-cycle | lab | known silent-wrong-controller failure mode |
-| 4 | Retrain acceptance rule and hold-out (e.g. which R1 seeds stay out) — **you define**; old 26 flights: decided, used (relabelled) | you | the gate must be fixed before the data is seen |
+| 4 | ~~Retrain acceptance rule~~ **DECIDED 2026-10-15 (b):** leave-one-flight-out with the existing script thresholds (R² ≥ 0.35 and ≥ 50 % vs zero), unchanged from v1, plus v1 weights scored on the same left-out flights (new must be at least as good); old 26 flights used (relabelled) | done | — |
 | 5 | ~~Generic merge for the training bank~~ **DONE 2026-10-15:** `experiments/analysis/merge_training_bank.py` (pairs by `usd.runTag`, `--omar-labels deck`, writes the manifest) | desk | tested on today's 13 flights, the 3 outliers skipped |
 | 6 | ~~Dry run of the retrain chain~~ **DONE 2026-10-15** (`docs/ns2_tree_retrain_dryrun_2026-10-15.md`): chain runs end to end in 4 min, 12/13 LOO folds R² 0.71–0.88; gate thresholds in the script are the old v1 ones | desk | — |
 | 7 | ~~Clamped fraction~~ **DONE 2026-10-15:** 0.00 % in flight (bottom vehicle, all strategies, incl. takeoff); the 8.0 is a motors-off ground reading | desk | — |
