@@ -20,3 +20,20 @@ Strategy of every flight is read from the log itself (`experiments/analysis/tree
 
 Preliminary crossing dips (z error minimum within ±0.8 s of the crossing, relative to the steady offset outside crossings): S0 −15.7 cm (n = 2), S1 −10.6 cm (n = 3), S3 −1.9 cm (n = 2). S3 offset +0.3/+0.4 cm against +2.2…+2.7 cm for S0/S1.
 Sign check of the C implementation on hardware: with NS2 on the thrust residual follows −rnn.pred with gain +1.00 (S3), 0 with it off.
+
+## Merged two-vehicle analysis (both cards, 2026-10-15 evening)
+Pairing by `usd.runTag` (all 10 flights matched), alignment against each vehicle's own commanded trajectory (bottom RMS 3.7–6.1 cm, top 1.7–3.1 cm; the failed A1: bottom 22 cm, merged with `--tag-quality-only`). Reproduce: `experiments/analysis/tree_validation_merge.py`, numbers: `experiments/analysis/tree_validation_analysis.py`.
+
+**The top vehicle ran S0 (INDI off, NS2 off) in every one of the 10 flights** (`tree_log_check.py` on all cf_second logs), z std 0.3–0.9 cm.
+
+| Strategy | A8 flights | crossing dip (cm) | worst dip | upward peak mean / max | steady offset | z std (A8) | separation error at crossing |
+|---|---|---|---|---|---|---|---|
+| S0 geometric | 2 | **−15.7** | −20.0 | −0.5 / +1.7 | +2.3 cm | 5.2 cm | −0.4 cm |
+| S1 INDI | 3 | **−10.4** | −12.5 | −0.7 / +0.3 | +2.4 cm | 3.6 cm | −0.5 cm |
+| S3 INDI + NS2 | 2 | **−1.9** | −5.2 | +1.6 / **+5.7** | +0.4 cm | 1.7 cm | −0.9 cm |
+| S2 geometric + NS2 | — | not flown validly | | | | | |
+
+A1 (stack hold, dz 0.5): S1 z error −0.8 ± 2.0 cm; S3 **+3.2 ± 4.5 cm**, separation error −3.3 ± 4.8 cm (S1 +0.8 ± 2.3): the plain-sum hybrid sits higher and bobs more in the stack (n = 1 each). The failed A1 (strategy unclear): z −17.5 cm, separation +17 cm, pitch up to 41°.
+uSD write gaps over all 18 two-vehicle logs: mean 1.3 % of samples, worst 3.8 %, longest 194 ms (10-13: 0.03–0.19 %); not blocking for these metrics, but worse than before (cards are full of archives; reformat after backup is an option).
+
+**What is still missing:** S2 A1 + A8 ×2, S0 A1 (and an explanation of the failed A1 at 17:37:45).
