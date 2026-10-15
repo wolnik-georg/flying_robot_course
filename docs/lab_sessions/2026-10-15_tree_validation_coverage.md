@@ -67,3 +67,14 @@ Radio-only dropouts (uSD fine, not outliers): A8 17:35:53 and 18:14:47 (cf_secon
 | S3 INDI + NS2 | +2.6 ± 3.9 | −2.6 ± 4.2 | 3.0 | 13 / 14 |
 
 All four A1 flights are clean flights (n = 1 each). The geometric strategies show a large negative z error and large attitude excursions in the stack (expected at the shared soft gains Kp 7, Kv 4 in the wash of an aligned neighbour); NS2 on the geometric controller reduces the z error (−19.8 → −13.7 cm), the INDI strategies hold the height within 3 cm. Reproduce: `experiments/analysis/tree_validation_analysis.py` (A1 block).
+
+## Baseline offset check (no interaction): is the crossing comparison poisoned by a per-strategy z offset?
+Bottom vehicle z error (target − measured, cm) in A8 while the vehicles are > 0.5 m apart in xy (outside the NS2 gate and clear of the wash), median per flight; the top vehicle (S0 in every flight) is the control.
+| Strategy | bottom offset far apart | flights | top (control) |
+|---|---|---|---|
+| S0 geometric | +1.8 cm | +1.7, +2.0 | −0.1 |
+| S1 INDI | +2.1 | +2.0, +2.4, +1.8 | 0.0 |
+| S2 geometric + NS2 | +0.2 | +0.2, +0.2 | 0.0 |
+| S3 INDI + NS2 | +0.3 | +0.2, +0.4 | −0.1 |
+Geometric and INDI agree (shared Kpos_Iz 1.5 / gains), so INDI itself adds no offset. The two NS2 strategies sit ≈ 1.7 cm lower, the always-on ground-effect input of the network (not the neighbour term). The crossing dip is defined relative to this offset, so it is already offset-corrected; the uncorrected minimum differs by at most ≈ 2 cm out of 14–16 cm.
+Plot-ready data: `experiments/results/tree_validation_2026-10-15/` (`tree_validation_export.py`).
