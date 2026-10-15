@@ -1,453 +1,482 @@
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 248444 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 20488 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 191192
-normalisation (rel)    mu=[ 5.9581e-06 -1.3635e-04  2.8791e-03 -1.8902e-04 -1.2386e-04  8.2913e-04] sigma=[0.0397 0.0674 0.5345 0.3285 0.5553 0.1343]
-normalisation (ground) mu=[-0.7453  0.0081  0.0058  0.004 ] sigma=[0.2562 0.1175 0.2435 0.0569]
-train 198857 / val 49587 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.14999  val RMSE 0.1771 m/s^2  *
-  epoch   20  train 0.03617  val RMSE 0.1564 m/s^2
-  epoch   39  train 0.03470  val RMSE 0.1581 m/s^2
-best val RMSE 0.1560 m/s^2  (12.2s)
-baseline (predict zero) 0.7196 m/s^2  ->  78.3% reduction
-fold check: max |trained - exported| = 5.15e-07 m/s^2
+dataset: 124357 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 144575 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 95506
+normalisation (rel)    mu=[ 1.6246e-03 -1.7477e-04  5.2858e-01 -2.0141e-02 -9.9041e-03 -4.5858e-02] sigma=[0.0395 0.0672 0.071  0.3267 0.5531 0.1253]
+normalisation (ground) mu=[-0.4916 -0.003   0.0013 -0.0055] sigma=[0.0472 0.165  0.265  0.0653]
+train 99284 / val 25073 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34705  val RMSE 0.4597 m/s^2  *
+  epoch   20  train 0.05377  val RMSE 0.2108 m/s^2
+  epoch   39  train 0.05052  val RMSE 0.2121 m/s^2
+best val RMSE 0.2045 m/s^2  (6.2s)
+baseline (predict zero) 1.1214 m/s^2  ->  81.8% reduction
+fold check: max |trained - exported| = 1.11e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A1_2026-10-15_17-37-45.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 248410 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 20518 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 191192
-normalisation (rel)    mu=[-0.0002 -0.0002  0.0056 -0.0012 -0.0005  0.0002] sigma=[0.0548 0.0683 0.5846 0.4605 0.5636 0.1049]
-normalisation (ground) mu=[-0.7396  0.0081  0.0057 -0.0025] sigma=[0.2634 0.1611 0.2457 0.0504]
-train 198823 / val 49587 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.12588  val RMSE 0.1787 m/s^2  *
-  epoch   20  train 0.03685  val RMSE 0.1542 m/s^2
-  epoch   39  train 0.03476  val RMSE 0.1540 m/s^2
-best val RMSE 0.1524 m/s^2  (12.2s)
-baseline (predict zero) 0.5929 m/s^2  ->  74.3% reduction
-fold check: max |trained - exported| = 5.07e-07 m/s^2
+dataset: 124455 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 144473 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 95506
+normalisation (rel)    mu=[ 0.0039  0.0051  0.5752 -0.0238 -0.0126 -0.0096] sigma=[0.0545 0.0678 0.099  0.4581 0.5603 0.1041]
+normalisation (ground) mu=[-0.4807 -0.0035  0.0009 -0.0078] sigma=[0.0648 0.2267 0.2688 0.0706]
+train 99368 / val 25087 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.29426  val RMSE 0.4568 m/s^2  *
+  epoch   20  train 0.05796  val RMSE 0.2119 m/s^2
+  epoch   39  train 0.05491  val RMSE 0.2120 m/s^2
+best val RMSE 0.2110 m/s^2  (6.1s)
+baseline (predict zero) 0.8765 m/s^2  ->  75.9% reduction
+fold check: max |trained - exported| = 1.08e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A1_2026-10-15_17-48-27.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 248864 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 20068 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 191192
-normalisation (rel)    mu=[-1.2066e-04  7.4199e-05  8.1983e-04 -1.0774e-03 -1.6696e-04  2.5275e-04] sigma=[0.055  0.0679 0.5895 0.4594 0.5612 0.1458]
-normalisation (ground) mu=[-0.7393  0.0082  0.0059  0.0027] sigma=[0.2641 0.1612 0.2454 0.0602]
-train 199299 / val 49565 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.13453  val RMSE 0.1738 m/s^2  *
-  epoch   20  train 0.03625  val RMSE 0.1478 m/s^2
-  epoch   39  train 0.03408  val RMSE 0.1454 m/s^2
-best val RMSE 0.1446 m/s^2  (12.4s)
-baseline (predict zero) 0.6049 m/s^2  ->  76.1% reduction
+dataset: 124357 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 144575 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 95506
+normalisation (rel)    mu=[ 0.0009  0.0057  0.5832 -0.0215 -0.0113 -0.0589] sigma=[0.0551 0.0677 0.0899 0.4597 0.561  0.133 ]
+normalisation (ground) mu=[-0.4789 -0.0031  0.0012 -0.0083] sigma=[0.0634 0.2271 0.2688 0.0705]
+train 99284 / val 25073 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.28666  val RMSE 0.4033 m/s^2  *
+  epoch   20  train 0.05634  val RMSE 0.2081 m/s^2
+  epoch   39  train 0.05341  val RMSE 0.2101 m/s^2
+best val RMSE 0.2071 m/s^2  (6.0s)
+baseline (predict zero) 0.8541 m/s^2  ->  75.8% reduction
 fold check: max |trained - exported| = 6.91e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A1_2026-10-15_17-57-57.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 248314 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 20618 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 191192
-normalisation (rel)    mu=[-0.0002 -0.0001  0.0047 -0.0013 -0.0004  0.0006] sigma=[0.0411 0.0646 0.5514 0.3372 0.5339 0.1376]
-normalisation (ground) mu=[-0.7434  0.0083  0.0057  0.0043] sigma=[0.2589 0.1206 0.2378 0.0577]
-train 198756 / val 49558 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.16173  val RMSE 0.1670 m/s^2  *
-  epoch   20  train 0.03683  val RMSE 0.1534 m/s^2
-  epoch   39  train 0.03518  val RMSE 0.1535 m/s^2
-best val RMSE 0.1481 m/s^2  (12.3s)
-baseline (predict zero) 0.6545 m/s^2  ->  77.4% reduction
-fold check: max |trained - exported| = 5.34e-07 m/s^2
+dataset: 124357 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 144575 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 95506
+normalisation (rel)    mu=[-0.0009 -0.0029  0.5428 -0.021  -0.0087 -0.0447] sigma=[0.0411 0.0642 0.0935 0.3363 0.5313 0.1291]
+normalisation (ground) mu=[-0.4882 -0.003   0.0013 -0.0051] sigma=[0.0575 0.1692 0.2543 0.0667]
+train 99284 / val 25073 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.35408  val RMSE 0.5038 m/s^2  *
+  epoch   20  train 0.05644  val RMSE 0.2160 m/s^2
+  epoch   39  train 0.05273  val RMSE 0.2186 m/s^2
+best val RMSE 0.2090 m/s^2  (6.1s)
+baseline (predict zero) 1.0555 m/s^2  ->  80.2% reduction
+fold check: max |trained - exported| = 1.03e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A1_2026-10-15_18-18-32.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239428 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19648 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 169986
-normalisation (rel)    mu=[-1.3382e-04 -8.8483e-05  3.8301e-03 -1.0375e-03 -3.3465e-04  5.1536e-04] sigma=[0.0502 0.0595 0.5715 0.4204 0.4899 0.1296]
-normalisation (ground) mu=[-0.7395  0.008   0.0058  0.003 ] sigma=[0.2636 0.1645 0.2373 0.0575]
-train 191341 / val 48087 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17331  val RMSE 0.2228 m/s^2  *
-  epoch   20  train 0.03784  val RMSE 0.1870 m/s^2
-  epoch   39  train 0.03587  val RMSE 0.1888 m/s^2
-best val RMSE 0.1836 m/s^2  (12.1s)
-baseline (predict zero) 0.8517 m/s^2  ->  78.4% reduction
-fold check: max |trained - exported| = 6.96e-07 m/s^2
+dataset: 119909 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139167 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84898
+normalisation (rel)    mu=[ 2.9341e-04  1.9376e-03  5.6297e-01 -1.9120e-02 -1.0571e-02 -5.2856e-02] sigma=[0.0501 0.0592 0.0943 0.4191 0.4878 0.1175]
+normalisation (ground) mu=[-0.4803 -0.003   0.0012 -0.0082] sigma=[0.064  0.2316 0.2606 0.0653]
+train 95832 / val 24077 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41732  val RMSE 0.5211 m/s^2  *
+  epoch   20  train 0.06542  val RMSE 0.2202 m/s^2
+  epoch   39  train 0.06194  val RMSE 0.2159 m/s^2
+best val RMSE 0.2156 m/s^2  (6.1s)
+baseline (predict zero) 1.0882 m/s^2  ->  80.2% reduction
+fold check: max |trained - exported| = 9.16e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-31-28.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239437 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19639 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 169859
-normalisation (rel)    mu=[-1.3355e-04 -8.8309e-05  3.8226e-03 -1.0355e-03 -3.3400e-04  5.1436e-04] sigma=[0.0502 0.0596 0.5715 0.42   0.4868 0.13  ]
-normalisation (ground) mu=[-0.7395  0.0078  0.0059  0.0028] sigma=[0.2636 0.1645 0.2371 0.0575]
-train 191349 / val 48088 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17351  val RMSE 0.2280 m/s^2  *
-  epoch   20  train 0.03741  val RMSE 0.1890 m/s^2
-  epoch   39  train 0.03546  val RMSE 0.1906 m/s^2
-best val RMSE 0.1869 m/s^2  (11.5s)
-baseline (predict zero) 0.8525 m/s^2  ->  78.1% reduction
-fold check: max |trained - exported| = 6.30e-07 m/s^2
+dataset: 119909 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139167 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84830
+normalisation (rel)    mu=[ 2.3191e-04  1.9135e-03  5.6305e-01 -1.9916e-02 -1.0880e-02 -5.2512e-02] sigma=[0.0501 0.0593 0.0941 0.4187 0.4848 0.1181]
+normalisation (ground) mu=[-0.4802 -0.0031  0.001  -0.0085] sigma=[0.0639 0.2317 0.2603 0.0652]
+train 95832 / val 24077 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41799  val RMSE 0.5191 m/s^2  *
+  epoch   20  train 0.06801  val RMSE 0.2136 m/s^2
+  epoch   39  train 0.06451  val RMSE 0.2130 m/s^2
+best val RMSE 0.2090 m/s^2  (6.1s)
+baseline (predict zero) 1.0877 m/s^2  ->  80.8% reduction
+fold check: max |trained - exported| = 7.91e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-35-53.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239462 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19588 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 170046
-normalisation (rel)    mu=[-1.3387e-04 -8.8516e-05  3.8315e-03 -1.0379e-03 -3.3478e-04  5.1556e-04] sigma=[0.0503 0.0594 0.5717 0.4206 0.4895 0.1328]
-normalisation (ground) mu=[-0.7391  0.0084  0.0058  0.0028] sigma=[0.2639 0.1646 0.2383 0.0598]
-train 191369 / val 48093 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17342  val RMSE 0.2223 m/s^2  *
-  epoch   20  train 0.03590  val RMSE 0.1877 m/s^2
-  epoch   39  train 0.03406  val RMSE 0.1888 m/s^2
-best val RMSE 0.1851 m/s^2  (11.5s)
-baseline (predict zero) 0.8532 m/s^2  ->  78.3% reduction
-fold check: max |trained - exported| = 4.52e-07 m/s^2
+dataset: 119956 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139094 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84958
+normalisation (rel)    mu=[ 0.0007  0.0019  0.5633 -0.0208 -0.011  -0.0508] sigma=[0.0502 0.0591 0.0942 0.4192 0.4875 0.1218]
+normalisation (ground) mu=[-0.4797 -0.003   0.001  -0.0085] sigma=[0.065  0.2317 0.2625 0.0691]
+train 95864 / val 24092 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41563  val RMSE 0.5065 m/s^2  *
+  epoch   20  train 0.06329  val RMSE 0.2104 m/s^2
+  epoch   39  train 0.06044  val RMSE 0.2093 m/s^2
+best val RMSE 0.2054 m/s^2  (5.9s)
+baseline (predict zero) 1.0886 m/s^2  ->  81.1% reduction
+fold check: max |trained - exported| = 6.76e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-43-15.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239448 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19598 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 170036
-normalisation (rel)    mu=[-1.3387e-04 -8.8521e-05  3.8317e-03 -1.0380e-03 -3.3480e-04  5.1559e-04] sigma=[0.0503 0.0594 0.5716 0.4206 0.4887 0.1327]
-normalisation (ground) mu=[-0.739   0.0082  0.006   0.0027] sigma=[0.2641 0.1646 0.2377 0.0595]
-train 191360 / val 48088 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17178  val RMSE 0.2254 m/s^2  *
-  epoch   20  train 0.03641  val RMSE 0.1914 m/s^2
-  epoch   39  train 0.03464  val RMSE 0.1925 m/s^2
-best val RMSE 0.1904 m/s^2  (11.7s)
-baseline (predict zero) 0.8556 m/s^2  ->  77.7% reduction
-fold check: max |trained - exported| = 5.40e-07 m/s^2
+dataset: 119944 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139102 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84948
+normalisation (rel)    mu=[ 5.5003e-04  2.0280e-03  5.6314e-01 -2.1406e-02 -1.0797e-02 -5.0949e-02] sigma=[0.0502 0.0591 0.0943 0.4192 0.4867 0.1217]
+normalisation (ground) mu=[-0.4795 -0.0028  0.0014 -0.0087] sigma=[0.0648 0.2318 0.2615 0.0687]
+train 95856 / val 24088 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41545  val RMSE 0.5103 m/s^2  *
+  epoch   20  train 0.06511  val RMSE 0.2045 m/s^2
+  epoch   39  train 0.06198  val RMSE 0.2034 m/s^2
+best val RMSE 0.2029 m/s^2  (6.2s)
+baseline (predict zero) 1.0886 m/s^2  ->  81.4% reduction
+fold check: max |trained - exported| = 1.30e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-44-43.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239462 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19588 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 170030
-normalisation (rel)    mu=[-1.3383e-04 -8.8495e-05  3.8306e-03 -1.0377e-03 -3.3470e-04  5.1544e-04] sigma=[0.0503 0.0595 0.5716 0.4204 0.4892 0.133 ]
-normalisation (ground) mu=[-0.7391  0.008   0.0059  0.0028] sigma=[0.2641 0.1646 0.2384 0.0604]
-train 191369 / val 48093 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17163  val RMSE 0.2247 m/s^2  *
-  epoch   20  train 0.03470  val RMSE 0.1894 m/s^2  *
-  epoch   39  train 0.03307  val RMSE 0.1912 m/s^2
-best val RMSE 0.1894 m/s^2  (11.7s)
-baseline (predict zero) 0.8606 m/s^2  ->  78.0% reduction
+dataset: 119956 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139094 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84950
+normalisation (rel)    mu=[ 4.0838e-04  1.9144e-03  5.6317e-01 -1.9905e-02 -1.0794e-02 -5.0374e-02] sigma=[0.0502 0.0592 0.0942 0.4191 0.4872 0.1222]
+normalisation (ground) mu=[-0.4796 -0.003   0.0012 -0.0086] sigma=[0.0652 0.2318 0.2625 0.0703]
+train 95864 / val 24092 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41522  val RMSE 0.5014 m/s^2  *
+  epoch   20  train 0.06216  val RMSE 0.1983 m/s^2  *
+  epoch   39  train 0.05919  val RMSE 0.2003 m/s^2
+best val RMSE 0.1983 m/s^2  (6.3s)
+baseline (predict zero) 1.0843 m/s^2  ->  81.7% reduction
 fold check: max |trained - exported| = 7.02e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-46-44.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239456 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19578 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 169984
-normalisation (rel)    mu=[-1.3376e-04 -8.8444e-05  3.8284e-03 -1.0371e-03 -3.3451e-04  5.1514e-04] sigma=[0.0503 0.0595 0.5717 0.4204 0.4888 0.1334]
-normalisation (ground) mu=[-0.7391  0.0078  0.0055  0.0027] sigma=[0.2641 0.1647 0.2382 0.0613]
-train 191363 / val 48093 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17187  val RMSE 0.2229 m/s^2  *
-  epoch   20  train 0.03597  val RMSE 0.1828 m/s^2
-  epoch   39  train 0.03430  val RMSE 0.1835 m/s^2
-best val RMSE 0.1826 m/s^2  (11.8s)
-baseline (predict zero) 0.8562 m/s^2  ->  78.7% reduction
-fold check: max |trained - exported| = 8.47e-07 m/s^2
+dataset: 119948 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139086 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84922
+normalisation (rel)    mu=[ 5.5649e-04  1.9281e-03  5.6325e-01 -2.0063e-02 -1.0780e-02 -4.8650e-02] sigma=[0.0502 0.0592 0.0941 0.4191 0.4868 0.1234]
+normalisation (ground) mu=[-0.4796 -0.0031  0.0008 -0.0086] sigma=[0.0658 0.2319 0.2623 0.0717]
+train 95858 / val 24090 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41552  val RMSE 0.5019 m/s^2  *
+  epoch   20  train 0.06336  val RMSE 0.2126 m/s^2
+  epoch   39  train 0.06016  val RMSE 0.2169 m/s^2
+best val RMSE 0.2086 m/s^2  (6.1s)
+baseline (predict zero) 1.0841 m/s^2  ->  80.8% reduction
+fold check: max |trained - exported| = 5.68e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-54-37.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239462 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19588 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 170036
-normalisation (rel)    mu=[-1.3385e-04 -8.8503e-05  3.8310e-03 -1.0378e-03 -3.3473e-04  5.1548e-04] sigma=[0.0503 0.0595 0.5719 0.4205 0.4901 0.1335]
-normalisation (ground) mu=[-0.739   0.008   0.0058  0.0028] sigma=[0.2642 0.1647 0.2384 0.0613]
-train 191369 / val 48093 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17121  val RMSE 0.2252 m/s^2  *
-  epoch   20  train 0.03552  val RMSE 0.1890 m/s^2
-  epoch   39  train 0.03382  val RMSE 0.1893 m/s^2
-best val RMSE 0.1876 m/s^2  (12.3s)
-baseline (predict zero) 0.8555 m/s^2  ->  78.1% reduction
-fold check: max |trained - exported| = 5.28e-07 m/s^2
+dataset: 119956 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139094 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84953
+normalisation (rel)    mu=[ 0.0007  0.0021  0.5635 -0.0208 -0.0108 -0.0488] sigma=[0.0502 0.0593 0.094  0.4192 0.4881 0.1234]
+normalisation (ground) mu=[-0.4794 -0.0032  0.0011 -0.0085] sigma=[0.0657 0.2318 0.2626 0.0717]
+train 95864 / val 24092 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41412  val RMSE 0.5000 m/s^2  *
+  epoch   20  train 0.06294  val RMSE 0.2077 m/s^2
+  epoch   39  train 0.05951  val RMSE 0.2090 m/s^2
+best val RMSE 0.2054 m/s^2  (5.9s)
+baseline (predict zero) 1.0843 m/s^2  ->  81.1% reduction
+fold check: max |trained - exported| = 1.13e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_17-56-18.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239427 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 19649 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 169797
-normalisation (rel)    mu=[-1.3345e-04 -8.8243e-05  3.8197e-03 -1.0347e-03 -3.3375e-04  5.1397e-04] sigma=[0.0501 0.0596 0.5714 0.4195 0.4852 0.1325]
-normalisation (ground) mu=[-0.7394  0.0081  0.0061  0.0028] sigma=[0.2638 0.1639 0.2372 0.0608]
-train 191339 / val 48088 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17219  val RMSE 0.2282 m/s^2  *
-  epoch   20  train 0.03723  val RMSE 0.1955 m/s^2
-  epoch   39  train 0.03539  val RMSE 0.1949 m/s^2
-best val RMSE 0.1931 m/s^2  (11.6s)
-baseline (predict zero) 0.8599 m/s^2  ->  77.5% reduction
-fold check: max |trained - exported| = 9.08e-07 m/s^2
+dataset: 119908 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 139168 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84803
+normalisation (rel)    mu=[ 2.6554e-04  2.0939e-03  5.6296e-01 -1.8866e-02 -1.0545e-02 -5.0432e-02] sigma=[0.05   0.0594 0.0942 0.4183 0.4832 0.1217]
+normalisation (ground) mu=[-0.4802 -0.0029  0.0016 -0.0085] sigma=[0.0658 0.2309 0.2605 0.071 ]
+train 95829 / val 24079 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41767  val RMSE 0.5122 m/s^2  *
+  epoch   20  train 0.06461  val RMSE 0.2248 m/s^2
+  epoch   39  train 0.06117  val RMSE 0.2280 m/s^2
+best val RMSE 0.2192 m/s^2  (6.0s)
+baseline (predict zero) 1.0922 m/s^2  ->  79.9% reduction
+fold check: max |trained - exported| = 9.33e-07 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_18-14-47.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
 /home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
   warnings.warn("Can't initialize NVML")
-dataset: 239426 samples from 12 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  dropped_zero_a_res: 19648 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 169762
-normalisation (rel)    mu=[-1.3339e-04 -8.8201e-05  3.8178e-03 -1.0342e-03 -3.3359e-04  5.1372e-04] sigma=[0.0501 0.0598 0.5714 0.4196 0.485  0.1327]
-normalisation (ground) mu=[-0.7394  0.008   0.0058  0.0028] sigma=[0.2637 0.1644 0.237  0.0609]
-train 191342 / val 48084 (contiguous blocks, not shuffled samples)
-  epoch    0  train 0.17314  val RMSE 0.2301 m/s^2  *
-  epoch   20  train 0.03693  val RMSE 0.1954 m/s^2
-  epoch   39  train 0.03514  val RMSE 0.1962 m/s^2
-best val RMSE 0.1920 m/s^2  (11.9s)
-baseline (predict zero) 0.8602 m/s^2  ->  77.7% reduction
-fold check: max |trained - exported| = 5.37e-07 m/s^2
+dataset: 119908 samples from 12 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  dropped_zero_a_res: 139166 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 84786
+normalisation (rel)    mu=[ 3.0000e-04  1.9317e-03  5.6289e-01 -1.9522e-02 -1.0936e-02 -5.0136e-02] sigma=[0.0501 0.0595 0.0942 0.4183 0.483  0.122 ]
+normalisation (ground) mu=[-0.4803 -0.0031  0.001  -0.0084] sigma=[0.0658 0.2315 0.2601 0.0711]
+train 95829 / val 24079 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.41750  val RMSE 0.5204 m/s^2  *
+  epoch   20  train 0.06434  val RMSE 0.2214 m/s^2
+  epoch   39  train 0.06106  val RMSE 0.2235 m/s^2
+best val RMSE 0.2194 m/s^2  (6.1s)
+baseline (predict zero) 1.0920 m/s^2  ->  79.9% reduction
+fold check: max |trained - exported| = 1.45e-06 m/s^2
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_weights/train_without_A8_2026-10-15_18-16-57.npz  (19297 weights)
-dataset: 262420 samples from 13 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 21518 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 191192
-dataset: 13976 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 13976 kept
-  dropped_zero_a_res: 1030 (row-ticks summed over all ego drones; partner may read 0 a_res)
-dataset: 14010 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 14010 kept
-  dropped_zero_a_res: 1000 (row-ticks summed over all ego drones; partner may read 0 a_res)
-dataset: 13556 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 13556 kept
-  dropped_zero_a_res: 1450 (row-ticks summed over all ego drones; partner may read 0 a_res)
-dataset: 14106 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 14106 kept
-  dropped_zero_a_res: 900 (row-ticks summed over all ego drones; partner may read 0 a_res)
-dataset: 22992 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 22992 kept
-  dropped_zero_a_res: 1870 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21206
-dataset: 22983 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 22983 kept
-  dropped_zero_a_res: 1879 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21333
-dataset: 22958 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  dropped_zero_a_res: 1930 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21146
-dataset: 22972 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 22972 kept
-  dropped_zero_a_res: 1920 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21156
-dataset: 22958 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  dropped_zero_a_res: 1930 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21162
-dataset: 22964 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 22964 kept
-  dropped_zero_a_res: 1940 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21208
-dataset: 22958 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 22958 kept
-  dropped_zero_a_res: 1930 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21156
-dataset: 22993 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 22993 kept
-  dropped_zero_a_res: 1869 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21395
-dataset: 22994 samples from 1 file(s)
-  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 22994 kept
-  dropped_zero_a_res: 1870 (row-ticks summed over all ego drones; partner may read 0 a_res)
-  no_neighbour_influence: 21430
-combined RMSE 0.1518 m/s²  R² 0.9562
-val-block RMSE 0.1821 m/s²
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+dataset: 131410 samples from 13 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 152528 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 95506
+dataset: 7053 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-37-45/A1_2026-10-15_17-37-45_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  dropped_zero_a_res: 7953 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 6955 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-48-27/A1_2026-10-15_17-48-27_merged_usd.csv: 2 drones x 7505 rows -> 6955 kept
+  dropped_zero_a_res: 8055 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7053 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_17-57-57/A1_2026-10-15_17-57-57_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  dropped_zero_a_res: 7953 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7053 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A1_2026-10-15_18-18-32/A1_2026-10-15_18-18-32_merged_usd.csv: 2 drones x 7503 rows -> 7053 kept
+  dropped_zero_a_res: 7953 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 11501 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-31-28/A8_2026-10-15_17-31-28_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  dropped_zero_a_res: 13361 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10608
+dataset: 11501 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-35-53/A8_2026-10-15_17-35-53_merged_usd.csv: 2 drones x 12431 rows -> 11501 kept
+  dropped_zero_a_res: 13361 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10676
+dataset: 11454 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-43-15/A8_2026-10-15_17-43-15_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  dropped_zero_a_res: 13434 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10548
+dataset: 11466 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-44-43/A8_2026-10-15_17-44-43_merged_usd.csv: 2 drones x 12446 rows -> 11466 kept
+  dropped_zero_a_res: 13426 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10558
+dataset: 11454 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-46-44/A8_2026-10-15_17-46-44_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  dropped_zero_a_res: 13434 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10556
+dataset: 11462 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-54-37/A8_2026-10-15_17-54-37_merged_usd.csv: 2 drones x 12452 rows -> 11462 kept
+  dropped_zero_a_res: 13442 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10584
+dataset: 11454 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_17-56-18/A8_2026-10-15_17-56-18_merged_usd.csv: 2 drones x 12444 rows -> 11454 kept
+  dropped_zero_a_res: 13434 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10553
+dataset: 11502 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-14-47/A8_2026-10-15_18-14-47_merged_usd.csv: 2 drones x 12431 rows -> 11502 kept
+  dropped_zero_a_res: 13360 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10703
+dataset: 11502 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_dryrun_2026-10-15/A8_2026-10-15_18-16-57/A8_2026-10-15_18-16-57_merged_usd.csv: 2 drones x 12432 rows -> 11502 kept
+  dropped_zero_a_res: 13362 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10720
+combined RMSE 0.1957 m/s²  R² 0.9601
+val-block RMSE 0.1996 m/s²
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/eval_model/eval_metrics.json and eval_report.md
 Stage A: 13 usable / 13 paths
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/full_bank_c1_complete.npz
-LOO A1_2026-10-15_17-37-45: R²=0.877 RMSE=0.2790 pct_vs_zero=74.2%
-LOO A1_2026-10-15_17-48-27: R²=0.252 RMSE=0.7455 pct_vs_zero=66.5%
-LOO A1_2026-10-15_17-57-57: R²=0.739 RMSE=0.6707 pct_vs_zero=67.7%
-LOO A1_2026-10-15_18-18-32: R²=0.878 RMSE=0.2605 pct_vs_zero=73.6%
-LOO A8_2026-10-15_17-31-28: R²=0.859 RMSE=0.1092 pct_vs_zero=69.0%
-LOO A8_2026-10-15_17-35-53: R²=0.840 RMSE=0.1084 pct_vs_zero=67.6%
-LOO A8_2026-10-15_17-43-15: R²=0.769 RMSE=0.1448 pct_vs_zero=59.0%
-LOO A8_2026-10-15_17-44-43: R²=0.803 RMSE=0.1373 pct_vs_zero=62.4%
-LOO A8_2026-10-15_17-46-44: R²=0.712 RMSE=0.1641 pct_vs_zero=54.2%
-LOO A8_2026-10-15_17-54-37: R²=0.741 RMSE=0.1597 pct_vs_zero=57.9%
-LOO A8_2026-10-15_17-56-18: R²=0.738 RMSE=0.1726 pct_vs_zero=56.5%
-LOO A8_2026-10-15_18-14-47: R²=0.790 RMSE=0.1297 pct_vs_zero=62.6%
-LOO A8_2026-10-15_18-16-57: R²=0.817 RMSE=0.1242 pct_vs_zero=63.7%
+LOO A1_2026-10-15_17-37-45: R²=0.810 RMSE=0.3799 pct_vs_zero=74.8%   | v1: R²=0.570 RMSE=0.5713
+LOO A1_2026-10-15_17-48-27: R²=-7.323 RMSE=0.8687 pct_vs_zero=70.1%   | v1: R²=-3.565 RMSE=0.6433
+LOO A1_2026-10-15_17-57-57: R²=-7.384 RMSE=0.9688 pct_vs_zero=66.2%   | v1: R²=-0.387 RMSE=0.3941
+LOO A1_2026-10-15_18-18-32: R²=0.788 RMSE=0.3937 pct_vs_zero=71.4%   | v1: R²=0.599 RMSE=0.5414
+LOO A8_2026-10-15_17-31-28: R²=0.814 RMSE=0.1728 pct_vs_zero=59.7%   | v1: R²=-0.146 RMSE=0.4288
+LOO A8_2026-10-15_17-35-53: R²=0.826 RMSE=0.1559 pct_vs_zero=61.7%   | v1: R²=-0.351 RMSE=0.4344
+LOO A8_2026-10-15_17-43-15: R²=0.770 RMSE=0.2000 pct_vs_zero=54.9%   | v1: R²=0.138 RMSE=0.3869
+LOO A8_2026-10-15_17-44-43: R²=0.814 RMSE=0.1834 pct_vs_zero=59.3%   | v1: R²=0.150 RMSE=0.3923
+LOO A8_2026-10-15_17-46-44: R²=0.747 RMSE=0.2132 pct_vs_zero=52.5%   | v1: R²=0.209 RMSE=0.3770
+LOO A8_2026-10-15_17-54-37: R²=0.767 RMSE=0.2113 pct_vs_zero=55.3%   | v1: R²=0.423 RMSE=0.3321
+LOO A8_2026-10-15_17-56-18: R²=0.763 RMSE=0.2294 pct_vs_zero=54.5%   | v1: R²=0.446 RMSE=0.3505
+LOO A8_2026-10-15_18-14-47: R²=0.772 RMSE=0.1858 pct_vs_zero=56.0%   | v1: R²=0.463 RMSE=0.2852
+LOO A8_2026-10-15_18-16-57: R²=0.779 RMSE=0.1887 pct_vs_zero=56.0%   | v1: R²=0.503 RMSE=0.2832
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/loo_results.json
 
 === LOO decision gate (new scenarios only) ===
-held_out                                       R²     %vs0        n  gate
-A1_2026-10-15_17-37-45                      0.877     74.2    13976  OK
-A1_2026-10-15_17-48-27                      0.252     66.5    14010  NO-GO (soft)
-A1_2026-10-15_17-57-57                      0.739     67.7    13556  OK
-A1_2026-10-15_18-18-32                      0.878     73.6    14106  OK
-A8_2026-10-15_17-31-28                      0.859     69.0    22992  OK
-A8_2026-10-15_17-35-53                      0.840     67.6    22983  OK
-A8_2026-10-15_17-43-15                      0.769     59.0    22958  OK
-A8_2026-10-15_17-44-43                      0.803     62.4    22972  OK
-A8_2026-10-15_17-46-44                      0.712     54.2    22958  OK
-A8_2026-10-15_17-54-37                      0.741     57.9    22964  OK
-A8_2026-10-15_17-56-18                      0.738     56.5    22958  OK
-A8_2026-10-15_18-14-47                      0.790     62.6    22993  OK
-A8_2026-10-15_18-16-57                      0.817     63.7    22994  OK
+held_out                                       R²     %vs0        n    v1 R²  v1 RMSE  new RMSE  gate / vs v1
+A1_2026-10-15_17-37-45                      0.810     74.8     7053    0.570   0.5713    0.3799  OK / better
+A1_2026-10-15_17-48-27                     -7.323     70.1     6955   -3.565   0.6433    0.8687  NO-GO (hard) / WORSE
+A1_2026-10-15_17-57-57                     -7.384     66.2     7053   -0.387   0.3941    0.9688  NO-GO (hard) / WORSE
+A1_2026-10-15_18-18-32                      0.788     71.4     7053    0.599   0.5414    0.3937  OK / better
+A8_2026-10-15_17-31-28                      0.814     59.7    11501   -0.146   0.4288    0.1728  OK / better
+A8_2026-10-15_17-35-53                      0.826     61.7    11501   -0.351   0.4344    0.1559  OK / better
+A8_2026-10-15_17-43-15                      0.770     54.9    11454    0.138   0.3869    0.2000  OK / better
+A8_2026-10-15_17-44-43                      0.814     59.3    11466    0.150   0.3923    0.1834  OK / better
+A8_2026-10-15_17-46-44                      0.747     52.5    11454    0.209   0.3770    0.2132  OK / better
+A8_2026-10-15_17-54-37                      0.767     55.3    11462    0.423   0.3321    0.2113  OK / better
+A8_2026-10-15_17-56-18                      0.763     54.5    11454    0.446   0.3505    0.2294  OK / better
+A8_2026-10-15_18-14-47                      0.772     56.0    11502    0.463   0.2852    0.1858  OK / better
+A8_2026-10-15_18-16-57                      0.779     56.0    11502    0.503   0.2832    0.1887  OK / better
 
-VERDICT: NO-GO for rnn.en=1 — new-scenario LOO below A1–A7-like band (R²≥0.35, ≥50% vs zero).
+Gate (b): new network is WORSE than v1 (RMSE) on 2 left-out flight(s): A1_2026-10-15_17-48-27, A1_2026-10-15_17-57-57
+
+VERDICT: NO-GO for rnn.en=1 — at least one new-scenario LOO fold failed hard threshold.
 wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_tree_dryrun_2026-10-15/eval_model/eval_report.md

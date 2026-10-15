@@ -1,0 +1,1250 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259465 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 235389 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0092 -0.0054  0.3727 -0.0169 -0.0143 -0.0381] sigma=[0.0655 0.054  0.3111 0.4433 0.3886 0.1556]
+normalisation (ground) mu=[-0.7699 -0.0072 -0.0065 -0.016 ] sigma=[0.2767 0.3468 0.2776 0.1009]
+train 207369 / val 52096 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.30732  val RMSE 0.4061 m/s^2  *
+  epoch   20  train 0.07297  val RMSE 0.3524 m/s^2
+  epoch   39  train 0.06704  val RMSE 0.3526 m/s^2
+best val RMSE 0.3384 m/s^2  (12.9s)
+baseline (predict zero) 1.1599 m/s^2  ->  70.8% reduction
+fold check: max |trained - exported| = 6.70e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_12-51-16.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259464 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234888 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0077 -0.0059  0.3874 -0.0141 -0.0147 -0.0379] sigma=[0.0657 0.0524 0.3179 0.4501 0.3702 0.1477]
+normalisation (ground) mu=[-0.7702 -0.007  -0.006  -0.0159] sigma=[0.2768 0.3506 0.2668 0.0957]
+train 207364 / val 52100 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31413  val RMSE 0.4156 m/s^2  *
+  epoch   20  train 0.07152  val RMSE 0.3283 m/s^2  *
+  epoch   39  train 0.06610  val RMSE 0.3323 m/s^2
+best val RMSE 0.3283 m/s^2  (12.4s)
+baseline (predict zero) 1.1654 m/s^2  ->  71.8% reduction
+fold check: max |trained - exported| = 9.32e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_17-17-26.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259467 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234391 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0081 -0.0053  0.3861 -0.016  -0.0146 -0.0373] sigma=[0.066  0.0529 0.3178 0.4496 0.3728 0.1509]
+normalisation (ground) mu=[-0.7708 -0.0076 -0.0058 -0.0157] sigma=[0.2769 0.3502 0.2681 0.0978]
+train 207374 / val 52093 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31382  val RMSE 0.4163 m/s^2  *
+  epoch   20  train 0.07202  val RMSE 0.3201 m/s^2
+  epoch   39  train 0.06533  val RMSE 0.3142 m/s^2
+best val RMSE 0.3103 m/s^2  (12.5s)
+baseline (predict zero) 1.1647 m/s^2  ->  73.4% reduction
+fold check: max |trained - exported| = 9.26e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_17-18-48.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259464 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234388 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0079 -0.0054  0.376  -0.0147 -0.0153 -0.0391] sigma=[0.0662 0.0539 0.3137 0.4524 0.3872 0.1531]
+normalisation (ground) mu=[-0.7699 -0.0073 -0.0063 -0.0164] sigma=[0.2767 0.3518 0.2768 0.0993]
+train 207364 / val 52100 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31215  val RMSE 0.4231 m/s^2  *
+  epoch   20  train 0.07300  val RMSE 0.3196 m/s^2  *
+  epoch   39  train 0.06621  val RMSE 0.3219 m/s^2
+best val RMSE 0.3174 m/s^2  (12.9s)
+baseline (predict zero) 1.1622 m/s^2  ->  72.7% reduction
+fold check: max |trained - exported| = 1.33e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_17-36-06.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259466 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234530 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.008  -0.0048  0.3765 -0.0146 -0.0156 -0.039 ] sigma=[0.0662 0.0538 0.314  0.4522 0.387  0.1527]
+normalisation (ground) mu=[-0.7698 -0.0073 -0.0061 -0.0164] sigma=[0.2767 0.3516 0.2767 0.0991]
+train 207376 / val 52090 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31219  val RMSE 0.4164 m/s^2  *
+  epoch   20  train 0.07204  val RMSE 0.3381 m/s^2
+  epoch   39  train 0.06508  val RMSE 0.3362 m/s^2
+best val RMSE 0.3342 m/s^2  (12.9s)
+baseline (predict zero) 1.1654 m/s^2  ->  71.3% reduction
+fold check: max |trained - exported| = 9.91e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_17-37-26.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259466 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234530 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.009  -0.0061  0.3938 -0.0157 -0.0138 -0.0374] sigma=[0.0654 0.0515 0.3173 0.4444 0.3578 0.1554]
+normalisation (ground) mu=[-0.7707 -0.0069 -0.0059 -0.0156] sigma=[0.2769 0.3466 0.2586 0.1007]
+train 207376 / val 52090 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31515  val RMSE 0.4248 m/s^2  *
+  epoch   20  train 0.07647  val RMSE 0.3379 m/s^2
+  epoch   39  train 0.06934  val RMSE 0.3314 m/s^2
+best val RMSE 0.3303 m/s^2  (12.8s)
+baseline (predict zero) 1.1934 m/s^2  ->  72.3% reduction
+fold check: max |trained - exported| = 1.18e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A1_17-47-50.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259573 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234677 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0089 -0.0065  0.3892 -0.0152 -0.0139 -0.039 ] sigma=[0.0662 0.0537 0.3178 0.4517 0.3853 0.1536]
+normalisation (ground) mu=[-0.7847 -0.0063 -0.0059 -0.0163] sigma=[0.2646 0.3485 0.2715 0.0997]
+train 207559 / val 52014 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.30284  val RMSE 0.4098 m/s^2  *
+  epoch   20  train 0.06763  val RMSE 0.3147 m/s^2
+  epoch   39  train 0.06153  val RMSE 0.3197 m/s^2
+best val RMSE 0.3079 m/s^2  (12.5s)
+baseline (predict zero) 1.1757 m/s^2  ->  73.8% reduction
+fold check: max |trained - exported| = 8.23e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A2_17-49-37.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 259572 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 234676 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0089 -0.0063  0.3895 -0.0154 -0.0138 -0.039 ] sigma=[0.0662 0.0537 0.3178 0.4517 0.3854 0.1543]
+normalisation (ground) mu=[-0.7847 -0.0064 -0.0058 -0.0163] sigma=[0.2647 0.3485 0.2715 0.1002]
+train 207560 / val 52012 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.30385  val RMSE 0.4231 m/s^2  *
+  epoch   20  train 0.06805  val RMSE 0.3176 m/s^2
+  epoch   39  train 0.06089  val RMSE 0.3214 m/s^2
+best val RMSE 0.3131 m/s^2  (12.8s)
+baseline (predict zero) 1.1653 m/s^2  ->  73.1% reduction
+fold check: max |trained - exported| = 8.49e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A2_17-52-55.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 249788 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 224792 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 133664
+normalisation (rel)    mu=[ 0.0093 -0.0059  0.3927 -0.0159 -0.0132 -0.0427] sigma=[0.064  0.0534 0.3107 0.4528 0.3858 0.1503]
+normalisation (ground) mu=[-0.7592 -0.0067 -0.0074 -0.018 ] sigma=[0.2776 0.3616 0.2854 0.1003]
+train 199725 / val 50063 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34500  val RMSE 0.4418 m/s^2  *
+  epoch   20  train 0.07863  val RMSE 0.3504 m/s^2
+  epoch   39  train 0.07144  val RMSE 0.3438 m/s^2
+best val RMSE 0.3403 m/s^2  (12.0s)
+baseline (predict zero) 1.1330 m/s^2  ->  70.0% reduction
+fold check: max |trained - exported| = 1.05e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_13-00-57.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 249582 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 224586 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 133418
+normalisation (rel)    mu=[ 0.0093 -0.0059  0.3925 -0.0161 -0.0131 -0.0426] sigma=[0.0641 0.0533 0.3108 0.4524 0.3855 0.1505]
+normalisation (ground) mu=[-0.7592 -0.0071 -0.0072 -0.018 ] sigma=[0.2778 0.3617 0.2854 0.1002]
+train 199566 / val 50016 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34363  val RMSE 0.4385 m/s^2  *
+  epoch   20  train 0.07890  val RMSE 0.3425 m/s^2
+  epoch   39  train 0.07208  val RMSE 0.3429 m/s^2
+best val RMSE 0.3397 m/s^2  (12.0s)
+baseline (predict zero) 1.1321 m/s^2  ->  70.0% reduction
+fold check: max |trained - exported| = 1.53e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_13-02-56.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 256957 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 232001 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 140172
+normalisation (rel)    mu=[ 0.009  -0.006   0.3922 -0.0165 -0.013  -0.0414] sigma=[0.0645 0.0532 0.31   0.4526 0.3852 0.1514]
+normalisation (ground) mu=[-0.7647 -0.0077 -0.0067 -0.0177] sigma=[0.2759 0.3546 0.2819 0.1009]
+train 205368 / val 51589 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.32917  val RMSE 0.4089 m/s^2  *
+  epoch   20  train 0.07334  val RMSE 0.3647 m/s^2
+  epoch   39  train 0.06698  val RMSE 0.3634 m/s^2
+best val RMSE 0.3525 m/s^2  (12.3s)
+baseline (predict zero) 1.1669 m/s^2  ->  69.8% reduction
+fold check: max |trained - exported| = 7.41e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_13-04-34.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 256500 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 231524 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 139690
+normalisation (rel)    mu=[ 0.0091 -0.0057  0.3913 -0.016  -0.0134 -0.0412] sigma=[0.0643 0.0532 0.3105 0.4528 0.3853 0.152 ]
+normalisation (ground) mu=[-0.7639 -0.0081 -0.0062 -0.0178] sigma=[0.2757 0.3556 0.2823 0.1015]
+train 205000 / val 51500 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33377  val RMSE 0.4323 m/s^2  *
+  epoch   20  train 0.07673  val RMSE 0.3535 m/s^2
+  epoch   39  train 0.06992  val RMSE 0.3574 m/s^2
+best val RMSE 0.3440 m/s^2  (13.2s)
+baseline (predict zero) 1.1679 m/s^2  ->  70.5% reduction
+fold check: max |trained - exported| = 6.92e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_17-45-03.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 256966 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 231990 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 140121
+normalisation (rel)    mu=[ 0.009  -0.0057  0.3914 -0.0157 -0.0134 -0.0412] sigma=[0.0644 0.0532 0.3104 0.4528 0.385  0.152 ]
+normalisation (ground) mu=[-0.7644 -0.0081 -0.0063 -0.0177] sigma=[0.2757 0.3554 0.2819 0.1014]
+train 205372 / val 51594 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.32970  val RMSE 0.4354 m/s^2  *
+  epoch   20  train 0.07911  val RMSE 0.3577 m/s^2
+  epoch   39  train 0.07211  val RMSE 0.3609 m/s^2
+best val RMSE 0.3541 m/s^2  (12.9s)
+baseline (predict zero) 1.1794 m/s^2  ->  70.0% reduction
+fold check: max |trained - exported| = 1.12e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_17-46-43.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 254328 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 229372 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 137847
+normalisation (rel)    mu=[ 0.009  -0.0055  0.3883 -0.0158 -0.0137 -0.0416] sigma=[0.0645 0.0533 0.3115 0.453  0.3856 0.1518]
+normalisation (ground) mu=[-0.7624 -0.0081 -0.006  -0.0179] sigma=[0.2764 0.3579 0.2834 0.1015]
+train 203258 / val 51070 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33437  val RMSE 0.4280 m/s^2  *
+  epoch   20  train 0.07952  val RMSE 0.3326 m/s^2
+  epoch   39  train 0.07292  val RMSE 0.3283 m/s^2
+best val RMSE 0.3162 m/s^2  (13.0s)
+baseline (predict zero) 1.1640 m/s^2  ->  72.8% reduction
+fold check: max |trained - exported| = 1.53e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_17-54-32.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 253905 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 228929 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 137418
+normalisation (rel)    mu=[ 0.009  -0.0055  0.3885 -0.0155 -0.014  -0.0416] sigma=[0.0645 0.0532 0.3115 0.4532 0.3853 0.1521]
+normalisation (ground) mu=[-0.7621 -0.008  -0.0062 -0.0179] sigma=[0.2765 0.3583 0.2834 0.1018]
+train 203321 / val 50584 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33338  val RMSE 0.4637 m/s^2  *
+  epoch   20  train 0.07574  val RMSE 0.3446 m/s^2
+  epoch   39  train 0.06934  val RMSE 0.3452 m/s^2
+best val RMSE 0.3390 m/s^2  (12.6s)
+baseline (predict zero) 1.1933 m/s^2  ->  71.6% reduction
+fold check: max |trained - exported| = 9.74e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A3_17-57-32.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 257576 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 232640 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 141937
+normalisation (rel)    mu=[ 0.0089 -0.005   0.391  -0.0163 -0.0087 -0.0416] sigma=[0.0646 0.0525 0.3123 0.4527 0.385  0.1523]
+normalisation (ground) mu=[-0.7656 -0.0073 -0.0066 -0.0177] sigma=[0.2759 0.3551 0.277  0.101 ]
+train 206058 / val 51518 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33789  val RMSE 0.4025 m/s^2  *
+  epoch   20  train 0.08102  val RMSE 0.3460 m/s^2
+  epoch   39  train 0.07354  val RMSE 0.3476 m/s^2
+best val RMSE 0.3384 m/s^2  (12.6s)
+baseline (predict zero) 1.0954 m/s^2  ->  69.1% reduction
+fold check: max |trained - exported| = 8.99e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A4_17-20-20.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 258033 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 233097 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 141853
+normalisation (rel)    mu=[ 0.0088 -0.0052  0.3908 -0.0167 -0.0087 -0.0418] sigma=[0.0648 0.0526 0.3115 0.4541 0.3843 0.1525]
+normalisation (ground) mu=[-0.7657 -0.0072 -0.0064 -0.0179] sigma=[0.2757 0.3563 0.277  0.1013]
+train 206527 / val 51506 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34016  val RMSE 0.3820 m/s^2  *
+  epoch   20  train 0.07812  val RMSE 0.3076 m/s^2
+  epoch   39  train 0.06976  val RMSE 0.3061 m/s^2
+best val RMSE 0.2957 m/s^2  (12.5s)
+baseline (predict zero) 1.1080 m/s^2  ->  73.3% reduction
+fold check: max |trained - exported| = 6.34e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A4_17-23-40.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 257574 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 232598 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 141997
+normalisation (rel)    mu=[ 0.0103 -0.0057  0.3863 -0.0161 -0.0087 -0.0413] sigma=[0.0643 0.0516 0.3124 0.4576 0.3853 0.1537]
+normalisation (ground) mu=[-0.7651 -0.0074 -0.0064 -0.0179] sigma=[0.2756 0.3583 0.2777 0.102 ]
+train 206052 / val 51522 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34060  val RMSE 0.3950 m/s^2  *
+  epoch   20  train 0.07790  val RMSE 0.3459 m/s^2
+  epoch   39  train 0.07152  val RMSE 0.3459 m/s^2
+best val RMSE 0.3316 m/s^2  (13.2s)
+baseline (predict zero) 1.1040 m/s^2  ->  70.0% reduction
+fold check: max |trained - exported| = 6.09e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A4_17-25-41.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 257576 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 232600 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 142083
+normalisation (rel)    mu=[ 0.0098 -0.0059  0.3858 -0.016  -0.0089 -0.0416] sigma=[0.0648 0.0514 0.3123 0.4573 0.3851 0.1536]
+normalisation (ground) mu=[-0.7653 -0.0075 -0.0065 -0.018 ] sigma=[0.2758 0.3581 0.2773 0.1019]
+train 206058 / val 51518 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33555  val RMSE 0.3984 m/s^2  *
+  epoch   20  train 0.07408  val RMSE 0.3418 m/s^2
+  epoch   39  train 0.06769  val RMSE 0.3482 m/s^2
+best val RMSE 0.3234 m/s^2  (12.5s)
+baseline (predict zero) 1.1035 m/s^2  ->  70.7% reduction
+fold check: max |trained - exported| = 6.66e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A4_17-27-11.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 261071 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 236055 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0081 -0.0067  0.3766 -0.0154 -0.0123 -0.0364] sigma=[0.0663 0.0532 0.2979 0.4594 0.384  0.1522]
+normalisation (ground) mu=[-0.7861 -0.0076 -0.0037 -0.0173] sigma=[0.2567 0.3566 0.2748 0.1006]
+train 209059 / val 52012 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31839  val RMSE 0.4089 m/s^2  *
+  epoch   20  train 0.06998  val RMSE 0.3424 m/s^2
+  epoch   39  train 0.06242  val RMSE 0.3385 m/s^2
+best val RMSE 0.3336 m/s^2  (13.1s)
+baseline (predict zero) 1.1050 m/s^2  ->  69.8% reduction
+fold check: max |trained - exported| = 7.46e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A7_19-11-19.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 261071 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 236095 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0086 -0.0062  0.3763 -0.0158 -0.0135 -0.0363] sigma=[0.0664 0.0535 0.2979 0.4588 0.3844 0.1528]
+normalisation (ground) mu=[-0.7861 -0.0076 -0.004  -0.0172] sigma=[0.2566 0.3562 0.2749 0.1009]
+train 209059 / val 52012 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31794  val RMSE 0.4370 m/s^2  *
+  epoch   20  train 0.07003  val RMSE 0.3494 m/s^2  *
+  epoch   39  train 0.06316  val RMSE 0.3410 m/s^2
+best val RMSE 0.3380 m/s^2  (13.2s)
+baseline (predict zero) 1.1220 m/s^2  ->  69.9% reduction
+fold check: max |trained - exported| = 1.26e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A7_19-12-38.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 261071 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 236095 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+normalisation (rel)    mu=[ 0.0086 -0.0061  0.3765 -0.0157 -0.0133 -0.0367] sigma=[0.0665 0.0535 0.2982 0.4596 0.3845 0.1528]
+normalisation (ground) mu=[-0.7861 -0.0074 -0.0039 -0.0174] sigma=[0.2567 0.3566 0.275  0.1008]
+train 209059 / val 52012 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.31764  val RMSE 0.4288 m/s^2  *
+  epoch   20  train 0.06992  val RMSE 0.3653 m/s^2
+  epoch   39  train 0.06284  val RMSE 0.3708 m/s^2
+best val RMSE 0.3648 m/s^2  (12.6s)
+baseline (predict zero) 1.1150 m/s^2  ->  67.3% reduction
+fold check: max |trained - exported| = 8.55e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A7_19-13-55.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 249809 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 241563 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 135179
+normalisation (rel)    mu=[ 0.0092 -0.006   0.4031 -0.0164 -0.0135 -0.0416] sigma=[0.0663 0.0508 0.2889 0.4606 0.3761 0.1538]
+normalisation (ground) mu=[-0.7738 -0.0069 -0.0061 -0.0186] sigma=[0.2756 0.3613 0.2783 0.1031]
+train 199741 / val 50068 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34677  val RMSE 0.4249 m/s^2  *
+  epoch   20  train 0.08074  val RMSE 0.3426 m/s^2
+  epoch   39  train 0.07385  val RMSE 0.3409 m/s^2
+best val RMSE 0.3273 m/s^2  (12.5s)
+baseline (predict zero) 1.1215 m/s^2  ->  70.8% reduction
+fold check: max |trained - exported| = 6.97e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A5_2026-10-01_17-18-28.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 249813 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 241563 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 135097
+normalisation (rel)    mu=[ 0.0092 -0.006   0.4028 -0.0164 -0.0134 -0.0415] sigma=[0.0663 0.051  0.2887 0.46   0.376  0.1536]
+normalisation (ground) mu=[-0.7738 -0.0068 -0.0065 -0.0188] sigma=[0.2755 0.3612 0.2787 0.1032]
+train 199756 / val 50057 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34700  val RMSE 0.4247 m/s^2  *
+  epoch   20  train 0.08092  val RMSE 0.3444 m/s^2
+  epoch   39  train 0.07357  val RMSE 0.3436 m/s^2
+best val RMSE 0.3295 m/s^2  (12.8s)
+baseline (predict zero) 1.1217 m/s^2  ->  70.6% reduction
+fold check: max |trained - exported| = 1.16e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A5_2026-10-01_17-20-06.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 249811 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 241563 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 135235
+normalisation (rel)    mu=[ 0.0092 -0.006   0.4033 -0.0164 -0.0135 -0.0416] sigma=[0.0663 0.0505 0.2875 0.4597 0.3747 0.1534]
+normalisation (ground) mu=[-0.7738 -0.0076 -0.006  -0.0187] sigma=[0.2753 0.361  0.2778 0.1029]
+train 199752 / val 50059 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.34824  val RMSE 0.4250 m/s^2  *
+  epoch   20  train 0.08174  val RMSE 0.3518 m/s^2
+  epoch   39  train 0.07513  val RMSE 0.3423 m/s^2
+best val RMSE 0.3401 m/s^2  (12.7s)
+baseline (predict zero) 1.1233 m/s^2  ->  69.7% reduction
+fold check: max |trained - exported| = 8.52e-07 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A5_2026-10-01_17-44-57.npz  (19297 weights)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+dataset: 245607 samples from 25 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  dropped_zero_a_res: 241543 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 131571
+normalisation (rel)    mu=[ 0.0093 -0.006   0.4052 -0.0165 -0.0135 -0.0418] sigma=[0.063  0.0533 0.3027 0.4551 0.3824 0.1489]
+normalisation (ground) mu=[-0.7922 -0.0071 -0.0062 -0.0182] sigma=[0.2746 0.3677 0.2859 0.1023]
+train 196590 / val 49017 (contiguous blocks, not shuffled samples)
+  epoch    0  train 0.33661  val RMSE 0.4703 m/s^2  *
+  epoch   20  train 0.07486  val RMSE 0.3506 m/s^2
+  epoch   39  train 0.06839  val RMSE 0.3483 m/s^2
+best val RMSE 0.3455 m/s^2  (12.1s)
+baseline (predict zero) 1.2195 m/s^2  ->  71.7% reduction
+fold check: max |trained - exported| = 2.25e-06 m/s^2
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_weights/train_without_A6_2026-10-01_17-33-00.npz  (19297 weights)
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+dataset: 266519 samples from 26 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 243443 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 147663
+dataset: 7054 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-21_12-51-16/A1_2026-09-21_12-51-16_merged_usd.csv: 2 drones x 7554 rows -> 7054 kept
+  dropped_zero_a_res: 8054 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7055 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-17-26/A1_2026-09-23_17-17-26_merged_usd.csv: 2 drones x 7805 rows -> 7055 kept
+  dropped_zero_a_res: 8555 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7052 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-18-48/A1_2026-09-23_17-18-48_merged_usd.csv: 2 drones x 8052 rows -> 7052 kept
+  dropped_zero_a_res: 9052 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7055 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-36-06/A1_2026-09-23_17-36-06_merged_usd.csv: 2 drones x 8055 rows -> 7055 kept
+  dropped_zero_a_res: 9055 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7053 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-23_17-37-26/A1_2026-09-23_17-37-26_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  dropped_zero_a_res: 8913 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 7053 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A1_2026-09-28_17-47-50/A1_2026-09-28_17-47-50_merged_usd.csv: 2 drones x 7983 rows -> 7053 kept
+  dropped_zero_a_res: 8913 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 6946 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-49-37/A2_2026-09-28_17-49-37_merged_usd.csv: 2 drones x 7856 rows -> 6946 kept
+  dropped_zero_a_res: 8766 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 6947 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A2_2026-09-28_17-52-55/A2_2026-09-28_17-52-55_merged_usd.csv: 2 drones x 7857 rows -> 6947 kept
+  dropped_zero_a_res: 8767 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 16731 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-00-57/A3_2026-09-21_13-00-57_merged_usd.csv: 2 drones x 17691 rows -> 16731 kept
+  dropped_zero_a_res: 18651 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 13999
+dataset: 16937 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-02-56/A3_2026-09-21_13-02-56_merged_usd.csv: 2 drones x 17897 rows -> 16937 kept
+  dropped_zero_a_res: 18857 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 14245
+dataset: 9562 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-21_13-04-34/A3_2026-09-21_13-04-34_merged_usd.csv: 2 drones x 10502 rows -> 9562 kept
+  dropped_zero_a_res: 11442 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 7491
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+  WARNING: most samples had a_res identically zero. That is the signature of a missing RPM source, not of an absence of interaction.
+dataset: 10019 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-45-03/A3_2026-09-23_17-45-03_merged_usd.csv: 2 drones x 10969 rows -> 10019 kept
+  dropped_zero_a_res: 11919 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 7973
+dataset: 9553 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-46-43/A3_2026-09-23_17-46-43_merged_usd.csv: 2 drones x 10503 rows -> 9553 kept
+  dropped_zero_a_res: 11453 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 7542
+dataset: 12191 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-54-32/A3_2026-09-23_17-54-32_merged_usd.csv: 2 drones x 13131 rows -> 12191 kept
+  dropped_zero_a_res: 14071 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 9816
+dataset: 12614 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A3_2026-09-23_17-57-32/A3_2026-09-23_17-57-32_merged_usd.csv: 2 drones x 13564 rows -> 12614 kept
+  dropped_zero_a_res: 14514 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 10245
+dataset: 8943 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-20-20/A4_2026-09-28_17-20-20_merged_usd.csv: 2 drones x 9873 rows -> 8943 kept
+  dropped_zero_a_res: 10803 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 5726
+dataset: 8486 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-23-40/A4_2026-09-28_17-23-40_merged_usd.csv: 2 drones x 9416 rows -> 8486 kept
+  dropped_zero_a_res: 10346 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 5810
+dataset: 8945 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-25-41/A4_2026-09-28_17-25-41_merged_usd.csv: 2 drones x 9895 rows -> 8945 kept
+  dropped_zero_a_res: 10845 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 5666
+dataset: 8943 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A4_2026-09-28_17-27-11/A4_2026-09-28_17-27-11_merged_usd.csv: 2 drones x 9893 rows -> 8943 kept
+  dropped_zero_a_res: 10843 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 5580
+dataset: 5448 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-11-19/A7_2026-09-23_19-11-19_merged_usd.csv: 2 drones x 6418 rows -> 5448 kept
+  dropped_zero_a_res: 7388 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 5448 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-12-38/A7_2026-09-23_19-12-38_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  dropped_zero_a_res: 7348 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 5448 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled/A7_2026-09-23_19-13-55/A7_2026-09-23_19-13-55_merged_usd.csv: 2 drones x 6398 rows -> 5448 kept
+  dropped_zero_a_res: 7348 (row-ticks summed over all ego drones; partner may read 0 a_res)
+dataset: 16710 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-18-28/A5_2026-10-01_17-18-28_merged_usd.csv: 2 drones x 9295 rows -> 16710 kept
+  dropped_zero_a_res: 1880 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 12484
+dataset: 16706 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-20-06/A5_2026-10-01_17-20-06_merged_usd.csv: 2 drones x 9293 rows -> 16706 kept
+  dropped_zero_a_res: 1880 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 12566
+dataset: 16708 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A5_2026-10-01_17-44-57/A5_2026-10-01_17-44-57_merged_usd.csv: 2 drones x 9294 rows -> 16708 kept
+  dropped_zero_a_res: 1880 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 12428
+dataset: 20912 samples from 1 file(s)
+  /home/georg/Desktop/flying_robot_course/experiments/logs/bank_v1_relabelled_1001/A6_2026-10-01_17-33-00/A6_2026-10-01_17-33-00_merged_usd.csv: 2 drones x 11406 rows -> 20912 kept
+  dropped_zero_a_res: 1900 (row-ticks summed over all ego drones; partner may read 0 a_res)
+  no_neighbour_influence: 16092
+combined RMSE 0.2449 m/s²  R² 0.9242
+val-block RMSE 0.3133 m/s²
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/eval_model/eval_metrics.json and eval_report.md
+Stage A: 26 usable / 26 paths
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/full_bank_c1_complete.npz
+LOO A1_2026-09-21_12-51-16: R²=0.594 RMSE=0.7567 pct_vs_zero=55.0%   | v1: R²=0.656 RMSE=0.6964
+LOO A1_2026-09-23_17-17-26: R²=0.713 RMSE=0.5497 pct_vs_zero=66.1%   | v1: R²=0.753 RMSE=0.5095
+LOO A1_2026-09-23_17-18-48: R²=0.790 RMSE=0.4476 pct_vs_zero=73.0%   | v1: R²=0.704 RMSE=0.5309
+LOO A1_2026-09-23_17-36-06: R²=0.805 RMSE=0.4464 pct_vs_zero=76.9%   | v1: R²=0.701 RMSE=0.5527
+LOO A1_2026-09-23_17-37-26: R²=0.845 RMSE=0.4098 pct_vs_zero=78.2%   | v1: R²=0.660 RMSE=0.6057
+LOO A1_2026-09-28_17-47-50: R²=-0.333 RMSE=0.8618 pct_vs_zero=26.4%   | v1: R²=0.457 RMSE=0.5501
+LOO A2_2026-09-28_17-49-37: R²=0.441 RMSE=0.8610 pct_vs_zero=55.8%   | v1: R²=0.641 RMSE=0.6903
+LOO A2_2026-09-28_17-52-55: R²=0.673 RMSE=0.6540 pct_vs_zero=67.4%   | v1: R²=0.682 RMSE=0.6451
+LOO A3_2026-09-21_13-00-57: R²=0.882 RMSE=0.2330 pct_vs_zero=68.6%   | v1: R²=0.833 RMSE=0.2777
+LOO A3_2026-09-21_13-02-56: R²=0.857 RMSE=0.2512 pct_vs_zero=65.7%   | v1: R²=0.849 RMSE=0.2582
+LOO A3_2026-09-21_13-04-34: R²=0.794 RMSE=0.3287 pct_vs_zero=58.3%   | v1: R²=0.884 RMSE=0.2467
+LOO A3_2026-09-23_17-45-03: R²=0.873 RMSE=0.2208 pct_vs_zero=68.7%   | v1: R²=0.872 RMSE=0.2220
+LOO A3_2026-09-23_17-46-43: R²=0.927 RMSE=0.1693 pct_vs_zero=76.2%   | v1: R²=0.885 RMSE=0.2126
+LOO A3_2026-09-23_17-54-32: R²=0.956 RMSE=0.1510 pct_vs_zero=81.8%   | v1: R²=0.939 RMSE=0.1780
+LOO A3_2026-09-23_17-57-32: R²=0.932 RMSE=0.1791 pct_vs_zero=77.3%   | v1: R²=0.927 RMSE=0.1857
+LOO A4_2026-09-28_17-20-20: R²=0.890 RMSE=0.2514 pct_vs_zero=74.3%   | v1: R²=0.853 RMSE=0.2897
+LOO A4_2026-09-28_17-23-40: R²=0.898 RMSE=0.2283 pct_vs_zero=75.7%   | v1: R²=0.868 RMSE=0.2590
+LOO A4_2026-09-28_17-25-41: R²=0.779 RMSE=0.2706 pct_vs_zero=66.6%   | v1: R²=0.926 RMSE=0.1570
+LOO A4_2026-09-28_17-27-11: R²=0.596 RMSE=0.5202 pct_vs_zero=53.7%   | v1: R²=0.925 RMSE=0.2247
+LOO A7_2026-09-23_19-11-19: R²=0.398 RMSE=0.7005 pct_vs_zero=56.6%   | v1: R²=0.761 RMSE=0.4411
+LOO A7_2026-09-23_19-12-38: R²=0.610 RMSE=0.4750 pct_vs_zero=69.4%   | v1: R²=0.795 RMSE=0.3439
+LOO A7_2026-09-23_19-13-55: R²=0.625 RMSE=0.4920 pct_vs_zero=71.3%   | v1: R²=0.814 RMSE=0.3461
+LOO A5_2026-10-01_17-18-28: R²=0.935 RMSE=0.1647 pct_vs_zero=80.5%   | v1: R²=-1.473 RMSE=1.0182
+LOO A5_2026-10-01_17-20-06: R²=0.932 RMSE=0.1697 pct_vs_zero=79.8%   | v1: R²=-1.472 RMSE=1.0211
+LOO A5_2026-10-01_17-44-57: R²=0.864 RMSE=0.2225 pct_vs_zero=72.3%   | v1: R²=-1.745 RMSE=1.0004
+LOO A6_2026-10-01_17-33-00: R²=-0.205 RMSE=0.6345 pct_vs_zero=11.9%   | v1: R²=-0.831 RMSE=0.7821
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/loo_results.json
+
+=== LOO decision gate (new scenarios only) ===
+held_out                                       R²     %vs0        n    v1 R²  v1 RMSE  new RMSE  gate / vs v1
+A1_2026-09-21_12-51-16                      0.594     55.0     7054    0.656   0.6964    0.7567  OK / WORSE
+A1_2026-09-23_17-17-26                      0.713     66.1     7055    0.753   0.5095    0.5497  OK / WORSE
+A1_2026-09-23_17-18-48                      0.790     73.0     7052    0.704   0.5309    0.4476  OK / better
+A1_2026-09-23_17-36-06                      0.805     76.9     7055    0.701   0.5527    0.4464  OK / better
+A1_2026-09-23_17-37-26                      0.845     78.2     7053    0.660   0.6057    0.4098  OK / better
+A1_2026-09-28_17-47-50                     -0.333     26.4     7053    0.457   0.5501    0.8618  NO-GO (hard) / WORSE
+A2_2026-09-28_17-49-37                      0.441     55.8     6946    0.641   0.6903    0.8610  OK / WORSE
+A2_2026-09-28_17-52-55                      0.673     67.4     6947    0.682   0.6451    0.6540  OK / WORSE
+A3_2026-09-21_13-00-57                      0.882     68.6    16731    0.833   0.2777    0.2330  OK / better
+A3_2026-09-21_13-02-56                      0.857     65.7    16937    0.849   0.2582    0.2512  OK / better
+A3_2026-09-21_13-04-34                      0.794     58.3     9562    0.884   0.2467    0.3287  OK / WORSE
+A3_2026-09-23_17-45-03                      0.873     68.7    10019    0.872   0.2220    0.2208  OK / better
+A3_2026-09-23_17-46-43                      0.927     76.2     9553    0.885   0.2126    0.1693  OK / better
+A3_2026-09-23_17-54-32                      0.956     81.8    12191    0.939   0.1780    0.1510  OK / better
+A3_2026-09-23_17-57-32                      0.932     77.3    12614    0.927   0.1857    0.1791  OK / better
+A4_2026-09-28_17-20-20                      0.890     74.3     8943    0.853   0.2897    0.2514  OK / better
+A4_2026-09-28_17-23-40                      0.898     75.7     8486    0.868   0.2590    0.2283  OK / better
+A4_2026-09-28_17-25-41                      0.779     66.6     8945    0.926   0.1570    0.2706  OK / WORSE
+A4_2026-09-28_17-27-11                      0.596     53.7     8943    0.925   0.2247    0.5202  OK / WORSE
+A5_2026-10-01_17-18-28                      0.935     80.5    16710   -1.473   1.0182    0.1647  OK / better
+A5_2026-10-01_17-20-06                      0.932     79.8    16706   -1.472   1.0211    0.1697  OK / better
+A5_2026-10-01_17-44-57                      0.864     72.3    16708   -1.745   1.0004    0.2225  OK / better
+A6_2026-10-01_17-33-00                     -0.205     11.9    20912   -0.831   0.7821    0.6345  NO-GO (hard) / better
+A7_2026-09-23_19-11-19                      0.398     56.6     5448    0.761   0.4411    0.7005  OK / WORSE
+A7_2026-09-23_19-12-38                      0.610     69.4     5448    0.795   0.3439    0.4750  OK / WORSE
+A7_2026-09-23_19-13-55                      0.625     71.3     5448    0.814   0.3461    0.4920  OK / WORSE
+
+Gate (b): new network is WORSE than v1 (RMSE) on 11 left-out flight(s): A1_2026-09-21_12-51-16, A1_2026-09-23_17-17-26, A1_2026-09-28_17-47-50, A2_2026-09-28_17-49-37, A2_2026-09-28_17-52-55, A3_2026-09-21_13-04-34, A4_2026-09-28_17-25-41, A4_2026-09-28_17-27-11, A7_2026-09-23_19-11-19, A7_2026-09-23_19-12-38, A7_2026-09-23_19-13-55
+
+VERDICT: NO-GO for rnn.en=1 — at least one new-scenario LOO fold failed hard threshold.
+wrote /home/georg/Desktop/flying_robot_course/experiments/analysis/out/ns2_v1bank_relabelled_2026-10-15/eval_model/eval_report.md

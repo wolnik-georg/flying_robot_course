@@ -52,13 +52,14 @@ def print_loo_gate(loo_path: Path, new_scenarios: tuple[str, ...]) -> None:
     data = json.loads(loo_path.read_text())
     folds = data.get("folds", {})
     print("\n=== LOO decision gate (new scenarios only) ===")
-    print(f"{'held_out':<40} {'R²':>8} {'%vs0':>8} {'n':>8}  gate")
+    print(f"{'held_out':<40} {'R²':>8} {'%vs0':>8} {'n':>8}  {'v1 R²':>7} {'v1 RMSE':>8} {'new RMSE':>9}  gate / vs v1")
     any_new = False
+    worse_than_v1: list[str] = []
     hard_fail = False
     soft_fail = False
     for hold, rec in sorted(folds.items()):
         scen = hold.split("_")[0]
-        if scen not in new_scenarios:
+        if "ALL" not in new_scenarios and scen not in new_scenarios:
             continue
         any_new = True
         m = rec.get("metrics") or {}
@@ -73,10 +74,17 @@ def print_loo_gate(loo_path: Path, new_scenarios: tuple[str, ...]) -> None:
             soft_fail = True
         else:
             gate = "OK"
-        print(f"{hold:<40} {r2:8.3f} {pct:8.1f} {n:8d}  {gate}")
+        v1 = rec.get("v1_metrics") or {}
+        v1r2, v1rmse, rmse = float(v1.get("r2", float("nan"))), float(v1.get("rmse_mps2", float("nan"))), float(m.get("rmse_mps2", float("nan")))
+        better = "better" if rmse <= v1rmse else ("WORSE" if v1rmse == v1rmse else "-")
+        if better == "WORSE":
+            worse_than_v1.append(hold)
+        print(f"{hold:<40} {r2:8.3f} {pct:8.1f} {n:8d}  {v1r2:7.3f} {v1rmse:8.4f} {rmse:9.4f}  {gate} / {better}")
     if not any_new:
         print(f"(no LOO folds for scenarios {new_scenarios} — manifest may lack new merges)")
         return
+    if worse_than_v1:
+        print(f"\nGate (b): new network is WORSE than v1 (RMSE) on {len(worse_than_v1)} left-out flight(s): {', '.join(worse_than_v1)}")
     if hard_fail:
         print("\nVERDICT: NO-GO for rnn.en=1 — at least one new-scenario LOO fold failed hard threshold.")
     elif soft_fail:
@@ -91,6 +99,8 @@ def main() -> int:
     ap.add_argument("--out-dir", type=Path, default=None)
     ap.add_argument("--new-scenarios", nargs="+", default=["A5", "A6", "C4"])
     ap.add_argument("--skip-loo", action="store_true", help="full train + eval only (faster)")
+    ap.add_argument("--v1-weights", type=Path, default=RES / "weights" / "ns2_v1.npz",
+                    help="reference network scored on the same left-out flights (gate (b): the new network must be at least as good)")
     args = ap.parse_args()
 
     manifest_path = args.manifest if args.manifest.is_absolute() else ROOT / args.manifest
@@ -131,12 +141,14 @@ def main() -> int:
                 check=True,
             )
             metrics = eval_holdout(w_path, flights[hold])
-            folds[hold] = {"weights": str(w_path), "held_out": hold, "metrics": metrics}
+            v1m = eval_holdout(args.v1_weights, flights[hold]) if args.v1_weights.exists() else {}
+            folds[hold] = {"weights": str(w_path), "held_out": hold, "metrics": metrics, "v1_metrics": v1m}
             m = metrics
             print(
                 f"LOO {hold}: R²={m.get('r2', float('nan')):.3f} "
                 f"RMSE={m.get('rmse_mps2', float('nan')):.4f} "
                 f"pct_vs_zero={m.get('pct_reduction_vs_zero', float('nan')):.1f}%"
+                f"   | v1: R²={v1m.get('r2', float('nan')):.3f} RMSE={v1m.get('rmse_mps2', float('nan')):.4f}"
             )
         loo_path.write_text(json.dumps({"usable": usable, "folds": folds}, indent=2) + "\n")
         print(f"wrote {loo_path}")

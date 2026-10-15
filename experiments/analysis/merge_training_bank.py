@@ -10,6 +10,7 @@ bottom top --omar-labels <rpm> --tag-quality-only` and writes `<out>/<SCEN>_<dat
 `<out>/training_manifest.json` in the format `run_c2_lab_retrain.py` reads. Flights without a tag match or with an empty/short log
 are listed and skipped, never merged silently. Needs the system python3 (3.10 host bindings for the label step)."""
 import argparse, glob, json, re, subprocess, sys
+sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]; TOOLS = ROOT / "flying_drone_stack/tools"
 sys.path.insert(0, str(TOOLS)); import decode_usd_log  # noqa: E402
@@ -55,6 +56,7 @@ def main():
         rms = [l.strip() for l in (r.stdout + r.stderr).split("\n") if "RMS" in l][:2]
         if r.returncode != 0 or not dest.exists():
             skipped.append((mp.name, f"merge rc {r.returncode}: {(r.stderr or r.stdout).strip().splitlines()[-1:]}")); continue
+        from bank_labels import zero_top_labels; zero_top_labels(dest)
         flights.append({"folder": folder, "scenario": scen, "date": date, "stamp": stamp, "path": str(dest.relative_to(ROOT)),
                         "run_tag": tag, "cf5": c5[0].name, "cf_second": c2[0].name})
         print(f"{folder}  tag {tag}  {c5[0].name} + {c2[0].name}  {rms}")
