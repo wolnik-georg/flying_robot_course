@@ -66,7 +66,8 @@ def cli(s: dict, strategy: str, session: str) -> str:
     parts += ["--height 0.5", "--auto-center", "--yes"]
     if s["allow_extreme"]:
         parts.append("--allow-extreme")
-    parts += ["--study", f"--strategy {strategy}", f"--session {session}"]
+    # 2026-10-15: the --study readback gate is not used (readback returned NaN; strategy is proven from the log by
+    # tree_log_check.py and from the bench readback). strategy / session stay in the signature for the plan tables.
     return " ".join(parts)
 
 

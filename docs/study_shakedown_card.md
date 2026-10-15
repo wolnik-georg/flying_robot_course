@@ -6,15 +6,15 @@ Abort rule (protocol §4): |roll| or |pitch| > 25° for 0.5 s, or z < 0.25 m; st
 
 | # | block | kind | scenario | setting | peak v (m/s) | duration (s) | command | done | clean/excl | vbat min | notes |
 |---|---|---|---|---|---:|---:|---|---|---|---|---|
-| 1 | S0 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes --study --strategy S0 --session shakedown` | ☐ | | | |
-| 2 | S0 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes --study --strategy S0 --session shakedown` | ☐ | | | |
-| 3 | S2 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes --study --strategy S2 --session shakedown` | ☐ | | | |
-| 4 | S2 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes --study --strategy S2 --session shakedown` | ☐ | | | |
-| 5 | S1 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes --study --strategy S1 --session shakedown` | ☐ | | | |
-| 6 | S1 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes --study --strategy S1 --session shakedown` | ☐ | | | |
-| 7 | S3 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes --study --strategy S3 --session shakedown` | ☐ | | | |
-| 8 | S3 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes --study --strategy S3 --session shakedown` | ☐ | | | |
-| 9 | S0 | anchor | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes --study --strategy S0 --session shakedown` | ☐ | | | |
+| 1 | S0 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 2 | S0 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 3 | S2 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 4 | S2 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 5 | S1 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 6 | S1 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 7 | S3 | scenario | A1 | dz=0.5 | 0.00 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 8 | S3 | scenario | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes` | ☐ | | | |
+| 9 | S0 | anchor | A8 | speed=0.4 | 0.40 | 24 | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --span 1.0 --passes 4 --duration 5.5 --height 0.5 --auto-center --yes` | ☐ | | | |
 
 Estimated time at ~12 flights/hour: 0.8 h (estimate from 2026-10-09, to be replaced by the measured rate).
 

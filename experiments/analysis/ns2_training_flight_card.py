@@ -20,16 +20,34 @@ def add(block, s, reps=1):
         rows.append((block, s))
 
 
-for dz in (0.25, 0.375, 0.5, 0.625, 0.75):
-    add("A1 stack hold", setting("A1", "dz", dz), 2)
-for off in (0.0, 0.05, 0.10, 0.15):
-    for dz in (0.25, 0.5, 0.75):
-        s = setting("A4", "speed", 0.4); s["kwargs"].update(dz=dz, offset=off); s["setting"] = f"dz={dz} offset={off} speed=0.4"
-        add("A4 offset stack", s)
-for sp in (0.2, 0.3, 0.4, 0.5):
-    add("A8 swap", setting("A8", "speed", sp), 2)
-    for sc in ("A2", "A3", "A5", "A7"):
-        add(f"{sc}", setting(sc, "speed", sp))
+SPEEDS = (0.1, 0.2, 0.3, 0.4, 0.5)          # requested peak speeds (A8 / A5 now take --speed directly, exact)
+DZS = (0.5, 0.25, 0.75)                       # core first, then the other two
+def mk(scen, **kw):
+    return {"scenario": scen, "setting": " ".join(f"{k}={v}" for k, v in kw.items()), "kwargs": kw}
+# 1. core: every speed at dz 0.5, then dz 0.25 and 0.75 (so a partial session is still a balanced subset)
+for dz in DZS:
+    for sp in SPEEDS:
+        add(f"A8 swap, dz {dz}", mk("A8", dz=dz, span=1.0, passes=4, speed=sp))
+    for sp in SPEEDS:
+        add(f"A2 circle, dz {dz}", mk("A2", dz=dz, path="circle", speed=sp))
+    for sp in SPEEDS:
+        add(f"A3 lemniscate, dz {dz}", mk("A3", dz=dz, speed=sp))
+    for sp in SPEEDS:
+        add(f"A5 reverse circle, dz {dz}", mk("A5", dz=dz, speed=sp))
+for sp in SPEEDS:
+    add("A7 descend-through", mk("A7", speed=sp))
+# 2. A1 stack hold: dz grid x2 (no speed)
+for dz in (0.5, 0.25, 0.75, 0.375, 0.625):
+    for _ in range(2):
+        add("A1 stack hold", mk("A1", dz=dz, hold=15.0))
+# 3. A4 offset stack (line): speed sweep at offset 0.05, offset sweep at speed 0.3
+for dz in DZS:
+    for sp in SPEEDS:
+        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=sp, offset=0.05, motion="line"))
+for dz in DZS:
+    for off in (0.0, 0.10, 0.15):
+        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=0.3, offset=off, motion="line"))
+# 4. random waypoints (R1), last
 for seed in range(101, 121):
     s = {"scenario": "R1", "setting": f"seed={seed}", "kwargs": dict(seed=seed, total=40.0, bias=0.7)}
     add("R1 random waypoints", s)
@@ -51,7 +69,7 @@ for i, (blk, s) in enumerate(rows, 1):
         s["kwargs"] = {"seed": s["kwargs"]["seed"], "total": s["kwargs"]["total"], "bias": s["kwargs"]["bias"]}
     if not s.get("valid", True):
         bad += 1
-    L.append(f"| {i} | {blk} | {s['scenario']} | {s['setting']} | {s['duration_s']:.0f} | `{cli(s, 'S0', 'ns2_train').replace(' --study --strategy S0 --session ns2_train', '')}` | ☐ | {'' if s.get('valid', True) else 'INVALID'} |")
+    L.append(f"| {i} | {blk} | {s['scenario']} | {s['setting']} | {s['duration_s']:.0f} | `{cli(s, 'S0', 'ns2_train')}` | ☐ | {'' if s.get('valid', True) else 'INVALID'} |")
 tot = sum(s["duration_s"] for _, s in rows)
 L += ["", f"Total flight time ≈ {tot / 60:.0f} min (+ takeoff/landing and battery changes); ≈ {len(rows) / 12:.1f} h at 12 flights/hour."]
 (REPO / "docs" / "ns2_training_flight_card.md").write_text("\n".join(L) + "\n")
