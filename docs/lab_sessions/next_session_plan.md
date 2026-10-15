@@ -23,9 +23,9 @@ Dedicated training flights (never study repeats) for the retrained NS2 that serv
 | 2 | Batteries: charge everything, change below ≈ 4.1 V resting (four S2 flights were lost to 2.6 V cut-offs) | lab | each lost flight is lost training data |
 | 3 | Bench check on both drones (`ns2c_bench_check.py`), confirm `Using OutOfTree4 (9)` after any flash/power-cycle | lab | known silent-wrong-controller failure mode |
 | 4 | Retrain acceptance rule and hold-out (e.g. which R1 seeds stay out) — **you define**; whether the old 26 flights are used at all (current plan: no) | you | the gate must be fixed before the data is seen |
-| 5 | Generic merge for the training bank (pair cards by `usd.runTag`, `--omar-labels deck`, one command): `tree_validation_merge.py` is hard-wired to the tree labels | desk | one step per card pair instead of ad-hoc merges |
-| 6 | Dry run of the retrain chain on today's merged flights (labels via the adapter, LOO on 13 flights) to prove the chain end to end before 66 flights exist | desk | finds adapter/dataset problems now |
-| 7 | Clamped fraction of `rnn_clamped` in today's flights (the last prediction on the ground read 8.0 = clamp) | desk | if NS2 clamps often in flight the label range matters for training |
+| 5 | ~~Generic merge for the training bank~~ **DONE 2026-10-15:** `experiments/analysis/merge_training_bank.py` (pairs by `usd.runTag`, `--omar-labels deck`, writes the manifest) | desk | tested on today's 13 flights, the 3 outliers skipped |
+| 6 | ~~Dry run of the retrain chain~~ **DONE 2026-10-15** (`docs/ns2_tree_retrain_dryrun_2026-10-15.md`): chain runs end to end in 4 min, 12/13 LOO folds R² 0.71–0.88; gate thresholds in the script are the old v1 ones | desk | — |
+| 7 | ~~Clamped fraction~~ **DONE 2026-10-15:** 0.00 % in flight (bottom vehicle, all strategies, incl. takeoff); the 8.0 is a motors-off ground reading | desk | — |
 | 8 | First-flight safety for R1: first seed with a hand on the abort, geofence, fresh batteries; abort rule protocol §4 | lab | R1 is new on hardware |
 
 ## 3. Session flow
