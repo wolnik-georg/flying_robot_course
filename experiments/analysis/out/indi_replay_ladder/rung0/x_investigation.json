@@ -1,0 +1,55 @@
+{
+  "label": "A8_17-39-27",
+  "lib_rs_a_res_inputs": {
+    "rpm": "rpm_get_all (DShot+motor_* when rpm_source=1; slew hold in traj_iface.c)",
+    "a_model": "sum(kt_i*rpm_i^2)/m along R[:,2] minus g",
+    "a_meas": "R @ (acc_body * g) - g; acc_body from sensors.acc with optional bw_acc_* @ fc_bw",
+    "ENABLE_ACC_PREFILTER": true,
+    "acc_prefilter_fc": "g_indi_fc_bw (206 Hz flight), filt_dt_us=1000 -> dt=1ms at init",
+    "res_clamp": "g_indi_res_clamp (10 m/s^2), per-side before subtract",
+    "res_fc": "g_indi_res_fc (80 Hz), paired filters on meas and model, seed on first use"
+  },
+  "x_axis_stats": {
+    "raw_acc_npz_rpm": {
+      "n": 12827,
+      "corr": 0.43676120996058193,
+      "mean_abs_err": 0.04058344223969821,
+      "rms_err": 0.10312334262532044,
+      "std_log": 0.067934674113196,
+      "std_hand": 0.11237998632274426
+    },
+    "raw_acc_res80": {
+      "n": 12827,
+      "corr": 0.4811953467810857,
+      "mean_abs_err": 0.024772369920669283,
+      "rms_err": 0.0992485408479697,
+      "std_log": 0.067934674113196,
+      "std_hand": 0.11171368770902146
+    },
+    "acc206_res80": {
+      "n": 12827,
+      "corr": 0.4775538182812594,
+      "mean_abs_err": 0.024773870080156735,
+      "rms_err": 0.09969601549709747,
+      "std_log": 0.067934674113196,
+      "std_hand": 0.11192344018245956
+    },
+    "acc206_res80_slew_rpm": {
+      "n": 12827,
+      "corr": 0.4775169883409987,
+      "mean_abs_err": 0.024816907095139323,
+      "rms_err": 0.09970631015400959,
+      "std_log": 0.067934674113196,
+      "std_hand": 0.11193676474317094
+    }
+  },
+  "replay_x_corr": 0.4815071408865375,
+  "cause_found": false,
+  "best_variant": null,
+  "unresolved_residual": {
+    "mean_abs_err_mps2": 0.04058344223969821,
+    "rms_err_mps2": 0.10312334262532044,
+    "thrust_impact_estimate_mN": 4.2280570476381385,
+    "note": "m\u00b7RMS(\u0394a_res_x) upper bound if x residual entered thrust via res_sign (geometric mode: a_indi=0)"
+  }
+}

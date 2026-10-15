@@ -1,0 +1,95 @@
+{
+  "label": "baseline_A1_no_dw",
+  "scenario": "A1",
+  "config": {
+    "scenario": "A1",
+    "anchor": [
+      0.0,
+      0.0,
+      0.5
+    ],
+    "dz": 0.5,
+    "peer_hz": 100.0,
+    "div": 10,
+    "ki_z": 16.0,
+    "res_sign": 1,
+    "takeoff_s": 4.0,
+    "land_s": 3.0,
+    "log_hz": 100,
+    "passes": 4,
+    "settle_s": 2.0,
+    "shuttle_duration": 6.0,
+    "hold_s": 15.0,
+    "duration_s": 22.0,
+    "n_crossings": 0,
+    "setpoint_mode": "cmd_fd",
+    "label": "baseline_A1_no_dw",
+    "downwash": false,
+    "skip_rnn_upload": true,
+    "rnn_en": false
+  },
+  "bottom_gyro_rms_deg_s": 1.1317841134160611e-11,
+  "top_gyro_rms_deg_s": 1.0787690439611134e-11,
+  "partner_ok": true,
+  "prediction": {
+    "n": 2200,
+    "pred_z_mean": 0.0,
+    "pred_z_std": 0.0,
+    "pred_z_min": 0.0,
+    "pred_z_max": 0.0,
+    "pred_x_max_abs": 0.0,
+    "pred_y_max_abs": 0.0,
+    "clamp_fraction": 0.0,
+    "vs_a_res": {
+      "corr": NaN,
+      "rmse": 0.02952360320913847,
+      "n": 2200
+    }
+  },
+  "tracking_bottom_cm": {
+    "rms_z_cm": 0.1244117144579398,
+    "rms_lateral_cm": 0.0,
+    "mean_z_err_cm": 0.05114589684326729,
+    "max_z_dip_cm": 2.016829958595423e-06,
+    "max_tilt_proxy_deg": NaN,
+    "n_samples": 1801,
+    "max_tilt_deg": 0.0
+  },
+  "tracking_top_cm": {
+    "rms_z_cm": 0.10563877654522051,
+    "rms_lateral_cm": 0.0,
+    "mean_z_err_cm": 0.04413133090474178,
+    "max_z_dip_cm": 4.501875561224722e-06,
+    "max_tilt_proxy_deg": NaN,
+    "n_samples": 1801,
+    "max_tilt_deg": 0.0
+  },
+  "tracking_bottom_full_cm": {
+    "rms_z_cm": 0.1244117144579398,
+    "rms_lateral_cm": 0.0,
+    "mean_z_err_cm": 0.05114589684326729,
+    "max_z_dip_cm": 2.016829958595423e-06,
+    "max_tilt_proxy_deg": NaN
+  },
+  "tracking_top_full_cm": {
+    "rms_z_cm": 0.10563877654522051,
+    "rms_lateral_cm": 0.0,
+    "mean_z_err_cm": 0.04413133090474178,
+    "max_z_dip_cm": 4.501875561224722e-06,
+    "max_tilt_proxy_deg": NaN
+  },
+  "mean_sep_err_cm": 47.226115897852125,
+  "duration_s": 22.0,
+  "n_weights": 0,
+  "final_pos_bot": [
+    0.0,
+    0.0,
+    0.5000000241517912
+  ],
+  "final_pos_top": [
+    0.0,
+    0.0,
+    1.000000058969053
+  ],
+  "gain_audit": null
+}

@@ -1,0 +1,114 @@
+{
+  "label": "calib_s3.0_seed0",
+  "scenario": "A8",
+  "config": {
+    "scenario": "A8",
+    "anchor": [
+      0.0,
+      0.0,
+      0.5
+    ],
+    "dz": 0.5,
+    "peer_hz": 100.0,
+    "div": 10,
+    "ki_z": 16.0,
+    "res_sign": 1,
+    "takeoff_s": 4.0,
+    "land_s": 3.0,
+    "log_hz": 100,
+    "passes": 4,
+    "settle_s": 2.0,
+    "shuttle_duration": 6.0,
+    "duration_s": 33.0,
+    "n_crossings": 4,
+    "setpoint_mode": "hlc",
+    "label": "calib_s3.0_seed0",
+    "downwash": true,
+    "downwash_scale": 3.0,
+    "rnn_en": false,
+    "skip_rnn_upload": true,
+    "seed": 0
+  },
+  "bottom_gyro_rms_deg_s": 0.7719402330666303,
+  "top_gyro_rms_deg_s": 0.8012424926294347,
+  "partner_ok": true,
+  "prediction": {
+    "n": 3300,
+    "pred_z_mean": 0.0,
+    "pred_z_std": 0.0,
+    "pred_z_min": 0.0,
+    "pred_z_max": 0.0,
+    "pred_x_max_abs": 0.0,
+    "pred_y_max_abs": 0.0,
+    "clamp_fraction": 0.0,
+    "vs_a_res": {
+      "corr": NaN,
+      "rmse": 0.4559495611523779,
+      "n": 3300
+    }
+  },
+  "tracking_bottom_cm": {
+    "rms_z_cm": 0.4155268113696966,
+    "rms_lateral_cm": 0.01012390222649599,
+    "mean_z_err_cm": 0.31417517749716617,
+    "max_z_dip_cm": -0.025510323662714107,
+    "max_tilt_proxy_deg": NaN,
+    "n_samples": 2097,
+    "max_tilt_deg": 1.1504764959718585
+  },
+  "tracking_top_cm": {
+    "rms_z_cm": 0.21504444020296842,
+    "rms_lateral_cm": 0.009566698352909296,
+    "mean_z_err_cm": 0.0018794239783966123,
+    "max_z_dip_cm": -0.30143680677604534,
+    "max_tilt_proxy_deg": NaN,
+    "n_samples": 2097,
+    "max_tilt_deg": 1.1924175117277744
+  },
+  "tracking_bottom_full_cm": {
+    "rms_z_cm": 0.9208860186685143,
+    "rms_lateral_cm": 0.016519525202067824,
+    "mean_z_err_cm": 0.009452851595844346,
+    "max_z_dip_cm": -5.55974539764531,
+    "max_tilt_proxy_deg": NaN
+  },
+  "tracking_top_full_cm": {
+    "rms_z_cm": 0.24715746853332526,
+    "rms_lateral_cm": 0.01741958267472431,
+    "mean_z_err_cm": 0.033894173147058365,
+    "max_z_dip_cm": -0.47517827390126666,
+    "max_tilt_proxy_deg": NaN
+  },
+  "mean_sep_err_cm": 97.7743486228083,
+  "duration_s": 33.0,
+  "n_weights": 0,
+  "final_pos_bot": [
+    4.353077145357771e-09,
+    -0.4999999967663612,
+    0.5003664518325356
+  ],
+  "final_pos_top": [
+    3.5919613243623117e-09,
+    0.4999996194063147,
+    0.9998570682370873
+  ],
+  "gain_audit": null,
+  "crossing_dips": {
+    "n_crossings": 4,
+    "dip_cm_each": [
+      -5.55974539764531,
+      -2.656440264868504,
+      -5.539526883790308,
+      -2.6580654724502164
+    ],
+    "dip_cm_mean": -4.103444504688584,
+    "dip_cm_min": -5.55974539764531,
+    "dip_cm_max": -2.656440264868504,
+    "t_cross_s": [
+      9.0,
+      15.0,
+      21.0,
+      27.0
+    ]
+  }
+}

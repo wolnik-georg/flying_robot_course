@@ -1,0 +1,158 @@
+# named list of all robots
+fileversion: 3
+#
+# ══════════════════════════════════════════════════════════════════════════════
+# SWITCHING BETWEEN 1 AND N DRONES
+# ══════════════════════════════════════════════════════════════════════════════
+# 1. `enabled:` per robot below is the only switch the flight scripts need --
+#    formation_flight.py sizes the formation from however many are enabled, and
+#    works unchanged with a single drone.
+# 2. For MORE THAN ONE drone also reduce the radio log rates: see the MULTI-DRONE
+#    note in all.firmware_logging. 8 topics x 100 Hz ~= 600 packets/s per drone and
+#    one Crazyradio carries ~1000 packets/s TOTAL. Detailed data should come from
+#    the uSD deck instead -- flying_drone_stack/tools/README_usd_thesis_logging.md.
+# 3. Gains in all.firmware_params go to EVERY enabled robot -- but as of 2026-09-19,
+#    cf5 is the study drone (geometric/INDI/future NA-INDI/IL-NDI) with cf231_active
+#    bench-only. cf_second is permanently pinned to stock Lee (controller: 5,
+#    per-robot override below) regardless of platform, so all.firmware_params'
+#    indi_gains/pos_gains only ever matter for cf5 (per-robot overrides) in practice.
+#    This removes the whole cross-platform gain-sharing risk class found 2026-09-12 --
+#    not by fixing the sharing, but by only ever needing it for one drone.
+# ══════════════════════════════════════════════════════════════════════════════
+
+robots:
+  cf231_active:
+    enabled: false # 2026-09-19: SET ASIDE for today -- repeated the same geometric failure on
+                   # retry, against 2 other airframes that flew the identical config clean.
+                   # Real, isolated hardware fault; needs bench diagnosis (motor/ESC), not more
+                   # flight attempts. cf5 takes over its role for the rest of the session.
+    uri: radio://0/80/2M/E7E7E7E7E7
+    initial_position: [0.0, 0.3, 0.0]  # 2026-09-12: moved from X to Y for the 2-drone layout
+    type: cf21_active  # 2026-09-19: switched from cf21 (default_single_marker, 1 point) to the
+                        # recovered cf21_active (active_deck, 4-point square) -- physically
+                        # confirmed the 4-marker deck is mounted. Leading hypothesis for the
+                        # close-proximity tracking failures (A1 today, earlier A8 crashes):
+                        # a single point has nothing to disambiguate itself from any other
+                        # marker in the volume; a 4-point rigid pattern does. See robot_types
+                        # and docs/lab_sessions/2026-09-19.md.
+    # 2026-09-16: two A8 (2-drone) full-INDI attempts crashed -- cf231_active destabilizes
+    # first, cf_second ~0.3-0.4s later, separation only GROWS (not a collision). RPM deck
+    # confirmed healthy on the bench same day (clean 4-motor response). Root cause is still
+    # NOT fully identified, but two things ARE ruled out: (1) the geometric->full-INDI
+    # mid-air switch itself -- flight.py/simple_flight.py already do this exact switch for
+    # single-drone INDI, which has "always worked fine" per the operator; (2) --passes 2 --
+    # it's the MOST-flown value in this project's history, including the validated 09-15
+    # 2-drone dataset. Leading theory: cf231_active's own known, unresolved trajectory-
+    # tracking oscillation, combined for the first time with REAL downwash from a nearby
+    # crossing drone (never present in single-drone testing), pushes it into full divergence
+    # -- i.e. a robustness gap in full INDI under 2-drone interaction, not a new bug.
+    #
+    # 2026-09-16, DShot re-test RESOLVED -- rpm_source: 1 is now the STANDING config, not a
+    # temporary probe (flying_drone_stack/docs/dshot_rpm_source_plan.md). Sequence: the
+    # optical RPM deck was found to report EXACTLY ZERO for 2 of 4 motors throughout an
+    # actual flight (rpm_m2/rpm_m4 stuck at 0.0 the whole time), despite reading clean on a
+    # secured bench test -- a real hardware defect, in-flight-only, invisible on the bench.
+    # Switched to DShot (also clean on the bench). First two flight attempts on DShot
+    # (single-drone hover, then figure8) LOOKED clean but a second, independent bug meant
+    # the radio log's rpm_m1-4 columns were STILL reading the deck's own variables the whole
+    # time regardless of rpm_source (crazyflies.yaml's `rpm:` log topic and indi_gains.
+    # rpm_source are two completely separate switches -- fixed in the same commit that added
+    # this note, see the `rpm:` block below). Once the log topic was also switched to DShot's
+    # own variables, a clean 24s hover confirmed genuine ground truth: all 4 motors report
+    # continuously and consistently (zero dropouts across 530 samples, ~14-17k RPM), roll
+    # bounded to +-5 deg, pitch to +-12 deg -- no divergence, only the known baseline
+    # oscillation. DShot is now confirmed both clean AND sufficient for full INDI hover;
+    # keep rpm_source=1 going forward, don't revert to the deck without new evidence.
+    # `ctrl_mode: 3` (full INDI) directly -- operator's own flight experience is that the
+    # sub-loop-only modes (1, 2) consistently perform WORSE than either endpoint (0 or 3),
+    # regardless of RPM source, so they were skipped as not a meaningful "safer intermediate."
+    # Everything else here is the confirmed-good 2026-09-11 locked config (kr=2400/kw=170/
+    # pos_gains 64/5/48/7, from the shared `all:` block, unchanged). Still separately open:
+    # whether the 2026-09-09 audit fix (N1, pins alpha_ref to the INDI gain pair even during
+    # the geometric ramp) needs its own review, and whether full INDI survives 2-drone A8 --
+    # neither is resolved by this RPM finding, which only ruled out RPM source as the cause
+    # of the earlier 2-drone crashes.
+    firmware_params:
+      indi_gains:
+        ctrl_mode: 0    # 2026-09-19 TEST 2/6: stock Lee clean (no repeat of the earlier
+                         # near-zero-thrust/"3 of 4 motors" symptom) -- now geometric, solo,
+                         # cf_second still disabled. controller=5 override removed, so this
+                         # falls through to the shared all: controller=6.
+        rpm_source: 1   # DShot bidirectional telemetry, not the optical deck
+    # 2026-09-18: rpm custom_topic moved here from the shared `all:` block -- DShot vars
+    # only exist on firmware_app builds. cf231_active is disabled; see cf5 for the live
+    # copy when cf5 is the study drone.
+    # firmware_logging:
+    #   custom_topics:
+    #     rpm:
+    #       frequency: 20
+    #       vars: ["motor.m1_rpm", "motor.m2_rpm", "motor.m3_rpm", "motor.m4_rpm"]
+    # firmware_params:
+    #   kalman:
+    #     pNAcc_xy: 1.0 # default 0.5
+    # firmware_logging:
+    #   enabled: true
+    #   custom_topics:
+    #     topic_name3: 
+    #       frequency: 1
+    #       vars: ["acc.x", "acc.y"]
+    # reference_frame: "odom_cf231" # use a custom reference frame if no global coordinate system is available
+
+  # ── Second drone for thesis formation flight (2026-08-19) ──────────────────
+  # Used by `ros2 run crazyflie_examples formation_flight`.
+  #
+  # ARCHITECTURE DECISION 2026-09-13: cf_second is PERMANENTLY pinned to stock Lee
+  # (controller: 5 below), regardless of platform. Only cf231_active ever runs our
+  # controller (geometric/INDI/future NA-INDI/IL-NDI) -- cf_second exists purely as
+  # the other formation member / downwash source, not as a controller under study.
+  # This removes the whole cross-platform gain-sharing risk found 2026-09-12 (shared
+  # `all.firmware_params` drift + the since-fixed per-robot-override wipe) by
+  # construction: cf_second never reads indi_gains/pos_gains at all, since stock Lee
+  # is a separate firmware controller that doesn't consume them. No brushless swap
+  # is needed for this reason -- cf_second can stay standard CF2.1 indefinitely.
+  # (A swap might still be worth doing later for other reasons -- e.g. if a 3rd
+  # actively-controlled robot is ever needed for the B-scenarios -- but not for this.)
+  #
+  # The per-robot override mechanism this relies on (`apply()` re-pushing per-robot
+  # firmware_params after every broadcast) was found inert until 2026-09-12, then
+  # fixed generally (`crazyswarm2` `fdfc640`) -- see `docs/lab_sessions/2026-09-12.md`.
+  #
+  # WARNING -- radio bandwidth: all: currently streams 6 custom topics at 100 Hz per
+  # drone (~600 packets/s). One Crazyradio cannot carry two drones at that rate. Either
+  # drop the per-topic frequencies for 2-drone runs, or put the second drone on its own
+  # dongle (radio://1/...) / a different channel.
+  cf_second:
+    enabled: true                        # 2026-10-01: ON for A5/A6/C4 C.1 fly-prep (docs/lab_sessions/2026-09-28_alt_indi_shakedown.md
+                                          # Checklist E) -- these are 2-drone scenarios, cf_second must be registered, not just present
+                                          # (documented failure mode below: PRESENT BUT DISABLED -> fails). Was OFF for solo C.0 tests:
+                                          # 2026-09-29 close-out: OFF again for controller=10's NEXT attempt -- the direct-to-A1
+                                          # attempt (previous state) failed (cf5 never left the ground, single-motor-dominant
+                                          # PWM pattern, root cause not confirmed -- docs/41 §13). Next attempt should be a
+                                          # proper solo hover first, now that the lazy-init UB fix, the omega_des/omega_des_dot
+                                          # guard, and real tau/a_res/e_r telemetry are all in (commits f4e9256e, ae973f20,
+                                          # cec255f9). See docs/lab_sessions/2026-09-28_alt_indi_shakedown.md close-out.
+                                          # controller=5 (stock Lee) as always, unaffected by any of this.
+                                          # 2026-09-19: re-enabled for the first A8 pass with cf5
+                                          # taking over cf231_active's role (set aside, hardware
+                                          # fault). Back to its own permanent stock-Lee pin below.
+                                          # 2026-09-19 (superseded for now): cf_second is in the
+                                          # flight volume and must therefore be REGISTERED, not
+                                          # merely present. Pattern across two sessions, now
+                                          # consistent on every
+                                          # observation: enabled -> A8 clean (09-18 18:31, 18:39);
+                                          # physically REMOVED -> clean (09-18 19:43/19:45, 09-19
+                                          # run 2); PRESENT BUT DISABLED -> fails (09-18 19:16-19:25,
+                                          # 09-19 runs 1 and 3). Mechanism: `type: cf21` uses
+                                          # `marker: default_single_marker` -- ONE point -- with
+                                          # `tracking: librigidbodytracker`, which does its own
+                                          # association. launch.py only builds a rigid_bodies entry
+                                          # for ENABLED robots, so a disabled drone's reflective
+                                          # markers sit in the volume unclaimed and can steal
+                                          # cf231_active's association. A stolen association means
+                                          # a frozen/wrong estimate, which is exactly the
+                                          # runaway-climb (run 1) and no-climb-skid (run 3) signature.
+                                          # RULE: every drone in the capture volume is either
+                                          # enabled here or physically removed. Never in between.
+    uri: radio://0/80/2M/E7E7E7E7E9      # real address, confirmed differs from cf231_active
+    initia
+... truncated snapshot for desk reference ...
