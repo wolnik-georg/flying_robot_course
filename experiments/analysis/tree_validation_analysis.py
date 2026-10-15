@@ -26,6 +26,8 @@ def metrics(path, dz_cmd=0.5):
     zb, zt = g(b, "z"), g(t, "z"); tgt = g(b, "ctrltarget_z")
     air = (zb > 0.3) & (T > 0)
     sel = air & (np.abs(tgt - np.median(tgt[air])) < 0.2)
+    if "A1" in Path(path).stem:      # hold scenario: evaluate over the commanded hold window whatever the achieved height (geometric strategies may sit far below)
+        sel = (T >= 1.0) & (T <= 15.0)
     ez = (zb - tgt) * 100
     out = {"flight": Path(path).stem.replace("merged_", ""), "air_s": air.sum() / 500.0}
     out["z_err_mean"], out["z_err_std"] = float(ez[sel].mean()), float(ez[sel].std())
@@ -54,7 +56,7 @@ if __name__ == "__main__":
     for f in sorted(glob.glob(f"{a.dir}/merged_*.csv")):
         try: R.append(metrics(f))
         except Exception as e: print("skip", f, e, file=sys.stderr)
-    strat = lambda n: re.search(r"tree_(S\d|unknownstrategy)", n).group(1)
+    strat = lambda n: re.search(r"tree_(S\d)", n).group(1)
     print("flight                     air  zerr mean/std  xy_rms  roll/pitch max  sep_dz mean/std | A8: n  dip mean/min  upward peak mean/max  sep err @cross")
     for r in R:
         s = f"{r['flight']:34s} {r['air_s']:4.1f} {r['z_err_mean']:+6.1f}/{r['z_err_std']:4.1f}  {r['xy_rms']:5.1f}  {r['roll_max']:5.1f}/{r['pitch_max']:5.1f}  {r['sep_dz_mean']:+6.1f}/{r['sep_dz_std']:4.1f}"
@@ -67,3 +69,8 @@ if __name__ == "__main__":
             print(f"  {sname}: flights {len(rs)}  dip {np.mean([r['dip_mean'] for r in rs]):+.1f} cm (spread of flight means {np.std([r['dip_mean'] for r in rs]):.1f})  "
                   f"worst {min(r['dip_min'] for r in rs):+.1f}  upward peak {np.mean([r['peak_mean'] for r in rs]):+.1f} (max {max(r['peak_max'] for r in rs):+.1f})  "
                   f"offset {np.mean([r['offset'] for r in rs]):+.1f}  z std {np.mean([r['z_err_std'] for r in rs]):.1f}  sep err at crossing {np.mean([r['sep_err_cross'] for r in rs]):+.1f} cm")
+
+    print("\nA1 hold (commanded window 1-15 s): bottom z error mean/std, separation error mean/std, xy rms, roll/pitch max")
+    for r in R:
+        if "A1" in r["flight"]:
+            print(f"  {r['flight']:22s} z {r['z_err_mean']:+6.1f}/{r['z_err_std']:4.1f} cm  sep {r['sep_dz_mean']:+6.1f}/{r['sep_dz_std']:4.1f} cm  xy {r['xy_rms']:5.1f} cm  roll/pitch max {r['roll_max']:4.1f}/{r['pitch_max']:4.1f} deg")

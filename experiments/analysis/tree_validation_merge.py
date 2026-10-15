@@ -13,6 +13,6 @@ for f in sorted(USD.glob("cf_second_tree_*_thesis*.bin")):
     h, m = re.search(r"_(\d{2})(\d{2})(?:_|$)", label).groups()
     meta = sorted((ROOT / "experiments/logs").glob(f"A[18]_2026-10-15_{h}-{m}-*.meta.json"))[0]
     cmd = ["python3", str(ROOT / "flying_drone_stack/tools/merge_usd_logs.py"), str(c5), str(f), "--meta", str(meta), "--roles", "bottom", "top",
-           "-o", str(OUT / f"merged_{label}.csv")] + (["--tag-quality-only"] if ("FAILED" in label or "_A1_" in label) else [])
+           "-o", str(OUT / f"merged_{label}.csv")] + (["--tag-quality-only"] if "_A1_" in label else [])
     r = subprocess.run(cmd, capture_output=True, text=True)
     print(label, "rc", r.returncode, [l.strip() for l in (r.stdout + r.stderr).split("\n") if "RMS" in l][:2])
