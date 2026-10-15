@@ -1,0 +1,114 @@
+% =====================================================================================
+%  Chapter 9 — Conclusion
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  REVISED SKELETON 2026-10-15 (round 3: two phases).
+%  REVISED SKELETON 2026-10-15 (round 2).
+%  REVISED SKELETON 2026-10-14 (thesis-revision run, Phase 4; plan rows P9-01, P9-02). No results. Chapters 6-9 referred to by name in prose (H6).
+%  Sources: Section~\ref{sec:intro-rq}, Chapter~\ref{ch:discussion}, project workflow docs.
+%
+%  HONESTY NOTE. Headline answers per RQ are placeholders until results chapters are filled.
+%  The future-work section contains real, already-planned items (not fabricated outcomes).
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+% CHANGED (H6, P8-02/P9-02): chapters 6-9 named in prose; internal campaign labels (C.4) removed.
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+% -------------------------------------------------------------------------------------
+\section{Summary}
+\label{sec:conclusion-summary}
+
+This thesis set out to compare interaction-force compensation strategies for tight multirotor
+formation flight on a common platform, trajectory set and logging pipeline, holding reactive and
+predictive families under the same residual definition and null-flight measurement floor.
+Strategies~0--3, the baseline, the reactive, the predictive and the hybrid strategy, are one
+controller with three switches, and Strategy~4 is specified but not implemented, in
+Chapters~\ref{ch:model}--\ref{ch:control}; the experimental
+% CHANGED (round 2, author decisions 1 and 2).
+campaign is described in Chapter~\ref{ch:setup} and reported in two phases, the two-vehicle phase in
+the two-robot results chapter and the three-vehicle phase in the multi-robot results chapter.
+% CHANGED (round 3, D-13 = (b)).
+The comparison is deliberately conditional: the useful outcome is guidance
+on when to pay for prediction, measurement, or neither, not a claim of universal superiority.
+
+% -------------------------------------------------------------------------------------
+\section{Answers to the research questions}
+\label{sec:conclusion-rq}
+
+% CHANGED (P9-02): each answer slot states the form the answer takes, including the negative one.
+\paragraph{RQ1.}
+\todo[color=red!25]{PLACEHOLDER (RQ1): One-sentence headline answer --- for each compensating strategy,
+whether it differs from Strategy~0 beyond the measurement floor (provisional, then that of the null
+scenarios) in separation error and tracking
+error, and in which direction; or that no difference was detected (Section~\ref{sec:res2-tracking}).}
+
+\paragraph{RQ2.}
+\todo[color=red!25]{PLACEHOLDER (RQ2): One-sentence headline --- the scenario classes in which the
+reactive and the predictive strategy order differently, or that no regime dependence was detected at
+the separations and speeds flown (Section~\ref{sec:res2-summary}).}
+
+\paragraph{RQ3.}
+\todo[color=red!25]{PLACEHOLDER (RQ3): One-sentence headline --- the transfer penalty in prediction
+error, absolute and relative, and whether the summed architecture remains justified; or that RQ3 was
+not answered on hardware (Sections~\ref{sec:res3-transfer} and~\ref{sec:res3-limitation}).}
+
+\paragraph{RQ4.}
+\todo[color=red!25]{PLACEHOLDER (RQ4): One-sentence headline --- cost against performance across
+the implemented strategies (sensing, compute, data, tuning) (Section~\ref{sec:disc-rq4}).}
+
+% -------------------------------------------------------------------------------------
+\section{Engineering takeaway}
+\label{sec:conclusion-engineering}
+
+The engineering reader should leave with a decision rule, not only a ranking. RQ4 frames that rule:
+given brushless Crazyflies with RPM sensing and offline-trained predictors, which strategy family
+delivers acceptable tracking and residual rejection per unit of tuning effort, flight time for data
+collection, and onboard resource? The filled discussion (Section~\ref{sec:disc-rq4}) will state that
+rule explicitly; until the comparison is complete, no rule is asserted here.
+
+% -------------------------------------------------------------------------------------
+\section{Future work}
+\label{sec:conclusion-future}
+
+% DECISION D-05 (H9): the list below mixes campaign tasks (first bullet), project-internal
+%   vocabulary (vehicle nickname, parameter names, SIL, "our notes", "project convention") and
+%   genuine future work. Recommended: keep the second to fourth bullets as future work in neutral
+%   wording, move the first and fifth to the protocol (Chapter 5) or delete them. Text left unchanged.
+% DECISION D-05 (round 2 note): the third bullet calls the hybrid "out of the primary compared set";
+%   the hybrid of this thesis (Strategy 3) is now compared, but this bullet concerns the learned
+%   single-vehicle variant of Cobo-Briesewitz et al.; part of the D-05 rewrite of this list.
+% CHANGED (round 2, author decision 3): internal labels, nicknames and identifiers removed from this list;
+%   its D-05 content is otherwise unchanged.
+Several extensions are already scoped in project documentation and do not depend on the comparison outcome:
+
+\begin{itemize}
+  \item \textbf{Training coverage and comparison repeats.} Complete the planned separation and speed
+    grid under geometric collection on the lower vehicle; run the systematic comparison matrix with frozen gains and documented $n$
+    per cell.
+  % CHANGED (round 3, D-13 = (b)): the three-vehicle scenarios are phase 2 of this thesis, not future
+  %   work; only larger teams remain here.
+  \item \textbf{Larger teams.} The three-vehicle scenarios are the second phase of this thesis
+    (Section~\ref{sec:res3-limitation} covers the case that it is incomplete); sketches for four or more vehicles remain
+    a sketch until the core library and the comparison are finished.
+  \item \textbf{Retrained NA-INDI / LINDI reference.} Our notes describe
+    a retrain path for the Cobo-Briesewitz hybrid; it is out of the primary compared set but remains
+    a candidate extension if hardware budget allows.
+  \item \textbf{Residual reinforcement-learning strategies.} Explicitly deferred in the project convention:
+    reinforcement-learning residual policies are not part of this comparison and would require a
+    separate safety and data budget before any flight claim.
+  \item \textbf{Hardware validation of onboard prediction.} Simulation does not substitute for
+    flights with the learned term active on the brushless pair; flash-resident vs upload deployment trades
+    reflash cost against lab iteration speed.
+\end{itemize}
+
+% -------------------------------------------------------------------------------------
+\section{Closing remark}
+\label{sec:conclusion-close}
+
+Whether compensation families separate sharply or collapse to ``any compensation helps,'' the thesis
+is designed so either outcome is informative. The remaining work is to replace the placeholders in
+results and discussion chapters with measured outcomes from the lab campaign.

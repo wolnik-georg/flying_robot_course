@@ -39,6 +39,9 @@ Done and validated (62 pages, 0 undefined, no forbidden names in visible text, 2
 - **D-13 = option (b):** the study is two phases: phase 1 two vehicles (A scenarios, 48 cells), phase 2 three vehicles (B/C scenarios incl. the C1–C3 floor, RQ3 transfer). The draft keeps the three-vehicle content; only status wording changes (six `% DECISION D-13` places). The two-vehicle results are first read against a provisional floor from the baseline repeats.
 - **D-12 default = (a): no code change;** the text already states the plain-sum behaviour. Revisit after S0–S2 data (only S3 would need re-flying).
 
+## Round 3 result (2026-10-15)
+Done and validated: 63 pages, 0 errors, 0 undefined, naming sweep 0, bib keys present, originals untouched, every changed sentence is an intended edit (34, all phase/floor/hybrid wording). One minor fix by us: Table 5.1 caption says A6, C4 and C5 are defined but not part of the comparison. Open: D-14 (provisional floor: repeat-to-repeat variation within a cell, alternative = variation of the S0 anchor flights), D-03, D-05, [VERIFY] items, three `% CONFIRM-AFTER-LAB` places. Files: `round3/`. **Ready to merge into `docs/thesis/` chapter by chapter (one deliberate step, reversible with git); bib corrections (`followup_bib_corrections.md`) are separate.**
+
 ## Files
 `author_decisions.md` (decisions + V items), `followup_report.md` (open items, merge order), `followup_verify_closure.md`,
 `followup_bib_corrections.md`, `followup_diff_audit*.md`, `followup_examiner.md`, `revised/` (chapters + `thesis_draft.tex`),
