@@ -8,6 +8,9 @@ variables the study uSD config needs exist, check that rnn.en is writable, and p
 
   python3 flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02          # cf5
   python3 flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7E7E9          # cf_second
+  python3 flying_drone_stack/tools/ns2c_bench_check.py <uri> --readback     (read-only: prints controller, indi, Kpos_Iz, rnn.en, rnn.ready;
+                                                                              writes nothing; run with CS2 stopped, drone still powered, to
+                                                                              prove which strategy the last block ran)
   python3 flying_drone_stack/tools/ns2c_bench_check.py <uri> --post-flight                 # after a flight, drone still powered, CS2 stopped:
                                                                                            # prints rnn.us_last/us_max/us_avg and rnn.pred_*, rnn.clamped
 
@@ -22,6 +25,7 @@ from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 
 uri = sys.argv[1]
 POST = "--post-flight" in sys.argv
+READ = "--readback" in sys.argv
 console: list[str] = []
 fails: list[str] = []
 
@@ -37,6 +41,18 @@ def pget(cf, name):
 
 
 cflib.crtp.init_drivers()
+if READ:
+    with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
+        cf = scf.cf
+        names = ["stabilizer.controller", "ctrlOmarIndi.indi", "ctrlOmarIndi.Kpos_Iz", "ctrlOmarIndi.Kpos_Px", "ctrlOmarIndi.Kpos_Dx",
+                 "ctrlOmarIndi.mass", "rnn.en", "rnn.ready", "rnn.div"]
+        vals = {n: pget(cf, n) for n in names}
+        for n in names:
+            print(f"  {n:24s} {vals[n]}")
+        ind, en = int(float(vals["ctrlOmarIndi.indi"])), int(float(vals["rnn.en"]))
+        strat = {(0, 0): "S0 geometric", (3, 0): "S1 INDI", (0, 1): "S2 geometric + NS2", (3, 1): "S3 INDI + NS2"}.get((ind, en), f"other (indi {ind}, rnn.en {en})")
+        print(f"  => strategy loaded on this drone: {strat}")
+    sys.exit(0)
 if POST:
     from cflib.crazyflie.log import LogConfig
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
