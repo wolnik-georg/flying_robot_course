@@ -1,0 +1,123 @@
+% =====================================================================================
+%  Chapter 7 — Multi-Robot and Scaling Results
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  REVISED SKELETON 2026-10-15 (round 3: this chapter reports phase 2, D-13 = (b)).
+%  REVISED SKELETON 2026-10-15 (round 2: Strategies 0-3; D-13 scope open).
+%  REVISED SKELETON 2026-10-14 (thesis-revision run, Phase 4; plan rows P7-01..P7-03). Structure
+%  only; no results.
+%  Sources: Chapter~\ref{ch:setup} (three-robot scenarios B1--B3, metrics).
+%
+%  HONESTY NOTE. Three-robot data may be partial or absent; the fallback paragraph in
+%  Section~\ref{sec:res3-limitation} is written now as the contingency narrative. n$\geq$4 content
+%  is explicitly future work, not a claim of results.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Multi-Robot and Scaling Results}
+\label{ch:results3}
+
+% CHANGED (round 3, D-13 = (b)): phase 2.
+This chapter reports the second phase of the study: the three-vehicle scenarios, flown with the
+same controllers after the two-vehicle campaign of the two-robot results chapter. Its cells and
+counts are fixed when the first phase is complete (Chapter~\ref{ch:setup}). The phase has two
+purposes. It flies the null scenarios C1--C3, which set the measurement floor against which the
+two-vehicle results are finally read, and it answers RQ3 (Section~\ref{sec:intro-rq}), the transfer
+penalty when a summed per-neighbour residual model trained on two-vehicle data is applied to
+three-vehicle formations. The chapter also states how an extension to four or five vehicles would be
+structured, without treating that extension as part of the thesis.
+
+% -------------------------------------------------------------------------------------
+\section{Three-robot comparison campaign}
+\label{sec:res3-campaign}
+% CHANGED (round 3, D-13 = (b)): the chapter reports phase 2.
+
+Three-robot flights use three vehicles of the platform of Section~\ref{sec:setup-platform} and scenarios B1, B2 and/or B3 from the frozen library (I-stack, V-stack, and merge geometries). The metric pipeline is
+intentionally identical to the two-robot results chapter: per-flight metrics, separation error, effort
+proxies, and residual logging under Strategy~0 versus compensating strategies where implemented
+for $N=3$.
+
+% CHANGED (H5): Strategy 3 is not implemented; the columns list the implemented strategies.
+\todo[color=red!25]{PLACEHOLDER: Table --- B1/B2/B3 (subset as flown) $\times$ Strategies~0--3;
+same column headers as Table~\ref{tab:res2-tracking}; $n$ repeats per cell.}
+
+% NEW (round 3, D-13 = (b), D-14): the floor is a phase-2 result.
+\section{Null scenarios and the measurement floor}
+\label{sec:res3-null}
+The null scenarios C1--C3 are flown in this phase. They give the measurement floor of
+Section~\ref{sec:setup-null}, and the two-vehicle results, read provisionally against the
+repeat-to-repeat variation within a cell, are read here against it a second time.
+
+\todo[color=red!25]{PLACEHOLDER: Table --- C1--C3 $\times$ strategies flown, residual and tracking
+metrics of Section~\ref{sec:setup-metrics}, $n$; second table: the comparisons of the two-robot
+results chapter against this floor next to their provisional reading, and every case in which the
+two readings differ.}
+
+% -------------------------------------------------------------------------------------
+\section{Transfer penalty for the summed predictor}
+\label{sec:res3-transfer}
+
+% CHANGED (P7-02): the penalty as defined in Chapter 5; negative answer; internal labels removed.
+RQ3 is not a test of whether aerodynamic interactions superpose; the literature already reports that
+they do not. The engineering question is how large the penalty is when the same onboard predictor,
+trained on two-robot data, is evaluated on three-robot relative configurations, and whether that
+penalty is small enough to keep the summed architecture. The penalty is the difference in
+prediction error $\epsilon_{\mathrm{pred}}$ between three-vehicle scenarios and their paired
+two-vehicle scenarios for the same weights, absolute and relative
+(Section~\ref{sec:setup-metrics}), evaluated on prediction-off flights.
+
+\todo[color=red!25]{PLACEHOLDER: Figure/table --- $\epsilon_{\mathrm{pred}}$ on three-robot
+prediction-off flights against the paired two-robot scenarios; scenario-resolved; contribution of
+each neighbour's term next to the summed prediction where the logs allow it.}
+
+\todo[color=red!25]{PLACEHOLDER: Closed-loop block --- if Strategies~2 and~3 are flown on B-series, compare
+tracking and residual metrics to Strategy~0 on the same scenarios.}
+
+% NEW (P7-02): negative answer, with the decision rule referred to Sec. setup-stats (closing pass).
+\paragraph{Negative answer.} A penalty that the rule of Section~\ref{sec:setup-stats} does not
+distinguish from the repetition-to-repetition variation of $\epsilon_{\mathrm{pred}}$ on the paired
+two-vehicle scenario is reported as ``no transfer penalty detected''; a detected penalty is reported
+with its size relative to the measured residual, which is what decides whether the summed model
+trained on two vehicles remains usable on three.
+
+% -------------------------------------------------------------------------------------
+\section{Extension to four and five vehicles}
+\label{sec:res3-n4sketch}
+
+A sketch of scenarios with four or more vehicles describes how such formations would stress
+superposition and asymmetric wash without replacing the frozen scenario library. The sketch is a
+template only: its geometries must pass the pre-flight check and the supervisor's approval before any
+simulation or flight. No results from it are claimed here.
+
+The primary thesis comparison remains two- and three-robot; n$\geq$4 is documented so a future
+campaign can reuse the same logging, merge and analysis tools.
+
+% -------------------------------------------------------------------------------------
+\section{Limitation if three-robot data are incomplete}
+\label{sec:res3-limitation}
+
+\paragraph{If the third vehicle arrives too late.}
+RQ3 needs flights with three vehicles, because the effect it asks about, the overlap of two wakes,
+does not exist in two-vehicle data. If the third vehicle is not available in time, RQ3 is not
+answered on hardware, and the thesis says so. Two-vehicle logs can only check how the network behaves
+on one neighbour at a time. They say nothing about the summed prediction for two neighbours. Without
+the null scenarios, the two-vehicle results keep their provisional floor, the repeat-to-repeat
+variation within a cell, and are reported with that qualification.
+% CHANGED (round 3, D-14).
+
+% CHANGED (P7-03, H1): simulation removed from the evidence chain (Chapter 5, Sec. setup-sim).
+The limitation is stated plainly: without repeated three-robot compensated flights, the thesis
+cannot rank the strategies at $N=3$ with the same confidence as at $N=2$; the summed-architecture
+decision rests on the magnitude of the open-loop penalty alone, and generalisation
+to larger teams remains future work (Section~\ref{sec:conclusion-future}).
+% REMOVED (P7-03): "... rests on the magnitude of open-loop penalty and simulation sanity checks, ..."
+
+% -------------------------------------------------------------------------------------
+\section{Chapter summary}
+\label{sec:res3-summary}
+
+\todo[color=red!25]{PLACEHOLDER: One paragraph summarising the RQ3 answer once metrics exist --- penalty
+size, whether the summed predictor remains defensible, link back to Section~\ref{sec:res2-summary} for
+two-robot vs three-robot consistency.}

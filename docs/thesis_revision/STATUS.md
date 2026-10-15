@@ -1,5 +1,7 @@
 # Thesis draft revision — STATUS (read this first)
 
+**CLOSED 2026-10-15: the revised draft (rounds 1–3 + closing edits) is MERGED into `docs/thesis/ch1..ch9` and `docs/references.bib` (64 pages, 0 errors, 0 undefined). Revert with `git revert` of the merge commit if needed.** What is still open is listed in the last section ("Open after the merge"); everything above is history.
+
 State as of 2026-10-14: **revision work finished, nothing merged, all decisions open.** The originals in `docs/thesis/`,
 `docs/references.bib` and the code are untouched. The revised draft is in `revised/` (60 pages, 0 undefined, builds clean).
 Chapters 6–9 stay skeletons until the study data exists.
@@ -50,3 +52,8 @@ Done and validated: 63 pages, 0 errors, 0 undefined, naming sweep 0, bib keys pr
 ## Rules that still hold
 No flown / lab / simulation results in Ch1–5. Never edit `docs/thesis/*.tex` or `references.bib` until you merge deliberately.
 Proposed references in `proposed_references.md` are UNVERIFIED — read the source before adding.
+
+## Open after the merge (2026-10-15)
+- **Decided and applied in the closing edits:** D-14 (provisional floor = repeat-to-repeat variation within a cell), D-03 (narrowed gap with the hybrid as added terms, Hsieh et al. 2025 named as the closest study), D-05 (conservative status wording; the campaign-status paragraph of the retired controllers deleted), D-08 (Abro paragraph dropped), D-10 (11 bib corrections in `docs/references.bib`), D-12 = (a), D-13 = (b). Script and log: `docs/thesis_revision/final/apply_closing_edits.py`, `closing_edits_log.txt`.
+- **Stays open on purpose:** `% VERIFY` V1 (Lee CDC 2010 numbering, PDF not held), V7 (simulator weights, supervisor), V10 (inertia from a Crazyflie 2.0 identification), V11 (RPM source of the offline labels, default deck), V12 (controller mass 42.7 g vs about 41 g); three `% CONFIRM-AFTER-LAB` places (INDI takeoff handling, training-flight counts, NS2 execution time); D-09 (hypotheses/statistics `\todo`s, fixed after phase 1); the phase-2 protocol; round-2 examiner items E3-E5 (gain provenance, inertia and mass, onboard vs offline residual agreement).
+- **Supervisor to confirm:** Pure INDI = one tree (D-11), D-12 hybrid as built, D-13 two phases, D-14 provisional floor.

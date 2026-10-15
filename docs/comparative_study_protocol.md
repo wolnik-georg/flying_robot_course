@@ -40,7 +40,7 @@ All at `--height 0.5` (bottom drone 0.5 m, top 0.5 m + dz), `--auto-center`, two
 | A5 reverse-circle stack | dynamic | `dz 0.5`, `--period` as A2 | 1 (0.4) | | +3 |
 | A7 dynamic merge | dynamic | `dz` 1.1 → 0.1 by design, `--speed` | 1 (0.4) | | +3 |
 | **Settings** | | | **12** | **+6 (18)** | **+9 (27)** |
-- **Cell = scenario setting × strategy.** Tier 1: 12 × 3 = 36 cells; tier 2: 54; tier 3: 81. **5 clean flights per cell** → **180 / 270 / 405 clean flights**.
+- **Cell = scenario setting × strategy.** Tier 1: 12 × 4 = 48 cells (four strategies S0–S3 on one controller tree, 2026-10-14); tier 1+2: 72; all tiers: 108. **5 clean flights per cell** → **240 / 360 / 540 clean flights** (earlier controller-6 numbers with three strategies: 36 / 54 / 81 cells, 180 / 270 / 405 flights).
 - Exact scenario parameters per setting (and feasibility at speed 0.5: mocap boundary, gating, `--allow-extreme`) are fixed in the shakedown and written into the protocol v1.0 table; flight command lines are generated from that table.
 - Tier 2/3 are flown only if time remains after tier 1 (decision at the end of each tier).
 
