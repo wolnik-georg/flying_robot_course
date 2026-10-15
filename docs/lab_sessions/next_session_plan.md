@@ -1,65 +1,41 @@
-# Next lab session — Omar C tree with NS2 (Phase 7 bench + Phase 8 validation) — PLANNED (date open)
+# Next lab session — NS2 training data collection on the Omar C tree (S0) — PLANNED (date open)
 
-Plan: `docs/plan_omar_tree_ns2_2026-10-14.md`. Spec: `docs/ns2_c_module_spec.md`. Replaces the earlier reduced-shakedown plan (controller 6, obsolete).
+Previous session (tree validation, closed): `2026-10-15.md`. Plan and rationale: `docs/plan_ns2_retrain_data_2026-10-14.md`. Card: `docs/ns2_training_flight_card.md` (66 flights, 32 min of flight, ≈ 5.5 h with overheads, i.e. 2–3 sessions).
 
-## 0. Goal and what must NOT be skipped
-Validate the unified controller tree on the drones: **S0 Omar geometric, S1 Omar full INDI, S2 Omar geometric + NS2, S3 Omar full INDI + NS2**, both drones on Omar's controller (controller 9). Nothing else is changed: controller 6 / ours / TK are untouched.
-Desk gates passed before this session (details in the plan doc §Phases): C module = Rust flight code bit-identical (Phase 4), NS2-off outputs byte-identical to the old Omar C on four logged flights (Phase 3), closed-loop SIL direction/sign (Phase 5), image built from the patch list (Phase 6).
+## 0. Goal
+Dedicated training flights (never study repeats) for the retrained NS2 that serves both **S2 (geometric + NS2)** and **S3 (INDI + NS2)**. All flights on S0 (indi 0, NS2 off, deck RPM on, both drones controller 9). The label `a_res_z = a_imu_f − a_rpm_f` is reconstructed offline with Omar's own filter chain (`omar_labels.py`, validated r = 0.998), so it is the same signal the INDI term measures in S1/S3.
 
-## 1. Image and manifest (Phase 6 result)
-- Image: `flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin`, sha256 `dfac761a16d115c9a20ef29e320f7d9ff5a76300b85e475548b285fac24fc2d5` (532 960 B; flash 52 %, RAM 75 %). Candidate manifest: `docs/frozen/omar_ns2c_tree/study_manifest_ns2c_candidate.json` — **not active**; copy its `cf5` / `cf_second` blocks into `crazyswarm2/crazyflie/config/study_manifest.json` only at the flash step (below).
-- The previous study image (`…_ON_tk.bin`, `cb38f3f4…`) stays as the fallback; flashing it returns to the old tree.
+## 1. What is already in place
+| Item | State |
+|---|---|
+| Image `study_tree_v1.bin` on both drones, 96-variable uSD logging, deck RPM | flashed, flown today (NS2 off in S0, no effect on the data) |
+| yaml for S0 | `git checkout crazyflie/config/crazyflies.yaml && git apply crazyflie/config/study/tree_S0.patch` (yaml in the tree is still S2) |
+| 66-flight card | regenerated without `--study` (readback gate NaN, not needed here); commands validated by the scenario generator |
+| R1 random-waypoint scenario | planned offline, goes through `safety.check()`, reproducible from the seed, 68 % of the time inside the NS2 gate; **never flown on hardware** |
+| Label adapter | `omar_labels.py` + `merge_usd_logs.py --omar-labels deck`, validated against logged labels |
+| Retrain chain | `experiments/analysis/run_c2_lab_retrain.py` → `dataset.py` → LOO gate → `export_weights_c.py` (unchanged downstream) |
+| Log tools | `copy_usd_log.py --tag`, `check_usd_log_quality.py`, `tree_log_check.py`, `ns2c_bench_check.py` |
 
-## 2. Setup (no motors)
-```bash
-cd ~/Desktop/flying_robot_course && git pull && cd ~/Desktop/crazyswarm2 && git pull     # lab PC, CS2 stopped
-# flash BOTH drones (cf5 E7E7E7BB02, cf_second E7E7E7E7E9), power-cycle each afterwards
-cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin stm32-fw -w radio://0/80/2M/E7E7E7BB02
-cfloader flash ~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v1.bin stm32-fw -w radio://0/80/2M/E7E7E7E7E9
-# Phase 7 bench check (static, sends NO setpoint), once per drone
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7E7E9
-# SD config on the cf5 card (it may still hold the TK debug config) and the cf_second card
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/restore_study_sd_config.py /media/georg/<card>
-```
-Bench expectations: console `Using OutOfTree4 (9)`, `rnn.ready 1`, `rnn.div 10`, `rnn.en 0`, Omar mass 0.0427, `Kpos_P 7`, `Kpos_D 4`, all log variables present. **Any FAIL: stop and report; do not fly.** Then copy the candidate manifest blocks into `study_manifest.json`, commit and push both repos.
+## 2. To prepare (ordered)
+| # | What | Who | Why |
+|---|---|---|---|
+| 1 | Back up both cards, **reformat, then `restore_study_sd_config.py` on both**, then `check_usd_deck.py` before the first flight | lab | today's write gaps (1.3 % mean) and empty files; reformat removes the config |
+| 2 | Batteries: charge everything, change below ≈ 4.1 V resting (four S2 flights were lost to 2.6 V cut-offs) | lab | each lost flight is lost training data |
+| 3 | Bench check on both drones (`ns2c_bench_check.py`), confirm `Using OutOfTree4 (9)` after any flash/power-cycle | lab | known silent-wrong-controller failure mode |
+| 4 | Retrain acceptance rule and hold-out (e.g. which R1 seeds stay out) — **you define**; whether the old 26 flights are used at all (current plan: no) | you | the gate must be fixed before the data is seen |
+| 5 | Generic merge for the training bank (pair cards by `usd.runTag`, `--omar-labels deck`, one command): `tree_validation_merge.py` is hard-wired to the tree labels | desk | one step per card pair instead of ad-hoc merges |
+| 6 | Dry run of the retrain chain on today's merged flights (labels via the adapter, LOO on 13 flights) to prove the chain end to end before 66 flights exist | desk | finds adapter/dataset problems now |
+| 7 | Clamped fraction of `rnn_clamped` in today's flights (the last prediction on the ground read 8.0 = clamp) | desk | if NS2 clamps often in flight the label range matters for training |
+| 8 | First-flight safety for R1: first seed with a hand on the abort, geofence, fresh batteries; abort rule protocol §4 | lab | R1 is new on hardware |
 
-## 3. Flights (fresh batteries; abort rule protocol §4: |roll| or |pitch| > 25° for 0.5 s, or z < 0.25 m; stop a block after 2 crashes; after a crash toggle `stabilizer.estimator` 1→2; relaunch CS2 after every yaml change)
-Yaml per strategy (clean yaml first):
-```bash
-cd ~/Desktop/crazyswarm2 && git checkout crazyflie/config/crazyflies.yaml && git apply crazyflie/config/study/tree_S0.patch   # S0 | S1 | S2 | S3
-ros2 launch crazyflie launch.py
-```
-Both drones are pinned to controller 9 by the patch, so takeoff and landing also run Omar's controller (no `--pin-controller` needed).
-| # | Strategy | Flight | Command | Look at |
-|---|---|---|---|---|
-| 1 | S0 | solo hover (set `enabled: false` for cf_second AND remove it from the volume) | `ros2 run crazyflie_examples simple_flight -- --trajectory hover --duration 15` | clean takeoff and landing on Omar geometric, z offset ≈ 0 (Iz 1.5) |
-| 2 | S0 | A8, 2 drones | `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --height 0.5 --passes 4 --auto-center --yes --study --strategy S0 --session tree_validation` | crossing dip of the baseline on the new tree |
-| 3 | S2 | A1 stack hold (NS2 active: the neighbour is inside the gate) | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes --study --strategy S2 --session tree_validation` | `rnn.pred_*` non-zero, no oscillation |
-| 4 | S2 | A8, 2 drones | same as #2 with `--strategy S2` | dip vs #2 |
-| 5 | S1 | solo hover (cf_second off) | as #1 | **takeoff from the ground in INDI mode (indi 3) is new**: liftoff, no flip |
-| 6 | S1 | A8 | as #2 with `--strategy S1` | compare with Omar C + Iz history (dip ≈ −9 cm, offset +0.3 cm) |
-| 7 | S3 | A1 hold, then A8 | as #3 / #2 with `--strategy S3` | first INDI + NS2 flight; watch for double compensation (oscillation) |
-Do not skip the order: S0 first (it is the same tree without NS2 and without INDI), S1 only after S0 is clean.
+## 3. Session flow
+1. Setup (items 1–3 above), S0 yaml, relaunch CS2 after the yaml change.
+2. Fly the card in order of its blocks (A1 → A4 → A8 → A2/A3/A5/A7 → R1); copy the logs after each block (`copy_usd_log.py … --tag ns2_train_<block>`, cf_second card first), run `check_usd_log_quality.py`.
+3. After the session: `tree_log_check.py` on every file (must read S0: INDI off, NS2 off), merge both cards, `run_c2_lab_retrain.py` dry-run on the new bank.
+4. After the full bank: retrain → LOO gate → your sign-off → `export_weights_c.py` → image `study_tree_v2` → bench → re-validate S2/S3 (A8, A1) → re-freeze protocol.
 
-## 4. After each flight / at the end
-```bash
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02 --post-flight   # cf5, CS2 stopped, drone still powered: rnn.us_max (single NS2 evaluation, µs)
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/copy_usd_log.py /media/georg/<cf_second card> cf_second --file thesisNN --tag tree_<S>   # cf_second first
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/copy_usd_log.py /media/georg/<cf5 card> cf5 --file thesisNN --tag tree_<S>
-python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/check_usd_log_quality.py experiments/logs/usd_raw/*<today>*
-```
-Archive both SD cards to `~/Desktop/sd_backups/<date>_lab/` before reusing them.
-
-## 5. Known risks (from the desk phases)
-- **S3 (INDI + NS2) as built adds the two terms (plain sum): in this INDI formulation the measured residual does not shrink when the prediction raises the thrust, so the prediction acts as an offset on the acceleration reference (over-compensation during a crossing, removed in steady state only by the vertical integral). DECISION D-12 (`thesis_revision/round2/round2_open_items.md`; default = keep what is flashed, no change needed for the thesis text): optionally change the hybrid so the INDI term only handles the remaining mismatch (`a_d − a_res,f − (â − â_f)`, one filter and a few lines in the NS2 hook, rebuild + re-flash). Decide with the supervisor BEFORE the S3 flights; S0, S1, S2 are unaffected.**
-- **INDI takeoff from the ground** (S1, S3): never flown with Omar's controller (all earlier Omar INDI flights took off on controller 6 and switched at altitude). If #5 flips or oscillates at liftoff: stop, do not repeat; report. A framework change (takeoff with `indi 0`, switch to 3 at altitude) is the fallback.
-- **NS2 timing** is measured only now (`rnn.us_max`); the desk estimate is 0.3–0.45 ms per evaluation inside Omar's 2 ms slot; the limit you define.
-- **Flight framework** (`flight.py`, `run_formation.py`) still has `_RAMP_CONTROLLER = 6` as the shared default; the per-robot pin overrides it for both drones (this is how earlier "cf5@9" shakedowns worked). Verify in the first flight's console that both drones report `controller=9` in the takeoff phase.
-- **Simulation limits:** the SIL shows no dip for Omar INDI (perfect RPM information) and cannot say whether S3 helps; hardware decides.
-- **Old data** (controller 6 S0/S2, `L0–L2`) is history, not study data.
-
-## Log of the session (2026-10-15)
-- Both drones flashed with `study_tree_v1.bin`; bench check ALL PASS on both (controller 9, `rnn.ready 1`, `rnn.div 10`, mass 0.0427, Kpos 7/4); both uSD cards carry the 96-variable study config, old logs archived on the cards.
-- **S0 solo hover (cf5, tree, takeoff/trajectory/landing all controller 9):** uSD `thesis00`: 17 s airborne, z error mean −0.1 cm / std 1.0 cm, xy std 0.3 cm, max roll/pitch 0.7/1.5°; the log chain works (96 channels, Omar channels carry data, indi/ours channels constant as expected, `a_rpm_f`/`a_imu_f` zero under indi 0 as predicted). Card write gaps 0.4 % (earlier 0.03–0.19 %). `thesis01` is the solo figure-8 flown right after (x −1.03…0.97 m, xy tracking error rms 10 cm, max 18 cm, roll up to 15°; radio log missing). Copies: `experiments/logs/usd_raw/cf5_tree_S0_hover_thesis0*`.
-- **Tree validation so far (flown, logs not yet read):** S0 A8 ×2 (two vehicles; the `--study` readback gate crashed with NaN on all 83 parameters before takeoff, so the A8s were flown without `--study`; `study_config` now reports NaN as a missing readback; the read path of `getParam` returns nothing from the C++ server and needs a diagnosis: `ros2 param list /crazyflie_server | grep cf5.params.rnn`), S2 A8 ×2 + A1, S1 solo hover (clean INDI takeoff from the ground) + A8 + A1, S3 next. Strategy of each log can be confirmed from the log: `experiments/analysis/tree_log_check.py <bin>` (INDI bit from a_rpm_f, NS2 from the thrust residual vs the prediction); the state of the last block from the drone: `ns2c_bench_check.py <uri> --readback`.
+## 4. Known limits / risks
+- High-speed coverage inside the gate comes mostly from A4/A8, because R1 legs are rest-to-rest (median bottom speed in the gate 0.07 m/s); check the achieved coverage after the first session with `random_flight_coverage.py`-style statistics on the real data.
+- `--study` gate not usable (NaN readback): training strategy is verified from the log, not from the radio meta.
+- A7 needs `--allow-extreme`; if a block crashes twice, stop that block (protocol §4) and document, do not retry at the same setting.
+- The retrained network is only valid for the tree's definition of the residual (mass 0.0427, Omar's k_t, 30 Hz, deck RPM); a change of image constants invalidates the labels.
