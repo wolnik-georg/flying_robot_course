@@ -15,7 +15,7 @@ Compare control strategies for interaction-force-aware multirotor teams under do
 | S2 | geometric + NS2 learned residual, `res_sign −1`, 100 Hz | frozen config; weights decision open (section 2) |
 | S3 | FBL + residual | blocked (authors' code not received); added by amendment if it arrives |
 **Subject drone:** `cf5` (bottom, carries the strategy). `cf_second` (top) is always geometric (S0 config) and identical in every flight. **Both drones' data are recorded and analysed** (per-drone and relative metrics).
-**Out of scope:** 3-drone scenarios (B1–B3, C1–C3), single-drone C5, A6/C4 (dropped after repeated real crashes). NA-INDI/LINDI are not compared (supervisor decision).
+**Phase 2 (after the two-vehicle campaign, decided 2026-10-15):** 3-drone scenarios (B1–B3, C1–C3: the measurement floor and the RQ3 transfer from two to three vehicles), flown with the same controller tree once phase 1 is done. **Out of scope:** single-drone C5, A6/C4 (dropped after repeated real crashes). NA-INDI/LINDI are not compared (supervisor decision).
 
 ## 2. Controllers and frozen configurations
 | ID | cf5 yaml (stabilizer / parameters) | firmware cf5 |

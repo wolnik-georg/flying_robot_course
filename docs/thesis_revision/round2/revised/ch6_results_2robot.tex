@@ -1,0 +1,253 @@
+% =====================================================================================
+%  Chapter 6 — Two-Robot Experimental Results
+%  Thesis: Comparison of Control Strategies for Interaction-Force Aware Multirotor Teams
+%
+%  DRAFT SKELETON, 27 September 2026.
+%  REVISED SKELETON 2026-10-15 (round 2: Strategies 0-3 one controller, hybrid S3 in scope, FBL = S4).
+%  REVISED SKELETON 2026-10-14 (thesis-revision run, Phase 4; plan rows P6-01..P6-06). Structure
+%  only: no number, figure or ranking from any flight, lab session, simulation or replay appears
+%  here. Every results slot is a \todo that names the table or figure, the statistic, and what a
+%  negative answer would look like.
+%  Sources: Chapter~\ref{ch:setup} (platform, metrics, statistics), Chapter~\ref{ch:control}.
+%
+%  HONESTY NOTE. This file is structure and framing only. No comparison numbers, figures,
+%  or rankings appear here. Every slot for measured outcomes is marked with \todo so the compiled
+%  PDF cannot be read as reporting results that do not yet exist.
+%
+%  Citation baseline: 2026-08-27 (see docs/thesis/CITATION_BASELINE.md).
+% =====================================================================================
+
+\chapter{Two-Robot Experimental Results}
+\label{ch:results2}
+
+% CHANGED (P6-02): internal campaign label removed.
+This chapter reports the systematic comparison on the two-vehicle team. Chapter~\ref{ch:setup}
+fixed the platform, scenarios, metrics and protocol; Chapter~\ref{ch:control}
+defined Strategies~0--4, of which Strategies~0--3 are compared. The sections below follow the analysis
+from aggregate tracking metrics through control effort, the predictive residual path, and the
+attribution of effects to a loop, to a summary of when each strategy is preferable. Research
+questions RQ1, RQ2 and RQ4 (Section~\ref{sec:intro-rq}) are answered primarily here; RQ3 is
+deferred to the multi-robot results chapter.
+
+All metrics are those defined in Section~\ref{sec:setup-metrics}, computed per flight and summarised
+per (scenario, strategy) cell as specified in Section~\ref{sec:setup-stats}.
+
+% -------------------------------------------------------------------------------------
+\section{Experimental campaign overview}
+\label{sec:res2-overview}
+
+% DECISION D-05 (H9): the three paragraphs of this section name vehicles by nickname, the camera
+%   count, internal campaign labels (C.1/C.4) and the current campaign status ("Indicative single
+%   flights and partial C.1 collection exist"). Options: (i) replace by a neutral description to be
+%   completed after the campaign (recommended: platform as in Chapter 5, scenarios flown, n per
+%   cell, deviations from the protocol); (ii) keep and update at the end. Text left unchanged.
+% CHANGED (round 2, author decision 3): nicknames and internal labels removed; D-05 content unchanged.
+The comparison flights use two brushless vehicles, the study vehicle in the lower position of
+vertical stacks and a second vehicle on top, with external pose from a four-camera OptiTrack system and
+onboard logging at \SI{500}{\hertz} on micro-SD as the source of record (Section~\ref{sec:setup-platform}).
+Radio telemetry is for monitoring only; thesis metrics are computed from merged uSD logs after role
+alignment, using the same pipeline documented in Chapter~\ref{ch:setup}.
+
+Scenarios are drawn from the frozen formation library (Chapter~\ref{ch:setup}, Section~\ref{sec:setup-scenarios}):
+the training and comparison matrix prioritises vertical separation and downwash-dominated geometries (e.g.\ A1,
+A3, A4, A7) together with null coplanar controls (C1--C3) that bound the measurement floor. Each
+(scenario, strategy) cell is intended to be repeated $n$ times under interleaved runtime controller
+selection so session effects do not align with strategy choice (Table~\ref{tab:setup-threats}).
+
+The compared set follows Chapter~\ref{ch:control}: Strategy~0 (uncompensated geometric baseline),
+Strategy~1 (INDI), Strategy~2 (geometric + learned residual) and Strategy~3 (INDI + learned
+residual), one controller with one shared gain set frozen after the hardware gate.
+% CHANGED (round 2, author decision 1): strategy list; the rest of this D-05 paragraph is unchanged.
+Indicative single flights and partial training-data collection
+exist; the tables and figures in the following sections are reserved for the completed comparison repeats.
+
+% NEW (P6-02): campaign table slot.
+\todo[color=red!25]{PLACEHOLDER: Table --- scenarios flown $\times$ strategies, with $n$ per cell,
+flights excluded and the reason for each exclusion, and every deviation from the protocol of
+Section~\ref{sec:setup-protocol}.}
+
+% -------------------------------------------------------------------------------------
+\section{Tracking and attitude}
+\label{sec:res2-tracking}
+
+This section answers the tracking half of RQ1: whether compensating strategies reduce position and
+separation error relative to Strategy~0 under identical trajectories, and how reactive versus
+predictive families rank. Attitude excursions matter for safety and for interpreting residual
+magnitude; they are reported alongside position error rather than as a separate optimisation target.
+
+% CHANGED (P6-02): metrics as defined in Chapter 5; statistic; negative answer.
+\todo[color=red!25]{PLACEHOLDER: Table~\ref{tab:res2-tracking}. Columns: scenario, strategy,
+position RMSE per axis and total over the window $W$, maximum deviation, mean and standard deviation
+of the separation error $e_{\mathrm{sep}}$, RMSE and peak of $\lVert e_R\rVert$, remaining
+$\operatorname{RMS}_W(a_{\mathrm{res}})$, $n$. Rows: all (scenario, strategy) cells flown. Statistic:
+the per-cell summary and the paired within-session difference to Strategy~0 fixed in
+Section~\ref{sec:setup-stats}, judged against the measurement floor of the null scenarios by the
+rule fixed there.}
+
+\begin{table}[t]
+  \centering
+  \caption{Tracking error summary (two-robot comparison campaign).}
+  \label{tab:res2-tracking}
+  \small
+  \begin{tabular}{@{}llrrrrr@{}}
+    \toprule
+    Scenario & Strategy & RMSE $x$ & RMSE $y$ & RMSE $z$ & Peak $\|\mathbf{e}\|$ & $n$ \\
+    \midrule
+    \multicolumn{7}{@{}l@{}}{\textit{--- populated from the per-flight metrics ---}} \\
+    \makecell{Placeholder} & Strategy~0 & --- & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\todo[color=red!25]{PLACEHOLDER: Figure (grouped bars) --- strategies $\times$ metrics, one panel per
+metric family (position RMSE, separation error, attitude error), error bars as fixed in
+Section~\ref{sec:setup-stats}.}
+
+\todo[color=red!25]{PLACEHOLDER: Figure (time series) --- commanded and achieved separation for one
+representative transient scenario (A8 or A4), Strategies~0--3 on the same axes, crossing time from
+the commanded geometry marked.}
+
+% CHANGED (P6-06, H5): only Strategy 1 is reported as INDI.
+A short subsection will contrast Strategy~0 with Strategy~1 (Section~\ref{sec:ctrl-s1}), the same
+controller with and without the measured residual.
+% CHANGED (round 2, author decision 3): no implementation wording.
+
+% NEW (P6-02): what a negative answer looks like.
+% CHANGED (closing pass, diff audit): negative answers refer to the decision rule fixed in Sec. setup-stats
+%   instead of stating one.
+\paragraph{Negative answer.} If no compensating strategy differs from Strategy~0 beyond the
+measurement floor on the separation error (by the rule of Section~\ref{sec:setup-stats}), the answer to the tracking half of RQ1 is that, at
+the separations flown, compensation does not measurably improve tracking, and the section reports
+that rather than a ranking.
+
+% -------------------------------------------------------------------------------------
+\section{Control effort and safety}
+\label{sec:res2-effort}
+
+Better tracking is not automatically preferable if it requires sustained saturation or leaves less
+margin on separation. This section supports RQ4 by pairing performance with effort proxies and
+closest-approach statistics.
+
+% CHANGED (P6-02): internal variable names removed; metrics as defined in Chapter 5.
+\todo[color=red!25]{PLACEHOLDER: Table~\ref{tab:res2-effort} --- RMS commanded torque, RMS change of
+the motor commands, fraction of samples with a motor command at its limit, minimum achieved
+horizontal and vertical separation; per-cell summary and $n$ as in Section~\ref{sec:setup-stats}.}
+
+\begin{table}[t]
+  \centering
+  \caption{Control effort and safety margins (two-robot comparison campaign).}
+  \label{tab:res2-effort}
+  \small
+  \begin{tabular}{@{}llrrrr@{}}
+    \toprule
+    Scenario & Strategy & Effort proxy & Sat.\ fraction & Min sep.\ (\si{\metre}) & $n$ \\
+    \midrule
+    \makecell{Placeholder} & Strategy~0 & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The prose here will state explicitly when a strategy trades higher effort for lower tracking error,
+and when reduced separation margin disqualifies a configuration despite good RMSE.
+
+% -------------------------------------------------------------------------------------
+\section{Predictive strategy (Strategy~2)}
+\label{sec:res2-nn}
+
+% CHANGED (round 2): prediction-off flights are those of Strategies 0 and 1 (Ch5 Sec. setup-campaign).
+The learned model is evaluated in two layers. On \emph{prediction-off} flights, those of
+Strategies~0 and~1, the prediction is recorded but does not drive the loop; these flights measure
+model quality as the prediction error $\epsilon_{\mathrm{pred}}$ of Section~\ref{sec:setup-metrics},
+independent of loop gain. On \emph{prediction-on} flights, those of Strategies~2 and~3, the
+prediction drives the controller; Strategy~2 is compared with Strategy~0 on matched scenarios. RQ1
+and RQ2 both depend on the second; the first explains it.
+
+\todo[color=red!25]{PLACEHOLDER: Figure --- predicted against measured $a_{\mathrm{res},z}$ on
+prediction-off flights (scatter, with bias and RMSE); second panel: error against relative geometry
+(lateral distance, $\Delta z$, whether the neighbour is inside the input gate). Training scenarios
+held out from each panel stated in the caption.}
+
+\todo[color=red!25]{PLACEHOLDER: Table --- Strategy~2 (prediction-on) against Strategy~0 on matched
+scenarios, same columns as Table~\ref{tab:res2-tracking}; caption states the training scenarios and
+the weight set used.}
+
+\paragraph{Negative answer.} A model whose prediction error on prediction-off flights is not smaller
+than the measured residual itself cannot be expected to help, and a prediction-on improvement
+within the measurement floor (Section~\ref{sec:setup-stats}) is reported as no improvement.
+
+% NEW (P6-04): the checks promised in Chapter 3 (Sec. model-sign) and Chapter 4 (Sec. ctrl-s1).
+\section{Loop attribution}
+\label{sec:res2-attribution}
+
+% CHANGED (round 2; D-01 resolved): the controller subtracts the residual by construction, so the
+%   sign check becomes the expected direction of the Strategy 1 effect.
+Two checks connect the measured differences to the mechanisms of Chapters~\ref{ch:model}
+and~\ref{ch:control}. First, the direction of the effect: Chapter~\ref{ch:model} predicts that, with
+the residual subtracted, the formation-induced displacement in a quasi-static stack is smaller under
+Strategy~1 than under Strategy~0 during the transient, while the vertical integral that both share
+removes a constant offset in either. Second, the loop that carries an effect: the configurations
+with switch A or switch B alone (Section~\ref{sec:ctrl-runtime}) are diagnostic, not strategies,
+and are used only to attribute a Strategy~1 effect to the force or the moment term.
+
+\todo[color=red!25]{PLACEHOLDER: Table --- quasi-static stack (A1), separation error of Strategy~1
+against Strategy~0, with the expected direction stated before the data; diagnostic configurations
+reported separately and labelled as diagnostic.}
+
+% NEW (round 2, author decision 2): the hybrid is in the comparison; the label of the former slot is
+%   reused for its section.
+\section{Hybrid strategy (Strategy~3)}
+\label{sec:res2-hybrid}
+
+Strategy~3 is compared with both of its parents on matched scenarios: with Strategy~1, which has the
+same measured terms, and with Strategy~2, which has the same prediction. Chapter~\ref{ch:control}
+derives what to look for (Section~\ref{sec:ctrl-s3}): when the thrust has settled, the prediction
+acts on the measured-residual loop as an offset of its acceleration reference, which the vertical
+integral removes; where the prediction leads the filtered measurement in time, in the transient
+scenarios, Strategy~3 can differ from Strategy~1.
+
+\todo[color=red!25]{PLACEHOLDER: Table --- Strategy~3 against Strategy~1 and against Strategy~2, same
+columns as Table~\ref{tab:res2-tracking}, quasi-static settings (A1) and transient settings (A8)
+reported separately; figure: separation error against time around a crossing for Strategies~1--3.}
+
+\paragraph{Negative answer.} If Strategy~3 does not differ from Strategy~1 beyond the measurement
+floor (Section~\ref{sec:setup-stats}), the prediction adds nothing to the measured terms at the
+settings flown, and the result is reported as such.
+
+% -------------------------------------------------------------------------------------
+\section{Summary --- when which strategy}
+\label{sec:res2-summary}
+
+This section closes the two-robot story for RQ1 and RQ2: a scenario-class breakdown (vertical stack,
+lateral crossing, near-ground, fast transient) with both qualitative ranking and the quantitative
+backing from Tables~\ref{tab:res2-tracking}--\ref{tab:res2-effort}.
+
+\todo[color=red!25]{PLACEHOLDER: Summary table --- rows: strategies; columns: scenario classes;
+cells: best tracking / effort trade-off / data and compute cost (RQ4 pointers). No ranking is
+entered without the statistical support of Section~\ref{sec:setup-stats}.}
+
+% DECISION D-05 (H5): the Strategy 4 row (renumbered from 3 in round 2) describes an unimplemented
+%   strategy; keep only if Strategy 4 is implemented, otherwise mark "not implemented".
+\begin{table}[t]
+  \centering
+  \caption{Strategy suitability by scenario class (to be filled after the comparison campaign).}
+  \label{tab:res2-when-which}
+  \small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    Strategy & Vertical stack & Lateral traverse & Near-ground & Fast transient \\
+    \midrule
+    Strategy~0 (baseline) & --- & --- & --- & --- \\
+    Strategy~1 (INDI) & --- & --- & --- & --- \\
+    Strategy~2 (pred.\ + geo) & --- & --- & --- & --- \\
+    Strategy~3 (INDI + pred.) & --- & --- & --- & --- \\
+    Strategy~4 (pred.\ + FBL) & --- & --- & --- & --- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Train/test splits by scenario class (Section~\ref{sec:setup-validity}) feed RQ2 directly: a crossover
+in favour of reactive or predictive compensation should appear here if it exists in the data.
+% CHANGED (closing pass, diff audit): marker added; rule referenced, not stated.
+\paragraph{Negative answer.} If no strategy is preferable in one class and not in another beyond the
+measurement floor (Section~\ref{sec:setup-stats}), RQ2 is answered as ``no regime dependence detected at the separations and
+speeds flown'', with the excitation actually achieved stated next to it.

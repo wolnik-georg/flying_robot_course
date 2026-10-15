@@ -35,6 +35,10 @@ Targeted update of the revised draft for the final study controllers (one contro
 ## Round 2 result (2026-10-15)
 Done and validated (62 pages, 0 undefined, no forbidden names in visible text, 20 bib keys all present, originals untouched). Outputs `round2/`. New decisions: **D-12** (how the measured and predicted terms combine in S3: they add; the prediction becomes an offset of the INDI acceleration reference; options keep / partition / drop) and **D-13** (protocol flies two vehicles; null scenarios C1–C3, RQ3, contribution 2 and Ch7 assume three). D-03, D-05, [VERIFY] V-items (inertia from a Crazyflie 2.0 identification, mass 42.7 g vs 41 g) and three `% CONFIRM-AFTER-LAB` places remain.
 
+## Decisions 2026-10-15 (after round 2)
+- **D-13 = option (b):** the study is two phases: phase 1 two vehicles (A scenarios, 48 cells), phase 2 three vehicles (B/C scenarios incl. the C1–C3 floor, RQ3 transfer). The draft keeps the three-vehicle content; only status wording changes (six `% DECISION D-13` places). The two-vehicle results are first read against a provisional floor from the baseline repeats.
+- **D-12 default = (a): no code change;** the text already states the plain-sum behaviour. Revisit after S0–S2 data (only S3 would need re-flying).
+
 ## Files
 `author_decisions.md` (decisions + V items), `followup_report.md` (open items, merge order), `followup_verify_closure.md`,
 `followup_bib_corrections.md`, `followup_diff_audit*.md`, `followup_examiner.md`, `revised/` (chapters + `thesis_draft.tex`),
