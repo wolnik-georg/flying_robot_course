@@ -58,3 +58,7 @@ Archive both SD cards to `~/Desktop/sd_backups/<date>_lab/` before reusing them.
 - **Flight framework** (`flight.py`, `run_formation.py`) still has `_RAMP_CONTROLLER = 6` as the shared default; the per-robot pin overrides it for both drones (this is how earlier "cf5@9" shakedowns worked). Verify in the first flight's console that both drones report `controller=9` in the takeoff phase.
 - **Simulation limits:** the SIL shows no dip for Omar INDI (perfect RPM information) and cannot say whether S3 helps; hardware decides.
 - **Old data** (controller 6 S0/S2, `L0–L2`) is history, not study data.
+
+## Log of the session (2026-10-15)
+- Both drones flashed with `study_tree_v1.bin`; bench check ALL PASS on both (controller 9, `rnn.ready 1`, `rnn.div 10`, mass 0.0427, Kpos 7/4); both uSD cards carry the 96-variable study config, old logs archived on the cards.
+- **S0 solo hover (cf5, tree, takeoff/trajectory/landing all controller 9):** uSD `thesis00`: 17 s airborne, z error mean −0.1 cm / std 1.0 cm, xy std 0.3 cm, max roll/pitch 0.7/1.5°; the log chain works (96 channels, Omar channels carry data, indi/ours channels constant as expected, `a_rpm_f`/`a_imu_f` zero under indi 0 as predicted). Card write gaps 0.4 % (earlier 0.03–0.19 %). `thesis01` is a second, moving flight (x −1.03…0.97 m, xy tracking error rms 10 cm, max 18 cm, roll up to 15°), what it was: to be noted by the user. Copies: `experiments/logs/usd_raw/cf5_tree_S0_hover_thesis0*`.
