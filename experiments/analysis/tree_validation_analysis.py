@@ -61,7 +61,7 @@ if __name__ == "__main__":
         if "dip_mean" in r: s += f" | {r['n_cross']} {r['dip_mean']:+6.1f}/{r['dip_min']:+6.1f}  {r['peak_mean']:+5.1f}/{r['peak_max']:+5.1f}  {r['sep_err_cross']:+6.1f}"
         print(s)
     print("\nper strategy A8 (mean over flights, crossings pooled):")
-    for sname in ("S0", "S1", "S3"):
+    for sname in ("S0", "S1", "S2", "S3"):
         rs = [r for r in R if strat(r["flight"]) == sname and "dip_mean" in r]
         if rs:
             print(f"  {sname}: flights {len(rs)}  dip {np.mean([r['dip_mean'] for r in rs]):+.1f} cm (spread of flight means {np.std([r['dip_mean'] for r in rs]):.1f})  "
