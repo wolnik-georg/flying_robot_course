@@ -14,6 +14,8 @@ Chosen by coverage (gate time by lateral offset / real gap / speed, bank vs. eac
 | 4 | **A7** descend-through | #61–65 | continuous gap sweep (only data < dz 0.25; outside the study range); needs `--allow-extreme`, no `--height`; ends 0.1 m above the bottom drone | 5 | 8–29 s each |
 Optional if time remains: A2 at 0.4 / 0.5 m/s, dz 0.25 and 0.75 (#29, #30, #49, #50), the cheapest way to add fast in-gate time.
 
+Per-flight tracker with all 48 commands (A1 10, R1 20, A4 9, A7 5, optional A2 4): `ns2_collection_part2_tracker.md`.
+
 Commands (all start with `ros2 run crazyflie_examples run_formation`):
 - A1: `--scenario A1 --dz <0.5|0.25|0.75|0.375|0.625> --hold 15.0 --height 0.5 --auto-center --yes` (#66/67 dz 0.5, #68/69 0.25, #70/71 0.75, #72/73 0.375, #74/75 0.625)
 - R1: `--scenario R1 --seed <101…120> --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` (#100 = seed 101 … #119 = seed 120)
