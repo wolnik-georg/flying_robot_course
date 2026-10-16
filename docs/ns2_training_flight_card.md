@@ -64,11 +64,11 @@
 | 58 | A5 reverse circle, dz 0.75 | A5 | dz=0.75 speed=0.3 | 20 | `ros2 run crazyflie_examples run_formation --scenario A5 --dz 0.75 --speed 0.3 --height 0.5 --auto-center --yes` | ☐ |  |
 | 59 | A5 reverse circle, dz 0.75 | A5 | dz=0.75 speed=0.4 | 15 | `ros2 run crazyflie_examples run_formation --scenario A5 --dz 0.75 --speed 0.4 --height 0.5 --auto-center --yes` | ☐ |  |
 | 60 | A5 reverse circle, dz 0.75 | A5 | dz=0.75 speed=0.5 | 12 | `ros2 run crazyflie_examples run_formation --scenario A5 --dz 0.75 --speed 0.5 --height 0.5 --auto-center --yes` | ☐ |  |
-| 61 | A7 descend-through | A7 | speed=0.1 | 29 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.1 --height 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
-| 62 | A7 descend-through | A7 | speed=0.2 | 16 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.2 --height 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
-| 63 | A7 descend-through | A7 | speed=0.3 | 12 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.3 --height 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
-| 64 | A7 descend-through | A7 | speed=0.4 | 10 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.4 --height 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
-| 65 | A7 descend-through | A7 | speed=0.5 | 8 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.5 --height 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
+| 61 | A7 descend-through | A7 | speed=0.1 | 29 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.1 --auto-center --yes --allow-extreme` | ☐ |  |
+| 62 | A7 descend-through | A7 | speed=0.2 | 16 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.2 --auto-center --yes --allow-extreme` | ☐ |  |
+| 63 | A7 descend-through | A7 | speed=0.3 | 12 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.3 --auto-center --yes --allow-extreme` | ☐ |  |
+| 64 | A7 descend-through | A7 | speed=0.4 | 10 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.4 --auto-center --yes --allow-extreme` | ☐ |  |
+| 65 | A7 descend-through | A7 | speed=0.5 | 8 | `ros2 run crazyflie_examples run_formation --scenario A7 --speed 0.5 --auto-center --yes --allow-extreme` | ☐ |  |
 | 66 | A1 stack hold | A1 | dz=0.5 hold=15.0 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ |  |
 | 67 | A1 stack hold | A1 | dz=0.5 hold=15.0 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ |  |
 | 68 | A1 stack hold | A1 | dz=0.25 hold=15.0 | 15 | `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.25 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ |  |

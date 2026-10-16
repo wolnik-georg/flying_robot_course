@@ -63,7 +63,8 @@ def cli(s: dict, strategy: str, session: str) -> str:
     parts = ["ros2 run crazyflie_examples run_formation", f"--scenario {s['scenario']}"]
     for k, v in s["kwargs"].items():
         parts.append(f"--{k} {v}")
-    parts += ["--height 0.5", "--auto-center", "--yes"]
+    # A7 sets its own low anchor (apply_a7_lab_defaults): an explicit --height 0.5 is REFUSED there (0.5 + dz_start 1.1 > A7_TOP_MAX 1.2)
+    parts += ([] if s["scenario"] == "A7" else ["--height 0.5"]) + ["--auto-center", "--yes"]
     if s["allow_extreme"]:
         parts.append("--allow-extreme")
     # 2026-10-15: the --study readback gate is not used (readback returned NaN; strategy is proven from the log by
