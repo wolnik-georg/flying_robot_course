@@ -9,7 +9,7 @@ Dedicated training flights (never study repeats) for the retrained NS2 that serv
 | Item | State |
 |---|---|
 | Image `study_tree_v1.bin` on both drones, 96-variable uSD logging, deck RPM | flashed, flown today (NS2 off in S0, no effect on the data) |
-| yaml for S0 | `git checkout crazyflie/config/crazyflies.yaml && git apply crazyflie/config/study/tree_S0.patch` (yaml in the tree is still S2) |
+| yaml for S0 | yaml on `main` is S0 since crazyswarm2 `4b65435` (the `tree_S*.patch` files no longer apply); `git pull` is enough |
 | 119-flight card | speed-based (exact), no `--study`; all commands validated by the scenario generator and geofence; A8 `--speed` / A5 `--speed` added to the scenario builder (crazyswarm2) |
 | Old valid flights (v1 bank, 26) | **used for v1 (decision 2026-10-15), all 26 relabelled** with the tree definition (`relabel_v1_bank.py` → `experiments/logs/bank_v1_relabelled/`, label r 0.88–0.98 vs the old logged label); LOO on that bank: 22/26 OK, A6 and A1 09-28 17:47 hard fail (A6 is out of scope), details `docs/ns2_tree_retrain_dryrun_2026-10-15.md` §4. v1 is in-sample on these flights, so gate (b) compares only on new flights |
 | R1 random-waypoint scenario | planned offline, goes through `safety.check()`, reproducible from the seed, 68 % of the time inside the NS2 gate; **never flown on hardware** |

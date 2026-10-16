@@ -5,7 +5,7 @@ Tick a cell when the flight is clean AND both uSD files are copied + checked. Ce
 ## Setup (once)
 ```bash
 cd ~/Desktop/flying_robot_course && git pull && cd ~/Desktop/crazyswarm2 && git pull     # both repos, CS2 stopped
-cd ~/Desktop/crazyswarm2 && git checkout crazyflie/config/crazyflies.yaml && git apply crazyflie/config/study/tree_S0.patch
+cd ~/Desktop/crazyswarm2 && git pull     # yaml on main is S0 since 4b65435 (tree_S*.patch no longer apply to it)
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02 --readback   # expect controller 9 after power-cycle, indi 0, rnn.en 0
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7E7E9 --readback
 ros2 launch crazyflie launch.py
