@@ -2,6 +2,25 @@
 
 Previous session (tree validation, closed): `2026-10-15.md`. Plan and rationale: `docs/plan_ns2_retrain_data_2026-10-14.md`. Card: `docs/ns2_training_flight_card.md` (**119 flights** after the 2026-10-15 redesign: dz {0.25, 0.5, 0.75} × peak speed {0.1 … 0.5} m/s for A8 / A2 / A3 / A5, A7 and A4 speed sweeps, A1 dz grid, 20 R1; 66 min of flight, ≈ 10 h with overheads, i.e. about 4 sessions; ordered core-first so every session is a balanced subset). Speeds are requested directly (`--speed`, A8 and A5 now convert exactly to duration / period); no `--study` in any command.
 
+## Next lab session (filtered after part 1 on 2026-10-16, see `2026-10-16.md`) — A1, R1, A4 (offset steps), A7
+Chosen by coverage (gate time by lateral offset / real gap / speed, bank vs. each scenario): the bank has 267 s in the gate, but only 13 s with a real gap below 0.45 m, 39 s above 0.4 m/s and no usable A1 hold. **Skipped on purpose:** A5 (≈ A8), A2/A3 repeats at dz 0.25/0.75 (lateral offset < 0.05 m is already covered; label flat across dz), A4 offset-0.05 sweeps #76–90 (≈ A3, 134 of 170 s at < 0.1 m/s). A7 is kept by decision of the user although the study never goes below dz 0.25 (the evidence argued to skip it): fly it last, only with clean cards and fresh batteries.
+
+| Order | Block | Cards | Why it is in | Flights | Flight time |
+|---|---|---|---|---|---|
+| 0 | Prep: back up + reformat both cards, `restore_study_sd_config.py`, `check_usd_deck.py` on both, fresh batteries (rest ≥ 4.1 V), bench `--readback` (controller 9, indi 0, rnn.en 0) | – | 4 of 5 A1 flights today were lost to empty uSD files | – | – |
+| 1 | **A1** stacked hold, dz 0.5 / 0.25 / 0.75 ×2 (+ 0.375, 0.625 ×2 optional) | #66–75 | study scenario; only static / lateral-0 / speed-0 data; 1 of 10 usable | 6–10 | 15 s each |
+| 2 | **R1** random waypoints, seeds 101–110 first (111–120 after a quick retrain check) | #100–119 | 2.7× the gate time of the bank, widest lateral/gap spread; never flown (seed 101 first, hand on the abort) | 10–20 | 43–68 s each |
+| 3 | **A4** offset steps 0 / 0.1 / 0.15 m at 0.3 m/s, dz 0.5 / 0.25 / 0.75 | #91–99 | controlled lateral-offset dependence | 9 | 18 s each |
+| 4 | **A7** descend-through | #61–65 | continuous gap sweep (only data < dz 0.25; outside the study range); needs `--allow-extreme`, no `--height`; ends 0.1 m above the bottom drone | 5 | 8–29 s each |
+Optional if time remains: A2 at 0.4 / 0.5 m/s, dz 0.25 and 0.75 (#29, #30, #49, #50), the cheapest way to add fast in-gate time.
+
+Commands (all start with `ros2 run crazyflie_examples run_formation`):
+- A1: `--scenario A1 --dz <0.5|0.25|0.75|0.375|0.625> --hold 15.0 --height 0.5 --auto-center --yes` (#66/67 dz 0.5, #68/69 0.25, #70/71 0.75, #72/73 0.375, #74/75 0.625)
+- R1: `--scenario R1 --seed <101…120> --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` (#100 = seed 101 … #119 = seed 120)
+- A4: `--scenario A4 --dz <0.5|0.25|0.75> --speed 0.3 --offset <0.0|0.1|0.15> --motion line --height 0.5 --auto-center --yes` (#91–93 dz 0.5, #94–96 dz 0.25, #97–99 dz 0.75; offsets in the order 0.0, 0.1, 0.15)
+- A7: `--scenario A7 --speed <0.1…0.5> --auto-center --yes --allow-extreme` (#61 = 0.1 … #65 = 0.5)
+After each block: `copy_usd_log.py … --tag ns2train_<block>` (cf_second card first, then cf5), check that every flight has a file on BOTH cards before the next block (empty-file check), `check_usd_log_quality.py`, `merge_training_bank.py --date <day> --only-tag-contains ns2train`.
+
 ## 0. Goal
 Dedicated training flights (never study repeats) for the retrained NS2 that serves both **S2 (geometric + NS2)** and **S3 (INDI + NS2)**. All flights on S0 (indi 0, NS2 off, deck RPM on, both drones controller 9). The label `a_res_z = a_imu_f − a_rpm_f` is reconstructed offline with Omar's own filter chain (`omar_labels.py`, validated r = 0.998), so it is the same signal the INDI term measures in S1/S3.
 
