@@ -19,7 +19,7 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 |---|---|---|---|---|---|---|
 | A8 swap | 0.5 | #1 ✔ (17-38-05, v 0.1) | #2 ✔ (17-34-59, v 0.2) | #3 ✔ (17-32-27, v 0.3) | #4 ✔ (17-29-10, v 0.4) | #5 ✔ ×3 (17-22-49, 17-24-15, 17-27-40; v 0.5) |
 | A8 swap | 0.25 | #21 ✔ (19-08-19, v 0.1; 19-06-19 aborted at 26 s, no cf_second log) | #22 ✔ (19-04-27) | #23 ✔ (19-02-56) | #24 ✔ (19-01-29) | #25 ✔ (18-59-19) |
-| A8 swap | 0.75 | #41 ☐ | #42 ☐ | #43 ☐ | #44 ☐ | #45 ☐ |
+| A8 swap | 0.75 | #41 ✔ (19-18-12, v 0.1) | #42 ✔ (19-21-36) | #43 ✔ (19-24-51; 19-23-34 aborted, no logs) | #44 ✔ (19-26-18) | #45 ✔ (19-28-05) |
 | A2 circle | 0.5 | #6 ✔ (18-05-31, v 0.1; 18-02-54 outlier) | #7 ✔ (18-01-18) | #8 ✔ (17-58-53) | #9 ✔ (17-57-31) | #10 ✔ ×2 (18-24-22, 18-27-49; 18-26-13 outlier) |
 | A2 circle | 0.25 | #26 ☐ | #27 ☐ | #28 ☐ | #29 ☐ | #30 ☐ |
 | A2 circle | 0.75 | #46 ☐ | #47 ☐ | #48 ☐ | #49 ☐ | #50 ☐ |
@@ -116,3 +116,15 @@ A3: the bottom drone is pushed down to 4–13 cm above the floor under the top d
 | 0.1 | 11.9 | 0.52 / 0.04 | 9.1 | −1.05 | 46.2 | 0.60 / 0.22 |
 A3 0.5 m/s (18-57-51): z err RMS 6.5 cm, bottom z min 0.34 m, in gate 3.6 s, a_res_z in gate −0.69, z err peak 16.5 cm.
 Observation: at 0.1–0.2 m/s the bottom drone is pushed to 4–7 cm above the floor in the gate (dz 0.5 and 0.25 alike), so the real gap in the gate is 0.4–0.76 m, not the nominal dz; label magnitude in the gate (≈ −1.2 m/s²) is about the same for dz 0.25 and 0.5 at equal speed.
+
+## Result block 5 (A8 dz 0.75, S0) — merged 2026-10-16
+30 flights in the bank. Not mergeable: A8 19-23-34 (0.3 m/s, aborted, no logs on either card). Cards done: #1–15, #21–25, #41–45 (25 of 119); A5 #16–20 deliberately skipped.
+
+| v (m/s) | z err RMS (cm) | bottom z med / min (m) | in gate (s) | a_res_z in gate / out | z err peak in gate (cm) | gap in gate med / min (m) |
+|---|---|---|---|---|---|---|
+| 0.5 | 4.2 | 0.50 / 0.39 | 1.5 | −1.15 / −0.26 | 5.0 | 0.75 / 0.73 |
+| 0.4 | 5.2 | 0.51 / 0.34 | 1.8 | −1.17 / −0.25 | 6.3 | 0.74 / 0.73 |
+| 0.3 | 6.2 | 0.52 / 0.29 | 2.2 | −1.36 / −0.26 | 14.9 | 0.77 / 0.72 |
+| 0.2 | 8.1 | 0.52 / 0.19 | 4.7 | −1.33 / −0.23 | 29.6 | 0.85 / 0.69 |
+| 0.1 | 7.3 | 0.51 / 0.20 | 10.2 | −1.41 / −0.19 | 29.9 | 0.93 / 0.74 |
+Top drone z error 0.2–0.6 cm RMS in all five. Observation: the gate-mean label (≈ −1.2…−1.4 m/s²) is nearly the same at dz 0.25, 0.5 and 0.75 for equal speed, while the z error peak does fall with dz (0.1 m/s: 46 / 43 / 30 cm). To be checked in the retrain: how much of the in-gate label is wash vs crossing manoeuvre.
