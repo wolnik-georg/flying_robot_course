@@ -8,8 +8,8 @@ Purpose: see before the next lab session whether the data collected so far train
 
 ## Results
 - Full-bank fit (in-sample): R² 0.911, RMSE 0.225 m/s² (zero baseline 0.940, −76 %).
-- **New flights (29 left-out folds): 28 pass the gate thresholds, median R² 0.80; the new network has lower RMSE than v1 on 29 of 29.** v1 on the same flights: R² between −0.36 and 0.71 (median ≈ 0.3).
-  - A8 (17 flights): R² 0.68–0.89 except two; A3 (5): 0.79–0.84; A2 (6): 0.52–0.73; A1 dz 0.75 (1): 0.61.
+- **New flights (29 left-out folds): 28 pass the gate thresholds, median R² 0.80; the new network has lower RMSE than v1 on 29 of 29.** v1 on the same flights: R² between -0.36 and 0.71 (median 0.30).
+  - A8 (17 flights): R² 0.68–0.89 except one (the failing fold below); A3 (5): 0.79–0.84; A2 (6): 0.52–0.73; A1 dz 0.75 (1): 0.61.
   - **Only failing fold: A8 dz 0.25, 0.1 m/s (19-08-19): R² 0.43, 36.7 % vs zero** — the flight in which the bottom drone was pushed to 4 cm above the floor (ground effect mixed into the label). Next weakest: A8 dz 0.25, 0.2 m/s (R² 0.72, 55 %; bottom drone down to 5 cm).
 - Old v1 flights (26 folds): 25 pass (only the out-of-scope A6 fails); the new network is worse than v1 on 10 of them, but v1 is in-sample there (trained on them), so this is not a fair comparison (decision of 2026-10-15).
 
