@@ -20,12 +20,12 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 | A8 swap | 0.5 | #1 ✔ (17-38-05, v 0.1) | #2 ✔ (17-34-59, v 0.2) | #3 ✔ (17-32-27, v 0.3) | #4 ✔ (17-29-10, v 0.4) | #5 ✔ ×3 (17-22-49, 17-24-15, 17-27-40; v 0.5) |
 | A8 swap | 0.25 | #21 ☐ | #22 ☐ | #23 ☐ | #24 ☐ | #25 ☐ |
 | A8 swap | 0.75 | #41 ☐ | #42 ☐ | #43 ☐ | #44 ☐ | #45 ☐ |
-| A2 circle | 0.5 | #6 ✔ (18-05-31, v 0.1; 18-02-54 outlier, excluded) | #7 ✔ (18-01-18) | #8 ✔ (17-58-53) | #9 ✔ (17-57-31) | #10 ☐ refly (17-52-58 lost: no cf_second log) |
+| A2 circle | 0.5 | #6 ✔ (18-05-31, v 0.1; 18-02-54 outlier) | #7 ✔ (18-01-18) | #8 ✔ (17-58-53) | #9 ✔ (17-57-31) | #10 ✔ ×2 (18-24-22, 18-27-49; 18-26-13 outlier) |
 | A2 circle | 0.25 | #26 ☐ | #27 ☐ | #28 ☐ | #29 ☐ | #30 ☐ |
 | A2 circle | 0.75 | #46 ☐ | #47 ☐ | #48 ☐ | #49 ☐ | #50 ☐ |
-| A3 lemniscate | 0.5 | #11 ☐ | #12 ☐ | #13 ☐ | #14 ☐ | #15 ☐ |
-| A3 lemniscate | 0.25 | #31 ☐ | #32 ☐ | #33 ☐ | #34 ☐ | #35 ☐ |
-| A3 lemniscate | 0.75 | #51 ☐ | #52 ☐ | #53 ☐ | #54 ☐ | #55 ☐ |
+| A3 static-top shuttle | 0.5 | #11 ✔ (18-36-13, v 0.1) | #12 ✔ (18-39-08) | #13 ✔ (18-42-13) | #14 ✔ (18-43-54) | #15 ☐ refly (18-30-11: no cf_second log) |
+| A3 static-top shuttle | 0.25 | #31 ☐ | #32 ☐ | #33 ☐ | #34 ☐ | #35 ☐ |
+| A3 static-top shuttle | 0.75 | #51 ☐ | #52 ☐ | #53 ☐ | #54 ☐ | #55 ☐ |
 | A5 reverse circle | 0.5 | #16 ☐ | #17 ☐ | #18 ☐ | #19 ☐ | #20 ☐ |
 | A5 reverse circle | 0.25 | #36 ☐ | #37 ☐ | #38 ☐ | #39 ☐ | #40 ☐ |
 | A5 reverse circle | 0.75 | #56 ☐ | #57 ☐ | #58 ☐ | #59 ☐ | #60 ☐ |
@@ -73,12 +73,12 @@ Order: top to bottom of the speed×dz table (dz 0.5 first), then A7, A1, A4, R1.
 
 | v (m/s) | bottom z RMS (cm) | bottom xy RMS (cm) | top z RMS (cm) | in gate (s) | a_res_z in gate mean / min | z error peak in gate (cm) |
 |---|---|---|---|---|---|---|
-| 0.5 (×3) | 1.6 / 1.7 / 4.4 | 3.8–4.0 | 0.3–0.5 | 7.0–7.4 | −1.15…−1.34 / −3.4…−3.6 | 2.6–4.3 |
-| 0.4 | 5.1 | 3.6 | 0.4 | 8.9 | −1.27 / −3.2 | 8.3 |
-| 0.3 | 5.9 | 3.2 | 0.4 | 11.1 | −1.20 / −3.2 | 13.7 |
-| 0.2 | 8.7 | 3.4 | 0.4 | 23.3 | −1.29 / −3.0 | 38.3 |
-| 0.1 | 10.1 | 3.2 | 0.6 | 47.3 | −1.50 / −3.0 | 42.8 |
-Outside the gate a_res_z mean is about −0.2. Slower crossings keep the bottom drone in the downwash longer, so the z error grows while the peak residual stays about the same.
+| 0.5 (×3) | 1.6 / 1.7 / 4.4 | 3.8–4.0 | 0.3–0.5 | 1.4–1.5 | −1.15…−1.34 / −3.4…−3.6 | 2.6–4.3 |
+| 0.4 | 5.1 | 3.6 | 0.4 | 1.8 | −1.27 / −3.2 | 8.3 |
+| 0.3 | 5.9 | 3.2 | 0.4 | 2.2 | −1.20 / −3.2 | 13.7 |
+| 0.2 | 8.7 | 3.4 | 0.4 | 4.7 | −1.29 / −3.0 | 38.3 |
+| 0.1 | 10.1 | 3.2 | 0.6 | 9.5 | −1.50 / −3.0 | 42.8 |
+Outside the gate a_res_z mean is about −0.2. (Gate times corrected 2026-10-16 evening: merged files are 500 Hz, the first version divided by 100.) Slower crossings keep the bottom drone in the downwash longer, so the z error grows while the peak residual stays about the same.
 
 ## Result block 2 (A2 circle r 0.40, dz 0.5, S0) — merged 2026-10-16
 5 flights merged, 4 usable (0.1, 0.2, 0.3, 0.4 m/s). Excluded: 18-02-54 (0.1 m/s): from t ≈ 33 s cf5 reads z = 1.00 m constant (error −50 cm, motor saturated 65535, a_res_z mean +3.8), i.e. lost/swapped tracking or collision with the top drone. Lost: 0.5 m/s (17-52-58: cf5 log only, no cf_second log; 17-55-42: no log on either card) — #10 needs a refly. Battery at start on cf5 was low (3.43–3.68 V vs 3.8+ in block 1).
@@ -90,3 +90,16 @@ Outside the gate a_res_z mean is about −0.2. Slower crossings keep the bottom 
 | 0.2 | 0.31 / 0.18 | 19.7 | 8.7 | | −1.21 / −3.8 |
 | 0.1 (18-05-31) | 0.28 / 0.15 | 22.1 | 8.7 | | −1.31 / −3.7 |
 The merge flags the bottom drone (alignment RMS 19–24 cm vs the commanded path); the sag is real, not a misalignment: in a held stack the bottom drone sits 15–25 cm below 0.5 m and creeps up over 20–30 s.
+
+## Result block 3 (A2 refly + A3 static-top shuttle, dz 0.5, S0) — merged 2026-10-16
+19 flights in the bank in total (7 A8, 5 A2 + 2 usable A2 0.5 m/s refly, 4 A3 ... see table); excluded outliers: A2 18-02-54 and A2 18-26-13 (bottom drone reads z = 1.00 m, a_res_z +7.6, i.e. lost/merged tracking). Lost: A3 0.5 m/s (18-30-11: no cf_second log), A3 0.1 m/s 18-31-49 (empty cf5 file). tree_log_check: INDI off on all, NS2 off.
+
+| Flight | v (m/s) | bottom z med / min (m) | z err RMS (cm) | in gate (s, % of flight) | a_res_z in gate / out | z err peak in gate (cm) |
+|---|---|---|---|---|---|---|
+| A2 18-24-22 | 0.5 | 0.40 / 0.17 | 13.2 | 10.8 (91 %) | −1.37 / −1.52 | 33 |
+| A2 18-27-49 | 0.5 | 0.39 / 0.18 | 14.0 | 10.6 (90 %) | −1.14 / −1.28 | 32 |
+| A3 18-43-54 | 0.4 | 0.54 / 0.13 | 10.6 | 4.6 (17 %) | −1.22 / −0.19 | 37 |
+| A3 18-42-13 | 0.3 | 0.54 / 0.04 | 13.4 | 5.0 (14 %) | −1.19 / −0.19 | 46 |
+| A3 18-39-08 | 0.2 | 0.52 / 0.11 | 11.9 | 9.7 (18 %) | −1.31 / −0.19 | 39 |
+| A3 18-36-13 | 0.1 | 0.51 / 0.11 | 11.6 | 18.0 (17 %) | −1.22 / −0.20 | 39 |
+A3: the bottom drone is pushed down to 4–13 cm above the floor under the top drone (watch for ground contact). A2 gate share is ~90 % (stacked), A3 ~15 %, A8 ~7–11 %.
