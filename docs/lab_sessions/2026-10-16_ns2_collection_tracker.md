@@ -35,9 +35,9 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 
 | dz | rep 1 | rep 2 |
 |---|---|---|
-| 0.5 | #66 ☐ | #67 ☐ |
-| 0.25 | #68 ☐ | #69 ☐ |
-| 0.75 | #70 ☐ | #71 ☐ |
+| 0.5 | #66 ⚠ (19-40-02: cf5 log only, no cf_second log) | #67 ☐ |
+| 0.25 | #68 ⚠ (19-38-08: cf5 log only, no cf_second log) | #69 ☐ |
+| 0.75 | #70 ✔ (19-46-03 merged; 19-43-10 and 19-44-21 no logs on either card) | #71 ☐ |
 | 0.375 | #72 ☐ | #73 ☐ |
 | 0.625 | #74 ☐ | #75 ☐ |
 
@@ -128,3 +128,8 @@ Observation: at 0.1–0.2 m/s the bottom drone is pushed to 4–7 cm above the f
 | 0.2 | 8.1 | 0.52 / 0.19 | 4.7 | −1.33 / −0.23 | 29.6 | 0.85 / 0.69 |
 | 0.1 | 7.3 | 0.51 / 0.20 | 10.2 | −1.41 / −0.19 | 29.9 | 0.93 / 0.74 |
 Top drone z error 0.2–0.6 cm RMS in all five. Observation: the gate-mean label (≈ −1.2…−1.4 m/s²) is nearly the same at dz 0.25, 0.5 and 0.75 for equal speed, while the z error peak does fall with dz (0.1 m/s: 46 / 43 / 30 cm). To be checked in the retrain: how much of the in-gate label is wash vs crossing manoeuvre.
+
+## Result block 6 (A1 stacked hold) — 2026-10-16
+Flown: 19-38-08 (dz 0.25), 19-40-02 (0.5), 19-43-10, 19-44-21, 19-46-03 (0.75). Logged on cf5: 19-38-08, 19-40-02, 19-46-03. Logged on cf_second: 19-46-03 only (files 53–55 empty). Only 19-46-03 (dz 0.75) could be merged (bank: 31 flights). **A1 needs a refly at all dz (both repeats), after reformatting the cards + restore_study_sd_config.py + check_usd_deck.py.**
+Bottom drone alone (cf5 logs, last half of the hold): z median 0.14 m (dz 0.25), 0.24 m (0.5), 0.33 m (0.75) against the 0.5 m target, i.e. 36 / 26 / 17 cm of sag; the 15 s hold is too short for the z integral to recover it.
+Merged 19-46-03 (dz 0.75): bottom z 0.26 → 0.33 m, z error 24 → 17 cm, gap top−bottom 0.99 → 0.92 m, a_res_z −1.1 → −1.3 m/s², xy separation 7 cm; alignment RMS 21.7 cm (flagged, the sag, not a misalignment).
