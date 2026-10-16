@@ -17,7 +17,7 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 
 | Scenario | dz | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 |
 |---|---|---|---|---|---|---|
-| A8 swap | 0.5 | #1 ☐ | #2 ☐ | #3 ☐ | #4 ☐ | #5 ☐ |
+| A8 swap | 0.5 | #1 ✔ (17-38-05, v 0.1) | #2 ✔ (17-34-59, v 0.2) | #3 ✔ (17-32-27, v 0.3) | #4 ✔ (17-29-10, v 0.4) | #5 ✔ ×3 (17-22-49, 17-24-15, 17-27-40; v 0.5) |
 | A8 swap | 0.25 | #21 ☐ | #22 ☐ | #23 ☐ | #24 ☐ | #25 ☐ |
 | A8 swap | 0.75 | #41 ☐ | #42 ☐ | #43 ☐ | #44 ☐ | #45 ☐ |
 | A2 circle | 0.5 | #6 ☐ | #7 ☐ | #8 ☐ | #9 ☐ | #10 ☐ |
@@ -67,3 +67,15 @@ python3 experiments/analysis/tree_log_check.py experiments/logs/usd_raw/cf5_ns2t
 Pull the radio logs/meta back into the repo as usual (`git pull`), then later: `python3 experiments/analysis/merge_training_bank.py --date 2026-10-16 --out experiments/logs/bank_ns2train_2026-10-16 --only-tag-contains ns2train`.
 
 Order: top to bottom of the speed×dz table (dz 0.5 first), then A7, A1, A4, R1.
+
+## Result block 1 (A8, dz 0.5, S0) — merged 2026-10-16
+7 flights merged (bank `experiments/logs/bank_ns2train_2026-10-16`, not committed, regenerate with `merge_training_bank.py --date 2026-10-16 --only-tag-contains ns2train`). Both cards read INDI off / NS2 off. Two 0.5 m/s takes (17-16-44, 17-18-59) have no uSD log (cf_second card: empty file; cf5 card: 17-18-59 empty) and are skipped.
+
+| v (m/s) | bottom z RMS (cm) | bottom xy RMS (cm) | top z RMS (cm) | in gate (s) | a_res_z in gate mean / min | z error peak in gate (cm) |
+|---|---|---|---|---|---|---|
+| 0.5 (×3) | 1.6 / 1.7 / 4.4 | 3.8–4.0 | 0.3–0.5 | 7.0–7.4 | −1.15…−1.34 / −3.4…−3.6 | 2.6–4.3 |
+| 0.4 | 5.1 | 3.6 | 0.4 | 8.9 | −1.27 / −3.2 | 8.3 |
+| 0.3 | 5.9 | 3.2 | 0.4 | 11.1 | −1.20 / −3.2 | 13.7 |
+| 0.2 | 8.7 | 3.4 | 0.4 | 23.3 | −1.29 / −3.0 | 38.3 |
+| 0.1 | 10.1 | 3.2 | 0.6 | 47.3 | −1.50 / −3.0 | 42.8 |
+Outside the gate a_res_z mean is about −0.2. Slower crossings keep the bottom drone in the downwash longer, so the z error grows while the peak residual stays about the same.
