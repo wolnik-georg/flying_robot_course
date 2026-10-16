@@ -18,12 +18,12 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 | Scenario | dz | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 |
 |---|---|---|---|---|---|---|
 | A8 swap | 0.5 | #1 ✔ (17-38-05, v 0.1) | #2 ✔ (17-34-59, v 0.2) | #3 ✔ (17-32-27, v 0.3) | #4 ✔ (17-29-10, v 0.4) | #5 ✔ ×3 (17-22-49, 17-24-15, 17-27-40; v 0.5) |
-| A8 swap | 0.25 | #21 ☐ | #22 ☐ | #23 ☐ | #24 ☐ | #25 ☐ |
+| A8 swap | 0.25 | #21 ✔ (19-08-19, v 0.1; 19-06-19 aborted at 26 s, no cf_second log) | #22 ✔ (19-04-27) | #23 ✔ (19-02-56) | #24 ✔ (19-01-29) | #25 ✔ (18-59-19) |
 | A8 swap | 0.75 | #41 ☐ | #42 ☐ | #43 ☐ | #44 ☐ | #45 ☐ |
 | A2 circle | 0.5 | #6 ✔ (18-05-31, v 0.1; 18-02-54 outlier) | #7 ✔ (18-01-18) | #8 ✔ (17-58-53) | #9 ✔ (17-57-31) | #10 ✔ ×2 (18-24-22, 18-27-49; 18-26-13 outlier) |
 | A2 circle | 0.25 | #26 ☐ | #27 ☐ | #28 ☐ | #29 ☐ | #30 ☐ |
 | A2 circle | 0.75 | #46 ☐ | #47 ☐ | #48 ☐ | #49 ☐ | #50 ☐ |
-| A3 static-top shuttle | 0.5 | #11 ✔ (18-36-13, v 0.1) | #12 ✔ (18-39-08) | #13 ✔ (18-42-13) | #14 ✔ (18-43-54) | #15 ☐ refly (18-30-11: no cf_second log) |
+| A3 static-top shuttle | 0.5 | #11 ✔ (18-36-13, v 0.1) | #12 ✔ (18-39-08) | #13 ✔ (18-42-13) | #14 ✔ (18-43-54) | #15 ✔ (18-57-51; 18-30-11 had no cf_second log) |
 | A3 static-top shuttle | 0.25 | #31 ☐ | #32 ☐ | #33 ☐ | #34 ☐ | #35 ☐ |
 | A3 static-top shuttle | 0.75 | #51 ☐ | #52 ☐ | #53 ☐ | #54 ☐ | #55 ☐ |
 | A5 reverse circle | 0.5 | #16 ☐ | #17 ☐ | #18 ☐ | #19 ☐ | #20 ☐ |
@@ -103,3 +103,16 @@ The merge flags the bottom drone (alignment RMS 19–24 cm vs the commanded path
 | A3 18-39-08 | 0.2 | 0.52 / 0.11 | 11.9 | 9.7 (18 %) | −1.31 / −0.19 | 39 |
 | A3 18-36-13 | 0.1 | 0.51 / 0.11 | 11.6 | 18.0 (17 %) | −1.22 / −0.20 | 39 |
 A3: the bottom drone is pushed down to 4–13 cm above the floor under the top drone (watch for ground contact). A2 gate share is ~90 % (stacked), A3 ~15 %, A8 ~7–11 %.
+
+## Result block 4 (A3 0.5 m/s refly + A8 dz 0.25, S0) — merged 2026-10-16
+25 flights in the bank. Excluded: A2 18-02-54, A2 18-26-13 (bottom drone reads z = 1.00 m). Not mergeable: A8 dz 0.25 19-06-19 (0.1 m/s, aborted at 26 s of 89.5 s; cf_second file empty). Coverage so far: cards #1–15 and #21–25 complete (20 of 119); A5 (#16–20) deliberately skipped (counter-moving crossing, judged close to A8).
+
+| A8 dz 0.25 | z err RMS (cm) | bottom z med / min (m) | in gate (s) | a_res_z in gate | z err peak in gate (cm) | gap top−bottom in gate: median / min (m) |
+|---|---|---|---|---|---|---|
+| 0.5 m/s | 3.5 | 0.51 / 0.40 | 1.5 | −1.22 | 3.9 | 0.25 / 0.21 |
+| 0.4 | 4.3 | 0.51 / 0.36 | 1.7 | −1.36 | 9.1 | 0.25 / 0.21 |
+| 0.3 | 5.2 | 0.51 / 0.31 | 2.6 | −1.14 | 17.8 | |
+| 0.2 | 11.4 | 0.52 / 0.05 | 4.6 | −1.35 | 43.0 | 0.39 / 0.22 |
+| 0.1 | 11.9 | 0.52 / 0.04 | 9.1 | −1.05 | 46.2 | 0.60 / 0.22 |
+A3 0.5 m/s (18-57-51): z err RMS 6.5 cm, bottom z min 0.34 m, in gate 3.6 s, a_res_z in gate −0.69, z err peak 16.5 cm.
+Observation: at 0.1–0.2 m/s the bottom drone is pushed to 4–7 cm above the floor in the gate (dz 0.5 and 0.25 alike), so the real gap in the gate is 0.4–0.76 m, not the nominal dz; label magnitude in the gate (≈ −1.2 m/s²) is about the same for dz 0.25 and 0.5 at equal speed.
