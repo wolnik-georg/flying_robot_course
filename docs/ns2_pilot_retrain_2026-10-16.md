@@ -22,3 +22,13 @@ Purpose: see before the next lab session whether the data collected so far train
 ## Open
 - Run the held-out-setting test (train without one scenario or one dz) to measure generalisation instead of repeat-take interpolation.
 - Decide how to treat the floor-hugging slow flights (keep, or add a z-above-floor feature check) before the final retrain.
+
+## Held-out-setting test (2026-10-16, `experiments/analysis/run_heldout_setting.py`)
+Whole setting removed from training, then scored (same gate thresholds). v1 was trained on the old flights, so it is only an unbiased reference on the new 2026-10-16 flights.
+| Held out | trained on | new flights (2026-10-16) | old flights (v1 in-sample) |
+|---|---|---|---|
+| **all A3** (12 flights) | 43 | 3 of 5 pass, median R² 0.69 (0.53–0.81); LOO had 0.79–0.84; better than v1 (RMSE) on 5/5 | 4 of 7 pass, median R² 0.71 (min 0.30) |
+| **all dz 0.75** (7 flights: A8 ×5, A1 ×2) | 48 | **6 of 6 pass**, median R² 0.71 (A8 0.64–0.81, A1 0.51); LOO had A8 0.68–0.83, A1 0.61; better than v1 on 6/6 | the old A1 dz 0.75 fails (R² 0.39; it was already weak in LOO, 0.58) |
+- **dz generalises:** leaving dz 0.75 out costs little (A8 R² −0.0…−0.1), consistent with the flat in-gate label across dz; extrapolating from dz 0.25/0.5 to 0.75 works.
+- **The A3 family generalises only partly:** the new A3 flights drop 0.1–0.3 in R² and two (0.4 m/s and 0.5 m/s) fall below the 50 % threshold; the old A3 flights (dz 0.25 / 0.4, a different bottom speed profile) fail 3 of 7. A3-type motion (a fixed source with the bottom drone shuttling under it) is not fully covered by A8/A2/A1, so A3 stays in the training set; its closest relatives, A4 offset steps and R1, add the missing variety.
+- Both models are registered as experiments (`ns2_heldout_noA3_2026-10-16`, `ns2_heldout_nodz075_2026-10-16`), not for flashing.

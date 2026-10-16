@@ -225,6 +225,46 @@
    "notes": "same architecture and training settings as v1; MODEL_CARD.json in experiments/analysis/out/ns2_pilot_2026-10-16/",
    "sha256": "447a408f68eae62bedd58495a7b1841a6c876ff7dbe4d6dcacc2d71291754ae9",
    "git_tracked": false
+  },
+  {
+   "id": "ns2_heldout_noA3_2026-10-16",
+   "file": "experiments/analysis/out/ns2_heldout_noA3_2026-10-16/held_out_model.npz",
+   "status": "EXPERIMENT (held-out-setting test), not for flashing",
+   "created": "2026-10-16",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot_2026-10-16/training_manifest_pilot.json",
+    "manifest_sha256": "75a6ca9847e99e0d6687507ce9d210da267514ff98b931255c38dbdb683a19cc",
+    "n_flights": 43,
+    "scenarios": [
+     "see heldout_results.json"
+    ],
+    "description": "pilot bank without ALL A3 flights (old and new)"
+   },
+   "labels": "tree definition, top labels zeroed (as the pilot)",
+   "result": "held-out A3 family: new A3 flights 3/5 pass the gate (median R\u00b2 0.69), old A3 4/7; docs/ns2_pilot_retrain_2026-10-16.md",
+   "notes": "run_heldout_setting.py; MODEL_CARD.json and heldout_results.json in the folder",
+   "sha256": "a0aef8fdb2be1ee7aa0127eb5e4cd36d5cba09e4efef6c9073e3febf5bff07a1",
+   "git_tracked": false
+  },
+  {
+   "id": "ns2_heldout_nodz075_2026-10-16",
+   "file": "experiments/analysis/out/ns2_heldout_nodz075_2026-10-16/held_out_model.npz",
+   "status": "EXPERIMENT (held-out-setting test), not for flashing",
+   "created": "2026-10-16",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot_2026-10-16/training_manifest_pilot.json",
+    "manifest_sha256": "75a6ca9847e99e0d6687507ce9d210da267514ff98b931255c38dbdb683a19cc",
+    "n_flights": 48,
+    "scenarios": [
+     "see heldout_results.json"
+    ],
+    "description": "pilot bank without all nominal dz 0.75 flights (A8 dz 0.75, A1 dz 0.75)"
+   },
+   "labels": "tree definition, top labels zeroed (as the pilot)",
+   "result": "held-out dz 0.75: new flights 6/6 pass (median R\u00b2 0.71), old A1 fails (R\u00b2 0.39); docs/ns2_pilot_retrain_2026-10-16.md",
+   "notes": "run_heldout_setting.py; MODEL_CARD.json and heldout_results.json in the folder",
+   "sha256": "ca86caf5f0fed9ac39e78a9efbe5d74b1fc4451dd4396732d461f02cd42878cf",
+   "git_tracked": false
   }
  ]
 }
