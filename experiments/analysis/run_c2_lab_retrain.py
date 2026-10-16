@@ -99,12 +99,18 @@ def main() -> int:
     ap.add_argument("--out-dir", type=Path, default=None)
     ap.add_argument("--new-scenarios", nargs="+", default=["A5", "A6", "C4"])
     ap.add_argument("--skip-loo", action="store_true", help="full train + eval only (faster)")
+    ap.add_argument("--overwrite", action="store_true", help="allow writing into an out-dir that already holds full_bank_c1_complete.npz (do not use for registered models)")
     ap.add_argument("--v1-weights", type=Path, default=RES / "weights" / "ns2_v1.npz",
                     help="reference network scored on the same left-out flights (gate (b): the new network must be at least as good)")
     args = ap.parse_args()
 
     manifest_path = args.manifest if args.manifest.is_absolute() else ROOT / args.manifest
     out_dir = args.out_dir or manifest_path.parent
+    # Model-preservation guard (2026-10-16): never write into a folder that already holds trained weights or into the registry folder.
+    if (out_dir / "full_bank_c1_complete.npz").exists() and not args.overwrite:
+        sys.exit(f"refusing to overwrite {out_dir}/full_bank_c1_complete.npz (a registered or earlier model); use a NEW --out-dir")
+    if (RES / "weights") in out_dir.resolve().parents or out_dir.resolve() == (RES / "weights"):
+        sys.exit("refusing to write into flying_drone_stack/tools/residual/weights/ (registered models only)")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     flights = flights_from_manifest(manifest_path)
@@ -169,6 +175,17 @@ def main() -> int:
         check=True,
     )
     print(f"wrote {eval_dir}/eval_report.md")
+    # Model card: which data and settings produced these weights (2026-10-16)
+    import hashlib, datetime
+    sha = lambda q: hashlib.sha256(Path(q).read_bytes()).hexdigest()
+    git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT), capture_output=True, text=True).stdout.strip()
+    card = {"created": datetime.datetime.now().isoformat(timespec="seconds"), "git_commit": git, "command": " ".join(sys.argv),
+            "weights": str(weights), "weights_sha256": sha(weights), "manifest": str(manifest_path), "manifest_sha256": sha(manifest_path),
+            "n_flights_usable": len(usable), "flights": usable, "epochs_full": EPOCHS_FULL, "epochs_loo": EPOCHS_LOO,
+            "v1_reference": str(args.v1_weights), "v1_sha256": sha(args.v1_weights) if Path(args.v1_weights).exists() else None,
+            "note": "register this model in flying_drone_stack/tools/residual/weights/registry.json under a NEW id before using it anywhere"}
+    (out_dir / "MODEL_CARD.json").write_text(json.dumps(card, indent=2) + "\n")
+    print(f"wrote {out_dir}/MODEL_CARD.json")
     return 0
 
 
