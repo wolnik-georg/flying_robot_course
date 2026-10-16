@@ -198,6 +198,33 @@
    "notes": "same flights as v1, tree-definition labels",
    "sha256": "4b102486a4685f8635b81962e61f817f737f862986ad39c399bf64627b4fc7ae",
    "git_tracked": false
+  },
+  {
+   "id": "ns2_pilot_2026-10-16",
+   "file": "experiments/analysis/out/ns2_pilot_2026-10-16/full_bank_c1_complete.npz",
+   "status": "PILOT, not flown, not for flashing (decides what lab part 2 must add)",
+   "created": "2026-10-16",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot_2026-10-16/training_manifest_pilot.json",
+    "manifest_sha256": "75a6ca9847e99e0d6687507ce9d210da267514ff98b931255c38dbdb683a19cc",
+    "n_flights": 55,
+    "scenarios": [
+     "A1",
+     "A2",
+     "A3",
+     "A4",
+     "A5",
+     "A6",
+     "A7",
+     "A8"
+    ],
+    "description": "26 v1 flights relabelled with the tree definition + 29 usable S0 flights of lab 2026-10-16; model card in the output folder"
+   },
+   "labels": "tree definition (omar_labels.py, a_res_z = a_imu_f - a_rpm_f, deck RPM), top-drone labels zeroed",
+   "result": "LOO: 28/29 new flights pass the v1 gate thresholds (median R\u00b2 0.80), 25/26 old flights; better than v1 on 29/29 new flights; full-bank R\u00b2 0.911 (in-sample); docs/ns2_pilot_retrain_2026-10-16.md",
+   "notes": "same architecture and training settings as v1; MODEL_CARD.json in experiments/analysis/out/ns2_pilot_2026-10-16/",
+   "sha256": "447a408f68eae62bedd58495a7b1841a6c876ff7dbe4d6dcacc2d71291754ae9",
+   "git_tracked": false
   }
  ]
 }

@@ -1,0 +1,129 @@
+\contentsline {chapter}{\numberline {1}Introduction}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Motivation}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problem}{4}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Gap}{5}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Research questions}{5}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Contributions}{6}{section.1.5}%
+\contentsline {paragraph}{What this thesis does not claim.}{7}{section*.2}%
+\contentsline {paragraph}{A negative result would also be a contribution.}{7}{section*.3}%
+\contentsline {section}{\numberline {1.6}Scope}{7}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Outline}{7}{section.1.7}%
+\contentsline {chapter}{\numberline {2}Background and Related Work}{9}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Multirotor dynamics and baseline control}{9}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Aerodynamic interaction in multirotor teams}{10}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Reactive compensation: measuring the residual online}{10}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Predictive compensation: learning the residual from relative state}{11}{section.2.4}%
+\contentsline {paragraph}{The superposition assumption}{12}{section*.5}%
+\contentsline {section}{\numberline {2.5}Injecting the prediction: the controller matters}{13}{section.2.5}%
+\contentsline {paragraph}{Feedforward into a geometric controller.}{13}{section*.6}%
+\contentsline {paragraph}{Feedback linearisation with a flatness-preserving residual.}{13}{section*.7}%
+\contentsline {paragraph}{Inside a model predictive control horizon.}{14}{section*.8}%
+\contentsline {paragraph}{Inside an optimal feedback controller for a docking task.}{14}{section*.9}%
+\contentsline {section}{\numberline {2.6}Learning the compensation directly}{14}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Hybrid reactive and predictive compensation}{15}{section.2.7}%
+\contentsline {section}{\numberline {2.8}How these methods are evaluated}{15}{section.2.8}%
+\contentsline {paragraph}{Comparisons that do exist}{16}{section*.10}%
+\contentsline {section}{\numberline {2.9}Summary and gap}{17}{section.2.9}%
+\contentsline {chapter}{\numberline {3}System Modelling and Residual-Force Formulation}{19}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Notation and conventions}{19}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Rigid-body model with a residual wrench}{19}{section.3.2}%
+\contentsline {paragraph}{Scope: force, not moment}{20}{section*.12}%
+\contentsline {section}{\numberline {3.3}Measuring the residual}{20}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}What this measurement requires, and how it fails}{20}{subsection.3.3.1}%
+\contentsline {paragraph}{It requires rotor-speed sensing.}{21}{section*.13}%
+\contentsline {paragraph}{It is delayed.}{21}{section*.14}%
+\contentsline {paragraph}{It absorbs model error.}{21}{section*.15}%
+\contentsline {subsection}{\numberline {3.3.2}Sign convention in the control law}{21}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}Predicting the residual from relative state}{21}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Deep-sets parameterisation}{22}{subsection.3.4.1}%
+\contentsline {paragraph}{What is borrowed and what is ours.}{22}{section*.16}%
+\contentsline {paragraph}{These equations are the code.}{22}{section*.17}%
+\contentsline {subsection}{\numberline {3.4.2}The superposition assumption}{22}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Input conditioning}{23}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Normalisation}{23}{subsection.3.4.4}%
+\contentsline {section}{\numberline {3.5}Assumptions and where they fail}{23}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Summary}{24}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Control Architectures}{25}{chapter.4}%
+\contentsline {section}{\numberline {4.1}The position and attitude loop}{25}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Position loop}{25}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Attitude loop}{26}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Runtime selection}{26}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Strategy 0: uncompensated geometric baseline}{26}{section.4.2}%
+\contentsline {paragraph}{Implemented.}{26}{section*.18}%
+\contentsline {paragraph}{Reference.}{26}{section*.19}%
+\contentsline {paragraph}{The implemented torque law is a reduced form, and is labelled as such.}{27}{section*.20}%
+\contentsline {paragraph}{What the source proves.}{27}{section*.21}%
+\contentsline {paragraph}{Role.}{27}{section*.22}%
+\contentsline {section}{\numberline {4.3}Strategy 1: pure INDI}{27}{section.4.3}%
+\contentsline {paragraph}{Implemented.}{27}{section*.23}%
+\contentsline {paragraph}{Reference.}{28}{section*.24}%
+\contentsline {paragraph}{Deviations.}{28}{section*.25}%
+\contentsline {paragraph}{Requirements.}{28}{section*.26}%
+\contentsline {section}{\numberline {4.4}Strategy 2: geometric with a learned residual}{28}{section.4.4}%
+\contentsline {paragraph}{Implemented.}{28}{section*.27}%
+\contentsline {paragraph}{Reference.}{28}{section*.28}%
+\contentsline {paragraph}{Deviations.}{28}{section*.29}%
+\contentsline {paragraph}{Requirements.}{28}{section*.30}%
+\contentsline {section}{\numberline {4.5}Strategy 3: feedback linearisation with a flatness-preserving residual}{29}{section.4.5}%
+\contentsline {paragraph}{Implemented.}{29}{section*.31}%
+\contentsline {paragraph}{Reference.}{29}{section*.32}%
+\contentsline {paragraph}{Requirements.}{29}{section*.33}%
+\contentsline {section}{\numberline {4.6}What makes the comparison fair, and what it does not guarantee}{29}{section.4.6}%
+\contentsline {paragraph}{What is held constant.}{29}{section*.34}%
+\contentsline {paragraph}{What this does not guarantee.}{29}{section*.35}%
+\contentsline {section}{\numberline {4.7}Summary}{30}{section.4.7}%
+\contentsline {chapter}{\numberline {5}Experimental Setup and Protocol}{31}{chapter.5}%
+\contentsline {paragraph}{Campaign status (September 2026).}{31}{section*.36}%
+\contentsline {section}{\numberline {5.1}Platform}{31}{section.5.1}%
+\contentsline {paragraph}{A rotor-speed source}{31}{section*.37}%
+\contentsline {paragraph}{A micro SD deck}{31}{section*.38}%
+\contentsline {section}{\numberline {5.2}Flight volume}{32}{section.5.2}%
+\contentsline {section}{\numberline {5.3}The formation library}{32}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}The null scenarios}{32}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Regimes, and why the library spans them}{33}{subsection.5.3.2}%
+\contentsline {section}{\numberline {5.4}Measurement and logging}{33}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}Why the dataset is recorded onboard}{33}{subsection.5.4.1}%
+\contentsline {subsection}{\numberline {5.4.2}What is recorded}{33}{subsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.4.3}Time alignment across vehicles}{34}{subsection.5.4.3}%
+\contentsline {section}{\numberline {5.5}Protocol}{34}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Hardware gate}{34}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Data collection}{34}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Comparison campaign}{35}{subsection.5.5.3}%
+\contentsline {subsection}{\numberline {5.5.4}Metrics}{35}{subsection.5.5.4}%
+\contentsline {paragraph}{Tracking error.}{35}{section*.40}%
+\contentsline {paragraph}{Residual rejection.}{35}{section*.41}%
+\contentsline {paragraph}{Robustness and cost.}{35}{section*.42}%
+\contentsline {section}{\numberline {5.6}The role of simulation}{35}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Threats to validity}{36}{section.5.7}%
+\contentsline {section}{\numberline {5.8}Summary}{36}{section.5.8}%
+\contentsline {chapter}{\numberline {6}Two-Robot Experimental Results}{39}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Experimental campaign overview}{39}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Tracking and attitude}{39}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Control effort and safety}{40}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Predictive strategy (Neural-Swarm2)}{40}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Hybrid (NA-INDI), if in scope}{41}{section.6.5}%
+\contentsline {section}{\numberline {6.6}Summary --- when which strategy}{41}{section.6.6}%
+\contentsline {chapter}{\numberline {7}Multi-Robot and Scaling Results}{42}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Three-robot comparison campaign}{42}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Transfer penalty for the summed predictor}{42}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Extension to four and five vehicles}{42}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Limitation if three-robot data are incomplete}{43}{section.7.4}%
+\contentsline {paragraph}{Fallback narrative (primary path if B-series C.4 is not completed).}{43}{section*.55}%
+\contentsline {section}{\numberline {7.5}Chapter summary}{43}{section.7.5}%
+\contentsline {chapter}{\numberline {8}Discussion}{44}{chapter.8}%
+\contentsline {section}{\numberline {8.1}RQ1 --- Reactive versus predictive compensation under identical conditions}{44}{section.8.1}%
+\contentsline {section}{\numberline {8.2}RQ2 --- Regime dependence}{44}{section.8.2}%
+\contentsline {section}{\numberline {8.3}RQ3 --- Two-robot training on three-robot formations}{44}{section.8.3}%
+\contentsline {section}{\numberline {8.4}RQ4 --- Cost versus performance}{45}{section.8.4}%
+\contentsline {section}{\numberline {8.5}Contributions revisited}{45}{section.8.5}%
+\contentsline {section}{\numberline {8.6}Threats to validity, revisited}{45}{section.8.6}%
+\contentsline {paragraph}{Tuning and fairness.}{45}{section*.64}%
+\contentsline {paragraph}{Measurement floor and null scenarios.}{45}{section*.65}%
+\contentsline {paragraph}{Single airframe and session effects.}{46}{section*.66}%
+\contentsline {paragraph}{Simulation.}{46}{section*.67}%
+\contentsline {chapter}{\numberline {9}Conclusion}{47}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Summary}{47}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Answers to the research questions}{47}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Engineering takeaway}{47}{section.9.3}%
+\contentsline {section}{\numberline {9.4}Future work}{47}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Closing remark}{48}{section.9.5}%
