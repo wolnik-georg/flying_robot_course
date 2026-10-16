@@ -20,7 +20,7 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 | A8 swap | 0.5 | #1 ✔ (17-38-05, v 0.1) | #2 ✔ (17-34-59, v 0.2) | #3 ✔ (17-32-27, v 0.3) | #4 ✔ (17-29-10, v 0.4) | #5 ✔ ×3 (17-22-49, 17-24-15, 17-27-40; v 0.5) |
 | A8 swap | 0.25 | #21 ☐ | #22 ☐ | #23 ☐ | #24 ☐ | #25 ☐ |
 | A8 swap | 0.75 | #41 ☐ | #42 ☐ | #43 ☐ | #44 ☐ | #45 ☐ |
-| A2 circle | 0.5 | #6 ☐ | #7 ☐ | #8 ☐ | #9 ☐ | #10 ☐ |
+| A2 circle | 0.5 | #6 ✔ (18-05-31, v 0.1; 18-02-54 outlier, excluded) | #7 ✔ (18-01-18) | #8 ✔ (17-58-53) | #9 ✔ (17-57-31) | #10 ☐ refly (17-52-58 lost: no cf_second log) |
 | A2 circle | 0.25 | #26 ☐ | #27 ☐ | #28 ☐ | #29 ☐ | #30 ☐ |
 | A2 circle | 0.75 | #46 ☐ | #47 ☐ | #48 ☐ | #49 ☐ | #50 ☐ |
 | A3 lemniscate | 0.5 | #11 ☐ | #12 ☐ | #13 ☐ | #14 ☐ | #15 ☐ |
@@ -79,3 +79,14 @@ Order: top to bottom of the speed×dz table (dz 0.5 first), then A7, A1, A4, R1.
 | 0.2 | 8.7 | 3.4 | 0.4 | 23.3 | −1.29 / −3.0 | 38.3 |
 | 0.1 | 10.1 | 3.2 | 0.6 | 47.3 | −1.50 / −3.0 | 42.8 |
 Outside the gate a_res_z mean is about −0.2. Slower crossings keep the bottom drone in the downwash longer, so the z error grows while the peak residual stays about the same.
+
+## Result block 2 (A2 circle r 0.40, dz 0.5, S0) — merged 2026-10-16
+5 flights merged, 4 usable (0.1, 0.2, 0.3, 0.4 m/s). Excluded: 18-02-54 (0.1 m/s): from t ≈ 33 s cf5 reads z = 1.00 m constant (error −50 cm, motor saturated 65535, a_res_z mean +3.8), i.e. lost/swapped tracking or collision with the top drone. Lost: 0.5 m/s (17-52-58: cf5 log only, no cf_second log; 17-55-42: no log on either card) — #10 needs a refly. Battery at start on cf5 was low (3.43–3.68 V vs 3.8+ in block 1).
+
+| v (m/s) | bottom z median (m) / min | bottom z err RMS (cm) | bottom xy err RMS (cm) | top z err | a_res_z mean / min |
+|---|---|---|---|---|---|
+| 0.4 | 0.34 / 0.17 | 17.1 | 12.7 | ≈ 0.3 cm | −1.16 / −3.9 |
+| 0.3 | 0.34 / 0.17 | 17.5 | 10.1 | | −1.21 / −3.8 |
+| 0.2 | 0.31 / 0.18 | 19.7 | 8.7 | | −1.21 / −3.8 |
+| 0.1 (18-05-31) | 0.28 / 0.15 | 22.1 | 8.7 | | −1.31 / −3.7 |
+The merge flags the bottom drone (alignment RMS 19–24 cm vs the commanded path); the sag is real, not a misalignment: in a held stack the bottom drone sits 15–25 cm below 0.5 m and creeps up over 20–30 s.
