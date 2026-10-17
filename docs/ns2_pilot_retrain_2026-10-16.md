@@ -42,3 +42,16 @@ Whole setting removed from training, then scored (same gate thresholds). v1 was 
 - Random motion (R1) and the offset-step flight (A9) are predicted well by a network that has never seen them: the structured scenarios (A8, A2, A3, A1, A4) already span their state space.
 - **A1 (static hold, zero speed, zero lateral offset) is unlike the moving scenarios: the others cannot stand in for it.** With every A1 flight removed from training, the holds are predicted poorly (old holds R² 0.20–0.30). This is a test of what happens WITHOUT A1 data, not of the real network: the network trained for the study contains all 12 A1 flights (6 old + 6 new, five dz values), twice the 6 of v1. With the A1 flights in training, the leave-one-flight-out folds of the first pilot pass for all 7 A1 flights (R² 0.53–0.84, median 0.64, 54–78 % better than zero; the lowest of the scenario families but all above the gate). The full pilot-2 run gives the A1 folds with the 12 flights in training.
 - Models registered as experiments (`ns2_heldout_noR1|noA9|noA1_2026-10-17`). Single runs, one training seed.
+
+## Pilot 2: full bank, leave-one-flight-out (2026-10-17, 73 flights: 26 relabelled v1 + 47 usable of lab 2026-10-16/17)
+Same architecture, 40 epochs, same gate thresholds (R² ≥ 0.35 and ≥ 50 % vs zero), v1 scored on the same left-out flights with the tree labels. Output `experiments/analysis/out/ns2_pilot2_2026-10-17/` (`MODEL_CARD.json`, `loo_results.json`, `eval_model/eval_report.md`), registered as `ns2_pilot2_2026-10-17` (v2 candidate).
+| | folds passing the gate | median R² | better than v1 (RMSE) |
+|---|---|---|---|
+| all 73 | 69 | 0.79 | 61 / 73 |
+| **47 new flights** (v1 never saw them) | **45** | 0.79 (v1: 0.37) | **47 / 47** |
+| 26 old v1 flights (v1 in-sample) | 24 | 0.79 (v1: 0.78) | 14 / 26 |
+By scenario (gate / folds, median R²): A8 16/17 (0.83), A3 12/12 (0.87), A9 3/3 (0.82), R1 9/9 (0.77), A2 8/8 (0.62), A4 5/5 (0.85), A5 3/3 (0.93), A7 3/3 (0.61), **A1 10/12 (0.69)**, A6 0/1 (0.42, out of scope). Full-bank fit R² 0.882, RMSE 0.262 m/s².
+- **Failing folds (4):** A6 (out of scope); A1 2026-09-21 12-51-16 (old hold, R² 0.41, 46 %, already the weakest A1 in pilot 1); A8 dz 0.25, 0.1 m/s (R² 0.47, 39 %; bottom drone down to 4 cm above the floor); **A1 2026-10-17 12-26-41 (dz 0.75 hold, R² 0.08, 18 %)** — the hold with the largest real gap (0.9 m) and the weakest signal, v1 −0.16 there.
+- **A1 (12 flights in training):** 10 of 12 pass, R² 0.41 … 0.80 (median 0.69), v1 on the 6 new holds 0.26 … 0.53 against 0.67 … 0.76 now.
+- Single run per fold, one seed; leave-one-flight-out keeps near-identical repeats in training (see the held-out tests above). Labels carry the bent-drone caveat.
+- Decision open (yours): sign off this network as `ns2_v2` (then `export_weights_c.py` → image `study_tree_v2` → bench → re-validate S2/S3 and S3 A/B).
