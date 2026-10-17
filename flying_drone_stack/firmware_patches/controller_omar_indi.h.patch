@@ -1,9 +1,9 @@
 diff --git a/src/modules/interface/controller/controller_omar_indi.h b/src/modules/interface/controller/controller_omar_indi.h
 new file mode 100644
-index 00000000..f9236c56
+index 00000000..41ea755e
 --- /dev/null
 +++ b/src/modules/interface/controller/controller_omar_indi.h
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,102 @@
 +/*
 +The MIT License (MIT)
 +
@@ -56,6 +56,10 @@ index 00000000..f9236c56
 +    struct vec i_error_att;
 +    // INDI
 +    uint8_t indi;
++    // 2026-10-17: how NS2 and the INDI position term combine when both are active.
++    // 0 = Version A (plain sum, the S3 flown so far, default); 1 = Version B (INDI sees only what NS2 left over:
++    // the NS2 output, low-passed like the INDI measurement, is added to the INDI term). No effect unless indi bit 0 and NS2 are active.
++    uint8_t ns2_mode;
 +    struct vec omega_prev;
 +    uint64_t timestamp_prev;
 +    // INDI - logging
@@ -69,6 +73,7 @@ index 00000000..f9236c56
 +    struct vec a_rpm_filtered;
 +    struct vec a_imu;
 +    struct vec a_imu_filtered;
++    struct vec a_nn_filtered;   // NS2 output through the same 30 Hz filter as the INDI measurement (logged; used when ns2_mode = 1)
 +
 +    // Logging variables
 +    struct vec rpy;

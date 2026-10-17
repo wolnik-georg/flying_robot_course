@@ -54,6 +54,8 @@ def run_one(cfg: dict) -> dict:
         p0_top = np.array([slot_top[0], slot_top[1], 0.0])
         cfs = [CrazyflieSIL("cf5", p0_bot, "oot4", lambda: t_box[0]), CrazyflieSIL("cf_second", p0_top, "oot", lambda: t_box[0])]
         cfs[0].omar_indi_control.indi = indi
+        if "ns2_mode" in cfg:   # 2026-10-17: 0 = Version A (plain sum, default), 1 = Version B (INDI on what NS2 left over)
+            cfs[0].omar_indi_control.ns2_mode = int(cfg["ns2_mode"])
         S.set_omar_kpos_iz("oot4", cfs[0], kiz)
         fw.controllerOutOfTreeInit()
         fw.oot_select_drone(1)
@@ -140,19 +142,26 @@ def main() -> None:
     ap = argparse.ArgumentParser(); ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--scales", default="", help="comma list: run only indi 0/3 x NS2 off/on for these plant scales (extension matrix)")
     ap.add_argument("--indis", default="0,3"); ap.add_argument("--tag", default="")
+    ap.add_argument("--mode-matrix", default="", help="2026-10-17: comma list of plant scales: indi 3 + NS2 on with ns2_mode 0 (A) and 1 (B), the INDI-only and NS2-off references, and indi 0 + NS2 on with both modes (must be identical)")
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     jobs = []
-    if a.scales:
+    if a.mode_matrix:
+        for scale in [float(x) for x in a.mode_matrix.split(",")]:
+            jobs.append(dict(indi=3, ns2=0, scale=scale, ns2_mode=0))
+            for mode in (0, 1):
+                jobs.append(dict(indi=3, ns2=1, scale=scale, ns2_mode=mode))
+                jobs.append(dict(indi=0, ns2=1, scale=scale, ns2_mode=mode))
+    elif a.scales:
         for scale in [float(x) for x in a.scales.split(",")]:
             for indi in [int(x) for x in a.indis.split(",")]:
                 for ns2 in (0, 1):
                     jobs.append(dict(indi=indi, ns2=ns2, scale=scale))
-    for scale in (() if a.scales else (1.0, 1.3)):
+    for scale in (() if (a.scales or a.mode_matrix) else (1.0, 1.3)):
         for indi in (0, 3):
             for ns2 in (0, 1):
                 jobs.append(dict(indi=indi, ns2=ns2, scale=scale))
-    for indi in (() if a.scales else (0, 3)):  # negative control: the real force is the reverse of what NS2 predicts
+    for indi in (() if (a.scales or a.mode_matrix) else (0, 3)):  # negative control: the real force is the reverse of what NS2 predicts
         for ns2 in (0, 1):
             jobs.append(dict(indi=indi, ns2=ns2, scale=-1.0))
 
@@ -171,7 +180,7 @@ def main() -> None:
         c = r["cfg"]
         if "error" in r:
             rows.append(f"| {c['indi']} | {c['ns2']} | {c['scale']} | ERROR {r['error'][:80]} | | | | | |"); continue
-        rows.append(f"| {c['indi']} | {'on' if c['ns2'] else 'off'} | {c['scale']:+.1f} | {r['dip_mean_cm']:.2f} | {r['bump_mean_cm']:+.2f} | {r['offset_cm']:.2f} | {r['mean_z_steady_cm']:.2f} | {r['max_z_err_cm']:.1f} | {r['pred_z_min']:.2f} … {r['pred_z_max']:.2f} |")
+        rows.append(f"| {c['indi']} | {'on' if c['ns2'] else 'off'}{' mode ' + str(c['ns2_mode']) if 'ns2_mode' in c else ''} | {c['scale']:+.1f} | {r['dip_mean_cm']:.2f} | {r['bump_mean_cm']:+.2f} | {r['offset_cm']:.2f} | {r['mean_z_steady_cm']:.2f} | {r['max_z_err_cm']:.1f} | {r['pred_z_min']:.2f} … {r['pred_z_max']:.2f} |")
     (OUT / f"summary{a.tag}.md").write_text("\n".join(rows) + "\n")
     print("\n".join(rows))
 

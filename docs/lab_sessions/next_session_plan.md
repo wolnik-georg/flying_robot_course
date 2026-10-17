@@ -23,6 +23,9 @@ Commands (all start with `ros2 run crazyflie_examples run_formation`):
 - A7: `--scenario A7 --speed <0.1…0.5> --auto-center --yes --allow-extreme` (#61 = 0.1 … #65 = 0.5)
 After each block: `copy_usd_log.py … --tag ns2train_<block>` (cf_second card first, then cf5), check that every flight has a file on BOTH cards before the next block (empty-file check), `check_usd_log_quality.py`, `merge_training_bank.py --date <day> --only-tag-contains ns2train`.
 
+## Added 2026-10-17: S3 Version A / B
+The Omar controller now has `ctrlOmarIndi.ns2_mode` (0 = Version A, plain sum, default; 1 = Version B, INDI on what NS2 left over; `docs/ns2_s3_versions_A_B_2026-10-17.md`). After `study_tree_v2` is flashed (it contains the parameter): fly S3 (`from_main_S3A.patch`) and S3B (`from_main_S3B.patch`) on A8 and A1, 3 flights each (the supervisor decides which is the study's S3, meeting 2026-10-22).
+
 ## 0. Goal
 Dedicated training flights (never study repeats) for the retrained NS2 that serves both **S2 (geometric + NS2)** and **S3 (INDI + NS2)**. All flights on S0 (indi 0, NS2 off, deck RPM on, both drones controller 9). The label `a_res_z = a_imu_f − a_rpm_f` is reconstructed offline with Omar's own filter chain (`omar_labels.py`, validated r = 0.998), so it is the same signal the INDI term measures in S1/S3.
 
