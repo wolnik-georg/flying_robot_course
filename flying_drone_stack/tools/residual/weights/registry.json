@@ -265,6 +265,66 @@
    "notes": "run_heldout_setting.py; MODEL_CARD.json and heldout_results.json in the folder",
    "sha256": "ca86caf5f0fed9ac39e78a9efbe5d74b1fc4451dd4396732d461f02cd42878cf",
    "git_tracked": false
+  },
+  {
+   "id": "ns2_heldout_noR1_2026-10-17",
+   "file": "experiments/analysis/out/ns2_heldout_noR1_2026-10-17/held_out_model.npz",
+   "status": "EXPERIMENT (held-out-setting test), not for flashing",
+   "created": "2026-10-17",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json",
+    "manifest_sha256": "0762755b98c9aa3debb7039a2b7ff7a363f5710c9f01a26c32e8d6330d3061da",
+    "n_flights": 64,
+    "scenarios": [
+     "see heldout_results.json"
+    ],
+    "description": "pilot-2 manifest minus all R1 flights"
+   },
+   "labels": "tree definition, top labels zeroed",
+   "result": "held-out R1: 9/9 pass the gate, median R\u00b2 0.72 (min 0.59)",
+   "notes": "run_heldout_setting.py; bent bottom drone caveat applies",
+   "sha256": "e968c2a4a7d17976bdfd07889b8e39487c7485dfe649acbd4af04e8347d2eb32",
+   "git_tracked": false
+  },
+  {
+   "id": "ns2_heldout_noA9_2026-10-17",
+   "file": "experiments/analysis/out/ns2_heldout_noA9_2026-10-17/held_out_model.npz",
+   "status": "EXPERIMENT (held-out-setting test), not for flashing",
+   "created": "2026-10-17",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json",
+    "manifest_sha256": "0762755b98c9aa3debb7039a2b7ff7a363f5710c9f01a26c32e8d6330d3061da",
+    "n_flights": 70,
+    "scenarios": [
+     "see heldout_results.json"
+    ],
+    "description": "pilot-2 manifest minus all A9 flights"
+   },
+   "labels": "tree definition, top labels zeroed",
+   "result": "held-out A9: 3/3 pass, R\u00b2 0.74-0.79",
+   "notes": "run_heldout_setting.py; bent bottom drone caveat applies",
+   "sha256": "f1966aab93217acc565dbb546dd34ef3027661ba4e87542597eda87b18a4d7cf",
+   "git_tracked": false
+  },
+  {
+   "id": "ns2_heldout_noA1_2026-10-17",
+   "file": "experiments/analysis/out/ns2_heldout_noA1_2026-10-17/held_out_model.npz",
+   "status": "EXPERIMENT (held-out-setting test), not for flashing",
+   "created": "2026-10-17",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json",
+    "manifest_sha256": "0762755b98c9aa3debb7039a2b7ff7a363f5710c9f01a26c32e8d6330d3061da",
+    "n_flights": 61,
+    "scenarios": [
+     "see heldout_results.json"
+    ],
+    "description": "pilot-2 manifest minus all A1 flights (old and new)"
+   },
+   "labels": "tree definition, top labels zeroed",
+   "result": "held-out A1: new 5/6 pass (median 0.72, min 0.09), old 1/6 pass (R\u00b2 0.20-0.30)",
+   "notes": "run_heldout_setting.py; bent bottom drone caveat applies",
+   "sha256": "b61c9c49918916b932f4450df0b94c73a7900b185d540df771c66217db44cdb2",
+   "git_tracked": false
   }
  ]
 }

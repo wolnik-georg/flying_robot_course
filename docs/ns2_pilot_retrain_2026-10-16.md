@@ -32,3 +32,13 @@ Whole setting removed from training, then scored (same gate thresholds). v1 was 
 - **dz generalises:** leaving dz 0.75 out costs little (A8 R² −0.0…−0.1), consistent with the flat in-gate label across dz; extrapolating from dz 0.25/0.5 to 0.75 works.
 - **The A3 family generalises only partly:** the new A3 flights drop 0.1–0.3 in R² and two (0.4 m/s and 0.5 m/s) fall below the 50 % threshold; the old A3 flights (dz 0.25 / 0.4, a different bottom speed profile) fail 3 of 7. A3-type motion (a fixed source with the bottom drone shuttling under it) is not fully covered by A8/A2/A1, so A3 stays in the training set; its closest relatives, A4 offset steps and R1, add the missing variety.
 - Both models are registered as experiments (`ns2_heldout_noA3_2026-10-16`, `ns2_heldout_nodz075_2026-10-16`), not for flashing.
+
+## Held-out-setting tests on the full bank (2026-10-17, pilot-2 manifest: 26 relabelled v1 + 47 usable flights of lab 2026-10-16/17)
+| Held out | trained on | result on the left-out flights |
+|---|---|---|
+| **all R1** (9 flights) | 64 | **9/9 pass**, median R² 0.72 (min 0.59), better than v1 on 9/9 |
+| **all A9** (3 flights) | 70 | **3/3 pass**, R² 0.74–0.79 (v1 0.61–0.64) |
+| **all A1** (12 flights: 6 new, 6 old) | 61 | new 5/6 pass (median R² 0.72, but 0.09 on the dz 0.75 flight of 10-17); **old 1/6 pass (R² 0.20–0.30)** |
+- Random motion (R1) and the offset-step flight (A9) are predicted well by a network that has never seen them: the structured scenarios (A8, A2, A3, A1, A4) already span their state space.
+- **A1 is the scenario the other scenarios do not cover.** Without any A1 flight the stacked holds are predicted poorly (old holds R² 0.20–0.30), consistent with the A1 weak spot in every earlier test; A1 is a study scenario, so the A1 flights stay in the training bank and the A1 folds of the full leave-one-flight-out run are the ones to read first.
+- Models registered as experiments (`ns2_heldout_noR1|noA9|noA1_2026-10-17`). Single runs, one training seed.
