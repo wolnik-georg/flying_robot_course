@@ -18,15 +18,15 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 66 | dz=0.5 hold=15.0 | 15 | `--scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 66 | dz=0.5 hold=15.0 | 15 | `--scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ✔ 12-27-58 (dz 0.5) | ✔ / ✔ | one repeat not flown |
 | 67 | dz=0.5 hold=15.0 | 15 | `--scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 68 | dz=0.25 hold=15.0 | 15 | `--scenario A1 --dz 0.25 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 68 | dz=0.25 hold=15.0 | 15 | `--scenario A1 --dz 0.25 --hold 15.0 --height 0.5 --auto-center --yes` | ✔ 12-30-03 (dz 0.25) | ✔ / ✔ | one repeat not flown |
 | 69 | dz=0.25 hold=15.0 | 15 | `--scenario A1 --dz 0.25 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 70 | dz=0.75 hold=15.0 | 15 | `--scenario A1 --dz 0.75 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 70 | dz=0.75 hold=15.0 | 15 | `--scenario A1 --dz 0.75 --hold 15.0 --height 0.5 --auto-center --yes` | ✔ 12-26-41 (dz 0.75; also 10-16 19-46-03) | ✔ / ✔ | one repeat not flown |
 | 71 | dz=0.75 hold=15.0 | 15 | `--scenario A1 --dz 0.75 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 72 | dz=0.375 hold=15.0 | 15 | `--scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 72 | dz=0.375 hold=15.0 | 15 | `--scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes` | ✔ 12-31-27 (dz 0.375) | ✔ / ✔ | one repeat not flown |
 | 73 | dz=0.375 hold=15.0 | 15 | `--scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 74 | dz=0.625 hold=15.0 | 15 | `--scenario A1 --dz 0.625 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 74 | dz=0.625 hold=15.0 | 15 | `--scenario A1 --dz 0.625 --hold 15.0 --height 0.5 --auto-center --yes` | ✔ 12-34-20 (dz 0.625) | ✔ / ✔ | one repeat not flown |
 | 75 | dz=0.625 hold=15.0 | 15 | `--scenario A1 --dz 0.625 --hold 15.0 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 
 ## R1 random waypoints (seeds 101–110 first, 111–120 after a quick retrain check) — copy tag `ns2train_R1`
