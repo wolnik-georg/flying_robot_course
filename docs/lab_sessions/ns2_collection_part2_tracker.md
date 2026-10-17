@@ -33,7 +33,7 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 100 | seed=101 | 53 | `--scenario R1 --seed 101 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 100 | seed=101 | 53 | `--scenario R1 --seed 101 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 12-45-14 | ✔ / ✔ | ⚠ near-collision: min 3D distance 0.08 m, vertical gap 1 cm (bottom z up to 1.10 m); HOLD seeds 102–110 until the plan is decided |
 | 101 | seed=102 | 43 | `--scenario R1 --seed 102 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 102 | seed=103 | 46 | `--scenario R1 --seed 103 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 103 | seed=104 | 55 | `--scenario R1 --seed 104 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
