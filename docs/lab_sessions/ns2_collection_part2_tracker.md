@@ -33,16 +33,16 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 100 | seed=101 | 53 | `--scenario R1 --seed 101 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 12-45-14 | ✔ / ✔ | ⚠ near-collision: min 3D distance 0.08 m, vertical gap 1 cm (bottom z up to 1.10 m); HOLD seeds 102–110 until the plan is decided |
-| 101 | seed=102 | 43 | `--scenario R1 --seed 102 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 102 | seed=103 | 46 | `--scenario R1 --seed 103 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 103 | seed=104 | 55 | `--scenario R1 --seed 104 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 104 | seed=105 | 45 | `--scenario R1 --seed 105 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 105 | seed=106 | 53 | `--scenario R1 --seed 106 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 106 | seed=107 | 46 | `--scenario R1 --seed 107 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 107 | seed=108 | 59 | `--scenario R1 --seed 108 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 109 | seed=110 | 46 | `--scenario R1 --seed 110 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 100 | seed=101 | 53 | `--scenario R1 --seed 101 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 12-45-14 ⚠ near-collision 0.08 m (kept) | ✔ / ✔ | |
+| 101 | seed=102 | 43 | `--scenario R1 --seed 102 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 12-54-15 (min 0.10 m) | ✔ / ✔ | |
+| 102 | seed=103 | 46 | `--scenario R1 --seed 103 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 12-56-17 ⚠ bottom above top 2.6 s, top disturbed 28 cm (min 0.08 m) | ✔ / ✔ | |
+| 103 | seed=104 | 55 | `--scenario R1 --seed 104 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-01-05 (bottom above top 0.6 s) | ✔ / ✔ | |
+| 104 | seed=105 | 45 | `--scenario R1 --seed 105 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-03-07 | ✔ / ✔ | |
+| 105 | seed=106 | 53 | `--scenario R1 --seed 106 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-29-16 (clean); 13-23-04 COLLISION, excluded | ✔ / ✔ | |
+| 106 | seed=107 | 46 | `--scenario R1 --seed 107 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-31-17 | ✔ / ✔ | |
+| 107 | seed=108 | 59 | `--scenario R1 --seed 108 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-34-05 (min 0.11 m) | ✔ / ✔ | |
+| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | flown 13-52-38, LOST (empty file on both cards) | ✗ / ✗ | refly optional |
+| 109 | seed=110 | 46 | `--scenario R1 --seed 110 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-55-39 | ✔ / ✔ | |
 | 110 | seed=111 | 47 | `--scenario R1 --seed 111 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 111 | seed=112 | 51 | `--scenario R1 --seed 112 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 112 | seed=113 | 53 | `--scenario R1 --seed 113 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
