@@ -57,10 +57,12 @@ def total(L):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--bank", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--bank", nargs="+", required=True, help="one or more bank folders with training_manifest.json"); ap.add_argument("--out", required=True)
     ap.add_argument("--exclude", nargs="*", default=["18-02-54", "18-26-13"], help="stamps of outlier flights")
     a = ap.parse_args(); out = ROOT / a.out if not Path(a.out).is_absolute() else Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    man = json.load(open(Path(a.bank) / "training_manifest.json" if Path(a.bank).is_absolute() else ROOT / a.bank / "training_manifest.json"))
+    man = {"flights": []}
+    for b in a.bank:
+        man["flights"] += json.load(open((Path(b) if Path(b).is_absolute() else ROOT / b) / "training_manifest.json"))["flights"]
     rows, BL = [], []
     for f in man["flights"]:
         row, H, g = bank_flight(f, a.exclude); rows.append(row)
