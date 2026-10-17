@@ -30,4 +30,4 @@ Provenance of the early dry runs (09-19, 09-26) beyond what sits next to the fil
 - `ns2_pilot_2026-10-16` is registered above (trained 2026-10-16; folder with MODEL_CARD.json).
 - `ns2_v2` (after A1/R1/A4/A7): will get its own folder, card and id.
 
-**Hardware caveat for every model trained on the 2026-10-16/17 flights (`ns2_pilot_2026-10-16`, the held-out experiments, a future `ns2_v2`):** the bottom (labelled) vehicle cf5 is slightly bent; the labels may contain a vehicle-specific offset. A clean recollection with a new stable bottom drone is planned after this collection (see `docs/lab_sessions/2026-10-17.md`).
+**Hardware caveat for every model trained on the 2026-10-16/17 flights (`ns2_pilot_2026-10-16`, the held-out experiments, a future `ns2_v2`):** the bottom (labelled) vehicle cf5 is slightly bent; the labels may contain a vehicle-specific offset. The bottom drone is being replaced by a new stable one; the networks stay as trained, no recollection (decision 2026-10-17, see `docs/lab_sessions/2026-10-17.md`).
