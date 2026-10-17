@@ -40,13 +40,13 @@ for sp in SPEEDS:
 for dz in (0.5, 0.25, 0.75, 0.375, 0.625):
     for _ in range(2):
         add("A1 stack hold", mk("A1", dz=dz, hold=15.0))
-# 3. A4 offset stack (line): speed sweep at offset 0.05, offset sweep at speed 0.3
+# 3. A4 offset stack (line; --rotate 90 = line along y, lateral offset along x, 2026-10-17, mocap: the x walls): speed sweep at offset 0.05, offset sweep at speed 0.3
 for dz in DZS:
     for sp in SPEEDS:
-        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=sp, offset=0.05, motion="line"))
+        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=sp, offset=0.05, motion="line", rotate=90))
 for dz in DZS:
     for off in (0.0, 0.10, 0.15):
-        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=0.3, offset=off, motion="line"))
+        add(f"A4 offset stack, dz {dz}", mk("A4", dz=dz, speed=0.3, offset=off, motion="line", rotate=90))
 # 4. random waypoints (R1), last
 for seed in range(101, 121):
     s = {"scenario": "R1", "setting": f"seed={seed}", "kwargs": dict(seed=seed, total=40.0, bias=0.7)}

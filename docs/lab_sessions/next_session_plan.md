@@ -19,7 +19,7 @@ Per-flight tracker with all 48 commands (A1 10, R1 20, A4 9, A7 5, optional A2 4
 Commands (all start with `ros2 run crazyflie_examples run_formation`):
 - A1: `--scenario A1 --dz <0.5|0.25|0.75|0.375|0.625> --hold 15.0 --height 0.5 --auto-center --yes` (#66/67 dz 0.5, #68/69 0.25, #70/71 0.75, #72/73 0.375, #74/75 0.625)
 - R1: `--scenario R1 --seed <101…120> --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` (#100 = seed 101 … #119 = seed 120)
-- A4: `--scenario A4 --dz <0.5|0.25|0.75> --speed 0.3 --offset <0.0|0.1|0.15> --motion line --height 0.5 --auto-center --yes` (#91–93 dz 0.5, #94–96 dz 0.25, #97–99 dz 0.75; offsets in the order 0.0, 0.1, 0.15)
+- A4: `--scenario A4 --dz <0.5|0.25|0.75> --speed 0.3 --offset <0.0|0.1|0.15> --motion line --rotate 90 --height 0.5 --auto-center --yes` (line along y, offset along x; #91–93 dz 0.5, #94–96 dz 0.25, #97–99 dz 0.75; offsets in the order 0.0, 0.1, 0.15)
 - A7: `--scenario A7 --speed <0.1…0.5> --auto-center --yes --allow-extreme` (#61 = 0.1 … #65 = 0.5)
 After each block: `copy_usd_log.py … --tag ns2train_<block>` (cf_second card first, then cf5), check that every flight has a file on BOTH cards before the next block (empty-file check), `check_usd_log_quality.py`, `merge_training_bank.py --date <day> --only-tag-contains ns2train`.
 

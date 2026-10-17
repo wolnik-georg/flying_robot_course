@@ -46,7 +46,10 @@ def setting(scen: str, key: str, val: float) -> dict:
 
 
 def validate(s: dict) -> dict:
-    sc = scenarios.build(s["scenario"], **s["kwargs"])
+    kw = dict(s["kwargs"])
+    if "rotate" in kw:                      # CLI flag --rotate <deg> = build(rotate_deg=...) (2026-10-17, A4 line along y); absent -> unchanged behaviour
+        kw["rotate_deg"] = kw.pop("rotate")
+    sc = scenarios.build(s["scenario"], **kw)
     lim, lim_x = safety.Limits(allow_extreme=False), safety.Limits(allow_extreme=True)
     base = centred_anchor(sc, lim, 0.5)
     prob, prob_x = safety.check(sc, lim, base=base), safety.check(sc, lim_x, base=base)

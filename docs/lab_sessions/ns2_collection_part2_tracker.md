@@ -54,19 +54,19 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 | 118 | seed=119 | 50 | `--scenario R1 --seed 119 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 119 | seed=120 | 53 | `--scenario R1 --seed 120 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 
-## A4 offset steps (0 / 0.1 / 0.15 m at 0.3 m/s) — copy tag `ns2train_A4`
+## A4 offset steps (0 / 0.1 / 0.15 m at 0.3 m/s; `--rotate 90` = line along y, lateral offset along x; 2026-10-17) — copy tag `ns2train_A4`
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 91 | dz=0.5 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.0 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 92 | dz=0.5 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.1 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 93 | dz=0.5 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.15 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 94 | dz=0.25 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.0 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 95 | dz=0.25 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.1 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 96 | dz=0.25 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.15 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 97 | dz=0.75 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.0 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 98 | dz=0.75 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.1 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 99 | dz=0.75 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.15 --motion line --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 91 | dz=0.5 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 92 | dz=0.5 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 93 | dz=0.5 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 94 | dz=0.25 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 95 | dz=0.25 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 96 | dz=0.25 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 97 | dz=0.75 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 98 | dz=0.75 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| 99 | dz=0.75 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 
 ## A7 descend-through (last, `--allow-extreme`, no `--height`) — copy tag `ns2train_A7`
 
