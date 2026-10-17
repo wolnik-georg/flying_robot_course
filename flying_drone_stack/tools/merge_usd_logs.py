@@ -352,6 +352,9 @@ def main():
                          "--archive-t1 and --archive-t2")
     ap.add_argument("--archive-t1", default=None, help="THESIS1 (or cf5-card) archive dir")
     ap.add_argument("--archive-t2", default=None, help="THESIS2 (or top-card) archive dir")
+    ap.add_argument("--allow-short", type=float, default=0.0, metavar="SECONDS",
+                    help="accept a recording up to this many seconds shorter than the scenario (default 0 = strict, unchanged); "
+                         "the A9 logs are ~1 s short because logging starts after / stops before the first / last second of the plan")
     ap.add_argument("--tag-quality-only", action="store_true",
                     help="do not refuse merge when alignment RMS >= 15 cm (still printed). "
                          "Use with --run-tag auto-pairing, or human accept e.g. A1 close-stack "
@@ -419,16 +422,18 @@ def main():
               f"(scenario {meta['scenario']}, {total:.1f}s)")
         lags = []
         for n, role, l in zip(names, a.roles, logs):
+            if a.allow_short and l["t"][-1] - l["t"][0] < total:
+                print(f"[merge] {n}: recording is {l['t'][-1]-l['t'][0]:.1f}s, {total-(l['t'][-1]-l['t'][0]):.1f}s shorter than the scenario (--allow-short {a.allow_short})")
             ts, cmd = commanded_trajectory(meta, role)
             t = l["t"]
-            if t[-1] - t[0] < total:
+            if t[-1] - t[0] + a.allow_short < total:
                 sys.exit(f"[merge] {n}: recording is {t[-1]-t[0]:.1f}s but the scenario runs "
                          f"{total:.1f}s -- this log cannot contain the whole flight.")
             # 2026-09-15: find_offset now matches full 3D position, not a single named channel
             # -- needed once commanded_trajectory stopped being A8-only (some scenarios move in
             # x, some sweep z, not just y).
             pos = np.stack([l["x"], l["y"], l["z"]], axis=1)
-            lag, mse, _ = fw_offset(t, pos, ts, cmd, t[0], t[-1] - total)
+            lag, mse, _ = fw_offset(t, pos, ts, cmd, t[0], t[-1] - total + a.allow_short)
             if lag is None:
                 sys.exit(f"[merge] {n}: no lag covers enough of the scenario to align on. "
                          f"Wrong file for this scenario, or wrong role?")

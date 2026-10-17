@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--scenarios", nargs="*"); ap.add_argument("--only-tag-contains", default="")
     ap.add_argument("--rpm", default="deck", choices=["deck", "dshot", "rpmf"])
     ap.add_argument("--raw", default=str(ROOT / "experiments/logs/usd_raw"))
+    ap.add_argument("--allow-short", type=float, default=0.0, help="pass-through to merge_usd_logs.py (seconds a recording may be shorter than the scenario)")
     a = ap.parse_args(); out = Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     idx = {"cf5": {}, "cf_second": {}}
     for drone in idx:
@@ -51,7 +52,7 @@ def main():
             skipped.append((mp.name, f"tag {tag}: cf5 {len(c5)} / cf_second {len(c2)} matching files")); continue
         folder = f"{scen}_{date}_{stamp}"; d = out / folder; d.mkdir(exist_ok=True); dest = d / f"{folder}_merged_usd.csv"
         cmd = [sys.executable, str(TOOLS / "merge_usd_logs.py"), str(c5[0]), str(c2[0]), "--meta", str(mp), "--roles", "bottom", "top",
-               "--omar-labels", a.rpm, "--tag-quality-only", "-o", str(dest)]
+               "--omar-labels", a.rpm, "--tag-quality-only", "-o", str(dest)] + (["--allow-short", str(a.allow_short)] if a.allow_short else [])
         r = subprocess.run(cmd, capture_output=True, text=True)
         rms = [l.strip() for l in (r.stdout + r.stderr).split("\n") if "RMS" in l][:2]
         if r.returncode != 0 or not dest.exists():
