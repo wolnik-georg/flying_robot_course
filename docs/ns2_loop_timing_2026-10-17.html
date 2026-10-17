@@ -1,0 +1,168 @@
+<title>NS2 Loop Timing</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: one engineering note, three diagrams in sequence (today, parallel design, numbers), then the build list. */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#1b2430; --muted:#5b6675; --line:#d5dae1;
+  --accent:#1f5fbf; --accent-soft:#dbe7f8; --warn:#c2540a; --warn-soft:#fbe6d6; --ok:#17794a; --ok-soft:#d9f0e4;
+  --font-sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --surface:#171e28; --fg:#e6ebf2; --muted:#9aa6b6; --line:#2b3544;
+  --accent:#6aa4f2; --accent-soft:#1b2c47; --warn:#f09a5a; --warn-soft:#3a2415; --ok:#5fcf97; --ok-soft:#12331f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#171e28; --fg:#e6ebf2; --muted:#9aa6b6; --line:#2b3544;
+  --accent:#6aa4f2; --accent-soft:#1b2c47; --warn:#f09a5a; --warn-soft:#3a2415; --ok:#5fcf97; --ok-soft:#12331f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--font-sans);margin:0;padding-inline:16px;padding-block:28px 56px}
+main{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:1.7rem;line-height:1.2;margin:0 0 6px;text-wrap:balance;font-weight:600}
+h2{font-size:1.15rem;margin:0 0 10px;text-wrap:balance;font-weight:600}
+p{margin:0 0 10px;max-width:68ch}
+.lede{color:var(--muted);max-width:68ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px}
+.answer{border-left:4px solid var(--accent);padding:12px 16px;background:var(--accent-soft);border-radius:0 6px 6px 0}
+.answer p{margin:0 0 6px}.answer p:last-child{margin:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.92rem}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.8rem;letter-spacing:.04em;text-transform:uppercase}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--font-mono)}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--font-mono);font-size:.84rem;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px;overflow-x:auto;margin:8px 0 0}
+.tag{display:inline-block;font-size:.75rem;font-family:var(--font-mono);padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.warn{background:var(--warn-soft);color:var(--warn)}
+svg{width:100%;height:auto;display:block}
+svg text{font-family:var(--font-mono);font-size:11px;fill:var(--fg)}
+svg .m{fill:var(--muted)} svg .ln{stroke:var(--line);stroke-width:1} svg .tk{stroke:var(--muted);stroke-width:1}
+svg .stab{fill:var(--accent)} svg .ns{fill:var(--warn)} svg .lowns{fill:var(--warn);opacity:.85}
+svg .out{fill:var(--ok)} svg .late{fill:var(--warn)} svg .box{fill:var(--surface);stroke:var(--accent);stroke-width:1.5}
+svg .arr{stroke:var(--fg);stroke-width:1.3;fill:none} svg .br{stroke:var(--warn);stroke-width:1.5;fill:none}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+ul{margin:6px 0 0;padding-left:20px} li{margin:3px 0;max-width:70ch}
+.note{color:var(--muted);font-size:.88rem}
+</style>
+<main>
+<header>
+  <h1>NS2 loop timing: inline today, parallel task as the option</h1>
+  <p class="lede">Supervisor's question (2026-10-17): should NS2 run in its own loop and hand its result to the control loop through a queue? What the repositories show, how the two designs differ, and what the parallel one needs.</p>
+</header>
+
+<section class="answer">
+  <p><strong>What I found.</strong> I could not find a parallel loop with a queue for the network in any repository I have: our firmware, the IMRC firmware fork, NA-INDI and its firmware, the Neural-Swarm reference, crazyswarm2. In all of them the network is evaluated inside the controller call. The Neural-Swarm papers say controller, Kalman filter and network run on the STM32.</p>
+  <p><strong>What it would give us.</strong> The control loop never waits for the network: no timing hiccup every 20 ms, and more neighbours do not slow the motor update. The price is that the NS2 value is about 1 to 3 ms older when used.</p>
+  <p><strong>For two drones</strong> the inline version is fine. The parallel one matters once each drone has two or three neighbours.</p>
+</section>
+
+<section class="panel">
+  <h2>What I checked</h2>
+  <div class="scroll"><table>
+    <tr><th>Source</th><th>Where the network runs</th></tr>
+    <tr><td>Our firmware (Omar C + NS2)</td><td>Inside the controller call, every 10th tick (100 Hz), held in between. 526 µs worst case, measured.</td></tr>
+    <tr><td>NA-INDI firmware (Briesewitz)</td><td>Inside the Lee controller (<code>controller_lee.c</code> calls <code>nn.c</code>).</td></tr>
+    <tr><td>IMRC firmware fork</td><td>Inside the Lee and payload controllers (<code>nn.c</code>, "online learning nn" commit). No task, no queue.</td></tr>
+    <tr><td>Neural-Swarm reference (aerorobotics)</td><td>Weights compiled into the firmware as a controller component. Paper: "controller, EKF and neural network evaluation are running on-board the STM32". About 550 µs per network, under 4 ms for up to 6 neighbours.</td></tr>
+    <tr><td>crazyswarm2</td><td>Network only in the simulator backend, evaluated sequentially. The ROS side has threads for radio traffic, not for the network.</td></tr>
+  </table></div>
+  <p class="note">What the supervisor may have in mind: the Crazyflie firmware does run heavy or slow work in separate FreeRTOS tasks that talk through queues (app task, parameter task, radio tasks), and neighbour positions already arrive that way. Ask for the exact repository or file.</p>
+</section>
+
+<section class="panel">
+  <h2>Today: inline <span class="tag warn">one task does everything</span></h2>
+  <p>One stabilizer task runs every millisecond. The controller step runs every second tick. On every tenth controller step the network runs inside it, and the motor command for that step goes out later.</p>
+  <svg viewBox="0 0 760 214" role="img" aria-label="Timeline of the inline design: on the tick where the network runs, the motor command is delayed by the network's run time">
+    <text x="0" y="16" class="m">time (ms)</text>
+    <g class="m"><text x="128" y="16">0</text><text x="228" y="16">1</text><text x="328" y="16">2</text><text x="428" y="16">3</text><text x="528" y="16">4</text><text x="628" y="16">5</text><text x="728" y="16">6</text></g>
+    <g class="tk"><line x1="130" y1="22" x2="130" y2="196"/><line x1="230" y1="22" x2="230" y2="196"/><line x1="330" y1="22" x2="330" y2="196"/><line x1="430" y1="22" x2="430" y2="196"/><line x1="530" y1="22" x2="530" y2="196"/><line x1="630" y1="22" x2="630" y2="196"/><line x1="730" y1="22" x2="730" y2="196"/></g>
+    <text x="0" y="56">stabilizer</text><text x="0" y="70" class="m">task, 1 kHz</text>
+    <!-- sensors+estimator every tick, control step on even ticks -->
+    <g class="stab"><rect x="130" y="40" width="14" height="22"/><rect x="230" y="40" width="14" height="22"/><rect x="330" y="40" width="14" height="22"/><rect x="430" y="40" width="14" height="22"/><rect x="530" y="40" width="14" height="22"/><rect x="630" y="40" width="14" height="22"/></g>
+    <g class="stab" opacity=".6"><rect x="144" y="40" width="22" height="22"/><rect x="344" y="40" width="22" height="22"/><rect x="544" y="40" width="22" height="22"/></g>
+    <rect class="ns" x="166" y="40" width="53" height="22"/>
+    <text x="170" y="36" class="m">NS2 network 0.53 ms</text>
+    <text x="0" y="118">motor command</text><text x="0" y="132" class="m">leaves the task</text>
+    <g class="out"><rect x="364" y="108" width="4" height="26"/><rect x="564" y="108" width="4" height="26"/></g>
+    <rect class="late" x="217" y="108" width="4" height="26"/>
+    <path class="br" d="M168 150 H219 M168 144 V156 M219 144 V156"/>
+    <text x="150" y="172" style="fill:var(--warn)">this step's command is 0.53 ms late</text>
+    <text x="150" y="188" class="m">every 20 ms; the other steps are on time (illustrative, not to scale)</text>
+    <rect class="stab" x="520" y="170" width="10" height="10"/><text x="535" y="179" class="m">sensors, estimator</text><rect class="stab" opacity=".6" x="520" y="186" width="10" height="10"/><text x="535" y="195" class="m">control step</text><rect class="ns" x="640" y="170" width="10" height="10"/><text x="655" y="179" class="m">network</text>
+  </svg>
+  <p class="note">Same code and same timing in all four strategies (S0 to S3): the network is evaluated everywhere and used only when <code>rnn.en = 1</code>, so the comparison between strategies is fair.</p>
+</section>
+
+<section class="panel">
+  <h2>Parallel design <span class="tag ok">control path never waits</span></h2>
+  <p>A second task, with lower priority than the stabilizer, takes a snapshot of position, velocity and neighbours, runs the network and writes the answer into a queue of length one that overwrites. The controller only peeks at the last value and carries on.</p>
+  <svg viewBox="0 0 760 330" role="img" aria-label="Timeline and block diagram of the parallel design: stabilizer task unchanged, NS2 task fills idle time, a length-one overwrite queue hands over the last result">
+    <text x="0" y="16" class="m">time (ms)</text>
+    <g class="m"><text x="128" y="16">0</text><text x="228" y="16">1</text><text x="328" y="16">2</text><text x="428" y="16">3</text><text x="528" y="16">4</text></g>
+    <g class="tk"><line x1="130" y1="22" x2="130" y2="150"/><line x1="230" y1="22" x2="230" y2="150"/><line x1="330" y1="22" x2="330" y2="150"/><line x1="430" y1="22" x2="430" y2="150"/><line x1="530" y1="22" x2="530" y2="150"/></g>
+    <text x="0" y="48">stabilizer</text><text x="0" y="62" class="m">high priority</text>
+    <g class="stab"><rect x="130" y="34" width="14" height="22"/><rect x="230" y="34" width="14" height="22"/><rect x="330" y="34" width="14" height="22"/><rect x="430" y="34" width="14" height="22"/><rect x="530" y="34" width="14" height="22"/></g>
+    <g class="stab" opacity=".6"><rect x="144" y="34" width="22" height="22"/><rect x="344" y="34" width="22" height="22"/><rect x="544" y="34" width="22" height="22"/></g>
+    <g class="out"><rect x="164" y="76" width="4" height="22"/><rect x="364" y="76" width="4" height="22"/></g>
+    <text x="0" y="92">motor command</text><text x="0" y="106" class="m">always on time</text>
+    <text x="0" y="132">NS2 task</text><text x="0" y="146" class="m">low priority</text>
+    <rect class="lowns" x="172" y="118" width="53" height="22"/>
+    <text x="172" y="114" class="m">network 0.53 ms in idle time</text>
+    <path class="arr" d="M225 129 H300 V99"/><text x="236" y="156" class="m">result written to queue</text>
+    <path class="arr" d="M300 99 L296 105 M300 99 L304 105"/>
+    <!-- block diagram -->
+    <rect class="box" x="40" y="200" width="150" height="54" rx="4"/><text x="52" y="222">peer positions</text><text x="52" y="238" class="m">radio task, ~100 Hz</text>
+    <rect class="box" x="250" y="200" width="150" height="54" rx="4"/><text x="262" y="222">NS2 task</text><text x="262" y="238" class="m">snapshot, network</text>
+    <rect class="box" x="460" y="200" width="110" height="54" rx="4"/><text x="472" y="222">queue, length 1</text><text x="472" y="238" class="m">overwrite</text>
+    <rect class="box" x="620" y="200" width="120" height="54" rx="4"/><text x="632" y="222">controller</text><text x="632" y="238" class="m">peek, no wait</text>
+    <path class="arr" d="M190 227 H250 M400 227 H460 M570 227 H620"/>
+    <path class="arr" d="M246 223 L250 227 L246 231 M456 223 L460 227 L456 231 M616 223 L620 227 L616 231"/>
+    <text x="40" y="284" class="m">If the NS2 task is late or starved, the controller keeps using the last value; an age stamp lets it fall back to zero.</text>
+    <text x="40" y="304" class="m">Single core: the total load is the same. The gain is that the control path no longer depends on it.</text>
+  </svg>
+</section>
+
+<section class="panel">
+  <h2>The numbers</h2>
+  <div class="scroll"><table>
+    <tr><th></th><th class="n">Inline (today)</th><th class="n">Parallel task</th></tr>
+    <tr><td>Motor command delay on the step that runs NS2, 1 neighbour</td><td class="n">+0.53 ms (measured)</td><td class="n">0</td></tr>
+    <tr><td>same, 2 neighbours (three-vehicle team)</td><td class="n">≈ +0.69 ms (estimate)</td><td class="n">0</td></tr>
+    <tr><td>same, 3 neighbours</td><td class="n">≈ +0.86 ms (estimate)</td><td class="n">0</td></tr>
+    <tr><td>Share of the 2 ms controller slot used by NS2</td><td class="n">26 % / 35 % / 43 %</td><td class="n">0 % (low-priority task)</td></tr>
+    <tr><td>Age of the NS2 value when the controller uses it</td><td class="n">0 to 20 ms (hold)</td><td class="n">+ about 1 to 3 ms more</td></tr>
+  </table></div>
+  <p class="note">Estimates scale the measured 526 µs by the multiply-adds: about 3,550 per neighbour and about 7,500 fixed (ground term and output network). Not measured with several neighbours yet. The 20 ms hold dominates the value's age in both designs, and the downwash changes over about 0.1 s, so the extra 1 to 3 ms should not matter. The delay of the motor command should matter more for INDI, which is sensitive to delay in our earlier tests. I have not measured an effect of the 0.53 ms in flight.</p>
+</section>
+
+<section class="panel">
+  <h2>What the parallel version needs</h2>
+  <div class="cols">
+    <div><strong>Code</strong>
+      <ul>
+        <li>One FreeRTOS task for NS2 with its own static stack, priority below the stabilizer.</li>
+        <li>A length-one queue with overwrite; the controller peeks with zero wait.</li>
+        <li>A consistent snapshot of position, velocity and neighbours, taken in the task under a short critical section.</li>
+        <li>An age stamp on the value and a fallback to zero when it is stale.</li>
+        <li>Reset on re-arm; host and simulation builds without FreeRTOS keep the inline path.</li>
+      </ul></div>
+    <div><strong>Checks</strong>
+      <ul>
+        <li>Bench: <code>rnn.us_max</code> and loop-rate supervisor with 1, 2 and 3 injected neighbours.</li>
+        <li>Byte-identical outputs against the inline build (host replay) with the hold set equal.</li>
+        <li>Closed-loop simulation and one hover flight before any study flight.</li>
+        <li>Log the value's age so the delay can be read from the flight data.</li>
+      </ul></div>
+    <div><strong>Risks</strong>
+      <ul>
+        <li>The task can be starved when the stabilizer and radio tasks are busy; the age check covers it.</li>
+        <li>Timing becomes non-deterministic; the inline version is easier to reproduce.</li>
+        <li>New code on the flight path right before the study. The controller tree is validated as it is.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Recommendation and the question to ask</h2>
+  <p><strong>Keep inline for the two-drone study</strong> (526 µs, 26 % of the slot, no problem seen in flights). <strong>Measure</strong> the timing with two and three injected neighbours before the three-vehicle phase, and build the parallel task only if the controller slot gets tight or if the 0.5 ms hiccup shows up as an effect on INDI.</p>
+  <p><strong>Ask:</strong> which repository or file did you mean, with the network in a separate loop? Is the goal the control timing, the scaling with neighbours, or both? Do you want it for the two-drone study or only for the three-vehicle phase?</p>
+</section>
+</main>
