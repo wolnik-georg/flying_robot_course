@@ -41,7 +41,7 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 | 105 | seed=106 | 53 | `--scenario R1 --seed 106 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-29-16 (clean); 13-23-04 COLLISION, excluded | ✔ / ✔ | |
 | 106 | seed=107 | 46 | `--scenario R1 --seed 107 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-31-17 | ✔ / ✔ | |
 | 107 | seed=108 | 59 | `--scenario R1 --seed 108 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-34-05 (min 0.11 m) | ✔ / ✔ | |
-| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | flown 13-52-38, LOST (empty file on both cards) | ✗ / ✗ | refly optional |
+| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | flown 13-52-38, LOST (empty file on both cards) | ✗ / ✗ | refly planned (user) |
 | 109 | seed=110 | 46 | `--scenario R1 --seed 110 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-55-39 | ✔ / ✔ | |
 | 110 | seed=111 | 47 | `--scenario R1 --seed 111 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 111 | seed=112 | 51 | `--scenario R1 --seed 112 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
@@ -72,11 +72,11 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 61 | speed=0.1 | 29 | `--scenario A7 --speed 0.1 --auto-center --yes --allow-extreme` | ☐ | ☐ / ☐ | |
-| 62 | speed=0.2 | 16 | `--scenario A7 --speed 0.2 --auto-center --yes --allow-extreme` | ☐ | ☐ / ☐ | |
-| 63 | speed=0.3 | 12 | `--scenario A7 --speed 0.3 --auto-center --yes --allow-extreme` | ☐ | ☐ / ☐ | |
-| 64 | speed=0.4 | 10 | `--scenario A7 --speed 0.4 --auto-center --yes --allow-extreme` | ☐ | ☐ / ☐ | |
-| 65 | speed=0.5 | 8 | `--scenario A7 --speed 0.5 --auto-center --yes --allow-extreme` | ☐ | ☐ / ☐ | |
+| 61 | speed=0.1 | 29 | `--scenario A7 --speed 0.1 --auto-center --yes --allow-extreme` | skipped (user, 2026-10-17: same close-approach regime as R1, which already produced contact/near-collisions; dz below 0.25 is outside the study range) | – | |
+| 62 | speed=0.2 | 16 | `--scenario A7 --speed 0.2 --auto-center --yes --allow-extreme` | skipped (user, 2026-10-17: same close-approach regime as R1, which already produced contact/near-collisions; dz below 0.25 is outside the study range) | – | |
+| 63 | speed=0.3 | 12 | `--scenario A7 --speed 0.3 --auto-center --yes --allow-extreme` | skipped (user, 2026-10-17: same close-approach regime as R1, which already produced contact/near-collisions; dz below 0.25 is outside the study range) | – | |
+| 64 | speed=0.4 | 10 | `--scenario A7 --speed 0.4 --auto-center --yes --allow-extreme` | skipped (user, 2026-10-17: same close-approach regime as R1, which already produced contact/near-collisions; dz below 0.25 is outside the study range) | – | |
+| 65 | speed=0.5 | 8 | `--scenario A7 --speed 0.5 --auto-center --yes --allow-extreme` | skipped (user, 2026-10-17: same close-approach regime as R1, which already produced contact/near-collisions; dz below 0.25 is outside the study range) | – | |
 
 ## Optional: A2 fast, dz 0.25 / 0.75 — copy tag `ns2train_A2fast`
 
