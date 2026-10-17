@@ -1,0 +1,89 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {1}Control Architectures}{1}{chapter.1}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{ch:control}{{1}{1}{Control Architectures}{chapter.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.1}The position and attitude loop}{1}{section.1.1}\protected@file@percent }
+\newlabel{sec:ctrl-common}{{1.1}{1}{The position and attitude loop}{section.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1.1}Position loop}{1}{subsection.1.1.1}\protected@file@percent }
+\newlabel{eq:ctrl-ades}{{1.1}{1}{Position loop}{equation.1.1.1}{}}
+\citation{lee2010geometrictracking}
+\citation{lee2010geometrictracking}
+\@writefile{lot}{\contentsline {table}{\numberline {1.1}{\ignorespaces The strategies compared, and the implementation status of each at the time of writing. ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction of it, both, or neither.}}{2}{table.1.1}\protected@file@percent }
+\newlabel{tab:ctrl-summary}{{1.1}{2}{The strategies compared, and the implementation status of each at the time of writing. ``Knows'' refers to the residual: whether the controller has a measurement of it, a prediction of it, both, or neither}{table.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1.2}Attitude loop}{2}{subsection.1.1.2}\protected@file@percent }
+\newlabel{eq:ctrl-tau-geo}{{1.2}{2}{Attitude loop}{equation.1.1.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1.3}Runtime selection}{2}{subsection.1.1.3}\protected@file@percent }
+\newlabel{sec:ctrl-runtime}{{1.1.3}{2}{Runtime selection}{subsection.1.1.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.2}Strategy 0: uncompensated geometric baseline}{2}{section.1.2}\protected@file@percent }
+\newlabel{sec:ctrl-s0}{{1.2}{2}{Strategy 0: uncompensated geometric baseline}{section.1.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implemented.}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference.}{2}{section*.2}\protected@file@percent }
+\citation{lee2010geometrictracking}
+\@writefile{toc}{\contentsline {paragraph}{The implemented torque law is a reduced form, and is labelled as such.}{3}{section*.3}\protected@file@percent }
+\newlabel{eq:ctrl-tau-lee}{{1.3}{3}{The implemented torque law is a reduced form, and is labelled as such}{equation.1.2.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{What the source proves.}{3}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Role.}{3}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1.3}Strategy 1: pure INDI}{3}{section.1.3}\protected@file@percent }
+\newlabel{sec:ctrl-s1}{{1.3}{3}{Strategy 1: pure INDI}{section.1.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implemented.}{3}{section*.6}\protected@file@percent }
+\newlabel{eq:ctrl-alpharef}{{1.4}{3}{Implemented}{equation.1.3.4}{}}
+\newlabel{eq:ctrl-indi-tau}{{1.5}{3}{Implemented}{equation.1.3.5}{}}
+\citation{tal2018indi}
+\citation{smeur2017cascadedindi}
+\citation{tal2018indi}
+\citation{shi2020neuralswarm}
+\citation{shi2022neuralswarm2}
+\citation{shi2022neuralswarm2}
+\citation{shi2022neuralswarm2}
+\@writefile{toc}{\contentsline {paragraph}{Reference.}{4}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Deviations.}{4}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Requirements.}{4}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1.4}Strategy 2: geometric with a learned residual}{4}{section.1.4}\protected@file@percent }
+\newlabel{sec:ctrl-s2}{{1.4}{4}{Strategy 2: geometric with a learned residual}{section.1.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implemented.}{4}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference.}{4}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Deviations.}{4}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Requirements.}{4}{section*.13}\protected@file@percent }
+\citation{hsieh2026flatness}
+\citation{yang2025flatnessresiduals}
+\citation{yang2025flatnessresiduals}
+\citation{hsieh2026flatness}
+\@writefile{toc}{\contentsline {section}{\numberline {1.5}Strategy 3: feedback linearisation with a flatness-preserving residual}{5}{section.1.5}\protected@file@percent }
+\newlabel{sec:ctrl-s3}{{1.5}{5}{Strategy 3: feedback linearisation with a flatness-preserving residual}{section.1.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{Implemented.}{5}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Reference.}{5}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Requirements.}{5}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1.6}What makes the comparison fair, and what it does not guarantee}{5}{section.1.6}\protected@file@percent }
+\newlabel{sec:ctrl-fairness}{{1.6}{5}{What makes the comparison fair, and what it does not guarantee}{section.1.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{What is held constant.}{5}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{What this does not guarantee.}{5}{section*.18}\protected@file@percent }
+\bibstyle{plain}
+\bibdata{../references}
+\@writefile{toc}{\contentsline {section}{\numberline {1.7}Summary}{6}{section.1.7}\protected@file@percent }
+\newlabel{sec:ctrl-summary}{{1.7}{6}{Summary}{section.1.7}{}}
+\bibcite{hsieh2026flatness}{1}
+\bibcite{lee2010geometrictracking}{2}
+\bibcite{shi2022neuralswarm2}{3}
+\bibcite{shi2020neuralswarm}{4}
+\bibcite{smeur2017cascadedindi}{5}
+\bibcite{tal2018indi}{6}
+\bibcite{yang2025flatnessresiduals}{7}
+\gdef \@abspage@last{7}

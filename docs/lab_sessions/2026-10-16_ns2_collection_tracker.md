@@ -5,7 +5,7 @@ Tick a cell when the flight is clean AND both uSD files are copied + checked. Ce
 ## Setup (once)
 ```bash
 cd ~/Desktop/flying_robot_course && git pull && cd ~/Desktop/crazyswarm2 && git pull     # both repos, CS2 stopped
-cd ~/Desktop/crazyswarm2 && git checkout crazyflie/config/crazyflies.yaml && git apply crazyflie/config/study/tree_S0.patch
+cd ~/Desktop/crazyswarm2 && git pull     # yaml on main is S0 since 4b65435 (tree_S*.patch no longer apply to it)
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7BB02 --readback   # expect controller 9 after power-cycle, indi 0, rnn.en 0
 python3 ~/Desktop/flying_robot_course/flying_drone_stack/tools/ns2c_bench_check.py radio://0/80/2M/E7E7E7E7E9 --readback
 ros2 launch crazyflie launch.py
@@ -35,9 +35,9 @@ No reflash: `study_tree_v1.bin` stays on both drones (S0 does not use NS2).
 
 | dz | rep 1 | rep 2 |
 |---|---|---|
-| 0.5 | #66 ☐ | #67 ☐ |
-| 0.25 | #68 ☐ | #69 ☐ |
-| 0.75 | #70 ☐ | #71 ☐ |
+| 0.5 | #66 ⚠ (19-40-02: cf5 log only, no cf_second log) | #67 ☐ |
+| 0.25 | #68 ⚠ (19-38-08: cf5 log only, no cf_second log) | #69 ☐ |
+| 0.75 | #70 ✔ (19-46-03 merged; 19-43-10 and 19-44-21 no logs on either card) | #71 ☐ |
 | 0.375 | #72 ☐ | #73 ☐ |
 | 0.625 | #74 ☐ | #75 ☐ |
 
@@ -128,3 +128,27 @@ Observation: at 0.1–0.2 m/s the bottom drone is pushed to 4–7 cm above the f
 | 0.2 | 8.1 | 0.52 / 0.19 | 4.7 | −1.33 / −0.23 | 29.6 | 0.85 / 0.69 |
 | 0.1 | 7.3 | 0.51 / 0.20 | 10.2 | −1.41 / −0.19 | 29.9 | 0.93 / 0.74 |
 Top drone z error 0.2–0.6 cm RMS in all five. Observation: the gate-mean label (≈ −1.2…−1.4 m/s²) is nearly the same at dz 0.25, 0.5 and 0.75 for equal speed, while the z error peak does fall with dz (0.1 m/s: 46 / 43 / 30 cm). To be checked in the retrain: how much of the in-gate label is wash vs crossing manoeuvre.
+
+## Result block 6 (A1 stacked hold) — 2026-10-16
+Flown: 19-38-08 (dz 0.25), 19-40-02 (0.5), 19-43-10, 19-44-21, 19-46-03 (0.75). Logged on cf5: 19-38-08, 19-40-02, 19-46-03. Logged on cf_second: 19-46-03 only (files 53–55 empty). Only 19-46-03 (dz 0.75) could be merged (bank: 31 flights). **A1 needs a refly at all dz (both repeats), after reformatting the cards + restore_study_sd_config.py + check_usd_deck.py.**
+Bottom drone alone (cf5 logs, last half of the hold): z median 0.14 m (dz 0.25), 0.24 m (0.5), 0.33 m (0.75) against the 0.5 m target, i.e. 36 / 26 / 17 cm of sag; the 15 s hold is too short for the z integral to recover it.
+Merged 19-46-03 (dz 0.75): bottom z 0.26 → 0.33 m, z error 24 → 17 cm, gap top−bottom 0.99 → 0.92 m, a_res_z −1.1 → −1.3 m/s², xy separation 7 cm; alignment RMS 21.7 cm (flagged, the sag, not a misalignment).
+
+## Plan for the next lab session (filtered 2026-10-16 evening) — A1, R1, A4 (offset steps), A7
+Chosen by coverage (gate time by lateral offset / real gap / speed, bank vs. each scenario): the bank has 267 s in the gate, but only 13 s with a real gap below 0.45 m, 39 s above 0.4 m/s and no usable A1 hold. **Skipped on purpose:** A5 (≈ A8), A2/A3 repeats at dz 0.25/0.75 (lateral offset < 0.05 m is already covered; label flat across dz), A4 offset-0.05 sweeps #76–90 (≈ A3, 134 of 170 s at < 0.1 m/s). A7 is kept by decision of the user although the study never goes below dz 0.25 (the evidence argued to skip it): fly it last, only with clean cards and fresh batteries.
+
+| Order | Block | Cards | Why it is in | Flights | Flight time |
+|---|---|---|---|---|---|
+| 0 | Prep: back up + reformat both cards, `restore_study_sd_config.py`, `check_usd_deck.py` on both, fresh batteries (rest ≥ 4.1 V), bench `--readback` (controller 9, indi 0, rnn.en 0) | – | 4 of 5 A1 flights today were lost to empty uSD files | – | – |
+| 1 | **A1** stacked hold, dz 0.5 / 0.25 / 0.75 ×2 (+ 0.375, 0.625 ×2 optional) | #66–75 | study scenario; only static / lateral-0 / speed-0 data; 1 of 10 usable | 6–10 | 15 s each |
+| 2 | **R1** random waypoints, seeds 101–110 first (111–120 after a quick retrain check) | #100–119 | 2.7× the gate time of the bank, widest lateral/gap spread; never flown (seed 101 first, hand on the abort) | 10–20 | 43–68 s each |
+| 3 | **A4** offset steps 0 / 0.1 / 0.15 m at 0.3 m/s, dz 0.5 / 0.25 / 0.75 | #91–99 | controlled lateral-offset dependence | 9 | 18 s each |
+| 4 | **A7** descend-through | #61–65 | continuous gap sweep (only data < dz 0.25; outside the study range); needs `--allow-extreme`, no `--height`; ends 0.1 m above the bottom drone | 5 | 8–29 s each |
+Optional if time remains: A2 at 0.4 / 0.5 m/s, dz 0.25 and 0.75 (#29, #30, #49, #50), the cheapest way to add fast in-gate time.
+
+Commands (all start with `ros2 run crazyflie_examples run_formation`):
+- A1: `--scenario A1 --dz <0.5|0.25|0.75|0.375|0.625> --hold 15.0 --height 0.5 --auto-center --yes` (#66/67 dz 0.5, #68/69 0.25, #70/71 0.75, #72/73 0.375, #74/75 0.625)
+- R1: `--scenario R1 --seed <101…120> --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` (#100 = seed 101 … #119 = seed 120)
+- A4: `--scenario A4 --dz <0.5|0.25|0.75> --speed 0.3 --offset <0.0|0.1|0.15> --motion line --height 0.5 --auto-center --yes` (#91–93 dz 0.5, #94–96 dz 0.25, #97–99 dz 0.75; offsets in the order 0.0, 0.1, 0.15)
+- A7: `--scenario A7 --speed <0.1…0.5> --auto-center --yes --allow-extreme` (#61 = 0.1 … #65 = 0.5)
+After each block: `copy_usd_log.py … --tag ns2train_<block>` (cf_second card first, then cf5), check that every flight has a file on BOTH cards before the next block (empty-file check), `check_usd_log_quality.py`, `merge_training_bank.py --date <day> --only-tag-contains ns2train`.
