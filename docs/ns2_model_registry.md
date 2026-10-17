@@ -2,7 +2,7 @@
 
 Machine-readable source: `flying_drone_stack/tools/residual/weights/registry.json`; check with `python3 flying_drone_stack/tools/residual/verify_ns2_models.py [--list]` (sha256, git-tracked, read-only).
 
-**Rules:** registered weight files are never edited, moved or overwritten (files are read-only; `run_c2_lab_retrain.py` now refuses to write into a folder that already holds `full_bank_c1_complete.npz` or into `weights/`). A retrain writes to a NEW `--out-dir`, produces a `MODEL_CARD.json` (git commit, command, manifest + weights sha256, flight list, v1 sha) and is added here under a NEW id before it is used anywhere. The network that is flown stays **ns2_v1** until a new one passes its gate and you sign it off.
+**Rules:** registered weight files are never edited, moved or overwritten (files are read-only; `run_c2_lab_retrain.py` now refuses to write into a folder that already holds `full_bank_c1_complete.npz` or into `weights/`). A retrain writes to a NEW `--out-dir`, produces a `MODEL_CARD.json` (git commit, command, manifest + weights sha256, flight list, v1 sha) and is added here under a NEW id before it is used anywhere. The network that is flown was **ns2_v1** until the sign-off of **ns2_v2** on 2026-10-17 (v2 is the network of the study once flashed and re-validated; v1 stays frozen for comparison).
 
 | id | status | trained on (manifest, flights) | labels | result | sha256 (first 12) | file |
 |---|---|---|---|---|---|---|
@@ -22,6 +22,7 @@ Machine-readable source: `flying_drone_stack/tools/residual/weights/registry.jso
 | ns2_heldout_noA9_2026-10-17 | EXPERIMENT (held-out-setting test), not for flashing | pilot-2 manifest minus all A9 flights, 70 flights | tree definition, top labels zeroed | held-out A9: 3/3 pass, R² 0.74-0.79 | `f1966aab9321` | `experiments/analysis/out/ns2_heldout_noA9_2026-10-17/held_out_model.npz` |
 | ns2_heldout_noA1_2026-10-17 | EXPERIMENT (held-out-setting test), not for flashing | pilot-2 manifest minus all A1 flights (old and new), 61 flights | tree definition, top labels zeroed | held-out A1: new 5/6 pass (median 0.72, min 0.09), old 1/6 pass (R² 0.20-0.30) | `b61c9c499189` | `experiments/analysis/out/ns2_heldout_noA1_2026-10-17/held_out_model.npz` |
 | ns2_pilot2_2026-10-17 | v2 CANDIDATE (full bank), not flown, not flashed; needs sign-off before export | `experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json`, 73 flights (26 relabelled v1 + 47 usable S0 flights of 10-16/17) | tree definition, top labels zeroed | LOO 69/73 pass (median R² 0.79); new flights 45/47 pass, better than v1 on 47/47; A1 10/12 | `9450131abb06` | `experiments/analysis/out/ns2_pilot2_2026-10-17/full_bank_c1_complete.npz` |
+| **ns2_v2** | **RELEASED v2 (signed off 2026-10-17), for the study; not yet flashed/flown** | same training data as `ns2_pilot2_2026-10-17`: `experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json`, 73 flights, all data | tree definition, top labels zeroed | LOO 69/73 pass (median R² 0.79); new flights 45/47, better than v1 on 47/47; held-out R1 9/9, A9 3/3 | `9450131abb06` | `flying_drone_stack/tools/residual/weights/ns2_v2.npz` |
 
 Provenance of the early dry runs (09-19, 09-26) beyond what sits next to the files was not re-derived on 2026-10-16.
 

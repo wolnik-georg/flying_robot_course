@@ -354,6 +354,35 @@
    "notes": "MODEL_CARD.json in the output folder; docs/ns2_pilot_retrain_2026-10-16.md",
    "sha256": "9450131abb06a7199c78107c08ae9d8e508ca9b297d15960dbcd009871fc2d97",
    "git_tracked": false
+  },
+  {
+   "id": "ns2_v2",
+   "file": "flying_drone_stack/tools/residual/weights/ns2_v2.npz",
+   "status": "RELEASED v2 (signed off 2026-10-17 by the user), for the comparative study; not yet flashed or flown",
+   "created": "2026-10-17",
+   "trained_on": {
+    "manifest": "experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json",
+    "manifest_sha256": "0762755b98c9aa3debb7039a2b7ff7a363f5710c9f01a26c32e8d6330d3061da",
+    "n_flights": 73,
+    "scenarios": [
+     "A1",
+     "A2",
+     "A3",
+     "A4",
+     "A5",
+     "A6",
+     "A7",
+     "A8",
+     "A9",
+     "R1"
+    ],
+    "description": "26 relabelled v1 flights + 47 usable S0 flights of lab 2026-10-16/17"
+   },
+   "labels": "tree definition (omar_labels.py), top labels zeroed; bottom drone cf5 slightly bent",
+   "result": "LOO: 69/73 folds pass the v1 gate thresholds (median R\u00b2 0.79); new flights 45/47 pass and better than v1 (RMSE) on 47/47; A1 10/12; full-bank R\u00b2 0.882",
+   "notes": "identical file to ns2_pilot2_2026-10-17 (the source); NS2_V2.md next to it. Never overwrite; a retrain gets a new id.",
+   "sha256": "9450131abb06a7199c78107c08ae9d8e508ca9b297d15960dbcd009871fc2d97",
+   "git_tracked": false
   }
  ]
 }
