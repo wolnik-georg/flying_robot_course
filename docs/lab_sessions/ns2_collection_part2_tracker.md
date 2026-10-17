@@ -41,7 +41,7 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 | 105 | seed=106 | 53 | `--scenario R1 --seed 106 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-29-16 (clean); 13-23-04 COLLISION, excluded | ✔ / ✔ | |
 | 106 | seed=107 | 46 | `--scenario R1 --seed 107 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-31-17 | ✔ / ✔ | |
 | 107 | seed=108 | 59 | `--scenario R1 --seed 108 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-34-05 (min 0.11 m) | ✔ / ✔ | |
-| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | flown 13-52-38, LOST (empty file on both cards) | ✗ / ✗ | refly planned (user) |
+| 108 | seed=109 | 59 | `--scenario R1 --seed 109 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | flown 13-52-38, LOST (empty file on both cards) | ✗ / ✗ | SKIPPED (user, 2026-10-17): the drone gets too close to the boundary and is lost; the plan has the widest y extent (±0.78 m vs ≤ 0.70 for the other flown seeds) and the highest z (1.40 m vs ≤ 1.33) |
 | 109 | seed=110 | 46 | `--scenario R1 --seed 110 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ✔ 13-55-39 | ✔ / ✔ | |
 | 110 | seed=111 | 47 | `--scenario R1 --seed 111 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 111 | seed=112 | 51 | `--scenario R1 --seed 112 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
