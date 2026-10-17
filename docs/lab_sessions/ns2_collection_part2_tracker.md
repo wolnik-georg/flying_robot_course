@@ -54,19 +54,13 @@ Plan and reasons: `next_session_plan.md`; coverage evidence: `experiments/result
 | 118 | seed=119 | 50 | `--scenario R1 --seed 119 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 | 119 | seed=120 | 53 | `--scenario R1 --seed 120 --total 40.0 --bias 0.7 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
 
-## A4 offset steps (0 / 0.1 / 0.15 m at 0.3 m/s; `--rotate 90` = line along y, lateral offset along x; 2026-10-17) — copy tag `ns2train_A4`
+## A9 = the nine A4 offset steps in ONE flight (replaces cards #91–99; 198 s plan, `--rotate 90`) — copy tag `ns2train_A9`
 
 | # | setting | s | command (after `run_formation`) | flown | uSD cf_second / cf5 | notes |
 |---|---|---:|---|---|---|---|
-| 91 | dz=0.5 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 92 | dz=0.5 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 93 | dz=0.5 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.5 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 94 | dz=0.25 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 95 | dz=0.25 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 96 | dz=0.25 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.25 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 97 | dz=0.75 speed=0.3 offset=0.0 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.0 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 98 | dz=0.75 speed=0.3 offset=0.1 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.1 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
-| 99 | dz=0.75 speed=0.3 offset=0.15 motion=line | 18 | `--scenario A4 --dz 0.75 --speed 0.3 --offset 0.15 --motion line --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+| A9 | 9 sections: dz 0.75 → 0.5 → 0.25, offset 0 / 0.1 / 0.15 m, 0.3 m/s line along y (2 passes each) | 198 | `--scenario A9 --rotate 90 --height 0.5 --auto-center --yes` | ☐ | ☐ / ☐ | |
+
+Sections (plan time): 1 dz 0.75 off 0 (0–17.5 s), 2 dz 0.75 off 0.1 (22.5–40), 3 dz 0.75 off 0.15 (45–62.5), 4 dz 0.5 off 0.15 (67.5–85), 5 dz 0.5 off 0.1 (90–107.5), 6 dz 0.5 off 0 (112.5–130), 7 dz 0.25 off 0 (135–152.5), 8 dz 0.25 off 0.1 (157.5–175), 9 dz 0.25 off 0.15 (180–197.5); 5 s rest-to-rest transitions in between (top moves vertically and/or the bottom drone sideways). dz only decreases, so every change increases the downwash on the lower drone.
 
 ## A7 descend-through (last, `--allow-extreme`, no `--height`) — copy tag `ns2train_A7`
 
