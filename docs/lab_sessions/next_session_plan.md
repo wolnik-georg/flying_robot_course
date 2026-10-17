@@ -1,4 +1,15 @@
-# Next lab session — NS2 training data collection on the Omar C tree (S0) — PLANNED (date open)
+# NEXT LAB SESSION — flash study_tree_v2 and re-validate S2 / S3 (A, B) — PLANNED (date open)
+
+*(The NS2 training-data collection that this file used to plan is DONE on 2026-10-16/17 — kept below as the record: `2026-10-16.md`, `2026-10-17.md`, `ns2_training_data_overview_2026-10-17.md`.)*
+
+## Session 2026-10-?? : v2 validation (ordered)
+1. **Prep:** pull both repos; flash `flying_drone_stack/firmware_app/build_artifacts/study_tree_v2.bin` on BOTH drones (sha256 `6f2d57d69c295e68…`, 533 152 B; contains `ns2_v2` weights and the `ns2_mode` switch; verify the hash with `sha256sum` before flashing), power-cycle; `ns2c_bench_check.py --readback` on both (expect `rnn.ready 1`, `rnn.div 10`, `ns2_mode` readable; controller 9 only after `ros2 launch`; confirm the console line `Using OutOfTree4 (9)` / `check_active_controller.py`); `check_usd_deck.py`; fresh batteries; restore the study SD config if the cards were reformatted.
+2. **Hover check of all four strategies** (S0, S1, S2, S3): z tracking, `rnn.us_max` (NS2 timing, expect ≈ 526 µs).
+3. **A8 and A1, 3 flights each, per strategy to compare:** S2 (`from_main_S2` = geometric + NS2), S3 Version A (`from_main_S3A.patch`), S3 Version B (`from_main_S3B.patch`); S0 and S1 as references (n = 2–3). Same card of checks as before (empty-file check on both cards after every block, `tree_log_check.py`, `check_usd_log_quality.py`, merge, `a8_crossings.py`/study metrics). Record `ns2_mode` per block in the lab doc (the uSD logs cannot tell A from B).
+4. **After:** supervisor decision S3 A/B (meeting 2026-10-22), freeze protocol v1.0, tags, then the tier-1 study.
+
+---
+# (record) NS2 training data collection on the Omar C tree (S0) — DONE 2026-10-16/17
 
 Previous session (tree validation, closed): `2026-10-15.md`. Plan and rationale: `docs/plan_ns2_retrain_data_2026-10-14.md`. Card: `docs/ns2_training_flight_card.md` (**119 flights** after the 2026-10-15 redesign: dz {0.25, 0.5, 0.75} × peak speed {0.1 … 0.5} m/s for A8 / A2 / A3 / A5, A7 and A4 speed sweeps, A1 dz grid, 20 R1; 66 min of flight, ≈ 10 h with overheads, i.e. about 4 sessions; ordered core-first so every session is a balanced subset). Speeds are requested directly (`--speed`, A8 and A5 now convert exactly to duration / period); no `--study` in any command.
 
