@@ -1,0 +1,13 @@
+{
+ "tag": "v0",
+ "git_commit": "fc2952b7eeb5096fddd0d11e43a7cd82bed477d1",
+ "command": "experiments/fbl/stage1_training/s1_fit_residual.py --tag v0 --epochs 400",
+ "manifest": "experiments/results/ns2_pilot2_2026-10-17/training_manifest_pilot2.json",
+ "manifest_sha256": "0762755b98c9aa3debb7039a2b7ff7a363f5710c9f01a26c32e8d6330d3061da",
+ "bundle_sha256": "49089e6c10c4401be8b0b47d0477cb1f3bd257436410e58b920a27402acca7e1",
+ "n_samples": 88574,
+ "n_flights": 73,
+ "epochs": 400,
+ "loss": "supervised weighted MSE on a_res minus far baseline (x,y weight 0.3, z 1.0)",
+ "note": "own training, NOT the paper's KNODE loss; replace train_fit when the authors' script arrives"
+}
