@@ -117,7 +117,7 @@ Flight-day steps: [`next_flight_card.html`](next_flight_card.html) · commands: 
 
 - [ ] **Supervisor:** which "Pure INDI" is Strategy 1 — `controller=6/ctrl_mode=3` vs Omar C/Rust (10-02 3-way data: ours best on A8, worst on A1; Omar C/Rust ~20 cm high on A8). In [`meetings/2026-10-05.md`](meetings/2026-10-05.md).
 - [ ] **Supervisor:** which scenarios go into the comparative study (influences the INDI choice).
-- [ ] **FBL controller:** follow up the email (~2 weeks old; Strategy 3 blocked without it).
+- [ ] **FBL controller:** follow up the email (~2 weeks old; the authors' training script and hardware gains are still missing). Desk track done 2026-10-18: Stages 0–2 (`docs/fbl/STATUS.md`); open: supervisor scope decision for Strategy 3, then Stage 3 (onboard port, 4–6 weeks, needs a go).
 - [ ] **Writing:** Ch.6–9 skeletons exist; content waits on C.4 data (needs Strategy 2).
 - [ ] **C.3/C.4:** modes 0/1/2 on `controller=6`; with/without residual — after Checklist G.
 - [ ] Open INDI items (lower priority): full-INDI A1 attitude oscillation; Omar's A8-only 15–25 cm z offset; hardware z-overshoot vs SIL.

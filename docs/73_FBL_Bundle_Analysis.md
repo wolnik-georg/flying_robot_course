@@ -1,5 +1,7 @@
 # 73 — Learned-FBL code bundle (Hsieh et al. 2026): analysis — WORK IN PROGRESS
 
+> **Update 2026-10-18:** own pipeline built on this analysis (Stages 0–2: definitions, residual fit on our 73-flight bank, closed loop); results in `docs/fbl/STATUS.md`.
+
 **Status:** all phases done (2026-10-09). Read-only on the bundle (hashes verified at the end), one document, uncommitted until you say so. **Read-only on the bundle.** Source bundle: `~/Desktop/learned_fbl_core` (identical to `~/Desktop/learned_fbl_core.zip`), received from Pei-An Hsieh as a "standalone bundle of the core code" (simplified, not the repository). Paper: `docs/papers/hsieh2026flatness.pdf` (arXiv 2607.12275**v2**, 17 Aug 2026, 15 pp).
 
 ## Summary (for the supervisor)
