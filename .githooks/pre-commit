@@ -1,0 +1,31 @@
+#!/bin/sh
+# Rebuild docs/thesis/thesis_draft.pdf from the STAGED thesis sources whenever a commit stages
+# docs/thesis/*.tex or docs/references.bib, and add the PDF to the commit. Touches nothing else.
+# Missing LaTeX or a tooling failure: warning only, the commit continues.
+# A LaTeX error or undefined reference/citation in the sources: the commit is blocked
+# (skip with: git commit --no-verify).
+srcs=$(git diff --cached --name-only --diff-filter=ACMRD | grep -E '^docs/thesis/[^/]+\.tex$|^docs/references\.bib$')
+[ -n "$srcs" ] || exit 0
+root=$(git rev-parse --show-toplevel)
+if ! command -v latexmk >/dev/null 2>&1 || ! command -v pdflatex >/dev/null 2>&1; then
+  echo "[thesis hook] latexmk/pdflatex not found: thesis_draft.pdf NOT rebuilt; commit continues."
+  exit 0
+fi
+tmp=$(mktemp -d) || exit 0
+trap 'rm -rf "$tmp"' EXIT
+# Export the staged (index) versions of the sources, so the PDF matches exactly what is committed.
+git checkout-index --prefix="$tmp/" -- $(git ls-files -- 'docs/thesis/*.tex' | grep -E '^docs/thesis/[^/]+\.tex$') docs/references.bib || {
+  echo "[thesis hook] could not export the staged sources; PDF NOT rebuilt; commit continues."; exit 0; }
+"$root/docs/thesis/check_build.sh" "$tmp/docs/thesis"
+rc=$?
+if [ "$rc" -eq 0 ]; then
+  cp "$tmp/docs/thesis/thesis_draft.pdf" "$root/docs/thesis/thesis_draft.pdf" && git add "$root/docs/thesis/thesis_draft.pdf"
+  echo "[thesis hook] thesis_draft.pdf rebuilt from the staged sources and added to this commit."
+  exit 0
+elif [ "$rc" -eq 1 ]; then
+  echo "[thesis hook] COMMIT BLOCKED: the staged thesis sources do not build cleanly (see above)."
+  echo "[thesis hook] Fix the sources, or commit anyway with: git commit --no-verify"
+  exit 1
+fi
+echo "[thesis hook] build tooling problem (see above): thesis_draft.pdf NOT rebuilt; commit continues."
+exit 0
