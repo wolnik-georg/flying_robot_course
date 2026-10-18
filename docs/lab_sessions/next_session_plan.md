@@ -1,12 +1,12 @@
-# NEXT LAB SESSION — flash study_tree_v2 and re-validate S2 / S3 (A, B) — PLANNED (date open)
+# NEXT LAB SESSION — flash study_tree_v2 and re-validate S2 / S3 — PLANNED (date open)
 
 *(The NS2 training-data collection that this file used to plan is DONE on 2026-10-16/17 — kept below as the record: `2026-10-16.md`, `2026-10-17.md`, `ns2_training_data_overview_2026-10-17.md`.)*
 
 ## Session 2026-10-?? : v2 validation (ordered)
-1. **Prep:** pull both repos; flash `flying_drone_stack/firmware_app/build_artifacts/study_tree_v2.bin` on BOTH drones (sha256 `6f2d57d69c295e68…`, 533 152 B; contains `ns2_v2` weights and the `ns2_mode` switch; verify the hash with `sha256sum` before flashing), power-cycle; `ns2c_bench_check.py --readback` on both (expect `rnn.ready 1`, `rnn.div 10`, `ns2_mode` readable; controller 9 only after `ros2 launch`; confirm the console line `Using OutOfTree4 (9)` / `check_active_controller.py`); `check_usd_deck.py`; fresh batteries; restore the study SD config if the cards were reformatted.
+1. **Prep:** pull both repos; flash `flying_drone_stack/firmware_app/build_artifacts/study_tree_v2.bin` on BOTH drones (sha256 `3ae7304a31d0f01e…`, 532 952 B, contains the `ns2_v2` weights; verify the hash with `sha256sum` before flashing), power-cycle; `ns2c_bench_check.py --readback` on both (expect `rnn.ready 1`, `rnn.div 10`; controller 9 only after `ros2 launch`; confirm the console line `Using OutOfTree4 (9)` / `check_active_controller.py`); `check_usd_deck.py`; fresh batteries; restore the study SD config if the cards were reformatted.
 2. **Hover check of all four strategies** (S0, S1, S2, S3): z tracking, `rnn.us_max` (NS2 timing, expect ≈ 526 µs).
-3. **A8 and A1, 3 flights each, per strategy to compare:** S2 (`from_main_S2` = geometric + NS2), S3 Version A (`from_main_S3A.patch`), S3 Version B (`from_main_S3B.patch`); S0 and S1 as references (n = 2–3). Same card of checks as before (empty-file check on both cards after every block, `tree_log_check.py`, `check_usd_log_quality.py`, merge, `a8_crossings.py`/study metrics). Record `ns2_mode` per block in the lab doc (the uSD logs cannot tell A from B).
-4. **After:** supervisor decision S3 A/B (meeting 2026-10-22), freeze protocol v1.0, tags, then the tier-1 study.
+3. **A8 and A1, 3 flights each, per strategy to compare:** S2 (`from_main_S2` = geometric + NS2), S3 (`from_main_S3.patch` = INDI + NS2); S0 and S1 as references (n = 2–3; **re-fly S1 on fresh batteries ≥ 3.8 V**, the 2026-10-15 S1 flights ran partly at 3.44–3.49 V). Look at the upward peak of S3 against S1. Same card of checks as before (empty-file check on both cards after every block, `tree_log_check.py`, `check_usd_log_quality.py`, merge, `a8_crossings.py`/study metrics).
+4. **After:** freeze protocol v1.0, tags, then the tier-1 study. S3 is decided (two plain switches, `docs/s3_indi_ns2_decision_2026-10-18.md`). Optional diagnostic: S1 with `indi = 1` (headroom test), only if you want the cause of the weak INDI.
 
 ---
 # (record) NS2 training data collection on the Omar C tree (S0) — DONE 2026-10-16/17
@@ -33,9 +33,6 @@ Commands (all start with `ros2 run crazyflie_examples run_formation`):
 - A4: `--scenario A4 --dz <0.5|0.25|0.75> --speed 0.3 --offset <0.0|0.1|0.15> --motion line --rotate 90 --height 0.5 --auto-center --yes` (line along y, offset along x; #91–93 dz 0.5, #94–96 dz 0.25, #97–99 dz 0.75; offsets in the order 0.0, 0.1, 0.15)
 - A7: `--scenario A7 --speed <0.1…0.5> --auto-center --yes --allow-extreme` (#61 = 0.1 … #65 = 0.5)
 After each block: `copy_usd_log.py … --tag ns2train_<block>` (cf_second card first, then cf5), check that every flight has a file on BOTH cards before the next block (empty-file check), `check_usd_log_quality.py`, `merge_training_bank.py --date <day> --only-tag-contains ns2train`.
-
-## Added 2026-10-17: S3 Version A / B
-The Omar controller now has `ctrlOmarIndi.ns2_mode` (0 = Version A, plain sum, default; 1 = Version B, INDI on what NS2 left over; `docs/ns2_s3_versions_A_B_2026-10-17.md`). After `study_tree_v2` is flashed (it contains the parameter): fly S3 (`from_main_S3A.patch`) and S3B (`from_main_S3B.patch`) on A8 and A1, 3 flights each (the supervisor decides which is the study's S3, meeting 2026-10-22).
 
 ## 0. Goal
 Dedicated training flights (never study repeats) for the retrained NS2 that serves both **S2 (geometric + NS2)** and **S3 (INDI + NS2)**. All flights on S0 (indi 0, NS2 off, deck RPM on, both drones controller 9). The label `a_res_z = a_imu_f − a_rpm_f` is reconstructed offline with Omar's own filter chain (`omar_labels.py`, validated r = 0.998), so it is the same signal the INDI term measures in S1/S3.

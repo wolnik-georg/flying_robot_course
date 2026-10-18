@@ -1,5 +1,8 @@
 # Prompt for an independent reviewer (Opus) — validate the "S3 = INDI + NS2: Version A vs Version B" analysis before it goes to the supervisor
 
+> **Closed 2026-10-18:** Version B was removed and S3 decided (`docs/s3_indi_ns2_decision_2026-10-18.md`); kept as history.
+
+
 You are an experienced control/estimation engineer reviewing a colleague's analysis. Be adversarial: the goal is to find out where we are **wrong**, not to confirm. Separate **mechanism** (is the reasoning right?) from **magnitude** (does it explain the numbers we measured?). Write your result to `docs/validation_s3_versions_2026-10-18.md` (new file). Do NOT modify firmware, the controller, yaml, the meeting document or any existing doc; do NOT push; no co-author trailers. Repository: `~/Desktop/flying_robot_course` (branch `main`); firmware tree `~/Desktop/crazyflie-firmware` (patched, local); python for analysis: `~/.pyenv/versions/flying_robots/bin/python` (host bindings/SIL need the system `python3` 3.10 and `CFFIRMWARE_DIR=~/Desktop/crazyflie-firmware/build`).
 
 ## 1. System in one page

@@ -13,8 +13,8 @@ Leonard Bauersfeld, Koen Muller, Dominic Ziegler, Filippo Coletti, and Davide
   Scaramuzza.
 \newblock Robotics meets fluid dynamics: A characterization of the induced
   airflow below a quadrotor as a turbulent jet.
-\newblock arXiv:2403.13321, 2024.
-\newblock Published in IEEE Robotics and Automation Letters.
+\newblock {\em IEEE Robotics and Automation Letters}, 10(2):1241--1248, 2025.
+\newblock arXiv:2403.13321v3.
 
 \bibitem{chee2024knodedwmpc}
 Kong~Yao Chee, Pei-An Hsieh, George~J. Pappas, and M.~Ani Hsieh.
@@ -26,9 +26,9 @@ Kong~Yao Chee, Pei-An Hsieh, George~J. Pappas, and M.~Ani Hsieh.
 Eckart Cobo-Briesewitz, Khaled Wahba, and Wolfgang Hönig.
 \newblock Learned incremental nonlinear dynamic inversion for quadrotors with
   and without slung payloads.
-\newblock arXiv:2503.09441, 2025.
-\newblock Published in Proceedings of the 8th Annual Conference on Learning for
-  Dynamics and Control (L4DC), PMLR.
+\newblock In {\em Proceedings of the 8th Annual Conference on Learning for
+  Dynamics and Control (L4DC)}, Proceedings of Machine Learning Research, 2026.
+\newblock arXiv:2503.09441v2.
 
 \bibitem{gielis2023aggregate}
 Jennifer Gielis, Ajay Shankar, Ryan Kortvelesy, and Amanda Prorok.
@@ -39,8 +39,7 @@ Jennifer Gielis, Ajay Shankar, Ryan Kortvelesy, and Amanda Prorok.
 Weibin Gu, Jiance Zhao, and Alessandro Rizzo.
 \newblock Learning uncertainties online for quadrotor flight control: A
   comparative study.
-\newblock {\em Journal of Intelligent \& Robotic Systems}, 2025.
-\newblock Abstract read via OpenAlex; full text not held (paywalled).
+\newblock {\em Journal of Intelligent \& Robotic Systems}, 111:98, 2025.
 
 \bibitem{hsieh2025onlineadaptation}
 Pei-An Hsieh, Kong~Yao Chee, and M.~Ani Hsieh.
@@ -64,14 +63,9 @@ Taeyoung Lee, Melvin Leok, and N.~Harris McClamroch.
 \newblock Control of complex maneuvers for a quadrotor uav using geometric
   methods on se(3).
 \newblock arXiv:1003.2005, 2010.
-\newblock COMPANION arXiv paper. Used for equation-level verification of the
-  objects shared with CDC 2010: the attitude error function, the attitude and
-  angular velocity errors, and the full torque law with feedforward. Cite CDC
-  2010 as primary for Strategy 0. The extended v4 revision, and only it,
-  carries the three flight modes, velocity mode, hybrid concatenation, the
-  heading-projection proposition and the switched 720/360-degree example; cite
-  THIS key, not CDC, for any of those. Do not copy v4 region-of-attraction
-  bounds or Lyapunov matrices onto the CDC citation.
+\newblock Companion of the CDC 2010 paper; version 4 (2011) held and used for
+  all equation checks (attitude error function eq. 6, errors eqs. 8--9, torque
+  law eqs. 11/20, Propositions 3--4).
 
 \bibitem{lee2010geometrictracking}
 Taeyoung Lee, Melvin Leok, and N.~Harris McClamroch.
@@ -79,37 +73,39 @@ Taeyoung Lee, Melvin Leok, and N.~Harris McClamroch.
 \newblock In {\em 49th IEEE Conference on Decision and Control (CDC)}, pages
   5420--5425, 2010.
 \newblock PRIMARY reference for the geometric SE(3) controller (Strategy 0).
-  Tracks position and one heading direction, four outputs. Its torque law is
-  CDC eq. (16) and includes the angular feedforward term; the firmware
-  implements a reduced form of it. Stability is regional (Prop. 2 exponential
-  below 90 degrees; Prop. 3 almost-global attractiveness below 180 degrees),
-  not global. Its companion is arXiv:1003.2005v1. Do NOT attribute the three
-  flight modes, velocity mode, heading-projection proposition or the switched
-  720/360-degree example to this paper; those are in the v4 companion only.
+  Stability regions (exponential below 90 degrees, almost-global attractiveness
+  below 180 degrees) checked against the v4 companion (Propositions 3--4
+  there); numbering in this paper not checked.
 
 \bibitem{li2023ndpnmpc}
 Jinjie Li, Liang Han, Haoyang Yu, Yuheng Lin, Qingdong Li, and Zhang Ren.
-\newblock Nonlinear mpc for quadrotors in close-proximity flight with neural
+\newblock Nonlinear {MPC} for quadrotors in close-proximity flight with neural
   network downwash prediction.
-\newblock arXiv:2304.07794, 2023.
+\newblock In {\em 62nd IEEE Conference on Decision and Control (CDC)}, pages
+  2122--2128, 2023.
+\newblock arXiv:2304.07794.
 
 \bibitem{shankar2023docking}
 Ajay Shankar, Heedo Woo, and Amanda Prorok.
 \newblock Docking multirotors in close proximity using learnt downwash models.
-\newblock arXiv:2311.13988, 2023.
+\newblock In {\em International Symposium on Experimental Robotics (ISER)},
+  pages 427--437. Springer, 2023.
+\newblock arXiv:2311.13988.
 
 \bibitem{shi2022neuralswarm2}
 Guanya Shi, Wolfgang Hönig, Xichen Shi, Yisong Yue, and Soon-Jo Chung.
 \newblock Neural-swarm2: Planning and control of heterogeneous multirotor
   swarms using learned interactions.
-\newblock arXiv:2012.05457, 2020.
-\newblock Published in IEEE Transactions on Robotics.
+\newblock {\em IEEE Transactions on Robotics}, 38(2):1063--1079, 2022.
+\newblock arXiv:2012.05457.
 
 \bibitem{shi2020neuralswarm}
 Guanya Shi, Wolfgang Hönig, Yisong Yue, and Soon-Jo Chung.
 \newblock Neural-swarm: Decentralized close-proximity multirotor control using
   learned interactions.
-\newblock arXiv:2003.02992, 2020.
+\newblock In {\em IEEE International Conference on Robotics and Automation
+  (ICRA)}, pages 3241--3247, 2020.
+\newblock arXiv:2003.02992.
 
 \bibitem{smeur2017cascadedindi}
 Ewoud J.~J. Smeur, Guido C. H.~E. de~Croon, and Qiping Chu.
@@ -126,12 +122,16 @@ H.~Smith, A.~Shankar, J.~Gielis, J.~Blumenkamp, and A.~Prorok.
 Ezra Tal and Sertac Karaman.
 \newblock Accurate tracking of aggressive quadrotor trajectories using
   incremental nonlinear dynamic inversion and differential flatness.
-\newblock arXiv:1809.04048, 2018.
+\newblock {\em IEEE Transactions on Control Systems Technology},
+  29(3):1203--1218, 2021.
+\newblock Extended version of the CDC 2018 paper; arXiv:1809.04048v2.
 
 \bibitem{yang2025flatnessresiduals}
 Fengjun Yang, Jake Welde, and Nikolai Matni.
 \newblock Learning flatness-preserving residuals for pure-feedback systems.
-\newblock arXiv:2504.04324, 2025.
+\newblock arXiv:2504.04324v3, 2025.
+\newblock A conference version appeared at IEEE CDC 2025, pp. 3035--3042; the
+  extended arXiv v3 is cited.
 
 \bibitem{zhang2024proxfly}
 Ruiqi Zhang, Dingqi Zhang, and Mark~W. Mueller.

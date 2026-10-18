@@ -50,15 +50,7 @@ if READ:
         for n in names:
             print(f"  {n:24s} {vals[n]}")
         ind, en = int(float(vals["ctrlOmarIndi.indi"])), int(float(vals["rnn.en"]))
-        try:   # 2026-10-17: Version A/B switch; absent on images built before it (then Version A)
-            mode = int(float(pget(cf, "ctrlOmarIndi.ns2_mode")))
-            print(f"  {'ctrlOmarIndi.ns2_mode':24s} {mode}")
-        except Exception:
-            mode = 0
-            print(f"  {'ctrlOmarIndi.ns2_mode':24s} (not in this image: Version A)")
-        strat = {(0, 0): "S0 geometric", (3, 0): "S1 INDI", (0, 1): "S2 geometric + NS2", (3, 1): "S3 INDI + NS2 (Version A, plain sum)"}.get((ind, en), f"other (indi {ind}, rnn.en {en})")
-        if (ind, en) == (3, 1) and mode == 1:
-            strat = "S3B INDI + NS2 (Version B, INDI on what NS2 left over)"
+        strat = {(0, 0): "S0 geometric", (3, 0): "S1 INDI", (0, 1): "S2 geometric + NS2", (3, 1): "S3 INDI + NS2"}.get((ind, en), f"other (indi {ind}, rnn.en {en})")
         print(f"  => strategy loaded on this drone: {strat}")
     sys.exit(0)
 if POST:

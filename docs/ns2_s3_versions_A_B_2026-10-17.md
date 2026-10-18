@@ -1,5 +1,8 @@
 # S3 = INDI + NS2: Version A (plain sum) and Version B (INDI on what NS2 left over) — implementation and tests, 2026-10-17
 
+> **CLOSED 2026-10-18 — history only.** Version B (`ns2_mode`) was removed from the firmware and the repo; S3 is INDI + NS2 as two plain switches. The reasoning below that A "corrects the push twice" holds only for an ideal INDI and was overstated; see `docs/s3_indi_ns2_decision_2026-10-18.md` and `docs/validation_s3_versions_2026-10-18.md`.
+
+
 **Question for the supervisor:** `docs/meetings/2026-10-22.md` (Questions). **Both versions live in the same controller (controller 9), selected by `ctrlOmarIndi.ns2_mode`; default 0 = Version A = everything flown so far.**
 
 ## Code (Omar C, position loop, inside the INDI block; active only with `indi` bit 0 and NS2 on)
