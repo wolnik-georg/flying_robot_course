@@ -3,6 +3,9 @@
 #include <math.h>
 #include <string.h>
 
+/* The host SIL build renames peer_get_all (-Dpeer_get_all=peer_get_all_fw_unused, for traj_iface.c). This module must reference the
+   real name provided by the host layer (oot_host.c, injected peers) or by the firmware, exactly like ns2_residual.c. */
+#undef peer_get_all
 extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max) __attribute__((weak));
 
 void fbl_reset(fbl_state_t *s) { memset(s, 0, sizeof(*s)); }

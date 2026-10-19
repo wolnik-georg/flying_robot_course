@@ -22,6 +22,7 @@ typedef struct {
   float gravity;     /* m/s^2 */
   float abg_beta;    /* alpha-beta-gamma: velocity correction gain   0.4 */
   float abg_gamma;   /* acceleration correction gain                 0.1 */
+  float w_max;       /* limit of each commanded body-rate component [rad/s]; 0 = no limit (the bundle has none) */
 } fbl_gains_t;
 
 typedef struct {
@@ -42,6 +43,10 @@ void fbl_law_reset(fbl_law_state_t *s);
 /* Eqs. 17-18: acceleration and jerk command from the state, the reference and the acceleration estimate (updates the state). t in seconds. */
 void fbl_law_position(fbl_law_state_t *s, const fbl_gains_t *g, float t, const float pos[3], const float vel[3], const fbl_ref_t *ref,
                       float acc_cmd[3], float jerk_cmd[3]);
+
+/* Same with the update interval given directly (fixed controller rate; avoids absolute time in float on the drone). The first call only initialises. */
+void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, const float pos[3], const float vel[3], const fbl_ref_t *ref,
+                         float acc_cmd[3], float jerk_cmd[3]);
 
 /* Eqs. 15, 10, 19: thrust [N], desired body rates [rad/s], body torque [N m]. Stateless. */
 void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
