@@ -32,7 +32,7 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 |---|---|---|
 | G1 | table vs the authors' ROM: acceleration error, jerk error, gate edges | **PASSED 2026-10-19**: 3000 states, acc max error 0.005 m/s², jerk p99 0.03, max 0.14 m/s³ (steep r0 flank); table acceleration differentiated numerically vs table jerk: max deviation 0.24 m/s³ at a peak of 5.1 |
 | G2 | C `fbl_residual` vs the Python reference, host build, same inputs | **PASSED 2026-10-19** (`experiments/fbl/stage3_port/c/`, `make test`): 3077 cases incl. gate edges, fade band, r0 = 0 / 0.6, neighbour below, 1–3 neighbours; tolerance acceleration 1e-5 + 1e-5·|ref|, jerk 1e-4 + 1e-5·|ref| (proposal, to be confirmed by you); worst error 2.2 % (acceleration, 7e-7 m/s²) and 3.3 % (jerk, 7.6e-6 m/s³) of the tolerance; peer-velocity differencing rules and the zero-output cases tested; compiles clean for the ARM target (1.5 KB code + the 42 KiB table) |
-| G3 | C FBL law vs `compute_fbl_command` on logged and random inputs | not started; same tolerance |
+| G3 | C FBL law vs `compute_fbl_command` on logged and random inputs | **PASSED 2026-10-19** (`stage3_port/c/fbl_law.c`, `make test_law`; authors' code imported unmodified as the reference): 3000 random command cases (tilt up to 46°, thrust below the 0.01 N floor, yaw singularity) and 6 × 400 steps of the position law (alpha-beta-gamma estimate, integral, repeated time stamps); thrust error ≤ 1.2e-7 N, body rates ≤ 1.1e-2 rad/s (worst 23 % of the tolerance 1e-4 + 2e-5·|ref|), torque ≤ 4.6e-5 N m (69 %), acceleration command ≤ 6e-5 m/s², jerk command ≤ 7e-3 m/s³ (51 %); 20 cases within 0.01 of the yaw singularity (about ±90° tilt) are not compared — float32 and float64 legitimately differ there (denominator 1e-7 / 1e-2); ARM code 1.1 KB. Open: integration into the controller (G4) |
 | G4 | `fbl = 0` bit-identical to the current Omar C build on logged flights | not started |
 | G5 | closed-loop simulation of the C code in the Stage 2 plant: dip and tracking within a band of the Python result | not started; band (you define) |
 | G6 | bench (timing, `check_active_controller.py`, params), then solo hover, then A8 / A1 in the tree as S4 | needs the go; lab |
@@ -40,9 +40,14 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 ## 6. Steps and effort (desk unless stated)
 1. Spec + table — **done** (this document, 0.5 day).
 2. `fbl_residual.c` + host test G2 — **done 2026-10-19** (files in `experiments/fbl/stage3_port/c/`: `fbl_residual.h/.c`, `test_fbl_residual.c`, `gen_test_vectors.py`, `Makefile`; not in the firmware tree).
-3. FBL law branch + test G3/G4 — 4–5 days (largest piece: rate loop without the attitude-error term, yaw reconstruction, thrust floor, safe start/landing behaviour).
+3. FBL law branch + test G3/G4 — 4–5 days (largest piece: rate loop without the attitude-error term, yaw reconstruction, thrust floor, safe start/landing behaviour). **Law as a standalone C module with host test (G3) done 2026-10-19** (`fbl_law.c/.h`); remaining: the integration branch in `controller_omar_indi.c` behind the `fbl` parameter, the bit-identical check with `fbl = 0` (G4), limits/saturations of the commanded rates and the safe start/landing.
 4. Simulation of the C code, gain tuning with delay, noise and thrust limit (G5) — 3–4 days.
 5. ARM image, bench, hover, A8/A1 (lab, G6) — 1 week with the lab slot. Total ≈ 3–4 weeks of work after the go, sooner if the authors send hardware gains and their network.
+
+## 6b. Notes from the law port (2026-10-19)
+- The bundle integrates the position error with `t − 0` at its first call (it assumes the clock starts at 0); the C port uses 0 at the first call (identical when the clock starts at 0, safe otherwise).
+- Near thrust ≈ 0 the rate inversion saturates at the 0.01 N floor and the commanded rates become huge (hundreds of rad/s); near the yaw singularity (±90° tilt) the reconstructed yaw rate is ill-conditioned. Both are outside the flight envelope but the controller needs explicit limits on the commanded body rates and a safe behaviour at start and landing (open item of step 3).
+- Not yet in the C law: the ESO / disturbance estimate option of the bundle (not used), torque residual (force only).
 
 ## 7. Open decisions (user / supervisor)
 - D1 branch in controller 9 (`fbl` flag, recommended) or new slot 13.
