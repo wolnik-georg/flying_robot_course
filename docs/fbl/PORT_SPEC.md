@@ -50,7 +50,7 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 - D3 C_D: keep 0.43 (fitted on our label, which contains thrust-model error and ground effect) or refit from FBL flights once they exist.
 - D4 acceleration estimator: bundle's alpha-beta-gamma (retuned for 500 Hz) or the controller's `a_imu_f`.
 - D5 gates and fade (z0 1.2–1.4 m, r0 0.6 m): the fit data ends at z0 1.3 m.
-- D6 timing of steps 2–5 against the study schedule; Strategy 3 enters the study only with the supervisor's decision.
+- D6 **decided 2026-10-19 (user): Strategy 3 is part of the study**, so steps 2–5 are committed; target: FBL flying in the tree early enough to join the tier-1 study (deadline 26 Feb 2027).
 
 ## 8. Files
 `experiments/fbl/stage3_port/` — `rom_table_lib.py` (table build + reference lookup), `fbl_rom_runtime.py` (reference of the onboard residual), `build_rom_tables.py` (generator + G1 test, writes `out/stage3/rom_table_<tag>/` with npz, `fbl_rom_table.c/.h`, `MODEL_CARD.json`, `report.md`; refuses to overwrite). The C files are NOT in the firmware tree.
