@@ -15,7 +15,8 @@ from a8_crossings import zero_crossings  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 
 W = {k: np.asarray(np.load(REPO / f"flying_drone_stack/tools/residual/weights/ns2_{k}.npz")["weights"], np.float32) for k in ("v1", "v2")}
-NAMES = ["S0", "S1", "S2", "S3", "S3", "S3", "S2", "S2", "S1", "S1", "S0", "S0"]   # flight order of 2026-10-19 (1-4 one per strategy, then two more each: S3, S2, S1, S0); INDI is verified against the log below
+STRAT = {"17-39-47": "S0", "17-41-56": "S1", "17-43-47": "S2", "17-45-31": "S3", "17-55-03": "S3", "17-56-35": "S3", "17-59-16": "S2", "18-00-40": "S2",
+         "18-03-26": "S1", "18-04-46": "S1", "18-07-12": "S0", "18-08-34": "S0", "18-18-35": "S3", "18-21-50": "S3", "18-23-19": "S3"}   # flight order of 2026-10-19; INDI is verified against the log below
 
 
 def ref_pred(w, b, t, step=5):
@@ -50,7 +51,7 @@ def main():
         r1 = ref_pred(W["v1"], b, t); r2 = ref_pred(W["v2"], b, t); m = ~np.isnan(r2) & air
         e1 = float(np.sqrt(np.nanmean((pz[m] - r1[m]) ** 2))); e2 = float(np.sqrt(np.nanmean((pz[m] - r2[m]) ** 2)))
         g = m & rel_gate.values
-        res.append(dict(flight=k + 1, name=NAMES[k], file=Path(f).parent.name, duration_s=float(tt[-1]), crossings=[round(c, 2) for c in cr],
+        res.append(dict(flight=k + 1, name=STRAT[Path(d).name.split('_')[-1]], file=Path(f).parent.name, duration_s=float(tt[-1]), crossings=[round(c, 2) for c in cr],
                         z_rms_cm=100 * float(np.sqrt(np.mean(ez[steady] ** 2))), z_offset_cm=100 * base, dip_cm=[round(100 * x, 1) for x in dips], dip_mean_cm=100 * float(np.mean(dips)) if dips else None,
                         up_peak_cm=[round(100 * x, 1) for x in ups], top_z_rms_cm=100 * float(np.sqrt(np.mean(et[air & (tt > 3)] ** 2))),
                         gate_s=float(rel_gate[air].sum() / 500), indi_a_rpm_active_pct=100 * float((np.abs(b.omar_a_rpm_fz[air]) > 1e-6).mean()),
