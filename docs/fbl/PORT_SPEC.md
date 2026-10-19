@@ -31,7 +31,7 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 | # | Gate | State |
 |---|---|---|
 | G1 | table vs the authors' ROM: acceleration error, jerk error, gate edges | **PASSED 2026-10-19**: 3000 states, acc max error 0.005 m/s², jerk p99 0.03, max 0.14 m/s³ (steep r0 flank); table acceleration differentiated numerically vs table jerk: max deviation 0.24 m/s³ at a peak of 5.1 |
-| G2 | C `fbl_residual` vs the Python reference, host build, same inputs | not started; tolerance (you define), proposal 1e-5 relative |
+| G2 | C `fbl_residual` vs the Python reference, host build, same inputs | **PASSED 2026-10-19** (`experiments/fbl/stage3_port/c/`, `make test`): 3077 cases incl. gate edges, fade band, r0 = 0 / 0.6, neighbour below, 1–3 neighbours; tolerance acceleration 1e-5 + 1e-5·|ref|, jerk 1e-4 + 1e-5·|ref| (proposal, to be confirmed by you); worst error 2.2 % (acceleration, 7e-7 m/s²) and 3.3 % (jerk, 7.6e-6 m/s³) of the tolerance; peer-velocity differencing rules and the zero-output cases tested; compiles clean for the ARM target (1.5 KB code + the 42 KiB table) |
 | G3 | C FBL law vs `compute_fbl_command` on logged and random inputs | not started; same tolerance |
 | G4 | `fbl = 0` bit-identical to the current Omar C build on logged flights | not started |
 | G5 | closed-loop simulation of the C code in the Stage 2 plant: dip and tracking within a band of the Python result | not started; band (you define) |
@@ -39,7 +39,7 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 
 ## 6. Steps and effort (desk unless stated)
 1. Spec + table — **done** (this document, 0.5 day).
-2. `fbl_residual.c` + host test G2 — 2–3 days.
+2. `fbl_residual.c` + host test G2 — **done 2026-10-19** (files in `experiments/fbl/stage3_port/c/`: `fbl_residual.h/.c`, `test_fbl_residual.c`, `gen_test_vectors.py`, `Makefile`; not in the firmware tree).
 3. FBL law branch + test G3/G4 — 4–5 days (largest piece: rate loop without the attitude-error term, yaw reconstruction, thrust floor, safe start/landing behaviour).
 4. Simulation of the C code, gain tuning with delay, noise and thrust limit (G5) — 3–4 days.
 5. ARM image, bench, hover, A8/A1 (lab, G6) — 1 week with the lab slot. Total ≈ 3–4 weeks of work after the go, sooner if the authors send hardware gains and their network.
