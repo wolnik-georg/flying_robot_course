@@ -41,6 +41,15 @@ def check(path):
     corr = float(np.corrcoef(yh, ph)[0, 1]) if var > 1e-6 else float("nan")
     s_indi = "INDI on (bit 0)" if bit0 > 0.5 else "INDI off"
     s_ns2 = ("NS2 on" if slope < -0.5 else "NS2 off" if abs(slope) < 0.25 else "NS2 unclear") if np.isfinite(slope) else "NS2: prediction constant (cannot tell)"
+    # 2026-10-19: the slope above ignores the x/y part of the thrust projection and the integral state; with large tilts (geometric A1 hold, 41 deg) it
+    # gave a WRONG "NS2 off" for flights that had NS2 on. The full model (ns2_applied_check.py: thrust = m a_d . z_b, integral reconstructed) decides.
+    try:
+        import ns2_applied_check as N
+        f = N.fit(path)
+        if f is not None:
+            s_ns2 = ("NS2 on" if f["coef_pred"] < -0.6 else "NS2 off" if f["coef_pred"] > -0.3 else "NS2 unclear") + f" [full model: coef {f['coef_pred']:+.2f}, R2 {f['r2']:.2f}]"
+    except Exception as e:
+        s_ns2 += f" (full model failed: {e})"
     return (f"{Path(path).name[:60]}: {s_indi} (a_rpm_f active {100 * bit0:.0f} % of airborne); {s_ns2}  "
             f"[slope of thrust residual on prediction {slope:+.2f}, corr {corr:+.2f}, pred std {np.sqrt(var):.2f} m/s^2]")
 
