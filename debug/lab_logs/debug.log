@@ -1,218 +1,1060 @@
-control1:~/georg/ros2_ws$ ros2 run crazyflie_examples run_formation -- --scenario A8 --dz 0.5 --span 1.0 --duration 5.5 --height 0.5  --passes 4 --auto-center --yes --study --strategy S0 --session tree_validation
-
-[formation] A8  Vertical swap (2 robots), dz=0.50 m at crossing, span=1.00 m, passes=4
-[formation] Vehicles exchange sides; they are exactly stacked at the midpoint(s).
-[formation] 2 robot(s), 24.0 s, tags: swap, data_collection
-[formation] anchor [0.  0.  0.5]
-    robot 0 [ bottom] slot [ 0.  -0.5  0. ]  Then        vmax 0.40 m/s  amax 0.25 m/s^2
-    robot 1 [    top] slot [0.  0.5 0.5]  Then        vmax 0.40 m/s  amax 0.25 m/s^2
-    closest commanded approach: 0.500 m between robots 0 and 1 at t=15.7s
-    robot 0 trajectory:  5 pieces, 24.00 s
-    robot 1 trajectory:  5 pieces, 24.00 s
-[formation] commanded relative geometry:
-     bottom - top     dx  +0.00.. +0.00  dy  -1.00.. +1.00  dz  -0.50.. -0.50  |d| 0.500..1.118 m
-[formation] wrote data/formations/A8_dz0.5_span1.0_duration5.5_settle2.0_passes4_rotate_deg0.0_r0_bottom.csv
-[formation] wrote data/formations/A8_dz0.5_span1.0_duration5.5_settle2.0_passes4_rotate_deg0.0_r1_top.csv
-
-[formation] checks passed.
-[formation] --auto-center: anchor moved to [0.  0.  0.5] (was [0.  0.3 0.5])
-
-[formation] anchored on cf5 at [0.  0.  0.5]
-    cf5          [ bottom]  start [0.  0.3 0. ] -> slot [ 0.  -0.5  0.5]
-    cf_second    [    top]  start [ 0.  -0.3  0. ] -> slot [0.  0.5 1. ]
-
-[formation] per-drone effective config (what each vehicle actually flies):
-    cf5            controller=9 ctrl_mode=0  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-    cf_second      controller=9 ctrl_mode=0  pos_gains kp_xy=64.0 kv_xy=5.0 kp_z=48.0 kv_z=7.0   [own override]
-[formation] resetting EKF (complementary re-init, then Kalman)...
-[formation] waiting for EKF to converge on mocap...
-    cf5            EKF [ 0.03  -0.331  0.024]  mocap [ 0.03  -0.331  0.024]  |err| 0 mm
-    cf_second      EKF [ 0.021 -0.34   0.023]  mocap [ 0.021 -0.34   0.023]  |err| 0 mm
-[WARN] [1792078058.935087651] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.936117090] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.936793834] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.937455582] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.938346600] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.939088192] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.939809429] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.940562559] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.941323757] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.942075958] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.942844616] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.943611113] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.944389578] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.945179987] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.946066368] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.946912143] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.947824527] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.949001225] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.950134743] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.951090471] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.952039009] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.953001568] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.953970818] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.954999645] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.956118156] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.957212001] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.958272989] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.959345169] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.960516767] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.961625831] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.962720178] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.963808755] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.964975493] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.966140671] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.967314635] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.968681872] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.969925269] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.971188515] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.972423975] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.973684303] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.975011153] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.976331328] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.977635851] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.979081729] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.980452536] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.982245764] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.983787947] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.985244015] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.986821746] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.988405191] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.990150690] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.991767392] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.993363092] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.994934006] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.996606119] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078058.998311913] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.000003152] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.001685207] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.003432444] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.005181795] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.006907669] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.008720888] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.010619850] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.019369178] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.021575519] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.023558374] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.025568298] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.027531911] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.029527221] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.031467268] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.033560443] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.035619122] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.037767305] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.039942275] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.042094395] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.044224774] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.046790722] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.048994580] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.051202220] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.053366170] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.055684780] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.057857170] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.060044863] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.064511672] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.066777894] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.069189157] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.071797239] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.074244475] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.076715596] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.079641515] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.082145205] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.084779183] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.087418183] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.090109741] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.092791670] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.095377948] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.098067341] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.100834065] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.103590054] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.106475531] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.109268971] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.112560722] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.115446767] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.118311903] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.121254069] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.124297349] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.127210488] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.130187411] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.133219201] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.136346325] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.139446840] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.143089460] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.146270517] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.149429583] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.152778817] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.156091977] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.159484843] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.162775613] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.166178924] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.169473693] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.172977894] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.176815955] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.180483242] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.183841138] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.187391875] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.190946432] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.194652669] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.198166058] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.201667438] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.205621811] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.215985758] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.220008297] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.223919240] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.227795583] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.231826453] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.235759413] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.240348292] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.244449912] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.248637434] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.252597195] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.256570799] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.260593642] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.264789035] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.268814389] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.273577681] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.277960911] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.282077226] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.286330743] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.290890155] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.295050798] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.299307650] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.304228704] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.308719169] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.313080238] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.317628560] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.322059393] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.326451954] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.331080822] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.336344193] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.341017425] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.345917046] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.350548177] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.355265396] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.360255815] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.365198586] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[WARN] [1792078059.370283012] [CrazyflieAPI]: (crazyflie.py)getParam : exception raised list index out of range
-[log] cf5: 0 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf5_2026-10-15_17-27-34.csv
-[log] cf_second: 0 rows -> /home/flyingrobots/georg/flying_robot_course/experiments/logs/A8_cf_second_2026-10-15_17-27-34.csv
-
-[formation] realised relative geometry (last settled sample):
-    cf5 - cf_second: got [0.009 0.009 0.001]  want [ 0.  -1.  -0.5]  err [0.009 1.009 0.501] m  |ez| 501 mm
-Traceback (most recent call last):
-  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/crazyflie_examples/run_formation", line 33, in <module>
-    sys.exit(load_entry_point('crazyflie-examples==1.0.3', 'console_scripts', 'run_formation')())
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/run_formation.py", line 891, in main
-    validate_readback(args.strategy, study_pre.get('cf5', {}), static_only=True)]
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/study_config.py", line 129, in validate_readback
-    err = _key_ok(v, readback.get(k.replace(".", "_")))
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/flyingrobots/georg/ros2_ws/install/crazyflie_examples/lib/python3.12/site-packages/crazyflie_examples/study_config.py", line 116, in _key_ok
-    return None if int(float(got)) == int(v) else f"got {got} expected {v}"
-                   ^^^^^^^^^^^^^^^
-ValueError: cannot convert float NaN to integer
-[ros2run]: Process exited with failure 1
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ 
-
+^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ^C
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ ros2 launch crazyflie launch.py
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-10-19-18-50-08-462913-flightcontrol1-2235138
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [2235141]
+[INFO] [crazyflie_server-2]: process started with pid [2235142]
+[INFO] [teleop-3]: process started with pid [2235143]
+[INFO] [joy_node-4]: process started with pid [2235144]
+[INFO] [gui.py-5]: process started with pid [2235145]
+[teleop-3] [INFO] [1792428608.584438477] [teleop]: Mode changed to high_level
+[motion_capture_tracking_node-1] logClouds=0
+[crazyflie_server-2] [INFO] [1792428608.608046977] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1792428608.610734260] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1792428608.612981921] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1792428608.616144137] [crazyflie_server]: [cf5] SYS: I am 0x383036363034511000370055 and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1792428608.617336068] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1792428608.619295906] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1792428608.621250046] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1792428608.623299413] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1792428608.625477371] [crazyflie_server]: [cf5] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1792428608.626621630] [crazyflie_server]: [cf5] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1792428608.628904660] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1792428608.630021960] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1792428608.632306163] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1792428608.634141958] [crazyflie_server]: [cf5] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1792428608.635181336] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1792428608.637049217] [crazyflie_server]: [cf5] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1792428608.638995604] [crazyflie_server]: [cf5] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1792428608.640893575] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1792428608.642983072] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1792428608.645175954] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1792428608.647597452] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1792428608.649686697] [crazyflie_server]: [cf5] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1792428608.651737036] [crazyflie_server]: [cf5] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1792428608.652956641] [crazyflie_server]: [cf5] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1792428608.654250689] [crazyflie_server]: [cf5] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1792428608.656228932] [crazyflie_server]: [cf5] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1792428608.657467731] [crazyflie_server]: [cf5] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1792428608.659303129] [crazyflie_server]: [cf5] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1792428608.661398499] [crazyflie_server]: [cf5] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1792428608.662618202] [crazyflie_server]: [cf5] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1792428608.664570213] [crazyflie_server]: [cf5] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1792428608.665641538] [crazyflie_server]: [cf5] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1792428608.667857536] [crazyflie_server]: [cf5] uSD: malloc buffer 8192 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1792428608.668997801] [crazyflie_server]: [cf5] Requesting parameters...
+[crazyflie_server-2] [INFO] [1792428608.678989358] [crazyflie_server]: [cf5] Param TOC: 443 entries with CRC 745406907
+[crazyflie_server-2] [INFO] [1792428608.679064134] [crazyflie_server]: [cf5] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1792428608.702762720] [crazyflie_server]: [cf5] reqParamTOC: 0.111088 s (443 params)
+[crazyflie_server-2] [INFO] [1792428608.703307878] [crazyflie_server]: [cf5] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1792428608.703535682] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Iz" to 1.500000
+[crazyflie_server-2] [INFO] [1792428608.703691756] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.indi" to 0
+[crazyflie_server-2] [INFO] [1792428608.703702464] [crazyflie_server]: [cf5] Update parameter "ctrlOot5.indi" to 3
+[crazyflie_server-2] [INFO] [1792428608.703709105] [crazyflie_server]: [cf5] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1792428608.703715844] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428608.703721743] [crazyflie_server]: [cf5] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1792428608.703754419] [crazyflie_server]: [cf5] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1792428608.703760861] [crazyflie_server]: [cf5] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1792428608.703767746] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1792428608.703774000] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1792428608.703780075] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1792428608.703786118] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1792428608.703792682] [crazyflie_server]: [cf5] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1792428608.703799059] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1792428608.703805671] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1792428608.703812057] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1792428608.703819153] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1792428608.703825463] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1792428608.703831518] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1792428608.703837766] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1792428608.703843682] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1792428608.703849924] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1792428608.703856221] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1792428608.703862310] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1792428608.703868605] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1792428608.703875249] [crazyflie_server]: [cf5] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1792428608.703881626] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1792428608.703887946] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1792428608.703894341] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1792428608.703900970] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1792428608.703908016] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1792428608.703914457] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1792428608.703921655] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1792428608.703928306] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1792428608.703934991] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1792428608.703941456] [crazyflie_server]: [cf5] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1792428608.703948017] [crazyflie_server]: [cf5] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1792428608.703954580] [crazyflie_server]: [cf5] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1792428608.703961023] [crazyflie_server]: [cf5] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1792428608.703967120] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1792428608.703973666] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1792428608.703981065] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1792428608.703987387] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1792428608.703993649] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1792428608.703999824] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1792428608.704010749] [crazyflie_server]: [cf5] Update parameter "rnn.en" to 1
+[crazyflie_server-2] [INFO] [1792428608.704016869] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428608.704022709] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1792428608.704050394] [crazyflie_server]: [cf5] ref frame: world
+[joy_node-4] [INFO] [1792428608.708579187] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[crazyflie_server-2] [INFO] [1792428608.771688856] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree4 (9) controller
+[crazyflie_server-2] [INFO] [1792428608.773229122] [crazyflie_server]: [cf5] Log TOC: 657 entries with CRC 771924550
+[crazyflie_server-2] [INFO] [1792428608.773252953] [crazyflie_server]: [cf5] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1792428608.773509889] [crazyflie_server]: [cf5] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.776598834] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1792428608.780167261] [crazyflie_server]: [cf5] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.786050141] [crazyflie_server]: [cf5] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.791927794] [crazyflie_server]: [cf5] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.797541079] [crazyflie_server]: [cf5] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.803302219] [crazyflie_server]: [cf5] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.810851054] [crazyflie_server]: [cf5] Logging to rpm at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.816022279] [crazyflie_server]: [cf5] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1792428608.822409439] [crazyflie_server]: [cf5] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1792428608.827485575] [crazyflie_server]: [cf5] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1792428608.834198155] [crazyflie_server]: [cf5] Requesting memories...
+[crazyflie_server-2] [INFO] [1792428608.837551609] [crazyflie_server]: [cf5] Memories: 7
+[crazyflie_server-2] [INFO] [1792428608.877674850] [crazyflie_server]: [cf_second] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1792428608.882204309] [crazyflie_server]: [cf_second] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1792428608.886234946] [crazyflie_server]: [cf_second] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1792428608.892855990] [crazyflie_server]: [cf_second] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1792428608.895323740] [crazyflie_server]: [cf_second] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1792428608.899259552] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1792428608.903637500] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1792428608.908089080] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1792428608.912229464] [crazyflie_server]: [cf_second] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1792428608.914888018] [crazyflie_server]: [cf_second] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1792428608.919334627] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1792428608.921404020] [crazyflie_server]: [cf_second] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1792428608.926294557] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1792428608.930691063] [crazyflie_server]: [cf_second] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1792428608.933271495] [crazyflie_server]: [cf_second] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1792428608.937124099] [crazyflie_server]: [cf_second] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1792428608.941600896] [crazyflie_server]: [cf_second] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1792428608.945847927] [crazyflie_server]: [cf_second] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1792428608.950203945] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1792428608.954133355] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1792428608.958864961] [crazyflie_server]: [cf_second] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1792428608.963712514] [crazyflie_server]: [cf_second] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1792428608.967948847] [crazyflie_server]: [cf_second] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1792428608.970066266] [crazyflie_server]: [cf_second] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1792428608.972438232] [crazyflie_server]: [cf_second] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1792428608.976983362] [crazyflie_server]: [cf_second] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1792428608.979124716] [crazyflie_server]: [cf_second] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1792428608.981120345] [crazyflie_server]: [cf_second] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1792428608.985402084] [crazyflie_server]: [cf_second] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1792428608.988096509] [crazyflie_server]: [cf_second] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1792428608.991981048] [crazyflie_server]: [cf_second] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1792428608.994303112] [crazyflie_server]: [cf_second] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1792428608.998304506] [crazyflie_server]: [cf_second] uSD: malloc buffer 8192 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1792428609.000371375] [crazyflie_server]: [cf_second] Requesting parameters...
+[crazyflie_server-2] [INFO] [1792428609.010365389] [crazyflie_server]: [cf_second] Param TOC: 443 entries with CRC 745406907
+[crazyflie_server-2] [INFO] [1792428609.010412940] [crazyflie_server]: [cf_second] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1792428609.023994118] [crazyflie_server]: [cf_second] reqParamTOC: 0.152379 s (443 params)
+[crazyflie_server-2] [INFO] [1792428609.024052164] [crazyflie_server]: [cf_second] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1792428609.024061238] [crazyflie_server]: [cf_second] Update parameter "ctrlOmarIndi.Kpos_Iz" to 1.500000
+[crazyflie_server-2] [INFO] [1792428609.024066555] [crazyflie_server]: [cf_second] Update parameter "ctrlOmarIndi.indi" to 0
+[crazyflie_server-2] [INFO] [1792428609.024071263] [crazyflie_server]: [cf_second] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1792428609.024075673] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428609.024079741] [crazyflie_server]: [cf_second] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1792428609.024086753] [crazyflie_server]: [cf_second] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1792428609.024090623] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1792428609.024094624] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1792428609.024098613] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1792428609.024102339] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1792428609.024106115] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1792428609.024110027] [crazyflie_server]: [cf_second] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1792428609.024114622] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1792428609.024119021] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1792428609.024123220] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1792428609.024127409] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1792428609.024131986] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1792428609.024135939] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1792428609.024139685] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1792428609.024143416] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1792428609.024147213] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1792428609.024151154] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1792428609.024154965] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1792428609.024158800] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1792428609.024162743] [crazyflie_server]: [cf_second] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1792428609.024184158] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1792428609.024188204] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1792428609.024192238] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1792428609.024196423] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1792428609.024200620] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1792428609.024206329] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1792428609.024210358] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1792428609.024214749] [crazyflie_server]: [cf_second] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1792428609.024219023] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1792428609.024223246] [crazyflie_server]: [cf_second] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1792428609.024227303] [crazyflie_server]: [cf_second] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1792428609.024231084] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1792428609.024235560] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1792428609.024239552] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1792428609.024243536] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1792428609.024247449] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1792428609.024251254] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1792428609.024254748] [crazyflie_server]: [cf_second] Update parameter "rnn.en" to 0
+[crazyflie_server-2] [INFO] [1792428609.024258933] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428609.024262605] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1792428609.024283500] [crazyflie_server]: [cf_second] ref frame: world
+[crazyflie_server-2] [INFO] [1792428609.116777829] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree4 (9) controller
+[crazyflie_server-2] [INFO] [1792428609.122633966] [crazyflie_server]: [cf_second] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1792428609.125111090] [crazyflie_server]: [cf_second] Log TOC: 657 entries with CRC 771924550
+[crazyflie_server-2] [INFO] [1792428609.125150986] [crazyflie_server]: [cf_second] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1792428609.125389144] [crazyflie_server]: [cf_second] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.135703163] [crazyflie_server]: [cf_second] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.146468430] [crazyflie_server]: [cf_second] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.157242081] [crazyflie_server]: [cf_second] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.167875125] [crazyflie_server]: [cf_second] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.178010173] [crazyflie_server]: [cf_second] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.189730510] [crazyflie_server]: [cf_second] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1792428609.200740382] [crazyflie_server]: [cf_second] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1792428609.211239439] [crazyflie_server]: [cf_second] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1792428609.223497429] [crazyflie_server]: [cf_second] Requesting memories...
+[crazyflie_server-2] [INFO] [1792428609.228657949] [crazyflie_server]: [cf_second] Memories: 7
+[crazyflie_server-2] [WARN] [1792428609.591713424] [crazyflie_server]: [cf5] last latency update: 1.004006 s
+[crazyflie_server-2] [WARN] [1792428609.871743259] [crazyflie_server]: [cf_second] last latency update: 1.002520 s
+[crazyflie_server-2] [INFO] [1792428613.581437138] [crazyflie_server]: [all] Update parameter "usec.reset" to 1
+[crazyflie_server-2] [INFO] [1792428613.597942240] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 1
+[crazyflie_server-2] [INFO] [1792428613.598275461] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 1
+[crazyflie_server-2] [INFO] [1792428613.662702285] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1792428613.663710974] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [WARN] [1792428613.665687374] [crazyflie_server]: [cf5] High latency: 74.0 ms
+[crazyflie_server-2] [INFO] [1792428614.581649680] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1792428614.582068760] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1792428614.596705467] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1792428614.597722824] [crazyflie_server]: [cf_second] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1792428614.601725544] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (80)
+[crazyflie_server-2] [INFO] [1792428614.603744610] [crazyflie_server]: [cf_second] ESTKALMAN: WARNING: Kalman prediction rate off (49)
+[crazyflie_server-2] [WARN] [1792428614.610695422] [crazyflie_server]: [cf5] High latency: 19.0 ms
+[crazyflie_server-2] [INFO] [1792428614.781916497] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 1
+[crazyflie_server-2] [INFO] [1792428614.782333457] [crazyflie_server]: [cf_second] Update parameter "kalman.resetEstimation" to 1
+[crazyflie_server-2] [INFO] [1792428614.982010799] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 0
+[crazyflie_server-2] [INFO] [1792428614.982318004] [crazyflie_server]: [cf_second] Update parameter "kalman.resetEstimation" to 0
+[crazyflie_server-2] [WARN] [1792428617.583458304] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.1, Min: 85.8, Max: 120.8)
+[crazyflie_server-2] [INFO] [1792428617.982608900] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428617.982945190] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428617.983243472] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1792428617.983561389] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1792428617.983927963] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1792428617.984310726] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1792428617.984565485] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428617.984926503] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428618.282781540] [crazyflie_server]: [cf_second] arm(1)
+[crazyflie_server-2] [INFO] [1792428618.282853174] [crazyflie_server]: [cf5] arm(1)
+[crazyflie_server-2] [INFO] [1792428618.297766657] [crazyflie_server]: [cf_second] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1792428618.298705842] [crazyflie_server]: [cf5] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1792428618.306687789] [crazyflie_server]: [cf5] SUP: Ready to fly
+[crazyflie_server-2] [INFO] [1792428618.318689760] [crazyflie_server]: [cf_second] SUP: Ready to fly
+[crazyflie_server-2] [INFO] [1792428618.782914315] [crazyflie_server]: [cf5] takeoff(height=0.500000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1792428618.933062512] [crazyflie_server]: [cf_second] takeoff(height=1.000000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [WARN] [1792428619.583457609] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 83.0, Max: 121.6)
+[crazyflie_server-2] [WARN] [1792428621.583457607] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 102.1, Min: 58.4, Max: 328.9)
+[crazyflie_server-2] [INFO] [1792428622.583358069] [crazyflie_server]: [cf5] go_to(position=0.000000,0.000000,0.500000 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [WARN] [1792428622.583446081] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 81.4, Max: 124.5)
+[crazyflie_server-2] [INFO] [1792428622.733448139] [crazyflie_server]: [cf_second] go_to(position=0.000000,0.000000,1.000000 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [WARN] [1792428625.583460462] [crazyflie_server]: [all] Motion capture rate off (#: 3, Avg: 100.4, Min: 77.2, Max: 141.6)
+[crazyflie_server-2] [WARN] [1792428625.604698373] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [INFO] [1792428626.384127435] [crazyflie_server]: [cf5] upload_trajectory(id=0, offset=0)
+[crazyflie_server-2] [INFO] [1792428626.475280948] [crazyflie_server]: [cf_second] upload_trajectory(id=0, offset=0)
+[crazyflie_server-2] [WARN] [1792428626.602690634] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [INFO] [1792428627.066248671] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428627.066717055] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428627.066949125] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1792428627.067194084] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1792428627.067423606] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1792428627.067770087] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1792428627.067971113] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428627.068208203] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428627.366790939] [crazyflie_server]: [all] Update parameter "usd.runTag" to 1792428627
+[crazyflie_server-2] [INFO] [1792428627.416886164] [crazyflie_server]: [all] Update parameter "usd.logging" to 1
+[crazyflie_server-2] [INFO] [1792428627.417144560] [crazyflie_server]: [all] start_trajectory(id=0, timescale=1.000000, reversed=0, group_mask=0)
+[crazyflie_server-2] [WARN] [1792428627.644711156] [crazyflie_server]: [cf5] High latency: 53.0 ms
+[crazyflie_server-2] [WARN] [1792428628.583457378] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.8, Min: 65.6, Max: 200.8)
+[crazyflie_server-2] [INFO] [1792428628.658698673] [crazyflie_server]: [cf_second] uSD: Failed to open file: thesis:0
+[crazyflie_server-2] [INFO] [1792428629.347722294] [crazyflie_server]: [cf5] uSD: Failed to open file: thesis:0
+[crazyflie_server-2] [WARN] [1792428629.583464281] [crazyflie_server]: [all] Motion capture rate off (#: 2, Avg: 100.4, Min: 72.7, Max: 153.3)
+[crazyflie_server-2] [WARN] [1792428635.601769647] [crazyflie_server]: [cf5] High latency: 10.1 ms
+[crazyflie_server-2] [WARN] [1792428641.604696314] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [WARN] [1792428642.583456193] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.2, Min: 85.2, Max: 121.1)
+[crazyflie_server-2] [INFO] [1792428643.417622231] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428643.418103668] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1792428643.418388930] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1792428643.418666433] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1792428643.418941057] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1792428643.419117536] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1792428643.419539215] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1792428643.419707923] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [WARN] [1792428643.604710919] [crazyflie_server]: [cf5] High latency: 13.0 ms
+[crazyflie_server-2] [INFO] [1792428643.718058265] [crazyflie_server]: [cf5] go_to(position=0.393871,0.042524,0.544447 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [INFO] [1792428643.718164381] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1792428643.718279258] [crazyflie_server]: [cf_second] go_to(position=-0.306129,0.042524,1.001017 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[motion_capture_tracking_node-1] [WARN] [1792428643.831477683] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -13.0805 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.831574967] [motion_capture_tracking]: No updated pose for cf5 for 0.009987 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.841554851] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -15.9253 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.841598639] [motion_capture_tracking]: No updated pose for cf5 for 0.020098 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.851622901] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -21.3334 >= 20
+[motion_capture_tracking_node-1] wyaw: -19.491 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.851674796] [motion_capture_tracking]: No updated pose for cf5 for 0.030130 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.861438058] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -25.6441 >= 20
+[motion_capture_tracking_node-1] wyaw: -24.06 >= 10
+[motion_capture_tracking_node-1] roll: -1.53638 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.861484376] [motion_capture_tracking]: No updated pose for cf5 for 0.039996 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.871602461] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -28.3733 >= 20
+[motion_capture_tracking_node-1] wyaw: -26.9785 >= 10
+[motion_capture_tracking_node-1] roll: -1.93415 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.871635864] [motion_capture_tracking]: No updated pose for cf5 for 0.050167 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.881674312] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -32.5323 >= 20
+[motion_capture_tracking_node-1] wpitch: -21.3805 >= 20
+[motion_capture_tracking_node-1] wyaw: -47.2307 >= 10
+[motion_capture_tracking_node-1] roll: -2.46945 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.881719459] [motion_capture_tracking]: No updated pose for cf5 for 0.060179 s.
+[motion_capture_tracking_node-1] [WARN] [1792428643.891464981] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -27.9906 >= 20
+[motion_capture_tracking_node-1] wyaw: -39.7264 >= 10
+[motion_capture_tracking_node-1] roll: -2.47072 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.891500749] [motion_capture_tracking]: No updated pose for cf5 for 0.070017 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.901546516] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.901578158] [motion_capture_tracking]: No updated pose for cf5 for 0.080123 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.911776579] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.911828428] [motion_capture_tracking]: No updated pose for cf5 for 0.090290 s.
+[crazyflie_server-2] [INFO] [1792428643.918703481] [crazyflie_server]: [cf5] SYS: ----------------------------
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.921219255] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.921251801] [motion_capture_tracking]: No updated pose for cf5 for 0.099799 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.931371077] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.931408286] [motion_capture_tracking]: No updated pose for cf5 for 0.109963 s.
+[crazyflie_server-2] [INFO] [1792428643.937697971] [crazyflie_server]: [cf_second] SYS: ----------------------------
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.941502483] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.941546444] [motion_capture_tracking]: No updated pose for cf5 for 0.120054 s.
+[crazyflie_server-2] [INFO] [1792428643.941794251] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1792428643.942692182] [crazyflie_server]: [cf_second] SYS: Crazyflie 2.1 Brushless is up and running!
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.951446670] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.951483644] [motion_capture_tracking]: No updated pose for cf5 for 0.130020 s.
+[crazyflie_server-2] [INFO] [1792428643.960698530] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.961546725] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.961574287] [motion_capture_tracking]: No updated pose for cf5 for 0.140128 s.
+[crazyflie_server-2] [INFO] [1792428643.962698948] [crazyflie_server]: [cf_second] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1792428643.969688668] [crazyflie_server]: [cf5] SYS: I am 0x383036363034511000370055 and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1792428643.970694654] [crazyflie_server]: [cf_second] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428643.971431418] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428643.971470193] [motion_capture_tracking]: No updated pose for cf5 for 0.150010 s.
+[crazyflie_server-2] [INFO] [1792428643.971725628] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1792428643.973705086] [crazyflie_server]: [cf_second] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1792428643.977692279] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1792428643.980702947] [crazyflie_server]: [cf5]  deckctrl
+[motion_capture_tracking_node-1] [WARN] [1792428643.981363809] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] roll: -1.46924 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428643.981396146] [motion_capture_tracking]: No updated pose for cf5 for 0.159923 s.
+[crazyflie_server-2] [INFO] [1792428643.981709365] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found:DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1792428643.986699422] [crazyflie_server]: [cf5] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1792428643.987703334] [crazyflie_server]: [cf_second] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1792428643.988700001] [crazyflie_server]: [cf5] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1792428643.989716958] [crazyflie_server]: [cf_second] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1792428643.995688306] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1792428643.996688129] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1792428643.997760223] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [WARN] [1792428643.998701645] [crazyflie_server]: [cf_second] High latency: 127.0 ms
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.001341278] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.001376512] [motion_capture_tracking]: No updated pose for cf5 for 0.009905 s.
+[crazyflie_server-2] [INFO] [1792428644.001688159] [crazyflie_server]: [cf_second] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1792428644.002688804] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1792428644.007733223] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1792428644.008714268] [crazyflie_server]: [cf5] IMU: BMI088: Using I2C interface.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.011649908] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.011697689] [motion_capture_tracking]: No updated pose for cf5 for 0.020171 s.
+[crazyflie_server-2] [INFO] [1792428644.011702794] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1792428644.012715937] [crazyflie_server]: [cf_second] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1792428644.014702658] [crazyflie_server]: [cf_second] uSD: wait for sensors
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.021337382] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.021378050] [motion_capture_tracking]: No updated pose for cf5 for 0.029893 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.031326307] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.031395123] [motion_capture_tracking]: No updated pose for cf5 for 0.039885 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.041195323] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.041249996] [motion_capture_tracking]: No updated pose for cf5 for 0.049700 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.051505972] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.051541290] [motion_capture_tracking]: No updated pose for cf5 for 0.060066 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.061428490] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.061463974] [motion_capture_tracking]: No updated pose for cf5 for 0.069997 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.071240515] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.071287819] [motion_capture_tracking]: No updated pose for cf5 for 0.079770 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.081340195] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.081379882] [motion_capture_tracking]: No updated pose for cf5 for 0.089887 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.090922342] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.090952123] [motion_capture_tracking]: No updated pose for cf5 for 0.099492 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.101431807] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.101490689] [motion_capture_tracking]: No updated pose for cf5 for 0.109951 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.111450226] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.111485511] [motion_capture_tracking]: No updated pose for cf5 for 0.119999 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.121092530] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.121127998] [motion_capture_tracking]: No updated pose for cf5 for 0.129652 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.131490189] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.131546503] [motion_capture_tracking]: No updated pose for cf5 for 0.139983 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.141574865] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.141619720] [motion_capture_tracking]: No updated pose for cf5 for 0.150111 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.151458548] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.151492854] [motion_capture_tracking]: No updated pose for cf5 for 0.159985 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.161302909] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.161334085] [motion_capture_tracking]: No updated pose for cf5 for 0.169832 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.170998109] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.171049393] [motion_capture_tracking]: No updated pose for cf5 for 0.179508 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.181482595] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] roll: 2.48677 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.181517397] [motion_capture_tracking]: No updated pose for cf5 for 0.189994 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.191505532] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] roll: 2.48408 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.191523132] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.191530065] [motion_capture_tracking]: No updated pose for cf5 for 0.200018 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.191536496] [motion_capture_tracking]: No updated pose for cf_second for 0.009991 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.201741579] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.201768417] [motion_capture_tracking]: No updated pose for cf_second for 0.020135 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.211641041] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.211657265] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.211665515] [motion_capture_tracking]: No updated pose for cf5 for 0.009941 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.211674085] [motion_capture_tracking]: No updated pose for cf_second for 0.030170 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.221114869] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.221134630] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.221141404] [motion_capture_tracking]: No updated pose for cf5 for 0.019366 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.221149269] [motion_capture_tracking]: No updated pose for cf_second for 0.039595 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.231656483] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.231686878] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.231695040] [motion_capture_tracking]: No updated pose for cf5 for 0.029889 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.231701862] [motion_capture_tracking]: No updated pose for cf_second for 0.050118 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.241264589] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.241282304] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.241289818] [motion_capture_tracking]: No updated pose for cf5 for 0.039556 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.241297588] [motion_capture_tracking]: No updated pose for cf_second for 0.059785 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.251212054] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.251224860] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.251231416] [motion_capture_tracking]: No updated pose for cf5 for 0.049522 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.251237496] [motion_capture_tracking]: No updated pose for cf_second for 0.069751 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.261395681] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.261418473] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.261425606] [motion_capture_tracking]: No updated pose for cf5 for 0.059662 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.261431947] [motion_capture_tracking]: No updated pose for cf_second for 0.079891 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.271144350] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.271177792] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.271197127] [motion_capture_tracking]: No updated pose for cf5 for 0.069425 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.271205080] [motion_capture_tracking]: No updated pose for cf_second for 0.089654 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.281092589] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.281120002] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.281128863] [motion_capture_tracking]: No updated pose for cf5 for 0.079398 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.281136186] [motion_capture_tracking]: No updated pose for cf_second for 0.099628 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.291830623] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.291891780] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.291923182] [motion_capture_tracking]: No updated pose for cf5 for 0.090093 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.291946174] [motion_capture_tracking]: No updated pose for cf_second for 0.110322 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.301330797] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.301368840] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.301387210] [motion_capture_tracking]: No updated pose for cf5 for 0.099589 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.301403326] [motion_capture_tracking]: No updated pose for cf_second for 0.119819 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.311569296] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.311599369] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.311622742] [motion_capture_tracking]: No updated pose for cf5 for 0.109861 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.311636307] [motion_capture_tracking]: No updated pose for cf_second for 0.130090 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.320987360] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.321045948] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.321063867] [motion_capture_tracking]: No updated pose for cf5 for 0.119253 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.321083953] [motion_capture_tracking]: No updated pose for cf_second for 0.139483 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.331472641] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.331518537] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.331536540] [motion_capture_tracking]: No updated pose for cf5 for 0.129694 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.331554717] [motion_capture_tracking]: No updated pose for cf_second for 0.149923 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.341352347] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.341382731] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.341400463] [motion_capture_tracking]: No updated pose for cf5 for 0.139642 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.341416197] [motion_capture_tracking]: No updated pose for cf_second for 0.159871 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.351286866] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.351321436] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.351339246] [motion_capture_tracking]: No updated pose for cf5 for 0.149582 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.351354555] [motion_capture_tracking]: No updated pose for cf_second for 0.169811 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.361626700] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.361656049] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.361665246] [motion_capture_tracking]: No updated pose for cf5 for 0.159868 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.361679014] [motion_capture_tracking]: No updated pose for cf_second for 0.180097 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.371588371] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.371603056] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.371610610] [motion_capture_tracking]: No updated pose for cf5 for 0.169894 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.371618028] [motion_capture_tracking]: No updated pose for cf_second for 0.190123 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.381403230] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.381415046] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.381424289] [motion_capture_tracking]: No updated pose for cf5 for 0.179670 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.381431132] [motion_capture_tracking]: No updated pose for cf_second for 0.199899 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.391470177] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.391490299] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.391497344] [motion_capture_tracking]: No updated pose for cf5 for 0.189724 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.391504190] [motion_capture_tracking]: No updated pose for cf_second for 0.209954 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.401184692] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.401198063] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.401204473] [motion_capture_tracking]: No updated pose for cf5 for 0.199495 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.401212124] [motion_capture_tracking]: No updated pose for cf_second for 0.219724 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.411138502] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.411150212] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.411156264] [motion_capture_tracking]: No updated pose for cf5 for 0.209453 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.411164068] [motion_capture_tracking]: No updated pose for cf_second for 0.229682 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.421624143] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.421655279] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.421685016] [motion_capture_tracking]: No updated pose for cf5 for 0.219858 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.421695007] [motion_capture_tracking]: No updated pose for cf_second for 0.240088 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.431589057] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.431614481] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.431623020] [motion_capture_tracking]: No updated pose for cf5 for 0.229842 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.431634787] [motion_capture_tracking]: No updated pose for cf_second for 0.250071 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.441660270] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.441687238] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.441697343] [motion_capture_tracking]: No updated pose for cf5 for 0.239897 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.441708474] [motion_capture_tracking]: No updated pose for cf_second for 0.260126 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.451335574] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.451365980] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.451374825] [motion_capture_tracking]: No updated pose for cf5 for 0.249591 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.451383955] [motion_capture_tracking]: No updated pose for cf_second for 0.269820 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.461145941] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.461171652] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.461181266] [motion_capture_tracking]: No updated pose for cf5 for 0.259425 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.461189580] [motion_capture_tracking]: No updated pose for cf_second for 0.279654 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.471509154] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.471531970] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.471541071] [motion_capture_tracking]: No updated pose for cf5 for 0.269784 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.471550083] [motion_capture_tracking]: No updated pose for cf_second for 0.290014 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.481583837] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.481601530] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.481609211] [motion_capture_tracking]: No updated pose for cf5 for 0.279892 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.481616925] [motion_capture_tracking]: No updated pose for cf_second for 0.300121 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.491708226] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.491735252] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.491744116] [motion_capture_tracking]: No updated pose for cf5 for 0.289973 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.491751613] [motion_capture_tracking]: No updated pose for cf_second for 0.310202 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.501138748] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] roll: 2.9741 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.501187165] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] roll: -3.13688 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.501200026] [motion_capture_tracking]: No updated pose for cf5 for 0.299386 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.501210919] [motion_capture_tracking]: No updated pose for cf_second for 0.319616 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.521537562] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.521588879] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.521618052] [motion_capture_tracking]: No updated pose for cf5 for 0.009634 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.521633625] [motion_capture_tracking]: No updated pose for cf_second for 0.009634 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.541133184] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.541162143] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.541173563] [motion_capture_tracking]: No updated pose for cf5 for 0.009754 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.541205727] [motion_capture_tracking]: No updated pose for cf_second for 0.009754 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.561837933] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.561867460] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.561948560] [motion_capture_tracking]: No updated pose for cf5 for 0.010306 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.561957995] [motion_capture_tracking]: No updated pose for cf_second for 0.010306 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.581193404] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.581218732] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.581227347] [motion_capture_tracking]: No updated pose for cf5 for 0.009664 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.581243838] [motion_capture_tracking]: No updated pose for cf_second for 0.009664 s.
+[crazyflie_server-2] [WARN] [1792428644.583456167] [crazyflie_server]: [all] Motion capture rate off (#: 5, Avg: 95.5, Min: 3.2, Max: 106.4)
+[motion_capture_tracking_node-1] [WARN] [1792428644.591538257] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -148.858 >= 20
+[motion_capture_tracking_node-1] wpitch: 25.5472 >= 20
+[motion_capture_tracking_node-1] wyaw: -157.023 >= 10
+[motion_capture_tracking_node-1] roll: -3.0598 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.591554526] [motion_capture_tracking]: No updated pose for cf_second for 0.019977 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.601536485] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.601570713] [motion_capture_tracking]: No updated pose for cf5 for 0.010041 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.611654679] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.611673567] [motion_capture_tracking]: No updated pose for cf_second for 0.010067 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.621025630] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.621076629] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -150.186 >= 20
+[motion_capture_tracking_node-1] wpitch: 26.1618 >= 20
+[motion_capture_tracking_node-1] wyaw: -160.509 >= 10
+[motion_capture_tracking_node-1] roll: -3.02424 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.621088887] [motion_capture_tracking]: No updated pose for cf5 for 0.009359 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.621097556] [motion_capture_tracking]: No updated pose for cf_second for 0.019445 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.632994021] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -93.0304 >= 20
+[motion_capture_tracking_node-1] wyaw: -99.2986 >= 10
+[motion_capture_tracking_node-1] roll: -3.02229 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.633011597] [motion_capture_tracking]: No updated pose for cf_second for 0.031398 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.641256113] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.641293929] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -73.7055 >= 20
+[motion_capture_tracking_node-1] wyaw: -78.6388 >= 10
+[motion_capture_tracking_node-1] roll: -3.02731 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.641303240] [motion_capture_tracking]: No updated pose for cf5 for 0.008293 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.641310205] [motion_capture_tracking]: No updated pose for cf_second for 0.039708 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.651644706] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -58.0749 >= 20
+[motion_capture_tracking_node-1] wyaw: -62.0935 >= 10
+[motion_capture_tracking_node-1] roll: -3.00558 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.651675775] [motion_capture_tracking]: No updated pose for cf_second for 0.049997 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.661557666] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -17.0684 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.661594726] [motion_capture_tracking]: No updated pose for cf5 for 0.009958 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.671564125] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.671576024] [motion_capture_tracking]: No updated pose for cf_second for 0.009982 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.681532519] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -15.046 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.681576087] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -142.393 >= 20
+[motion_capture_tracking_node-1] wpitch: 25.3987 >= 20
+[motion_capture_tracking_node-1] wyaw: -156.579 >= 10
+[motion_capture_tracking_node-1] roll: -2.9875 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.681600130] [motion_capture_tracking]: No updated pose for cf5 for 0.009928 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.681608012] [motion_capture_tracking]: No updated pose for cf_second for 0.019934 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.691544919] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -95.1048 >= 20
+[motion_capture_tracking_node-1] wyaw: -104.505 >= 10
+[motion_capture_tracking_node-1] roll: -2.9948 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.691573336] [motion_capture_tracking]: No updated pose for cf_second for 0.029934 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.701788185] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -15.535 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.701828224] [motion_capture_tracking]: No updated pose for cf5 for 0.010255 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.711656260] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.711678060] [motion_capture_tracking]: No updated pose for cf_second for 0.009828 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.721222396] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.721269497] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -147.094 >= 20
+[motion_capture_tracking_node-1] wpitch: 26.0909 >= 20
+[motion_capture_tracking_node-1] wyaw: -159.943 >= 10
+[motion_capture_tracking_node-1] roll: -2.99318 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.721280994] [motion_capture_tracking]: No updated pose for cf5 for 0.009578 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.721288268] [motion_capture_tracking]: No updated pose for cf_second for 0.019433 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.731318697] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -96.7707 >= 20
+[motion_capture_tracking_node-1] wyaw: -105.084 >= 10
+[motion_capture_tracking_node-1] roll: -2.98822 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.731335150] [motion_capture_tracking]: No updated pose for cf_second for 0.029499 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.741414928] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -13.6994 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.741469704] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -72.2294 >= 20
+[motion_capture_tracking_node-1] wyaw: -78.3164 >= 10
+[motion_capture_tracking_node-1] roll: -2.99301 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.741480402] [motion_capture_tracking]: No updated pose for cf5 for 0.010065 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.741487013] [motion_capture_tracking]: No updated pose for cf_second for 0.039581 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.751310058] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 148.99 >= 20
+[motion_capture_tracking_node-1] wpitch: -35.0277 >= 20
+[motion_capture_tracking_node-1] wyaw: -18.7978 >= 10
+[motion_capture_tracking_node-1] roll: 1.96384 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.751352336] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -57.7065 >= 20
+[motion_capture_tracking_node-1] wyaw: -62.4456 >= 10
+[motion_capture_tracking_node-1] roll: -2.98906 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.751365850] [motion_capture_tracking]: No updated pose for cf5 for 0.019983 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.751376027] [motion_capture_tracking]: No updated pose for cf_second for 0.049499 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.761890011] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -102.135 >= 20
+[motion_capture_tracking_node-1] wpitch: -46.1066 >= 20
+[motion_capture_tracking_node-1] wyaw: -25.4631 >= 10
+[motion_capture_tracking_node-1] roll: 2.14394 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.761930532] [motion_capture_tracking]: No updated pose for cf5 for 0.030575 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.771750014] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.771788105] [motion_capture_tracking]: No updated pose for cf_second for 0.009789 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.781229734] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.781304622] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] vz: -3.45377 >= 3
+[motion_capture_tracking_node-1] wroll: -145.878 >= 20
+[motion_capture_tracking_node-1] wpitch: 26.1617 >= 20
+[motion_capture_tracking_node-1] wyaw: -161.188 >= 10
+[motion_capture_tracking_node-1] roll: -2.97499 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.781336396] [motion_capture_tracking]: No updated pose for cf5 for 0.009490 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.781353907] [motion_capture_tracking]: No updated pose for cf_second for 0.019315 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.790957508] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 156.865 >= 20
+[motion_capture_tracking_node-1] wpitch: -38.7382 >= 20
+[motion_capture_tracking_node-1] wyaw: -13.3953 >= 10
+[motion_capture_tracking_node-1] roll: 1.82317 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.791020066] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -96.9508 >= 20
+[motion_capture_tracking_node-1] wyaw: -107.074 >= 10
+[motion_capture_tracking_node-1] roll: -2.97044 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.791039449] [motion_capture_tracking]: No updated pose for cf5 for 0.019217 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.791056249] [motion_capture_tracking]: No updated pose for cf_second for 0.029042 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.801143381] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 101.578 >= 20
+[motion_capture_tracking_node-1] wpitch: -24.6175 >= 20
+[motion_capture_tracking_node-1] roll: 1.79507 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.801222099] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -72.5922 >= 20
+[motion_capture_tracking_node-1] wyaw: -79.0571 >= 10
+[motion_capture_tracking_node-1] roll: -3.00246 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.801242172] [motion_capture_tracking]: No updated pose for cf5 for 0.029413 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.801261489] [motion_capture_tracking]: No updated pose for cf_second for 0.039238 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.811685050] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -76.0637 >= 20
+[motion_capture_tracking_node-1] roll: 2.0508 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.811748119] [motion_capture_tracking]: No updated pose for cf5 for 0.039908 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.821474813] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -54.6469 >= 20
+[motion_capture_tracking_node-1] wyaw: -17.4059 >= 10
+[motion_capture_tracking_node-1] roll: 2.37056 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.821507798] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1792428644.821525579] [motion_capture_tracking]: No updated pose for cf5 for 0.049732 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.821541034] [motion_capture_tracking]: No updated pose for cf_second for 0.009787 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.831494227] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -43.9048 >= 20
+[motion_capture_tracking_node-1] wyaw: -16.2839 >= 10
+[motion_capture_tracking_node-1] roll: 2.46531 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.831556304] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: 24.938 >= 20
+[motion_capture_tracking_node-1] wpitch: 35.6833 >= 20
+[motion_capture_tracking_node-1] wyaw: 13.4283 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.831576649] [motion_capture_tracking]: No updated pose for cf5 for 0.059740 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.831593882] [motion_capture_tracking]: No updated pose for cf_second for 0.019795 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.841551473] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -15.4178 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.841629142] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -105.262 >= 20
+[motion_capture_tracking_node-1] roll: -3.07519 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.841651951] [motion_capture_tracking]: No updated pose for cf5 for 0.069748 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.841669053] [motion_capture_tracking]: No updated pose for cf_second for 0.029803 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.851400421] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -14.9421 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.851457195] [motion_capture_tracking]: No updated pose for cf5 for 0.079659 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.861633438] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -12.57 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.861689269] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] vz: -3.59065 >= 3
+[motion_capture_tracking_node-1] wroll: -304.066 >= 20
+[motion_capture_tracking_node-1] wyaw: -46.9903 >= 10
+[motion_capture_tracking_node-1] roll: -3.04537 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.861707908] [motion_capture_tracking]: No updated pose for cf5 for 0.089891 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.861724455] [motion_capture_tracking]: No updated pose for cf_second for 0.010214 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.871351314] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: 26.3982 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.871387823] [motion_capture_tracking]: No updated pose for cf_second for 0.019865 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.881432463] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.881501119] [motion_capture_tracking]: No updated pose for cf5 for 0.010131 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.891348881] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 55.7919 >= 20
+[motion_capture_tracking_node-1] wyaw: 61.6887 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.891406769] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -21.5518 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.891431108] [motion_capture_tracking]: No updated pose for cf5 for 0.020033 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.891458446] [motion_capture_tracking]: No updated pose for cf_second for 0.009882 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.901282334] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -78.4256 >= 20
+[motion_capture_tracking_node-1] wpitch: -85.2599 >= 20
+[motion_capture_tracking_node-1] wyaw: -87.5403 >= 10
+[motion_capture_tracking_node-1] roll: -2.93298 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.901345910] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -21.6308 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.901370675] [motion_capture_tracking]: No updated pose for cf5 for 0.029942 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.901412887] [motion_capture_tracking]: No updated pose for cf_second for 0.019791 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.911638536] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -21.5091 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.911664473] [motion_capture_tracking]: No updated pose for cf_second for 0.030138 s.
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.921328748] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.921387663] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -22.2224 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.921408649] [motion_capture_tracking]: No updated pose for cf5 for 0.009728 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.921425723] [motion_capture_tracking]: No updated pose for cf_second for 0.039883 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.931795846] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -22.4766 >= 20
+[motion_capture_tracking_node-1] wyaw: -15.7175 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.931870954] [motion_capture_tracking]: Dynamic check failed for rigidBody cf_second
+[motion_capture_tracking_node-1] wroll: -22.271 >= 20
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.931895542] [motion_capture_tracking]: No updated pose for cf5 for 0.020116 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.931913634] [motion_capture_tracking]: No updated pose for cf_second for 0.050270 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.941097031] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -36.5156 >= 20
+[motion_capture_tracking_node-1] wpitch: -68.6126 >= 20
+[motion_capture_tracking_node-1] wyaw: 94.5887 >= 10
+[motion_capture_tracking_node-1] roll: -1.87142 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.941169268] [motion_capture_tracking]: No updated pose for cf5 for 0.029421 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.961783616] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] vx: -3.67525 >= 2
+[motion_capture_tracking_node-1] wroll: -180.895 >= 20
+[motion_capture_tracking_node-1] wpitch: -221.842 >= 20
+[motion_capture_tracking_node-1] wyaw: -196.834 >= 10
+[motion_capture_tracking_node-1] roll: -3.0722 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.961841180] [motion_capture_tracking]: No updated pose for cf5 for 0.010406 s.
+[crazyflie_server-2] [INFO] [1792428644.975702079] [crazyflie_server]: [cf5] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1792428644.976737736] [crazyflie_server]: [cf_second] IMU: BMI088 Gyro connection [OK].
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428644.981585048] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428644.981649148] [motion_capture_tracking]: No updated pose for cf5 for 0.010356 s.
+[motion_capture_tracking_node-1] [WARN] [1792428644.991370272] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 27.1582 >= 20
+[motion_capture_tracking_node-1] wyaw: 25.0121 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428644.991425630] [motion_capture_tracking]: No updated pose for cf5 for 0.020098 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.001275864] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: 32.2796 >= 20
+[motion_capture_tracking_node-1] wyaw: 30.9526 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.001344891] [motion_capture_tracking]: No updated pose for cf5 for 0.029986 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.012264824] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -47.5904 >= 20
+[motion_capture_tracking_node-1] wyaw: -34.3638 >= 10
+[motion_capture_tracking_node-1] roll: -2.88222 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.012315749] [motion_capture_tracking]: No updated pose for cf5 for 0.041008 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.021530422] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -46.257 >= 20
+[motion_capture_tracking_node-1] wpitch: -48.6193 >= 20
+[motion_capture_tracking_node-1] wyaw: -42.4002 >= 10
+[motion_capture_tracking_node-1] roll: 3.02701 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.021590174] [motion_capture_tracking]: No updated pose for cf5 for 0.050275 s.
+[crazyflie_server-2] [INFO] [1792428645.028689654] [crazyflie_server]: [cf5] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1792428645.029715637] [crazyflie_server]: [cf_second] IMU: BMI088 Accel connection [OK]
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1792428645.041729827] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [WARN] [1792428645.041801030] [motion_capture_tracking]: No updated pose for cf5 for 0.010241 s.
+[crazyflie_server-2] [INFO] [1792428645.042711005] [crazyflie_server]: [cf_second] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1792428645.043700263] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OK]
+[motion_capture_tracking_node-1] [WARN] [1792428645.051579982] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -105.449 >= 20
+[motion_capture_tracking_node-1] wpitch: -125.704 >= 20
+[motion_capture_tracking_node-1] wyaw: 140.79 >= 10
+[motion_capture_tracking_node-1] roll: -2.48012 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.051634052] [motion_capture_tracking]: No updated pose for cf5 for 0.020070 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.061377030] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wyaw: -14.0523 >= 10
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.061449496] [motion_capture_tracking]: No updated pose for cf5 for 0.029839 s.
+[crazyflie_server-2] [INFO] [1792428645.064700289] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1792428645.066691004] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1792428645.069775853] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1792428645.070702340] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6) controller
+[motion_capture_tracking_node-1] [WARN] [1792428645.071457691] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -48.3102 >= 20
+[motion_capture_tracking_node-1] wpitch: -61.6998 >= 20
+[motion_capture_tracking_node-1] wyaw: 66.2242 >= 10
+[motion_capture_tracking_node-1] roll: -2.2922 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.071528251] [motion_capture_tracking]: No updated pose for cf5 for 0.039952 s.
+[crazyflie_server-2] [INFO] [1792428645.075743764] [crazyflie_server]: [cf_second] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1792428645.077708488] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1792428645.081688186] [crazyflie_server]: [cf5] SYS: About to run tests in system.c.
+[motion_capture_tracking_node-1] [WARN] [1792428645.081786084] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -41.1885 >= 20
+[motion_capture_tracking_node-1] wpitch: -49.9695 >= 20
+[motion_capture_tracking_node-1] wyaw: 54.761 >= 10
+[motion_capture_tracking_node-1] roll: -2.43319 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.081858919] [motion_capture_tracking]: No updated pose for cf5 for 0.050232 s.
+[crazyflie_server-2] [INFO] [1792428645.082702904] [crazyflie_server]: [cf_second] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1792428645.087736664] [crazyflie_server]: [cf_second] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1792428645.087934756] [crazyflie_server]: [cf5] SYS: NRF51 version: 2024.10 (C21B)
+[motion_capture_tracking_node-1] [WARN] [1792428645.101572185] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] vx: -3.44781 >= 2
+[motion_capture_tracking_node-1] wroll: 262.584 >= 20
+[motion_capture_tracking_node-1] wpitch: -229.703 >= 20
+[motion_capture_tracking_node-1] wyaw: -163.984 >= 10
+[motion_capture_tracking_node-1] roll: 2.20694 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.101642255] [motion_capture_tracking]: No updated pose for cf5 for 0.010238 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.111407668] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -134.671 >= 20
+[motion_capture_tracking_node-1] wpitch: -127.932 >= 20
+[motion_capture_tracking_node-1] wyaw: -131.906 >= 10
+[motion_capture_tracking_node-1] roll: 3.07807 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.111470429] [motion_capture_tracking]: No updated pose for cf5 for 0.020115 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.121290459] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -98.9446 >= 20
+[motion_capture_tracking_node-1] wpitch: -85.4459 >= 20
+[motion_capture_tracking_node-1] wyaw: -81.0654 >= 10
+[motion_capture_tracking_node-1] roll: 2.8222 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.121360870] [motion_capture_tracking]: No updated pose for cf5 for 0.029947 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.131615225] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] wroll: -73.5797 >= 20
+[motion_capture_tracking_node-1] wpitch: -63.5773 >= 20
+[motion_capture_tracking_node-1] wyaw: -60.809 >= 10
+[motion_capture_tracking_node-1] roll: 2.82372 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.131687687] [motion_capture_tracking]: No updated pose for cf5 for 0.040265 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.151401521] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
+[motion_capture_tracking_node-1] vx: -3.71202 >= 2
+[motion_capture_tracking_node-1] wroll: -293.406 >= 20
+[motion_capture_tracking_node-1] wpitch: -262.484 >= 20
+[motion_capture_tracking_node-1] wyaw: 307.78 >= 10
+[motion_capture_tracking_node-1] roll: -2.98706 >= 1.4
+[motion_capture_tracking_node-1] 
+[motion_capture_tracking_node-1] [WARN] [1792428645.151461018] [motion_capture_tracking]: No updated pose for cf5 for 0.009906 s.
+[motion_capture_tracking_node-1] [WARN] [1792428645.171525349] [motion_capture_tracking]: Dynamic check failed for rigidBody cf5
