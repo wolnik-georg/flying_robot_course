@@ -103,6 +103,14 @@ def main():
     if not mount.is_dir():
         sys.exit(f"[copy_usd_log] {mount} is not a mounted directory")
 
+    # 2026-10-19: the firmware names files thesis00..thesis99 (two appended digits). With all 100 names taken it tries "thesis:0",
+    # cannot open it, the write task deletes itself, and the NEXT `usd.logging 0` calls vTaskResume(NULL): the drone resets in the air.
+    n_logs = sum(1 for q in mount.iterdir() if q.is_file() and len(q.name) == 8 and q.name.startswith("thesis") and q.name[6:].isdigit())
+    if n_logs >= 85:
+        print(f"[copy_usd_log] !!! WARNING: {mount} holds {n_logs} of 100 possible thesisNN files. At 100 the NEXT flight cannot log and the drone "
+              f"RESETS when logging stops (2026-10-19, docs/lab_sessions/2026-10-19.md section 12). Move them away now: "
+              f"mkdir {mount}/_archive_$(date +%F) && mv {mount}/thesis?? {mount}/_archive_$(date +%F)/   (after all wanted files are copied)")
+
     if args.dest:
         dest_dir = Path(args.dest)
     else:
