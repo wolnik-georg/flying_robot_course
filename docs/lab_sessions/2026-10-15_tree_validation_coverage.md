@@ -1,5 +1,7 @@
 # 2026-10-15 tree validation — coverage and first numbers (cf5 card only; cf_second card and merges pending)
 
+> **SUPERSEDED 2026-10-19:** the unified-tree comparison of this day (NS2 v1, A8 at 0.40 m/s, 1–3 flights per strategy) is replaced by `docs/tree_comparison_2026-10-19.md` (NS2 v2, new drone pair, A8 at 0.5 m/s, 3–5 flights per strategy, uSD only). Kept as a record.
+
 Strategy of every flight is read from the log itself (`experiments/analysis/tree_log_check.py`: INDI bit from `a_rpm_f`, NS2 from the thrust residual vs `rnn.pred`). No `--study` gate was possible (readback returned NaN for all 83 parameters, see next_session_plan.md), so the strategy is NOT in the radio meta.
 
 | uSD | radio log | what | INDI (bit 0) | NS2 | note |
