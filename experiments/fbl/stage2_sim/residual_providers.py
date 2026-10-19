@@ -40,6 +40,7 @@ class FBLResidual:
             ode.net_f.load_state_dict({k[len("net_f."):]: v for k, v in c["state_dict_net_f"].items()})
             ode.eval()
         self.res = self.b.dw.DownwashResidual(ode, use_nn=use_nn, use_nominal=True).eval()
+        self.res.nominal_model.mass = OUR["mass"]   # the bundle divides the ROM force by ITS vehicle mass (0.03 kg), set_vehicle() only changes the force side; without this the ROM is 1.42x too large for our 0.0427 kg
         self.c_d = float(c_d)
 
     def __call__(self, t, ego, nbr):

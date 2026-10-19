@@ -36,14 +36,25 @@ Supervised fit (weighted MSE, x/y weight 0.3, z 1.0) on label minus far-field ba
 - **Reading:** the paper's two-feature structure explains about half of the downwash push on our vehicle; NS2 (full relative state, 3 neighbours, ground term) explains clearly more. For Strategy 3 this means the residual part is the weaker of the two learned models; first-order effect in closed loop is for Stage 2 to show.
 - Not tested: KNODE trajectory loss (no FBL flights), torque residual.
 
-## Stage 2 results (`experiments/fbl/stage2_sim/`, outputs `out/stage2/v1_ideal`, `v1_hw`, logs `log_v1_*.txt`; run `stage2_sim/run_all.sh v1`)
+## Stage 2 results (`experiments/fbl/stage2_sim/`, outputs `out/stage2/v2_ideal`, `v2_hw`, logs `log_v2_*.txt`; run `stage2_sim/run_all.sh v2`) — CORRECTED 2026-10-19
+**Correction.** The first run (`v1`) used the bundle's residual class unchanged, which divides the ROM force by ITS vehicle mass (0.03 kg) while our force side was set to 0.0427 kg: the ROM acceleration was 1.42× too large for our vehicle (found while testing the lookup table). Fixed in `residual_providers.py` (`nominal_model.mass`), whole matrix rerun as `v2`; the `v1` outputs were deleted. Stages 0 and 1 divide by our mass themselves and are unaffected.
 **Setup.** The authors' `FBLControl` (position law, acceleration estimator, `compute_fbl_command`, motor allocation) runs unmodified; only the residual is replaced and the vehicle constants set to ours. Plant: own rigid body (mass 0.0427, our inertia, arm 0.05, our thrust constant, 1 kHz). Bottom vehicle flies A8 (dz 0.5, span 1 m, 2 passes, peak speed 0.1 / 0.3 / 0.5 m/s) under a scripted top vehicle; controller at 500 Hz with the bundle's gains (56/38/48 position, 238 rate), unchanged. Truth downwash: **ns2** = NS2 v2 network (data-driven, z only, ground term) or **fit** = the Stage 1 ROM + net fit. Variants: none, ROM with the paper's C_D 0.236, ROM with our C_D 0.43, ROM + fitted net, NS2 as residual. Assumed, not measured: max rotor speed 2300 rad/s (T/W ≈ 2), motor lag 20 ms, yaw-torque ratio 0.006 m. "hw" = hardware position/gyro noise from the logs + 20 ms position delay (assumption).
-Worst z dip in the gate [cm], mean of the three speeds, truth ns2 (ideal / hw): none −2.4 / −2.7; ROM paper C_D −0.8 / −1.0; ROM our C_D −0.3 / −0.55; ROM + net −0.3 / −0.55; NS2 as residual −0.16 / −0.47. Truth fit: none −3.0 / −3.3; ROM paper −1.5 / −1.7; ROM our C_D −0.2 / −0.6; ROM + net −0.2 / −0.7.
-- **Ordering holds:** no residual < ROM with the paper's coefficient < ROM with a fitted coefficient; the network adds nothing over the fitted ROM (same as Stage 1). The residual removes about 75–90 % of the dip.
-- **Fitting C_D to our data matters** (paper's 0.236 leaves ~2× larger dip); it is a one-parameter fit.
-- **Not comparable to the hardware tree numbers** (S0 −15.7, S2 −5.5 cm, `docs/s3_indi_ns2_decision_2026-10-18.md`): FBL without any residual already dips only −2 to −4 cm here because its gains are far stiffer than Omar's (Kp 7, Kd 4) in an idealised plant. Whether those gains hold on the real vehicle is unknown (the authors' hardware gains are missing).
+Worst z dip in the gate [cm], mean of the three speeds (ideal / hw):
+| residual in the controller | truth ns2 | truth fit |
+|---|---|---|
+| none | −2.4 / −2.7 | −2.1 / −2.4 |
+| ROM, paper C_D 0.236 | −1.3 / −1.5 | −1.0 / −1.2 |
+| ROM, our C_D 0.43 | −0.5 / −0.7 | −0.1 / −0.4 |
+| ROM + fitted net | −0.6 / −0.8 | −0.2 / −0.6 |
+| NS2 as residual | −0.16 / −0.5 | −0.4 / −0.7 |
+- **Ordering holds:** no residual < ROM with the paper's coefficient < ROM with our fitted coefficient (about 80 % of the dip removed; the paper's value only about half).
+- **The network adds nothing, if anything slightly worse than the ROM** (−0.6 vs −0.5 cm, truth ns2); same as Stage 1.
+- **Not comparable to the hardware tree numbers** (S0 −15.7, S2 −5.5 cm, `docs/s3_indi_ns2_decision_2026-10-18.md`): FBL without any residual already dips only 2–4 cm here because its gains are far stiffer than Omar's (Kp 7, Kd 4) in an idealised plant. Whether those gains hold on the real vehicle is unknown (the authors' hardware gains are missing).
 - **Fragility found:** at a 100 Hz controller the bundle's rate gain (238) is marginal in discrete time and a 10 ms position delay diverges (all variants, also without residual); at 500 Hz it is stable with 20 ms delay. A port needs ≥ 500 Hz rate loop or retuned gains.
-- No run saturated (≤ 1 % of controller steps), nothing diverged at 500 Hz. Not tested: torque residual, the real thrust deficit seen at crossings in INDI, ground contact, 3 vehicles, real estimator.
+- Nothing diverged at 500 Hz. Not tested: torque residual, the real thrust deficit seen at crossings in INDI, ground contact, 3 vehicles, real estimator.
+
+## Stage 3 preparation (2026-10-19)
+Port specification `PORT_SPEC.md`; ROM lookup table (60 × 60 × 3 floats = 42 KiB) built and tested against the authors' ROM (`experiments/fbl/stage3_port/`, `out/stage3/rom_table_v1/`): acceleration error ≤ 0.005 m/s², jerk p99 0.03 m/s³. Nothing in the firmware tree; the rest needs the go.
 
 ## Decisions and open points
 - Our supervised fit replaces the paper's KNODE trajectory loss for now (we have no FBL flights); the KNODE loss can be implemented later or the authors' script swapped in.

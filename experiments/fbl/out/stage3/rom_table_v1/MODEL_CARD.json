@@ -1,0 +1,51 @@
+{
+ "tag": "v1",
+ "c_d": 0.43,
+ "nz": 60,
+ "nr": 60,
+ "zmin": 0.05,
+ "zmax": 2.0,
+ "rmax": 0.6,
+ "vehicle": {
+  "mass": 0.0427,
+  "arm_length": 0.05,
+  "inertia": [
+   2.395e-05,
+   2.395e-05,
+   3.235e-05
+  ],
+  "k_rpm2force": 3.91194027330774e-08,
+  "prop_radius_assumed": 0.0225
+ },
+ "bundle_sha256": "49089e6c10c4401be8b0b47d0477cb1f3bd257436410e58b920a27402acca7e1",
+ "table_sha256": "cc9c2337a3888f19b8f655d164b1e39481e9d220b95cbb5d402132c9dad95f24",
+ "git_commit": "c3057f397dc974b1197da287a8a0d7fa1a10096c",
+ "flash_bytes": 43200,
+ "gate": {
+  "z_lo": 0.05,
+  "fade": [
+   1.2,
+   1.4
+  ],
+  "r_max": 0.6
+ },
+ "tests": {
+  "n": 3000,
+  "acc_err_max": 0.005007116218175955,
+  "acc_err_p99": 0.002802602774528357,
+  "jerk_err_max": 0.13632779596779443,
+  "jerk_err_p99": 0.03208693129484803,
+  "jerk_err_median": 0.0004020729581920533,
+  "bundle_offaxis_acc_max": 0.0,
+  "jerk_vs_finite_difference_max_abs": 0.23565053939819336,
+  "jerk_peak": 5.126028060913086,
+  "fade_max_step_per_cm": 0.005568325519561768,
+  "acc_at_gate_edges": {
+   "z0=1.2": -0.9232051968574524,
+   "z0=1.4": -9.04148294011975e-08,
+   "z0=1.5": 0.0
+  },
+  "radial_edge_step_at_0.6": 0.0,
+  "acc_at_r0=0.6": 0.0
+ }
+}
