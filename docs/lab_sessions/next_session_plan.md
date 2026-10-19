@@ -1,4 +1,4 @@
-# NEXT LAB SESSION — flash study_tree_v2 and re-validate S2 / S3 — PLANNED (date open)
+# NEXT LAB SESSION — (the v2 validation below was DONE 2026-10-19, see `2026-10-19.md` §0 and `docs/tree_comparison_2026-10-19.md`; next: freeze protocol v1.0 + tier-1 study)
 
 *(The NS2 training-data collection that this file used to plan is DONE on 2026-10-16/17 — kept below as the record: `2026-10-16.md`, `2026-10-17.md`, `ns2_training_data_overview_2026-10-17.md`.)*
 
