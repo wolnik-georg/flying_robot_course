@@ -15,7 +15,7 @@ from a8_crossings import zero_crossings  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 
 W = {k: np.asarray(np.load(REPO / f"flying_drone_stack/tools/residual/weights/ns2_{k}.npz")["weights"], np.float32) for k in ("v1", "v2")}
-NAMES = ["S0", "S1", "S2", "S3"]
+NAMES = ["S0", "S1", "S2", "S3", "S3", "S3", "S2", "S2", "S1", "S1", "S0", "S0"]   # flight order of 2026-10-19 (1-4 one per strategy, then two more each: S3, S2, S1, S0); INDI is verified against the log below
 
 
 def ref_pred(w, b, t, step=5):
@@ -31,7 +31,8 @@ def ref_pred(w, b, t, step=5):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("bank"); ap.add_argument("--out", default=None); a = ap.parse_args()
     res = []
-    for k, d in enumerate(sorted(glob.glob(a.bank + "/A8_*"))):
+    dirs = sorted(glob.glob(a.bank + "/A8_*"), key=lambda p: p.split("_")[-2] + p.split("_")[-1])
+    for k, d in enumerate(dirs):
         f = glob.glob(d + "/*_merged_usd.csv")[0]; df = pd.read_csv(f, comment="#")
         pre = sorted({c.split(".")[0] for c in df.columns if c.startswith("cf5_")})[0]; pt = sorted({c.split(".")[0] for c in df.columns if c.startswith("cf_second_")})[0]
         b = df[[c for c in df.columns if c.startswith(pre + ".")]].rename(columns=lambda c: c.split(".", 1)[1]); b["t"] = df.t
@@ -57,7 +58,13 @@ def main():
                         rms_err_logged_vs_ref_v1=e1, rms_err_logged_vs_ref_v2=e2, corr_logged_ref_v1=float(np.corrcoef(pz[m], r1[m])[0, 1]), corr_logged_ref_v2=float(np.corrcoef(pz[m], r2[m])[0, 1]),
                         vbat_min=float(b.vbat[air].min()), vbat_start=float(b.vbat[air].iloc[0]), motor_max_pct=float(100 * max(b[f"motor_m{i}"][air].max() for i in range(1, 5)) / 65535),
                         tilt_max_deg=float(max(np.abs(b.roll_deg[air]).max(), np.abs(b.pitch_deg[air]).max()))))
+    for r in res:
+        assert (r['indi_a_rpm_active_pct'] > 50) == (r['name'] in ('S1', 'S3')), ('INDI flag does not match the assumed strategy', r['flight'], r['name'])
     out = Path(a.out or a.bank); out.mkdir(parents=True, exist_ok=True); json.dump(res, open(out / "v2val_summary.json", "w"), indent=1)
     for r in res: print(json.dumps(r))
+    print('\nPER STRATEGY')
+    for n in ('S0', 'S1', 'S2', 'S3'):
+        rr = [r for r in res if r['name'] == n]; dp = np.array([r['dip_cm'] for r in rr])
+        print(n, 'flights', len(rr), 'mean dip per flight', [round(float(np.mean(x)), 1) for x in dp], 'mean', round(float(dp.mean()), 1), 'worst crossing', round(float(dp.min()), 1), 'z_rms', [round(r['z_rms_cm'], 2) for r in rr], 'vbat_min', [round(r['vbat_min'], 2) for r in rr], 'motor_max', [round(r['motor_max_pct']) for r in rr])
 if __name__ == "__main__":
     main()
