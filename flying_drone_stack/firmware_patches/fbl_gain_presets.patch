@@ -1,0 +1,53 @@
+--- a/src/modules/src/controller/controller_omar_indi.c	2026-10-20 22:05:10.940293656 +0200
++++ b/src/modules/src/controller/controller_omar_indi.c	2026-10-20 22:05:10.948293601 +0200
+@@ -115,6 +115,23 @@
+ // Additive and inert unless fbl.en = 1. Above fbl.z_on the FBL law replaces the position and attitude controllers below (thrust along the measured body
+ // z axis, body-rate loop, downwash compensation from the ROM table); below z_off, on a tilt fault and on any non-finite value the Omar controller runs
+ // (so takeoff and landing are Omar's). Sources: fbl_law.c, fbl_residual.c (host-tested against the authors' code, docs/fbl/PORT_SPEC.md).
++// Gain presets. 0 = the authors' (Hsieh et al.) values exactly as in their code (30 g simulated vehicle, kept for reference/comparison);
++// 1 = ours: position loop (kp, kv, ki_xy) 0.25x, rate loop 0.25x, ki_z 8 -- tuned in the C-in-the-loop plant with 44 ms motor lag
++// (docs/fbl/GAIN_TUNING_2026-10-20.md). The authors' values are unstable with that lag in simulation.
++static void fbl_apply_preset(fbl_cfg_t* f, uint8_t preset)
++{
++  if (preset == 0) {
++    f->kp_xy = 56.0f; f->kp_z = 45.0f; f->kv_xy = 38.0f; f->kv_z = 21.6f; f->ki_xy = 48.0f; f->ki_z = 3.0f; f->kr_xy = 238.0f; f->kr_z = 140.0f;
++  } else {
++    f->kp_xy = 14.0f; f->kp_z = 11.25f; f->kv_xy = 9.5f; f->kv_z = 5.4f; f->ki_xy = 12.0f; f->ki_z = 8.0f; f->kr_xy = 59.5f; f->kr_z = 35.0f;
++  }
++}
++
++static void fbl_preset_changed(void)
++{
++  fbl_apply_preset(&g_self.fbl, g_self.fbl.preset);
++}
++
+ static void fbl_defaults(controllerOmarIndi_t* self)
+ {
+   fbl_cfg_t* f = &self->fbl;
+@@ -122,7 +139,7 @@
+   f->en = 0;
+   f->c_d = 0.43f;
+   f->z_on = 0.15f; f->z_off = 0.10f; f->tilt_max_deg = 60.0f;
+-  f->kp_xy = 56.0f; f->kp_z = 45.0f; f->kv_xy = 38.0f; f->kv_z = 21.6f; f->ki_xy = 48.0f; f->ki_z = 3.0f; f->kr_xy = 238.0f; f->kr_z = 140.0f;
++  f->preset = 1; fbl_apply_preset(f, f->preset);
+   f->J = mkvec(2.395e-5f, 2.395e-5f, 3.235e-5f);
+   f->beta = 0.4f; f->gamma = 0.1f; f->w_max = 20.0f;
+   fbl_law_reset(&f->law); fbl_reset(&f->peers);
+@@ -703,6 +720,7 @@
+ 
+ PARAM_GROUP_START(ctrlFbl)
+ PARAM_ADD(PARAM_UINT8, en, &g_self.fbl.en)
++PARAM_ADD_WITH_CALLBACK(PARAM_UINT8, preset, &g_self.fbl.preset, fbl_preset_changed)
+ PARAM_ADD(PARAM_FLOAT, cd, &g_self.fbl.c_d)
+ PARAM_ADD(PARAM_FLOAT, z_on, &g_self.fbl.z_on)
+ PARAM_ADD(PARAM_FLOAT, z_off, &g_self.fbl.z_off)
+--- a/src/modules/interface/controller/controller_omar_indi.h	2026-10-20 22:05:10.940293656 +0200
++++ b/src/modules/interface/controller/controller_omar_indi.h	2026-10-20 22:05:10.949293594 +0200
+@@ -35,6 +35,7 @@
+     float c_d;           // ROM drag coefficient
+     float z_on, z_off;   // handover heights [m] (hysteresis): below, the Omar controller runs
+     float tilt_max_deg;  // fall back to the Omar controller above this tilt (latched until landed)
++    uint8_t preset;      // gain preset: 0 = authors' values, 1 = ours (see fbl_apply_preset in the .c)
+     float kp_xy, kp_z, kv_xy, kv_z, ki_xy, ki_z, kr_xy, kr_z;  // position / velocity / integral / body-rate gains
+     struct vec J;        // inertia used by the FBL torque [kg m^2]
+     float beta, gamma;   // acceleration estimator gains

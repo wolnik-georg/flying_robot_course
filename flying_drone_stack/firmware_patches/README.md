@@ -21,7 +21,8 @@ for p in \
   platform_cf21bl_omar_constants.patch \
   rpm_deck_bcRpm.patch \
   cffirmware_bindings.patch \
-  fbl_integration.patch
+  fbl_integration.patch \
+  fbl_gain_presets.patch
 do
   git apply --check "$PATCH/$p" && git apply "$PATCH/$p"
 done
