@@ -12,7 +12,7 @@ a8 = json.load(open(RES / "v2val_2026-10-19/v2val_summary.json"))
 for b in ("pilot2", "pilot3", "pilot5"): a8 += json.load(open(RES / f"{b}_2026-10-20/a8_summary.json"))
 a8 = [r for r in a8 if r["file"].split("_")[-1] not in DRAIN]
 a1 = json.load(open(RES / "a1_2026-10-19/a1_summary.json"))
-for b in ("pilot2", "pilot3", "pilot5"): a1 += json.load(open(RES / f"{b}_2026-10-20/a1_summary.json"))
+for b in ("pilot2", "pilot3", "pilot5", "video"): a1 += json.load(open(RES / f"{b}_2026-10-20/a1_summary.json"))   # "video": A1 with a 20 s hold (same dz, window 2-15 s)
 A4 = pd.concat([pd.DataFrame(json.load(open(RES / "pilot_all_2026-10-20/cell_summary_all.json"))),
                 pd.DataFrame(json.load(open(RES / "pilot5_2026-10-20/cell_summary.json"))).assign(strategy="S1"),
                 pd.DataFrame(json.load(open(RES / "pilot6_2026-10-20/cell_summary.json"))).assign(strategy="S1")], ignore_index=True)

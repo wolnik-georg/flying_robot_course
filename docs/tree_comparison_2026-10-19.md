@@ -110,10 +110,10 @@ Time profile of the hold: `meetings/assets/2026-10-19/A1_comparison.png`.
 ### A1 stacked hold (dz 0.5, hold 15 s, window 2–15 s)
 | strategy | flights | z error mean [cm] | std of the flight means | z RMS [cm] | max roll/pitch | motors max |
 |---|---|---|---|---|---|---|
-| S0 geometric | 4 | **-17.9** | 2.4 | 18.2 | 42° | 92–100 % |
-| S1 INDI | 4 | **-2.0** | 2.2 | 3.1 | 22° | 100–100 % |
-| S2 geometric + NS2 | 6 | **-9.0** | 1.6 | 10.5 | 42° | 90–100 % |
-| S3 INDI + NS2 | 4 | **+2.6** | 2.1 | 5.1 | 24° | 100–100 % |
+| S0 geometric | 6 | **-17.7** | 2.0 | 18.0 | 42° | 89–100 % |
+| S1 INDI | 5 | **-1.8** | 2.0 | 3.2 | 29° | 100–100 % |
+| S2 geometric + NS2 | 7 | **-8.9** | 1.5 | 10.3 | 42° | 90–100 % |
+| S3 INDI + NS2 | 5 | **+2.7** | 1.9 | 5.0 | 25° | 100–100 % |
 
 ### A4 offset line (dz 0.5, 0.5 m/s): z RMS [cm], mean ± std over flights (n)
 | offset | S0 geometric | S1 INDI | S2 geometric + NS2 | S3 INDI + NS2 |
@@ -126,4 +126,4 @@ Time profile of the hold: `meetings/assets/2026-10-19/A1_comparison.png`.
 
 ![A4: z error over time, every flight](meetings/assets/2026-10-19/A4_offsets_pilot.png)
 
-Details and per-flight tables: `lab_sessions/2026-10-20.md` §1–11. Remaining before the plan target: S1 A4 at offset 0.15 (2 flights).
+Details and per-flight tables: `lab_sessions/2026-10-20.md` §1–13. All plan cells are at or above their targets (A1 target 5, A8 target 4, A4 target 3 per offset).
