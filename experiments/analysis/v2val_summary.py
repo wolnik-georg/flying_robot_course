@@ -16,7 +16,8 @@ from test_residual_nn import reference  # noqa: E402
 
 W = {k: np.asarray(np.load(REPO / f"flying_drone_stack/tools/residual/weights/ns2_{k}.npz")["weights"], np.float32) for k in ("v1", "v2")}
 STRAT = {"17-39-47": "S0", "17-41-56": "S1", "17-43-47": "S2", "17-45-31": "S3", "17-55-03": "S3", "17-56-35": "S3", "17-59-16": "S2", "18-00-40": "S2",
-         "18-03-26": "S1", "18-04-46": "S1", "18-07-12": "S0", "18-08-34": "S0", "18-18-35": "S3", "18-21-50": "S3", "18-23-19": "S3"}   # flight order of 2026-10-19; INDI is verified against the log below
+         "18-03-26": "S1", "18-04-46": "S1", "18-07-12": "S0", "18-08-34": "S0", "18-18-35": "S3", "18-21-50": "S3", "18-23-19": "S3",
+         "17-35-08": "S2", "17-50-04": "S3", "18-37-37": "S0", "18-40-54": "S1"}   # 2026-10-20 pilot blocks (A8)   # flight order of 2026-10-19; INDI is verified against the log below
 
 
 def ref_pred(w, b, t, step=5):

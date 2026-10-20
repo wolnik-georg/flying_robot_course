@@ -1,5 +1,7 @@
 # Unified controller tree comparison S0–S3 — A8 and A1, NS2 v2 (2026-10-19)
 
+> **UPDATE 2026-10-20:** more pilot flights (A1, A8 topped up to 4–6 flights per strategy; A4 at offsets 0.05 / 0.10 / 0.15 for all four strategies) are included in §9; the headline values of that section replace the first-session values in §1–3 (kept as the record of the first session).
+
 **This is THE comparison of the unified Omar C controller tree** (one controller, two switches: `indi` 0/3 and `rnn.en` 0/1) and it **replaces the earlier tree validation of 2026-10-15** (NS2 v1, A8 at 0.40 m/s, one to three flights per strategy; kept as a record in `lab_sessions/2026-10-15.md`, marked superseded). Differences to that run: retrained network **NS2 v2** (all 73 flights), **new drone pair** (bottom = the drone with the RPM deck, top = new), A8 at **0.5 m/s peak**, 3–5 flights per strategy, evaluated **from uSD logs only** (complete logs of both drones; radio CSVs are not used), strategy and NS2 version verified from the logs of every flight.
 
 | Strategy | `indi` | `rnn.en` | what runs on the bottom drone |
@@ -95,3 +97,33 @@ Time profile of the hold: `meetings/assets/2026-10-19/A1_comparison.png`.
 
 ## 5. Reproduce
 `merge_training_bank.py --date 2026-10-19 --out experiments/logs/bank_v2val_2026-10-19 --only-tag-contains v2val --rpm deck` (A8), `… bank_a1clean_2026-10-19 --scenarios A1 --only-tag-contains a1clean` (A1); then `experiments/analysis/v2val_summary.py`, `v2val_overview.py` (A8), `v2val_a1_summary.py`, `v2val_a1_overview.py` (A1), `v2val_plots.py`, `v2val_overview_plot.py` (figures). Raw uSD logs: `experiments/logs/usd_raw/*v2val*`, `*a1clean*`; summaries: `experiments/results/v2val_2026-10-19/`, `experiments/results/a1_2026-10-19/`.
+
+## 9. Extension 2026-10-20 (all pilot flights of 2026-10-19 and 2026-10-20)
+### A8 swap (dz 0.5, 0.5 m/s, 4 crossings per flight)
+| strategy | flights | mean dip [cm] | std of the flight means | worst crossing | z RMS [cm] | motors max |
+|---|---|---|---|---|---|---|
+| S0 geometric | 4 | **-12.5** | 0.4 | -15.1 | 3.8 | 76–80 % |
+| S1 INDI | 4 | **-8.4** | 2.8 | -13.9 | 3.1 | 100–100 % |
+| S2 geometric + NS2 | 4 | **-5.6** | 0.7 | -9.3 | 1.8 | 79–82 % |
+| S3 INDI + NS2 | 5 | **-3.8** | 0.9 | -8.6 | 2.1 | 100–100 % |
+
+### A1 stacked hold (dz 0.5, hold 15 s, window 2–15 s)
+| strategy | flights | z error mean [cm] | std of the flight means | z RMS [cm] | max roll/pitch | motors max |
+|---|---|---|---|---|---|---|
+| S0 geometric | 4 | **-17.9** | 2.4 | 18.2 | 42° | 92–100 % |
+| S1 INDI | 4 | **-2.0** | 2.2 | 3.1 | 22° | 100–100 % |
+| S2 geometric + NS2 | 6 | **-9.0** | 1.6 | 10.5 | 42° | 90–100 % |
+| S3 INDI + NS2 | 4 | **+2.6** | 2.1 | 5.1 | 24° | 100–100 % |
+
+### A4 offset line (dz 0.5, 0.5 m/s): z RMS [cm], mean ± std over flights (n)
+| offset | S0 geometric | S1 INDI | S2 geometric + NS2 | S3 INDI + NS2 |
+|---|---|---|---|---|
+| 0.05 m | 17.2 ± 1.2 (n=3) | 5.0 ± 0.5 (n=3) | 11.7 ± 1.7 (n=3) | 3.8 ± 0.8 (n=3) |
+| 0.10 m | 10.5 ± 1.1 (n=3) | 2.8 ± 0.1 (n=3) | 5.0 ± 1.5 (n=3) | 3.2 ± 0.5 (n=3) |
+| 0.15 m | 6.2 ± 1.5 (n=3) | 2.9 (n=1) | 2.3 ± 0.9 (n=3) | 2.7 ± 1.1 (n=3) |
+
+![A8, A1 and A4 per strategy](meetings/assets/2026-10-19/overview.png)
+
+![A4: z error over time, every flight](meetings/assets/2026-10-19/A4_offsets_pilot.png)
+
+Details and per-flight tables: `lab_sessions/2026-10-20.md` §1–11. Remaining before the plan target: S1 A4 at offset 0.15 (2 flights).
