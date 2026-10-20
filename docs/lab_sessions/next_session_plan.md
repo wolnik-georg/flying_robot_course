@@ -1,4 +1,4 @@
-# NEXT LAB SESSION — more data on A1, A8 and A4 for all four strategies (plan of 2026-10-20)
+# (DONE and closed 2026-10-20: `2026-10-20.md` §0) — more data on A1, A8 and A4 for all four strategies (plan of 2026-10-20)
 
 *(The v2 validation and the first unified comparison were DONE on 2026-10-19: `2026-10-19.md` §0, `docs/tree_comparison_2026-10-19.md`. The older plans below are kept as records.)*
 

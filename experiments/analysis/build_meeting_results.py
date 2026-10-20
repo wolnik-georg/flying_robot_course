@@ -8,6 +8,7 @@ S = json.load(open(REPO / "experiments/results/unified_overview_2026-10-20/summa
 p = REPO / "docs/meetings/2026-10-22.md"; m = p.read_text(); tail = m[m.index("## 5. NS2 v2: what was flown"):]
 def c(s, k): d = a4[k][s]; return f"{d['mean']:.1f} cm (n={d['n']})" if d["n"] else "–"
 def f(x, sign=False): return (f"{x:+.1f}" if sign else f"{x:.1f}").replace("-", "−")
+a8n = sum(a8[k]['n'] for k in a8); a1n = sum(a1[k]['n'] for k in a1); a4n = sum(a4[o][k]['n'] for o in a4 for k in a4[o])
 rows = []
 for o in ("0.05", "0.1", "0.15"):
     cs = []
@@ -26,6 +27,7 @@ Deadline: 26 Feb 2027 (~18 weeks left)
 - **A4 (new):** the geometric controllers depend strongly on how far the drones are offset sideways, INDI hardly at all; NS2 halves the geometric error.
 - **NS2 v2:** retrained on 73 flights (about 19 min inside the gate), runs in C at 526 µs per evaluation.
 - **INDI is battery-sensitive:** the S1 flights on low batteries (3.4 V loaded) were clearly worse.
+- **Data:** {a8n + a1n + a4n} pilot flights in the tables (A8 {a8n}, A1 {a1n}, A4 {a4n}), each with complete uSD logs of both drones; strategy and NS2 version of every flight checked from the logs. A bug found on the way (uSD card full at 100 files made the drones reset at landing) is fixed.
 
 Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd` (positive = too high). A8 = two drones swap sides (4 crossings), A1 = stacked hold (15 s), A4 = bottom drone shuttles along a line beside the stack (offset 0.05 / 0.10 / 0.15 m). Bottom vehicle, dz 0.5 m, 0.5 m/s, uSD logs only, n = flights.
 
@@ -53,7 +55,7 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 | S2 geometric + NS2 | {f(a8['S2']['mean'])} cm | {a8['S2']['std']:.1f} | {f(a8['S2']['worst'])} cm | {a8['S2']['zrms']:.1f} cm | 79–82 % |
 | S3 INDI + NS2 | {f(a8['S3']['mean'])} cm | {a8['S3']['std']:.1f} | {f(a8['S3']['worst'])} cm | {a8['S3']['zrms']:.1f} cm | 100 % |
 
-![height error around the crossing, mean over the crossings per strategy (flights of 2026-10-19)](assets/2026-10-19/A8_crossing_profile.png)
+![height error around the crossing, mean over the crossings per strategy (all flights)](assets/2026-10-19/A8_crossing_profile.png)
 
 - Crossing dip: lowest z error of a crossing, relative to the steady offset (negative = too low).
 - S1 has the largest spread: its fourth flight ran at 3.4 V loaded and dipped −12.4 cm; the other three −6.3 … −8.1 cm.
@@ -67,7 +69,7 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 | S2 geometric + NS2 | {f(a1['S2']['mean'])} cm | {a1['S2']['std']:.1f} | {a1['S2']['zrms']:.1f} cm | 90–100 % |
 | S3 INDI + NS2 | {f(a1['S3']['mean'], True)} cm | {a1['S3']['std']:.1f} | {a1['S3']['zrms']:.1f} cm | 100 % |
 
-![A1 hold: z error over time per strategy, and mean z error per strategy (flights of 2026-10-19)](assets/2026-10-19/A1_comparison.png)
+![A1 hold: z error over time per strategy, and mean z error per strategy (all flights)](assets/2026-10-19/A1_comparison.png)
 
 - Geometric strategies sag in the hold and tilt up to 42°; NS2 halves the sag.
 - S3 starts about +13 cm high (takeoff overshoot, gone after ~4 s).
@@ -85,4 +87,7 @@ z RMS in cm, mean ± std over flights (n):
 - Offset 0.0 was dropped (it repeats A1 and A8).
 
 """
+old_fbl = [l for l in tail.split("\n") if l.startswith("- **FBL controller follow-up questions/missing parts:**")]
+if old_fbl:
+    tail = tail.replace(old_fbl[0], "- **FBL controller (part of the study):** desk part of the port done (own fit, simulation, C code tested against the authors' code, firmware branch built, not flown yet); waiting for the authors' training script and flight gains")
 p.write_text(head + tail)
