@@ -18,18 +18,20 @@ import cffirmware as fw  # noqa: E402
 from crazyflie_examples.formations import poly4d, scenarios as FSC  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 KICK = 12.0
+PEER_EVERY = 10
 M, G = 0.0427, 9.81; J = np.diag([2.395e-5, 2.395e-5, 3.235e-5]); FMAX = 2.0 * M * G; TAUMAX = 0.02
 W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.npz")["weights"], np.float32)
 
 def kin(sc, i, t, anchor):
     rp = sc.robots[i]; d = poly4d._derivs(rp.curve, min(t, rp.curve.duration)); return anchor + rp.slot + d[0, :3], d[1, :3], d[2, :3], d[3, :3], d[0, 3]
 
-def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1):
+def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1, fscale=1.0):
     real = {**dict(delay_ms=0.0, motor_tau_ms=0.0, gyro_noise_dps=0.0, pos_noise_m=0.0, vel_noise=0.0, thrust_eff=1.0), **(real or {})}; rng = np.random.default_rng(seed)
     sc = (FSC.A8(dz=dz, span=1.0, duration=1.875 / speed, settle=2.0, passes=2) if scen == 'A8' else FSC.A1(dz=dz, hold=15.0) if scen == 'A1' else FSC.A4(dz=dz, offset=offset, axis='y', motion='line', speed=speed)); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     [setattr(omar.fbl, k, v) for k, v in (gains or {}).items()]
-    omar.fbl.en = 0 if mode == "omar" else 1; omar.fbl.c_d = 0.43 if mode == "fbl_rom" else 0.0
+    omar.fbl.en = 0 if mode in ("omar", "s2") else 1;
+    fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 1 if mode == "s2" else 0; omar.fbl.c_d = 0.43 if mode == "fbl_rom" else 0.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
     fw.oot_set_peer_count(0 if handover else 1)
@@ -39,7 +41,7 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
     n = int(T / 1e-3); rec = np.zeros((n, 11)); dt = 1e-3; thrust = M * G; tau = np.zeros(3); cmd_q = []; thr_c = M * G; tau_c = np.zeros(3); fext = np.zeros(3); sat = 0; faults = 0
     for i in range(n):
         t = i * dt; tp, tv, ta, tj, _ = kin(sc, 1, t, anchor)
-        if i % 10 == 0 and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
+        if (i % PEER_EVERY == 0) and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
         pr, vr, ar, jr, yw = kin(sc, 0, t, anchor)
         if handover:   # smooth takeoff 0.02 -> 0.5 m (t 1..4 s), hold, smooth landing to 0.02 m (t 9..13 s)
             def sm(u): u = min(max(u, 0.0), 1.0); return 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5, (30 * u ** 2 - 60 * u ** 3 + 30 * u ** 4)
@@ -64,7 +66,7 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
         thrust += a_m * (thr_c * real['thrust_eff'] - thrust); tau = tau + a_m * (tau_c - tau)
         if i % 2 == 0:
             rel = [(tp - x, tv - v)] if tp[2] > x[2] else []
-            a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M
+            a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M * fscale
         R = Rot.from_quat(q).as_matrix()
         if handover and x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0)
         v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / M + fext / M) * dt; x = x + v * dt
