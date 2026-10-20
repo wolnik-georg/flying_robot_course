@@ -54,4 +54,4 @@ for j, s in enumerate(ORDER):
         if d["n"]: xs.append(oi + (j - 1.5) * w); ys.append(d["mean"]); es.append(d["std"])
     ax[2].bar(xs, ys, width=w * .9, color=COL[s], alpha=.7, yerr=es, capsize=2, label=LAB[s])
 ax[2].set_xticks(range(3)); ax[2].set_xticklabels(["offset 0.05 m", "offset 0.10 m", "offset 0.15 m"]); ax[2].set_ylabel("z RMS [cm]"); ax[2].set_title("A4 offset line: z RMS (mean ± std over flights)", fontsize=10); ax[2].legend(fontsize=7.5)
-fig.suptitle("Unified controller tree, NS2 v2, bottom vehicle (pilot flights 2026-10-19/20, uSD logs only, bars = means, dots = flights)", fontsize=9); fig.tight_layout(); fig.savefig(REPO / "docs/meetings/assets/2026-10-19/overview.png", dpi=130)
+fig.suptitle("Unified controller tree, NS2, bottom vehicle (pilot flights 2026-10-19/20, uSD logs only, bars = means, dots = flights)", fontsize=9); fig.tight_layout(); fig.savefig(REPO / "docs/meetings/assets/2026-10-19/overview.png", dpi=130)

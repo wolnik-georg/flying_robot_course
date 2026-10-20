@@ -25,16 +25,16 @@ Deadline: 26 Feb 2027 (~18 weeks left)
 - **A8 crossing dip:** {f(a8['S0']['mean'])} → {f(a8['S1']['mean'])} → {f(a8['S2']['mean'])} → {f(a8['S3']['mean'])} cm for S0 → S1 → S2 → S3.
 - **A1 hold, mean z error:** {f(a1['S0']['mean'])}, {f(a1['S1']['mean'])}, {f(a1['S2']['mean'])}, {f(a1['S3']['mean'], True)} cm.
 - **A4 (new):** the geometric controllers depend strongly on how far the drones are offset sideways, INDI hardly at all; NS2 cuts the geometric error by a third to two thirds.
-- **NS2 v2:** retrained on 73 flights (about 19 min inside the gate), runs in C at 526 µs per evaluation.
+- **NS2:** the neural network, retrained on 73 flights (about 19 min inside the gate, see section 5), runs in C at 526 µs per evaluation.
 - **INDI is battery-sensitive:** the S1 flights on low batteries (3.4 V loaded) were clearly worse.
-- **Data:** {a8n + a1n + a4n} pilot flights in the tables (A8 {a8n}, A1 {a1n}, A4 {a4n}), each with complete uSD logs of both drones; strategy and NS2 version of every flight checked from the logs. A bug found on the way (uSD card full at 100 files made the drones reset at landing) is fixed.
+- **Data:** {a8n + a1n + a4n} pilot flights in the tables (A8 {a8n}, A1 {a1n}, A4 {a4n}), each with complete uSD logs of both drones; strategy of every flight checked from the logs. A bug found on the way (uSD card full at 100 files made the drones reset at landing) is fixed.
 
 Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd` (positive = too high). A8 = two drones swap sides (4 crossings), A1 = stacked hold (15 s), A4 = bottom drone shuttles along a line beside the stack (offset 0.05 / 0.10 / 0.15 m). Bottom vehicle, dz 0.5 m, 0.5 m/s, uSD logs only, n = flights.
 
 ---
 
 ## 1. The four strategies at a glance
-| | INDI | NS2 v2 | A8 crossing dip | A1 mean z error | A4 z RMS, offset 0.05 m |
+| | INDI | NS2 | A8 crossing dip | A1 mean z error | A4 z RMS, offset 0.05 m |
 |---|---|---|---|---|---|
 | S0 geometric | off | off | {f(a8['S0']['mean'])} cm (n={a8['S0']['n']}) | {f(a1['S0']['mean'])} cm (n={a1['S0']['n']}) | {c('S0','0.05')} |
 | S1 INDI | on | off | {f(a8['S1']['mean'])} cm (n={a8['S1']['n']}) | {f(a1['S1']['mean'])} cm (n={a1['S1']['n']}) | {c('S1','0.05')} |
@@ -93,17 +93,18 @@ old_fbl = []
 _ = [l for l in tail.split("\n") if l.startswith("- **FBL controller follow-up questions/missing parts:**")]
 if old_fbl:
     tail = tail.replace(old_fbl[0], "- **FBL controller (part of the study):** desk part of the port done (own fit, simulation, C code tested against the authors' code, firmware branch built, not flown yet); waiting for the authors' training script and flight gains")
-tail = """## 5. NS2 v2: what was flown
-- All flights together (73), geometric controller, labels from the deck RPM. Gate: upper drone above and within 0.2 m in x and y, where the network acts.
+tail = """## 5. NS2: training data
+- All 73 flights together, flown with the geometric controller, labels from the deck RPM.
+- **The gate (our own implementation, `ns2_residual.c` in our firmware):** the network only acts, and only trains on data, when a neighbour is above and close: |dx| < 0.2 m, |dy| < 0.2 m, |relative vx| < 1.5 m/s. Outside, its output is zero. Why: the downwash only matters when the other drone is right above; the reference (Neural-Swarm) also filters by a horizontal distance, the values here are ours. Crazyswarm2 / the simulator have no such gate.
 
 """ + (REPO / "experiments/results/ns2_v2_data_summary.md").read_text().strip().replace("## 5. NS2 v2: what was flown\n", "") + """
 
-![NS2 v2 data: gate time per scenario (left), coverage of vertical gap and horizontal offset (right)](assets/2026-10-19/ns2_v2_data.png)
+![NS2 training data: gate time per scenario (left), coverage of vertical gap and horizontal offset (right)](assets/2026-10-19/ns2_v2_data.png)
 
 - **Left:** seconds inside the gate per scenario. R1, A9, A2, A1 give most of it.
 - **Right:** seconds of data per cell, horizontal offset (x) against vertical gap (y). Dashed lines = study gaps 0.25 / 0.5 / 0.75 m; red dotted = gate edge (±20 cm in x and y, corners reach 28 cm).
 - Vertical gap in the gate: median 0.62 m; horizontal offset: median 0.09 m.
-- Leave-one-flight-out: 69 of 73 flights pass; new flights fit better than v1 on 47 of 47.
+- Leave-one-flight-out: 69 of 73 flights pass.
 
 ---
 
