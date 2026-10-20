@@ -2,7 +2,7 @@
 
 *(The v2 validation and the first unified comparison were DONE on 2026-10-19: `2026-10-19.md` §0, `docs/tree_comparison_2026-10-19.md`. The older plans below are kept as records.)*
 
-**Progress 2026-10-20 (later):** the S3 block is flown too (9 of 12 flights complete; 3 lost to battery collapses / empty files; to complete S3: A4 0.10 +1, A4 0.15 +1, A1 +1); remaining blocks S0 (13 flights) and S1 (13), `2026-10-20.md` §5–6. Earlier: the S2 block is flown (A4 ×0.0/0.05/0.10/0.15, A8, A1; `2026-10-20.md`); S3, S0 and S1 are still to fly. **Decision 2026-10-20: A4 offsets are 0.05 / 0.10 / 0.15 only (offset 0.0 dropped).**
+**Progress 2026-10-20 (later):** the S3 block is flown too (9 of 12 flights complete; 3 lost to battery collapses / empty files); with the new A1 / A8 target of 4 the remaining flights are S3: A4 0.10 +1 and 0.15 +1; S0 and S1: 11 each, `2026-10-20.md` §5–6. Earlier: the S2 block is flown (A4 ×0.0/0.05/0.10/0.15, A8, A1; `2026-10-20.md`); S3, S0 and S1 are still to fly. **Decision 2026-10-20: A4 offsets are 0.05 / 0.10 / 0.15 only (offset 0.0 dropped).**
 
 ## Goal
 Mean and spread (std) per strategy on the three most informative scenarios, at one setting each (**dz 0.5 m, peak speed 0.5 m/s**), so the supervisor can see how big the spread between flights is compared with the difference between controllers. Pilot data for the unified comparison (not the frozen study); the cells A1 / A8 / A4 are also tier-1 cells, so the flights double as the shakedown of their parameters for protocol v1.0.
@@ -10,16 +10,16 @@ Mean and spread (std) per strategy on the three most informative scenarios, at o
 - A2 circle (sustained tracking in the plume) only if time remains; A3, A5, A7 and other settings are left out on purpose (A3, A5 ≈ A8; A7 is extreme and outside the study's gap range).
 
 ## Flights (uSD logs of both drones for every flight; clean flights wanted per cell)
-**Decision 2026-10-20 (user):** A4 offset 0.0 is dropped (it repeats A1 = plume centre at rest and A8 = crossing through the plume centre); A4 is flown at **0.05, 0.10 and 0.15 m**, 3 flights per offset and strategy, for all four controllers. The 4 flights of S2 at offset 0.0 that already exist stay as a record and are not extended to the other strategies.
-| Cell | S0 | S1 | S2 | S3 | have now (S0/S1/S2/S3) | to fly (S0/S1/S2/S3) |
-|---|---|---|---|---|---|---|
-| A1, dz 0.5, hold 15 s | 5 | 5 | 5 | 5 | 3 / 3 / 6 / 3 | +2 / +2 / 0 / +2 |
-| A8, dz 0.5, 0.5 m/s | 5 | 5 | 5 | 5 | 3 / 3 / 4 / 4 | +2 / +2 / +1 / +1 |
-| A4, dz 0.5, 0.5 m/s, offset **0.05** | 3 | 3 | 3 | 3 | 0 / 0 / 3 / 0 | 3 / 3 / 0 / 3 |
-| A4, offset **0.10** | 3 | 3 | 3 | 3 | 0 / 0 / 3 / 0 | 3 / 3 / 0 / 3 |
-| A4, offset **0.15** | 3 | 3 | 3 | 3 | 0 / 0 / 3 / 0 | 3 / 3 / 0 / 3 |
-| **Flights per block** | | | | | S2 done (one A8 flight short) | **S3 12, S0 13, S1 13** |
-Remaining: S3 (A4 9, A8 1, A1 2) = 12 flights, S0 (A4 9, A8 2, A1 2) = 13, S1 = 13, plus one more S2 A8 flight if wanted: **38 flights, about 3 h**. Order of the blocks: S2 (done) → S3 → S0 → S1; inside a block: A4 0.05 ×3, 0.10 ×3, 0.15 ×3, then A8, then A1. Priority if time is short: A4 first, then the A8 and A1 top-ups.
+**Decisions 2026-10-20 (user):** A4 offset 0.0 is dropped (it repeats A1 = plume centre at rest and A8 = crossing through the plume centre); A4 is flown at **0.05, 0.10 and 0.15 m**, **3 flights per offset and strategy**, for all four controllers. **A1 and A8 target: 4 clean flights per strategy** (not 5). The 4 flights of S2 at offset 0.0 that already exist stay as a record.
+| Cell | S0 | S1 | S2 | S3 | target | have now (S0/S1/S2/S3) | to fly (S0/S1/S2/S3) |
+|---|---|---|---|---|---|---|---|
+| A1, dz 0.5, hold 15 s | 4 | 4 | 4 | 4 | 4 each | 3 / 3 / 6 / 4 | +1 / +1 / 0 / 0 |
+| A8, dz 0.5, 0.5 m/s | 4 | 4 | 4 | 4 | 4 each | 3 / 3 / 4 / 5 | +1 / +1 / 0 / 0 |
+| A4, dz 0.5, 0.5 m/s, offset **0.05** | 3 | 3 | 3 | 3 | 3 each | 0 / 0 / 3 / 3 | 3 / 3 / 0 / 0 |
+| A4, offset **0.10** | 3 | 3 | 3 | 3 | 3 each | 0 / 0 / 3 / 2 | 3 / 3 / 0 / **+1** |
+| A4, offset **0.15** | 3 | 3 | 3 | 3 | 3 each | 0 / 0 / 3 / 2 | 3 / 3 / 0 / **+1** |
+| **Flights still to fly** | | | | | | | **S0 11, S1 11, S3 2 = 24 flights, about 2 h** |
+Order: **S3 first (2 flights: A4 0.10 ×1, A4 0.15 ×1)**, then S0 and S1 (A4 0.05 ×3, 0.10 ×3, 0.15 ×3, then A8 ×1, then A1 ×1 in each block). Priority if time is short: A4 first, then the A8 and A1 flights.
 
 ## Commands (all validated with the scenario generator and the geofence check, 2026-10-20, `problems: []`)
 - A1: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes`
