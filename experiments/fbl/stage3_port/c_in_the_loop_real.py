@@ -23,7 +23,7 @@ W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.
 def kin(sc, i, t, anchor):
     rp = sc.robots[i]; d = poly4d._derivs(rp.curve, min(t, rp.curve.duration)); return anchor + rp.slot + d[0, :3], d[1, :3], d[2, :3], d[3, :3], d[0, 3]
 
-def run(mode, speed, dz=0.5, real=None, gains=None, seed=0):
+def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False):
     real = {**dict(delay_ms=0.0, motor_tau_ms=0.0, gyro_noise_dps=0.0, pos_noise_m=0.0, vel_noise=0.0, thrust_eff=1.0), **(real or {})}; rng = np.random.default_rng(seed)
     sc = FSC.A8(dz=dz, span=1.0, duration=1.875 / speed, settle=2.0, passes=2); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
@@ -31,13 +31,20 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0):
     omar.fbl.en = 0 if mode == "omar" else 1; omar.fbl.c_d = 0.43 if mode == "fbl_rom" else 0.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
-    fw.oot_set_peer_count(1)
-    p0, *_ = kin(sc, 0, 0.0, anchor); x, v, q, w = p0.copy(), np.zeros(3), np.array([0, 0, 0, 1.0]), np.zeros(3)
+    fw.oot_set_peer_count(0 if handover else 1)
+    p0, *_ = kin(sc, 0, 0.0, anchor)
+    if handover: p0 = np.array([0.0, 0.0, 0.02]); T = 14.0
+    x, v, q, w = p0.copy(), np.zeros(3), np.array([0, 0, 0, 1.0]), np.zeros(3)
     n = int(T / 1e-3); rec = np.zeros((n, 11)); dt = 1e-3; thrust = M * G; tau = np.zeros(3); cmd_q = []; thr_c = M * G; tau_c = np.zeros(3); fext = np.zeros(3); sat = 0; faults = 0
     for i in range(n):
         t = i * dt; tp, tv, ta, tj, _ = kin(sc, 1, t, anchor)
-        if i % 10 == 0: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
+        if i % 10 == 0 and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
         pr, vr, ar, jr, yw = kin(sc, 0, t, anchor)
+        if handover:   # smooth takeoff 0.02 -> 0.5 m (t 1..4 s), hold, smooth landing to 0.02 m (t 9..13 s)
+            def sm(u): u = min(max(u, 0.0), 1.0); return 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5, (30 * u ** 2 - 60 * u ** 3 + 30 * u ** 4)
+            z_up, d_up = sm((t - 1.0) / 3.0); z_dn, d_dn = sm((t - 9.0) / 4.0)
+            zc = 0.02 + 0.48 * z_up - 0.48 * z_dn; vz = 0.48 * d_up / 3.0 - 0.48 * d_dn / 4.0
+            pr = np.array([0.0, 0.0, zc]); vr = np.array([0.0, 0.0, vz]); ar = np.zeros(3); jr = np.zeros(3)
         sp.position.x, sp.position.y, sp.position.z = map(float, pr); sp.velocity.x, sp.velocity.y, sp.velocity.z = map(float, vr)
         sp.acceleration.x, sp.acceleration.y, sp.acceleration.z = map(float, ar); sp.jerk.x, sp.jerk.y, sp.jerk.z = map(float, jr)
         xm = x + rng.normal(0, real['pos_noise_m'], 3); vm = v + rng.normal(0, real['vel_noise'], 3)
@@ -54,11 +61,16 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0):
             rel = [(tp - x, tv - v)] if tp[2] > x[2] else []
             a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M
         R = Rot.from_quat(q).as_matrix()
+        if handover and x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0)
         v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / M + fext / M) * dt; x = x + v * dt
         w = w + np.linalg.solve(J, tau - np.cross(w, J @ w)) * dt; q = (Rot.from_rotvec(R @ w * dt) * Rot.from_quat(q)).as_quat()
         rec[i] = [t, *x, *tp, np.degrees(np.arccos(np.clip(R[2, 2], -1, 1))), thrust, omar.fbl.active, omar.fbl.tripped]
-    ez = np.array([rec[k, 3] - kin(sc, 0, rec[k, 0], anchor)[0][2] for k in range(0, n, 10)]); r = rec[::10]
-    rel = r[:, 4:7] - r[:, 1:4]; gate = (np.abs(rel[:, 0]) < 0.2) & (np.abs(rel[:, 1]) < 0.2) & (rel[:, 2] > 0)
+    if handover:
+        zr = lambda t: 0.02 + 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-1)/3,0),1)) - 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-9)/4,0),1))
+        ez = np.array([rec[k, 3] - zr(rec[k, 0]) for k in range(0, n, 10)]); r = rec[::10]; np.save(Path(__file__).parent / f'../out/stage3/handover_{mode}.npy', np.c_[r[:, 0], r[:, 3], np.array([zr(t) for t in r[:, 0]]), r[:, 7], r[:, 8], r[:, 9], r[:, 10]])
+    else:
+        ez = np.array([rec[k, 3] - kin(sc, 0, rec[k, 0], anchor)[0][2] for k in range(0, n, 10)]); r = rec[::10]
+    rel = r[:, 4:7] - r[:, 1:4] if not handover else np.tile([5.0, 5.0, -1.0], (len(r), 1)); gate = (np.abs(rel[:, 0]) < 0.2) & (np.abs(rel[:, 1]) < 0.2) & (rel[:, 2] > 0)
     return dict(z_rms_cm=100 * float(np.sqrt(np.mean(ez ** 2))), z_dip_cm=100 * float(ez[gate].min()) if gate.any() else 0.0, tilt_max_deg=float(r[:, 7].max()), fbl_active_pct=100 * float(r[:, 9].mean()),
                 tripped=bool(r[:, 10].max()), sat_frac=sat / (n / 2), gate_s=float(gate.sum() * 0.01), motor_note='delay+lag' , diverged=bool(np.abs(ez).max() > 0.5 or r[:, 7].max() > 80))
 
