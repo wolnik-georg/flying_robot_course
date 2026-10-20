@@ -2,6 +2,8 @@
 
 *(The v2 validation and the first unified comparison were DONE on 2026-10-19: `2026-10-19.md` §0, `docs/tree_comparison_2026-10-19.md`. The older plans below are kept as records.)*
 
+**Progress 2026-10-20:** the S2 block is flown (A4 ×0.0/0.05/0.10/0.15, A8, A1; `2026-10-20.md`); S3, S0 and S1 are still to fly. A4 offset 0.05 was added to the cells (3 flights per strategy) as an extra offset next to the planned 0.0 / 0.10 / 0.15.
+
 ## Goal
 Mean and spread (std) per strategy on the three most informative scenarios, at one setting each (**dz 0.5 m, peak speed 0.5 m/s**), so the supervisor can see how big the spread between flights is compared with the difference between controllers. Pilot data for the unified comparison (not the frozen study); the cells A1 / A8 / A4 are also tier-1 cells, so the flights double as the shakedown of their parameters for protocol v1.0.
 - **A1** stacked hold, dz 0.5 — steady downwash. **A8** vertical swap — transient crossing. **A4** offset line — lateral offset (edge of the plume and of the NS2 gate).
