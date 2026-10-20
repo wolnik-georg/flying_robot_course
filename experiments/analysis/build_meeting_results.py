@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 S = json.load(open(REPO / "experiments/results/unified_overview_2026-10-20/summary.json")); a8, a1, a4 = S["A8"], S["A1"], S["A4"]
-p = REPO / "docs/meetings/2026-10-22.md"; m = p.read_text(); tail = m[m.index("## 5. NS2 v2: what was flown"):]
+p = REPO / "docs/meetings/2026-10-22.md"; m = p.read_text(); tail = ""
 def c(s, k): d = a4[k][s]; return f"{d['mean']:.1f} cm (n={d['n']})" if d["n"] else "–"
 def f(x, sign=False): return (f"{x:+.1f}" if sign else f"{x:.1f}").replace("-", "−")
 a8n = sum(a8[k]['n'] for k in a8); a1n = sum(a1[k]['n'] for k in a1); a4n = sum(a4[o][k]['n'] for o in a4 for k in a4[o])
@@ -43,7 +43,7 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 
 ![A8 dip, A1 mean z error and A4 z RMS per strategy](assets/2026-10-19/overview.png)
 
-- Pilot data: n = 3–7 per cell, one lab, two drones; the spread between flights is shown as dots (A8, A1) and error bars (A4).
+- Pilot data: n = 3–7 per cell, one lab, two drones. Bars = mean over flights, whisker = ± std between flights, dots = single flights (A4: whiskers only).
 - S3 A8: two further flights on a draining battery are excluded.
 - Full tables: `docs/tree_comparison_2026-10-19.md` (§9), per-flight tables `docs/lab_sessions/2026-10-20.md`.
 
@@ -57,7 +57,8 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 
 ![height error around the crossing, mean over the crossings per strategy (all flights)](assets/2026-10-19/A8_crossing_profile.png)
 
-- Crossing dip: lowest z error of a crossing, relative to the steady offset (negative = too low).
+- **How the profile plot is made:** all A8 flights of a strategy, 4 crossings each; for every crossing the z error from −2 to +2 s around the zero-crossing of y, steady offset of that flight removed. Thick line = mean over all crossings (n flights × 4), shaded = ± 1 std between crossings.
+- **Table and bars:** crossing dip = lowest point of a crossing, averaged per flight; mean = over flights, std = between flights (bars: whiskers = std, dots = flights).
 - S1 has the largest spread: its fourth flight ran at 3.4 V loaded and dipped −12.4 cm; the other three −6.3 … −8.1 cm.
 - Only the INDI strategies use the full motor range (100 %).
 
@@ -71,6 +72,7 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 
 ![A1 hold: z error over time per strategy, and mean z error per strategy (all flights)](assets/2026-10-19/A1_comparison.png)
 
+- **How the plot is made:** left: z error of every flight over the 15 s hold (window 2–15 s of the flight, time zero = start of the hold); thick line = mean over the strategy's flights at each time, shaded = ± 1 std between flights. Right: mean z error of each flight (dots), bar = mean over flights, whisker = std between flights.
 - Geometric strategies sag in the hold and tilt up to 42°; NS2 halves the sag.
 - S3 starts about +13 cm high (takeoff overshoot, gone after ~4 s).
 
@@ -87,7 +89,31 @@ z RMS in cm, mean ± std over flights (n):
 - Offset 0.0 was dropped (it repeats A1 and A8).
 
 """
-old_fbl = [l for l in tail.split("\n") if l.startswith("- **FBL controller follow-up questions/missing parts:**")]
+old_fbl = []
+_ = [l for l in tail.split("\n") if l.startswith("- **FBL controller follow-up questions/missing parts:**")]
 if old_fbl:
     tail = tail.replace(old_fbl[0], "- **FBL controller (part of the study):** desk part of the port done (own fit, simulation, C code tested against the authors' code, firmware branch built, not flown yet); waiting for the authors' training script and flight gains")
+tail = """## 5. NS2 v2: what was flown
+- All flights together (73), geometric controller, labels from the deck RPM. Gate: upper drone above and within 0.2 m in x and y, where the network acts.
+
+""" + (REPO / "experiments/results/ns2_v2_data_summary.md").read_text().strip().replace("## 5. NS2 v2: what was flown\n", "") + """
+
+![NS2 v2 data: gate time per scenario (left), coverage of vertical gap and horizontal offset (right)](assets/2026-10-19/ns2_v2_data.png)
+
+- **Left:** seconds inside the gate per scenario. R1, A9, A2, A1 give most of it.
+- **Right:** seconds of data per cell, horizontal offset (x) against vertical gap (y). Dashed lines = study gaps 0.25 / 0.5 / 0.75 m; red dotted = gate edge (±20 cm in x and y, corners reach 28 cm).
+- Vertical gap in the gate: median 0.62 m; horizontal offset: median 0.09 m.
+- Leave-one-flight-out: 69 of 73 flights pass; new flights fit better than v1 on 47 of 47.
+
+---
+
+## Questions:
+- **NS2 execution context:** today inline in the controller, 100 Hz, 526 µs = 26 % of the 2 ms slot. Your idea: separate low-priority task + queue. I did not find it in any repo — which one did you mean?
+- **Decision:** keep inline for the two-drone study, or parallel task now?
+
+## Next Steps:
+- **Study:** freeze protocol, start tier-1 two-drone study, then three vehicles
+- **Hardware:** new drone pair, NS2 frozen
+- **FBL (part of the study):** desk part done, waiting for the authors' training script and gains
+"""
 p.write_text(head + tail)

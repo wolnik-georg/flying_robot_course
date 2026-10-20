@@ -26,7 +26,7 @@ for s in ORDER:
     prof = np.array(prof); m, sd = prof.mean(0), prof.std(0); n = sum(1 for r, _ in a8 if r["name"] == s)
     ax.plot(tau, m, color=COL[s], lw=2, label=f"{LAB[s]} (n={n} flights, {len(prof)} crossings)"); ax.fill_between(tau, m - sd, m + sd, color=COL[s], alpha=.12)
 ax.axvline(0, color="k", lw=.5); ax.axhline(0, color="k", lw=.5); ax.set_xlabel("time from the crossing [s]"); ax.set_ylabel("bottom z error, steady offset removed [cm]"); ax.legend(fontsize=8, loc="lower left")
-ax.set_title("A8 swap, dz 0.5 m, 0.5 m/s: height error around the crossing (mean ± std over the crossings)", fontsize=9); fig.tight_layout(); fig.savefig(FIG / "A8_crossing_profile.png", dpi=130)
+ax.set_title("A8 swap, dz 0.5 m, 0.5 m/s: height error around the crossing\nthick line = mean over all crossings of the strategy, shaded band = ± 1 std between crossings", fontsize=9); fig.tight_layout(); fig.savefig(FIG / "A8_crossing_profile.png", dpi=130)
 # ---- A1
 a1 = []
 for bank, res in (("bank_a1clean_2026-10-19", "a1_2026-10-19"), ("bank_pilot2_2026-10-20", "pilot2_2026-10-20"), ("bank_pilot3_2026-10-20", "pilot3_2026-10-20"), ("bank_pilot5_2026-10-20", "pilot5_2026-10-20"), ("bank_video_2026-10-20", "video_2026-10-20")):
@@ -37,11 +37,11 @@ for s in ORDER:
     for r, p in a1:
         if r["strategy"] != s: continue
         t, ez, _ = bottom_ez(p); prof.append(100 * np.interp(tg, t, ez))
-    prof = np.array(prof); ax[0].plot(tg, prof.mean(0), color=COL[s], lw=2, label=f"{LAB[s]} (n={len(prof)})"); ax[0].fill_between(tg, prof.min(0), prof.max(0), color=COL[s], alpha=.12)
-ax[0].axhline(0, color="k", lw=.5); ax[0].set_xlabel("time in the hold [s]"); ax[0].set_ylabel("bottom z error [cm] (mean, band = min..max over flights)"); ax[0].legend(fontsize=8, loc="upper right"); ax[0].set_title("A1 stacked hold: z error over time", fontsize=10)
+    prof = np.array(prof); m_, sd_ = prof.mean(0), prof.std(0); ax[0].plot(tg, m_, color=COL[s], lw=2, label=f"{LAB[s]} (n={len(prof)} flights)"); ax[0].fill_between(tg, m_ - sd_, m_ + sd_, color=COL[s], alpha=.15)
+ax[0].axhline(0, color="k", lw=.5); ax[0].set_xlabel("time in the hold [s]"); ax[0].set_ylabel("bottom z error [cm]"); ax[0].legend(fontsize=8, loc="upper right"); ax[0].set_title("A1 stacked hold: z error over time", fontsize=10)
 for i, s in enumerate(ORDER):
-    v = [r["z_mean_cm"] for r, _ in a1 if r["strategy"] == s]; ax[1].bar(i, np.mean(v), color=COL[s], alpha=.4, width=.6)
+    v = [r["z_mean_cm"] for r, _ in a1 if r["strategy"] == s]; ax[1].bar(i, np.mean(v), color=COL[s], alpha=.4, width=.6, yerr=np.std(v, ddof=1), capsize=4, error_kw=dict(ecolor="k", lw=1.2))
     ax[1].scatter([i + (j - (len(v) - 1) / 2) * .07 for j in range(len(v))], v, color=COL[s], s=18, zorder=3)
-ax[1].set_xticks(range(4)); ax[1].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{np.mean([r['z_mean_cm'] for r, _ in a1 if r['strategy'] == s]):+.1f} cm" for s in ORDER], fontsize=7.5)
-ax[1].axhline(0, color="k", lw=.5); ax[1].set_ylabel("mean z error in the hold [cm] (dots = flights)"); ax[1].set_title("mean per strategy", fontsize=10)
-fig.suptitle("A1 stacked hold, dz 0.5 m: all pilot flights (uSD only)", fontsize=9); fig.tight_layout(); fig.savefig(FIG / "A1_comparison.png", dpi=130); print("ok", {s: sum(1 for r, _ in a1 if r["strategy"] == s) for s in ORDER}, {s: sum(1 for r, _ in a8 if r["name"] == s) for s in ORDER})
+ax[1].set_xticks(range(4)); ax[1].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{np.mean([r['z_mean_cm'] for r, _ in a1 if r['strategy'] == s]):+.1f} ± {np.std([r['z_mean_cm'] for r, _ in a1 if r['strategy'] == s], ddof=1):.1f} cm" for s in ORDER], fontsize=7.5)
+ax[1].axhline(0, color="k", lw=.5); ax[1].set_ylabel("mean z error in the hold [cm]\nbar = mean, whisker = ± std between flights, dots = flights", fontsize=8); ax[1].set_title("mean per strategy", fontsize=10)
+fig.suptitle("A1 stacked hold, dz 0.5 m, all pilot flights (uSD only). Left: per strategy, thick line = mean over its flights at each time, shaded band = ± 1 std between flights", fontsize=9); fig.tight_layout(); fig.savefig(FIG / "A1_comparison.png", dpi=130); print("ok", {s: sum(1 for r, _ in a1 if r["strategy"] == s) for s in ORDER}, {s: sum(1 for r, _ in a8 if r["name"] == s) for s in ORDER})

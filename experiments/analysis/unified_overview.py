@@ -41,11 +41,11 @@ for o in (0.05, 0.10, 0.15):
 fig, ax = plt.subplots(1, 3, figsize=(14, 4.2), gridspec_kw={"width_ratios": [1, 1, 1.4]})
 for i, s in enumerate(ORDER):
     for k, key, sgn in ((0, "A8", 1), (1, "A1", 1)):
-        d = S[key][s]; ax[k].bar(i, d["mean"], color=COL[s], alpha=.4, width=.6)
+        d = S[key][s]; ax[k].bar(i, d["mean"], color=COL[s], alpha=.4, width=.6, yerr=d["std"], capsize=4, error_kw=dict(ecolor="k", lw=1.2))
         pts = d["per_flight"]; ax[k].scatter([i + (j - (len(pts) - 1) / 2) * .07 for j in range(len(pts))], pts, color=COL[s], s=18, zorder=3)
-for k, (key, t, y) in enumerate((("A8", "A8 swap: height dip at the crossing", "z error at the crossing [cm]"), ("A1", "A1 stacked hold: mean height error", "mean z error in the hold [cm]"))):
-    M = [S[key][s]["mean"] for s in ORDER]; N = [S[key][s]["n"] for s in ORDER]
-    ax[k].set_xticks(range(4)); ax[k].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{m:+.1f} cm\n(n={n})" for s, m, n in zip(ORDER, M, N)], fontsize=7.5); ax[k].axhline(0, color="k", lw=.6); ax[k].set_title(t, fontsize=10); ax[k].set_ylabel(y, fontsize=8)
+for k, (key, t, y) in enumerate((("A8", "A8 swap: height dip at the crossing", "dip per flight [cm]"), ("A1", "A1 stacked hold: mean height error", "mean z error in the hold [cm]"))):
+    M = [S[key][s]["mean"] for s in ORDER]; N = [S[key][s]["n"] for s in ORDER]; SD = [S[key][s]["std"] for s in ORDER]
+    ax[k].set_xticks(range(4)); ax[k].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{m:+.1f} ± {sd:.1f} cm\n(n={n} flights)" for s, m, sd, n in zip(ORDER, M, SD, N)], fontsize=7.5); ax[k].axhline(0, color="k", lw=.6); ax[k].set_title(t, fontsize=10); ax[k].set_ylabel(y + "\nbar = mean, black whisker = ± std between flights, dots = flights", fontsize=7.5)
 w = .2
 for j, s in enumerate(ORDER):
     xs, ys, es = [], [], []
