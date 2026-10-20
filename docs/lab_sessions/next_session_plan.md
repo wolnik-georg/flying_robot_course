@@ -2,7 +2,7 @@
 
 *(The v2 validation and the first unified comparison were DONE on 2026-10-19: `2026-10-19.md` §0, `docs/tree_comparison_2026-10-19.md`. The older plans below are kept as records.)*
 
-**Progress 2026-10-20 (later):** the S3 block is flown too (9 of 12 flights complete; 3 lost to battery collapses / empty files); with the new A1 / A8 target of 4 the remaining flights are S3: A4 0.10 +1 and 0.15 +1; S0 and S1: 11 each, `2026-10-20.md` §5–6. Earlier: the S2 block is flown (A4 ×0.0/0.05/0.10/0.15, A8, A1; `2026-10-20.md`); S3, S0 and S1 are still to fly. **Decision 2026-10-20: A4 offsets are 0.05 / 0.10 / 0.15 only (offset 0.0 dropped).**
+**Progress 2026-10-20 (latest):** S3 completed and the S0 A4 flights done (11 flights, all complete); **remaining: S0 A8 +1 and A1 +1, then the S1 block (A4 ×9, A8 +1, A1 +1)** = 13 flights (`2026-10-20.md` §7–8). Earlier: the S3 block is flown too (9 of 12 flights complete; 3 lost to battery collapses / empty files); with the new A1 / A8 target of 4 the remaining flights are S3: A4 0.10 +1 and 0.15 +1; S0 and S1: 11 each, `2026-10-20.md` §5–6. Earlier: the S2 block is flown (A4 ×0.0/0.05/0.10/0.15, A8, A1; `2026-10-20.md`); S3, S0 and S1 are still to fly. **Decision 2026-10-20: A4 offsets are 0.05 / 0.10 / 0.15 only (offset 0.0 dropped).**
 
 ## Goal
 Mean and spread (std) per strategy on the three most informative scenarios, at one setting each (**dz 0.5 m, peak speed 0.5 m/s**), so the supervisor can see how big the spread between flights is compared with the difference between controllers. Pilot data for the unified comparison (not the frozen study); the cells A1 / A8 / A4 are also tier-1 cells, so the flights double as the shakedown of their parameters for protocol v1.0.
