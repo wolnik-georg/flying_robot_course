@@ -78,3 +78,30 @@ for a_, sc, yl in zip(ax, ("A8", "A1", "A4"), ("A8 mean crossing dip [cm]", "A1 
         if len(g) >= 4 and np.ptp(g.vbat_mean) > 0: k = np.polyfit(g.vbat_mean, g.err, 1); xs = np.array([g.vbat_mean.min(), g.vbat_mean.max()]); a_.plot(xs, np.polyval(k, xs), c=COL[s], lw=1.2)
     a_.set_xlabel("mean loaded battery voltage while airborne [V]"); a_.set_ylabel(yl); a_.set_title(sc + (" (all offsets)" if sc == "A4" else ""))
 ax[0].legend(); fig.suptitle("Tracking error against battery voltage, one dot per flight, line = linear fit per strategy"); fig.tight_layout(); fig.savefig(OUT / "battery_vs_error.png", dpi=130)
+
+# ---- summary figure: slope per strategy with interval, and raw vs adjusted means
+fig, ax = plt.subplots(1, 2, figsize=(14, 4.6), gridspec_kw=dict(width_ratios=[1.1, 1]))
+y = 0; yt = []; yl = []
+for sc, unit in (("A8", "dip"), ("A1", "mean z error"), ("A4", "z RMS")):
+    for s in ORDER:
+        k = f"{sc}_{s}"
+        if k not in res: continue
+        r_ = res[k]; lo, hi = max(r_["ci"][0], -4), min(r_["ci"][1], 6)
+        ax[0].plot([lo, hi], [y, y], c=COL[s], lw=3, alpha=.5); ax[0].plot(r_["slope"], y, "o", c=COL[s], ms=8)
+        sig = "  *" if (r_["ci"][0] > 0 or r_["ci"][1] < 0) else ""
+        yt.append(y); yl.append(f"{sc} {s}  (n={r_['n']}){sig}"); y -= 1
+    y -= .6
+ax[0].axvline(0, c="k", lw=1); ax[0].set_yticks(yt); ax[0].set_yticklabels(yl, fontsize=8); ax[0].set_xlim(-4, 6)
+ax[0].set_xlabel("change of the error per +0.1 V battery [cm]   (dot = fit, bar = 95 % interval, * = excludes 0)")
+ax[0].set_title("Battery effect per strategy: in A1 only INDI (S1, S3) leans on it\n(A8, A1: positive = higher battery, higher drone)")
+w = 0.38
+for i, sc in enumerate(("A8", "A1", "A4")):
+    for j, s in enumerate(ORDER):
+        x = i * 5 + j; a_ = res[f"{sc}_adjusted"][s]
+        ax[1].bar(x - w / 2, a_["raw"], w, color=COL[s], alpha=.45, label="as measured" if (i, j) == (0, 0) else None)
+        ax[1].bar(x + w / 2, a_["adj"], w, color=COL[s], label="adjusted to the same battery" if (i, j) == (0, 0) else None)
+ax[1].set_xticks([j + i * 5 for i in range(3) for j in range(4)]); ax[1].set_xticklabels(ORDER * 3, fontsize=8)
+for i, (sc, t) in enumerate((("A8", "A8 dip [cm]"), ("A1", "A1 mean z error [cm]"), ("A4", "A4 z RMS [cm]"))): ax[1].text(i * 5 + 1.5, ax[1].get_ylim()[1] * .92 if False else 17, t, ha="center", fontsize=9)
+ax[1].axhline(0, c="k", lw=.8); ax[1].set_ylim(-21, 19); ax[1].legend(loc="lower right", fontsize=8)
+ax[1].set_title("Same ranking with all strategies on the same battery")
+fig.tight_layout(); fig.savefig(OUT / "battery_summary.png", dpi=130)
