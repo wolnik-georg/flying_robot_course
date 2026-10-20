@@ -42,7 +42,7 @@ Spec and gate list: `PORT_SPEC.md`. Detailed results of every stage: `STATUS.md`
 - Force-only residual, z only, upper drone treated as upright; thrust along the measured body z axis; no INDI, no NS2 in this strategy.
 
 ## 5. What is NOT done (and risks)
-- **Gains are the bundle's**, for a 30 g simulated vehicle; our vehicle (42.7 g) and the real loop (delay, noise, motor lag, thrust limit, gyro filter) are untested. **Next desk step: gain tuning in the C-in-the-loop simulation** with delay, noise, thrust limit and motor lag (`c_in_the_loop.py` has the plant; delay/noise/motor lag are not yet in it).
+- **(2026-10-20: tuned in simulation, see GAIN_TUNING_2026-10-20.md; not yet the firmware defaults)** **Gains are the bundle's**, for a 30 g simulated vehicle; our vehicle (42.7 g) and the real loop (delay, noise, motor lag, thrust limit, gyro filter) are untested. **Next desk step: gain tuning in the C-in-the-loop simulation** with delay, noise, thrust limit and motor lag (`c_in_the_loop.py` has the plant; delay/noise/motor lag are not yet in it).
 - **Handover at takeoff and landing** (0.15 m / 0.10 m) is new: the FBL integral and estimator start at zero, the Omar controller was flying until then; a transient is possible.
 - **Never on hardware:** bench check, `ctrlFbl.en`, timing of the FBL step (expected tens of µs), behaviour with the real peer-position feed (velocity by differencing, 100 Hz).
 - Limits are simple (rates 20 rad/s, thrust ≤ max, tilt 60°); near thrust ≈ 0 and near ±90° tilt the law is ill-conditioned (documented in `PORT_SPEC.md` §6b).
