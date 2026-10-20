@@ -1,5 +1,45 @@
-# NEXT LAB SESSION — (the v2 validation below was DONE 2026-10-19, see `2026-10-19.md` §0 and `docs/tree_comparison_2026-10-19.md`; next: freeze protocol v1.0 + tier-1 study)
+# NEXT LAB SESSION — more data on A1, A8 and A4 for all four strategies (plan of 2026-10-20)
 
+*(The v2 validation and the first unified comparison were DONE on 2026-10-19: `2026-10-19.md` §0, `docs/tree_comparison_2026-10-19.md`. The older plans below are kept as records.)*
+
+## Goal
+Mean and spread (std) per strategy on the three most informative scenarios, at one setting each (**dz 0.5 m, peak speed 0.5 m/s**), so the supervisor can see how big the spread between flights is compared with the difference between controllers. Pilot data for the unified comparison (not the frozen study); the cells A1 / A8 / A4 are also tier-1 cells, so the flights double as the shakedown of their parameters for protocol v1.0.
+- **A1** stacked hold, dz 0.5 — steady downwash. **A8** vertical swap — transient crossing. **A4** offset line — lateral offset (edge of the plume and of the NS2 gate).
+- A2 circle (sustained tracking in the plume) only if time remains; A3, A5, A7 and other settings are left out on purpose (A3, A5 ≈ A8; A7 is extreme and outside the study's gap range).
+
+## Flights (uSD logs of both drones for every flight; the cell counts below are clean flights wanted)
+| Cell | S0 | S1 | S2 | S3 | have now (S0/S1/S2/S3) | to fly |
+|---|---|---|---|---|---|---|
+| A1, dz 0.5, hold 15 s | 5 | 5 | 5 | 5 | 3 / 3 / 5 / 3 | +2 / +2 / 0 / +2 = 6 |
+| A8, dz 0.5, 0.5 m/s | 5 | 5 | 5 | 5 | 3 / 3 / 3 / 4 | +2 / +2 / +2 / +1 = 7 |
+| A4, dz 0.5, 0.5 m/s, offset **0.0** | 3 | 3 | 3 | 3 | 0 | 12 |
+| A4, dz 0.5, 0.5 m/s, offset **0.10** | 3 | 3 | 3 | 3 | 0 | 12 |
+| A4, dz 0.5, 0.5 m/s, offset **0.15** | 3 | 3 | 3 | 3 | 0 | 12 |
+| **Total** | | | | | | **49 flights ≈ 4 h** |
+Priority if time is short: (1) A4, 3 flights per offset and strategy (36); (2) top up A8 and A1 to 5. If even that is too much: A4 offsets 0.0 and 0.15 only, 2 flights each.
+
+## Commands (all validated with the scenario generator and the geofence check, 2026-10-20, `problems: []`)
+- A1: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes`
+- A8 (same command as on 2026-10-19, peak 0.5 m/s): `ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.5 --height 0.5 --passes 4 --auto-center --yes`
+- A4 (line along y, offset along x as in the data collection): `ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.5 --speed 0.5 --offset <0.0|0.10|0.15> --motion line --rotate 90 --height 0.5 --auto-center --yes`
+- Optional A2: `ros2 run crazyflie_examples run_formation --scenario A2 --dz 0.5 --speed 0.5 --height 0.5 --auto-center --yes`
+
+## Order and procedure
+1. **Before the first flight:** drones and propellers checked after the 2026-10-19 crashes; both cards: count the `thesis` files (≥ 85 → archive, `2026-10-19.md` §12); batteries charged; `git pull` on both repos.
+2. **Group by strategy, controller order rotated against the last session:** **S2 → S3 → S0 → S1** (last session S0 → S1 → S2 → S3). One yaml state and one launch per block (`S0`: `indi 0 / rnn.en 0`, `S1`: `3 / 0`, `S2`: `0 / 1`, `S3`: `3 / 1`; cf5 lines 225 and 246, `lab_check_strategy.py` before the launch, the cf5 `Update parameter` lines after it).
+3. **Inside a block (about 12 flights, about 1 h):** A4 offset 0.0 ×3, A4 0.10 ×3, A4 0.15 ×3, then the A8 and A1 top-up flights of that strategy.
+4. **Batteries (proposal, to be confirmed by you):** the same rule for all four strategies; note the resting voltage before every flight; INDI strategies sag the pack most (3.2–3.5 V loaded in A1), a fresh pack per INDI flight.
+5. **After each block:** copy the cards (cf_second first), merge by run tag (`merge_training_bank.py --scenarios A1 A4 A8 …`), check the strategy of every flight from the logs (`ns2_applied_check.py`, `tree_log_check.py`), check that every flight has a uSD file on both cards (a missing file means the flight does not count).
+6. **Analysis afterwards:** extend `docs/tree_comparison_2026-10-19.md` with A4 per offset and the larger A1 / A8 samples (mean, std, n, per-flight points); add the new overview to the meeting doc.
+
+## Still to do before the real comparative study (checklist)
+- Supervisor decisions (meeting 2026-10-22): tree approved; study size (tier 1 = 12 settings × strategies × 5 flights); two vehicles first; dz floor; FBL as strategy S4 in tier 1.
+- Remaining tier-1 settings not flown yet: A1 dz 0.25 / 0.75, A8 at 0.2 / 0.3 / 0.4 m/s, A2, A3, A5, A7 at 0.4 m/s (flyability with all four controllers, exact parameters for protocol v1.0).
+- Freeze protocol v1.0 (exact table, commands, tags `study-S0..S3`, image hash), clean/excluded decision log, `--study` gate, strategy check from the logs, battery rule.
+- FBL: gain tuning in simulation, then bench/hover/A1/A8 (`docs/fbl/PROGRESS_AND_RESUME.md`); it joins as its own block.
+- Decision for you: whether the pilot flights of 2026-10-19 and of this session count in the study (recommended: no, re-fly the cells under the frozen protocol).
+
+---
 *(The NS2 training-data collection that this file used to plan is DONE on 2026-10-16/17 — kept below as the record: `2026-10-16.md`, `2026-10-17.md`, `ns2_training_data_overview_2026-10-17.md`.)*
 
 ## Session 2026-10-?? : v2 validation (ordered)
