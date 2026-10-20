@@ -1,3 +1,5 @@
+> One-page state and resume guide: `PROGRESS_AND_RESUME.md` (2026-10-20).
+
 # FBL onboard port — specification (Stage 3 preparation)
 
 Created 2026-10-19. Status: **SPEC ONLY + one finished desk piece (the ROM lookup table).** No firmware file is changed, nothing is flashed or flown. Building the port beyond the table needs the user's and the supervisor's go (scope decision of Strategy 3, meeting 2026-10-22). Context and results so far: `docs/fbl/STATUS.md`, bundle analysis `docs/73_FBL_Bundle_Analysis.md`.

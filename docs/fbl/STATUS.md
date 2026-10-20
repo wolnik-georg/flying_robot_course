@@ -1,5 +1,7 @@
 # FBL track — status, plan and decisions (started 2026-10-18)
 
+> **Start here: `PROGRESS_AND_RESUME.md`** (one-page state of 2026-10-20, what exists, what is not done, how to resume). This file is the detailed log of the stage results.
+
 **What this is.** Strategy 3 of the study (flatness-based feedback linearization with a learned downwash residual, Hsieh et al. 2026). We received only the inference side from the authors (`docs/73_FBL_Bundle_Analysis.md`); the training script, the hardware checkpoint and the hardware gains are missing (email sent, waiting). Decision of 2026-10-18 (user): use the waiting time for desk work that does not need the lab — build our own training pipeline from the paper and our data, so that the authors' script later replaces only the training step. **DECIDED 2026-10-19 (user): Strategy 3 (FBL) IS part of the study.** The onboard port (3–4 weeks of desk + lab work, `PORT_SPEC.md`) is therefore committed work, no longer waiting for a scope decision; the authors' training script and hardware gains, when they arrive, replace only the fitted residual and the gains.
 
 Code: `experiments/fbl/` (see its README). The authors' bundle stays read-only at `~/Desktop/learned_fbl_core`.
@@ -10,7 +12,7 @@ Code: `experiments/fbl/` (see its README). The authors' bundle stays read-only a
 | 0 | Definitions: bundle residual vs our NS2 label, constants of our vehicle, ROM against our data, coverage | **done 2026-10-18** (results below) |
 | 1 | Own training script: supervised fit of the bundle's residual structure (ROM + `Linear(2,9)–Tanh–Linear(9,3)` force network, optional 4-neuron force-only variant) on the 73-flight bank, leave-one-flight-out, baselines zero / ROM only | **done 2026-10-18** (results below) |
 | 2 | Closed loop in simulation: the bundle's FBL controller with our residuals against a scripted top vehicle | **done 2026-10-18** (results below) |
-| 3 | Onboard port (lookup tables, firmware mode, host tests, bench, lab validation) | not started; needs your and the supervisor's go |
+| 3 | Onboard port (lookup tables, firmware mode, host tests, bench, lab validation) | **desk part done 2026-10-19** (table, residual and law in C with host tests G1–G3, integration patch G4, C-in-the-loop G5 first step, ARM candidate image); **open: gain tuning in simulation, bench, hover, A1/A8 in the lab** |
 
 ## Stage 0 results (`experiments/fbl/out/stage0/`, `stage0_report.md`, `stage0_overview.png`)
 - **Same meaning.** The bundle's residual is the acceleration the other vehicle causes on the ego vehicle in the world frame: a physics reduced-order model (ROM, downwash jet integrated over the vehicle disc, force along +z, divided by mass) plus a learned correction from two features (radial distance r0, vertical distance z0) rotated from the local flow frame into the world frame. Our label `a_res` = filtered measured acceleration minus the acceleration implied by the motor RPM (world frame): the same physical quantity plus everything else unmodelled (baseline far from the other vehicle −0.16 m/s² over the bank, ground effect, thrust-model error). Geometry identical to the bundle's `point_line_distance` (max difference 0 for the neighbour above; the bundle assumes the neighbour is the upper vehicle and treats z0 as unsigned).
