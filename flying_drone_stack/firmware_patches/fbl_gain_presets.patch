@@ -1,18 +1,18 @@
 --- a/src/modules/src/controller/controller_omar_indi.c	2026-10-20 22:05:10.940293656 +0200
-+++ b/src/modules/src/controller/controller_omar_indi.c	2026-10-20 22:05:10.948293601 +0200
++++ b/src/modules/src/controller/controller_omar_indi.c	2026-10-20 22:29:27.436560942 +0200
 @@ -115,6 +115,23 @@
  // Additive and inert unless fbl.en = 1. Above fbl.z_on the FBL law replaces the position and attitude controllers below (thrust along the measured body
  // z axis, body-rate loop, downwash compensation from the ROM table); below z_off, on a tilt fault and on any non-finite value the Omar controller runs
  // (so takeoff and landing are Omar's). Sources: fbl_law.c, fbl_residual.c (host-tested against the authors' code, docs/fbl/PORT_SPEC.md).
 +// Gain presets. 0 = the authors' (Hsieh et al.) values exactly as in their code (30 g simulated vehicle, kept for reference/comparison);
-+// 1 = ours: position loop (kp, kv, ki_xy) 0.25x, rate loop 0.25x, ki_z 8 -- tuned in the C-in-the-loop plant with 44 ms motor lag
++// 1 = ours: position loop (kp, kv, ki_xy) 0.25x, rate loop 0.25x, ki_z 12 -- tuned in the C-in-the-loop plant with 44 ms motor lag
 +// (docs/fbl/GAIN_TUNING_2026-10-20.md). The authors' values are unstable with that lag in simulation.
 +static void fbl_apply_preset(fbl_cfg_t* f, uint8_t preset)
 +{
 +  if (preset == 0) {
 +    f->kp_xy = 56.0f; f->kp_z = 45.0f; f->kv_xy = 38.0f; f->kv_z = 21.6f; f->ki_xy = 48.0f; f->ki_z = 3.0f; f->kr_xy = 238.0f; f->kr_z = 140.0f;
 +  } else {
-+    f->kp_xy = 14.0f; f->kp_z = 11.25f; f->kv_xy = 9.5f; f->kv_z = 5.4f; f->ki_xy = 12.0f; f->ki_z = 8.0f; f->kr_xy = 59.5f; f->kr_z = 35.0f;
++    f->kp_xy = 14.0f; f->kp_z = 11.25f; f->kv_xy = 9.5f; f->kv_z = 5.4f; f->ki_xy = 12.0f; f->ki_z = 12.0f; f->kr_xy = 59.5f; f->kr_z = 35.0f;
 +  }
 +}
 +

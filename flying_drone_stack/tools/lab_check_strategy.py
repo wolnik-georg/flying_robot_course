@@ -40,16 +40,18 @@ repo = find_repo(); yml = repo / "crazyflie/config/crazyflies.yaml"; text = yml.
 head = subprocess.run(["git", "-C", str(repo), "log", "-1", "--format=%h %ad %s", "--date=format:%H:%M"], capture_output=True, text=True).stdout.strip()
 dirty = subprocess.run(["git", "-C", str(repo), "status", "--short", "crazyflie/config/crazyflies.yaml"], capture_output=True, text=True).stdout.strip()
 print(f"repo   : {repo}\nHEAD   : {head}\nyaml   : {yml}  {'(LOCALLY MODIFIED: ' + dirty + ')' if dirty else '(clean)'}")
-res = {}
+res = {}; fbl_on = {}
 for name in ("cf5", "cf_second"):
     blk, off = robot_block(text, name)
     if blk is None: print(f"{name}: block not found"); continue
     indi, li = find_val(blk, off, "ctrlOmarIndi", "indi"); en, le = find_val(blk, off, "rnn", "en"); ctl, lc = find_val(blk, off, "stabilizer", "controller")
     enabled = re.search(r"^\s*enabled:\s*(\S+)", blk, re.M)
-    res[name] = (indi, en)
-    print(f"{name:9s}: enabled {enabled.group(1) if enabled else '?'} | controller {ctl} (line {lc}) | ctrlOmarIndi.indi {indi} (line {li}) | rnn.en {en} (line {le})")
+    fbl, lf = find_val(blk, off, "ctrlFbl", "en"); fpre, _ = find_val(blk, off, "ctrlFbl", "preset")
+    res[name] = (indi, en); fbl_on[name] = fbl == "1"
+    print(f"{name:9s}: enabled {enabled.group(1) if enabled else '?'} | controller {ctl} (line {lc}) | ctrlOmarIndi.indi {indi} (line {li}) | rnn.en {en} (line {le}) | ctrlFbl.en {fbl} preset {fpre}")
 S = {("0", "0"): "S0 geometric", ("3", "0"): "S1 INDI", ("0", "1"): "S2 geometric + NS2", ("3", "1"): "S3 INDI + NS2"}
-print("bottom drone cf5 in the yaml  =>", S.get(res.get("cf5"), f"NOT one of S0..S3 {res.get('cf5')}"))
+print("bottom drone cf5 in the yaml  =>", ("FBL (Strategy 3, S4; needs the FBL image)" if fbl_on.get("cf5") and res.get("cf5") == ("0", "0") else "INCONSISTENT: ctrlFbl.en 1 together with indi/rnn.en " + str(res.get("cf5")) if fbl_on.get("cf5") else S.get(res.get("cf5"), f"NOT one of S0..S3 {res.get('cf5')}")))
+if fbl_on.get("cf_second"): print("WARNING: the top drone cf_second must not run FBL")
 if res.get("cf_second") != ("0", "0"): print("WARNING: the top drone cf_second should be indi 0 / rnn.en 0 (always geometric, no NS2)")
 src_hash = hashlib.sha256(yml.read_bytes()).hexdigest(); print("\ninstalled copies of crazyflies.yaml (what `ros2 launch` may actually read):")
 found = False

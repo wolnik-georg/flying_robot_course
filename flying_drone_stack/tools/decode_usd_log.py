@@ -63,6 +63,9 @@ RENAME = {
     "ctrlOmarIndi.rpyx": "omar_rpy_x", "ctrlOmarIndi.rpyy": "omar_rpy_y", "ctrlOmarIndi.rpyz": "omar_rpy_z",
     "ctrlOmarIndi.rpydx": "omar_rpyd_x", "ctrlOmarIndi.rpydy": "omar_rpyd_y", "ctrlOmarIndi.rpydz": "omar_rpyd_z",
     "ctrlOmarIndi.error_posx": "omar_err_pos_x", "ctrlOmarIndi.error_posy": "omar_err_pos_y", "ctrlOmarIndi.error_posz": "omar_err_pos_z",
+    "ctrlFbl.active": "fbl_active", "ctrlFbl.tripped": "fbl_tripped", "ctrlFbl.steps": "fbl_steps", "ctrlFbl.faults": "fbl_faults",
+    "ctrlFbl.res_az": "fbl_res_az", "ctrlFbl.res_jz": "fbl_res_jz", "ctrlFbl.thrust": "fbl_thrust", "ctrlFbl.acc_z": "fbl_acc_z",
+    "ctrlFbl.w_des_x": "fbl_w_des_x", "ctrlFbl.w_des_y": "fbl_w_des_y", "ctrlFbl.w_des_z": "fbl_w_des_z",
     "ctrlOmarIndi.error_velx": "omar_err_vel_x", "ctrlOmarIndi.error_vely": "omar_err_vel_y", "ctrlOmarIndi.error_velz": "omar_err_vel_z",
 }
 
