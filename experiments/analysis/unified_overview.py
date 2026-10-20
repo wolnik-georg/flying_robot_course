@@ -14,7 +14,8 @@ a8 = [r for r in a8 if r["file"].split("_")[-1] not in DRAIN]
 a1 = json.load(open(RES / "a1_2026-10-19/a1_summary.json"))
 for b in ("pilot2", "pilot3", "pilot5"): a1 += json.load(open(RES / f"{b}_2026-10-20/a1_summary.json"))
 A4 = pd.concat([pd.DataFrame(json.load(open(RES / "pilot_all_2026-10-20/cell_summary_all.json"))),
-                pd.DataFrame(json.load(open(RES / "pilot5_2026-10-20/cell_summary.json"))).assign(strategy="S1")], ignore_index=True)
+                pd.DataFrame(json.load(open(RES / "pilot5_2026-10-20/cell_summary.json"))).assign(strategy="S1"),
+                pd.DataFrame(json.load(open(RES / "pilot6_2026-10-20/cell_summary.json"))).assign(strategy="S1")], ignore_index=True)
 A4 = A4[(A4.scenario == "A4") & (A4.offset > 0.01)]
 A4.to_json(RES / "pilot_all_2026-10-20/cell_summary_all_with_S1.json", orient="records", indent=1)
 rows, S = [], {}
