@@ -24,7 +24,7 @@ Deadline: 26 Feb 2027 (~18 weeks left)
 - **Comparison (pilot flights of 2026-10-19/20, A8 swap, A1 hold, A4 offset line):** S0 is the worst in all three scenarios; S3 is the best or within the spread of the best in all three; S1 (INDI alone) is excellent in A1 and A4 but weaker than S2 in the A8 crossing.
 - **A8 crossing dip:** {f(a8['S0']['mean'])} → {f(a8['S1']['mean'])} → {f(a8['S2']['mean'])} → {f(a8['S3']['mean'])} cm for S0 → S1 → S2 → S3.
 - **A1 hold, mean z error:** {f(a1['S0']['mean'])}, {f(a1['S1']['mean'])}, {f(a1['S2']['mean'])}, {f(a1['S3']['mean'], True)} cm.
-- **A4 (new):** the geometric controllers depend strongly on how far the drones are offset sideways, INDI hardly at all; NS2 halves the geometric error.
+- **A4 (new):** the geometric controllers depend strongly on how far the drones are offset sideways, INDI hardly at all; NS2 cuts the geometric error by a third to two thirds.
 - **NS2 v2:** retrained on 73 flights (about 19 min inside the gate), runs in C at 526 µs per evaluation.
 - **INDI is battery-sensitive:** the S1 flights on low batteries (3.4 V loaded) were clearly worse.
 - **Data:** {a8n + a1n + a4n} pilot flights in the tables (A8 {a8n}, A1 {a1n}, A4 {a4n}), each with complete uSD logs of both drones; strategy and NS2 version of every flight checked from the logs. A bug found on the way (uSD card full at 100 files made the drones reset at landing) is fixed.
@@ -82,7 +82,7 @@ z RMS in cm, mean ± std over flights (n):
 
 ![A4: bottom z error over time, every flight, four strategies](assets/2026-10-19/A4_offsets_pilot.png)
 
-- The closer the bottom drone passes to the upper one, the larger the error for the geometric controllers (S0 17 cm RMS at 0.05 m); NS2 cuts it by a third to a half.
+- The closer the bottom drone passes to the upper one, the larger the error for the geometric controllers (S0 17 cm RMS at 0.05 m); NS2 cuts it by a third to two thirds (S2 against S0).
 - INDI keeps the error at 3–5 cm at every offset; at 0.15 m all strategies except S0 are at 2–3 cm.
 - Offset 0.0 was dropped (it repeats A1 and A8).
 
