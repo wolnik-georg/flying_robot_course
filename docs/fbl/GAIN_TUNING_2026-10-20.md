@@ -13,6 +13,12 @@
 ![handover test](../../experiments/fbl/handover_test.png)
 
 - **Handover (takeoff from 0.02 m, hold at 0.5 m, landing), same plant, no neighbour, acceleration feedforward on the ramp:** FBL took over at 0.15 m and handed back below 0.10 m without a jump; tilt stayed below 1°, the latch never tripped; hold error ±1 cm (Omar alone −6 … −3 cm). (An earlier version of this test showed a −10/+6 cm swing after takeoff; it was a test artefact: the test still applied the downwash of the scripted top drone that was not there. Fixed 2026-10-21.)
+- **Tilt latch:** a sudden roll-rate kick of 25 / 40 / 60 rad/s (tilt 61° → 178°) trips the latch in every case; the Omar controller takes over and the height recovers like with Omar alone. A single-tick NaN in the position poisons Omar's own integrators (not FBL), so it is not a useful FBL test (the real estimator never outputs NaN).
+
+![A1 and A4](../../experiments/fbl/scenarios_check.png)
+
+- **A1 and A4 in the same plant (simulation, 0.5 m/s line for A4):** FBL with downwash model z RMS 2.0 cm (A1) and 0.8 / 0.6 / 1.3 cm (A4 offsets 0.05 / 0.10 / 0.15 m); Omar geometric 28.6 and 9.5 / 6.9 / 5.9; authors' gains unstable everywhere. Optimistic: the plant has no thrust-map error, battery sag or ground effect, and the downwash truth is the NS2 network that the lookup table was fitted to. (Numbers from before the 2026-10-21 test fix; the A1/A4 runs do not use the handover test and are unaffected.)
+
 - **Next:** none at the desk, see the final round below and `LAB_PLAN.md`.
 
 Reproduce: `experiments/fbl/stage3_port/gain_tuning.py --stage scale|grid|robust|eff`, plot `gain_tuning_plot.py`, outputs `experiments/fbl/out/stage3/gain_tuning_*.json`, plant `c_in_the_loop_real.py`.
