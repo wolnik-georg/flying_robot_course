@@ -60,11 +60,13 @@ def fmt_robot(name: str, eff: dict) -> str:
     kiz = dig(fp, "pos_gains", "ki_z", default=dig(fp, "indi_gains", "pos_gains", "ki_z", default="(inherit)"))
     rnn_en = dig(fp, "rnn", "en", default="(unset)")
     rnn_div = dig(fp, "rnn", "div", default="(unset, firmware default 10)")
+    fbl_en = dig(fp, "ctrlFbl", "en", default="(unset)"); fbl_pre = dig(fp, "ctrlFbl", "preset", default="(unset, firmware default 1)"); indi = dig(fp, "ctrlOmarIndi", "indi", default="(unset)")
     lines = [
         f"=== {name} ===",
         f"  enabled={eff.get('enabled')}  type={eff.get('type')}  uri={eff.get('uri')}",
         f"  stabilizer.controller={ctrl}  indi_gains.ctrl_mode={mode}  ki_z={kiz}",
-        f"  rnn.en={rnn_en}  rnn.div={rnn_div}",
+        f"  rnn.en={rnn_en}  rnn.div={rnn_div}  ctrlOmarIndi.indi={indi}",
+        f"  ctrlFbl.en={fbl_en}  ctrlFbl.preset={fbl_pre}",
     ]
     return "\n".join(lines)
 
@@ -80,6 +82,16 @@ def check_robot(name: str, eff: dict, *, expect_geometric: bool, allow_rnn_en: b
         errs.append(f"{name}: ki_z={kiz} with ctrl_mode=3 (full INDI) — forbidden (10-02 tumble)")
     if rnn_en == 1 and not allow_rnn_en:
         errs.append(f"{name}: rnn.en=1 set in yaml — use --allow-rnn-en for Checklist G")
+    fbl_en = dig(fp, "ctrlFbl", "en")
+    if fbl_en in (1, "1", True):
+        if name != "cf5":
+            errs.append(f"{name}: ctrlFbl.en=1 on the top drone — FBL belongs on cf5 only")
+        if dig(fp, "stabilizer", "controller") not in (9, "9"):
+            errs.append(f"{name}: ctrlFbl.en=1 needs stabilizer.controller 9 (the FBL branch lives in the Omar C controller)")
+        if dig(fp, "ctrlOmarIndi", "indi") not in (0, "0", None):
+            errs.append(f"{name}: ctrlFbl.en=1 together with ctrlOmarIndi.indi={dig(fp, 'ctrlOmarIndi', 'indi')} — FBL runs without INDI (set indi 0)")
+        if rnn_en == 1:
+            errs.append(f"{name}: ctrlFbl.en=1 together with rnn.en=1 — FBL runs without NS2 (set rnn.en 0)")
     if expect_geometric and name == "cf5" and mode not in (0, "0", None):
         if mode != 0:
             errs.append(f"{name}: ctrl_mode={mode} but --expect-geometric-cf5 requires ctrl_mode=0")
@@ -204,7 +216,7 @@ def study_checks(strategy: str, cfg: dict, yaml_path: Path, repo_root: Path, sd_
     if dirty:
         warns.append("crazyswarm2 working tree has uncommitted changes (the meta records dirty=true)")
     # 4. uSD config: variable count against the firmware cap, decoder names, copy on the card
-    cfg_path = THESIS / "flying_drone_stack" / "tools" / "usd_study_config.txt"
+    cfg_path = THESIS / "flying_drone_stack" / "tools" / ("usd_fbl_config.txt" if strategy == "FBL" else "usd_study_config.txt")
     lines = [l.strip() for l in cfg_path.read_text().splitlines()]
     variables = [l for l in lines[7:] if l]
     cap = None
@@ -215,7 +227,7 @@ def study_checks(strategy: str, cfg: dict, yaml_path: Path, repo_root: Path, sd_
     if cap is None:
         warns.append("could not read MAX_USD_LOG_VARIABLES_PER_EVENT from the firmware tree")
     elif len(variables) > cap:
-        errs.append(f"usd_study_config.txt has {len(variables)} variables > firmware cap {cap}: the parser silently drops the rest")
+        errs.append(f"{cfg_path.name} has {len(variables)} variables > firmware cap {cap}: the parser silently drops the rest")
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
         import decode_usd_log as dec
@@ -226,7 +238,7 @@ def study_checks(strategy: str, cfg: dict, yaml_path: Path, repo_root: Path, sd_
         warns.append(f"decoder check skipped: {exc}")
     if sd_config is not None:
         if _sha256(sd_config) != _sha256(cfg_path):
-            errs.append(f"SD card config {sd_config} differs from the repo's usd_study_config.txt")
+            errs.append(f"SD card config {sd_config} differs from the repo's {cfg_path.name}")
         else:
             print(f"  SD card config {sd_config}: identical to the repo file")
     else:
@@ -247,7 +259,7 @@ def main() -> int:
     ap.add_argument("--expect-geometric-cf5", action="store_true", help="Fail if cf5 ctrl_mode != 0")
     ap.add_argument("--allow-rnn-en", action="store_true", help="Allow rnn.en=1 in yaml")
     ap.add_argument("--launch-log", type=Path, default=None, help="Optional launch stdout log to scan")
-    ap.add_argument("--study", choices=("S0", "S1", "S2", "ours", "TK", "TKC"), default=None, help="study profile: frozen block, manifest, tag, uSD config")
+    ap.add_argument("--study", choices=("S0", "S1", "S2", "FBL", "ours", "TK", "TKC"), default=None, help="study profile: frozen block, manifest, tag, uSD config")
     ap.add_argument("--sd-config", type=Path, default=None, help="with --study: config.txt on a mounted SD card, compared with usd_study_config.txt")
     args = ap.parse_args()
 
