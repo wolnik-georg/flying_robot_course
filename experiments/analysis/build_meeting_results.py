@@ -79,7 +79,7 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 ### A1 videos: one flight per strategy (static camera, synchronised at takeoff)
 <video src="assets/2026-10-22/A1_grid.mp4" controls loop muted width="720"></video>
 
-2×2: S0 geometric and S1 INDI on top, S2 geometric + NS2 and S3 INDI + NS2 below; time since takeoff in each tile. Single clips: [S0](assets/2026-10-22/A1_S0.mp4), [S1](assets/2026-10-22/A1_S1.mp4), [S2](assets/2026-10-22/A1_S2.mp4), [S3](assets/2026-10-22/A1_S3.mp4).
+2×2: S0 geometric and S1 INDI on top, S2 geometric + NS2 and S3 INDI + NS2 below; time since takeoff in each tile; under each tile the z error of the 20 s hold from the uSD log with a moving cursor (aligned by the landing onset in the video, about ±1 s; for S0 both video flights are drawn, the filmed one is not identified). Single clips: [S0](assets/2026-10-22/A1_S0.mp4), [S1](assets/2026-10-22/A1_S1.mp4), [S2](assets/2026-10-22/A1_S2.mp4), [S3](assets/2026-10-22/A1_S3.mp4).
 
 <video src="assets/2026-10-22/A1_overlay.mp4" controls loop muted width="720"></video>
 
