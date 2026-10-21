@@ -1,5 +1,7 @@
 # FBL track — status, plan and decisions (started 2026-10-18)
 
+> **2026-10-21: desk part closed, development paused by the user.** Latest results and the lab plan: `PROGRESS_AND_RESUME.md` §4b, `GAIN_TUNING_2026-10-20.md`, `SIM_COMPARISON_2026-10-20.md`, `LAB_PLAN.md`.
+
 > **Start here: `PROGRESS_AND_RESUME.md`** (one-page state of 2026-10-20, what exists, what is not done, how to resume). This file is the detailed log of the stage results.
 
 **What this is.** Strategy 3 of the study (flatness-based feedback linearization with a learned downwash residual, Hsieh et al. 2026). We received only the inference side from the authors (`docs/73_FBL_Bundle_Analysis.md`); the training script, the hardware checkpoint and the hardware gains are missing (email sent, waiting). Decision of 2026-10-18 (user): use the waiting time for desk work that does not need the lab — build our own training pipeline from the paper and our data, so that the authors' script later replaces only the training step. **DECIDED 2026-10-19 (user): Strategy 3 (FBL) IS part of the study.** The onboard port (3–4 weeks of desk + lab work, `PORT_SPEC.md`) is therefore committed work, no longer waiting for a scope decision; the authors' training script and hardware gains, when they arrive, replace only the fitted residual and the gains.
