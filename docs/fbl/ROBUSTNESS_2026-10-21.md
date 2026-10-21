@@ -64,3 +64,10 @@
 - **FBL's z error hardly grows:** A1 mean z error −0.2 → −1.6 cm at 15 % fade (S2 −18 → −30 cm, S0 −37 → −44 cm); A8 z RMS 2.2 → 2.7 cm; R1 4.1 → 4.5 cm; with the load-dependent drop A1 z RMS 4.8 cm, R1 6.1 cm. No trips; the simulated S0 diverges on R1 at ≥ 10 % fade.
 - **Why:** FBL's z integral (gain 12) compensates a slow thrust fade; Omar's is 1.5 (the same reason as in the stress comparison, a gain choice, not a structural advantage).
 - Script `battery_sag.py`.
+
+## 9. Propeller radius and 10. ground effect
+![radius and ground effect](../../experiments/fbl/radius_ground.png)
+
+- **Radius (offline, not closed loop):** the bundle hard-codes 45 mm / 50 mm in two places of `force_batch_fo.py`; a scratch copy of the bundle (the original is untouched) with both radii scaled by 0.9 / 1.1 gives a ROM acceleration that is, within the gate region (r0 ≤ 0.2 m, z0 ≥ 0.25 m), the baseline times 1.13 / 0.90 with a shape residual below 2 %. A ±10 % radius error therefore acts like a ±10–13 % change of C_D, which sits inside the flat region of the C_D sweep (§3) and can be compensated live with `ctrlFbl.cd`. Not simulated in the closed loop (that would need a firmware rebuild per table). Script `radius_sensitivity.py`.
+- **Ground effect (closed loop):** a Cheeseman–Bennett thrust gain (propeller radius 22.5 mm; about +1 % at 5 cm height, +8 % at 2 cm) at 0, 1 and 3× nominal, in the takeoff / hold / landing test: the errors at takeoff, landing and in the hold do not change visibly (FBL takeoff error −5.4 → −5.0 cm, landing −2.7 → −1.9 cm, hold ±1.0 cm for all; Omar −8.3 / −8.9 / 7.9 cm), tilt < 1°, no trips. The handover at 0.15 / 0.10 m is not disturbed by it. Script `ground_effect.py`.
+- **Not simulated:** the A7 descent (the upper drone passing through the lower one, an extreme scenario with the bottom drone at about 0.1 m); the touchdown speed (the landing test ends at 2 cm height).

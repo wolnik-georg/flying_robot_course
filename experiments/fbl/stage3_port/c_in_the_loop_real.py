@@ -19,6 +19,7 @@ from crazyflie_examples.formations import poly4d, scenarios as FSC  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 KICK = 12.0
 PEER_EVERY = 10
+TD = [float('nan')]   # touchdown vertical speed of the last handover run [m/s]
 CD_FIT = 0.43       # downwash coefficient used by mode fbl_rom (fitted on our label)
 FEEDFWD = True      # acceleration/jerk feedforward on the handover test ramp (the HLC trajectories of real flights have it)
 M, G = 0.0427, 9.81; J = np.diag([2.395e-5, 2.395e-5, 3.235e-5]); FMAX = 2.0 * M * G; TAUMAX = 0.02
@@ -81,16 +82,20 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
         while cmd_q and cmd_q[0][0] <= t: _, thr_c, tau_c = cmd_q.pop(0)
         a_m = 1.0 if real['motor_tau_ms'] <= 0 else dt / (real['motor_tau_ms'] * 1e-3 + dt)
         eff_t = real['thrust_eff'] * (1.0 - real.get('sag_t', 0.0) * t / T) * (1.0 - real.get('sag_load', 0.0) * max(thr_c / (M * G) - 1.0, 0.0))     # battery sag: slow fade over the flight and load-dependent drop
+        if real.get('ge'): eff_t *= 1.0 + real['ge'] * (1.0 / (1.0 - (0.0225 / (4.0 * max(x[2], 0.02))) ** 2) - 1.0)          # ground effect (Cheeseman-Bennett, propeller radius 22.5 mm), ge = 1 nominal, 3 = stress
         thrust += a_m * (thr_c * eff_t - thrust); tau = tau + a_m * (tau_c - tau)
         if i % 2 == 0:
             rel = [(tp - x, tv - v)] if (tp[2] > x[2] and not handover) else []
             a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M * fscale
         R = Rot.from_quat(q).as_matrix()
-        if handover and x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0)
+        if handover and x[2] <= 0.0:
+            if t > 9.0 and 'td_vz' not in locals() and v[2] < 0: td_vz = float(v[2])      # touchdown speed on the way down
+            x[2] = 0.0; v[2] = max(v[2], 0.0)
         v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / Mp + fext / M) * dt; x = x + v * dt
         w = w + np.linalg.solve(Jp, tau - np.cross(w, Jp @ w)) * dt; q = (Rot.from_rotvec(R @ w * dt) * Rot.from_quat(q)).as_quat()
         rec[i] = [t, *x, *tp, np.degrees(np.arccos(np.clip(R[2, 2], -1, 1))), thrust, omar.fbl.active, omar.fbl.tripped]
     if handover:
+        TD[0] = locals().get('td_vz', float('nan'))
         zr = lambda t: 0.02 + 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-1)/3,0),1)) - 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-9)/4,0),1))
         ez = np.array([rec[k, 3] - zr(rec[k, 0]) for k in range(0, n, 10)]); r = rec[::10]; np.save(str(Path(__file__).parent / '../out/stage3') + '/handover_' + mode + ('_' + fault if fault else '') + '.npy', np.c_[r[:, 0], r[:, 3], np.array([zr(t) for t in r[:, 0]]), r[:, 7], r[:, 8], r[:, 9], r[:, 10]])
     else:

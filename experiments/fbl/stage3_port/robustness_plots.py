@@ -101,3 +101,15 @@ for j, (scen, ttl) in enumerate((("A1", "A1 hold (15 s)"), ("A8", "A8 swap"), ("
         ax[j].plot([100 * f for f in fades], [bs[f"fade|{f}|{scen}|{m}"]["z_rms"] for f in fades], "o-", c=c, label=l)
     ax[j].set_xlabel("thrust per command lost by the end of the flight [%]"); ax[j].set_ylabel("z RMS [cm]"); ax[j].set_title(ttl, fontsize=10); ax[j].grid(alpha=.3)
 ax[0].legend(fontsize=8); fig.suptitle("Battery sag in the calibrated plant: FBL's z error hardly grows (its z integral, gain 12, compensates), the geometric strategies sag further; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/battery_sag.png", dpi=115); plt.close(fig)
+# ---- (9)(10) propeller radius and ground effect
+rs_ = json.load(open(O / "radius_sensitivity.json")); ge = json.load(open(O / "ground_effect.json")); fig, ax = plt.subplots(1, 2, figsize=(13, 4.3))
+zi = rs_["z"].index(0.5)
+for key, lab, c in (("lo", "radius ×0.9", "#d62728"), ("base", "radius 45 mm (as built)", "k"), ("hi", "radius ×1.1", "#2171b5")): ax[0].plot(rs_["r"], rs_[key][zi], "o-", c=c, label=lab)
+ax[0].set_xlabel("horizontal offset r0 [m]"); ax[0].set_ylabel("ROM acceleration at z0 = 0.5 m, per unit C_D [m/s²]"); ax[0].legend(fontsize=8); ax[0].grid(alpha=.3)
+sm = rs_["summary"]; ax[0].set_title(f"Radius ±10 % ≈ C_D ×{sm['1.1']['equivalent_cd_scale']:.2f} / ×{sm['0.9']['equivalent_cd_scale']:.2f} (shape residual < 2 %)", fontsize=9)
+cats = [("takeoff_err_min", "takeoff, lowest error"), ("landing_err_min", "landing, lowest error"), ("hold_err_max", "hold, largest |error|")]; w = .13; labs = []
+for j, g in enumerate((0, 1, 3)):
+    for k, (m, c) in enumerate((("omar", "#7f7f7f"), ("fbl_rom", "#2171b5"))):
+        ax[1].bar(np.arange(3) + (j * 2 + k - 2.5) * w, [abs(ge[f"{m}|ge{g}"][key]) for key, _ in cats], w, color=c, alpha=.35 + .22 * j, label=("Omar" if k == 0 else "FBL") + f", ground effect ×{g}" if True else None)
+ax[1].set_xticks(range(3)); ax[1].set_xticklabels([n for _, n in cats], fontsize=8); ax[1].set_ylabel("|height error| [cm]"); ax[1].set_ylim(0, 11.5); ax[1].legend(fontsize=6.5, ncol=3); ax[1].set_title("Takeoff / hold / landing with ground effect 0, 1, 3 × nominal: no visible change", fontsize=9)
+fig.suptitle("Propeller-radius sensitivity of the ROM (left, evaluated offline) and ground effect near the floor (right, closed loop); simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/radius_ground.png", dpi=115); plt.close(fig)
