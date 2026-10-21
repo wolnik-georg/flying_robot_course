@@ -48,8 +48,9 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
         tp_hist.append(tp.copy())
         if peer is None:
             if (i % PEER_EVERY == 0) and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
-        elif not handover and i >= peer_next:      # measured peer feed: irregular updates (empirical intervals), latency, noise; the timestamp is the reception time [ms]
+        elif not handover and i >= peer_next and not (peer.get('drop') and peer['drop'][0] <= t < peer['drop'][1]):      # measured peer feed: irregular updates (empirical intervals), latency, noise; the timestamp is the reception time [ms]
             src = tp_hist[max(0, i - int(peer.get('lat_ms', 0)))] + rng.normal(0, peer.get('noise_m', 0.0), 3)
+            if peer.get('nan_at') is not None and abs(t - peer['nan_at']) < 0.006: src = src * np.nan if peer.get('nan_kind', 'nan') == 'nan' else src * np.inf
             fw.oot_set_peer(0, float(src[0]), float(src[1]), float(src[2]), int(i))
             peer_next = i + (max(1, int(round(1000 * rng.choice(PEMP)))) if PEMP is not None else 10)
         pr, vr, ar, jr, yw = kin(sc, 0, t, anchor)

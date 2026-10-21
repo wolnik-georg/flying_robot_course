@@ -23,3 +23,10 @@
 - **ki_z:** 12–16 is best (A1 bias 0.2 → 0.0 cm), 24 oscillates in A8 (5.3 cm); default stays 12.
 - **Not done:** propeller radius (45 mm assumed) — it is baked into the lookup table and needs a table rebuild; expected to act like a C_D/shape change.
 - Scripts `cd_and_kiz.py`, `robustness_plots.py`.
+
+## 4. Faults of the peer feed (A8, calibrated plant)
+![peer faults](../../experiments/fbl/peer_faults.png)
+
+- **Dropouts:** 0.3 s and 1 s without neighbour updates around t = 8 s changed nothing (the crossing was not inside the gap, or the stale position still fits); a 3 s dropout that covers a crossing raises FBL's dip from 1.1 to 3.7 cm (S2: 7.0 to 8.6 cm). No crash.
+- **One NaN / Inf position in the feed:** FBL falls back to the Omar controller and stays there until landing (latch, by design): no crash, z RMS 2.2 → 3.3 cm. The dip shown is the worst of the whole run and happened before the fault (it came after the second crossing). S2 is unaffected in the simulation.
+- Script `peer_faults.py` (plant options `drop=(t0,t1)`, `nan_at=t` in `c_in_the_loop_real.py`).
