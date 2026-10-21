@@ -26,7 +26,7 @@ W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.
 def kin(sc, i, t, anchor):
     rp = sc.robots[i]; d = poly4d._derivs(rp.curve, min(t, rp.curve.duration)); return anchor + rp.slot + d[0, :3], d[1, :3], d[2, :3], d[3, :3], d[0, 3]
 
-def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1, fscale=1.0):
+def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1, fscale=1.0, peer=None):
     real = {**dict(delay_ms=0.0, motor_tau_ms=0.0, gyro_noise_dps=0.0, pos_noise_m=0.0, vel_noise=0.0, thrust_eff=1.0), **(real or {})}; rng = np.random.default_rng(seed)
     sc = (FSC.A8(dz=dz, span=1.0, duration=1.875 / speed, settle=2.0, passes=2) if scen == 'A8' else FSC.A1(dz=dz, hold=15.0) if scen == 'A1' else FSC.A4(dz=dz, offset=offset, axis='y', motion='line', speed=speed)); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
@@ -39,10 +39,18 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
     p0, *_ = kin(sc, 0, 0.0, anchor)
     if handover: p0 = np.array([0.0, 0.0, 0.02]); T = 14.0
     x, v, q, w = p0.copy(), np.zeros(3), np.array([0, 0, 0, 1.0]), np.zeros(3)
+    PEMP = np.load(Path(__file__).parent / 'peer_intervals.npy') if (peer and peer.get('emp')) else None
+    tp_hist = []; peer_next = 0; peer_pos = None
     n = int(T / 1e-3); rec = np.zeros((n, 11)); dt = 1e-3; thrust = M * G; tau = np.zeros(3); cmd_q = []; thr_c = M * G; tau_c = np.zeros(3); fext = np.zeros(3); sat = 0; faults = 0
     for i in range(n):
         t = i * dt; tp, tv, ta, tj, _ = kin(sc, 1, t, anchor)
-        if (i % PEER_EVERY == 0) and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
+        tp_hist.append(tp.copy())
+        if peer is None:
+            if (i % PEER_EVERY == 0) and not handover: fw.oot_set_peer(0, float(tp[0]), float(tp[1]), float(tp[2]), int(i))
+        elif not handover and i >= peer_next:      # measured peer feed: irregular updates (empirical intervals), latency, noise; the timestamp is the reception time [ms]
+            src = tp_hist[max(0, i - int(peer.get('lat_ms', 0)))] + rng.normal(0, peer.get('noise_m', 0.0), 3)
+            fw.oot_set_peer(0, float(src[0]), float(src[1]), float(src[2]), int(i))
+            peer_next = i + (max(1, int(round(1000 * rng.choice(PEMP)))) if PEMP is not None else 10)
         pr, vr, ar, jr, yw = kin(sc, 0, t, anchor)
         if handover:   # smooth takeoff 0.02 -> 0.5 m (t 1..4 s), hold, smooth landing to 0.02 m (t 9..13 s)
             def sm(u): u = min(max(u, 0.0), 1.0); return 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5, (30 * u ** 2 - 60 * u ** 3 + 30 * u ** 4)

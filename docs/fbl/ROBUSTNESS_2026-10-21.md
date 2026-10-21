@@ -1,0 +1,17 @@
+# FBL robustness at the desk (2026-10-21): peer feed and thrust map
+
+## 1. Peer feed (neighbour position) — measured from our uSD logs, then swept in the plant
+![peer robustness](../../experiments/fbl/peer_robustness.png)
+
+- **Measured** (cf5 logs, airborne): the neighbour's position updates at about **88 Hz** (median interval 9.9 ms, p5/p95 7.7 / 19.9 ms), about **1 mm** noise per update (upper bound, includes the neighbour's own motion). **Latency** is not resolvable: cross-correlating the received position with the neighbour's own log gives ±40–60 ms with changing sign (the merge alignment itself is only about that accurate), so it is swept 0–100 ms.
+- **FBL is insensitive:** A8 dip grows only from 0.1 to 1.2 cm up to 100 ms latency (S2: 1.2 to 2.2 cm); noise up to 10 mm changes nothing for FBL.
+- **S2 (NS2) is sensitive to noise in A1:** mean z error 0 → −4.3 cm at the measured 1 mm and −17.6 cm at 10 mm (the network takes the neighbour's velocity, differenced from noisy positions). This may be part of why S2 on the hardware is worse than in the ideal simulation (hypothesis, not proven).
+- Script `peer_robustness.py` (plant option `peer=...` in `c_in_the_loop_real.py`; update intervals from `peer_intervals.npy`).
+
+## 2. Thrust map — the "12 % shortfall" assumption was too pessimistic
+![thrust command ratio](../../experiments/fbl/thrust_command_ratio.png)
+
+- **Measured:** thrust command / weight at steady hover where no downwash acts (geometric controller, `mass 0.0427`): **top drone 0.965** (54 flights, 0.958–0.973), **bottom drone 1.023** (8 A8 flights outside the gate, 1.006–1.035). So the thrust map is within about ±4 %, not 12 % off; for the bottom drone 97.7 % of the command arrives (the top drone gets 3.6 % more than commanded, or its mass is smaller).
+- **Consequence:** with the measured factor FBL's z error stays at 0.0–2 cm in the ideal-downwash plant (A1 2.1 cm RMS), against 4–5 cm with the assumed 12 %. The earlier stress plant (12 % shortfall) was harsher than reality and is superseded by the bottom row of `SIM_COMPARISON_2026-10-20.md`.
+- Caveats: the ratio includes the integral part of the command; battery state differs between flights; the INDI strategies' thrust path is different (65–70 % arrives, `docs/tree_comparison_2026-10-19.md`) and is not covered here.
+- Script `robustness_plots.py` (makes both figures and the simulation comparison figure).
