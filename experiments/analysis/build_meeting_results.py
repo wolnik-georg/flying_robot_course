@@ -76,6 +76,18 @@ Notation: `z` = measured height, `z_cmd` = commanded height, `e_z = z − z_cmd`
 - Geometric strategies sag in the hold and tilt up to 42°; NS2 halves the sag.
 - S3 starts about +13 cm high (takeoff overshoot, gone after ~4 s).
 
+### A1 videos: one flight per strategy (static camera, synchronised at takeoff)
+<video src="assets/2026-10-22/A1_grid.mp4" controls loop muted width="720"></video>
+
+2×2: S0 geometric and S1 INDI on top, S2 geometric + NS2 and S3 INDI + NS2 below; time since takeoff in each tile. Single clips: [S0](assets/2026-10-22/A1_S0.mp4), [S1](assets/2026-10-22/A1_S1.mp4), [S2](assets/2026-10-22/A1_S2.mp4), [S3](assets/2026-10-22/A1_S3.mp4).
+
+<video src="assets/2026-10-22/A1_overlay.mp4" controls loop muted width="720"></video>
+
+Overlay: the four flights in one frame, one colour per strategy (S0 white, S1 blue, S2 green, S3 red), trails fade after about 1 s; the stack is seen from the front.
+- **What the videos show:** in the hold the bottom drone sits lowest and most tilted with S0, higher with S2, and near the commanded height with S1 and S3; the top drone stays at the top in all four.
+- **Their numbers (mean z error of the video flights):** S0 −16.6 / −18.0 cm (two flights), S1 −1.4, S2 −8.4, S3 +3.0 cm; hold 20 s, max roll/pitch 42° / 40° / 29° / 40° / 25°.
+- Made by `experiments/analysis/a1_videos.py` and `a1_overlay.py` from the camera files (not in the repo).
+
 ## 4. A4: bottom drone shuttles beside the stack (new)
 z RMS in cm, mean ± std over flights (n):
 | offset | S0 geometric | S1 INDI | S2 geometric + NS2 | S3 INDI + NS2 |
