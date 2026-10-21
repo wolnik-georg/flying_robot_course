@@ -16,3 +16,8 @@ law_vectors_command.txt: gen_law_vectors.py
 	~/.pyenv/versions/flying_robots/bin/python gen_law_vectors.py
 test_fbl_law: test_fbl_law.c fbl_law.c
 	$(CC) $(CFLAGS) -o $@ test_fbl_law.c fbl_law.c -lm
+
+bench: bench_step
+	./bench_step
+bench_step: bench_step.c fbl_residual.c fbl_law.c $(TABLE)/fbl_rom_table.c
+	$(CC) $(CFLAGS) -o $@ bench_step.c fbl_residual.c fbl_law.c $(TABLE)/fbl_rom_table.c -lm

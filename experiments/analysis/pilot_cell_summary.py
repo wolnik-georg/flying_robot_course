@@ -26,6 +26,7 @@ for d in sorted(glob.glob(a.bank + "/A*_*")):
     rows.append(dict(folder=nm, scenario=scen, offset=p.get("offset"), dz=p.get("dz"), time=nm.split("_")[-1], z_mean_cm=100 * float(ez[w].mean()), z_rms_cm=100 * float(np.sqrt((ez[w] ** 2).mean())),
                      z_min_cm=100 * float(ez[w].min()), z_max_cm=100 * float(ez[w].max()), xy_rms_cm=100 * float(np.sqrt((ex[w] ** 2 + ey[w] ** 2).mean())), gate_s=float(gate[w].sum() / 500),
                      vbat_start=float(b.vbat[w].iloc[0]), vbat_min=float(b.vbat[w].min()), top_vbat_min=float(t.vbat[w].min()), motor_max_pct=float(100 * max(b[f"motor_m{i}"][w].max() for i in range(1, 5)) / 65535),
+                     fbl_ran=bool(f"{pb}.fbl_steps" in df.columns and df[f"{pb}.fbl_steps"].iloc[-1] - df[f"{pb}.fbl_steps"].iloc[0] > 0), fbl_tripped=int(df[f"{pb}.fbl_tripped"].max()) if f"{pb}.fbl_tripped" in df.columns else 0,
                      tilt_max_deg=float(max(np.abs(b.roll_deg[w]).max(), np.abs(b.pitch_deg[w]).max())), top_z_rms_cm=100 * float(np.sqrt(((t.z - t.ctrltarget_z).values[w] ** 2).mean())), end_s=float(tt[-1])))
 R = pd.DataFrame(rows); out = Path(a.out or a.bank); R.to_json(out / "cell_summary.json", orient="records", indent=1)
 pd.set_option("display.width", 250); pd.set_option("display.max_columns", 30)

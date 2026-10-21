@@ -19,3 +19,9 @@ Everything below is desk-prepared and untested on hardware. Order is a proposal 
 - **Expected from simulation (optimistic):** in the calibrated plant (measured thrust, downwash 1.3×) A8 dip about 1 cm, A1 bias about 0.2 cm (RMS 3 cm), A4 2–3 cm RMS (`SIM_COMPARISON_2026-10-20.md`); real values will be worse.
 - **Knob order if the downwash compensation looks too weak:** `ctrlFbl.cd` 0.43 → 0.6 (best in simulation), `ctrlFbl.ki_z` 12 → 16 (`ROBUSTNESS_2026-10-21.md`).
 - **Waiting for the authors:** their gains/checkpoint become a third preset; nothing else changes.
+
+## Desk-side tests of the lab tools (2026-10-21)
+- `fbl_bench_check.py`: dry run against a mocked drone (`flying_drone_stack/tools/test_fbl_bench_check_mock.py`): passes on a correct image, fails on missing log variables, missing controller-9 line, a preset that does not load the gains, and `steps = 0` after a flight. Not run against a real drone or the real cflib.
+- `usd_fbl_config.txt`: all 96 variables exist in the firmware sources (scan of the LOG groups); `restore_study_sd_config.py --fbl` tested on a fake card (copy, backup, idempotent).
+- FBL uSD layout: a synthetic log with the FBL variables (`make_synthetic_fbl_usd_log.py`, real study log with the 11 variables swapped) decodes, merges with `merge_usd_logs.py`, passes `fbl_log_check.py`, and `pilot_cell_summary.py` now adds `fbl_ran` / `fbl_tripped` columns.
+- **Step time on the drone, estimated:** one FBL step (residual + law + command) costs about 1/70 of the NS2-sized network on the host (`c/bench_step.c`, `make bench`), i.e. roughly 10 µs on the drone (NS2 evaluation: 526 µs there); even 10× worse is far below the 2 ms slot. To be confirmed in the lab from the logs.
