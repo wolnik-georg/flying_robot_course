@@ -19,6 +19,7 @@ from crazyflie_examples.formations import poly4d, scenarios as FSC  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 KICK = 12.0
 PEER_EVERY = 10
+CD_FIT = 0.43       # downwash coefficient used by mode fbl_rom (fitted on our label)
 FEEDFWD = True      # acceleration/jerk feedforward on the handover test ramp (the HLC trajectories of real flights have it)
 M, G = 0.0427, 9.81; J = np.diag([2.395e-5, 2.395e-5, 3.235e-5]); FMAX = 2.0 * M * G; TAUMAX = 0.02
 W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.npz")["weights"], np.float32)
@@ -32,7 +33,7 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     [setattr(omar.fbl, k, v) for k, v in (gains or {}).items()]
     omar.fbl.en = 0 if mode in ("omar", "s2") else 1;
-    fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 1 if mode == "s2" else 0; omar.fbl.c_d = 0.43 if mode == "fbl_rom" else 0.0
+    fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 1 if mode == "s2" else 0; omar.fbl.c_d = CD_FIT if mode == "fbl_rom" else 0.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
     fw.oot_set_peer_count(0 if handover else 1)

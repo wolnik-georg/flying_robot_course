@@ -15,3 +15,11 @@
 - **Consequence:** with the measured factor FBL's z error stays at 0.0–2 cm in the ideal-downwash plant (A1 2.1 cm RMS), against 4–5 cm with the assumed 12 %. The earlier stress plant (12 % shortfall) was harsher than reality and is superseded by the bottom row of `SIM_COMPARISON_2026-10-20.md`.
 - Caveats: the ratio includes the integral part of the command; battery state differs between flights; the INDI strategies' thrust path is different (65–70 % arrives, `docs/tree_comparison_2026-10-19.md`) and is not covered here.
 - Script `robustness_plots.py` (makes both figures and the simulation comparison figure).
+
+## 3. Downwash coefficient C_D and z-integral gain (calibrated plant)
+![C_D and ki_z](../../experiments/fbl/cd_kiz_sensitivity.png)
+
+- **C_D:** error falls as C_D rises up to about 0.6 and stays flat to 0.8; with C_D ≤ 0.3 FBL loses a factor 2–3 (A8 dip 4.3 cm at 0 → 1.0 at 0.43 → 0.3 at 0.6). The best value is higher than the fitted 0.43 because the plant's downwash is 1.3× the NS2 prediction. **On the hardware try 0.43 first, then 0.6** (`ctrlFbl.cd`, no reflash).
+- **ki_z:** 12–16 is best (A1 bias 0.2 → 0.0 cm), 24 oscillates in A8 (5.3 cm); default stays 12.
+- **Not done:** propeller radius (45 mm assumed) — it is baked into the lookup table and needs a table rebuild; expected to act like a C_D/shape change.
+- Scripts `cd_and_kiz.py`, `robustness_plots.py`.

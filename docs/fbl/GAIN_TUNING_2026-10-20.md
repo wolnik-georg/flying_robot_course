@@ -26,7 +26,7 @@ Reproduce: `experiments/fbl/stage3_port/gain_tuning.py --stage scale|grid|robust
 ## Final round (desk closed)
 ![final tuning](../../experiments/fbl/final_tuning.png)
 
-- **ki_z 12** (was 8): with the thrust error expected on hardware (~12 %, assumed from Omar's thrust mismatch 1.14; FBL uses the same thrust map) z RMS is 4.0 cm (A1) / 4.0 cm (A8) at ki_z 12 against 4.9 / 4.5 at 8; 16–20 give little more and add overshoot; 30 oscillates.
+- **ki_z 12** (was 8): chosen with an assumed 12 % thrust shortfall (superseded 2026-10-21: the measured shortfall is 2.3 %, `ROBUSTNESS_2026-10-21.md`; ki_z 12–16 stays best there) — original reasoning: with the thrust error expected on hardware (~12 %, assumed from Omar's thrust mismatch 1.14; FBL uses the same thrust map) z RMS is 4.0 cm (A1) / 4.0 cm (A8) at ki_z 12 against 4.9 / 4.5 at 8; 16–20 give little more and add overshoot; 30 oscillates.
 - **Estimator gains beta, gamma:** no effect (0.2/0.05 … 1.0/0.5 identical), kept 0.4/0.1.
 - **Motor lag margin:** stable up to 60 ms; at 80 ms the loop starts to oscillate (tilt 32°). Identified lag is 44 ms.
 - **Thrust error is the main risk:** below ~80 % arriving thrust FBL sags a lot in simulation; its z integral is the only protection. Knobs per flight: `ctrlFbl.ki_z`, `ctrlFbl.cd`, `ctrlFbl.preset`.

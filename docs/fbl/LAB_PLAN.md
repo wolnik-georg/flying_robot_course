@@ -16,5 +16,6 @@ Everything below is desk-prepared and untested on hardware. Order is a proposal 
 
 - **If the drone sags or oscillates in the first flights:** the knobs are `ctrlFbl.ki_z` (default 12), `ctrlFbl.cd` (0.43, downwash strength, 0 = no residual) and `ctrlFbl.preset`; all settable per flight without reflashing.
 - **First uSD FBL log is also the shakedown of the logging chain:** decode + merge have never seen an FBL config (11 INDI/oot5 variables swapped for `ctrlFbl.*`); if a downstream script misses a column, fix it then.
-- **Expected from simulation (optimistic):** A1 z RMS ~2 cm, A8 dip ~0.5 cm; with ~12 % thrust shortfall about 4 cm (`GAIN_TUNING_2026-10-20.md`).
+- **Expected from simulation (optimistic):** in the calibrated plant (measured thrust, downwash 1.3×) A8 dip about 1 cm, A1 bias about 0.2 cm (RMS 3 cm), A4 2–3 cm RMS (`SIM_COMPARISON_2026-10-20.md`); real values will be worse.
+- **Knob order if the downwash compensation looks too weak:** `ctrlFbl.cd` 0.43 → 0.6 (best in simulation), `ctrlFbl.ki_z` 12 → 16 (`ROBUSTNESS_2026-10-21.md`).
 - **Waiting for the authors:** their gains/checkpoint become a third preset; nothing else changes.

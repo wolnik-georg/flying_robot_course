@@ -46,3 +46,11 @@ ax.scatter(1 + rng.uniform(-.15, .15, len(top)), top, c="#d62728", s=18, label=f
 ax.axhline(1.0, c="k", lw=1); ax.set_xticks([1, 2]); ax.set_xticklabels(["top drone", "bottom drone"]); ax.set_ylabel("commanded thrust / weight at hover"); ax.set_ylim(0.94, 1.06); ax.set_xlim(0.5, 2.5); ax.legend(fontsize=8)
 ax.set_title("Thrust command needed to hover (geometric controller, no downwash)\n1.0 = commanded thrust equals weight; the map is within ±4 %", fontsize=9); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/thrust_command_ratio.png", dpi=120); plt.close(fig)
 print("top", np.mean(top).round(3), np.min(top).round(3), np.max(top).round(3), "bottom", np.mean(bot).round(3), np.min(bot).round(3), np.max(bot).round(3))
+# ---- (4) C_D and ki_z sensitivity
+d = json.load(open(O / "cd_and_kiz.json")); fig, ax = plt.subplots(1, 2, figsize=(12, 4.2)); cds = [0.0, 0.2, 0.3, 0.43, 0.6, 0.8]; kis = [3, 8, 12, 16, 24]
+for cs, c, lab in (("A8", "#d62728", "A8 dip [cm]"), ("A1", "#1f77b4", "A1 mean z error [cm]"), ("A4 0.05", "#2ca02c", "A4 0.05 m z RMS [cm]")):
+    ax[0].plot(cds, [abs(d[f"cd {x}|{cs}"]["value"]) for x in cds], "o-", c=c, label=lab); ax[1].plot(kis, [abs(d[f"ki_z {x}|{cs}"]["value"]) for x in kis], "o-", c=c, label=lab)
+ax[0].axvline(0.43, c="k", ls=":", lw=1); ax[0].text(0.44, ax[0].get_ylim()[1] * 0.9, "fitted 0.43\n(default)", fontsize=8); ax[0].set_xlabel("downwash coefficient C_D used by FBL"); ax[0].set_ylabel("error [cm], smaller is better"); ax[0].set_title("Downwash model strength: best around 0.6; too weak (≤ 0.3) costs 2–3x")
+ax[1].axvline(12, c="k", ls=":", lw=1); ax[1].text(12.3, ax[1].get_ylim()[1] * 0.9, "default 12", fontsize=8); ax[1].set_xlabel("z-integral gain ki_z"); ax[1].set_ylabel("error [cm], smaller is better"); ax[1].set_title("z-integral gain: 12–16 best, 24 oscillates in A8")
+for a in ax: a.legend(fontsize=8); a.set_ylim(bottom=0); a.title.set_fontsize(9)
+fig.suptitle("Calibrated plant (97.7 % thrust, downwash 1.3x prediction), tuned FBL; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/cd_kiz_sensitivity.png", dpi=120); plt.close(fig)
