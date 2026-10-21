@@ -127,3 +127,5 @@ Time profile of the hold: `meetings/assets/2026-10-19/A1_comparison.png`.
 ![A4: z error over time, every flight](meetings/assets/2026-10-19/A4_offsets_pilot.png)
 
 Details and per-flight tables: `lab_sessions/2026-10-20.md` §1–13. All plan cells are at or above their targets (A1 target 5, A8 target 4, A4 target 3 per offset).
+
+**Note 2026-10-21 (motors max):** every "motors max" / `motor_max_pct` in the tree comparison tables and in `docs/lab_sessions/2026-10-20.md` is the peak motor *command* (`motor.m1..m4`, 0–65535, 100 % = 65535 = the command limit), not a rotor speed. Rotor speeds (DShot telemetry `rpm.m1..m4`) while airborne: hover about 15.8k rpm in A8 and 17.5k rpm in A1, peaks A8 S0 19.2–20.6k, S1 20.5–21.5k, S2 19.1–20.0k, S3 20.5–21.9k rpm; A1 S0 21.4–21.8k, S1 20.9–21.9k, S2 21.7–22.1k, S3 21.2–21.9k rpm (min–max over the flights). The INDI strategies drive the command to its limit for 1–7 % (A8) and 8–54 % (A1) of the flight, the geometric ones almost never. The deck RPM channel `motor.m*_rpm` shows invalid spikes up to 65535, which are not speeds.
