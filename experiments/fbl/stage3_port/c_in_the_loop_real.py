@@ -19,6 +19,7 @@ from crazyflie_examples.formations import poly4d, scenarios as FSC  # noqa: E402
 from test_residual_nn import reference  # noqa: E402
 KICK = 12.0
 PEER_EVERY = 10
+FEEDFWD = True      # acceleration/jerk feedforward on the handover test ramp (the HLC trajectories of real flights have it)
 M, G = 0.0427, 9.81; J = np.diag([2.395e-5, 2.395e-5, 3.235e-5]); FMAX = 2.0 * M * G; TAUMAX = 0.02
 W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.npz")["weights"], np.float32)
 
@@ -47,7 +48,12 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
             def sm(u): u = min(max(u, 0.0), 1.0); return 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5, (30 * u ** 2 - 60 * u ** 3 + 30 * u ** 4)
             z_up, d_up = sm((t - 1.0) / 3.0); z_dn, d_dn = sm((t - 9.0) / 4.0)
             zc = 0.02 + 0.48 * z_up - 0.48 * z_dn; vz = 0.48 * d_up / 3.0 - 0.48 * d_dn / 4.0
-            pr = np.array([0.0, 0.0, zc]); vr = np.array([0.0, 0.0, vz]); ar = np.zeros(3); jr = np.zeros(3)
+            def sm2(u, T):    # second and third derivative of the smoothstep (for the acceleration / jerk feedforward)
+                if u <= 0.0 or u >= 1.0: return 0.0, 0.0
+                return (60 * u - 180 * u ** 2 + 120 * u ** 3) / T ** 2, (60 - 360 * u + 360 * u ** 2) / T ** 3
+            a_up, j_up = sm2((t - 1.0) / 3.0, 3.0); a_dn, j_dn = sm2((t - 9.0) / 4.0, 4.0)
+            pr = np.array([0.0, 0.0, zc]); vr = np.array([0.0, 0.0, vz])
+            ar = np.array([0.0, 0.0, 0.48 * a_up - 0.48 * a_dn]) if FEEDFWD else np.zeros(3); jr = np.array([0.0, 0.0, 0.48 * j_up - 0.48 * j_dn]) if FEEDFWD else np.zeros(3)
         sp.position.x, sp.position.y, sp.position.z = map(float, pr); sp.velocity.x, sp.velocity.y, sp.velocity.z = map(float, vr)
         sp.acceleration.x, sp.acceleration.y, sp.acceleration.z = map(float, ar); sp.jerk.x, sp.jerk.y, sp.jerk.z = map(float, jr)
         xm = x + rng.normal(0, real['pos_noise_m'], 3); vm = v + rng.normal(0, real['vel_noise'], 3)
@@ -65,7 +71,7 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
         a_m = 1.0 if real['motor_tau_ms'] <= 0 else dt / (real['motor_tau_ms'] * 1e-3 + dt)
         thrust += a_m * (thr_c * real['thrust_eff'] - thrust); tau = tau + a_m * (tau_c - tau)
         if i % 2 == 0:
-            rel = [(tp - x, tv - v)] if tp[2] > x[2] else []
+            rel = [(tp - x, tv - v)] if (tp[2] > x[2] and not handover) else []
             a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M * fscale
         R = Rot.from_quat(q).as_matrix()
         if handover and x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0)

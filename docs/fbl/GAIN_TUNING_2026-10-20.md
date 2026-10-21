@@ -12,7 +12,7 @@
 
 ![handover test](../../experiments/fbl/handover_test.png)
 
-- **Handover (takeoff from 0.02 m, hold at 0.5 m, landing), same plant, no neighbour:** FBL took over at 0.15 m and handed back below 0.10 m without a jump; tilt stayed below 1°, the latch never tripped. Both controllers show a height swing after takeoff (FBL −10/+5 cm, Omar −19 cm; most likely integrator wind-up from the takeoff ramp, not investigated yet). Not tested yet: the latch on a forced tilt fault, non-finite inputs.
+- **Handover (takeoff from 0.02 m, hold at 0.5 m, landing), same plant, no neighbour, acceleration feedforward on the ramp:** FBL took over at 0.15 m and handed back below 0.10 m without a jump; tilt stayed below 1°, the latch never tripped; hold error ±1 cm (Omar alone −6 … −3 cm). (An earlier version of this test showed a −10/+6 cm swing after takeoff; it was a test artefact: the test still applied the downwash of the scripted top drone that was not there. Fixed 2026-10-21.)
 - **Next:** none at the desk, see the final round below and `LAB_PLAN.md`.
 
 Reproduce: `experiments/fbl/stage3_port/gain_tuning.py --stage scale|grid|robust|eff`, plot `gain_tuning_plot.py`, outputs `experiments/fbl/out/stage3/gain_tuning_*.json`, plant `c_in_the_loop_real.py`.
