@@ -30,3 +30,20 @@
 - **Dropouts:** 0.3 s and 1 s without neighbour updates around t = 8 s changed nothing (the crossing was not inside the gap, or the stale position still fits); a 3 s dropout that covers a crossing raises FBL's dip from 1.1 to 3.7 cm (S2: 7.0 to 8.6 cm). No crash.
 - **One NaN / Inf position in the feed:** FBL falls back to the Omar controller and stays there until landing (latch, by design): no crash, z RMS 2.2 → 3.3 cm. The dip shown is the worst of the whole run and happened before the fault (it came after the second crossing). S2 is unaffected in the simulation.
 - Script `peer_faults.py` (plant options `drop=(t0,t1)`, `nan_at=t` in `c_in_the_loop_real.py`).
+
+## 5. More scenarios (calibrated plant): FBL against S0 and S2
+![scenario matrix](../../experiments/fbl/scenario_matrix.png)
+
+- **19 cases:** A8 at dz 0.25 / 0.5 / 0.75 × 0.1 / 0.3 / 0.5 m/s, A2 circle (0.3, 0.5 m/s), A3 (0.3, 0.5 m/s), A5, R1 random waypoints (5 seeds). FBL has the lowest z RMS in every case (typically 2–4 cm against S2 5–10 cm and S0 10–35 cm), and never tripped or diverged.
+- **Weakest cases for FBL:** the moving stack A2 (z RMS 4.9 / 7.5 cm, worst downward error −12 cm), A5 and the random flights R1 (3–4 cm, −12 cm). The slow A8 flights (0.1 m/s) are still its worst A8 cases (dip 5–7 cm), as for S0/S2.
+- **Caveat:** the simulated S0 is harsher than the hardware on the stacked-moving cases (A2 z RMS 34–35 cm simulated against about 17–22 cm measured on 2026-10-16), so the absolute values there are pessimistic for all strategies; the ranking is what counts.
+- Script `scenario_matrix.py`.
+
+## 6. Parameter-uncertainty sweep (60 random draws, same for FBL and S2)
+![parameter sweep](../../experiments/fbl/param_sweep.png)
+
+- **Draws:** plant mass ±5 %, inertia ±20 %, motor lag 30–60 ms, command delay 2–8 ms, thrust factor 0.95–1.04, downwash 1.0–1.5× the prediction, FBL's C_D 0.3–0.8; scenarios A8 (0.5 m/s) and A1.
+- **No failures:** 0 of 120 FBL runs tripped or diverged (S2 also 0). FBL median z RMS 2.0 cm (A8) / 2.4 cm (A1), 90th percentile 3.1 / 3.5 cm, worst draw 7.3 / 7.0 cm; S2 median 4.7 / 11.8 cm, worst 13.6 / 25.2 cm. A1 mean z error of FBL: median 0.1 cm, worst 2.4 cm.
+- **Where the margin gets thin:** 11 of 120 FBL runs reach a tilt above 8° (up to 49°, latch at 60°), all with motor lag ≥ 54 ms **and** command delay ≥ 5.5 ms at the same time. With the identified lag (44 ms) and the assumed delay (4 ms) the tilt stays below 4°. Correlation of FBL's z RMS with the parameters: lag 0.4, delay 0.2–0.3, mass 0.2–0.25 (more mass → worse), C_D −0.3 in A1; inertia and downwash scale hardly matter.
+- **Meaning for the first flights:** if the logged tilt shows bursts above about 20° (see `FIRST_FLIGHT_CHECKLIST.md`), suspect a larger delay/lag than assumed (low battery, radio); the first knob would be a lower `ctrlFbl.kr_xy` / `kp_xy` (not simulated yet).
+- Script `param_sweep.py`.

@@ -27,9 +27,10 @@ W = np.asarray(np.load(REPO / "flying_drone_stack/tools/residual/weights/ns2_v2.
 def kin(sc, i, t, anchor):
     rp = sc.robots[i]; d = poly4d._derivs(rp.curve, min(t, rp.curve.duration)); return anchor + rp.slot + d[0, :3], d[1, :3], d[2, :3], d[3, :3], d[0, 3]
 
-def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1, fscale=1.0, peer=None):
+def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, fault=None, scen='A8', offset=0.1, fscale=1.0, peer=None, plant=None, sc_obj=None):
     real = {**dict(delay_ms=0.0, motor_tau_ms=0.0, gyro_noise_dps=0.0, pos_noise_m=0.0, vel_noise=0.0, thrust_eff=1.0), **(real or {})}; rng = np.random.default_rng(seed)
-    sc = (FSC.A8(dz=dz, span=1.0, duration=1.875 / speed, settle=2.0, passes=2) if scen == 'A8' else FSC.A1(dz=dz, hold=15.0) if scen == 'A1' else FSC.A4(dz=dz, offset=offset, axis='y', motion='line', speed=speed)); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
+    plant = {**dict(mass_scale=1.0, J_scale=1.0), **(plant or {})}; Mp = M * plant['mass_scale']; Jp = J * plant['J_scale']      # plant mass / inertia (the controller keeps its nominal values)
+    sc = sc_obj if sc_obj is not None else (FSC.A8(dz=dz, span=1.0, duration=1.875 / speed, settle=2.0, passes=2) if scen == 'A8' else FSC.A1(dz=dz, hold=15.0) if scen == 'A1' else FSC.A4(dz=dz, offset=offset, axis='y', motion='line', speed=speed)); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     [setattr(omar.fbl, k, v) for k, v in (gains or {}).items()]
     omar.fbl.en = 0 if mode in ("omar", "s2") else 1;
@@ -85,8 +86,8 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
             a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M * fscale
         R = Rot.from_quat(q).as_matrix()
         if handover and x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0)
-        v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / M + fext / M) * dt; x = x + v * dt
-        w = w + np.linalg.solve(J, tau - np.cross(w, J @ w)) * dt; q = (Rot.from_rotvec(R @ w * dt) * Rot.from_quat(q)).as_quat()
+        v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / Mp + fext / M) * dt; x = x + v * dt
+        w = w + np.linalg.solve(Jp, tau - np.cross(w, Jp @ w)) * dt; q = (Rot.from_rotvec(R @ w * dt) * Rot.from_quat(q)).as_quat()
         rec[i] = [t, *x, *tp, np.degrees(np.arccos(np.clip(R[2, 2], -1, 1))), thrust, omar.fbl.active, omar.fbl.tripped]
     if handover:
         zr = lambda t: 0.02 + 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-1)/3,0),1)) - 0.48 * (lambda u: 10*u**3-15*u**4+6*u**5)(min(max((t-9)/4,0),1))

@@ -54,3 +54,30 @@ ax[0].axvline(0.43, c="k", ls=":", lw=1); ax[0].text(0.44, ax[0].get_ylim()[1] *
 ax[1].axvline(12, c="k", ls=":", lw=1); ax[1].text(12.3, ax[1].get_ylim()[1] * 0.9, "default 12", fontsize=8); ax[1].set_xlabel("z-integral gain ki_z"); ax[1].set_ylabel("error [cm], smaller is better"); ax[1].set_title("z-integral gain: 12–16 best, 24 oscillates in A8")
 for a in ax: a.legend(fontsize=8); a.set_ylim(bottom=0); a.title.set_fontsize(9)
 fig.suptitle("Calibrated plant (97.7 % thrust, downwash 1.3x prediction), tuned FBL; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/cd_kiz_sensitivity.png", dpi=120); plt.close(fig)
+# ---- (5) scenario matrix
+d = json.load(open(O / "scenario_matrix.json")); names = []
+for k in d:
+    n = k.split("|")[0]
+    if n not in names: names.append(n)
+import re as _re
+def _nk(n): return [float(x) for x in _re.findall(r"[0-9.]+", n)]
+order = sorted([n for n in names if n.startswith("A8")], key=_nk) + sorted([n for n in names if n.startswith(("A2", "A3", "A5"))], key=lambda n: (n[:2], _nk(n))) + sorted([n for n in names if n.startswith("R1")], key=_nk)
+fig, ax = plt.subplots(2, 1, figsize=(13, 8), sharex=True); w = 0.27
+for a, key, yl in ((ax[0], "z_rms", "z RMS [cm]"), (ax[1], "z_dip", "worst downward z error inside the gate [cm]")):
+    for k, (m, c, l) in enumerate((("omar", "#7f7f7f", "S0 geometric"), ("s2", "#2ca02c", "S2 geometric + NS2"), ("fbl_rom", "#2171b5", "FBL + downwash model"))):
+        v = [abs(d[f"{n}|{m}"][key]) for n in order]; a.bar(np.arange(len(order)) + (k - 1) * w, v, w, color=c, label=l)
+    a.set_ylabel(yl); a.grid(axis="y", alpha=.3)
+ax[0].legend(fontsize=8, ncol=3); ax[1].set_xticks(range(len(order))); ax[1].set_xticklabels(order, rotation=45, ha="right", fontsize=8)
+ax[0].set_title("FBL on more scenarios (calibrated plant: thrust 97.7 %, downwash 1.3x, measured peer feed; simulation)\nFBL is lowest in every case, never tripped or diverged; the weakest cases are the moving stack (A2) and the random flights (R1, A5)", fontsize=9)
+fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/scenario_matrix.png", dpi=115); plt.close(fig)
+# ---- (6) parameter sweep
+d = json.load(open(O / "param_sweep.json")); fig, ax = plt.subplots(1, 3, figsize=(16, 4.6))
+for j, (scen, key, yl) in enumerate((("A8", "z_dip", "A8 crossing dip [cm]"), ("A1", "z_mean", "A1 mean z error [cm]"))):
+    data = [[abs(x[key]) for x in d if x["scen"] == scen and x["mode"] == m] for m in ("s2", "fbl_rom")]
+    bp = ax[j].boxplot(data, labels=["S2 geometric + NS2", "FBL + downwash model"], patch_artist=True, widths=.5)
+    for b_, c in zip(bp["boxes"], ("#2ca02c", "#2171b5")): b_.set_facecolor(c); b_.set_alpha(.5)
+    for i_, v in enumerate(data): ax[j].scatter(np.random.default_rng(0).normal(i_ + 1, .04, len(v)), v, s=8, c="k", alpha=.5)
+    ax[j].set_ylabel(yl + " (absolute, smaller is better)"); ax[j].set_title(f"{scen}: 60 random parameter draws", fontsize=10)
+f = [x for x in d if x["mode"] == "fbl_rom" and x["scen"] == "A8"]; sc = ax[2].scatter([x["lag"] for x in f], [x["delay"] for x in f], c=[x["tilt"] for x in f], cmap="viridis_r", s=45, vmin=0, vmax=60); fig.colorbar(sc, ax=ax[2], label="max tilt of FBL [deg] (latch at 60)")
+ax[2].set_xlabel("motor lag [ms] (identified 44)"); ax[2].set_ylabel("command delay [ms] (assumed 4)"); ax[2].set_title("Where the margin gets thin (A8): lag and delay both high", fontsize=10)
+fig.suptitle("Parameter-uncertainty sweep, same draws for both: mass ±5 %, inertia ±20 %, lag 30–60 ms, delay 2–8 ms, thrust 0.95–1.04, downwash 1.0–1.5x, C_D 0.3–0.8; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/param_sweep.png", dpi=115); plt.close(fig)
