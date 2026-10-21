@@ -80,7 +80,8 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
             cmd_q.append((t + real['delay_ms'] * 1e-3, float(np.clip(ctl.thrustSi, 0, FMAX)), np.clip([ctl.torqueX, ctl.torqueY, ctl.torqueZ], -TAUMAX, TAUMAX))); sat += int(ctl.thrustSi > FMAX)
         while cmd_q and cmd_q[0][0] <= t: _, thr_c, tau_c = cmd_q.pop(0)
         a_m = 1.0 if real['motor_tau_ms'] <= 0 else dt / (real['motor_tau_ms'] * 1e-3 + dt)
-        thrust += a_m * (thr_c * real['thrust_eff'] - thrust); tau = tau + a_m * (tau_c - tau)
+        eff_t = real['thrust_eff'] * (1.0 - real.get('sag_t', 0.0) * t / T) * (1.0 - real.get('sag_load', 0.0) * max(thr_c / (M * G) - 1.0, 0.0))     # battery sag: slow fade over the flight and load-dependent drop
+        thrust += a_m * (thr_c * eff_t - thrust); tau = tau + a_m * (tau_c - tau)
         if i % 2 == 0:
             rel = [(tp - x, tv - v)] if (tp[2] > x[2] and not handover) else []
             a_nn, _ = reference(W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M * fscale
@@ -96,7 +97,10 @@ def run(mode, speed, dz=0.5, real=None, gains=None, seed=0, handover=False, faul
         ez = np.array([rec[k, 3] - kin(sc, 0, rec[k, 0], anchor)[0][2] for k in range(0, n, 10)]); r = rec[::10]
     rel = r[:, 4:7] - r[:, 1:4] if not handover else np.tile([5.0, 5.0, -1.0], (len(r), 1)); gate = (np.abs(rel[:, 0]) < 0.2) & (np.abs(rel[:, 1]) < 0.2) & (rel[:, 2] > 0)
     win = np.arange(len(ez)) * 0.01 > 2.0
-    return dict(z_mean_cm=100 * float(ez[win].mean()), z_rms_cm=100 * float(np.sqrt(np.mean(ez ** 2))), z_dip_cm=100 * float(ez[gate].min()) if gate.any() else 0.0, tilt_max_deg=float(r[:, 7].max()), fbl_active_pct=100 * float(r[:, 9].mean()),
+    if not handover:
+        exy = np.array([np.hypot(*(rec[k, 1:3] - kin(sc, 0, rec[k, 0], anchor)[0][:2])) for k in range(0, n, 10)]); xy_rms = 100 * float(np.sqrt(np.mean(exy[win] ** 2)))
+    else: xy_rms = 0.0
+    return dict(xy_rms_cm=xy_rms, z_mean_cm=100 * float(ez[win].mean()), z_rms_cm=100 * float(np.sqrt(np.mean(ez ** 2))), z_dip_cm=100 * float(ez[gate].min()) if gate.any() else 0.0, tilt_max_deg=float(r[:, 7].max()), fbl_active_pct=100 * float(r[:, 9].mean()),
                 tripped=bool(r[:, 10].max()), sat_frac=sat / (n / 2), gate_s=float(gate.sum() * 0.01), motor_note='delay+lag' , diverged=bool(np.abs(ez).max() > 0.5 or r[:, 7].max() > 80))
 
 if __name__ == "__main__":

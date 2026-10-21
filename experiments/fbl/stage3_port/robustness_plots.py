@@ -81,3 +81,23 @@ for j, (scen, key, yl) in enumerate((("A8", "z_dip", "A8 crossing dip [cm]"), ("
 f = [x for x in d if x["mode"] == "fbl_rom" and x["scen"] == "A8"]; sc = ax[2].scatter([x["lag"] for x in f], [x["delay"] for x in f], c=[x["tilt"] for x in f], cmap="viridis_r", s=45, vmin=0, vmax=60); fig.colorbar(sc, ax=ax[2], label="max tilt of FBL [deg] (latch at 60)")
 ax[2].set_xlabel("motor lag [ms] (identified 44)"); ax[2].set_ylabel("command delay [ms] (assumed 4)"); ax[2].set_title("Where the margin gets thin (A8): lag and delay both high", fontsize=10)
 fig.suptitle("Parameter-uncertainty sweep, same draws for both: mass ±5 %, inertia ±20 %, lag 30–60 ms, delay 2–8 ms, thrust 0.95–1.04, downwash 1.0–1.5x, C_D 0.3–0.8; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/param_sweep.png", dpi=115); plt.close(fig)
+# ---- (7) lower-gain fallback
+fb = json.load(open(O / "fallback_gains.json")); res = fb["results"]; draws = [t for t in fb["draws"] if t != "nominal"]
+vars_ = ["preset 1 (default)", "kr x0.7", "kr x0.5", "xy position x0.7", "kr x0.7 + xy pos x0.7", "kr x0.5 + xy pos x0.5"]
+fig, ax = plt.subplots(1, 2, figsize=(13, 4.2))
+tilt = [max(res[f"{v}|{t}|{s}"]["tilt"] for t in draws for s in ("A8", "A1")) for v in vars_]
+ax[0].bar(range(len(vars_)), tilt, color=["#d62728"] + ["#2171b5"] * 5); ax[0].axhline(60, c="k", ls=":", lw=1); ax[0].text(0, 56, "tilt latch 60°", fontsize=8)
+for i, v in enumerate(tilt): ax[0].text(i, v + 1, f"{v:.0f}°", ha="center", fontsize=8)
+ax[0].set_xticks(range(len(vars_))); ax[0].set_xticklabels([v.replace(" + ", "\n+ ") for v in vars_], fontsize=7.5); ax[0].set_ylabel("max tilt over the worst draws [deg]"); ax[0].set_title(f"The {len(draws)} draws where the default reached > 8° (high lag and delay)", fontsize=9)
+cost = [[abs(res[f"{v}|nominal|A8"]["z_dip"]), res[f"{v}|nominal|A8"]["z_rms"], res[f"{v}|nominal|A1"]["z_rms"]] for v in vars_]
+w = .27
+for k, (lab, c) in enumerate((("A8 dip [cm]", "#d62728"), ("A8 z RMS [cm]", "#1f77b4"), ("A1 z RMS [cm]", "#2ca02c"))): ax[1].bar(np.arange(len(vars_)) + (k - 1) * w, [x[k] for x in cost], w, color=c, label=lab)
+ax[1].set_xticks(range(len(vars_))); ax[1].set_xticklabels([v.replace(" + ", "\n+ ") for v in vars_], fontsize=7.5); ax[1].legend(fontsize=8); ax[1].set_ylabel("error in the nominal plant [cm]"); ax[1].set_title("Cost of the lower gains at nominal: none visible", fontsize=9)
+fig.suptitle("Lower-gain fallback (live parameters, no reflash): kr = ctrlFbl.kr_xy / kr_z, xy position = kp_xy / kv_xy / ki_xy; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/fallback_gains.png", dpi=115); plt.close(fig)
+# ---- (8) battery sag
+bs = json.load(open(O / "battery_sag.json")); fig, ax = plt.subplots(1, 3, figsize=(16, 4.4)); fades = [0.0, 0.05, 0.10, 0.15]
+for j, (scen, ttl) in enumerate((("A1", "A1 hold (15 s)"), ("A8", "A8 swap"), ("R1", "R1 random flight (30 s)"))):
+    for m, c, l in (("omar", "#7f7f7f", "S0 geometric"), ("s2", "#2ca02c", "S2 geometric + NS2"), ("fbl_rom", "#2171b5", "FBL + downwash model")):
+        ax[j].plot([100 * f for f in fades], [bs[f"fade|{f}|{scen}|{m}"]["z_rms"] for f in fades], "o-", c=c, label=l)
+    ax[j].set_xlabel("thrust per command lost by the end of the flight [%]"); ax[j].set_ylabel("z RMS [cm]"); ax[j].set_title(ttl, fontsize=10); ax[j].grid(alpha=.3)
+ax[0].legend(fontsize=8); fig.suptitle("Battery sag in the calibrated plant: FBL's z error hardly grows (its z integral, gain 12, compensates), the geometric strategies sag further; simulation", fontsize=10); fig.tight_layout(); fig.savefig(REPO / "experiments/fbl/battery_sag.png", dpi=115); plt.close(fig)

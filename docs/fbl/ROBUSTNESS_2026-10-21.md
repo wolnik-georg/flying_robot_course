@@ -47,3 +47,20 @@
 - **Where the margin gets thin:** 11 of 120 FBL runs reach a tilt above 8° (up to 49°, latch at 60°), all with motor lag ≥ 54 ms **and** command delay ≥ 5.5 ms at the same time. With the identified lag (44 ms) and the assumed delay (4 ms) the tilt stays below 4°. Correlation of FBL's z RMS with the parameters: lag 0.4, delay 0.2–0.3, mass 0.2–0.25 (more mass → worse), C_D −0.3 in A1; inertia and downwash scale hardly matter.
 - **Meaning for the first flights:** if the logged tilt shows bursts above about 20° (see `FIRST_FLIGHT_CHECKLIST.md`), suspect a larger delay/lag than assumed (low battery, radio); the first knob would be a lower `ctrlFbl.kr_xy` / `kp_xy` (not simulated yet).
 - Script `param_sweep.py`.
+
+## 7. Lower-gain fallback (live parameters, no reflash)
+![fallback gains](../../experiments/fbl/fallback_gains.png)
+
+- **Test:** the 6 parameter draws of §6 where the default gains reached a tilt above 8° (up to 52°), run with scaled gains (rate loop `ctrlFbl.kr_xy` / `kr_z`, xy position loop `kp_xy` / `kv_xy` / `ki_xy`).
+- **Result:** every variant cures it: max tilt 52° → 6° (kr ×0.7) and 3–3.5° (kr ×0.5, xy position ×0.7, both). **Cost in the nominal plant: none visible** (A8 dip 1.04 → 1.06 cm, z RMS unchanged); the xy tracking error grows from 0.16 to 0.20 cm (kr ×0.5) and 0.30 cm (both ×0.5) in A8 (0.11 → 0.13 / 0.20 cm in A4), a few millimetres, and the plant has no xy disturbance.
+- **Fallback to set live if the first flights show tilt bursts:** `ctrlFbl.kr_xy` 29.75 and `ctrlFbl.kr_z` 17.5 (kr ×0.5), alternatively `ctrlFbl.kp_xy` 9.8, `kv_xy` 6.65, `ki_xy` 8.4 (xy position ×0.7).
+- **Open question:** since the lower gains cost nothing in the simulation, the default could be lowered for more margin; the simulation does not contain wind, mocap jitter or other xy disturbances, so this was not done.
+- Script `fallback_gains.py`.
+
+## 8. Battery sag
+![battery sag](../../experiments/fbl/battery_sag.png)
+
+- **Test:** the thrust per command fades linearly over the flight by 0–15 % (and, separately, a load-dependent drop of 0.15 per unit of thrust above weight); A1, A8 and R1 (30 s).
+- **FBL's z error hardly grows:** A1 mean z error −0.2 → −1.6 cm at 15 % fade (S2 −18 → −30 cm, S0 −37 → −44 cm); A8 z RMS 2.2 → 2.7 cm; R1 4.1 → 4.5 cm; with the load-dependent drop A1 z RMS 4.8 cm, R1 6.1 cm. No trips; the simulated S0 diverges on R1 at ≥ 10 % fade.
+- **Why:** FBL's z integral (gain 12) compensates a slow thrust fade; Omar's is 1.5 (the same reason as in the stress comparison, a gain choice, not a structural advantage).
+- Script `battery_sag.py`.
