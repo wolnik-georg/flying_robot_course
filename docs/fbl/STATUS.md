@@ -1,6 +1,6 @@
 # FBL track — status, plan and decisions (started 2026-10-18)
 
-> **2026-10-21: desk part and lab preparation closed, development paused by the user (no thesis text for FBL).** First flights: `FIRST_FLIGHT_CHECKLIST.md`, `LAB_PLAN.md`; robustness `ROBUSTNESS_2026-10-21.md`; Latest results and the lab plan: `PROGRESS_AND_RESUME.md` §4b, `GAIN_TUNING_2026-10-20.md`, `SIM_COMPARISON_2026-10-20.md`, `LAB_PLAN.md`.
+> **2026-10-21: desk part, robustness studies and lab preparation closed, development paused by the user (no thesis text for FBL).** First flights: `FIRST_FLIGHT_CHECKLIST.md`, `LAB_PLAN.md`; robustness `ROBUSTNESS_2026-10-21.md`; Latest results and the lab plan: `PROGRESS_AND_RESUME.md` §4b, `GAIN_TUNING_2026-10-20.md`, `SIM_COMPARISON_2026-10-20.md`, `LAB_PLAN.md`.
 
 > **Start here: `PROGRESS_AND_RESUME.md`** (one-page state of 2026-10-20, what exists, what is not done, how to resume). This file is the detailed log of the stage results.
 
