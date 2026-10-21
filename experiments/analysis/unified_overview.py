@@ -52,6 +52,9 @@ for j, s in enumerate(ORDER):
     for oi, o in enumerate((0.05, 0.10, 0.15)):
         d = S["A4"][str(o)][s]
         if d["n"]: xs.append(oi + (j - 1.5) * w); ys.append(d["mean"]); es.append(d["std"])
-    ax[2].bar(xs, ys, width=w * .9, color=COL[s], alpha=.7, yerr=es, capsize=2, label=LAB[s])
-ax[2].set_xticks(range(3)); ax[2].set_xticklabels(["offset 0.05 m", "offset 0.10 m", "offset 0.15 m"]); ax[2].set_ylabel("z RMS [cm]"); ax[2].set_title("A4 offset line: z RMS (mean ± std over flights)", fontsize=10); ax[2].legend(fontsize=7.5)
+    ax[2].bar(xs, ys, width=w * .9, color=COL[s], alpha=.4, yerr=es, capsize=2, error_kw=dict(ecolor="k", lw=1.0), label=LAB[s])
+    for oi, o in enumerate((0.05, 0.10, 0.15)):       # dots = the single flights of this cell
+        pts = A4[(A4.strategy == s) & np.isclose(A4.offset, o)].z_rms_cm.values
+        ax[2].scatter([oi + (j - 1.5) * w + (jj - (len(pts) - 1) / 2) * .035 for jj in range(len(pts))], pts, color=COL[s], s=14, zorder=3)
+ax[2].set_xticks(range(3)); ax[2].set_xticklabels(["offset 0.05 m", "offset 0.10 m", "offset 0.15 m"]); ax[2].set_ylabel("z RMS [cm]"); ax[2].set_title("A4 offset line: z RMS (bar = mean, whisker = ± std, dots = flights)", fontsize=10); ax[2].legend(fontsize=7.5)
 fig.suptitle("Unified controller tree, NS2, bottom vehicle (pilot flights 2026-10-19/20, uSD logs only, bars = means, dots = flights)", fontsize=9); fig.tight_layout(); fig.savefig(REPO / "docs/meetings/assets/2026-10-19/overview.png", dpi=130)
