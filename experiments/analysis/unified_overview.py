@@ -19,11 +19,11 @@ A4 = pd.concat([pd.DataFrame(json.load(open(RES / "pilot_all_2026-10-20/cell_sum
 A4 = A4[(A4.scenario == "A4") & (A4.offset > 0.01)]
 A4.to_json(RES / "pilot_all_2026-10-20/cell_summary_all_with_S1.json", orient="records", indent=1)
 rows, S = [], {}
-L = ["### A8 swap (dz 0.5, 0.5 m/s, 4 crossings per flight)", "| strategy | flights | mean dip [cm] | std of the flight means | worst crossing | z RMS [cm] | motors max |", "|---|---|---|---|---|---|---|"]
+L = ["### A8 swap (dz 0.5, 0.5 m/s, 4 crossings per flight)", "| strategy | flights | mean dip [cm] | std between crossings | std of the flight means | worst crossing | z RMS [cm] | motors max |", "|---|---|---|---|---|---|---|---|"]
 for s in ORDER:
     rr = [r for r in a8 if r["name"] == s]; m = np.array([r["dip_mean_cm"] for r in rr]); dips = np.array([r["dip_cm"] for r in rr])
-    S.setdefault("A8", {})[s] = dict(n=len(rr), mean=float(m.mean()), std=float(m.std(ddof=1)) if len(rr) > 1 else 0, worst=float(dips.min()), zrms=float(np.mean([r["z_rms_cm"] for r in rr])), per_flight=[round(float(x), 1) for x in m])
-    L.append(f"| {LAB[s]} | {len(rr)} | **{m.mean():.1f}** | {S['A8'][s]['std']:.1f} | {dips.min():.1f} | {S['A8'][s]['zrms']:.1f} | {min(r['motor_max_pct'] for r in rr):.0f}–{max(r['motor_max_pct'] for r in rr):.0f} % |")
+    S.setdefault("A8", {})[s] = dict(n=len(rr), mean=float(m.mean()), std=float(m.std(ddof=1)) if len(rr) > 1 else 0, worst=float(dips.min()), zrms=float(np.mean([r["z_rms_cm"] for r in rr])), per_flight=[round(float(x), 1) for x in m], std_cross=float(dips.flatten().std(ddof=1)), n_cross=int(dips.size))
+    L.append(f"| {LAB[s]} | {len(rr)} | **{m.mean():.1f}** | {S['A8'][s]['std_cross']:.1f} (n={S['A8'][s]['n_cross']}) | {S['A8'][s]['std']:.1f} | {dips.min():.1f} | {S['A8'][s]['zrms']:.1f} | {min(r['motor_max_pct'] for r in rr):.0f}–{max(r['motor_max_pct'] for r in rr):.0f} % |")
 L += ["", "### A1 stacked hold (dz 0.5, hold 15 s, window 2–15 s)", "| strategy | flights | z error mean [cm] | std of the flight means | z RMS [cm] | max roll/pitch | motors max |", "|---|---|---|---|---|---|---|"]
 for s in ORDER:
     rr = [r for r in a1 if r["strategy"] == s]; m = np.array([r["z_mean_cm"] for r in rr])
@@ -42,10 +42,11 @@ fig, ax = plt.subplots(1, 3, figsize=(14, 4.2), gridspec_kw={"width_ratios": [1,
 for i, s in enumerate(ORDER):
     for k, key, sgn in ((0, "A8", 1), (1, "A1", 1)):
         d = S[key][s]; ax[k].bar(i, d["mean"], color=COL[s], alpha=.4, width=.6, yerr=d["std"], capsize=4, error_kw=dict(ecolor="k", lw=1.2))
+        if key == "A8": ax[k].errorbar(i, d["mean"], yerr=d["std_cross"], fmt="none", ecolor="0.45", elinewidth=2.2, capsize=8, zorder=2)      # grey whisker: std between all single crossings
         pts = d["per_flight"]; ax[k].scatter([i + (j - (len(pts) - 1) / 2) * .07 for j in range(len(pts))], pts, color=COL[s], s=18, zorder=3)
 for k, (key, t, y) in enumerate((("A8", "A8 swap: height dip at the crossing", "dip per flight [cm]"), ("A1", "A1 stacked hold: mean height error", "mean z error in the hold [cm]"))):
     M = [S[key][s]["mean"] for s in ORDER]; N = [S[key][s]["n"] for s in ORDER]; SD = [S[key][s]["std"] for s in ORDER]
-    ax[k].set_xticks(range(4)); ax[k].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{m:+.1f} ± {sd:.1f} cm\n(n={n} flights)" for s, m, sd, n in zip(ORDER, M, SD, N)], fontsize=7.5); ax[k].axhline(0, color="k", lw=.6); ax[k].set_title(t, fontsize=10); ax[k].set_ylabel(y + "\nbar = mean, black whisker = ± std between flights, dots = flights", fontsize=7.5)
+    ax[k].set_xticks(range(4)); ax[k].set_xticklabels([f"{LAB[s].replace(' + ', chr(10) + '+ ').replace('geometric', 'geom.')}\n{m:+.1f} ± {sd:.1f}" + (f" ({S[key][s]['std_cross']:.1f})\nn={n} fl., {S[key][s]['n_cross']} cr." if key == "A8" else f" cm\n(n={n} flights)") for s, m, sd, n in zip(ORDER, M, SD, N)], fontsize=7 if key == "A8" else 7.5); ax[k].axhline(0, color="k", lw=.6); ax[k].set_title(t, fontsize=10); ax[k].set_ylabel(y + ("\nblack whisker = ± std between flights,\ngrey whisker = ± std between crossings (in brackets),\ndots = flights" if key == "A8" else "\nbar = mean, black whisker = ± std between flights,\ndots = flights"), fontsize=7)
 w = .2
 for j, s in enumerate(ORDER):
     xs, ys, es = [], [], []
