@@ -11,10 +11,12 @@ from pathlib import Path
 import numpy as np, pandas as pd
 from scipy.signal import butter, filtfilt
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
-REPO = Path(__file__).resolve().parents[2]; RES = REPO / "experiments/results/nn_vs_indi_2026-10-22"; CACHE = RES / "cache"
+import argparse
+ap = argparse.ArgumentParser(); ap.add_argument("--banks", nargs="*", default=None, help="bank folder names under experiments/logs (default: the pilot banks of 2026-10-19/20)"); ap.add_argument("--out", type=Path, default=None, help="output dir (default: the 2026-10-22 results folder)"); ARGS = ap.parse_args()
+REPO = Path(__file__).resolve().parents[2]; CACHE = REPO / "experiments/results/nn_vs_indi_2026-10-22/cache"; RES = ARGS.out or REPO / "experiments/results/nn_vs_indi_2026-10-22"; RES.mkdir(parents=True, exist_ok=True)
 FC = 5.0; FCS = (3.0, 5.0, 10.0); FS = 500.0; MAXLAG = 0.4
 man = {}
-for b in sorted(glob.glob(str(REPO / "experiments/logs/bank_*2026-10-19")) + glob.glob(str(REPO / "experiments/logs/bank_*2026-10-20"))):
+for b in (sorted(str(REPO / "experiments/logs" / x) for x in ARGS.banks) if ARGS.banks else sorted(glob.glob(str(REPO / "experiments/logs/bank_*2026-10-19")) + glob.glob(str(REPO / "experiments/logs/bank_*2026-10-20")))):
     for fl in json.load(open(Path(b) / "training_manifest.json"))["flights"]:
         man[fl["folder"]] = REPO / fl["path"]
 
@@ -55,6 +57,7 @@ def gate_mask(name, tb, zb):
 rows, ex = [], {}
 for f in sorted(CACHE.glob("*.npz")):
     z = np.load(f, allow_pickle=True); name = str(z["folder"])
+    if name not in man: continue                                  # cache may hold flights of other banks
     if float(z["coef_pred"]) < -0.3:                             # NS2 applied or unclear -> the label is the residual left AFTER the NN, skip
         continue
     indi = bool(z["indi"]); strat = "S1" if indi else "S0"; t = z["t"]

@@ -23,3 +23,6 @@ Source: supervisor reply to the meeting doc 2026-10-22 (user-pasted). Status: pl
 5. **Decision after 1–3:** re-fly S2/S3 with v3 (≈ 25 flights on the pilot settings) so their numbers are on unseen settings. Open question for the user: held-out set = the pilot settings (dz 0.5 across A1/A8/A4) or separate new settings.
 
 Desk first, as far as possible; lab only for validation and data collection.
+
+## Closing the topic (decided 2026-10-22): cheap unseen-settings block only
+Plan, flight table, commands and the pre-registered pass rule: `docs/lab_sessions/ns2_unseen_block_plan_2026-10-22.md` (40 flights S0–S3: A8 dz 0.4 / 0.35 m/s ×3, A1 dz 0.45 ×3, A4 dz 0.4 / 0.35 m/s offsets 0.075 and 0.125 ×2; v2 stays, nothing retrained). Desk side ready: commands validated with `--check`, analysis `experiments/analysis/unseen_block_analysis.py` (dry run on the pilot flights reproduces the meeting-doc numbers), `nn_vs_indi_raw/check.py` take bank names. Lab: flash the logging image, bench check, fly the block. Open: FBL-containing image or a separate one.

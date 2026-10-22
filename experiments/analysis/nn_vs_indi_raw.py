@@ -19,6 +19,7 @@ import cffirmware as fw                    # noqa: E402
 
 BANKS = ["bank_v2val_2026-10-19", "bank_a1clean_2026-10-19", "bank_pilot2_2026-10-20", "bank_pilot3_2026-10-20", "bank_pilot4_2026-10-20",
          "bank_pilot5_2026-10-20", "bank_pilot6_2026-10-20", "bank_video_2026-10-20"]
+BANKS = sys.argv[1:] or BANKS                                              # optional: bank folder names under experiments/logs/
 OUT = REPO / "experiments/results/nn_vs_indi_2026-10-22/cache"; OUT.mkdir(parents=True, exist_ok=True)
 
 
