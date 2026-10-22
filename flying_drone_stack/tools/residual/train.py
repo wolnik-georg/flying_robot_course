@@ -66,6 +66,10 @@ def main():
                          f"g_indi_mass's default). Pass the REAL per-platform mass the logs "
                          f"were flown with, or the exported weights' unit conversion is wrong "
                          f"even though the network itself trained fine.")
+    ap.add_argument("--boring-weight", type=float, default=1.0,
+                    help="sample weight of rows whose measured residual is near zero (norm below --boring-thresh). Default 1.0 = off (plain loss, as ns2_v1/v2). "
+                         "Supervisor feedback 2026-10-22: equal weights on many near-zero rows make the network overfit.")
+    ap.add_argument("--boring-thresh", type=float, default=0.3, help="m/s^2, rows with |a_res| below this are down-weighted")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args()
@@ -116,6 +120,11 @@ def main():
     opt = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     loss_fn = torch.nn.SmoothL1Loss(beta=0.2)   # Huber: log spikes should not steer the fit
+    ynorm = np.linalg.norm(y, axis=1) if y.ndim > 1 else np.abs(y)
+    W = torch.from_numpy(np.where(ynorm[tr] < args.boring_thresh, args.boring_weight, 1.0).astype(np.float32)).to(args.device)
+    if args.boring_weight != 1.0:
+        print(f"boring rows (|a_res| < {args.boring_thresh}): {(ynorm[tr] < args.boring_thresh).mean():.1%} of the training rows, weight {args.boring_weight}")
+    loss_w = torch.nn.SmoothL1Loss(beta=0.2, reduction="none")
 
     X = torch.from_numpy(rel_n[tr]).to(device)
     M_ = torch.from_numpy(mask[tr]).to(device)
@@ -137,7 +146,13 @@ def main():
             idx = perm[i:i + args.batch]
             opt.zero_grad()
             pred_accel = net(X[idx], M_[idx], G[idx]) * accel_per_gram
-            loss = loss_fn(pred_accel, Y[idx])
+            if args.boring_weight == 1.0:
+                loss = loss_fn(pred_accel, Y[idx])
+            else:
+                wi = W[idx]
+                le = loss_w(pred_accel, Y[idx])
+                le = le.mean(dim=tuple(range(1, le.dim()))) if le.dim() > 1 else le
+                loss = (le * wi).sum() / wi.sum()
             loss.backward()
             opt.step()
             tot += loss.detach().item() * len(idx)

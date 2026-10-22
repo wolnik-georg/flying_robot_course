@@ -3,7 +3,7 @@
 ![examples](../experiments/results/nn_vs_indi_2026-10-22/examples.png)
 ![lag, slope, correlation](../experiments/results/nn_vs_indi_2026-10-22/lag_slope.png)
 
-Black = zero-delay label (raw a_imu − a_rpm, offline filtfilt 5 Hz), orange = onboard INDI estimate (causal 30 Hz), blue = logged NN output (ns2 v2), grey = in the NS2 gate. Bottom drone, 43 flights with the NN **not** applied (S0 geometric, S1 INDI; under S2/S3 the label is what is left after the NN). Medians per cell, z axis, 5 Hz:
+Black = zero-delay label (raw a_imu − a_rpm, offline filtfilt 5 Hz), orange = onboard INDI estimate (causal 30 Hz), blue = logged NN output (ns2 v2), grey = in the NS2 gate. Bottom drone, 37 flights with the NN **not** applied (S0 geometric, S1 INDI; under S2/S3 the label is what is left after the NN). Medians per cell, z axis, 5 Hz:
 
 | cell | flights | corr | lag of label behind NN | slope label/NN | mean NN / mean label [m/s²] |
 |---|---|---|---|---|---|
