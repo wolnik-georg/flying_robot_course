@@ -1,0 +1,48 @@
+--- a/src/modules/src/controller/controller_omar_indi.c
++++ b/src/modules/src/controller/controller_omar_indi.c
+@@ -292,7 +292,9 @@
+ 
+   // INDI
+   float t1 = 0.0f, t2 = 0.0f, t3 = 0.0f, t4 = 0.0f;
+-  if (self->indi && rpm_deck_available) {
++  // The rpm-based force estimate is also computed with indi = 0 (S0, S2) so that the INDI estimate below can be logged under every strategy; it only
++  // enters the control when indi & 1.
++  if (rpm_deck_available) {
+     // compute expected acceleration based on rpm measurements (world frame)
+     uint16_t rpm1 = logGetUint(logVarRpm1);
+     uint16_t rpm2 = logGetUint(logVarRpm2);
+@@ -305,7 +307,7 @@
+     t4 = MOTORRPM2FORCE * powf(rpm4 * 2.0f * M_PI_F / 60.0f, 2);
+ 
+     // DEBUG
+-    if (tick % 500 == 0) {
++    if (self->indi && tick % 500 == 0) {
+       DEBUG_PRINT("INDI r %d %d %d %d\n", rpm1, rpm2, rpm3, rpm4);
+       
+       DEBUG_PRINT("INDI t %f %f %f %f\n", (double)t1, (double)t2, (double)t3, (double)t4);
+@@ -380,8 +382,9 @@
+     struct vec z  = vbasis(2);
+ 
+     // INDI
++    // The INDI estimate (filtered a_rpm, a_imu) is updated and logged under every strategy; a_indi is applied only when indi & 1 (control unchanged for indi 0).
+     struct vec a_indi = vzero();
+-    if ((self->indi & 1) && rpm_deck_available) {
++    if (rpm_deck_available) {
+ 
+       float f_rpm = t1 + t2 + t3 + t4;
+       self->a_rpm = vsub(vscl(f_rpm / self->mass, mvmul(R, z)), mkvec(0.0, 0.0, 9.81f));
+@@ -394,10 +397,12 @@
+       self->a_rpm_filtered = get_butterworth_2_low_pass_vec(filter_acc_rpm);
+       self->a_imu_filtered = get_butterworth_2_low_pass_vec(filter_acc_imu);
+ 
+-      a_indi = vsub(self->a_rpm_filtered, self->a_imu_filtered);
++      if (self->indi & 1) {
++        a_indi = vsub(self->a_rpm_filtered, self->a_imu_filtered);
++      }
+ 
+       // DEBUG
+-      if (tick % 500 == 0) {
++      if ((self->indi & 1) && tick % 500 == 0) {
+         DEBUG_PRINT("INDI p %f %f %f, %f %f %f\n", (double)self->a_rpm_filtered.x, (double)self->a_rpm_filtered.y, (double)self->a_rpm_filtered.z, (double)self->a_imu_filtered.x, (double)self->a_imu_filtered.y, (double)self->a_imu_filtered.z);
+       }
+     }

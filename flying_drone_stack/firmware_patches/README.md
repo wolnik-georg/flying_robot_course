@@ -22,7 +22,8 @@ for p in \
   rpm_deck_bcRpm.patch \
   cffirmware_bindings.patch \
   fbl_integration.patch \
-  fbl_gain_presets.patch
+  fbl_gain_presets.patch \
+  indi_estimate_always_logged.patch
 do
   git apply --check "$PATCH/$p" && git apply "$PATCH/$p"
 done
