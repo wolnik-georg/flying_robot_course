@@ -16,7 +16,7 @@ Source: supervisor reply to the meeting doc 2026-10-22 (user-pasted). Status: pl
 | INDI output logged | **No under `indi 0` (S0, S2):** the filters `a_rpm_f` / `a_imu_f` only update when `indi & 1` (`controller_omar_indi.c`), logged values are 0. Offline reconstruction exists (`flying_drone_stack/tools/residual/omar_labels.py`, same C code over a log) but is not the onboard value. |
 
 ## Plan
-1. **Offline NN-vs-INDI check** on existing flights (reconstructed INDI estimate, zero-delay smoothing): magnitude, lag, per scenario.
+1. **Offline NN-vs-INDI check** on existing flights (reconstructed INDI estimate, zero-delay smoothing): magnitude, lag, per scenario. **DONE 2026-10-22 → `docs/nn_vs_indi_check_2026-10-22.md`** (corr 0.9–0.96, lag ±10 ms, slope ≈ 1 in A8/A1 S0/A4; weakest A1 under INDI).
 2. **Dataset fixes:** (a) held-out split by *setting* (not by flight), disjoint from the study test cases; (b) rebalance the boring rows (subsample or weight by label size and input-space coverage).
 3. **Retrain v3** and compare with v2 on held-out data; cost of removing the held-out settings.
 4. **Logging change (needs a reflash, next lab):** INDI estimate updated and logged on all four strategies without changing control; check with the byte-identical replay (as for the NS2 and FBL patches).
