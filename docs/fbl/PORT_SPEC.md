@@ -54,7 +54,7 @@ Strategy 3 on the drone: the authors' feedback-linearization law (thrust and bod
 ## 7. Open decisions (user / supervisor)
 - D1 branch in controller 9 (`fbl` flag, recommended) or new slot 13.
 - D2 ROM only first (recommended: the network adds nothing, Stage 1/2) or include a fitted `net_f` (tiny, trivial to add to C).
-- D3 C_D: keep 0.43 (fitted on our label, which contains thrust-model error and ground effect) or refit from FBL flights once they exist. **2026-10-22:** KNODE on our logs with calibrated thrust gives ≈ 0.55 (0.65 with the raw command); proposal: set 0.55 per flight via `ctrlFbl.cd`, firmware default unchanged.
+- D3 C_D: keep 0.43 (fitted on our label, which contains thrust-model error and ground effect) or refit from FBL flights once they exist. **2026-10-22:** KNODE on our logs with calibrated thrust gives ≈ 0.55 (0.65 with the raw command); **decided 2026-10-22: first flights at 0.55 per flight via `ctrlFbl.cd`, firmware default unchanged.**
 - D4 acceleration estimator: bundle's alpha-beta-gamma (retuned for 500 Hz) or the controller's `a_imu_f`.
 - D5 gates and fade (z0 1.2–1.4 m, r0 0.6 m): the fit data ends at z0 1.3 m.
 - D6 **decided 2026-10-19 (user): Strategy 3 is part of the study**, so steps 2–5 are committed; target: FBL flying in the tree early enough to join the tier-1 study (deadline 26 Feb 2027).

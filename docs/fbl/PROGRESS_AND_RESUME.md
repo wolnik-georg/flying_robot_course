@@ -61,7 +61,7 @@ Spec and gate list: `PORT_SPEC.md`. Detailed results of every stage: `STATUS.md`
 ## 4c. Update 2026-10-22: the training side is closed (read before the lab)
 - The authors pointed to Appendix B of Chee's thesis; we built our own KNODE training script (thesis loop + the bundle's `ODEFunc`, `experiments/fbl/stage4_knode/`), checked it on synthetic flights with a known downwash, and ran it on our own logs (force only): `KNODE_TRAINING_SOURCES_`, `_GAPS_`, `_STEP2_`, `_STEP3_2026-10-22.md`.
 - **Result:** our S0/S1 logs are enough, no FBL flights are needed for the training; **C_D ≈ 0.55** with calibrated thrust (0.65 with the raw command; the firmware default 0.43 came from the supervised fit on the label); the nets add nothing measurable over the ROM (test R² 0.57 vs 0.57; ceiling of any function of (r, dz) 0.60; NS2 v2 0.63); the thrust input is the sensitive part (±3 % = ±0.1 in C_D).
-- **Proposal for the first flights (not applied, your decision):** set `ctrlFbl.cd` to 0.55 per flight (parameter, no reflash); bracket 0.43 / 0.65; the firmware default stays 0.43. In flight the commanded thrust reaches the motors with the platform's thrust map (measured 97.7 %): check that the first A1 sag is not a thrust-map effect before turning `cd` further.
+- **Decided by the user 2026-10-22:** the first flights use `ctrlFbl.cd` = 0.55, set per flight in the yaml/parameter (no reflash); bracket 0.43 / 0.65 if the first A1 asks for it; the firmware default stays 0.43. In flight the commanded thrust reaches the motors with the platform's thrust map (measured 97.7 %): check that the first A1 sag is not a thrust-map effect before turning `cd` further.
 - Nothing else changed: gains presets, image, lab plan as in §4b.
 
 ## 5. What is NOT done (and risks)
