@@ -22,3 +22,6 @@ Authors' reply (Pei-An, after our request for the training script): "most of the
 
 ## Step 1 DONE 2026-10-22
 All sources read; item-by-item table of what is given, missing and decided: `KNODE_TRAINING_GAPS_2026-10-22.md`. Two public repositories of the KNODE author found (`TomJZ/Online-KNODE-MPC`, `TomJZ/K-NODE`, GPL v3, reference only). Real design decisions left: the torque/thrust input for hardware training, the C_D identification, the thrust input of the integration.
+
+## Step 2 DONE 2026-10-22
+Own training script written and checked on synthetic flights with a known downwash: `KNODE_TRAINING_STEP2_2026-10-22.md` (code `experiments/fbl/stage4_knode/`). Next: step 3 — data pipeline from our logs, C_D identification, thrust-input sensitivity, force-only training.
