@@ -31,3 +31,9 @@ Sources read in full for this table: the authors' code bundle (`learned_fbl_core
 - Step 2 (own training script) is possible now: thesis loop + bundle `ODEFunc`, checked on the bundle's sample checkpoint's simulation.
 - Items 7, 8, 14 are the real design decisions; everything else is given or ours.
 - Open question that decides the lab need: can the force net be trained from our existing S0/S1 flight logs (state, RPM, thrust), or does the recipe's "flown under FBL without residual" matter? Test offline in step 3.
+
+## Update after steps 2 and 3 (2026-10-22)
+- Row 7 (hardware training input): force-only training with torque 0 and body-rate weight 0 works (`KNODE_TRAINING_STEP3_2026-10-22.md`).
+- Row 8 (C_D): identified on our data, **≈ 0.55** with calibrated thrust (0.65 with the raw command).
+- Row 14 (thrust input): the dominant sensitivity; use the rotor-speed force or command × 0.977.
+- Open question answered: **our existing S0/S1 logs are enough for the training, no FBL lab flights needed**; the nets add nothing measurable over the ROM with the fitted C_D (consistent with Stage 1).

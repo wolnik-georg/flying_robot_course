@@ -25,3 +25,6 @@ All sources read; item-by-item table of what is given, missing and decided: `KNO
 
 ## Step 2 DONE 2026-10-22
 Own training script written and checked on synthetic flights with a known downwash: `KNODE_TRAINING_STEP2_2026-10-22.md` (code `experiments/fbl/stage4_knode/`). Next: step 3 — data pipeline from our logs, C_D identification, thrust-input sensitivity, force-only training.
+
+## Step 3 DONE 2026-10-22
+KNODE on our logs, C_D, thrust sensitivity: `KNODE_TRAINING_STEP3_2026-10-22.md` (C_D ≈ 0.55, the nets add nothing over the ROM, thrust input is the sensitive part, no FBL lab flights needed for the training).

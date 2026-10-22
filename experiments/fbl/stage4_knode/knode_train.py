@@ -41,11 +41,16 @@ def predict(ode, y0, dt):
     return rk4_step(ode, y0, dt)[:, 0, :13]
 
 
-def setup_ode(c_d_rom: float, mass: float | None = None, train_torque_net: bool = True):
+def setup_ode(c_d_rom: float, mass: float | None = None, train_torque_net: bool = True, vehicle: dict | None = None):
     """ODEFunc with the ROM drag coefficient c_d_rom (module global of the bundle, in memory only); optional vehicle mass override of the nominal model.
     The torque net can be frozen at zero output (force-only training, as the hardware recipe compensates forces only)."""
     b = B.load(); b.nominal.C_d = float(c_d_rom)
     ode = b.nnm.ODEFunc()
+    if vehicle is not None:                                                # our platform: the ROM geometry (module dict) and the nominal model constants
+        B.set_vehicle(b, vehicle["mass"], vehicle["arm_length"]); mass = vehicle["mass"]
+        nm = ode.nominal_model; nm.Ixx, nm.Iyy, nm.Izz = vehicle["inertia"]; nm.arm_length = vehicle["arm_length"]
+        nm.inertia = torch.diag(torch.tensor(vehicle["inertia"], dtype=torch.float32)); nm.inv_inertia = torch.pinverse(nm.inertia)
+        ode.inv_inertia = nm.inv_inertia / torch.norm(nm.inv_inertia, p=2); nm.inv_inertia_normalized = ode.inv_inertia
     if mass is not None:
         ode.nominal_model.mass = float(mass)
     if not train_torque_net:
@@ -78,3 +83,27 @@ def train(ode, y0, target, dt, iters=2000, lr=2e-2, weight_decay=2e-9, seed=123,
 def one_step_loss(ode, y0, target, dt, wx=WX):
     with torch.no_grad():
         return float((((predict(ode, y0, dt) - target) ** 2) * wx).mean())
+
+
+def train_sgd(ode, y0, target, dt, val=None, iters=1500, batch=4096, lr=1e-2, weight_decay=2e-9, seed=123, wx=WX, log_every=100, eval_every=50, verbose=True, lr_decay=0.3):
+    """Mini-batch Adam (large real data sets cannot be used full batch: the ROM evaluation costs ~0.5 s per 50k rows and RK4 stage). Model selection on a validation set
+    (flights not used for training) every eval_every iterations; the learning rate is cut by lr_decay at 50 % and 80 % of the iterations. Returns (best_state, history)."""
+    g = torch.Generator().manual_seed(seed); torch.manual_seed(seed)
+    opt = torch.optim.Adam([p for p in ode.parameters() if p.requires_grad], lr=lr, weight_decay=weight_decay)
+    n = len(y0); best, best_state, hist = float("inf"), None, []
+    for it in range(1, iters + 1):
+        if it in (int(iters * 0.5), int(iters * 0.8)):
+            for gp in opt.param_groups: gp["lr"] *= lr_decay
+        idx = torch.randperm(n, generator=g)[:batch]
+        loss = (((predict(ode, y0[idx], dt) - target[idx]) ** 2) * wx).mean()
+        opt.zero_grad(); loss.backward()
+        gn = torch.nn.utils.clip_grad_norm_([p for p in ode.parameters() if p.requires_grad], 1.0)
+        if torch.isfinite(loss) and torch.isfinite(gn): opt.step()                      # skip non-finite batches (a near-degenerate flow frame gave NaN gradients at ~1000 iterations)
+        else: n_skipped = globals().get('_SKIPPED', 0) + 1; globals()['_SKIPPED'] = n_skipped
+        hist.append(float(loss.detach()))
+        if it % eval_every == 0 or it == iters:
+            ref = one_step_loss(ode, *val, dt, wx=wx) if val is not None else float(np.mean(hist[-eval_every:]))
+            if ref < best: best = ref; best_state = {k: v.detach().clone() for k, v in ode.state_dict().items()}
+            if verbose and (it % log_every == 0 or it == iters): print(f"iter {it:5d}  batch loss {np.mean(hist[-eval_every:]):.4e}  val/ref {ref:.4e}  best {best:.4e}", flush=True)
+    ode.load_state_dict(best_state)
+    return best_state, hist
