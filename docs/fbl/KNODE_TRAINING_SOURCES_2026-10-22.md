@@ -19,3 +19,6 @@ Authors' reply (Pei-An, after our request for the training script): "most of the
 2. Own training script = thesis loop + bundle model; validate on the bundle's simulated data (must reproduce the sample checkpoint's behaviour).
 3. Data pipeline from our logs; check that our thrust map is accurate enough for a ≈ 1.2 m/s² residual; cross-check with the supervised fit.
 4. Training on real data needs lab flights with FBL and no learned residual.
+
+## Step 1 DONE 2026-10-22
+All sources read; item-by-item table of what is given, missing and decided: `KNODE_TRAINING_GAPS_2026-10-22.md`. Two public repositories of the KNODE author found (`TomJZ/Online-KNODE-MPC`, `TomJZ/K-NODE`, GPL v3, reference only). Real design decisions left: the torque/thrust input for hardware training, the C_D identification, the thrust input of the integration.
