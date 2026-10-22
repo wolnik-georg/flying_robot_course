@@ -2,6 +2,8 @@
 
 **One paragraph.** Strategy 3 (learned feedback linearization, Hsieh et al. 2026) is part of the study (user decision 2026-10-19). Everything that can be done without the authors' training script and without the lab is done and tested on the desk: our own residual fit, a closed-loop simulation of the authors' controller on our vehicle, a lookup-table version of the physics model, the residual and the control law in C (each tested against the authors' code), an additive integration into the firmware controller (inert unless switched on), and an ARM candidate image that builds clean. **Nothing has been flashed or flown.** Update 2026-10-20 night: gain tuning in a realistic plant is done (the authors' gains are unstable with our 44 ms motor lag and stay as preset 0; our tuned gains are preset 1, the default), handover/latch/A1/A4 checked in simulation, bench/log/yaml tools prepared. **Only lab work is left: `LAB_PLAN.md`.** Details: `GAIN_TUNING_2026-10-20.md`.
 
+> **Update 2026-10-22:** the authors answered the training-script request: the KNODE training code is in Appendix B of Chee's thesis (open full text found; `KNODE_TRAINING_SOURCES_2026-10-22.md`). No reply email by decision of the user. FBL training work waits behind the NS2 quality task (`docs/ns2_quality_plan_2026-10-22.md`).
+
 ## 1. Timeline (git, all pushed)
 | Date | Commit | What |
 |---|---|---|

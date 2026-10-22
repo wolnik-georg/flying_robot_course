@@ -4,6 +4,8 @@ Simple lab + desk list (as of **2026-10-06**, meeting [`meetings/2026-10-05.md`]
 [`lab_sessions/2026-10-03.md`](lab_sessions/2026-10-03.md)). **Lab session plan + copy-paste commands:**
 [`lab_session_pack_2026-10-06.md`](lab_session_pack_2026-10-06.md). Update when items move.
 
+**STATE 2026-10-22 (supervisor feedback, plan `ns2_quality_plan_2026-10-22.md`):** Task 2 first — NS2 quality: offline NN-vs-INDI check, held-out split by setting + rebalance boring rows, retrain v3, INDI estimate logged on all strategies (reflash, next lab), decide re-fly of S2/S3. Then Task 1 — FBL residual training from the authors' sources (`fbl/KNODE_TRAINING_SOURCES_2026-10-22.md`, no email back). Desk as far as possible, lab only validation + data.
+
 **STATE 2026-10-12 (evening, desk):** (a) NS2 SIL downwash artifact fixed (`above_only`, top drone no longer pushed): network off and `+1` agree with the hardware within 0.4 cm, `−1` does not (SIL −1.0 vs hardware −3.2 cm), so the SIL overstates the NS2 benefit (`docs/72`); non-A8 SIL screening carries no information. (b) New isolated Tal & Karaman INDI built, `controller 11` (Rust) / `12` (C), software-verified only, image `cf21bl_study_usd96_rpmf_rnn_iz_sentinel_ON_tk.bin` not flashed, never flown (`docs/74` §6). Not part of the shakedown or the study unless decided.
 
 **STATE 2026-10-12:** the desk preparation for the comparative study is finished and pushed (logging superset, `--study` gate, metrics/report tools, shakedown card and checklist, readiness matrix, protocol v0.2); what is left is the supervisor decisions (NS2 keep/retrain, Pure INDI, FBL scope, tiers) and the lab shakedown — details in [`roadmap_to_comparative_study.md`](roadmap_to_comparative_study.md) section 0.
