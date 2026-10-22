@@ -15,10 +15,10 @@ Everything below is desk-prepared and untested on hardware. Order is a proposal 
 | 8 | Then | A1 repeats, A8 (`--scenario A8 --dz 0.5 --height 0.5 --passes 4`), A4 offsets 0.05/0.10/0.15; compare in the same tables as S0–S3 | per-cell n like the pilot |
 
 - **Reading guide for the first flights (expected channel values, what to change): `FIRST_FLIGHT_CHECKLIST.md`.**
-- **If the drone sags or oscillates in the first flights:** the knobs are `ctrlFbl.ki_z` (default 12), `ctrlFbl.cd` (0.43, downwash strength, 0 = no residual) and `ctrlFbl.preset`; all settable per flight without reflashing.
+- **If the drone sags or oscillates in the first flights:** the knobs are `ctrlFbl.ki_z` (default 12), `ctrlFbl.cd` (firmware default 0.43; KNODE on our logs gives ≈ 0.55 with calibrated thrust, `KNODE_TRAINING_STEP3_2026-10-22.md`; downwash strength, 0 = no residual) and `ctrlFbl.preset`; all settable per flight without reflashing.
 - **First uSD FBL log is also the shakedown of the logging chain:** decode + merge have never seen an FBL config (11 INDI/oot5 variables swapped for `ctrlFbl.*`); if a downstream script misses a column, fix it then.
 - **Expected from simulation (optimistic):** in the calibrated plant (measured thrust, downwash 1.3×) A8 dip about 1 cm, A1 bias about 0.2 cm (RMS 3 cm), A4 2–3 cm RMS (`SIM_COMPARISON_2026-10-20.md`); real values will be worse.
-- **Knob order if the downwash compensation looks too weak:** `ctrlFbl.cd` 0.43 → 0.6 (best in simulation), `ctrlFbl.ki_z` 12 → 16 (`ROBUSTNESS_2026-10-21.md`).
+- **Knob order if the downwash compensation looks too weak:** `ctrlFbl.cd` 0.43 → 0.55 (KNODE on our logs) → 0.6–0.65 (best in simulation; start at 0.55 if you want the data-driven value first), `ctrlFbl.ki_z` 12 → 16 (`ROBUSTNESS_2026-10-21.md`).
 - **Waiting for the authors:** their gains/checkpoint become a third preset; nothing else changes.
 
 ## Desk-side tests of the lab tools (2026-10-21)

@@ -47,7 +47,7 @@ Spec and gate list: `PORT_SPEC.md`. Detailed results of every stage: `STATUS.md`
 - **Gains:** the authors' gains = preset 0 (kept), ours = preset 1 (default: kp 14/11.25, kv 9.5/5.4, ki 12/12, kr 59.5/35); the authors' gains are unstable with our 44 ms motor lag in simulation. `GAIN_TUNING_2026-10-20.md` (figures: tuning, handover, A1/A4, final round).
 - **Simulation-only comparison with the tree** (one plant, S1/S3 not possible there): `SIM_COMPARISON_2026-10-20.md`. FBL ≫ S0; S2 ≈ FBL in the ideal plant (S2 flattered by its perfect model); in a stress plant FBL stays at 3.6–5.4 cm while S0/S2 collapse (mostly the z-integral gain).
 - **Lab prepared, untested:** `LAB_PLAN.md`; image `study_tree_v2_fbl_candidate_presets.bin` (sha256 `956479a7…`, local only), `fbl_gain_presets.patch`, `fbl_bench_check.py`, `usd_fbl_config.txt` + `restore_study_sd_config.py --fbl`, `fbl_log_check.py`, `lab_check_strategy.py` (FBL aware), crazyswarm2 `study/from_main_FBL.patch`.
-- **Open:** authors' training script/gains (third preset when they come), takeoff height swing = test artefact (explained 2026-10-21), thrust-map error is the main hardware risk, first FBL uSD log = shakedown of decode/merge. A tried-and-reverted attempt to run FBL in the two-drone harness (`omar_ns2_closed_loop_sil.py`): the residual stayed 0 there, cause not found.
+- **Open:** authors' hardware gains (third preset if they ever come; the training side is solved, see §4c), takeoff height swing = test artefact (explained 2026-10-21), thrust-map error is the main hardware risk, first FBL uSD log = shakedown of decode/merge. A tried-and-reverted attempt to run FBL in the two-drone harness (`omar_ns2_closed_loop_sil.py`): the residual stayed 0 there, cause not found.
 - **2026-10-21 desk round (`ROBUSTNESS_2026-10-21.md`):** peer feed measured (88 Hz, ~1 mm; latency unresolved) and swept — FBL insensitive, S2 degrades with noise; thrust map measured from hover logs (bottom drone needs 1.023× weight, top 0.965×) — the 12 % shortfall assumption was too pessimistic; comparison redone in the calibrated plant (matches hardware S0/S2 on A8/A4); C_D best ≈ 0.6 (try 0.43 then 0.6), ki_z 12–16.
 - **2026-10-21 later (desk):** FBL on 19 more scenarios (A8 speeds × dz, A2, A3, A5, R1) lowest everywhere, no trips; parameter sweep (60 draws): 0 failures, margin thin only when motor lag ≥ 54 ms and delay ≥ 5.5 ms coincide (`ROBUSTNESS_2026-10-21.md` §5–6).
 - **2026-10-21 (desk, last round):** lower-gain fallback tested (kr ×0.5 or xy position ×0.7 removes the tilt bursts, no visible cost) and battery sag (up to 15 % fade compensated by the z integral): `ROBUSTNESS_2026-10-21.md` §7–8, fallback values in `FIRST_FLIGHT_CHECKLIST.md`.
@@ -58,13 +58,19 @@ Spec and gate list: `PORT_SPEC.md`. Detailed results of every stage: `STATUS.md`
 - **Final desk round 2026-10-21 (all in `ROBUSTNESS_2026-10-21.md`):** 19-scenario matrix vs S0/S2 (FBL lowest everywhere, no trips), 60-draw parameter sweep (0 failures; thin margin only when motor lag ≥ 54 ms and delay ≥ 5.5 ms coincide), tested lower-gain fallback (`kr_xy` 29.75 / `kr_z` 17.5, or `kp_xy` 9.8 / `kv_xy` 6.65 / `ki_xy` 8.4; live parameters; no visible cost), battery sag up to 15 % compensated by the z integral, propeller radius ±10 % ≈ C_D ±10–13 %, ground effect up to 3× harmless. Not simulated: A7 descent, touchdown speed, a lower default gain (no wind / xy disturbance in the plant).
 - **PAUSED again 2026-10-21 by the user** (no thesis writing for FBL, only code/sim/test prep); resume with the lab steps or when the authors answer.
 
+## 4c. Update 2026-10-22: the training side is closed (read before the lab)
+- The authors pointed to Appendix B of Chee's thesis; we built our own KNODE training script (thesis loop + the bundle's `ODEFunc`, `experiments/fbl/stage4_knode/`), checked it on synthetic flights with a known downwash, and ran it on our own logs (force only): `KNODE_TRAINING_SOURCES_`, `_GAPS_`, `_STEP2_`, `_STEP3_2026-10-22.md`.
+- **Result:** our S0/S1 logs are enough, no FBL flights are needed for the training; **C_D ≈ 0.55** with calibrated thrust (0.65 with the raw command; the firmware default 0.43 came from the supervised fit on the label); the nets add nothing measurable over the ROM (test R² 0.57 vs 0.57; ceiling of any function of (r, dz) 0.60; NS2 v2 0.63); the thrust input is the sensitive part (±3 % = ±0.1 in C_D).
+- **Proposal for the first flights (not applied, your decision):** set `ctrlFbl.cd` to 0.55 per flight (parameter, no reflash); bracket 0.43 / 0.65; the firmware default stays 0.43. In flight the commanded thrust reaches the motors with the platform's thrust map (measured 97.7 %): check that the first A1 sag is not a thrust-map effect before turning `cd` further.
+- Nothing else changed: gains presets, image, lab plan as in §4b.
+
 ## 5. What is NOT done (and risks)
 - **(2026-10-20: tuned in simulation, see GAIN_TUNING_2026-10-20.md; not yet the firmware defaults)** **Gains are the bundle's**, for a 30 g simulated vehicle; our vehicle (42.7 g) and the real loop (delay, noise, motor lag, thrust limit, gyro filter) are untested. **Next desk step: gain tuning in the C-in-the-loop simulation** with delay, noise, thrust limit and motor lag (`c_in_the_loop.py` has the plant; delay/noise/motor lag are not yet in it).
 - **Handover at takeoff and landing** (0.15 m / 0.10 m) is new: the FBL integral and estimator start at zero, the Omar controller was flying until then; a transient is possible.
 - **Never on hardware:** bench check, `ctrlFbl.en`, timing of the FBL step (expected tens of µs), behaviour with the real peer-position feed (velocity by differencing, 100 Hz).
 - Limits are simple (rates 20 rad/s, thrust ≤ max, tilt 60°); near thrust ≈ 0 and near ±90° tilt the law is ill-conditioned (documented in `PORT_SPEC.md` §6b).
-- C_D 0.43 is fitted on our label, which contains thrust-model error and ground effect; propeller radius of our vehicle is assumed 45 mm; no torque residual; the paper's KNODE trajectory loss is not implemented (no FBL flights yet).
-- Waiting for the authors: training script, real-drone checkpoint and hardware gains (email sent; they would replace only the fitted residual and the gains).
+- C_D 0.43 is fitted on our label, which contains thrust-model error and ground effect; propeller radius of our vehicle is assumed 45 mm; no torque residual; the paper's KNODE trajectory loss is implemented since 2026-10-22 (§4c: C_D ≈ 0.55 with calibrated thrust, the nets add nothing over the ROM).
+- **Authors (2026-10-22):** they pointed to Appendix B of Chee's thesis (open text found) as the training code; no reply email by decision of the user; hardware checkpoint and gains are still not available and are not needed (our own training and tuned gains exist).
 - The uSD logs of FBL flights need the existing config (no new variables); the radio log carries `ctrlFbl.*`.
 
 ## 6. How to pick it up again
@@ -86,7 +92,7 @@ Rules that still apply: count the `thesis` files on both cards before every bloc
 
 ## 7. Decisions so far
 - FBL (Strategy 3) is part of the study (user, 2026-10-19).
-- Own supervised fit replaces the paper's KNODE loss until the authors' script arrives.
+- Own supervised fit (Stage 1) and our own KNODE script (2026-10-22, `KNODE_TRAINING_STEP3_2026-10-22.md`) both give a residual that is the ROM with C_D ≈ 0.43–0.55; the nets add nothing measurable.
 - ROM only first (the fitted network adds nothing); force only, z only; no torque residual.
 - Branch inside the Omar controller (controller 9) behind a parameter, not a new controller slot; handover below 0.15 m to Omar.
 - Open for you: tolerance values of the gates G2/G3 (proposals used), the G5 band, the first-flight procedure, whether to implement the KNODE loss later.
