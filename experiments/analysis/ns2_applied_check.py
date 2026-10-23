@@ -21,13 +21,20 @@ def fit(path):
     ad = np.c_[g("ctrltarget_ax") + KV * g("omar_err_vel_x") + KP * g("omar_err_pos_x"), g("ctrltarget_ay") + KV * g("omar_err_vel_y") + KP * g("omar_err_pos_y"),
                g("ctrltarget_az") + G + KV * g("omar_err_vel_z") + KP * g("omar_err_pos_z")]      # position-loop acceleration without the integral and without NS2 (thrust = m a . z_b)
     ep = g("omar_err_pos_z"); pred = g("rnn_pred_z")
-    indi = np.abs(g("omar_a_rpm_fz")[air]).mean() > 1e-6
-    y = thr / M - (ad * zb).sum(1)
-    if indi: y = y - (np.c_[g("omar_a_rpm_fx") - g("omar_a_imu_fx"), g("omar_a_rpm_fy") - g("omar_a_imu_fy"), g("omar_a_rpm_fz") - g("omar_a_imu_fz")] * zb).sum(1)
+    est_logged = np.abs(g("omar_a_rpm_fz")[air]).mean() > 1e-6
     J = np.cumsum(np.where(air, ep, 0.0)) * dt; w = zb[:, 2]      # y = z_b,z * (c + Kiz J - s a_nn)
     ok = air
-    X = np.c_[w[ok], w[ok] * (J[ok] - J[ok][0]), w[ok] * pred[ok]]; coef, *_ = np.linalg.lstsq(X, y[ok], rcond=None)
-    res = y[ok] - X @ coef; r2 = 1 - res.var() / y[ok].var()
+    corr = (np.c_[g("omar_a_rpm_fx") - g("omar_a_imu_fx"), g("omar_a_rpm_fy") - g("omar_a_imu_fy"), g("omar_a_rpm_fz") - g("omar_a_imu_fz")] * zb).sum(1)
+    X = np.c_[w[ok], w[ok] * (J[ok] - J[ok][0]), w[ok] * pred[ok]]
+    def run(indi):
+        y = thr / M - (ad * zb).sum(1) - (corr if indi else 0.0)
+        coef, *_ = np.linalg.lstsq(X, y[ok], rcond=None); res = y[ok] - X @ coef
+        return coef, res, y
+    # Old images log the INDI estimate only with INDI on (zero otherwise). The estlog image (2026-10-22) logs it under every strategy, so then the
+    # flag is decided by which thrust model explains the logged thrust better (residual variance).
+    if not est_logged: indi = False
+    else: indi = bool(run(True)[1].var() < run(False)[1].var())
+    coef, res, y = run(indi); r2 = 1 - res.var() / y[ok].var()
     X0 = X[:, :2]; c0, *_ = np.linalg.lstsq(X0, y[ok], rcond=None); res0 = y[ok] - X0 @ c0
     return dict(indi=bool(indi), coef_pred=float(coef[2]), coef_J=float(coef[1]), r2=float(r2), r2_without_pred=float(1 - res0.var() / y[ok].var()))
 
