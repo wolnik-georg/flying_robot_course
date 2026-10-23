@@ -28,3 +28,7 @@ Desk first, as far as possible; lab only for validation and data collection.
 Plan, flight table, commands and the pre-registered pass rule: `docs/lab_sessions/ns2_unseen_block_plan_2026-10-22.md` (40 flights S0–S3: A8 dz 0.4 / 0.35 m/s ×3, A1 dz 0.45 ×3, A4 dz 0.4 / 0.35 m/s offsets 0.075 and 0.125 ×2; v2 stays, nothing retrained). Desk side ready: commands validated with `--check`, analysis `experiments/analysis/unseen_block_analysis.py` (dry run on the pilot flights reproduces the meeting-doc numbers), `nn_vs_indi_raw/check.py` take bank names. Lab: flash the logging image, bench check, fly the block. Open: FBL-containing image or a separate one.
 
 **Decisions 2026-10-22 (user):** image = the FBL-containing logging image (option A); pass-rule thresholds (R ≥ 0.7 / 0.4–0.7 / < 0.4) confirmed and fixed. Nothing open before the lab session except the supervisor's own pending decisions (tree approval, tiers, two vehicles first, dz floor, FBL as S4, NS2 execution).
+
+
+## RESULT 2026-10-23 (flight confirmation done)
+40 unseen-settings flights, all four strategies, complete uSD logs: pooled retention 1.03 (A1 1.27, A4 0.075 0.89, A4 0.125 0.98, A8 0.97) → no material overfit under the pre-registered rule (threshold 0.7). Logging patch validated (onboard INDI estimate = offline rebuild, all strategies). Session doc `docs/lab_sessions/2026-10-23.md`, results `experiments/results/unseen_block_2026-10-23/`, `unseen_nn_vs_indi_2026-10-23/`. Topic 2 closed on the desk and in the lab; supervisor's answer pending.
