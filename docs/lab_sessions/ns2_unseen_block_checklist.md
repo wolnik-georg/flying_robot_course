@@ -1,3 +1,5 @@
+> **CLOSED 2026-10-23** — flown and analysed, see `2026-10-23.md` (40 flights, retention 1.03). Kept as the record of the procedure.
+
 # Lab session checklist — Topic 2: unseen-settings block (40 flights, S0–S3, ns2_v2 unchanged)
 
 Plan and pass rule: `ns2_unseen_block_plan_2026-10-22.md` (decided 2026-10-22: FBL-containing logging image, thresholds fixed, no `--study`, as all pilot sessions). Goal of the session: flash the logging image, check it, fly 40 flights, copy and merge the logs. No new abort or exclusion rules: write down what happened, decide afterwards.

@@ -49,3 +49,6 @@ PYTHONPATH=<crazyflie-firmware>/build python3 experiments/analysis/nn_vs_indi_ra
 Outputs: per-flight and per-cell tables, retention table, verdict, figure; NN-vs-INDI quality at the unseen settings (S0/S1), and with the onboard INDI log also for S2/S3.
 
 **Tickable lab checklist for the session:** `ns2_unseen_block_checklist.md` (flash, bench check, logging check, the 40 flights as a table per block, copy/merge, after-lab steps).
+
+## Result (2026-10-23)
+Flown as planned (order S1, S3, S2, S0; S3 partly re-flown after empty cf5 files), 40 flights with complete uSD logs. Pooled retention geometric 1.03 (A1 1.27, A4 0.075 0.89, A4 0.125 0.98, A8 0.97) → no material overfit under the rule above. Details `2026-10-23.md`, results `experiments/results/unseen_block_2026-10-23/`.

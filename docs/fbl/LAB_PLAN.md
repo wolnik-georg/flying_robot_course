@@ -1,18 +1,18 @@
-# FBL (Strategy 3) — what is left is lab work (state 2026-10-20 night)
+# FBL (Strategy 3) — what is left is lab work (state 2026-10-23: images already flashed, branch `study_FBL`)
 
 Everything below is desk-prepared and untested on hardware. Order is a proposal for you to confirm.
 
 | # | Step | Exact action | Pass criterion |
 |---|---|---|---|
-| 0 | Pull | `git pull` in both repos (`flying_robot_course`, `crazyswarm2`) | files below exist |
-| 1 | Flash both drones | `flying_drone_stack/firmware_app/build_artifacts/study_tree_v2_fbl_candidate_presets.bin` (local file, sha256 `956479a7…`; rebuild recipe `PROGRESS_AND_RESUME.md` §6) | flash OK |
-| 2 | SD cards | count `thesis` files on both cards (archive at ≥ 85); `restore_study_sd_config.py <mount> --fbl` on the bottom drone's card (cf_second keeps `usd_study_config.txt`); `check_usd_deck.py` | 96 variables, deck OK |
+| 0 | Pull | `git pull` in both repos; in crazyswarm2 `git fetch origin` (branch `study_FBL` = main + FBL switches + `ctrlFbl.cd 0.55`) | `study_FBL` exists |
+| 1 | **No flash needed** | both drones already run `study_tree_v2_fbl_estlog_candidate.bin` (sha256 `4fa0a130…`, flashed 2026-10-23; FBL inside, inert at `ctrlFbl.en 0`; same params and log variables as the old presets image) | `fbl_bench_check.py <uri>` in step 3 passes |
+| 2 | SD cards | **archive both cards first** (cf_second at thesis64, cf5 at thesis65 after 2026-10-23; ~19 flights would reach the 85 limit); `restore_study_sd_config.py <cf5 mount> --fbl` on the bottom drone's card (cf_second keeps `usd_study_config.txt`); `check_usd_deck.py` | 96 variables, deck OK |
 | 3 | Bench, both drones, CS2 stopped | `python3 flying_drone_stack/tools/fbl_bench_check.py <uri>` (cf5 `radio://0/80/2M/E7E7E7BB02`, cf_second `radio://0/80/2M/E7E7E7E7E9`) | `ALL PASS`: controller 9, preset 1, `en` 0 at boot |
-| 4 | Yaml | in crazyswarm2: `git apply crazyflie/config/study/from_main_FBL.patch`, then `python3 flying_drone_stack/tools/lab_check_strategy.py` and `python3 flying_drone_stack/tools/lab_preflight.py --study FBL --sd-config <card>/config.txt` (checks FBL consistency, the frozen FBL block, the 96-variable FBL uSD config; copy `study/study_manifest_FBL_candidate.json` over `study_manifest.json` after flashing) | prints `FBL (Strategy 3, S4)`; cf_second stays S0; `PASS` |
-| 5 | Launch + check | `ros2 launch crazyflie launch.py`; `fbl_bench_check.py <cf5 uri> --readback` | `FBL ON … gains: preset 1 (ours)` |
-| 6 | First FBL flight | A1, dz 0.5, hold 15 s: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` (optionally with `--study --strategy FBL`: the frozen block is checked before takeoff and after the apply); hand ready on the abort | takes off, holds, lands |
-| 7 | Verify it ran | stop CS2: `fbl_bench_check.py <cf5 uri> --post-flight`; later `experiments/analysis/fbl_log_check.py <log>` | `steps > 0`, `faults 0` (`tripped 1` = latch fell back to Omar) |
-| 8 | Then | A1 repeats, A8 (`--scenario A8 --dz 0.5 --height 0.5 --passes 4`), A4 offsets 0.05/0.10/0.15; compare in the same tables as S0–S3 | per-cell n like the pilot |
+| 4 | Yaml | `cd ~/georg/ros2_ws/src/crazyswarm2 && git checkout study_FBL`, then `python3 flying_drone_stack/tools/lab_check_strategy.py` (rebuild if STALE) and optionally `lab_preflight.py --study FBL --sd-config <card>/config.txt` (copy `study/study_manifest_FBL_candidate.json` over `study_manifest.json` first; it names the estlog image) | prints `FBL (Strategy 3, S4)`; cf_second stays S0 |
+| 5 | Launch + check | `ros2 launch crazyflie launch.py`; `fbl_bench_check.py <cf5 uri> --readback` | `FBL ON … gains: preset 1 (ours)`, `cd 0.55` |
+| 6 | First FBL flight | A1: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.5 --hold 15.0 --height 0.5 --auto-center --yes` (fresh packs, hand ready on the abort, no `--study`) | takes off, holds, lands |
+| 7 | Verify it ran | stop CS2: `fbl_bench_check.py <cf5 uri> --post-flight`; copy both cards (`copy_usd_log.py <mount> <drone> --file thesisNN --tag fbl_S4`), `experiments/analysis/fbl_log_check.py <log>` | `steps > 0`, `faults 0` (`tripped 1` = latch fell back to Omar) |
+| 8 | Then, same settings as the pilot (dz 0.5, 0.5 m/s) so S4 sits in the S0–S3 tables | A1 ×5 total; A8 ×4: `--scenario A8 --dz 0.5 --height 0.5 --passes 4`; A4 ×3 per offset 0.05 / 0.10 / 0.15: `--scenario A4 --dz 0.5 --speed 0.5 --offset <o> --motion line --rotate 90 --height 0.5` (all with `--auto-center --yes`); copy after every flight or few | per-cell n like the pilot (18 flights) |
 
 - **Reading guide for the first flights (expected channel values, what to change): `FIRST_FLIGHT_CHECKLIST.md`.**
 - **If the drone sags or oscillates in the first flights:** the knobs are `ctrlFbl.ki_z` (default 12), `ctrlFbl.cd` (firmware default 0.43; KNODE on our logs gives ≈ 0.55 with calibrated thrust, `KNODE_TRAINING_STEP3_2026-10-22.md`; downwash strength, 0 = no residual) and `ctrlFbl.preset`; all settable per flight without reflashing.

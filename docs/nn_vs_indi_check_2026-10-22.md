@@ -20,3 +20,8 @@ Black = zero-delay label (raw a_imu − a_rpm, offline filtfilt 5 Hz), orange = 
 - **Limit:** these flights are new but their settings are inside the v2 training set (dz 0.5, 0.5 m/s), so this is a quality check, not a generalisation test (step 2).
 
 Code: `experiments/analysis/nn_vs_indi_raw.py` (system python, bindings, cache not committed) and `nn_vs_indi_check.py`; data `experiments/results/nn_vs_indi_2026-10-22/` (`per_flight.csv`, `summary_z_5Hz.csv`).
+
+
+## Addendum 2026-10-23: unseen settings and all four strategies
+- Unseen-settings flights (`experiments/results/unseen_nn_vs_indi_2026-10-23/`): corr NN vs INDI-measured residual 0.93–0.97 under S0 (A1 0.95, A4 0.97 / 0.93 in gate, A8 0.95); under S1 A8 0.93, A1 0.84, A4 0.53 (gate 0.68; pilot 0.92; small signal under INDI, n=4).
+- Onboard INDI estimate (new image) vs the offline rebuild with the real C code, all four strategies, 10 flights each: corr 0.96–1.00, rms difference 0.04–0.05 m/s² at a signal rms of 1.2–1.5 m/s² → the logging patch is correct under S0, S1, S2 and S3.

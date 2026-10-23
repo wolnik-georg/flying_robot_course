@@ -63,3 +63,7 @@ Port specification `PORT_SPEC.md`; ROM lookup table (60 × 60 × 3 floats = 42 K
 ## Decisions and open points
 - Our supervised fit (Stage 1) and, since 2026-10-22, our own KNODE trajectory loss (`stage4_knode/`, `KNODE_TRAINING_STEP3_2026-10-22.md`: C_D ≈ 0.55 with calibrated thrust, nets add nothing over the ROM, no FBL flights needed for the training) replace the authors' script, which does not exist beyond Chee's thesis appendix.
 - Open: propeller radius of our vehicle; torque residual (we have no torque label; the hardware network in the paper is force-only); how to treat the baseline (global vs per flight).
+
+
+## 2026-10-23
+The FBL-containing logging image `study_tree_v2_fbl_estlog_candidate.bin` (sha 4fa0a130…) is flashed on both drones (FBL inert); the FBL lab session needs no reflash. New: crazyswarm2 branch `study_FBL` (yaml with `ctrlFbl.en 1`, preset 1, `cd 0.55`), manifest template points to the estlog image. Lab plan rewritten: `LAB_PLAN.md`.

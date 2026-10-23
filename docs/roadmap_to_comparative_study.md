@@ -83,3 +83,7 @@ Study: protocol v1.0 and tags after the decisions → study size (tiers) → `--
 
 ## 3. Open risks
 Ours INDI on A1 · NS2 not validated on A1 (SIL pessimistic, hardware stable) · pose swaps (battery-related so far) · cf5 uSD card lost files once · Omar C deck RPM dropouts possible in 2-drone scenarios · Strategy 3 blocked · several variants have only 2–4 flights so far.
+
+
+## Update 2026-10-23
+Topic 2 (NS2 quality) closed in the lab: 40 unseen-settings flights, retention 1.03, logging image flashed on both drones and validated (`docs/lab_sessions/2026-10-23.md`). Protocol v1.0 must name the image `study_tree_v2_fbl_estlog_candidate.bin` (sha256 4fa0a130c698f217728d8b5dcf7464cb84a0b5bd4196b3ac4123a8100bad012b); the study yaml per strategy lives on crazyswarm2 branches `study_S1/S2/S3/FBL` (main = S0). Next: Topic 1 FBL lab session, then supervisor decisions, protocol v1.0, tier-1 study.
