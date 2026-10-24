@@ -34,7 +34,7 @@ def fake(state):
     mods = {"cflib": m, "cflib.crtp": m.crtp, "cflib.crazyflie": types.SimpleNamespace(Crazyflie=CF), "cflib.crazyflie.log": types.SimpleNamespace(LogConfig=LC), "cflib.crazyflie.syncCrazyflie": types.SimpleNamespace(SyncCrazyflie=Sync)}
     return mods
 def run(args, **kw):
-    state = dict(p={"stabilizer.controller": "6", "ctrlFbl.en": 0, "ctrlFbl.preset": 1, "ctrlOmarIndi.indi": 0, "rnn.en": 0, **{"ctrlFbl." + k: v for k, v in P1.items()}}, preset_works=True, console_ok=True, log_ok=True, steps=0); state.update(kw)
+    state = dict(p={"stabilizer.controller": "6", "ctrlFbl.en": 0, "ctrlFbl.preset": 1, "ctrlFbl.cd": 0.43, "ctrlFbl.z_on": 0.15, "ctrlOmarIndi.indi": 0, "rnn.en": 0, **{"ctrlFbl." + k: v for k, v in P1.items()}}, preset_works=True, console_ok=True, log_ok=True, steps=0); state.update(kw)
     sys.modules.update(fake(state)); sys.argv = ["fbl_bench_check.py", "radio://0/80/2M/E7E7E7BB02"] + args
     try: runpy.run_path(str(Path(__file__).parent / "fbl_bench_check.py"), run_name="__main__"); return 0
     except SystemExit as e: return int(e.code or 0)
