@@ -1,0 +1,50 @@
+--- a/src/modules/src/controller/controller_omar_indi.c
++++ b/src/modules/src/controller/controller_omar_indi.c
+@@ -76,6 +76,16 @@
+ 
+   // INDI
+   .indi = 0,
++
++  // Learned FBL (Strategy 3): configuration at boot, literal copy of what fbl_defaults() used to set at every controller init (preset 1 = ours, see
++  // fbl_apply_preset). The state (law, peers, counters) is zero here and reset by fbl_runtime_reset() at init. The configuration must NOT be reset at the
++  // controller init: CS2 writes the yaml params alphabetically and stabilizer.controller last, so an init that reset the config wiped ctrlFbl.en / cd
++  // (2026-10-24, first FBL flights ran as S0).
++  .fbl = {
++    .en = 0, .c_d = 0.43f, .z_on = 0.15f, .z_off = 0.10f, .tilt_max_deg = 60.0f, .preset = 1,
++    .kp_xy = 14.0f, .kp_z = 11.25f, .kv_xy = 9.5f, .kv_z = 5.4f, .ki_xy = 12.0f, .ki_z = 12.0f, .kr_xy = 59.5f, .kr_z = 35.0f,
++    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 20.0f,
++  },
+ };
+ 
+ 
+@@ -132,16 +142,13 @@
+   fbl_apply_preset(&g_self.fbl, g_self.fbl.preset);
+ }
+ 
+-static void fbl_defaults(controllerOmarIndi_t* self)
++static void fbl_runtime_reset(controllerOmarIndi_t* self)
+ {
++  // state only; the configuration (en, c_d, z_on, preset and gains, ...) survives the controller init, see the initializer of g_self
+   fbl_cfg_t* f = &self->fbl;
+-  memset(f, 0, sizeof(*f));
+-  f->en = 0;
+-  f->c_d = 0.43f;
+-  f->z_on = 0.15f; f->z_off = 0.10f; f->tilt_max_deg = 60.0f;
+-  f->preset = 1; fbl_apply_preset(f, f->preset);
+-  f->J = mkvec(2.395e-5f, 2.395e-5f, 3.235e-5f);
+-  f->beta = 0.4f; f->gamma = 0.1f; f->w_max = 20.0f;
++  f->active = 0; f->tripped = 0; f->steps = 0; f->faults = 0;
++  f->res_az = 0.0f; f->res_jz = 0.0f; f->thrust = 0.0f;
++  f->acc_cmd = vzero(); f->w_des = vzero();
+   fbl_law_reset(&f->law); fbl_reset(&f->peers);
+ }
+ 
+@@ -233,7 +240,7 @@
+   *self = g_self;
+   ns2_reset(&self->ns2);
+   ns2_publish_ready();
+-  fbl_defaults(self);
++  fbl_runtime_reset(self);
+ 
+   paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
+   logVarRpm1 = logGetVarId("rpm", "m1");

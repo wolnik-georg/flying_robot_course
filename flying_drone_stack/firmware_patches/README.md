@@ -23,7 +23,8 @@ for p in \
   cffirmware_bindings.patch \
   fbl_integration.patch \
   fbl_gain_presets.patch \
-  indi_estimate_always_logged.patch
+  indi_estimate_always_logged.patch \
+  fbl_config_survives_init.patch
 do
   git apply --check "$PATCH/$p" && git apply "$PATCH/$p"
 done
@@ -44,3 +45,6 @@ NS2 learned residual in C for the Omar C controller tree (`src/modules/{interfac
 
 ## fbl_integration.patch (2026-10-19)
 Learned FBL (Strategy 3) in the Omar C controller: new modules `src/modules/{interface,src}/fbl_residual.*` (downwash residual from the ROM table), `fbl_law.*` (position law and FBL command mapping), `fbl_rom_table.*` (generated table, 42 KiB), Kbuild lines, `bindings/setup.py` sources, and an additive branch in `controller_omar_indi.{c,h}` (`fbl_cfg_t fbl`, parameters/logs group `ctrlFbl`). **Apply LAST** (after `cffirmware_bindings.patch`: it edits `bindings/setup.py` and the Omar files that earlier patches create). Inert unless `ctrlFbl.en = 1`: with `en = 0` the Omar controller output is byte-identical (replay gate `host/test_omar_ns2_off_identical.py`, all 4 cases identical). Above `ctrlFbl.z_on` (0.15 m, hysteresis `z_off` 0.10 m) the FBL law replaces the position and attitude controllers; below that, on a tilt fault (`tilt_max` 60 deg, latched until landed) and on any non-finite value the Omar controller runs. Canonical sources and host tests: `experiments/fbl/stage3_port/c/`; spec and gates: `docs/fbl/PORT_SPEC.md`. ARM candidate image: `firmware_app/build_artifacts/study_tree_v2_fbl_candidate.bin` (NS2 v2 flash weights + FBL, NOT flashed, not bench-tested).
+
+## fbl_config_survives_init.patch (2026-10-24)
+The FBL configuration (en, c_d, z_on, preset, gains, ...) is now a static initial value of `g_self.fbl`; the controller init only resets the FBL runtime state (`fbl_runtime_reset`) instead of the whole config (`fbl_defaults`, removed). Reason: CS2 applies the yaml params alphabetically with `stabilizer.controller` last, so the init wiped `ctrlFbl.en` / `cd` and the first FBL flights ran as S0. Gates: replay bit-identical on 4 of 4 cases (`test_omar_ns2_off_identical.py`, old build `crazyflie-firmware/build_pre_fblinit_2026-10-24`), FBL host tests G1–G3 pass, C-in-the-loop with FBL on identical old vs new. Image: `study_tree_v2_fbl_initfix_candidate.bin` (sha256 27e0e100…, 580,780 B).
