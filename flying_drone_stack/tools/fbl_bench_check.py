@@ -28,7 +28,11 @@ def check(name, ok, detail=""):
     if not ok: fails.append(name)
 
 
-def pget(cf, name): return cf.param.get_value(name, timeout=3)
+def pget(cf, name):
+    # cflib's get_value returns the value cached at connect time (2026-10-24: stale reads after a controller switch / preset write), so ask the drone again first
+    try: cf.param.request_param_update(name); time.sleep(0.12)
+    except Exception: pass
+    return cf.param.get_value(name, timeout=3)
 
 
 def log_once(cf, secs=1.0):
