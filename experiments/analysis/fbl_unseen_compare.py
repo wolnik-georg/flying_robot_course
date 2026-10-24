@@ -9,7 +9,17 @@ import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "experiments/analysis")); sys.path.insert(0, str(REPO / "flying_drone_stack/tools"))
 import decode_usd_log as D                                       # noqa: E402
+import unseen_block_analysis as UBA                               # noqa: E402
 from unseen_block_analysis import flight_row                     # noqa: E402
+_zc = UBA.zero_crossings
+def _zc_fallback(t, y, n=4, hyst=0.15, spacing=6.0, tol=1.5):
+    # FBL flights have a smaller / lagged lateral excursion: if the default detector finds nothing, retry with hysteresis 0.1 and tolerance 1.5 s (flagged in the table)
+    c = _zc(t, y, n=n, hyst=hyst, spacing=spacing, tol=tol)
+    if len(c) < n:
+        c2 = _zc(t, y, n=n, hyst=0.1, spacing=spacing, tol=1.5)
+        if len(c2) >= n: _zc_fallback.used = True; return c2
+    return c
+UBA.zero_crossings = _zc_fallback
 
 ap = argparse.ArgumentParser(); ap.add_argument("--banks", nargs="+", required=True); ap.add_argument("--out", type=Path, required=True); ap.add_argument("--ref", type=Path, default=REPO / "experiments/results/unseen_block_2026-10-23"); a = ap.parse_args()
 out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True); rows = []; diag = []
@@ -20,13 +30,13 @@ for bank in a.banks:
         d = D.load(str(REPO / "experiments/logs/usd_raw" / fl["cf5"])); t = np.asarray(d["t"], float); t = (t - t[0]) / (1e6 if t[-1] - t[0] > 1e5 else 1)
         air = np.asarray(d["z"]) > 0.3; st = np.asarray(d["fbl_steps"]); ran = int(st[air][-1] - st[air][0]) > 0 if air.any() else False
         strat = "S4" if ran else "S0?"
-        r = flight_row(REPO / fl["path"], meta, strat, bank); rows.append(r)
+        _zc_fallback.used = False; r = flight_row(REPO / fl["path"], meta, strat, bank); r["crossing_fallback"] = _zc_fallback.used; rows.append(r)
         tr = np.asarray(d["fbl_tripped"]); tilt = np.maximum(np.abs(d["roll_deg"]), np.abs(d["pitch_deg"]))
         k = int(np.argmax(tr > 0)) if (tr > 0).any() else None
         rpm = np.max([np.asarray(d[f"rpm_m{i}"]) for i in (1, 2, 3, 4)], 0)
         diag.append(dict(folder=fl["folder"], cell=r["cell"], fbl_active_pct=100 * float(np.mean(np.asarray(d["fbl_active"])[air])), tripped=int(tr.max()), faults=int(np.asarray(d["fbl_faults"]).max()),
                          trip_t_s=float(t[k]) if k is not None else None, trip_z=float(np.asarray(d["z"])[k]) if k is not None else None, tilt_max_deg=float(tilt[air].max()), tilt_at_trip=float(tilt[k]) if k is not None else None,
-                         thrust_mean_N=float(np.asarray(d["fbl_thrust"])[air].mean()), rpm_max=float(rpm[air].max()), vbat0=r["vbat_start"]))
+                         tilt_rms_deg=float(np.sqrt(np.mean(tilt[air] ** 2))), thrust_mean_N=float(np.asarray(d["fbl_thrust"])[air].mean()), rpm_max=float(rpm[air].max()), vbat0=r["vbat_start"]))
 R = pd.DataFrame(rows); G = pd.DataFrame(diag); R.to_csv(out / "per_flight_fbl.csv", index=False); G.to_csv(out / "fbl_health.csv", index=False)
 pd.set_option("display.width", 220); print(G.round(2).to_string(index=False))
 C = pd.read_csv(a.ref / "cells.csv"); F = R.groupby("cell").agg(n=("metric", "size"), mean=("metric", "mean")).reset_index()
