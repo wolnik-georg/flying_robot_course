@@ -43,7 +43,7 @@ cflib.crtp.init_drivers()
 with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
     cf = scf.cf
     if READ:
-        names = ["stabilizer.controller", "ctrlOmarIndi.indi", "rnn.en", "ctrlFbl.en", "ctrlFbl.preset"] + ["ctrlFbl." + g for g in GAINS]
+        names = ["stabilizer.controller", "ctrlOmarIndi.indi", "rnn.en", "ctrlFbl.en", "ctrlFbl.preset", "ctrlFbl.cd", "ctrlFbl.z_on"] + ["ctrlFbl." + g for g in GAINS]
         v = {n: pget(cf, n) for n in names}
         for n in names: print(f"  {n:24s} {v[n]}")
         g = {k: float(v["ctrlFbl." + k]) for k in GAINS}
