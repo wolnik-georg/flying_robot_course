@@ -1,0 +1,321 @@
+diff --git a/src/modules/interface/controller/controller_omar_indi.h b/src/modules/interface/controller/controller_omar_indi.h
+index 8c0a79e..1332215 100644
+--- a/src/modules/interface/controller/controller_omar_indi.h
++++ b/src/modules/interface/controller/controller_omar_indi.h
+@@ -40,8 +40,13 @@ typedef struct {
+     struct vec J;        // inertia used by the FBL torque [kg m^2]
+     float beta, gamma;   // acceleration estimator gains
+     float w_max;         // limit of the commanded body rates [rad/s]
++    uint8_t inner;       // inner loop: 0 = Eq. 19 P-only body-rate loop, force-torque (as flown 2026-10-24); 1 = stock rate PID (paper hardware)
++    uint8_t abg_on_new;  // alpha-beta-gamma estimator: 0 = updated every controller tick (as flown); 1 = only on a new EKF velocity (measurement rate)
++    uint8_t nn_en;       // force network on top of the ROM (paper hardware recipe): 0 = ROM only (as flown); 1 = ROM + fbl_nn_weights (if linked)
+     // state / logging
+     uint8_t active, tripped;
++    float yaw_sp;        // inner = 1: yaw setpoint integrated from the commanded body z rate [deg], as controller_pid.c in rate mode
++    float abg_v[3], abg_age;  // abg_on_new = 1: last velocity sample and time since it changed [s]
+     uint32_t steps, faults;
+     fbl_law_state_t law;
+     fbl_state_t peers;
+diff --git a/src/modules/interface/fbl_law.h b/src/modules/interface/fbl_law.h
+index 13d45e9..c239b83 100644
+--- a/src/modules/interface/fbl_law.h
++++ b/src/modules/interface/fbl_law.h
+@@ -48,6 +48,11 @@ void fbl_law_position(fbl_law_state_t *s, const fbl_gains_t *g, float t, const f
+ void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, const float pos[3], const float vel[3], const fbl_ref_t *ref,
+                          float acc_cmd[3], float jerk_cmd[3]);
+ 
++/* Same with separate intervals for the alpha-beta-gamma estimator (dt_est; 0 = no new velocity sample, estimate held) and the integral (dt_int).
++   With dt_est = time since the last new velocity this is the bundle's estimator driven at the measurement rate. The first call only initialises. */
++void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                          float acc_cmd[3], float jerk_cmd[3]);
++
+ /* Eqs. 15, 10, 19: thrust [N], desired body rates [rad/s], body torque [N m]. Stateless. */
+ void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
+                      const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,
+diff --git a/src/modules/interface/fbl_residual.h b/src/modules/interface/fbl_residual.h
+index 35b4cad..1b49c2e 100644
+--- a/src/modules/interface/fbl_residual.h
++++ b/src/modules/interface/fbl_residual.h
+@@ -36,6 +36,25 @@ typedef struct {
+   float vel[FBL_MAX_NEIGHBOURS][3];         /* last peer velocity estimate */
+ } fbl_state_t;
+ 
++/* Learned force correction of the paper's hardware recipe (ROM + small force network, Sec. 5.2): net_f = Linear(2, nh) -> tanh -> Linear(nh, 3) on (r0, z0),
++   output = local acceleration in the flow frame (x radial toward the neighbour, z = +world z), rotated to the world; jerk = analytic time derivative
++   (network Jacobian along (dr0/dt, dz0/dt) + rotation of the frame), as the bundle's DownwashResidual._acceleration_nn_analytical_jvp. */
++#define FBL_NN_HMAX 16
++typedef struct {
++  uint8_t nh;                    /* hidden neurons (paper hardware: 4; bundle sample: 9); 0 = no network */
++  float w1[FBL_NN_HMAX][2], b1[FBL_NN_HMAX];
++  float w2[3][FBL_NN_HMAX], b2[3];
++} fbl_nn_t;
++
++/* Weights from a generated file (fbl_nn_weights.c, exported from a trained ODEFunc); weak: absent = no network, the residual stays ROM only. */
++extern const fbl_nn_t fbl_nn_weights __attribute__((weak));
++
++/* Network for fbl_residual_pair: NULL (default) = ROM only, bit-identical to the build without the network. */
++void fbl_residual_set_nn(const fbl_nn_t *nn);
++
++/* One neighbour, network term only, no gate (for tests against the bundle). Adds to acc / jerk. */
++void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3]);
++
+ void fbl_reset(fbl_state_t *s);
+ 
+ /* One neighbour, explicit states (world frame). Adds nothing to out when the gate is closed. Returns 1 when the neighbour contributed. */
+diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
+index ad9031c..0b39f87 100644
+--- a/src/modules/src/controller/controller_omar_indi.c
++++ b/src/modules/src/controller/controller_omar_indi.c
+@@ -51,6 +51,7 @@ CDC 2010
+ #include "debug.h"
+ #include "fbl_law.h"
+ #include "fbl_residual.h"
++#include "attitude_controller.h"
+ 
+ static controllerOmarIndi_t g_self = {
+   .mass = CF_MASS,
+@@ -84,7 +85,7 @@ static controllerOmarIndi_t g_self = {
+   .fbl = {
+     .en = 0, .c_d = 0.43f, .z_on = 0.15f, .z_off = 0.10f, .tilt_max_deg = 60.0f, .preset = 1,
+     .kp_xy = 14.0f, .kp_z = 11.25f, .kv_xy = 9.5f, .kv_z = 5.4f, .ki_xy = 12.0f, .ki_z = 12.0f, .kr_xy = 59.5f, .kr_z = 35.0f,
+-    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 20.0f,
++    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 20.0f, .inner = 0, .abg_on_new = 0, .nn_en = 0,
+   },
+ };
+ 
+@@ -148,10 +149,60 @@ static void fbl_runtime_reset(controllerOmarIndi_t* self)
+   fbl_cfg_t* f = &self->fbl;
+   f->active = 0; f->tripped = 0; f->steps = 0; f->faults = 0;
+   f->res_az = 0.0f; f->res_jz = 0.0f; f->thrust = 0.0f;
+-  f->acc_cmd = vzero(); f->w_des = vzero();
++  f->acc_cmd = vzero(); f->w_des = vzero(); f->yaw_sp = 0.0f;
++  f->abg_v[0] = f->abg_v[1] = f->abg_v[2] = 0.0f; f->abg_age = 0.0f;
+   fbl_law_reset(&f->law); fbl_reset(&f->peers);
+ }
+ 
++static float fbl_cap_angle(float angle)
++{
++  // capAngle() of controller_pid.c (static there)
++  float result = angle;
++  while (result > 180.0f) { result -= 360.0f; }
++  while (result < -180.0f) { result += 360.0f; }
++  return result;
++}
++
++// inner = 1: the inner loop the paper's hardware used (Hsieh et al. 2026, Sec. 5.2: FBL sent thrust + body rates, "rely on the high-frequency PID
++// controller onboard"). Reproduces controller_pid.c in rate mode (roll / pitch / yaw modeVelocity) step by step: yaw rate integrated into a yaw
++// setpoint, yaw attitude PID -> yaw rate desired, roll / pitch attitude PIDs reset, rate PIDs on (gyro.x, -gyro.y, gyro.z), legacy mixer, yaw negated.
++// Stock gains (pid_rate.*, pid_attitude.yaw_*); the FBL rate gains kr_xy / kr_z and J are not used. Only difference to stock: at the in-air switch-on
++// the rate PIDs are primed with the current gyro so the D term (on the measurement) does not kick; stock resets them on the ground (gyro ~ 0).
++static void fbl_inner_stock(fbl_cfg_t* f, control_t *control, const sensorData_t *sensors, const state_t *state, bool switch_on,
++                            float thrust, const float w_des[3], float max_thrust, float dt)
++{
++  const float rate_des_roll = degrees(w_des[0]), rate_des_pitch = -degrees(w_des[1]);
++  if (switch_on) {
++    attitudeControllerResetAllPID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw);
++    attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z, sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z);  // prime (zero error)
++    f->yaw_sp = state->attitude.yaw;
++  }
++  // controller_pid.c: modeVelocity yaw -> attitudeDesired.yaw
++  f->yaw_sp = fbl_cap_angle(f->yaw_sp + degrees(w_des[2]) * dt);
++  const float yawMaxDelta = attitudeControllerGetYawMaxDelta();
++  if (yawMaxDelta != 0.0f) {
++    const float delta = fbl_cap_angle(f->yaw_sp - state->attitude.yaw);
++    if (delta > yawMaxDelta) { f->yaw_sp = state->attitude.yaw + yawMaxDelta; }
++    else if (delta < -yawMaxDelta) { f->yaw_sp = state->attitude.yaw - yawMaxDelta; }
++  }
++  f->yaw_sp = fbl_cap_angle(f->yaw_sp);
++
++  float rr, rp, ry;
++  attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw, 0.0f, 0.0f, f->yaw_sp, &rr, &rp, &ry);
++  attitudeControllerResetRollAttitudePID(state->attitude.roll);
++  attitudeControllerResetPitchAttitudePID(state->attitude.pitch);
++  attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z, rate_des_roll, rate_des_pitch, ry);
++  attitudeControllerGetActuatorOutput(&control->roll, &control->pitch, &control->yaw);
++  control->yaw = -control->yaw;
++  control->controlMode = controlModeLegacy;
++  control->thrust = thrust / max_thrust * UINT16_MAX;      // per-motor uint16, force-linear with battery compensation: F_motor = u / 65535 * THRUST_MAX
++  if (control->thrust == 0) {                              // controller_pid.c: zero thrust -> zero commands, reset
++    control->roll = 0; control->pitch = 0; control->yaw = 0;
++    attitudeControllerResetAllPID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw);
++    f->yaw_sp = state->attitude.yaw;
++  }
++}
++
+ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors,
+                               const state_t *state, float desiredYaw, float dt)
+ {
+@@ -162,7 +213,8 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+     f->active = 0; fbl_law_reset(&f->law);
+     return false;
+   }
+-  if (f->active) { if (z < f->z_off) { f->active = 0; } } else { if (z > f->z_on) { f->active = 1; } }
++  bool switch_on = false;
++  if (f->active) { if (z < f->z_off) { f->active = 0; } } else { if (z > f->z_on) { f->active = 1; switch_on = true; } }
+   if (!f->active) { fbl_law_reset(&f->law); return false; }
+ 
+   struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
+@@ -186,9 +238,22 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+     .x_dddot = {setpoint->jerk.x, setpoint->jerk.y, setpoint->jerk.z},
+   };
+   float acc_cmd[3], jerk_cmd[3];
+-  fbl_law_position_dt(&f->law, &g, dt, pos, vel, &ref, acc_cmd, jerk_cmd);
++  if (f->abg_on_new) {
++    // estimator at the measurement rate (the EKF velocity changes only every ~5-6 ms): update it only on a new sample, with the time since the last one;
++    // the integral keeps the controller rate. The law's first call (after a reset) initialises the estimator.
++    f->abg_age += dt;
++    float dt_est = 0.0f;
++    if (!f->law.init || vel[0] != f->abg_v[0] || vel[1] != f->abg_v[1] || vel[2] != f->abg_v[2]) {
++      dt_est = f->abg_age; f->abg_age = 0.0f;
++      f->abg_v[0] = vel[0]; f->abg_v[1] = vel[1]; f->abg_v[2] = vel[2];
++    }
++    fbl_law_position_dt2(&f->law, &g, dt_est, dt, pos, vel, &ref, acc_cmd, jerk_cmd);
++  } else {
++    fbl_law_position_dt(&f->law, &g, dt, pos, vel, &ref, acc_cmd, jerk_cmd);
++  }
+ 
+   fbl_res_t res;
++  fbl_residual_set_nn(f->nn_en ? &fbl_nn_weights : 0);      // weak symbol: no weights linked -> 0 -> ROM only
+   fbl_residual_eval(&f->peers, pos, vel, f->c_d, &res);
+ 
+   float Rm[9];
+@@ -203,9 +268,19 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+   if (thrust < 0.0f) thrust = 0.0f;
+   if (thrust > max_thrust) thrust = max_thrust;
+ 
+-  control->controlMode = controlModeForceTorque;
+-  control->thrustSi = thrust;
+-  control->torque[0] = torque[0]; control->torque[1] = torque[1]; control->torque[2] = torque[2];
++  if (f->inner == 1) {
++    fbl_inner_stock(f, control, sensors, state, switch_on, thrust, w_des, max_thrust, dt);
++    // logged torque = the torque the legacy commands produce (power_distribution_quadrotor.c Legacy vs ForceTorque, per-motor uint16 force-linear)
++    const float k = 4.0f * THRUST_MAX / UINT16_MAX;
++    const int16_t r = control->roll / 2.0f, p = control->pitch / 2.0f;
++    torque[0] = k * 0.707106781f * ARM_LENGTH * r;
++    torque[1] = -k * 0.707106781f * ARM_LENGTH * p;
++    torque[2] = -k * THRUST2TORQUE * control->yaw;
++  } else {
++    control->controlMode = controlModeForceTorque;
++    control->thrustSi = thrust;
++    control->torque[0] = torque[0]; control->torque[1] = torque[1]; control->torque[2] = torque[2];
++  }
+ 
+   // state shared with the Omar logging
+   self->thrustSi = thrust;
+@@ -241,6 +316,7 @@ void controllerOmarIndiInit(controllerOmarIndi_t* self)
+   ns2_reset(&self->ns2);
+   ns2_publish_ready();
+   fbl_runtime_reset(self);
++  attitudeControllerInit(1.0f / ATTITUDE_RATE);   // stock attitude / rate PIDs for the FBL inner = 1 path (guarded by isInit; no effect on other paths)
+ 
+   paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
+   logVarRpm1 = logGetVarId("rpm", "m1");
+@@ -751,6 +827,9 @@ PARAM_ADD(PARAM_FLOAT, J_z, &g_self.fbl.J.z)
+ PARAM_ADD(PARAM_FLOAT, beta, &g_self.fbl.beta)
+ PARAM_ADD(PARAM_FLOAT, gamma, &g_self.fbl.gamma)
+ PARAM_ADD(PARAM_FLOAT, w_max, &g_self.fbl.w_max)
++PARAM_ADD(PARAM_UINT8, inner, &g_self.fbl.inner)
++PARAM_ADD(PARAM_UINT8, abg_on_new, &g_self.fbl.abg_on_new)
++PARAM_ADD(PARAM_UINT8, nn_en, &g_self.fbl.nn_en)
+ PARAM_GROUP_STOP(ctrlFbl)
+ 
+ LOG_GROUP_START(ctrlFbl)
+@@ -765,6 +844,7 @@ LOG_ADD(LOG_FLOAT, acc_z, &g_self.fbl.acc_cmd.z)
+ LOG_ADD(LOG_FLOAT, w_des_x, &g_self.fbl.w_des.x)
+ LOG_ADD(LOG_FLOAT, w_des_y, &g_self.fbl.w_des.y)
+ LOG_ADD(LOG_FLOAT, w_des_z, &g_self.fbl.w_des.z)
++LOG_ADD(LOG_FLOAT, yaw_sp, &g_self.fbl.yaw_sp)
+ LOG_GROUP_STOP(ctrlFbl)
+ 
+ #endif // CRAZYFLIE_FW defined
+diff --git a/src/modules/src/fbl_law.c b/src/modules/src/fbl_law.c
+index 52a0b60..2d16a1f 100644
+--- a/src/modules/src/fbl_law.c
++++ b/src/modules/src/fbl_law.c
+@@ -63,6 +63,19 @@ void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, con
+   position_core(s, g, d, d, pos, vel, ref, acc_cmd, jerk_cmd);
+ }
+ 
++void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                          float acc_cmd[3], float jerk_cmd[3])
++{
++  /* estimator interval and integral interval given separately: the estimator can run at the measurement rate (dt_est = time since the last new
++     velocity, 0 = no new sample: estimate held) while the integral runs at the controller rate. The first call only initialises (as _dt). */
++  if (!s->init) {
++    for (int i = 0; i < 3; i++) { s->vel_est[i] = vel[i]; s->acc_est[i] = 0.0f; }
++    s->init = 1;
++    dt_est = 0.0f; dt_int = 0.0f;
++  }
++  position_core(s, g, dt_est, dt_int, pos, vel, ref, acc_cmd, jerk_cmd);
++}
++
+ void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
+                      const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,
+                      float *thrust, float w_des[3], float torque[3])
+diff --git a/src/modules/src/fbl_residual.c b/src/modules/src/fbl_residual.c
+index 0df1468..a62dff6 100644
+--- a/src/modules/src/fbl_residual.c
++++ b/src/modules/src/fbl_residual.c
+@@ -10,6 +10,50 @@ extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8
+ 
+ void fbl_reset(fbl_state_t *s) { memset(s, 0, sizeof(*s)); }
+ 
++static const fbl_nn_t *s_nn = 0;
++void fbl_residual_set_nn(const fbl_nn_t *nn) { s_nn = (nn != 0 && nn->nh > 0 && nn->nh <= FBL_NN_HMAX) ? nn : 0; }
++
++void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3])
++{
++  /* geometry with the upper vehicle upright (flow axis +world z, zero derivative), d = ego - top */
++  const float d[3] = {p[0] - p_top[0], p[1] - p_top[1], p[2] - p_top[2]};
++  const float dd[3] = {v[0] - v_top[0], v[1] - v_top[1], v[2] - v_top[2]};
++  const float z0 = fabsf(d[2]);
++  const float dz0 = (d[2] > 0.0f ? 1.0f : (d[2] < 0.0f ? -1.0f : 0.0f)) * dd[2];
++  const float r0 = sqrtf(d[0] * d[0] + d[1] * d[1]);
++  const float dr0 = (d[0] * dd[0] + d[1] * dd[1]) / (r0 > 1e-12f ? r0 : 1e-12f);
++  /* network value and directional derivative */
++  float f[3] = {nn->b2[0], nn->b2[1], nn->b2[2]}, df[3] = {0.0f, 0.0f, 0.0f};
++  for (int k = 0; k < nn->nh; k++) {
++    const float hk = tanhf(nn->w1[k][0] * r0 + nn->w1[k][1] * z0 + nn->b1[k]);
++    const float gk = (1.0f - hk * hk) * (nn->w1[k][0] * dr0 + nn->w1[k][1] * dz0);
++    for (int i = 0; i < 3; i++) { f[i] += nn->w2[i][k] * hk; df[i] += nn->w2[i][k] * gk; }
++  }
++  /* flow frame [x_n y_n z_n] and its time derivative (Gram-Schmidt as in the bundle, r_hat = top - ego) */
++  const float rh[3] = {-d[0], -d[1], -d[2]}, rhd[3] = {-dd[0], -dd[1], -dd[2]};
++  const float nrm = sqrtf(rh[0] * rh[0] + rh[1] * rh[1] + rh[2] * rh[2]) + 1e-8f;
++  float x0[3], dx0[3];
++  for (int i = 0; i < 3; i++) x0[i] = rh[i] / nrm;
++  const float x0p = x0[0] * rhd[0] + x0[1] * rhd[1] + x0[2] * rhd[2];
++  for (int i = 0; i < 3; i++) dx0[i] = (rhd[i] - x0[i] * x0p) / nrm;
++  const float y0[3] = {-x0[1], x0[0], 0.0f}, dy0[3] = {-dx0[1], dx0[0], 0.0f};          /* z x x0, z = (0, 0, 1) */
++  float yn0 = sqrtf(y0[0] * y0[0] + y0[1] * y0[1]); if (yn0 < 1e-8f) yn0 = 1e-8f;
++  const float yn[3] = {y0[0] / yn0, y0[1] / yn0, 0.0f};
++  const float ynp = yn[0] * dy0[0] + yn[1] * dy0[1];
++  const float dyn[3] = {(dy0[0] - yn[0] * ynp) / yn0, (dy0[1] - yn[1] * ynp) / yn0, 0.0f};
++  const float x1[3] = {yn[1], -yn[0], 0.0f}, dx1[3] = {dyn[1], -dyn[0], 0.0f};          /* y_n x z */
++  float xn0 = sqrtf(x1[0] * x1[0] + x1[1] * x1[1]); if (xn0 < 1e-8f) xn0 = 1e-8f;
++  const float xn[3] = {x1[0] / xn0, x1[1] / xn0, 0.0f};
++  const float xnp = xn[0] * dx1[0] + xn[1] * dx1[1];
++  const float dxn[3] = {(dx1[0] - xn[0] * xnp) / xn0, (dx1[1] - xn[1] * xnp) / xn0, 0.0f};
++  /* acc = R f, jerk = dR f + R df (dz_n = 0) */
++  for (int i = 0; i < 3; i++) {
++    const float zi = (i == 2) ? 1.0f : 0.0f;
++    acc[i] += xn[i] * f[0] + yn[i] * f[1] + zi * f[2];
++    jerk[i] += dxn[i] * f[0] + dyn[i] * f[1] + xn[i] * df[0] + yn[i] * df[1] + zi * df[2];
++  }
++}
++
+ static float fbl_fade(float z0)
+ {
+   float f = (FBL_Z_FADE1 - z0) / (FBL_Z_FADE1 - FBL_Z_FADE0);
+@@ -64,6 +108,11 @@ int fbl_residual_pair(const float p[3], const float v[3], const float p_top[3],
+   const float w = fbl_fade(z0);
+   acc[2] += w * c_d * t[0];
+   jerk[2] += w * c_d * (t[1] * dz0 + t[2] * dr0);
++  if (s_nn) {                                             /* network term inside the same gate and fade as the ROM (ours; the bundle has no gate) */
++    float a[3] = {0.0f, 0.0f, 0.0f}, j[3] = {0.0f, 0.0f, 0.0f};
++    fbl_nn_pair(s_nn, p, v, p_top, v_top, a, j);
++    for (int i = 0; i < 3; i++) { acc[i] += w * a[i]; jerk[i] += w * j[i]; }
++  }
+   return 1;
+ }
+ 

@@ -41,9 +41,10 @@ def predict(ode, y0, dt):
     return rk4_step(ode, y0, dt)[:, 0, :13]
 
 
-def setup_ode(c_d_rom: float, mass: float | None = None, train_torque_net: bool = True, vehicle: dict | None = None):
+def setup_ode(c_d_rom: float, mass: float | None = None, train_torque_net: bool = True, vehicle: dict | None = None, hidden_f: int | None = None):
     """ODEFunc with the ROM drag coefficient c_d_rom (module global of the bundle, in memory only); optional vehicle mass override of the nominal model.
-    The torque net can be frozen at zero output (force-only training, as the hardware recipe compensates forces only)."""
+    The torque net can be frozen at zero output (force-only training, as the hardware recipe compensates forces only).
+    hidden_f: size of the force net (paper hardware: 4 neurons; None = the bundle's 9), same initialisation as ODEFunc (normal std 0.1, bias 0)."""
     b = B.load(); b.nominal.C_d = float(c_d_rom)
     ode = b.nnm.ODEFunc()
     if vehicle is not None:                                                # our platform: the ROM geometry (module dict) and the nominal model constants
@@ -51,6 +52,10 @@ def setup_ode(c_d_rom: float, mass: float | None = None, train_torque_net: bool 
         nm = ode.nominal_model; nm.Ixx, nm.Iyy, nm.Izz = vehicle["inertia"]; nm.arm_length = vehicle["arm_length"]
         nm.inertia = torch.diag(torch.tensor(vehicle["inertia"], dtype=torch.float32)); nm.inv_inertia = torch.pinverse(nm.inertia)
         ode.inv_inertia = nm.inv_inertia / torch.norm(nm.inv_inertia, p=2); nm.inv_inertia_normalized = ode.inv_inertia
+    if hidden_f is not None:
+        ode.net_f = torch.nn.Sequential(torch.nn.Linear(2, hidden_f), torch.nn.Tanh(), torch.nn.Linear(hidden_f, 3))
+        for m in ode.net_f.modules():
+            if isinstance(m, torch.nn.Linear): torch.nn.init.normal_(m.weight, mean=0, std=0.1); torch.nn.init.constant_(m.bias, val=0)
     if mass is not None:
         ode.nominal_model.mass = float(mass)
     if not train_torque_net:

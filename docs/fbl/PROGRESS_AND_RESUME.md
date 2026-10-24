@@ -4,6 +4,8 @@
 
 > **Update 2026-10-22:** the authors answered the training-script request: the KNODE training code is in Appendix B of Chee's thesis (open full text found; `KNODE_TRAINING_SOURCES_2026-10-22.md`). No reply email by decision of the user. FBL training work waits behind the NS2 quality task (`docs/ns2_quality_plan_2026-10-22.md`).
 
+> **RESUME POINT 2026-10-24 night (read first): 1:1 inner loop built, not flown.** After the first hardware flights (10-24: z good, x/y and yaw poor) the analysis and an independent review (`HARDWARE_REVIEW_2026-10-24.md`, `HARDWARE_REVIEW_2026-10-24_independent_review.md`) found that our law = the authors' code but our inner loop (Eq. 19, P-only) is not what they flew (stock rate PID). Built: `ctrlFbl.inner 1` (bit-exact vs `controller_pid.c` rate mode), `ctrlFbl.abg_on_new`, `ctrlFbl.nn_en` (ROM + force network, Gate 4 vs the bundle); `inner 0` and S0–S3 bit-identical; simulation: lateral offset and yaw drift removed with preset 1, bundle gains unstable above 27 ms lag. Image `study_tree_v2_fbl_stockinner_candidate.bin` (sha256 `5b20fe3a…`), patch `fbl_stock_inner_loop.patch`. **Next: lab per `LAB_PLAN.md` "NEXT" (flash, bench, A1, A8, A4).** Details: `STOCK_INNER_LOOP_2026-10-24.md`.
+
 ## 1. Timeline (git, all pushed)
 | Date | Commit | What |
 |---|---|---|

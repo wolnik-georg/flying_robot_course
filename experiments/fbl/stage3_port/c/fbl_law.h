@@ -48,6 +48,11 @@ void fbl_law_position(fbl_law_state_t *s, const fbl_gains_t *g, float t, const f
 void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, const float pos[3], const float vel[3], const fbl_ref_t *ref,
                          float acc_cmd[3], float jerk_cmd[3]);
 
+/* Same with separate intervals for the alpha-beta-gamma estimator (dt_est; 0 = no new velocity sample, estimate held) and the integral (dt_int).
+   With dt_est = time since the last new velocity this is the bundle's estimator driven at the measurement rate. The first call only initialises. */
+void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
+                          float acc_cmd[3], float jerk_cmd[3]);
+
 /* Eqs. 15, 10, 19: thrust [N], desired body rates [rad/s], body torque [N m]. Stateless. */
 void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
                      const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,

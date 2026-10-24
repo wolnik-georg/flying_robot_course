@@ -7,7 +7,7 @@ GROUND ONLY, motors must not be commanded: no position setpoint is sent. CS2 mus
   python3 flying_drone_stack/tools/fbl_bench_check.py <uri> --readback   # read-only: prints en, preset, gains, indi, rnn.en and the strategy they mean
   python3 flying_drone_stack/tools/fbl_bench_check.py <uri> --post-flight  # after a flight, drone still powered, CS2 stopped: steps, faults, tripped, active, thrust;
                                                                           #   FBL ran only if steps > 0 (the Omar thrust model does not describe FBL)
-Expected at boot: ctrlFbl.en 0, preset 1, gains kp 14/11.25, kv 9.5/5.4, ki 12/12, kr 59.5/35 (preset 0 = the authors' gains 56/45, 38/21.6, 48/3, 238/140).
+Expected at boot: ctrlFbl.en 0, preset 1, (stock-inner image 2026-10-24: inner 0, abg_on_new 0, nn_en 0), gains kp 14/11.25, kv 9.5/5.4, ki 12/12, kr 59.5/35 (preset 0 = the authors' gains 56/45, 38/21.6, 48/3, 238/140).
 Exit code 0 only if every check passes."""
 import sys, time
 import cflib.crtp
@@ -43,16 +43,19 @@ def log_once(cf, secs=1.0):
     lc.start(); time.sleep(secs); lc.stop(); return got
 
 
+NEW = ["inner", "abg_on_new", "nn_en"]          # 2026-10-24 stock-inner image (docs/fbl/STOCK_INNER_LOOP_2026-10-24.md)
 cflib.crtp.init_drivers()
 with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
     cf = scf.cf
     if READ:
         names = ["stabilizer.controller", "ctrlOmarIndi.indi", "rnn.en", "ctrlFbl.en", "ctrlFbl.preset", "ctrlFbl.cd", "ctrlFbl.z_on"] + ["ctrlFbl." + g for g in GAINS]
+        names += ["ctrlFbl." + n for n in NEW if n in cf.param.toc.toc.get("ctrlFbl", {})]           # only on the stock-inner image
         v = {n: pget(cf, n) for n in names}
         for n in names: print(f"  {n:24s} {v[n]}")
         g = {k: float(v["ctrlFbl." + k]) for k in GAINS}
         gset = "preset 1 (ours)" if all(abs(g[k] - P1[k]) < 1e-3 for k in GAINS) else "preset 0 (authors')" if all(abs(g[k] - P0[k]) < 1e-3 for k in GAINS) else "custom gains"
-        print(f"  => FBL {'ON' if int(float(v['ctrlFbl.en'])) else 'off'} (indi {v['ctrlOmarIndi.indi']}, rnn.en {v['rnn.en']}), gains: {gset}")
+        inner = v.get("ctrlFbl.inner"); inner_s = "inner loop: image without ctrlFbl.inner (Eq. 19)" if inner is None else ("inner loop: STOCK rate PID (inner 1)" if int(float(inner)) == 1 else "inner loop: Eq. 19 P-only (inner 0)")
+        print(f"  => FBL {'ON' if int(float(v['ctrlFbl.en'])) else 'off'} (indi {v['ctrlOmarIndi.indi']}, rnn.en {v['rnn.en']}), gains: {gset}, {inner_s}")
         sys.exit(0)
     if POST:
         got = log_once(cf)
@@ -70,6 +73,9 @@ with SyncCrazyflie(uri, cf=Crazyflie(rw_cache="./cache")) as scf:
     check("console reports controller 9 (OutOfTree4)", "OutOfTree4 (9)" in "".join(console), repr("".join(console).strip()[-80:]))
     check("ctrlFbl.en == 0 at boot", int(float(pget(cf, "ctrlFbl.en"))) == 0)
     check("preset == 1 at boot", int(float(pget(cf, "ctrlFbl.preset"))) == 1)
+    present = [n for n in NEW if n in cf.param.toc.toc.get("ctrlFbl", {})]
+    print(f"  stock-inner image params present: {present if present else 'none (older image)'}")
+    for n in present: check(f"ctrlFbl.{n} == 0 at boot", int(float(pget(cf, "ctrlFbl." + n))) == 0)
     g = {k: float(pget(cf, "ctrlFbl." + k)) for k in GAINS}
     check("preset-1 gains", all(abs(g[k] - P1[k]) < 1e-3 for k in GAINS), g)
     cf.param.set_value("ctrlFbl.preset", "0"); time.sleep(0.3)

@@ -63,6 +63,19 @@ void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, con
   position_core(s, g, d, d, pos, vel, ref, acc_cmd, jerk_cmd);
 }
 
+void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
+                          float acc_cmd[3], float jerk_cmd[3])
+{
+  /* estimator interval and integral interval given separately: the estimator can run at the measurement rate (dt_est = time since the last new
+     velocity, 0 = no new sample: estimate held) while the integral runs at the controller rate. The first call only initialises (as _dt). */
+  if (!s->init) {
+    for (int i = 0; i < 3; i++) { s->vel_est[i] = vel[i]; s->acc_est[i] = 0.0f; }
+    s->init = 1;
+    dt_est = 0.0f; dt_int = 0.0f;
+  }
+  position_core(s, g, dt_est, dt_int, pos, vel, ref, acc_cmd, jerk_cmd);
+}
+
 void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
                      const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,
                      float *thrust, float w_des[3], float torque[3])

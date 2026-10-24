@@ -2,7 +2,7 @@
 """FBL hardware flights 2026-10-24: position error (x, y, z) and orientation (roll, pitch, yaw) of the bottom drone (cf5) against the plan, every FBL flight,
 per cell, against the S0-S3 flights of the unseen block (2026-10-23) and the 4 same-day flights that ran as S0 (init-wipe, bank_fbl_2026-10-24).
 Plan = ctrltarget_x/y/z; commanded yaw = 0 (Omar's desired yaw rpyd_z = 0 in every S0-S3 flight); the plan's accelerations need < 1.1 deg of tilt, so roll / pitch are shown as flown.
-FBL's own logged desired attitude (ctrlOmarIndi.rpyd under FBL) is not used: it reads -30..-58 deg pitch on average while the drone flies level (logging-side value, see doc).
+FBL's own logged desired attitude (ctrlOmarIndi.rpyd under FBL) is not used: it is the direction of Eq. 17's commanded acceleration, 30-65 deg off vertical because the xy integral winds up (fbl_integral_windup.py), not the attitude the drone is asked to fly.
 Window: t >= 0 (scenario start), plan z > 0.3 m, z > 0.2 m; FBL flights only while FBL is active (cut at the latch trip).
 Gain blocks identified from the logs (see block()): preset 1 = 5 flights, _kr (rate loop x0.5) = 3, _kp (xy position x0.7, = frozen proposal) = 4.
   ~/.pyenv/versions/flying_robots/bin/python experiments/analysis/fbl_hw_overview.py --out experiments/results/fbl_hw_overview_2026-10-24"""

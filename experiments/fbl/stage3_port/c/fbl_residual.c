@@ -10,6 +10,50 @@ extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8
 
 void fbl_reset(fbl_state_t *s) { memset(s, 0, sizeof(*s)); }
 
+static const fbl_nn_t *s_nn = 0;
+void fbl_residual_set_nn(const fbl_nn_t *nn) { s_nn = (nn != 0 && nn->nh > 0 && nn->nh <= FBL_NN_HMAX) ? nn : 0; }
+
+void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3])
+{
+  /* geometry with the upper vehicle upright (flow axis +world z, zero derivative), d = ego - top */
+  const float d[3] = {p[0] - p_top[0], p[1] - p_top[1], p[2] - p_top[2]};
+  const float dd[3] = {v[0] - v_top[0], v[1] - v_top[1], v[2] - v_top[2]};
+  const float z0 = fabsf(d[2]);
+  const float dz0 = (d[2] > 0.0f ? 1.0f : (d[2] < 0.0f ? -1.0f : 0.0f)) * dd[2];
+  const float r0 = sqrtf(d[0] * d[0] + d[1] * d[1]);
+  const float dr0 = (d[0] * dd[0] + d[1] * dd[1]) / (r0 > 1e-12f ? r0 : 1e-12f);
+  /* network value and directional derivative */
+  float f[3] = {nn->b2[0], nn->b2[1], nn->b2[2]}, df[3] = {0.0f, 0.0f, 0.0f};
+  for (int k = 0; k < nn->nh; k++) {
+    const float hk = tanhf(nn->w1[k][0] * r0 + nn->w1[k][1] * z0 + nn->b1[k]);
+    const float gk = (1.0f - hk * hk) * (nn->w1[k][0] * dr0 + nn->w1[k][1] * dz0);
+    for (int i = 0; i < 3; i++) { f[i] += nn->w2[i][k] * hk; df[i] += nn->w2[i][k] * gk; }
+  }
+  /* flow frame [x_n y_n z_n] and its time derivative (Gram-Schmidt as in the bundle, r_hat = top - ego) */
+  const float rh[3] = {-d[0], -d[1], -d[2]}, rhd[3] = {-dd[0], -dd[1], -dd[2]};
+  const float nrm = sqrtf(rh[0] * rh[0] + rh[1] * rh[1] + rh[2] * rh[2]) + 1e-8f;
+  float x0[3], dx0[3];
+  for (int i = 0; i < 3; i++) x0[i] = rh[i] / nrm;
+  const float x0p = x0[0] * rhd[0] + x0[1] * rhd[1] + x0[2] * rhd[2];
+  for (int i = 0; i < 3; i++) dx0[i] = (rhd[i] - x0[i] * x0p) / nrm;
+  const float y0[3] = {-x0[1], x0[0], 0.0f}, dy0[3] = {-dx0[1], dx0[0], 0.0f};          /* z x x0, z = (0, 0, 1) */
+  float yn0 = sqrtf(y0[0] * y0[0] + y0[1] * y0[1]); if (yn0 < 1e-8f) yn0 = 1e-8f;
+  const float yn[3] = {y0[0] / yn0, y0[1] / yn0, 0.0f};
+  const float ynp = yn[0] * dy0[0] + yn[1] * dy0[1];
+  const float dyn[3] = {(dy0[0] - yn[0] * ynp) / yn0, (dy0[1] - yn[1] * ynp) / yn0, 0.0f};
+  const float x1[3] = {yn[1], -yn[0], 0.0f}, dx1[3] = {dyn[1], -dyn[0], 0.0f};          /* y_n x z */
+  float xn0 = sqrtf(x1[0] * x1[0] + x1[1] * x1[1]); if (xn0 < 1e-8f) xn0 = 1e-8f;
+  const float xn[3] = {x1[0] / xn0, x1[1] / xn0, 0.0f};
+  const float xnp = xn[0] * dx1[0] + xn[1] * dx1[1];
+  const float dxn[3] = {(dx1[0] - xn[0] * xnp) / xn0, (dx1[1] - xn[1] * xnp) / xn0, 0.0f};
+  /* acc = R f, jerk = dR f + R df (dz_n = 0) */
+  for (int i = 0; i < 3; i++) {
+    const float zi = (i == 2) ? 1.0f : 0.0f;
+    acc[i] += xn[i] * f[0] + yn[i] * f[1] + zi * f[2];
+    jerk[i] += dxn[i] * f[0] + dyn[i] * f[1] + xn[i] * df[0] + yn[i] * df[1] + zi * df[2];
+  }
+}
+
 static float fbl_fade(float z0)
 {
   float f = (FBL_Z_FADE1 - z0) / (FBL_Z_FADE1 - FBL_Z_FADE0);
@@ -64,6 +108,11 @@ int fbl_residual_pair(const float p[3], const float v[3], const float p_top[3], 
   const float w = fbl_fade(z0);
   acc[2] += w * c_d * t[0];
   jerk[2] += w * c_d * (t[1] * dz0 + t[2] * dr0);
+  if (s_nn) {                                             /* network term inside the same gate and fade as the ROM (ours; the bundle has no gate) */
+    float a[3] = {0.0f, 0.0f, 0.0f}, j[3] = {0.0f, 0.0f, 0.0f};
+    fbl_nn_pair(s_nn, p, v, p_top, v_top, a, j);
+    for (int i = 0; i < 3; i++) { acc[i] += w * a[i]; jerk[i] += w * j[i]; }
+  }
   return 1;
 }
 

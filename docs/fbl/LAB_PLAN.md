@@ -2,6 +2,24 @@
 
 Everything below is desk-prepared and untested on hardware. Order is a proposal for you to confirm.
 
+## NEXT (prepared 2026-10-24 night): FBL with the stock rate-PID inner loop (`ctrlFbl.inner 1`, `STOCK_INNER_LOOP_2026-10-24.md`)
+Proposal, to be confirmed by you; desk-tested only (host 1:1 vs `controller_pid.c`, simulation), never flown.
+
+| # | Step | Exact action | Pass criterion |
+|---|---|---|---|
+| S1 | Flash | `BIN=~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v2_fbl_stockinner_candidate.bin` (sha256 `5b20fe3a112066996ca44be7c6131531afb296217cd55c9a887f86886e4f4f7b`, 583 580 B); `sha256sum $BIN`; `cfloader flash $BIN stm32-fw -w <uri>` on cf5 and cf_second, power-cycle | hash matches, flash OK |
+| S2 | Bench (CS2 stopped) | `fbl_bench_check.py <uri>` on both; `fbl_init_survival_check.py radio://0/80/2M/E7E7E7BB02` | `ALL PASS`; prints `stock-inner image params present: ['inner', 'abg_on_new', 'nn_en']`, all 0 at boot |
+| S3 | Yaml | crazyswarm2: `git checkout -b study_FBL_stock main && git apply ~/Desktop/flying_robot_course/docs/fbl/crazyswarm2_study_FBL_stock.patch` (creates the branch locally; commit only if you want), rebuild, `lab_check_strategy.py` | `ctrlFbl.en 1`, `inner 1`, `cd 0.55`, no gains / preset written |
+| S4 | Readback after launch | `fbl_bench_check.py <cf5 uri> --readback` | `FBL ON … gains: preset 1 (ours), inner loop: STOCK rate PID (inner 1)` |
+| S5 | uSD | cards archived / counted as before; **start the uSD log before takeoff** (to see the takeoff, the FBL switch-on and the integral) | — |
+| S6 | Flights | A1 first (hand on the abort, fresh packs), then A8, A4 0.075, A4 0.125 (unseen-block settings as on 10-24) | takes off, holds, lands; `steps > 0`, `faults 0` |
+| S7 | Acceptance (analysis, not a protocol rule) | `fbl_log_check.py`, `fbl_hw_overview.py` (add the new bank), `fbl_replay_check.py`, `review_fbl_yaw_budget.py`, `review_fbl_lateral_chain.py` | yaw held (simulation: < 2°), no slow lateral drift, rate error has no steady part |
+| S8 | Optional | C_D like the paper (manual): A1 with `cd` 0.43 / 0.55 / 0.65 under `inner 1`; force-network data card (`STOCK_INNER_LOOP_2026-10-24.md` §5: A3 and A2 at dz 0.4, 0.4 m/s, ≥ 28 s; dz 0.3 OOD) | — |
+
+uSD logging (not changed, cap 96): to also log the stock loop, swap `motor.m1_rpm`…`motor.m4_rpm` (deck RPM; DShot `rpm.m*` is the standing source) for `ctrlFbl.yaw_sp`, `pid_rate.roll_outI`, `pid_rate.pitch_outI`, `pid_rate.yaw_outI` in `usd_fbl_config.txt` — your decision.
+
+Fallback: `ctrlFbl.inner 0` (live parameter) = exactly the controller flown on 2026-10-24.
+
 | # | Step | Exact action | Pass criterion |
 |---|---|---|---|
 | 0 | Pull | `git pull` in both repos; in crazyswarm2 `git fetch origin` (branch `study_FBL` = main + FBL switches + `ctrlFbl.cd 0.55`) | `study_FBL` exists |

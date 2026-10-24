@@ -20,3 +20,14 @@ After the flight (CS2 stopped): `python3 flying_drone_stack/tools/fbl_bench_chec
 Simulation numbers to compare with (A1 hold, calibrated plant): z RMS 3.2 cm, A8 dip 1 cm, A8 z RMS 2.2 cm (`SIM_COMPARISON_2026-10-20.md`); knob effects in `ROBUSTNESS_2026-10-21.md` §3. Script: `experiments/fbl/stage3_port/expected_traces.py`.
 
 **Tested fallback if the tilt shows bursts (live parameters, `ROBUSTNESS_2026-10-21.md` §7):** `ctrlFbl.kr_xy` 29.75 and `ctrlFbl.kr_z` 17.5 (rate loop ×0.5), or `ctrlFbl.kp_xy` 9.8, `kv_xy` 6.65, `ki_xy` 8.4 (xy position ×0.7). In the simulation this removes the tilt bursts (52° → 3°) at no visible cost; battery sag of up to 15 % is compensated by the z integral (§8).
+
+---
+
+## With the stock inner loop (`ctrlFbl.inner 1`, added 2026-10-24; simulation values, `STOCK_INNER_LOOP_2026-10-24.md`)
+| Quantity | Expected in simulation (preset 1, 44 ms motor lag, cf5-like torque) | If the flight looks different |
+|---|---|---|
+| yaw | < 0.3° with a constant torque, < 1.3° with a slowly varying one (10-24 flights: up to 66°) | yaw still drifts: check the readback says `inner 1` (S4 in `LAB_PLAN.md`); with `inner 1` the yaw setpoint is held by the stock yaw PID |
+| steady lateral offset | < 0.3 cm (10-24: 15–80 cm rms y error on A4 / A8) | slow drift remains: `review_fbl_lateral_chain.py` — the rate error should have no steady part now |
+| tilt at the switch-on (0.15 m) | < 1.4° | transient: raise `ctrlFbl.z_on` |
+| `ctrlOmarIndi.torque*` | = the torque the legacy commands produce (logging only) | — |
+| A1 0.8–1.0 Hz xyz oscillation, A4 0.125 trips | not reproduced in simulation (neither inner loop) | watch for them; fall back to `inner 0` only for comparison |

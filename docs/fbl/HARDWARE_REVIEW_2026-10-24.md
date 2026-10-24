@@ -155,13 +155,15 @@ Gains identified from the logs (flown mass 0.0427 kg, recovered exactly from thr
 
 ## 8. What 1:1 with the authors' hardware controller requires
 
+**Status 2026-10-24 (evening): a, b, e (α-β-γ option), the network part of c and the preset-0 part of d done on the desk (`STOCK_INNER_LOOP_2026-10-24.md`); nothing flashed or flown.**
+
 | # | Change | Possible? |
 |---|---|---|
-| a | Send FBL's thrust + body rates (Eq. 15, 9, 10) into the **stock PID rate loop** instead of Eq. 19: roll / pitch in rate mode (`modeVelocity`), yaw as a rate integrated into a yaw setpoint, stock gains | yes, onboard in `controllerOmarFbl()` (`controller_omar_indi.c` l. 199–206): `attitudeControllerInit` once, PID reset and yaw setpoint = current yaw at switch-on; each tick ψ_sp += ω_z,des·dt, yaw attitude PID, `attitudeControllerCorrectRatePID(gyro.x, −gyro.y, gyro.z, ω_x,des, −ω_y,des, yaw)` in deg/s, legacy mode, yaw output negated. CF21BL defaults (200/400/2.5, yaw 120/16.7, yaw angle 6/1/0.35) ≈ the authors' CF2 gains in N m/(rad/s) within 4 %. Check in sim with the real stock PID first: it is ~1.7× stiffer than preset 1, and the 44 ms lag sim called stiffer gains unstable |
-| b | Thrust through the same path as theirs (uint16) | yes physically: T/(4·THRUST_MAX)·65535 is force-linear with battery compensation; only their laptop map is not published |
-| c | Residual: ROM + a force NN like theirs (4 neurons) instead of ROM only; C_D identified on our vehicle (a 1:1 C_D value does not exist) | needs data like theirs (static + stacked, 0.4 m, 0.4 m/s, ~28 s, FBL without NN) and training |
-| d | Gains: their hardware gains | not published; the bundle values ("Deployed") are the only source |
-| e | Rate 400 Hz, Vicon 120 Hz on a laptop, radio latency | not wanted (onboard is the study setup); keep 500 Hz onboard, document. Optional: run α-β-γ only on new EKF samples |
+| a | **DONE (desk): `ctrlFbl.inner = 1`, bit-exact vs `controller_pid.c` rate mode; simulation Gate 2 passed with preset 1.** Send FBL's thrust + body rates (Eq. 15, 9, 10) into the **stock PID rate loop** instead of Eq. 19: roll / pitch in rate mode (`modeVelocity`), yaw as a rate integrated into a yaw setpoint, stock gains | yes, onboard in `controllerOmarFbl()` (`controller_omar_indi.c` l. 199–206): `attitudeControllerInit` once, PID reset and yaw setpoint = current yaw at switch-on; each tick ψ_sp += ω_z,des·dt, yaw attitude PID, `attitudeControllerCorrectRatePID(gyro.x, −gyro.y, gyro.z, ω_x,des, −ω_y,des, yaw)` in deg/s, legacy mode, yaw output negated. CF21BL defaults (200/400/2.5, yaw 120/16.7, yaw angle 6/1/0.35) ≈ the authors' CF2 gains in N m/(rad/s) within 4 %. Check in sim with the real stock PID first: it is ~1.7× stiffer than preset 1, and the 44 ms lag sim called stiffer gains unstable |
+| b | **DONE with a (legacy uint16 thrust).** Thrust through the same path as theirs (uint16) | yes physically: T/(4·THRUST_MAX)·65535 is force-linear with battery compensation; only their laptop map is not published |
+| c | **Firmware side DONE (`ctrlFbl.nn_en`, Gate 4 vs the bundle); weights need the data card + training; C_D stays 0.55.** Residual: ROM + a force NN like theirs (4 neurons) instead of ROM only; C_D identified on our vehicle (a 1:1 C_D value does not exist) | needs data like theirs (static + stacked, 0.4 m, 0.4 m/s, ~28 s, FBL without NN) and training |
+| d | **Preset 0 = bundle values exactly; unstable in simulation above 27 ms motor lag (ours 44 ms) also with the stock loop.** Gains: their hardware gains | not published; the bundle values ("Deployed") are the only source |
+| e | Rate 400 Hz, Vicon 120 Hz on a laptop, radio latency | not wanted (onboard is the study setup); keep 500 Hz onboard, document. Optional: run α-β-γ only on new EKF samples (**DONE: `ctrlFbl.abg_on_new`, default 0; no gain in simulation**) |
 | f | Vehicle, test cases | cannot be the same; document |
 
 Must stay ours (study setup): onboard execution, EKF state, handover to Omar below 0.15 m, tilt latch.
@@ -184,8 +186,8 @@ Must stay ours (study setup): onboard execution, EKF state, handover to Omar bel
 
 ## Next Steps:
 - [x] Independent review of this doc: `docs/fbl/HARDWARE_REVIEW_2026-10-24_independent_review.md` (corrections merged here).
-- [ ] 8a in the C port behind a parameter (old path bit-identical), host test against `controller_pid.c` rate mode, simulation with the real stock PID incl. torque and A1 / A4 0.125, then bench / hover.
-- [ ] Settle the inertia (2.395e-5 vs 1.657e-5) and start the uSD log before takeoff (to see the switch-on).
+- [x] 8a in the C port behind a parameter (old path bit-identical), host test against `controller_pid.c` rate mode, simulation with the real stock PID incl. torque (`STOCK_INNER_LOOP_2026-10-24.md`). [ ] Bench / hover (lab).
+- [x] Inertia: 2.395e-5 (Busetto 2025, CF21BL) is the right value for cf5; 1.657e-5 is the CF2.0 identification (Omar's source). [ ] Start the uSD log before takeoff (flight card).
 - [ ] Simulation of the A1 xyz oscillation (thrust coupling of the wound-up integral) and of the A4 0.125 jet edge (needs a torque / lateral downwash model; NS2 is z only).
 - [ ] Correct the gain-block assignment in the session doc and meeting doc §5 (14:44 = preset 1, 14:54 = `_kr`).
 - [ ] Only after that: gains (incl. cd), freeze, comparison flights with n like S0–S3.

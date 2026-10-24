@@ -24,7 +24,8 @@ for p in \
   fbl_integration.patch \
   fbl_gain_presets.patch \
   indi_estimate_always_logged.patch \
-  fbl_config_survives_init.patch
+  fbl_config_survives_init.patch \
+  fbl_stock_inner_loop.patch
 do
   git apply --check "$PATCH/$p" && git apply "$PATCH/$p"
 done
@@ -48,3 +49,6 @@ Learned FBL (Strategy 3) in the Omar C controller: new modules `src/modules/{int
 
 ## fbl_config_survives_init.patch (2026-10-24)
 The FBL configuration (en, c_d, z_on, preset, gains, ...) is now a static initial value of `g_self.fbl`; the controller init only resets the FBL runtime state (`fbl_runtime_reset`) instead of the whole config (`fbl_defaults`, removed). Reason: CS2 applies the yaml params alphabetically with `stabilizer.controller` last, so the init wiped `ctrlFbl.en` / `cd` and the first FBL flights ran as S0. Gates: replay bit-identical on 4 of 4 cases (`test_omar_ns2_off_identical.py`, old build `crazyflie-firmware/build_pre_fblinit_2026-10-24`), FBL host tests G1–G3 pass, C-in-the-loop with FBL on identical old vs new. Image: `study_tree_v2_fbl_initfix_candidate.bin` (sha256 27e0e100…, 580,780 B).
+
+## fbl_stock_inner_loop.patch (2026-10-24)
+FBL inner loop like the paper's hardware (Hsieh et al. 2026, Sec. 5.2) plus two optional 1:1 items, all behind `ctrlFbl` parameters, default off: `inner` (0 = Eq. 19 P-only force-torque as flown 2026-10-24; 1 = thrust + body rates into the stock rate PID of `attitude_pid_controller.c`, exactly as `controller_pid.c` in rate mode, legacy mixer; `attitudeControllerInit` added to the Omar init), `abg_on_new` (α-β-γ only on a new EKF velocity, new `fbl_law_position_dt2`), `nn_en` (ROM + small force network in `fbl_residual.c`, weights from a generated `fbl_nn_weights.c` via a weak symbol; absent = ROM only). Log `ctrlFbl.yaw_sp`. Files: `controller_omar_indi.{c,h}`, `fbl_law.{c,h}`, `fbl_residual.{c,h}` (the FBL files stay byte-identical to `experiments/fbl/stage3_port/c/`). **Apply LAST.** Gates: bit-exact vs stock `controllerPid` (`host/test_fbl_inner_stock.py`), S0–S3 and `inner 0` bit-identical (`host/test_fbl_inner0_identical.py`, `test_omar_ns2_off_identical.py`), C tests `make test test_law test_abg test_nn test_export`. Checked with `git apply --check` on a clean `git archive HEAD` after the full series; result byte-identical to the live tree. Image: `study_tree_v2_fbl_stockinner_candidate.bin` (sha256 `5b20fe3a112066996ca44be7c6131531afb296217cd55c9a887f86886e4f4f7b`, 583 580 B, flash 56 %, RAM 76 %), built per `docs/fbl/PROGRESS_AND_RESUME.md` §6. Not flashed.

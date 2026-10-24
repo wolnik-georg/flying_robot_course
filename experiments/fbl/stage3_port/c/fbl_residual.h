@@ -36,6 +36,25 @@ typedef struct {
   float vel[FBL_MAX_NEIGHBOURS][3];         /* last peer velocity estimate */
 } fbl_state_t;
 
+/* Learned force correction of the paper's hardware recipe (ROM + small force network, Sec. 5.2): net_f = Linear(2, nh) -> tanh -> Linear(nh, 3) on (r0, z0),
+   output = local acceleration in the flow frame (x radial toward the neighbour, z = +world z), rotated to the world; jerk = analytic time derivative
+   (network Jacobian along (dr0/dt, dz0/dt) + rotation of the frame), as the bundle's DownwashResidual._acceleration_nn_analytical_jvp. */
+#define FBL_NN_HMAX 16
+typedef struct {
+  uint8_t nh;                    /* hidden neurons (paper hardware: 4; bundle sample: 9); 0 = no network */
+  float w1[FBL_NN_HMAX][2], b1[FBL_NN_HMAX];
+  float w2[3][FBL_NN_HMAX], b2[3];
+} fbl_nn_t;
+
+/* Weights from a generated file (fbl_nn_weights.c, exported from a trained ODEFunc); weak: absent = no network, the residual stays ROM only. */
+extern const fbl_nn_t fbl_nn_weights __attribute__((weak));
+
+/* Network for fbl_residual_pair: NULL (default) = ROM only, bit-identical to the build without the network. */
+void fbl_residual_set_nn(const fbl_nn_t *nn);
+
+/* One neighbour, network term only, no gate (for tests against the bundle). Adds to acc / jerk. */
+void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3]);
+
 void fbl_reset(fbl_state_t *s);
 
 /* One neighbour, explicit states (world frame). Adds nothing to out when the gate is closed. Returns 1 when the neighbour contributed. */
