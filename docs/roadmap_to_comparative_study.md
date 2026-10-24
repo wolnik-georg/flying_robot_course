@@ -87,3 +87,6 @@ Ours INDI on A1 · NS2 not validated on A1 (SIL pessimistic, hardware stable) ·
 
 ## Update 2026-10-23
 Topic 2 (NS2 quality) closed in the lab: 40 unseen-settings flights, retention 1.03, logging image flashed on both drones and validated (`docs/lab_sessions/2026-10-23.md`). Protocol v1.0 must name the image `study_tree_v2_fbl_estlog_candidate.bin` (sha256 4fa0a130c698f217728d8b5dcf7464cb84a0b5bd4196b3ac4123a8100bad012b); the study yaml per strategy lives on crazyswarm2 branches `study_S1/S2/S3/FBL` (main = S0). Next: Topic 1 FBL lab session, then supervisor decisions, protocol v1.0, tier-1 study.
+
+## Update 2026-10-24
+FBL (S4) flew on hardware (init-fix image, branch `study_FBL`): z tracking best, horizontal tracking and A4 0.125 stability open (`docs/lab_sessions/2026-10-24.md` §0). Before the tier-1 study: understand the FBL lateral behaviour, freeze the FBL gains, fly the FBL cells with n like S0–S3.

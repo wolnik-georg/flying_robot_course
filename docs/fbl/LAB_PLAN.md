@@ -35,3 +35,7 @@ Everything below is desk-prepared and untested on hardware. Order is a proposal 
 - `fbl_bench_check.py` static check still reads cached values (preset / gains FAIL at a fresh boot is expected until cf5 was primed once); the readback after priming shows the truth.
 
 **Resolution 2026-10-24:** firmware fix `fbl_config_survives_init.patch` (static FBL config, init resets runtime state only; gates: replay bit-identical 4/4, host tests, C-in-the-loop identical), image `study_tree_v2_fbl_initfix_candidate.bin`. `fbl_prime_controller.py` and the double launch are only needed with the old estlog image.
+
+## State after the first hardware day (2026-10-24)
+- Image `study_tree_v2_fbl_initfix_candidate.bin` on both drones; crazyswarm2 branch `study_FBL` = frozen proposal (xy position loop ×0.7 of preset 1, cd 0.55, preset not written); `study_FBL_kr` (rate loop ×0.5) is worse (2 of 3 flights tripped).
+- Found: the FBL tracks the planned horizontal path 6–10× worse than S0–S3 on A4 / A8 (25–31 cm and 18 cm rms against 3–5 cm) although z is the best of all strategies; 3 latch trips in 12 flights (A4 0.125, A8) none with the proposal; details `docs/lab_sessions/2026-10-24.md` §0, `experiments/results/fbl_all_2026-10-24/`. **Before the comparison flights: understand the lateral behaviour (reference / feedforward in the port, residual lateral components, peer feed), then decide whether the gains are frozen.**

@@ -99,3 +99,6 @@ Rules that still apply: count the `thesis` files on both cards before every bloc
 
 ## 8. Related documents
 `PORT_SPEC.md` (architecture, gates, steps, open decisions D1–D6), `STATUS.md` (results of every stage), `docs/73_FBL_Bundle_Analysis.md` (what the authors gave us), `flying_drone_stack/firmware_patches/README.md` (patch order), `experiments/fbl/README.md`, `experiments/fbl/stage3_port/c/README.md`, `docs/meetings/2026-10-22.md` (FBL line: waiting for the authors).
+
+## 4d. 2026-10-24 (first hardware day) — read `docs/lab_sessions/2026-10-24.md` §0 first
+Flashed the init-fix image, FBL ran on hardware; results and open questions (lateral tracking, A4 0.125) in the session doc; frozen proposal = crazyswarm2 branch `study_FBL`; plots `experiments/results/fbl_all_2026-10-24/` (`fbl_flight_overview.py`, `fbl_unseen_compare.py`).

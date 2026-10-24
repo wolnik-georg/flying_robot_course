@@ -67,3 +67,6 @@ Port specification `PORT_SPEC.md`; ROM lookup table (60 × 60 × 3 floats = 42 K
 
 ## 2026-10-23
 The FBL-containing logging image `study_tree_v2_fbl_estlog_candidate.bin` (sha 4fa0a130…) is flashed on both drones (FBL inert); the FBL lab session needs no reflash. New: crazyswarm2 branch `study_FBL` (yaml with `ctrlFbl.en 1`, preset 1, `cd 0.55`), manifest template points to the estlog image. Lab plan rewritten: `LAB_PLAN.md`.
+
+## 2026-10-24 (first hardware day)
+FBL flew: z tracking best of all strategies, horizontal path tracking 6–10× worse than S0–S3 on the moving scenarios, 3 tilt-latch trips in 12 complete flights (none with the frozen proposal `study_FBL` = xy position ×0.7). Init-wipe bug found and fixed (patch `fbl_config_survives_init.patch`, image `study_tree_v2_fbl_initfix_candidate.bin`). Open: lateral behaviour, A4 0.125, cd on hardware. `docs/lab_sessions/2026-10-24.md`.

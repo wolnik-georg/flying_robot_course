@@ -460,3 +460,10 @@ Desk part, robustness studies (`docs/fbl/ROBUSTNESS_2026-10-21.md`) and lab prep
 - Strategy yaml: crazyswarm2 `main` = S0; branches `study_S1`, `study_S2`, `study_S3`, `study_FBL` (= main + the strategy switches; FBL also `ctrlFbl.cd 0.55`). Use `git checkout <branch>` in `~/georg/ros2_ws/src/crazyswarm2`, `lab_check_strategy.py`, rebuild if STALE.
 - `ns2_applied_check.py`: INDI flag decided by thrust-model residual (the estimate is non-zero under every strategy with this image).
 - Unseen-settings block result: retention 1.03, `docs/lab_sessions/2026-10-23.md`. uSD files: copy with `copy_usd_log.py <mount> <drone> --file thesisNN --tag ...` (default picks the largest file, not the newest).
+
+
+## 2026-10-24 FBL on hardware
+- Both drones: `study_tree_v2_fbl_initfix_candidate.bin` (sha 27e0e100…): FBL config is a static initial value, the controller init resets only runtime state (CS2 writes yaml params alphabetically, `stabilizer.controller` last). Do NOT write `ctrlFbl.preset` in a yaml that sets custom gains (the preset write, alphabetically after the gains, reloads preset 1).
+- crazyswarm2 `study_FBL` = proposal (xy position ×0.7: kp_xy 9.8, kv_xy 6.65, ki_xy 8.4; cd 0.55); `study_FBL_kr` / `study_FBL_kp` are the tuning variants.
+- `fbl_bench_check.py` reads fresh values (cflib `get_value` is a connect-time cache); `fbl_init_survival_check.py` right after a power cycle; verify FBL ran with `ctrlFbl.steps` (post-flight / uSD), not from the yaml.
+- Open: horizontal tracking 6–10× worse than S0–S3 on A4/A8, A4 0.125 trips; see `docs/lab_sessions/2026-10-24.md`.
