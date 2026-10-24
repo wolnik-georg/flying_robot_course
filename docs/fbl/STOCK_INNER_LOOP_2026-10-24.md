@@ -5,7 +5,7 @@
 - **Also new (both default off):** `ctrlFbl.abg_on_new` (α-β-γ estimator only on a new EKF velocity), `ctrlFbl.nn_en` (ROM + small force network, the paper's hardware residual; needs a weights file).
 - **Gates:** host 1:1 against `controller_pid.c` bit-exact; `inner = 0`, S0–S3 bit-identical to the build before; simulation: lateral offset and yaw drift removed; bundle network term matches the authors' code.
 - **Simulation result (preset 1, 44 ms motor lag):** with cf5's torque need, steady lateral offset 18 cm → 0.03 cm, max yaw 27° → 0.3°; stable 15–60 ms lag. The bundle gains (preset 0) are unstable above 27 ms lag with either inner loop.
-- **Not done (needs you / the lab):** nothing flashed or flown; image built (`study_tree_v2_fbl_stockinner_candidate.bin`, sha256 `5b20fe3a…`); yaml patch for a `study_FBL_stock` branch ready, branch not created (no commit without your go).
+- **Not done (needs you / the lab):** nothing flashed or flown; image built (`study_tree_v2_fbl_stockinner_candidate.bin`, sha256 `5b20fe3a…`); crazyswarm2 branch `study_FBL_stock` created and pushed 2026-10-24 (`ctrlFbl.inner 1`, preset 1, cd 0.55).
 
 Evidence levels as in the hardware review: **V** verified, **S** strong (simulation / data), **H** hypothesis, **U** unknown.
 
@@ -96,10 +96,37 @@ Evidence levels as in the hardware review: **V** verified, **S** strong (simulat
 - Test cases: A4 jet edge and A8 crossing are outside their tested regime.
 - Ours only: Omar below 0.15 m, in-air switch-on (rate PIDs primed), tilt latch 60°, body-rate limit 20 rad/s, thrust clamp, residual gate.
 
+## 7. What is still open before the first flight, measured against the authors' bundle, training script and paper
+
+**A. Lab steps (no code left):** flash the image on both drones, bench (`fbl_bench_check.py`: `inner`, `abg_on_new`, `nn_en` present; untested tool change), branch `study_FBL_stock`, readback must say `inner loop: STOCK rate PID`, uSD log started before takeoff, A1 → A8 → A4 (`LAB_PLAN.md` NEXT).
+
+**B. Where our FBL still differs from what the authors flew**
+
+| # | Item | Authors (bundle / paper / training script) | Ours now | Status |
+|---|---|---|---|---|
+| 1 | Control law (Eqs. 15, 9, 10, 17, 18, α-β-γ) | bundle code | same code in C (G3, bit-level tolerances); thrust law confirmed on the flight logs | **same** [V] |
+| 2 | Inner loop | thrust + body rates to the onboard rate PID (Sec. 5.2) | `inner 1` = stock CF21BL rate PID, bit-exact vs `controller_pid.c` | **same structure** [V]; their interface (rpyt RATE / `manual`), firmware version, PID parameters and signs are not published [U] |
+| 3 | Command path / timing | laptop, Vicon 120 Hz, commands over the radio at 400 Hz, rates held between packets | onboard 500 Hz from the EKF (~180 Hz effective) | **cannot be the same** (study setup) [V] |
+| 4 | Position / integral gains | hardware gains not published; bundle "Deployed" 56/38/48, 45/21.6/3 | preset 1 (0.25× position loop) because preset 0 is unstable in our plant above 27 ms motor lag (ours 44 ms measured) | **largest remaining deviation** [S]; only the authors can say which gains flew |
+| 5 | Force residual | ROM (their constants, C_D 0.236 by manual tuning) + 4-neuron force network trained on 28 s of their data | ROM table (our vehicle, C_D 0.55 from our KNODE fit), network slot ready but **no trained weights** | **open**: data card §5 → train (`knode_train.py`, Chee thesis App. B loop, `hidden_f=4`) → export → `nn_en 1` [V tools, data missing] |
+| 6 | Training data recipe | "FBL unaugmented by learned residual dynamics", static + stacked, 0.4 m, 0.4 m/s | card: FBL `inner 1`, ROM on, A3 + A2 at dz 0.4 / 0.4 m/s, dz 0.3 OOD | whether their data had the ROM on is not stated [U] |
+| 7 | ROM geometry | 30 g, arm 0.046, propeller radius 45 mm hard-coded | 42.7 g, arm 0.050, propeller radius assumed 45 mm | radius **unverified** (`STATUS.md`) [U] |
+| 8 | α-β-γ rate | constants per update; their update rate (120 / 400 Hz) not published | per tick (500 Hz, as flown) or `abg_on_new 1` (measurement rate) | [U]; no difference in simulation |
+| 9 | Yaw command | yaw of Eq. 10 sent as a rate (likely) | ω_z of Eq. 10 integrated into the stock yaw setpoint | what they sent as yaw rate is not published [U] |
+| 10 | Thrust map | laptop N → uint16, battery handling unknown | force-linear uint16 with battery compensation | [U] |
+| 11 | Start / stop | not published | Omar below 0.15 m, FBL switches on in the air (rate PIDs primed, integral starts there) | ours [V] |
+| 12 | Safety layers | none published | tilt latch 60°, rate limit 20 rad/s, thrust clamp, residual gate | ours [V] |
+| 13 | Test cases | static / stacked at 0.3 / 0.4 m | A1, A8 crossing, A4 jet edge | A8 / A4 outside their regime [V] |
+
+**C. Not explained yet (may or may not go away with `inner 1`):** the A1 0.8–1.0 Hz xyz oscillation and the A4 0.125 trips of 2026-10-24 (not reproduced in simulation with either inner loop; the plant has no lateral / torque downwash). [H]
+
+**D. What only the authors can settle** (no email decided 2026-10-22, so these stay documented assumptions unless that changes): items 2 (interface / parameters), 4 (hardware gains), 6, 7 (if from their vehicle), 8, 9, 10; their network weights and data; whether the 5 cm hardware RMSE is 3D or z.
+
+**So "100 % the authors' controller" is reachable for the code and the inner-loop structure (done), not for the gains (unpublished, bundle gains unstable here), the trained network (needs our data card and training), and the laptop / Vicon timing (study setup).**
+
 ## Questions:
 - First hardware flights with `inner = 1`: preset 1 (sim-stable at 44 ms) — agreed? Preset 0 is unstable at our motor lag in simulation.
 - Make `inner = 1` the default after the bench / hover check?
-- Create the crazyswarm2 branch `study_FBL_stock` (patch `docs/fbl/crazyswarm2_study_FBL_stock.patch`)?
 
 ## Next Steps:
 - [ ] You: flash `study_tree_v2_fbl_stockinner_candidate.bin` (sha256 `5b20fe3a112066996ca44be7c6131531afb296217cd55c9a887f86886e4f4f7b`), bench, hover, then A1 / A8 / A4 (`FIRST_FLIGHT_CHECKLIST.md`, `LAB_PLAN.md`).
