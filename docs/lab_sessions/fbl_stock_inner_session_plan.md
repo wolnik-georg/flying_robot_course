@@ -32,12 +32,12 @@ Switch settings on the ground between flights; the value is recorded in `meta.js
 | 1 | preset 1, cd 0.55, nn_en 1 (default) | A1 × 3 (first = shakedown), A8 × 3, A4 0.075 × 3, A4 0.125 × 3 | A1 y 4–7 cm, yaw ≤ 33°, 1 Hz wobble; A8 y 15–47 cm, 1 trip; A4 0.075 y 20–33 cm, yaw ≤ 66°; A4 0.125 2 trips of 4 |
 | 2 | `preset 0` (authors' code gains) | A1 × 1 first; if it holds: A1 × 2 more, A8 × 3, A4 0.075 × 3, A4 0.125 × 3 | simulation: unstable above 27 ms motor lag (ours 44 ms) — their brushed upgrade drone has even slower motors (71 ms), so the simulation may be too strict |
 | 3 | `preset 1`, `nn_en 0`, `cd 0.236` (authors' value) vs `cd 0.55` | A1 × 2 each, A8 × 2 each | network off for both: it was trained relative to C_D 0.55 |
-| 4 (optional) | `nn_en 0` (physics model only), preset 1 | A1 × 2, A8 × 2 | shows what the network adds |
+| V (validation) | the paper's hardware test: A2 straight line `--scenario A2 --dz <0.4|0.3> --path line --speed 0.4 --height 0.5`, preset 1; Nominal (`cd 0`, `nn_en 0`) / ROM (`cd 0.55`, `nn_en 0`) / Learned (`cd 0.55`, `nn_en 1`) | 5 × each variant × 2 dz = 30 (minimum 3 each = 18) | paper Fig. 3: ROM vs Nominal −24 % RMSE / −30 % z_max, Learned vs ROM −29 % / −43 %, Learned ≈ 5 cm / 10 cm |
 
 - Cells: A1 `--scenario A1 --dz 0.45 --hold 15.0 --height 0.5`; A8 `--scenario A8 --dz 0.4 --speed 0.35 --height 0.5 --passes 4`; A4 `--scenario A4 --dz 0.4 --speed 0.35 --offset <0.075|0.125> --motion line --rotate 90 --height 0.5`.
 - After each flight: resting voltage, new uSD file on BOTH cards, setting (also in `meta.json`).
 - If FBL trips, the tilt latch hands over to Omar; `ctrlFbl.inner 0` = the 10-24 controller for a comparison flight (option, not a rule).
-- Order if time is short: block 1, then block 2 A1, then block 3, then the rest.
+- Order if time is short: block 1, block 2 A1 test, block V at dz 0.4, block 3, then the rest. Analysis checklist and the reasons for our additions: `docs/lab_sessions/2026-10-26.md`.
 
 ## After the flights
 - [ ] CS2 stopped: `fbl_bench_check.py <cf5 uri> --post-flight` (`steps > 0`, `faults 0`).
