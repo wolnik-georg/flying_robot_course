@@ -467,3 +467,8 @@ Desk part, robustness studies (`docs/fbl/ROBUSTNESS_2026-10-21.md`) and lab prep
 - crazyswarm2 `study_FBL` = proposal (xy position ×0.7: kp_xy 9.8, kv_xy 6.65, ki_xy 8.4; cd 0.55); `study_FBL_kr` / `study_FBL_kp` are the tuning variants.
 - `fbl_bench_check.py` reads fresh values (cflib `get_value` is a connect-time cache); `fbl_init_survival_check.py` right after a power cycle; verify FBL ran with `ctrlFbl.steps` (post-flight / uSD), not from the yaml.
 - Open: horizontal tracking 6–10× worse than S0–S3 on A4/A8, A4 0.125 trips; see `docs/lab_sessions/2026-10-24.md`.
+
+## 2026-10-25 FBL rebuilt as the authors flew it (desk done, not flown)
+- Image `study_tree_v2_fbl_stockinner_nn4_full_candidate.bin` (sha e3593a6f…, to flash on both drones, not flashed yet); crazyswarm2 `study_FBL_stock` (cf5: `ctrlFbl.en 1`, `inner 1`, `nn_en 1`, `cd 0.55`, preset 1). Defaults: stock rate-PID inner loop (`inner 1`, bit-exact vs `controller_pid.c`), physics model + trained 4-neuron network (`nn_en 1`, `src/modules/src/fbl_nn_weights.c`), FBL from takeoff to landing (`z_on` −10 / `z_off` −20), no tilt latch / rate limit. 10-24 controller = `inner 0`, `nn_en 0`, `z_on 0.15`, `z_off 0.10`, `tilt_max 60`, `w_max 20`.
+- Patch `firmware_patches/fbl_stock_inner_loop.patch` (last). Host tests `host/test_fbl_inner_stock.py`, `host/test_fbl_inner0_identical.py`; simulations need `fw.oot_set_peer_count(1)` or FBL never sees the peer.
+- `run_formation` writes `controller_variant` into every `meta.json`. Docs: `docs/fbl/STOCK_INNER_LOOP_2026-10-24.md`; lab `docs/lab_sessions/2026-10-26.md`.

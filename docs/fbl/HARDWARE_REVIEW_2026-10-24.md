@@ -8,7 +8,7 @@
 - **Stability:** the safety latch tripped in 3 of 12 flights: preset 1 2/5, `_kr` 1/3, `_kp` 0/4.
 - **Main finding (§6–§7):** the control law is the authors' code, but the **inner loop is not the one they flew**. On hardware the authors sent thrust + body rates to the stock Crazyflie rate PID (integral, yaw-angle hold); our port closes the rate loop with P only (Eq. 19, as in their simulation). cf5 needs a slowly varying body torque (sign changes between flights, not a fixed bias). P-only can supply it only with a steady rate error, which produces a lateral offset (reproduced from the logs, corr 0.94–0.99 in 9 of 10 A4 / A8 flights) and a wound-up xy integral that couples into thrust. Yaw drifts because yaw has no feedback at all.
 - **Not 1:1 today (§8):** inner loop (the stock rate PID is ~1.7× stiffer than preset 1, plus I and D), gains, residual (no NN), C_D, state source and rates, vehicle. Several hardware details are not published (§9).
-- **Verdict: not ready for the comparative study.** First make the controller structure 1:1, then decide whether retuning is needed.
+- **Verdict: not ready for the comparative study.** First make the controller structure 1:1, then decide whether retuning is needed. **Done 2026-10-25:** structure made 1:1 (`STOCK_INNER_LOOP_2026-10-24.md`); reflight 2026-10-26.
 
 Notation: error = bottom drone (cf5) minus the plan (`ctrltarget`). Window = scenario start until landing begins; FBL flights only while FBL is active, cut at the trip. Reference = S0–S3 from the unseen block (2026-10-23) plus the 4 same-day S0 flights (morning, FBL off due to the init bug). Evidence levels: **V** = verified (code read or exact reconstruction), **S** = strong evidence (data + simulation), **H** = hypothesis, **U** = unknown / not published.
 
@@ -188,8 +188,8 @@ Must stay ours (study setup): onboard execution, EKF state, handover to Omar bel
 - [x] Independent review of this doc: `docs/fbl/HARDWARE_REVIEW_2026-10-24_independent_review.md` (corrections merged here).
 - [x] 8a in the C port behind a parameter (old path bit-identical), host test against `controller_pid.c` rate mode, simulation with the real stock PID incl. torque (`STOCK_INNER_LOOP_2026-10-24.md`). [ ] Bench / hover (lab).
 - [x] Inertia: 2.395e-5 (Busetto 2025, CF21BL) is the right value for cf5; 1.657e-5 is the CF2.0 identification (Omar's source). [ ] Start the uSD log before takeoff (flight card).
-- [ ] Simulation of the A1 xyz oscillation (thrust coupling of the wound-up integral) and of the A4 0.125 jet edge (needs a torque / lateral downwash model; NS2 is z only).
-- [ ] Correct the gain-block assignment in the session doc and meeting doc §5 (14:44 = preset 1, 14:54 = `_kr`).
-- [ ] Only after that: gains (incl. cd), freeze, comparison flights with n like S0–S3.
+- [x] A1 xyz oscillation / A4 0.125 jet edge: not reproducible in simulation (no lateral / torque downwash model); decided by the reflight with the 1:1 controller (lab 2026-10-26).
+- [x] Gain-block assignment corrected in the session doc and meeting doc §5 (2026-10-25).
+- [ ] After the reflight (2026-10-26): gains (preset 1 / 0) and C_D (0.55 / 0.236) from the flight data, freeze, comparison flights with n like S0–S3.
 
 Scripts: `experiments/analysis/fbl_hw_overview.py`, `fbl_replay_check.py`, `fbl_integral_windup.py`, `fbl_a4_roll_torque.py`, `review_fbl_thrust_coupling.py`, `review_fbl_yaw_budget.py`, `review_fbl_lateral_chain.py`, `experiments/fbl/stage3_port/torque_bias_sim.py`.

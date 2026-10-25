@@ -1,0 +1,89 @@
+# Topic 2 — NS2 quality (supervisor feedback 2026-10-22): summary of results and closed work
+
+State 2026-10-25: **closed** (desk 2026-10-22, lab 2026-10-23). Written as a self-contained summary for an independent check. Meeting doc with the plots: `docs/meetings/2026-10-29.md` §1–4.
+
+## The question (supervisor, after the meeting doc of 2026-10-22)
+- (a) NS2 is trained on the cases it is tested on.
+- (b) Imitation data weighs every sample equally; "boring" near-zero rows can dominate and overfit.
+- (c) Log the NN output and the INDI output on every strategy and compare them (same magnitude, NN maybe faster).
+
+Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
+
+## Facts checked first
+- ns2_v2 is trained on all 73 flights; the pilot settings (A8 dz 0.5 / 0.5 m/s, A1 dz 0.5, A4 dz 0.5 offsets) are inside the training data (point a confirmed).
+- 54 % of the 1.29 M training rows have |a_res| < 0.3 m/s² (point b: the data are indeed mostly "boring").
+- The NN output (`rnn.pred_*`) was already logged on all strategies; the INDI estimate was zero under S0 / S2 (its filters ran only with INDI on).
+
+## Results
+
+**1. NN vs INDI (offline, 37 pilot flights, NN not applied; `docs/nn_vs_indi_check_2026-10-22.md`)**
+| Cell (z, in gate) | flights | corr | label lag behind NN | slope label / NN |
+|---|---|---|---|---|
+| A8 S0 / S1 | 4 / 4 | 0.93 / 0.96 | 0 / 0 ms | 0.85 / 1.01 |
+| A1 S0 | 6 | 0.93 | −10 ms | 1.17 |
+| A1 S1 | 5 | 0.71 | −44 ms | 0.54 |
+| A4 S0 / S1 | 9 / 9 | 0.92 / 0.88 | 0 / −8 ms | 0.98 / 1.02 |
+- Label = INDI residual smoothed offline with a zero-delay 5 Hz filter. The NN follows it closely, in phase (not faster); weakest in A1 under INDI. The onboard causal INDI estimate lags by 0–8 ms and is noisier. Rebuilt vs onboard-logged INDI estimate: RMS 0.03 m/s², corr 0.996. The NN predicts z only.
+
+**2. Training on the test cases and boring rows (offline, 3 seeds each; `docs/ns2_heldout_rebalance_2026-10-22.md`)**
+| In-gate RMSE [m/s²] | all | A1 | A4 | A8 |
+|---|---|---|---|---|
+| v2 recipe (pilot settings in training) | 0.435 ± 0.017 | 0.414 | 0.446 | 0.635 |
+| pilot settings held out | 0.464 ± 0.018 | 0.426 | 0.545 | 0.619 |
+| all data, boring weight 0.05 | 0.426 ± 0.014 | 0.415 | 0.403 | 0.630 |
+| held out, boring weight 0.05 | 0.479 ± 0.034 | 0.442 | 0.553 | 0.628 |
+- Holding the pilot settings out costs +3 % (A1), 0 % (A8), +22 % (A4, whole A4 / A9 family removed = pessimistic case).
+- Down-weighting boring rows: at most 2 % gain, within the seed spread → no v3 retrain. The v2 recipe is reproducible (seed 0 gives exactly v2). `train.py --boring-weight` added (default unchanged).
+
+**3. Logging of the INDI estimate on every strategy (firmware)**
+- Patch `flying_drone_stack/firmware_patches/indi_estimate_always_logged.patch`: the estimate runs whenever the RPM deck is present, applied to the control only with INDI on. Replay byte-identical 4 / 4; estimate under `indi 0` equals the `indi 3` estimate exactly.
+- Image `study_tree_v2_fbl_estlog_candidate.bin` (sha256 4fa0a130…) flashed on both drones 2026-10-23 and validated in flight: onboard log = offline rebuild, corr 0.96–1.00 in all four strategies.
+
+**4. Flight confirmation at unseen settings (lab 2026-10-23; `docs/lab_sessions/2026-10-23.md`)**
+- 40 flights with complete uSD logs, S0–S3, settings between the trained ones: A8 dz 0.4 at 0.35 m/s, A1 dz 0.45, A4 offsets 0.075 / 0.125; ns2_v2 unchanged.
+- Pre-registered rule (fixed before the flights, user decision 2026-10-22): retention R = NS2 gain unseen / NS2 gain seen, geometric pair (S0 → S2), pooled; R ≥ 0.7 no material overfit, 0.4–0.7 partial, < 0.4 confirmed.
+
+| Cell (unseen) | metric | S0 | S1 | S2 | S3 | n |
+|---|---|---|---|---|---|---|
+| A1 dz 0.45 | mean z error [cm] | −19.7 ± 0.9 | −0.9 ± 1.1 | −7.3 ± 0.2 | 2.5 ± 2.0 | 3 |
+| A4 offset 0.075 | z RMS [cm] | 17.4 ± 0.5 | 6.0 ± 1.1 | 11.3 ± 1.1 | 2.9 ± 0.5 | 2 |
+| A4 offset 0.125 | z RMS [cm] | 9.2 ± 0.4 | 2.2 ± 0.2 | 4.1 ± 0.8 | 2.0 ± 0.2 | 2 |
+| A8 dz 0.4 | crossing dip [cm] | −17.0 ± 0.3 | −13.2 ± 5.5 | −7.9 ± 0.6 | −5.7 ± 2.2 | 3 |
+
+| S0 → S2 (geometric) | seen gain | unseen gain | R |
+|---|---|---|---|
+| A1 | 50 % | 63 % | 1.27 |
+| A4 0.075 | 40 % | 35 % | 0.89 |
+| A4 0.125 | 56 % | 55 % | 0.98 |
+| A8 | 55 % | 54 % | 0.97 |
+| **pooled** | | | **1.03 → no material overfit** |
+
+- INDI pair (S1 → S3): NS2 helps in A8 (54 → 57 %) and A4 0.075 (10 → 51 %), not in A1 (S1 already at −0.9 cm) and A4 0.125 (same as seen).
+- NN vs INDI at the unseen settings: corr 0.93–0.97 under S0.
+
+## Decisions taken
+- ns2_v2 stays for the study (no v3).
+- Study image = the FBL-containing logging image (option A, 2026-10-22); protocol v1.0 must name its hash.
+- Yaml per strategy on crazyswarm2 branches `study_S1`, `study_S2`, `study_S3` (main = S0).
+
+## Limits (stated in the meeting doc)
+- Unseen = between trained settings (interpolation), not extrapolation; A1 dz 0.45 is 0.05 m from a trained dz.
+- 2–3 flights per cell, no confidence intervals; block order S1, S3, S2, S0 not randomised; the seen reference is from another session (2026-10-19/20).
+- Offline results use the IMU-based INDI residual as label (noise floor ≈ 0.115 m/s²), one architecture; hard subsampling and coverage-based weighting not tested.
+
+## Still waiting for (supervisor, not ours)
+- Is the unseen-settings confirmation sufficient, or a network trained without the pilot settings flown on them (strict version, not planned)?
+- Keep ns2_v2 for the study (our recommendation: yes)?
+- A4: re-fly S2 / S3 on offsets / speeds outside the training data?
+
+## How to reproduce (for a check)
+```
+# offline NN vs INDI (system python3 with the firmware bindings for the raw part)
+PYTHONPATH=~/Desktop/crazyflie-firmware/build python3 experiments/analysis/nn_vs_indi_raw.py <bank folders>
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/nn_vs_indi_check.py --banks <bank folders> --out <dir>
+# held-out / boring-row study (trains; --seed)
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/ns2_heldout_pilot_study.py --out-dir <dir> --seed 0   # seeds 0 / 1 / 2; see docs/ns2_heldout_rebalance_2026-10-22.md
+# unseen-settings block (pre-registered rule)
+~/.pyenv/versions/flying_robots/bin/python experiments/analysis/unseen_block_analysis.py --banks bank_unseen_S0_2026-10-23 bank_unseen_S1_2026-10-23 bank_unseen_S3_2026-10-23 bank_unseen_S3S2_2026-10-23 --out <dir>
+```
+Results in the repo: `experiments/results/nn_vs_indi_2026-10-22/`, `ns2_heldout_2026-10-22/`, `unseen_block_2026-10-23/` (`verdict.json`, `cells.csv`, `per_flight.csv`, `retention.csv`), `unseen_nn_vs_indi_2026-10-23/`. The merged `bank_*` folders are local only (6 GB, not in git); the raw uSD files they are built from are in `experiments/logs/usd_raw/`.

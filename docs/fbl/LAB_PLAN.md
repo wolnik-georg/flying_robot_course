@@ -1,4 +1,4 @@
-# FBL (Strategy 3) — what is left is lab work (state 2026-10-23: images already flashed, branch `study_FBL`)
+# FBL (Strategy 3) — lab plan (state 2026-10-25: use the section NEXT and `docs/lab_sessions/2026-10-26.md`; the older table further down is the 10-24 session, kept as a record)
 
 Everything below is desk-prepared and untested on hardware. Order is a proposal for you to confirm.
 
