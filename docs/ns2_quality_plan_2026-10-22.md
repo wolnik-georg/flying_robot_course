@@ -32,3 +32,6 @@ Plan, flight table, commands and the pre-registered pass rule: `docs/lab_session
 
 ## RESULT 2026-10-23 (flight confirmation done)
 40 unseen-settings flights, all four strategies, complete uSD logs: pooled retention 1.03 (A1 1.27, A4 0.075 0.89, A4 0.125 0.98, A8 0.97) → no material overfit under the pre-registered rule (threshold 0.7). Logging patch validated (onboard INDI estimate = offline rebuild, all strategies). Session doc `docs/lab_sessions/2026-10-23.md`, results `experiments/results/unseen_block_2026-10-23/`, `unseen_nn_vs_indi_2026-10-23/`. Topic 2 closed on the desk and in the lab; supervisor's answer pending.
+
+## Independent review 2026-10-25
+Verdict confirmed and robust (`docs/topic2_ns2_quality_independent_review.md`); rewording applied to the summary and the meeting doc 2026-10-29. Corrections to this file: A4 offset 0.05 is not in the training data (flown in the pilot only, 2026-10-20); the training loss is Huber (SmoothL1, beta 0.2), not plain MSE. Topic 2 fully closed.
