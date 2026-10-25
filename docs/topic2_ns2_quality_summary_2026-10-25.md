@@ -10,8 +10,8 @@ State 2026-10-25: **closed** (desk 2026-10-22, lab 2026-10-23). Written as a sel
 Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 
 ## Facts checked first
-- ns2_v2 is trained on all 73 flights; the pilot settings (A8 dz 0.5 / 0.5 m/s, A1 dz 0.5, A4 dz 0.5 offsets) are inside the training data (point a confirmed).
-- 54 % of the 1.29 M training rows have |a_res| < 0.3 m/s² (point b: the data are indeed mostly "boring").
+- ns2_v2 is trained on all 73 flights; the pilot settings A8 dz 0.5 / 0.5 m/s, A1 dz 0.5 and A4 dz 0.5 offsets 0.10 / 0.15 are inside the training data (point a confirmed). A4 offset 0.05 was flown in the pilot only (2026-10-20, after v2 was frozen 10-17), not in training.
+- 54 % of the 1.29 M training rows have |a_res| < 0.3 m/s² (point b: the data are indeed mostly "boring"); 86 % of these lie outside the gate. Training loss = Huber (SmoothL1, beta 0.2).
 - The NN output (`rnn.pred_*`) was already logged on all strategies; the INDI estimate was zero under S0 / S2 (its filters ran only with INDI on).
 
 ## Results
@@ -23,7 +23,7 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 | A1 S0 | 6 | 0.93 | −10 ms | 1.17 |
 | A1 S1 | 5 | 0.71 | −44 ms | 0.54 |
 | A4 S0 / S1 | 9 / 9 | 0.92 / 0.88 | 0 / −8 ms | 0.98 / 1.02 |
-- Label = INDI residual smoothed offline with a zero-delay 5 Hz filter. The NN follows it closely, in phase (not faster); weakest in A1 under INDI. The onboard causal INDI estimate lags by 0–8 ms and is noisier. Rebuilt vs onboard-logged INDI estimate: RMS 0.03 m/s², corr 0.996. The NN predicts z only.
+- Label = INDI residual smoothed offline with a zero-delay 5 Hz filter. The NN follows it closely, in phase with the label and so 0–8 ms ahead of the onboard causal INDI estimate (which is noisier); weakest in A1 under INDI. Rebuilt vs onboard-logged INDI estimate: RMS 0.03 m/s², corr 0.996. The NN predicts z only.
 
 **2. Training on the test cases and boring rows (offline, 3 seeds each; `docs/ns2_heldout_rebalance_2026-10-22.md`)**
 | In-gate RMSE [m/s²] | all | A1 | A4 | A8 |
@@ -33,7 +33,7 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 | all data, boring weight 0.05 | 0.426 ± 0.014 | 0.415 | 0.403 | 0.630 |
 | held out, boring weight 0.05 | 0.479 ± 0.034 | 0.442 | 0.553 | 0.628 |
 - Holding the pilot settings out costs +3 % (A1), 0 % (A8), +22 % (A4, whole A4 / A9 family removed = pessimistic case).
-- Down-weighting boring rows: at most 2 % gain, within the seed spread → no v3 retrain. The v2 recipe is reproducible (seed 0 gives exactly v2). `train.py --boring-weight` added (default unchanged).
+- Down-weighting boring rows: pooled at most 2 % gain, within the seed spread; by scenario A4 about 10 % better (3/3 seeds), A1 worse at unseen settings → no uniform gain, no v3 retrain. The v2 recipe is reproducible (seed 0 gives exactly v2); the released v2 is one seed (0.453 vs 3-seed mean 0.435, spread ±0.02–0.03). `train.py --boring-weight` added (default unchanged).
 
 **3. Logging of the INDI estimate on every strategy (firmware)**
 - Patch `flying_drone_stack/firmware_patches/indi_estimate_always_logged.patch`: the estimate runs whenever the RPM deck is present, applied to the control only with INDI on. Replay byte-identical 4 / 4; estimate under `indi 0` equals the `indi 3` estimate exactly.
@@ -56,10 +56,11 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 | A4 0.075 | 40 % | 35 % | 0.89 |
 | A4 0.125 | 56 % | 55 % | 0.98 |
 | A8 | 55 % | 54 % | 0.97 |
-| **pooled** | | | **1.03 → no material overfit** |
+| **pooled** | | | **1.03 → no material overfit** (95 % CI 0.93–1.17; leave one flight out 0.99–1.06) |
 
-- INDI pair (S1 → S3): NS2 helps in A8 (54 → 57 %) and A4 0.075 (10 → 51 %), not in A1 (S1 already at −0.9 cm) and A4 0.125 (same as seen).
-- NN vs INDI at the unseen settings (`experiments/results/unseen_nn_vs_indi_2026-10-23/summary_z_5Hz.csv`, label = onboard INDI estimate smoothed zero-delay at 5 Hz):
+- A4 0.075: its seen reference interpolates the pilot offsets 0.05 (not trained) and 0.10; with trained offsets only, R = 0.68 (pooled 0.98).
+- INDI pair (S1 → S3): NS2 helps in A8 (54 → 57 %) and A4 0.075 (10 → 51 %), not in A1 (S1 already at −0.9 cm) and A4 0.125. The INDI bases are negative or near zero in 2 of 4 cells, so INDI retention cannot be read either way; A8 seen 54 % excludes 2 drained S3 flights (28 % with them). The verdict rests on the geometric pair.
+- NN vs INDI at the unseen settings (`experiments/results/unseen_nn_vs_indi_2026-10-23/summary_z_5Hz.csv`, label = offline-rebuilt INDI estimate, equal to the onboard log, smoothed zero-delay at 5 Hz):
 
 | Cell (z, in gate) | flights | corr | lag [ms] | slope | mean NN / label [m/s²] |
 |---|---|---|---|---|---|
@@ -70,7 +71,7 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 | A8 S0 | 3 | 0.94 | 0 | 0.90 | -1.15 / -1.61 |
 | A8 S1 | 3 | 0.95 | 0 | 0.99 | -1.16 / -1.53 |
 
-- Under S0 and in A8 the agreement is high (corr 0.93–0.95). Weaker under INDI in A1 (0.84, −32 ms) and A4 (0.68). **The NN's mean level is below the label** in most cells (e.g. A1 S0 −1.30 vs −1.66, A4 S0 −1.11 vs −1.77 m/s²): correlation and slope are good, the offset is not; the meeting doc reports only the S0 correlation. To be judged in the review.
+- Under S0 and in A8 the agreement is high (corr 0.93–0.95). Weaker under INDI in A1 (0.84, −32 ms) and A4 (0.68). The NN's mean level is below the label in most cells (e.g. A1 S0 −1.30 vs −1.66, A4 S0 −1.11 vs −1.77 m/s²). **Mostly a label bias of the new bottom drone:** far from the neighbour the label is still −0.25 to −0.47 m/s² (NN −0.1 to −0.17); after removing it NN / label = 0.93–1.10 (A4, A8; A1 is always in the gate and cannot be split). Offline, the v2 in-gate RMSE is 0.453 seen vs 0.464 unseen (+2 %).
 
 ## Decisions taken
 - ns2_v2 stays for the study (no v3).
@@ -79,8 +80,11 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 
 ## Limits (stated in the meeting doc)
 - Unseen = between trained settings (interpolation), not extrapolation; A1 dz 0.45 is 0.05 m from a trained dz.
-- 2–3 flights per cell, no confidence intervals; block order S1, S3, S2, S0 not randomised; the seen reference is from another session (2026-10-19/20).
-- Offline results use the IMU-based INDI residual as label (noise floor ≈ 0.115 m/s²), one architecture; hard subsampling and coverage-based weighting not tested.
+- 2–3 flights per cell; the bootstrap CI covers flight-to-flight spread only, not session effects; block order S1, S3, S2, S0 not randomised (S1 A4 packs at 3.2–3.3 V); the seen reference is from another session (2026-10-19/20).
+- Offline results use the IMU-based INDI residual as label (noise floor ≈ 0.115 m/s², plus the new-vehicle bias above), one architecture; hard subsampling and coverage-based weighting not tested.
+- Open (desk): the label bias on the new bottom drone (k_t check from solo hover); in A1 S0 the z-integral term is not visible in the logged thrust (9/9 flights, seen and unseen; same on both sides, so R is not biased).
+
+Independent review: `docs/topic2_ns2_quality_independent_review.md`.
 
 ## Still waiting for (supervisor, not ours)
 - Is the unseen-settings confirmation sufficient, or a network trained without the pilot settings flown on them (strict version, not planned)?
