@@ -23,6 +23,7 @@ def worker(build, case):
     omar.fbl.en = c["fbl"]; omar.fbl.c_d = 0.55
     for k in ("inner", "nn_en", "abg_on_new"):                # the 10-24 controller: newer builds default to inner 1 / nn_en 1, set the old path explicitly
         if hasattr(omar.fbl, k): setattr(omar.fbl, k, 0)
+    omar.fbl.z_on, omar.fbl.z_off, omar.fbl.tilt_max_deg, omar.fbl.w_max = 0.15, 0.10, 60.0, 20.0   # the 10-24 handover / latch / limit (defaults changed 2026-10-25)
     if "preset" in c:
         omar.fbl.kp_xy, omar.fbl.kp_z, omar.fbl.kv_xy, omar.fbl.kv_z, omar.fbl.ki_xy, omar.fbl.ki_z, omar.fbl.kr_xy, omar.fbl.kr_z = 56.0, 45.0, 38.0, 21.6, 48.0, 3.0, 238.0, 140.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()

@@ -3,9 +3,10 @@
 ## Overview
 - **Inner loop:** FBL's thrust + body rates (Eqs. 15, 9, 10) go into the stock Crazyflie rate PID, as on the paper's hardware (Sec. 5.2; Chee thesis l. 3441: "thrust and angular rate commands, which are passed to the PID controllers running in the Crazyflie firmware"). `ctrlFbl.inner`: **1 = default since 2026-10-25**; 0 = the Eq. 19 P-only loop flown on 10-24.
 - **Residual:** physics model (ROM, C_D 0.55) **+ trained 4-neuron force network** (KNODE on our flights, the paper's hardware recipe), linked into the image. `ctrlFbl.nn_en`: **1 = default**; 0 = ROM only (as on 10-24).
+- **Whole flight, no extra limits (2026-10-25):** FBL flies from takeoff to landing like S0–S3 fly their controller (no handover to Omar below 0.15 m any more), no 60° tilt latch and no 20 rad/s rate limit (the bundle has neither). Kept, because they are the real path: thrust 0…max (= the stock uint16 interface) and a non-number guard. The only addition left is the downwash gate (§5).
 - **Gates passed:** host bit-exact vs stock `controller_pid.c`; `inner 0` + S0–S3 bit-identical to the build before; firmware network = authors' `DownwashResidual` (also with the flight weights, and end to end in the firmware build); simulation (corrected peer feed): lateral offset and yaw drift removed.
-- **Simulation (preset 1, 44 ms motor lag, cf5's torque need):** steady lateral offset 18 cm → 0.15 cm, max yaw 27° → 0.3°; stable 15–60 ms. Bundle gains (preset 0) unstable above 27 ms with either inner loop.
-- **Ready for the lab:** image `study_tree_v2_fbl_stockinner_nn4_candidate.bin` (sha256 `b13bf8ec…`), crazyswarm2 branch `study_FBL_stock` (pushed), plan `docs/lab_sessions/fbl_stock_inner_session_plan.md`. Nothing flashed or flown.
+- **Simulation (preset 1, 44 ms motor lag, cf5's torque need):** steady lateral offset 18 cm → 0.15 cm, max yaw 27° → 0.1°; stable 15–60 ms, takeoff and landing included. Bundle gains (preset 0) unstable above 27 ms with either inner loop.
+- **Ready for the lab:** image `study_tree_v2_fbl_stockinner_nn4_full_candidate.bin` (sha256 `e3593a6f…`), crazyswarm2 branch `study_FBL_stock` (pushed), plan `docs/lab_sessions/fbl_stock_inner_session_plan.md`. Nothing flashed or flown.
 
 Evidence levels: **V** verified, **S** strong (simulation / data), **H** hypothesis, **U** unknown.
 
@@ -17,16 +18,16 @@ Evidence levels: **V** verified, **S** strong (simulation / data), **H** hypothe
 
 ![summary](assets/stock_inner_2026-10-24/summary_offset_yaw.png)
 
-| preset 1, 44 ms lag (A1 / A4 / A8) | steady xy offset [cm] inner 0 → 1 | max \|yaw\| [deg] inner 0 → 1 | tilt max [deg] inner 1 | handover tilt [deg] inner 1 |
+| preset 1, 44 ms lag (A1 / A4 / A8) | steady xy offset [cm] inner 0 → 1 | max \|yaw\| [deg] inner 0 → 1 | tilt max [deg] inner 1 | tilt 1 s after FBL start / during landing [deg] inner 1 |
 |---|---|---|---|---|
-| no disturbance | 0.06–0.07 → 0.13–0.17 | 0.08–0.11 → 0.03–0.04 | 0.8–2.1 | 0.3–1.2 |
-| constant torque | 18.1–18.2 → 0.15–0.17 | 26.5–26.9 → 0.19–0.29 | 0.5–2.1 | 0.6–1.2 |
-| slowly varying torque (sign flips) | 18.6–19.0 → 0.36–0.61 | 9.2–10.1 → 1.24–1.29 | 0.8–1.8 | 0.8–1.1 |
+| no disturbance | 0.06–0.07 → 0.15–0.17 | 0.08–0.11 → 0.02–0.09 | 1.2–2.1 | 0.3–0.8 / 0.3–0.7 |
+| constant torque | 18.1–18.2 → 0.14–0.17 | 26.5–26.9 → 0.11 | 0.8–2.1 | 0.8 / 0.3–1.0 |
+| slowly varying torque (sign flips) | 13.0–13.9 → 1.9–2.2 | 10.8–11.8 → 1.2 | 1.0–2.0 | 0.7 / 0.4–0.8 |
 
-- Plant: real firmware controller via the host bindings, real mixer (`powerDistribution` → cap → force-linear uint16), 4 ms delay, motor lag, noise, takeoff from the ground under Omar with FBL switch-on at 0.15 m, NS2 v2 downwash truth (z only), FBL residual ROM C_D 0.55 + network. [S]
-- **Gate 2 PASS** (stable everywhere; with torque: yaw < 2°, steady offset < 2 cm).
-- **Network on vs off** (constant torque): z rms 0.60 / 0.72 / 1.27 vs 0.51 / 0.56 / 1.66 cm (A1 / A4 / A8); steady offset 0.15–0.17 vs 0.02–0.03 cm. The network predicts a small sideways force that the simulated downwash does not have (NS2 is z only), so the simulation cannot tell whether it helps; the flights can. [S]
-- Same with the other inertia value in the plant (offset 0.13–0.18 cm, yaw ≤ 0.30°) and with the state held 4–8 ms like the EKF (0.16–0.21 cm).
+- Plant: real firmware controller via the host bindings, real mixer (`powerDistribution` → cap → force-linear uint16), 4 ms delay, motor lag, noise, takeoff from the ground and landing on it (inner 1: FBL the whole flight; inner 0: the 10-24 controller with Omar below 0.15 m), NS2 v2 downwash truth (z only), FBL residual ROM C_D 0.55 + network. [S]
+- **Gate 2 PASS** (stable everywhere; constant torque: yaw < 2°, steady offset < 2 cm; slowly varying torque: offset 1.9–2.2 cm as a mean over the second half, against 13–14 cm with the flown loop — the disturbance period scales with the flight length, so these numbers changed when the landing was added). Takeoff and landing under FBL: smooth; at the end of the 3 s landing ramp the drone is 0–13 mm above the floor, still settling.
+- **Network on vs off** (constant torque): z rms 0.59 / 0.68 / 1.27 vs 0.42 / 0.58 / 1.66 cm (A1 / A4 / A8); steady offset 0.14–0.17 vs 0.02–0.03 cm. The network predicts a small sideways force that the simulated downwash does not have (NS2 is z only), so the simulation cannot tell whether it helps; the flights can. [S]
+- Same with the other inertia value in the plant (offset 0.15–0.18 cm, yaw 0.11°) and with the state held 4–8 ms like the EKF (0.14–0.21 cm).
 - **Correction 2026-10-25:** the first simulation runs (and `torque_bias_sim.py`) did not enable the host peer feed (`oot_set_peer_count(1)`), so FBL ran without its downwash compensation there. Rerun with it: the lateral / yaw conclusions are identical (torque-bias simulation: 23.5 cm x and 22.7° yaw → 1.3 cm and 0.2° with the stock loop, unchanged); z is better now.
 - Not reproduced in this plant: the A1 0.8–1.0 Hz xyz wobble and the A4 0.125 crashes (no sideways / torque downwash model). [H for their cause]
 
@@ -47,7 +48,7 @@ Evidence levels: **V** verified, **S** strong (simulation / data), **H** hypothe
 | output | `control->yaw = −yaw`, `controlModeLegacy` | same |
 | thrust | uint16 per motor, force-linear with battery compensation | `T / (4 · THRUST_MAX) · 65535` (THRUST_MAX 0.2 N) |
 | zero thrust | zero commands, reset all PIDs and the yaw setpoint | same |
-| switch-on | stock resets on the ground (thrust 0) | in the air at 0.15 m: reset, yaw setpoint = current yaw, rate PIDs primed with the gyro (else the D term kicks); **only deviation** |
+| switch-on | stock resets on the ground (thrust 0) | at the first position setpoint (on the ground, since FBL flies the whole flight): reset, yaw setpoint = current yaw, rate PIDs primed with the gyro (≈ 0 on the ground, so = stock) |
 
 - Gains: stock CF21BL defaults (`pid_rate.*` 200 / 400 / 2.5, yaw 120 / 16.7; `pid_attitude.yaw_*` 6 / 1 / 0.35); equal to the authors' CF2 + upgrade defaults in N m/(rad/s) within 4 %. FBL's `kr_xy`, `kr_z`, `J` are unused with `inner 1`. [V]
 - Logged torque (`ctrlOmarIndi.torque*`) = the torque the legacy commands produce (mixer inverse).
@@ -87,7 +88,7 @@ Evidence levels: **V** verified, **S** strong (simulation / data), **H** hypothe
 | α-β-γ rate | the bundle updates the estimator at every controller call with whatever velocity arrives (400 Hz control, ~120 Hz Vicon on their hardware) = our per-tick update with the EKF velocity → `abg_on_new 0` (default) matches the code; option 1 kept (no gain in simulation) [S] |
 | Yaw command | bundle stores Eq. 10's full body rate incl. ω_z as `cmd_body_rates` (`fbl_control.py` l. 298) → integrated into the stock yaw setpoint, as the firmware does with a yaw-rate command [V] |
 | Thrust conversion | their N → uint16 map is not published (paper, bundle, Chee thesis checked); ours converts the same newtons force-linearly with battery compensation (physically correct) [S] |
-| Takeoff / landing | our call: Omar below 0.15 m for every strategy; FBL switches on in the air [V] |
+| Takeoff / landing | FBL flies the whole flight, as every strategy flies its own controller from takeoff to landing (S0–S3 too); the authors' takeoff is not published [V] |
 | Error metric | paper: 3D position RMSE + z_max (l. 481) → added to `fbl_hw_overview.py`; 10-24 FBL flights: 3D RMSE 8–34 cm vs the paper's ~5 cm [V] |
 | Inertia | 2.395e-5 (Busetto 2025, CF2.1 Brushless) is right for cf5; matters only for `inner 0` [S] |
 | C_D | ours 0.55 (from our training); theirs 0.236 (hand-tuned, other ROM constants; ours is 15 % stronger per unit C_D) → flown against each other in the lab (plan block 3) |
@@ -102,6 +103,6 @@ Evidence levels: **V** verified, **S** strong (simulation / data), **H** hypothe
 - Propeller radius of cf5 (the ROM assumes 45 mm; measure in the lab).
 - A1 1 Hz wobble and A4 0.125 crashes: the reflight decides whether they are gone.
 - Only the authors know: commander interface / firmware version (the structure is the same either way), their exact thrust map, their hardware gains, their network weights and training data. No email decided 2026-10-22.
-- Cannot be the same: laptop + Vicon + radio vs onboard; vehicle (brushless, 42.7 g); A8 / A4 outside their test cases; ours-only safety layers (Omar below 0.15 m, tilt latch 60°, rate limit 20 rad/s, thrust clamp, residual gate).
+- Cannot be the same: laptop + Vicon + radio vs onboard; vehicle (brushless, 42.7 g); A8 / A4 outside their test cases; our downwash gate (neighbour above, r0 < 0.6 m, fade 1.2–1.4 m: the bundle would push down for a neighbour below and its network extrapolates to −0.49 m/s² at r0 1 m; details `docs/lab_sessions/2026-10-26.md`).
 
 Files: firmware patch `flying_drone_stack/firmware_patches/fbl_stock_inner_loop.patch`; host tests `flying_drone_stack/firmware_app/host/test_fbl_inner_stock.py`, `test_fbl_inner0_identical.py`; C tests `experiments/fbl/stage3_port/c/`; simulation `experiments/fbl/stage3_port/stock_inner_sim.py`, `stock_inner_plots.py`, `torque_bias_sim.py`; network export `export_fbl_nn_weights.py`; training `experiments/fbl/stage4_knode/real_experiments.py --hidden-f 4`; crazyswarm2 `run_formation.py` / `study_config.py` (controller variant), branch `study_FBL_stock`.

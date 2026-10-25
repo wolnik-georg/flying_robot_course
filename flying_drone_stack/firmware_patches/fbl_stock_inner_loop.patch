@@ -87,7 +87,7 @@ index ba0f120..478e6aa 100644
  obj-y += platformservice.o
  obj-$(CONFIG_POWER_DISTRIBUTION_QUADROTOR) += power_distribution_quadrotor.o
 diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
-index ad9031c..7f3688b 100644
+index ad9031c..e91c0cb 100644
 --- a/src/modules/src/controller/controller_omar_indi.c
 +++ b/src/modules/src/controller/controller_omar_indi.c
 @@ -51,6 +51,7 @@ CDC 2010
@@ -98,16 +98,23 @@ index ad9031c..7f3688b 100644
  
  static controllerOmarIndi_t g_self = {
    .mass = CF_MASS,
-@@ -84,7 +85,7 @@ static controllerOmarIndi_t g_self = {
+@@ -81,10 +82,13 @@ static controllerOmarIndi_t g_self = {
+   // fbl_apply_preset). The state (law, peers, counters) is zero here and reset by fbl_runtime_reset() at init. The configuration must NOT be reset at the
+   // controller init: CS2 writes the yaml params alphabetically and stabilizer.controller last, so an init that reset the config wiped ctrlFbl.en / cd
+   // (2026-10-24, first FBL flights ran as S0).
++  // 2026-10-25: defaults = the authors' structure for the whole flight: FBL from takeoff to landing like S0-S3 fly their controller
++  // (z_on / z_off far below the floor: no handover to the Omar controller), no tilt latch (tilt_max 180 deg) and no body-rate limit
++  // (w_max 0, the bundle has none). The 2026-10-24 behaviour (handover at 0.15 / 0.10 m, latch 60 deg, limit 20 rad/s) is these parameters.
    .fbl = {
-     .en = 0, .c_d = 0.43f, .z_on = 0.15f, .z_off = 0.10f, .tilt_max_deg = 60.0f, .preset = 1,
+-    .en = 0, .c_d = 0.43f, .z_on = 0.15f, .z_off = 0.10f, .tilt_max_deg = 60.0f, .preset = 1,
++    .en = 0, .c_d = 0.43f, .z_on = -10.0f, .z_off = -20.0f, .tilt_max_deg = 180.0f, .preset = 1,
      .kp_xy = 14.0f, .kp_z = 11.25f, .kv_xy = 9.5f, .kv_z = 5.4f, .ki_xy = 12.0f, .ki_z = 12.0f, .kr_xy = 59.5f, .kr_z = 35.0f,
 -    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 20.0f,
-+    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 20.0f, .inner = 1, .abg_on_new = 0, .nn_en = 1,
++    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .w_max = 0.0f, .inner = 1, .abg_on_new = 0, .nn_en = 1,
    },
  };
  
-@@ -148,10 +149,60 @@ static void fbl_runtime_reset(controllerOmarIndi_t* self)
+@@ -148,10 +152,60 @@ static void fbl_runtime_reset(controllerOmarIndi_t* self)
    fbl_cfg_t* f = &self->fbl;
    f->active = 0; f->tripped = 0; f->steps = 0; f->faults = 0;
    f->res_az = 0.0f; f->res_jz = 0.0f; f->thrust = 0.0f;
@@ -169,7 +176,7 @@ index ad9031c..7f3688b 100644
  static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors,
                                const state_t *state, float desiredYaw, float dt)
  {
-@@ -162,7 +213,8 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+@@ -162,7 +216,8 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
      f->active = 0; fbl_law_reset(&f->law);
      return false;
    }
@@ -179,7 +186,7 @@ index ad9031c..7f3688b 100644
    if (!f->active) { fbl_law_reset(&f->law); return false; }
  
    struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
-@@ -186,9 +238,22 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+@@ -186,9 +241,22 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
      .x_dddot = {setpoint->jerk.x, setpoint->jerk.y, setpoint->jerk.z},
    };
    float acc_cmd[3], jerk_cmd[3];
@@ -203,7 +210,7 @@ index ad9031c..7f3688b 100644
    fbl_residual_eval(&f->peers, pos, vel, f->c_d, &res);
  
    float Rm[9];
-@@ -203,9 +268,19 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
+@@ -203,9 +271,19 @@ static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, co
    if (thrust < 0.0f) thrust = 0.0f;
    if (thrust > max_thrust) thrust = max_thrust;
  
@@ -226,7 +233,7 @@ index ad9031c..7f3688b 100644
  
    // state shared with the Omar logging
    self->thrustSi = thrust;
-@@ -241,6 +316,7 @@ void controllerOmarIndiInit(controllerOmarIndi_t* self)
+@@ -241,6 +319,7 @@ void controllerOmarIndiInit(controllerOmarIndi_t* self)
    ns2_reset(&self->ns2);
    ns2_publish_ready();
    fbl_runtime_reset(self);
@@ -234,7 +241,7 @@ index ad9031c..7f3688b 100644
  
    paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
    logVarRpm1 = logGetVarId("rpm", "m1");
-@@ -751,6 +827,9 @@ PARAM_ADD(PARAM_FLOAT, J_z, &g_self.fbl.J.z)
+@@ -751,6 +830,9 @@ PARAM_ADD(PARAM_FLOAT, J_z, &g_self.fbl.J.z)
  PARAM_ADD(PARAM_FLOAT, beta, &g_self.fbl.beta)
  PARAM_ADD(PARAM_FLOAT, gamma, &g_self.fbl.gamma)
  PARAM_ADD(PARAM_FLOAT, w_max, &g_self.fbl.w_max)
@@ -244,7 +251,7 @@ index ad9031c..7f3688b 100644
  PARAM_GROUP_STOP(ctrlFbl)
  
  LOG_GROUP_START(ctrlFbl)
-@@ -765,6 +844,7 @@ LOG_ADD(LOG_FLOAT, acc_z, &g_self.fbl.acc_cmd.z)
+@@ -765,6 +847,7 @@ LOG_ADD(LOG_FLOAT, acc_z, &g_self.fbl.acc_cmd.z)
  LOG_ADD(LOG_FLOAT, w_des_x, &g_self.fbl.w_des.x)
  LOG_ADD(LOG_FLOAT, w_des_y, &g_self.fbl.w_des.y)
  LOG_ADD(LOG_FLOAT, w_des_z, &g_self.fbl.w_des.z)

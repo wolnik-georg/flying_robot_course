@@ -5,7 +5,7 @@ bindings), in a rigid-body plant of our vehicle:
   - actuation through the real firmware mixer for both modes: powerDistribution (Legacy or ForceTorque) -> powerDistributionCap -> per-motor force
     u / 65535 * THRUST_MAX (force-linear uint16, battery compensation assumed ideal) -> thrust / torque with the firmware ARM_LENGTH / THRUST2TORQUE;
   - command delay 4 ms, first-order motor lag per motor (44 ms nominal = GAIN_TUNING_2026-10-20; sweep 15 / 30 / 60), gyro / position / velocity noise;
-  - takeoff from the ground under the Omar controller (smooth ramp to the scenario start), FBL switches on at z_on 0.15 m (as on hardware);
+  - takeoff from the ground and landing back on it (smoothstep ramps); inner 1 = firmware defaults since 2026-10-25: FBL flies the whole flight (no handover); inner 0 = the 10-24 controller (Omar below 0.15 m, tilt latch, rate limit);
   - downwash truth NS2 v2 (z only) under a scripted top vehicle; FBL residual = ROM table, C_D 0.55, + trained 4-neuron force net (nn_en 1, inner 1 runs; nn=0 runs = ROM only); peer feed every 10 ms (oot_set_peer_count 1, missing before 2026-10-25);
   - optional EKF-like state hold (new state every 4-8 ms) with ctrlFbl.abg_on_new 0 / 1;
   - body-torque disturbance: none, constant (+80 / -300 / -30 uN m, typical cf5 need, review §a #29), slowly varying (sign flips over the flight,
@@ -49,17 +49,19 @@ def run(cfg):
     hold_ms, abg = cfg.get("hold", 0), cfg.get("abg", 0)
     rng = np.random.default_rng(seed); Jp = J_FBL if jname == "fbl" else J_OMAR
     sc = scenario(scen); anchor = np.array([0, 0, 0.5]); T_sc = min(r.curve.duration for r in sc.robots)
-    T_TO, T_HOLD = 3.0, 1.5; T = T_TO + T_HOLD + T_sc
+    T_TO, T_HOLD, T_LAND, T_GND = 3.0, 1.5, 3.0, 1.0; T = T_TO + T_HOLD + T_sc + T_LAND + T_GND
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     for k, v in PRESET[preset].items(): setattr(omar.fbl, k, v)
     fw.oot_set_peer_count(1)       # host peer feed: without it FBL never sees the top drone (residual off); fixed 2026-10-25
     omar.fbl.en = 1; omar.fbl.inner = inner; omar.fbl.abg_on_new = abg; omar.fbl.nn_en = cfg.get("nn", 1 if inner == 1 else 0);   # inner 0 = the 10-24 controller (ROM only)
     omar.fbl.c_d = 0.55; fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 0
+    if inner == 0: omar.fbl.z_on, omar.fbl.z_off, omar.fbl.tilt_max_deg, omar.fbl.w_max = 0.15, 0.10, 60.0, 20.0   # the 10-24 controller (handover, latch, limit)
+    # inner 1: firmware defaults since 2026-10-25 = FBL from takeoff to landing, no latch, no rate limit
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
     p_start = C.kin(sc, 0, 0.0, anchor)[0]; x = np.array([p_start[0], p_start[1], 0.0]); v = np.zeros(3); q = np.array([0, 0, 0, 1.0]); w = np.zeros(3)
     dt = 1e-3; n = int(T / dt); F = np.full(4, M * G / 4); cmd_q = []; F_c = F.copy(); fext = np.zeros(3); a_m = dt / (lag_ms * 1e-3 + dt)
-    rec = []; t_on = None; tilt_ho = 0.0; next_state = 0.0
+    rec = []; t_on = None; tilt_ho = 0.0; next_state = 0.0; td_vz = None; tilt_land = 0.0
     for i in range(n):
         t = i * dt; ts = t - T_TO - T_HOLD
         tp, tv, *_ = C.kin(sc, 1, max(ts, 0.0), anchor)
@@ -68,8 +70,13 @@ def run(cfg):
             u_ = min(max(t / T_TO, 0.0), 1.0); s_ = 10 * u_ ** 3 - 15 * u_ ** 4 + 6 * u_ ** 5; ds = (30 * u_ ** 2 - 60 * u_ ** 3 + 30 * u_ ** 4) / T_TO
             dds = (60 * u_ - 180 * u_ ** 2 + 120 * u_ ** 3) / T_TO ** 2 if 0 < u_ < 1 else 0.0; ddds = (60 - 360 * u_ + 360 * u_ ** 2) / T_TO ** 3 if 0 < u_ < 1 else 0.0
             h = p_start[2] - 0.0; pr = np.array([p_start[0], p_start[1], h * s_]); vr = np.array([0, 0, h * ds]); ar = np.array([0, 0, h * dds]); jr = np.array([0, 0, h * ddds])
-        else:
+        elif ts <= T_sc:
             pr, vr, ar, jr, _ = C.kin(sc, 0, ts, anchor)
+        else:               # landing: smoothstep from the last scenario point to the ground, then on the ground (as the HLC land)
+            if 'p_end' not in locals(): p_end = C.kin(sc, 0, T_sc, anchor)[0]
+            u_ = min(max((ts - T_sc) / T_LAND, 0.0), 1.0); s_ = 10 * u_ ** 3 - 15 * u_ ** 4 + 6 * u_ ** 5; ds = (30 * u_ ** 2 - 60 * u_ ** 3 + 30 * u_ ** 4) / T_LAND
+            dds = (60 * u_ - 180 * u_ ** 2 + 120 * u_ ** 3) / T_LAND ** 2 if 0 < u_ < 1 else 0.0; ddds = (60 - 360 * u_ + 360 * u_ ** 2) / T_LAND ** 3 if 0 < u_ < 1 else 0.0
+            h = p_end[2]; pr = np.array([p_end[0], p_end[1], h * (1 - s_)]); vr = np.array([0, 0, -h * ds]); ar = np.array([0, 0, -h * dds]); jr = np.array([0, 0, -h * ddds])
         sp.position.x, sp.position.y, sp.position.z = map(float, pr); sp.velocity.x, sp.velocity.y, sp.velocity.z = map(float, vr)
         sp.acceleration.x, sp.acceleration.y, sp.acceleration.z = map(float, ar); sp.jerk.x, sp.jerk.y, sp.jerk.z = map(float, jr)
         if t >= next_state:      # hold > 0: the state estimate changes only every 4-8 ms (EKF on the drone: median ~5.6 ms), held in between
@@ -95,20 +102,23 @@ def run(cfg):
             a_nn, _ = C.reference(C.W, rel, float(x[2]), v, M); fext = np.asarray(a_nn, float) * M
         R = Rot.from_quat(q).as_matrix()
         v = v + (np.array([0, 0, -G]) + R[:, 2] * thrust / M + fext / M) * dt; x = x + v * dt
-        if x[2] <= 0.0: x[2] = 0.0; v[2] = max(v[2], 0.0); v[:2] *= 0.0 if thrust < M * G else 1.0
+        if x[2] <= 0.0:
+            if ts > T_sc and td_vz is None and v[2] < 0: td_vz = float(v[2])         # touchdown speed
+            x[2] = 0.0; v[2] = max(v[2], 0.0); v[:2] *= 0.0 if thrust < M * G else 1.0
         w = w + np.linalg.solve(Jp, tau - np.cross(w, Jp @ w)) * dt; q = (Rot.from_rotvec(R @ w * dt) * Rot.from_quat(q)).as_quat()
         tilt = np.degrees(np.arccos(np.clip(R[2, 2], -1, 1)))
         if t_on is not None and t < t_on + 1.0: tilt_ho = max(tilt_ho, tilt)
+        if ts > T_sc: tilt_land = max(tilt_land, tilt)
         if i % 10 == 0: rec.append([t, *(x - pr), eul[2], tilt, omar.fbl.active, omar.fbl.tripped, *x])
         if not np.isfinite(x).all() or tilt > 120: break
-    r = np.array(rec); ts_ = r[:, 0] - T_TO - T_HOLD; win = ts_ > 2.0; late = ts_ > (T_sc / 2)
+    r = np.array(rec); ts_ = r[:, 0] - T_TO - T_HOLD; win = (ts_ > 2.0) & (ts_ <= T_sc); late = (ts_ > (T_sc / 2)) & (ts_ <= T_sc)
     rms = lambda a: 100 * float(np.sqrt(np.mean(a ** 2))) if a.size else float("nan")
     ok = len(r) * 10 >= n - 10
     res = dict(cfg, x_rms_cm=rms(r[win, 1]), y_rms_cm=rms(r[win, 2]), z_rms_cm=rms(r[win, 3]), xy_steady_cm=100 * float(np.hypot(r[late, 1].mean(), r[late, 2].mean())) if late.any() else float("nan"),
-               yaw_absmax_deg=float(np.abs(r[ts_ > 0, 4]).max()) if (ts_ > 0).any() else float("nan"), tilt_rms_deg=float(np.sqrt(np.mean(r[win, 5] ** 2))) if win.any() else float("nan"),
-               tilt_max_deg=float(r[ts_ > 0, 5].max()) if (ts_ > 0).any() else float("nan"), t_on_s=t_on, tilt_handover_deg=tilt_ho, tripped=bool(r[:, 7].max()),
-               fbl_active_pct=100 * float(r[ts_ > 0, 6].mean()) if (ts_ > 0).any() else 0.0, completed=bool(ok))
-    res["nn"] = int(omar.fbl.nn_en)
+               yaw_absmax_deg=float(np.abs(r[(ts_ > 0) & (ts_ <= T_sc), 4]).max()) if (ts_ > 0).any() else float("nan"), tilt_rms_deg=float(np.sqrt(np.mean(r[win, 5] ** 2))) if win.any() else float("nan"),
+               tilt_max_deg=float(r[(ts_ > 0) & (ts_ <= T_sc), 5].max()) if (ts_ > 0).any() else float("nan"), t_on_s=t_on, tilt_handover_deg=tilt_ho, tripped=bool(r[:, 7].max()),
+               fbl_active_pct=100 * float(r[(ts_ > 0) & (ts_ <= T_sc), 6].mean()) if (ts_ > 0).any() else 0.0, completed=bool(ok))
+    res["nn"] = int(omar.fbl.nn_en); res["touchdown_vz"] = td_vz; res["tilt_landing_deg"] = tilt_land; res["t_on_height"] = None
     res["stable"] = bool(ok and not res["tripped"] and res["tilt_max_deg"] < 45 and res["fbl_active_pct"] > 99)
     np.save(OUT / "stock_inner_traces" / (f"{scen}_i{inner}_p{preset}_{dist}_lag{lag_ms}_{jname}" + (f"_hold_abg{abg}" if hold_ms else "") + ("_nn0" if cfg.get("nn", 1) == 0 else "") + ".npy"), r)
     return res

@@ -7,7 +7,7 @@ Proposal, to be confirmed by you; desk-tested only (host 1:1 vs `controller_pid.
 
 | # | Step | Exact action | Pass criterion |
 |---|---|---|---|
-| S1 | Flash | `BIN=~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v2_fbl_stockinner_nn4_candidate.bin` (sha256 `b13bf8ecc21ed58311621a5a74671892877963316e80e4558888588ff9463125`, 583 980 B; defaults inner 1, nn_en 1, trained 4-neuron network linked); `sha256sum $BIN`; `cfloader flash $BIN stm32-fw -w <uri>` on cf5 and cf_second, power-cycle | hash matches, flash OK |
+| S1 | Flash | `BIN=~/Desktop/flying_robot_course/flying_drone_stack/firmware_app/build_artifacts/study_tree_v2_fbl_stockinner_nn4_full_candidate.bin` (sha256 `e3593a6f39a42a61789c5631784ae691d2ecb964f3a6d88bf14d02af6b673a09`, 583 980 B; defaults inner 1, nn_en 1, trained 4-neuron network linked); `sha256sum $BIN`; `cfloader flash $BIN stm32-fw -w <uri>` on cf5 and cf_second, power-cycle | hash matches, flash OK |
 | S2 | Bench (CS2 stopped) | `fbl_bench_check.py <uri>` on both; `fbl_init_survival_check.py radio://0/80/2M/E7E7E7BB02` | `ALL PASS`; prints `stock-inner image params present: ['inner', 'abg_on_new', 'nn_en']`; boot values inner 1, nn_en 1, abg_on_new 0 |
 | S3 | Yaml | crazyswarm2 (lab PC `~/georg/ros2_ws/src/crazyswarm2`): `git fetch origin && git checkout study_FBL_stock` (pushed 2026-10-24), rebuild, `lab_check_strategy.py`; optionally copy `study/study_manifest_FBL_stock_candidate.json` over `study_manifest.json` | `ctrlFbl.en 1`, `inner 1`, `cd 0.55`, no gains / preset written |
 | S4 | Readback after launch | `fbl_bench_check.py <cf5 uri> --readback` | `FBL ON … gains: preset 1 (ours), inner loop: STOCK rate PID (inner 1)` |

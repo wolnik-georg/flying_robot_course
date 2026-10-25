@@ -7,7 +7,7 @@ GROUND ONLY, motors must not be commanded: no position setpoint is sent. CS2 mus
   python3 flying_drone_stack/tools/fbl_bench_check.py <uri> --readback   # read-only: prints en, preset, gains, indi, rnn.en and the strategy they mean
   python3 flying_drone_stack/tools/fbl_bench_check.py <uri> --post-flight  # after a flight, drone still powered, CS2 stopped: steps, faults, tripped, active, thrust;
                                                                           #   FBL ran only if steps > 0 (the Omar thrust model does not describe FBL)
-Expected at boot: ctrlFbl.en 0, preset 1, (stock-inner image 2026-10-25: inner 1, nn_en 1, abg_on_new 0), gains kp 14/11.25, kv 9.5/5.4, ki 12/12, kr 59.5/35 (preset 0 = the authors' gains 56/45, 38/21.6, 48/3, 238/140).
+Expected at boot: ctrlFbl.en 0, preset 1, (stock-inner image 2026-10-25: inner 1, nn_en 1, abg_on_new 0; z_on -10 / z_off -20 = FBL the whole flight, tilt_max 180, w_max 0), gains kp 14/11.25, kv 9.5/5.4, ki 12/12, kr 59.5/35 (preset 0 = the authors' gains 56/45, 38/21.6, 48/3, 238/140).
 Exit code 0 only if every check passes."""
 import sys, time
 import cflib.crtp

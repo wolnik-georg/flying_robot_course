@@ -28,6 +28,6 @@ Simulation numbers to compare with (A1 hold, calibrated plant): z RMS 3.2 cm, A8
 |---|---|---|
 | yaw | < 0.3° with a constant torque, < 1.3° with a slowly varying one (10-24 flights: up to 66°) | yaw still drifts: check the readback says `inner 1` (S4 in `LAB_PLAN.md`); with `inner 1` the yaw setpoint is held by the stock yaw PID |
 | steady lateral offset | < 0.3 cm (10-24: 15–80 cm rms y error on A4 / A8) | slow drift remains: `review_fbl_lateral_chain.py` — the rate error should have no steady part now |
-| tilt at the switch-on (0.15 m) | < 1.4° | transient: raise `ctrlFbl.z_on` |
+| takeoff / landing (FBL flies the whole flight since 2026-10-25) | tilt < 1° in the first second and during the landing; at the end of the landing ramp still 0–13 mm above the floor (soft) | transient at takeoff: the 10-24 handover can be restored with `ctrlFbl.z_on 0.15`, `z_off 0.10` |
 | `ctrlOmarIndi.torque*` | = the torque the legacy commands produce (logging only) | — |
 | A1 0.8–1.0 Hz xyz oscillation, A4 0.125 trips | not reproduced in simulation (neither inner loop) | watch for them; fall back to `inner 0` only for comparison |
