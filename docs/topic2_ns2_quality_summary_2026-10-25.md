@@ -59,7 +59,18 @@ Plan agreed 2026-10-22: `docs/ns2_quality_plan_2026-10-22.md`.
 | **pooled** | | | **1.03 → no material overfit** |
 
 - INDI pair (S1 → S3): NS2 helps in A8 (54 → 57 %) and A4 0.075 (10 → 51 %), not in A1 (S1 already at −0.9 cm) and A4 0.125 (same as seen).
-- NN vs INDI at the unseen settings: corr 0.93–0.97 under S0.
+- NN vs INDI at the unseen settings (`experiments/results/unseen_nn_vs_indi_2026-10-23/summary_z_5Hz.csv`, label = onboard INDI estimate smoothed zero-delay at 5 Hz):
+
+| Cell (z, in gate) | flights | corr | lag [ms] | slope | mean NN / label [m/s²] |
+|---|---|---|---|---|---|
+| A1 S0 | 3 | 0.95 | -4 | 1.20 | -1.30 / -1.66 |
+| A1 S1 | 3 | 0.84 | -32 | 0.86 | -2.18 / -2.79 |
+| A4 S0 | 4 | 0.93 | -6 | 1.05 | -1.11 / -1.77 |
+| A4 S1 | 4 | 0.68 | 2 | 0.70 | -0.27 / -0.70 |
+| A8 S0 | 3 | 0.94 | 0 | 0.90 | -1.15 / -1.61 |
+| A8 S1 | 3 | 0.95 | 0 | 0.99 | -1.16 / -1.53 |
+
+- Under S0 and in A8 the agreement is high (corr 0.93–0.95). Weaker under INDI in A1 (0.84, −32 ms) and A4 (0.68). **The NN's mean level is below the label** in most cells (e.g. A1 S0 −1.30 vs −1.66, A4 S0 −1.11 vs −1.77 m/s²): correlation and slope are good, the offset is not; the meeting doc reports only the S0 correlation. To be judged in the review.
 
 ## Decisions taken
 - ns2_v2 stays for the study (no v3).
