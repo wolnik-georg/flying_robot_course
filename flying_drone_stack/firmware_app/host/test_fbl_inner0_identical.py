@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate 1 (second part) of the FBL stock inner loop: with ctrlFbl.inner = 0 (default) FBL and the S0-S3 paths of controller 9 must be BIT-IDENTICAL
+"""Gate 1 (second part) of the FBL stock inner loop: with ctrlFbl.inner = 0, nn_en = 0 (the 10-24 controller; set explicitly, newer builds default to 1) FBL and the S0-S3 paths of controller 9 must be BIT-IDENTICAL
 to the build before the inner-loop change. Deterministic input sequences (state, gyro, setpoint, one peer above for the FBL residual and NS2) go into
 controllerOmarIndi; every tick's control output (mode, thrustSi, torque, legacy roll / pitch / yaw / thrust) and the FBL / Omar log state are hashed.
 Each build runs in its own process (two same-named cffirmware modules must not share a process).
@@ -19,8 +19,10 @@ def worker(build, case):
     import cffirmware as fw
     c = CASES[case]; rng = np.random.default_rng(7); n = 4000
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.indi = c["indi"]
-    fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = c["rnn"]
+    fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = c["rnn"]; fw.oot_set_peer_count(1)   # peer feed active (FBL residual and NS2 see the peer)
     omar.fbl.en = c["fbl"]; omar.fbl.c_d = 0.55
+    for k in ("inner", "nn_en", "abg_on_new"):                # the 10-24 controller: newer builds default to inner 1 / nn_en 1, set the old path explicitly
+        if hasattr(omar.fbl, k): setattr(omar.fbl, k, 0)
     if "preset" in c:
         omar.fbl.kp_xy, omar.fbl.kp_z, omar.fbl.kv_xy, omar.fbl.kv_z, omar.fbl.ki_xy, omar.fbl.ki_z, omar.fbl.kr_xy, omar.fbl.kr_z = 56.0, 45.0, 38.0, 21.6, 48.0, 3.0, 238.0, 140.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()

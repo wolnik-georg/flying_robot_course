@@ -155,7 +155,7 @@ Gains identified from the logs (flown mass 0.0427 kg, recovered exactly from thr
 
 ## 8. What 1:1 with the authors' hardware controller requires
 
-**Status 2026-10-24 (evening): a, b, e (α-β-γ option), the network part of c and the preset-0 part of d done on the desk (`STOCK_INNER_LOOP_2026-10-24.md`); nothing flashed or flown.**
+**Status 2026-10-25: a, b, c (ROM + trained 4-neuron network, linked, defaults on), e (α-β-γ: per tick matches the bundle) and the preset-0 part of d done on the desk (`STOCK_INNER_LOOP_2026-10-24.md`); preset 0 and C_D 0.236 are flown in the next lab session; nothing flashed or flown yet.**
 
 | # | Change | Possible? |
 |---|---|---|

@@ -40,4 +40,10 @@ torch.manual_seed(4); ode4 = b.nnm.ODEFunc(); ode4.net_f = torch.nn.Sequential(t
 for m in ode4.net_f.modules():
     if isinstance(m, torch.nn.Linear): torch.nn.init.normal_(m.weight, 0, 1.0); torch.nn.init.normal_(m.bias, 0, 0.5)
 write(HERE / "nn_vectors_h4.txt", ode4, 32)
+
+# (c) the trained flight network (KNODE on our S0 flights, 4 neurons, C_D 0.55; 2026-10-25) -> nn_vectors_trained.txt
+ck = torch.load(HERE.parents[1] / "out/stage4/real_v0/knode_s0977_h4.pth", map_location="cpu", weights_only=False)
+odet = b.nnm.ODEFunc(); h = ck.get("hidden_f", 9)
+odet.net_f = torch.nn.Sequential(torch.nn.Linear(2, h), torch.nn.Tanh(), torch.nn.Linear(h, 3)); odet.load_state_dict(ck["state_dict"])
+write(HERE / "nn_vectors_trained.txt", odet, 33)
 print("done")

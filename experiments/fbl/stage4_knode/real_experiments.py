@@ -63,7 +63,8 @@ def score(pred, label, mask=None):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--out", type=Path, required=True); ap.add_argument("--stage", default="all"); ap.add_argument("--iters", type=int, default=1500)
-    ap.add_argument("--thrust", default="cmd"); ap.add_argument("--thrust-scale", type=float, default=1.0); ap.add_argument("--stride", type=int, default=5); ap.add_argument("--tag", default="base"); ap.add_argument("--loss", default="force", choices=["force", "vel"]); ap.add_argument("--lr", type=float, default=1e-2); a = ap.parse_args()
+    ap.add_argument("--thrust", default="cmd"); ap.add_argument("--thrust-scale", type=float, default=1.0); ap.add_argument("--stride", type=int, default=5); ap.add_argument("--tag", default="base"); ap.add_argument("--loss", default="force", choices=["force", "vel"]); ap.add_argument("--lr", type=float, default=1e-2)
+    ap.add_argument("--hidden-f", type=int, default=None, help="force-net size (paper hardware: 4; default = the bundle's 9)"); a = ap.parse_args()
     global WX_FORCE
     if a.loss == "vel": WX_FORCE = torch.tensor([0.0] * 3 + [1.0] * 3 + [0.0] * 7)          # velocity only (the residual force acts on v; p and q are noise here)
     out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True)
@@ -86,9 +87,9 @@ def main():
     print("C_D* (min validation loss) =", c_star, flush=True)
     if a.stage == "cd": json.dump(res, open(out / "results.json", "w"), indent=1); return
     # E2: force-only KNODE training at C_D*
-    b, ode = setup_ode(c_star, vehicle=OUR, train_torque_net=False)
+    b, ode = setup_ode(c_star, vehicle=OUR, train_torque_net=False, hidden_f=a.hidden_f)
     t0 = time.time(); st, hist = train_sgd(ode, TR["y0"], TR["target"], TR["dt"], val=(VA["y0"], VA["target"]), iters=a.iters, wx=WX_FORCE, lr=a.lr)
-    torch.save({"state_dict": ode.state_dict(), "c_d": c_star, "thrust": a.thrust, "thrust_scale": a.thrust_scale, "stride": a.stride}, out / f"knode_{a.tag}.pth")
+    torch.save({"state_dict": ode.state_dict(), "c_d": c_star, "thrust": a.thrust, "thrust_scale": a.thrust_scale, "stride": a.stride, "hidden_f": a.hidden_f or 9}, out / f"knode_{a.tag}.pth")
     rp = residual_pred(b, ode, TE["y0"], c_star); gate = (TE["r"] < 0.2)
     zero = np.zeros_like(TE["label"]); rom = None
     b2, ode0 = setup_ode(c_star, vehicle=OUR)

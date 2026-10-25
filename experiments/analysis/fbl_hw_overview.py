@@ -11,17 +11,22 @@ from pathlib import Path
 import numpy as np, pandas as pd
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 REPO = Path(__file__).resolve().parents[2]
-ap = argparse.ArgumentParser(); ap.add_argument("--out", type=Path, required=True); a = ap.parse_args(); out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True)
-FBL = ["bank_fbl2_2026-10-24", "bank_fbl3_2026-10-24"]; S0DAY = "bank_fbl_2026-10-24"
+ap = argparse.ArgumentParser(); ap.add_argument("--out", type=Path, required=True); ap.add_argument("--fbl-banks", nargs="*", default=[], help="further FBL banks (labelled from meta.json controller_variant)"); a = ap.parse_args(); out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True)
+FBL = ["bank_fbl2_2026-10-24", "bank_fbl3_2026-10-24"] + list(a.fbl_banks); S0DAY = "bank_fbl_2026-10-24"
 REF = pd.read_csv(REPO / "experiments/results/unseen_block_2026-10-23/per_flight.csv")
 BCOL = {"preset 1": "#9467bd", "rate x0.5 (_kr)": "#ff7f0e", "xy x0.7 (_kp)": "#2ca02c"}
 SCOL = {"S0": "#7f7f7f", "S1": "#1f77b4", "S2": "#17becf", "S3": "#d62728", "S0 same day": "#bcbd22"}
 CELLS = ["A1", "A4 0.075", "A4 0.125", "A8"]
 
-def block(stamp):
-    # identified from the logs (rate gains from torque vs rate error, position gains from the logged body rates; fbl_replay_check.py), NOT from the time:
-    # the time-based split put 14-44 into _kr (it flew preset 1) and 14-54 into _kp (it flew _kr)
-    return BLOCK[stamp]
+def block(stamp, meta=None):
+    # 10-24 flights: identified from the logs (rate gains from torque vs rate error, position gains from the logged body rates; fbl_replay_check.py), NOT from the time
+    # (the time-based split put 14-44 into _kr and 14-54 into _kp). Later flights: from meta.json controller_variant (run_formation, since 2026-10-25).
+    if stamp in BLOCK: return BLOCK[stamp]
+    cv = ((meta or {}).get("controller_variant") or {}).get("cf5") or {}
+    g = lambda k: cv.get("ctrlFbl_" + k)
+    if g("inner") is None or g("inner") != g("inner"): return "FBL (variant unknown)"
+    return f"inner {int(g('inner'))} p{int(g('preset'))} nn{int(g('nn_en'))} cd {float(g('cd')):g}"
+EXTRA_COL = ["#1baf7a", "#eda100", "#e87ba4", "#008300", "#8c564b", "#17a2b8"]      # further FBL variants (labelled from meta.json)
 BLOCK = {**{s: "preset 1" for s in ("14-25-32", "14-27-01", "14-29-07", "14-30-39", "14-44-24")}, **{s: "rate x0.5 (_kr)" for s in ("14-46-44", "14-50-08", "14-54-00")},
          **{s: "xy x0.7 (_kp)" for s in ("14-55-45", "14-57-11", "14-59-53", "15-01-21")}}
 
@@ -46,7 +51,7 @@ def manifest(bank):
 
 flights = []                                                    # (label, group, cell, stamp, data)
 for b in FBL:
-    for fl, meta in manifest(b): flights.append(dict(kind="FBL", group=block(fl["stamp"]), cell=cell_of(fl["scenario"], meta), stamp=fl["stamp"], d=load(fl["path"], True)))
+    for fl, meta in manifest(b): flights.append(dict(kind="FBL", group=block(fl["stamp"], meta), cell=cell_of(fl["scenario"], meta), stamp=fl["stamp"], d=load(fl["path"], True)))
 for fl, meta in manifest(S0DAY): flights.append(dict(kind="ref", group="S0 same day", cell=cell_of(fl["scenario"], meta), stamp=fl["stamp"], d=load(fl["path"], False)))
 for b in REF.bank.unique():
     strat = dict(zip(REF.folder, REF.strategy))
@@ -58,7 +63,7 @@ rows = []
 for f in flights:
     d, m = f["d"], f["d"]["m"]
     rows.append(dict(kind=f["kind"], group=f["group"], cell=f["cell"], stamp=f["stamp"], tripped=d["trip_t"] is not None, trip_t=d["trip_t"], dur_s=float(m.sum() * np.median(np.diff(d["t"]))),
-                     ex_rms_cm=100 * rms(d["ex"][m]), ey_rms_cm=100 * rms(d["ey"][m]), ez_rms_cm=100 * rms(d["ez"][m]), exy_max_cm=100 * float(np.nanmax(np.hypot(d["ex"], d["ey"])[m])),
+                     ex_rms_cm=100 * rms(d["ex"][m]), ey_rms_cm=100 * rms(d["ey"][m]), ez_rms_cm=100 * rms(d["ez"][m]), xyz_rms_cm=100 * float(np.sqrt(np.nanmean((d["ex"] ** 2 + d["ey"] ** 2 + d["ez"] ** 2)[m]))), z_max_cm=100 * float(np.nanmax(np.abs(d["ez"][m]))), exy_max_cm=100 * float(np.nanmax(np.hypot(d["ex"], d["ey"])[m])),
                      roll_rms=rms(d["roll"][m]), pitch_rms=rms(d["pitch"][m]), yaw_mean=float(np.nanmean(d["yaw"][m])), yaw_absmax=float(np.nanmax(np.abs(d["yaw"][m])))))
 T = pd.DataFrame(rows).sort_values(["cell", "kind", "group", "stamp"]); T.to_csv(out / "per_flight_errors.csv", index=False)
 
@@ -83,6 +88,7 @@ for cell in CELLS:
 
 # ---------- summary: per-flight values per cell and group ----------
 MET = [("ex_rms_cm", "x error rms [cm]"), ("ey_rms_cm", "y error rms [cm]"), ("ez_rms_cm", "z error rms [cm]"), ("roll_rms", "roll rms [deg]"), ("pitch_rms", "pitch rms [deg]"), ("yaw_mean", "yaw mean [deg] (cmd 0)")]
+NEWG = sorted({f["group"] for f in flights if f["kind"] == "FBL" and f["group"] not in BCOL}); BCOL.update({g: EXTRA_COL[i % len(EXTRA_COL)] for i, g in enumerate(NEWG)})
 GROUPS = ["S0", "S1", "S2", "S3", "S0 same day"] + list(BCOL); GCOL = {**SCOL, **BCOL}
 fig, axs = plt.subplots(len(MET), len(CELLS), figsize=(14, 13), sharex=True)
 for j, cell in enumerate(CELLS):
@@ -96,7 +102,7 @@ for j, cell in enumerate(CELLS):
         ax.grid(alpha=0.3, axis="y"); ax.axhline(0, c="k", lw=0.5)
         if j == 0: ax.set_ylabel(yl, fontsize=8)
         if i == 0: ax.set_title(cell, fontsize=9)
-    axs[-1, j].set_xticks(range(len(GROUPS))); axs[-1, j].set_xticklabels(["S0", "S1", "S2", "S3", "S0\nsame day", "FBL\npreset1", "FBL\n_kr", "FBL\n_kp"], fontsize=7)
+    axs[-1, j].set_xticks(range(len(GROUPS))); axs[-1, j].set_xticklabels(["S0", "S1", "S2", "S3", "S0\nsame day", "FBL\npreset1", "FBL\n_kr", "FBL\n_kp"] + [g.replace(" p", "\np") for g in NEWG], fontsize=7)
 fig.suptitle("Per flight (dots; red x = tripped, value up to the trip), bar = mean. S0-S3 = unseen block 10-23, S0 same day + FBL = 10-24", fontsize=9)
 fig.tight_layout(); fig.savefig(out / "summary_per_flight.png", dpi=120); plt.close(fig)
 

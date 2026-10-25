@@ -23,6 +23,8 @@ def run(scen, bias=False, rateI=False, yawA=False, seed=0):
     sc = C.FSC.A1(dz=0.45, hold=15.0) if scen == "A1" else C.FSC.A4(dz=0.4, offset=0.125, axis='y', motion='line', speed=0.35); anchor = np.array([0, 0, 0.5]); T = min(r.curve.duration for r in sc.robots)
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     for k, v in GAINS.items(): setattr(omar.fbl, k, v)
+    fw.oot_set_peer_count(1)       # host peer feed (was missing before 2026-10-25: residual off)
+    omar.fbl.inner = 0; omar.fbl.nn_en = 0   # this script emulates its variants on top of the flown Eq. 19 loop (firmware default is inner 1 since 2026-10-25)
     omar.fbl.en = 1; fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 0; omar.fbl.c_d = 0.55
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0

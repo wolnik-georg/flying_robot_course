@@ -6,7 +6,7 @@ bindings), in a rigid-body plant of our vehicle:
     u / 65535 * THRUST_MAX (force-linear uint16, battery compensation assumed ideal) -> thrust / torque with the firmware ARM_LENGTH / THRUST2TORQUE;
   - command delay 4 ms, first-order motor lag per motor (44 ms nominal = GAIN_TUNING_2026-10-20; sweep 15 / 30 / 60), gyro / position / velocity noise;
   - takeoff from the ground under the Omar controller (smooth ramp to the scenario start), FBL switches on at z_on 0.15 m (as on hardware);
-  - downwash truth NS2 v2 (z only) under a scripted top vehicle; FBL residual = ROM table, C_D 0.55; peer feed every 10 ms;
+  - downwash truth NS2 v2 (z only) under a scripted top vehicle; FBL residual = ROM table, C_D 0.55, + trained 4-neuron force net (nn_en 1, inner 1 runs; nn=0 runs = ROM only); peer feed every 10 ms (oot_set_peer_count 1, missing before 2026-10-25);
   - optional EKF-like state hold (new state every 4-8 ms) with ctrlFbl.abg_on_new 0 / 1;
   - body-torque disturbance: none, constant (+80 / -300 / -30 uN m, typical cf5 need, review §a #29), slowly varying (sign flips over the flight,
     amplitudes 300 / 400 / 60 uN m = the S0 range).
@@ -52,7 +52,9 @@ def run(cfg):
     T_TO, T_HOLD = 3.0, 1.5; T = T_TO + T_HOLD + T_sc
     omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.mass = M; omar.indi = 0
     for k, v in PRESET[preset].items(): setattr(omar.fbl, k, v)
-    omar.fbl.en = 1; omar.fbl.inner = inner; omar.fbl.abg_on_new = abg; omar.fbl.c_d = 0.55; fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 0
+    fw.oot_set_peer_count(1)       # host peer feed: without it FBL never sees the top drone (residual off); fixed 2026-10-25
+    omar.fbl.en = 1; omar.fbl.inner = inner; omar.fbl.abg_on_new = abg; omar.fbl.nn_en = cfg.get("nn", 1 if inner == 1 else 0);   # inner 0 = the 10-24 controller (ROM only)
+    omar.fbl.c_d = 0.55; fw.cvar.g_rnn_div = 10; fw.cvar.g_rnn_en = 0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
     p_start = C.kin(sc, 0, 0.0, anchor)[0]; x = np.array([p_start[0], p_start[1], 0.0]); v = np.zeros(3); q = np.array([0, 0, 0, 1.0]); w = np.zeros(3)
@@ -106,8 +108,9 @@ def run(cfg):
                yaw_absmax_deg=float(np.abs(r[ts_ > 0, 4]).max()) if (ts_ > 0).any() else float("nan"), tilt_rms_deg=float(np.sqrt(np.mean(r[win, 5] ** 2))) if win.any() else float("nan"),
                tilt_max_deg=float(r[ts_ > 0, 5].max()) if (ts_ > 0).any() else float("nan"), t_on_s=t_on, tilt_handover_deg=tilt_ho, tripped=bool(r[:, 7].max()),
                fbl_active_pct=100 * float(r[ts_ > 0, 6].mean()) if (ts_ > 0).any() else 0.0, completed=bool(ok))
+    res["nn"] = int(omar.fbl.nn_en)
     res["stable"] = bool(ok and not res["tripped"] and res["tilt_max_deg"] < 45 and res["fbl_active_pct"] > 99)
-    np.save(OUT / "stock_inner_traces" / (f"{scen}_i{inner}_p{preset}_{dist}_lag{lag_ms}_{jname}" + (f"_hold_abg{abg}" if hold_ms else "") + ".npy"), r)
+    np.save(OUT / "stock_inner_traces" / (f"{scen}_i{inner}_p{preset}_{dist}_lag{lag_ms}_{jname}" + (f"_hold_abg{abg}" if hold_ms else "") + ("_nn0" if cfg.get("nn", 1) == 0 else "") + ".npy"), r)
     return res
 
 
@@ -120,12 +123,13 @@ if __name__ == "__main__":
     cfgs += [dict(base, scen=s, inner=1, preset=0, dist="const", lag=l) for s in ("A1", "A4", "A8") for l in (18, 21, 24, 27)]     # lag margin of preset 0
     cfgs += [dict(base, scen=s, inner=i, preset=1, dist="const", J="omar") for s in ("A1", "A4", "A8") for i in (1, 0)]
     cfgs += [dict(base, scen=s, inner=i, preset=1, dist="const", hold=6, abg=b) for s in ("A1", "A4", "A8") for i in (1, 0) for b in (0, 1)]
+    cfgs += [dict(base, scen=s, inner=1, preset=p, dist="const", nn=0) for s in ("A1", "A4", "A8") for p in (1, 0)]      # network off (physics model only)
     if a.quick: cfgs = [dict(base, scen="A1", inner=1, preset=1, dist="const")]
     t0 = time.time()
     with Pool(min(a.procs, len(cfgs))) as pool: res = pool.map(run, cfgs)
     json.dump(res, open(OUT / ("stock_inner_sim_quick.json" if a.quick else "stock_inner_sim.json"), "w"), indent=1)
     for r in res:
-        print(f"{r['scen']} inner {r['inner']} preset {r['preset']} {r['dist']:5s} lag {r['lag']:2d} J {r['J']:4s} hold {r.get('hold', 0)} abg {r.get('abg', 0)} | x {r['x_rms_cm']:6.2f} y {r['y_rms_cm']:6.2f} z {r['z_rms_cm']:6.2f} cm, "
+        print(f"{r['scen']} inner {r['inner']} preset {r['preset']} {r['dist']:5s} lag {r['lag']:2d} J {r['J']:4s} hold {r.get('hold', 0)} abg {r.get('abg', 0)} nn {r.get('nn', 1)} | x {r['x_rms_cm']:6.2f} y {r['y_rms_cm']:6.2f} z {r['z_rms_cm']:6.2f} cm, "
               f"steady xy {r['xy_steady_cm']:6.2f} cm, |yaw| max {r['yaw_absmax_deg']:6.2f}, tilt rms {r['tilt_rms_deg']:5.2f} max {r['tilt_max_deg']:6.1f}, handover tilt {r['tilt_handover_deg']:5.1f} "
               f"| tripped {r['tripped']} stable {r['stable']}", flush=True)
     print(f"{len(res)} runs, {time.time() - t0:.0f} s")

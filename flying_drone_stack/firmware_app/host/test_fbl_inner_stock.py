@@ -56,7 +56,7 @@ def motors(ctl):
 
 
 def run_fbl(s, n):
-    omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.indi = 0; omar.fbl.en = 1; omar.fbl.inner = 1; omar.fbl.c_d = 0.0
+    omar = fw.controllerOmarIndi_t(); fw.controllerOmarIndiInit(omar); omar.indi = 0; omar.fbl.en = 1; omar.fbl.inner = 1; omar.fbl.nn_en = 0; omar.fbl.c_d = 0.0
     sp, sens, st, ctl = fw.setpoint_t(), fw.sensorData_t(), fw.state_t(), fw.control_t()
     sp.mode.x = sp.mode.y = sp.mode.z = fw.modeAbs; sp.mode.yaw = fw.modeAbs; sp.attitude.yaw = 0.0
     out = []; rng = np.random.default_rng(99)

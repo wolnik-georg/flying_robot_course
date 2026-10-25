@@ -10,16 +10,20 @@ from scipy.spatial.transform import Rotation as Rot
 import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "flying_drone_stack/tools")); import decode_usd_log as D  # noqa: E402
-ap = argparse.ArgumentParser(); ap.add_argument("--out", type=Path, required=True); a = ap.parse_args(); out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True)
+ap = argparse.ArgumentParser(); ap.add_argument("--out", type=Path, required=True); ap.add_argument("--fbl-banks", nargs="*", default=[]); a = ap.parse_args(); out = a.out if a.out.is_absolute() else REPO / a.out; out.mkdir(parents=True, exist_ok=True)
 G = 9.81; M = 0.043
 GA = {"preset 1": (14, 9.5, 12), "rate x0.5 (_kr)": (14, 9.5, 12), "xy x0.7 (_kp)": (9.8, 6.65, 8.4)}
 BLOCK = {**{s: "preset 1" for s in ("14-25-32", "14-27-01", "14-29-07", "14-30-39", "14-44-24")}, **{s: "rate x0.5 (_kr)" for s in ("14-46-44", "14-50-08", "14-54-00")},
          **{s: "xy x0.7 (_kp)" for s in ("14-55-45", "14-57-11", "14-59-53", "15-01-21")}}   # identified from the logs (fbl_replay_check.py)
 rows = []; tr = {}
-for b in ["bank_fbl2_2026-10-24", "bank_fbl3_2026-10-24"]:
+for b in ["bank_fbl2_2026-10-24", "bank_fbl3_2026-10-24"] + list(a.fbl_banks):
     for fl in json.load(open(REPO / "experiments/logs" / b / "training_manifest.json"))["flights"]:
         meta = json.load(open(REPO / "experiments/logs" / f"{fl['scenario']}_{fl['date']}_{fl['stamp']}.meta.json")); cell = f"A4 {meta['params'].get('offset'):g}" if fl["scenario"] == "A4" else fl["scenario"]
         d = D.load(str(REPO / "experiments/logs/usd_raw" / fl["cf5"])); on = (d["fbl_active"] > 0) & (d["fbl_tripped"] == 0); n = int(np.argmax(~on)) if (~on).any() else len(on)
+        if fl["stamp"] not in BLOCK:                               # later flights: gains and label from meta.json controller_variant (run_formation, since 2026-10-25)
+            cv = (meta.get("controller_variant") or {}).get("cf5") or {}
+            BLOCK[fl["stamp"]] = f"inner {int(cv['ctrlFbl_inner'])} p{int(cv['ctrlFbl_preset'])} nn{int(cv['ctrlFbl_nn_en'])}"
+            GA[BLOCK[fl["stamp"]]] = (float(cv["ctrlFbl_kp_xy"]), float(cv["ctrlFbl_kv_xy"]), float(cv["ctrlFbl_ki_xy"]))
         kp, kv, ki = GA[BLOCK[fl["stamp"]]]; t = d["t"][:n]
         zd = Rot.from_euler("ZYX", np.c_[d["omar_rpyd_z"], d["omar_rpyd_y"], d["omar_rpyd_x"]][:n]).as_matrix()[:, :, 2]        # quat2rpy: R = Rz Ry Rx
         Fz = d["fbl_acc_z"][:n] - d["fbl_res_az"][:n] + G; acc = np.c_[zd[:, 0] / zd[:, 2] * Fz, zd[:, 1] / zd[:, 2] * Fz]

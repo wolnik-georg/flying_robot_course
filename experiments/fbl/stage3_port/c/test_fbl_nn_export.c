@@ -3,10 +3,11 @@
 #include <math.h>
 #include <stdio.h>
 #include "fbl_residual.h"
-int main(void)
+int main(int argc, char **argv)
 {
+  const char *vec = argc > 1 ? argv[1] : "nn_vectors_sample.txt";
   if (&fbl_nn_weights == 0) { printf("fbl_nn_weights not linked\n"); return 2; }
-  FILE *f = fopen("nn_vectors_sample.txt", "r"); if (!f) return 2;
+  FILE *f = fopen(vec, "r"); if (!f) { printf("%s missing\n", vec); return 2; }
   int nh, n; float dummy; if (fscanf(f, "%d", &nh) != 1) return 2;
   if (nh != fbl_nn_weights.nh) { printf("neurons %d vs %d\n", nh, fbl_nn_weights.nh); return 1; }
   for (int k = 0; k < nh * 2 + nh + 3 * nh + 3; k++) if (fscanf(f, "%f", &dummy) != 1) return 2;
@@ -23,7 +24,7 @@ int main(void)
       if (rj > wj) wj = rj;
     }
   }
-  printf("exported sample weights (%d neurons) vs bundle, %d states: worst / tolerance acc %.3f, jerk %.3f\n", nh, n, wa, wj);
+  printf("%s: linked weights (%d neurons) vs bundle, %d states: worst / tolerance acc %.3f, jerk %.3f\n", vec, nh, n, wa, wj);
   printf((wa <= 1.0 && wj <= 1.0) ? "RESULT: ALL PASSED\n" : "RESULT: FAILED\n");
   return (wa <= 1.0 && wj <= 1.0) ? 0 : 1;
 }

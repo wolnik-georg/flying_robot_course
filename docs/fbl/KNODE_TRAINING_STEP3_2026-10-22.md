@@ -21,3 +21,5 @@ Train = 42 Omar-tree S0 flights of the NS2 collection (old bottom vehicle), vali
 - Limits: one split and seed, 9 neurons only (the paper's hardware net has 4), label = INDI residual (IMU based), S0 and S1 test flights mixed, only strides 5 and 10 tried; the supervised fit of Stage 1 was not re-run on this split.
 
 Code: `experiments/fbl/stage4_knode/` (`real_data.py`, `real_experiments.py`, `ceiling.py`, `plot_real.py`), results `experiments/fbl/out/stage4/real_v0/` (+ `ceiling.json`).
+
+**Update 2026-10-25:** 4-neuron force net (the paper's hardware size) trained with the same split (`real_experiments.py --hidden-f 4 --tag s0977_h4`): C_D 0.55, validation loss −1.6 % vs ROM, test R² 0.572 (ROM 0.573); linked into the firmware as the FBL network (`STOCK_INNER_LOOP_2026-10-24.md` §3). Note: the `final_val` field in `results.json` is wrong (about 2× the ROM loss); recomputed directly, the numbers in the table above hold.
