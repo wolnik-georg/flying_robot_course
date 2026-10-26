@@ -24,6 +24,7 @@ def block(stamp, meta=None):
     if stamp in BLOCK: return BLOCK[stamp]
     cv = ((meta or {}).get("controller_variant") or {}).get("cf5") or {}
     g = lambda k: cv.get("ctrlFbl_" + k)
+    if g("inner") is None or g("inner") != g("inner"): cv = ((meta or {}).get("controller_variant_manual") or {}).get("cf5") or {}   # recorded values NaN (2026-10-26): lab-confirmed record
     if g("inner") is None or g("inner") != g("inner"): return "FBL (variant unknown)"
     return f"inner {int(g('inner'))} p{int(g('preset'))} nn{int(g('nn_en'))} cd {float(g('cd')):g}"
 EXTRA_COL = ["#1baf7a", "#eda100", "#e87ba4", "#008300", "#8c564b", "#17a2b8"]      # further FBL variants (labelled from meta.json)
@@ -58,10 +59,13 @@ for b in REF.bank.unique():
     for fl, meta in manifest(b):
         if fl["folder"] in strat: flights.append(dict(kind="ref", group=strat[fl["folder"]], cell=cell_of(fl["scenario"], meta), stamp=fl["stamp"], d=load(fl["path"], False)))
 
+NEWG = sorted({f["group"] for f in flights if f["kind"] == "FBL" and f["group"] not in BCOL}); BCOL.update({g: EXTRA_COL[i % len(EXTRA_COL)] for i, g in enumerate(NEWG)})
 rms = lambda v: float(np.sqrt(np.nanmean(v ** 2)))
 rows = []
 for f in flights:
     d, m = f["d"], f["d"]["m"]
+    if not m.any():      # crashed before the scenario window (2026-10-26 preset 0): no tracking metrics, kept in the table with dur_s 0
+        rows.append(dict(kind=f["kind"], group=f["group"], cell=f["cell"], stamp=f["stamp"], tripped=d["trip_t"] is not None, trip_t=d["trip_t"], dur_s=0.0)); continue
     rows.append(dict(kind=f["kind"], group=f["group"], cell=f["cell"], stamp=f["stamp"], tripped=d["trip_t"] is not None, trip_t=d["trip_t"], dur_s=float(m.sum() * np.median(np.diff(d["t"]))),
                      ex_rms_cm=100 * rms(d["ex"][m]), ey_rms_cm=100 * rms(d["ey"][m]), ez_rms_cm=100 * rms(d["ez"][m]), xyz_rms_cm=100 * float(np.sqrt(np.nanmean((d["ex"] ** 2 + d["ey"] ** 2 + d["ez"] ** 2)[m]))), z_max_cm=100 * float(np.nanmax(np.abs(d["ez"][m]))), exy_max_cm=100 * float(np.nanmax(np.hypot(d["ex"], d["ey"])[m])),
                      roll_rms=rms(d["roll"][m]), pitch_rms=rms(d["pitch"][m]), yaw_mean=float(np.nanmean(d["yaw"][m])), yaw_absmax=float(np.nanmax(np.abs(d["yaw"][m])))))
@@ -88,7 +92,6 @@ for cell in CELLS:
 
 # ---------- summary: per-flight values per cell and group ----------
 MET = [("ex_rms_cm", "x error rms [cm]"), ("ey_rms_cm", "y error rms [cm]"), ("ez_rms_cm", "z error rms [cm]"), ("roll_rms", "roll rms [deg]"), ("pitch_rms", "pitch rms [deg]"), ("yaw_mean", "yaw mean [deg] (cmd 0)")]
-NEWG = sorted({f["group"] for f in flights if f["kind"] == "FBL" and f["group"] not in BCOL}); BCOL.update({g: EXTRA_COL[i % len(EXTRA_COL)] for i, g in enumerate(NEWG)})
 GROUPS = ["S0", "S1", "S2", "S3", "S0 same day"] + list(BCOL); GCOL = {**SCOL, **BCOL}
 fig, axs = plt.subplots(len(MET), len(CELLS), figsize=(14, 13), sharex=True)
 for j, cell in enumerate(CELLS):
