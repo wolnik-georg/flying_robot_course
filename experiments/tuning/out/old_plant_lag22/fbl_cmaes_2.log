@@ -1,0 +1,75 @@
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.2.6 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "/home/georg/Desktop/flying_robot_course/experiments/tuning/run_job.py", line 23, in <module>
+    best = optimize.run_cmaes(job, pool, a.budget, a.seed, a.pop, lp) if a.method == 'cmaes' else optimize.run_sobol(job, pool, a.budget, a.seed, a.pop, lp)
+  File "/home/georg/Desktop/flying_robot_course/experiments/tuning/optimize.py", line 19, in run_cmaes
+    import cma
+  File "/home/georg/.local/lib/python3.10/site-packages/cma/__init__.py", line 128, in <module>
+    from . import s
+  File "/home/georg/.local/lib/python3.10/site-packages/cma/s.py", line 14, in <module>
+    try: from matplotlib import pyplot as _pyplot  # like this it doesn't show up in the interface
+  File "/usr/lib/python3/dist-packages/matplotlib/__init__.py", line 109, in <module>
+    from . import _api, _version, cbook, docstring, rcsetup
+  File "/usr/lib/python3/dist-packages/matplotlib/rcsetup.py", line 27, in <module>
+    from matplotlib.colors import Colormap, is_color_like
+  File "/usr/lib/python3/dist-packages/matplotlib/colors.py", line 56, in <module>
+    from matplotlib import _api, cbook, scale
+  File "/usr/lib/python3/dist-packages/matplotlib/scale.py", line 23, in <module>
+    from matplotlib.ticker import (
+  File "/usr/lib/python3/dist-packages/matplotlib/ticker.py", line 136, in <module>
+    from matplotlib import transforms as mtransforms
+  File "/usr/lib/python3/dist-packages/matplotlib/transforms.py", line 46, in <module>
+    from matplotlib._path import (
+AttributeError: _ARRAY_API not found
+/home/georg/.local/lib/python3.10/site-packages/cma/s.py:17: UserWarning: Could not import matplotlib.pyplot, therefore ``cma.plot()`` etc. is not available
+  _warnings.warn('Could not import matplotlib.pyplot, therefore'
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.2.6 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "/home/georg/Desktop/flying_robot_course/experiments/tuning/run_job.py", line 23, in <module>
+    best = optimize.run_cmaes(job, pool, a.budget, a.seed, a.pop, lp) if a.method == 'cmaes' else optimize.run_sobol(job, pool, a.budget, a.seed, a.pop, lp)
+  File "/home/georg/Desktop/flying_robot_course/experiments/tuning/optimize.py", line 19, in run_cmaes
+    import cma
+  File "/home/georg/.local/lib/python3.10/site-packages/cma/__init__.py", line 128, in <module>
+    from . import s
+  File "/home/georg/.local/lib/python3.10/site-packages/cma/s.py", line 129, in <module>
+    from matplotlib.pyplot import savefig as figsave, ion as figion  # noqa: I001
+  File "/usr/lib/python3/dist-packages/matplotlib/__init__.py", line 109, in <module>
+    from . import _api, _version, cbook, docstring, rcsetup
+  File "/usr/lib/python3/dist-packages/matplotlib/rcsetup.py", line 27, in <module>
+    from matplotlib.colors import Colormap, is_color_like
+  File "/usr/lib/python3/dist-packages/matplotlib/colors.py", line 56, in <module>
+    from matplotlib import _api, cbook, scale
+  File "/usr/lib/python3/dist-packages/matplotlib/scale.py", line 23, in <module>
+    from matplotlib.ticker import (
+  File "/usr/lib/python3/dist-packages/matplotlib/ticker.py", line 136, in <module>
+    from matplotlib import transforms as mtransforms
+  File "/usr/lib/python3/dist-packages/matplotlib/transforms.py", line 46, in <module>
+    from matplotlib._path import (
+AttributeError: _ARRAY_API not found
+gen 1  n 12  best 6.567  gen-best 6.567  sigma 0.225
+gen 2  n 24  best 5.929  gen-best 5.929  sigma 0.203
+gen 3  n 36  best 5.929  gen-best 6.190  sigma 0.182
+gen 4  n 48  best 5.503  gen-best 5.503  sigma 0.205
+gen 5  n 60  best 5.503  gen-best 6.418  sigma 0.239
+gen 6  n 72  best 4.356  gen-best 4.356  sigma 0.257
+gen 7  n 84  best 2.597  gen-best 2.597  sigma 0.262
+gen 8  n 96  best 2.597  gen-best 4.572  sigma 0.265
+gen 9  n 108  best 2.597  gen-best 3.604  sigma 0.244
+gen 10  n 120  best 2.597  gen-best 3.999  sigma 0.214
+best 2.597 {'kp_xy': 16.64, 'kv_xy': 11.85, 'ki_xy': 95.3, 'kp_z': 45.0, 'kv_z': 12.27, 'ki_z': 13.25} 1536 s

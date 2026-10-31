@@ -1,0 +1,1 @@
+Step B diagnostic (2026-10-28), see `docs/fbl_xy_plant_gap_diagnostic_2026-10-28.md`. Inputs: uSD logs `bank_fbl_b1_ours_2026-10-26`. Hardware scripts: pyenv python; `plume_torque_sim.py` and `ns2_torque_at_rotors.py`: system python3 with CFFIRMWARE_DIR.
