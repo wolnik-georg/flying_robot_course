@@ -6,12 +6,14 @@ import numpy as np, torch
 import torch._dynamo
 torch._dynamo.config.cache_size_limit = 64          # one compiled variant per (batch size, grad mode, requires_grad pattern); the default 8 was exceeded and fell back to eager
 import s0_torch as T
+import ns2_torch as NS2
 
 M, G = 0.0427, 9.81
 J_FBL = (2.395e-5, 2.395e-5, 3.235e-5)                   # plant body inertia of the 'fbl' plant (plant_core.plant J="fbl")
 J_OMAR = (1.657e-5, 1.666e-5, 2.926e-5)                  # plant body inertia of the S0-S3 jobs (run_job: extra J='omar'); this is the plant of record for tuning
 J_PLANT = J_OMAR
 ARMS_T = (T.ARM, T.ARM, T.T2T)
+ARMS = [(0.0354, -0.0354), (-0.0354, -0.0354), (-0.0354, 0.0354), (0.0354, 0.0354)]          # plant_core ARMS: rotor positions in the body frame [m]
 
 
 def qmul(a, b):
@@ -75,10 +77,10 @@ def rollout(sp, gains, plant, dtype=torch.float64, device='cpu', x0=None, v0=Non
     return torch.stack(out), dict(x=x, v=v, q=q, w=w, F=F, tilt_max=tilt_max)
 
 
-def _block(st, meas, spk, ngyro, pr, gains, Jp):
+def _block(st, meas, spk, ngyro, pr, gains, Jp, dwin=None, dwp=None):
     """One control period (2 ms = two 1 ms physics steps) as a pure function for torch.compile. The delayed measurement (xm_, vm_) is gathered outside (eager, inside the CUDA graph):
     the fused backward of the history gather produced NaN. Returns the new state, x after the first and after the second millisecond (for the history)."""
-    x, v, q, w, F, i_pos, i_att, c1, c2, tmax, tpen = st
+    x, v, q, w, F, i_pos, i_att, c1, c2, tmax, tpen, tau_ns2 = st
     xm_, vm_ = meas; pos_d, vel_d, acc_d, jerk_d = spk
     lag_a, fmax, ktv = pr
     ctrl = T.S0.__new__(T.S0); ctrl.dtype, ctrl.dev = x.dtype, x.device; ctrl.g = gains; ctrl.mass = M; ctrl.J = T.K(T.J_CTRL, x.dtype, x.device); ctrl.i_pos = i_pos; ctrl.i_att = i_att
@@ -88,8 +90,21 @@ def _block(st, meas, spk, ngyro, pr, gains, Jp):
         F_t = torch.minimum(0.1098 * (F_c / (0.2 * 0.618)) ** 2, fmax[..., None])
         F = F + lag_a[..., None] * (F_t - F); thrust = F.sum(-1)
         tau = torch.stack([T.ARM * (-F[..., 0] - F[..., 1] + F[..., 2] + F[..., 3]), T.ARM * (-F[..., 0] + F[..., 1] + F[..., 2] - F[..., 3]), T.T2T * (-F[..., 0] + F[..., 1] - F[..., 2] + F[..., 3])], -1)
-        R = T.quat2rot(q)
-        v = v + (T.K([0, 0, -G], x.dtype, x.device) + R[..., :, 2] * ktv * (thrust / M)[..., None]) * 1e-3
+        R = T.quat2rot(q); fext = 0.0
+        if dwin is not None:
+            tau = tau + tau_ns2                                               # plume torque computed at the previous even step (as plant_core: added before the update)
+            if sub == 0:
+                tp, tv = dwin; act = tp[..., 2] > x[..., 2]
+                a_z = NS2.faz(dwp['net'], tp - x, tv - v, x[..., 2], v, M, act)
+                fz = a_z * M * dwp['dws']; fz_ = torch.zeros_like(x); fext = torch.cat([fz_[..., :2], fz[..., None]], -1)
+                A_, s_, n_ = dwp['plume']; tq = torch.zeros_like(x)
+                for rk in ARMS:
+                    pk = x + R[..., :, 0] * rk[0] + R[..., :, 1] * rk[1]; rho2 = (pk[..., 0] - tp[..., 0]) ** 2 + (pk[..., 1] - tp[..., 1]) ** 2
+                    dFk = -A_ * (0.4 / torch.clamp(tp[..., 2] - pk[..., 2], min=0.05)) ** n_ * torch.exp(-rho2 / (2 * s_ ** 2))
+                    tq = tq + torch.stack([rk[1] * dFk, -rk[0] * dFk, torch.zeros_like(dFk)], -1)
+                tau_ns2 = tq * act[..., None].to(tq.dtype); fext_held = fext
+            else: fext = fext_held
+        v = v + (T.K([0, 0, -G], x.dtype, x.device) + R[..., :, 2] * ktv * (thrust / M)[..., None] + fext / M) * 1e-3
         x = x + v * 1e-3
         under = x[..., 2] <= 0.0
         vz = torch.where(under, torch.clamp(v[..., 2], min=0.0), v[..., 2]); hold = (under & (thrust < M * G))[..., None]
@@ -100,13 +115,13 @@ def _block(st, meas, spk, ngyro, pr, gains, Jp):
         tmax = torch.maximum(tmax, torch.rad2deg(torch.acos(torch.clamp(T.quat2rot(q.detach())[..., 2, 2], -0.999999, 0.999999))))      # detached: zero grad times acos' at level flight (inf) would be NaN in the fused backward
         tpen = tpen + torch.relu(1.0 - T.quat2rot(q)[..., 2, 2] - 0.0603)          # differentiable hinge on tilt above 20 deg (1 - cos 20 deg = 0.0603), summed over ms
         if sub == 0: x_s, v_s = x, v
-    return (x, v, q, w, F, ctrl.i_pos, ctrl.i_att, cmd, c1, tmax, tpen), x_s, v_s
+    return (x, v, q, w, F, ctrl.i_pos, ctrl.i_att, cmd, c1, tmax, tpen, tau_ns2), x_s, v_s
 
 
 _block_c = {}
 
 
-def rollout_blocks(sp, gains, plant, dtype=torch.float32, device='cuda', x0=None, v0=None, q0=None, F0=None, Fc0=None, ipz0=None, noise=None, keep_blocks=5, compile=True, md_max=60):
+def rollout_blocks(sp, gains, plant, dtype=torch.float32, device='cuda', x0=None, v0=None, q0=None, F0=None, Fc0=None, ipz0=None, noise=None, keep_blocks=5, compile=True, md_max=60, carry=None):
     """Same model as rollout() (1 ms physics, 2 ms control), written block-wise so the per-block function can be torch.compile'd (fused kernels).
     keep_blocks=5 -> positions every 10 ms. noise must be given (zeros allowed)."""
     n, B, _ = sp['pos'].shape; dev = device; nb = n // 2
@@ -120,8 +135,9 @@ def rollout_blocks(sp, gains, plant, dtype=torch.float32, device='cuda', x0=None
     x = sp['pos'][0] * T.K([1, 1, 0], dtype, dev) if x0 is None else x0; v = zeros3 if v0 is None else v0
     q = T.K([0., 0., 0., 1.], dtype, dev).expand(B, 4).clone() if q0 is None else q0
     i_pos = torch.zeros(B, 3, dtype=dtype, device=dev) if ipz0 is None else torch.cat([zeros3[..., :2], ipz0[..., None]], -1)
-    st = (x, v, q, zeros3, F, i_pos, zeros3, Fc, Fc, torch.zeros(B, dtype=dtype, device=dev), torch.zeros(B, dtype=dtype, device=dev))
+    st = (x, v, q, zeros3, F, i_pos, zeros3, Fc, Fc, torch.zeros(B, dtype=dtype, device=dev), torch.zeros(B, dtype=dtype, device=dev), zeros3)
     hx = x[None].expand(md_max + 1, B, 3); hv = v[None].expand(md_max + 1, B, 3)
+    if carry is not None: st, hx, hv = tuple(carry[:12]), carry[12], carry[13]          # chained windows: state, delayed-measurement history and command queue carried over
     fn = _block
     if compile:
         key = (B, dtype, str(dev))
@@ -132,8 +148,9 @@ def rollout_blocks(sp, gains, plant, dtype=torch.float32, device='cuda', x0=None
         i = 2 * k
         hx = torch.cat([hx[1:], (st[0] + noise['pos'][i])[None]]); hv = torch.cat([hv[1:], (st[1] + noise['vel'][i])[None]])
         meas = (hx[md_max - md, ar], hv[md_max - md, ar])
-        st, xs, vs = fn(st, meas, (sp['pos'][i], sp['vel'][i], sp['acc'][i], sp['jerk'][i]), noise['gyro'][k], pr, gains, Jp)
+        dwin = (sp['tp'][i], sp['tv'][i]) if 'tp' in sp else None
+        st, xs, vs = fn(st, meas, (sp['pos'][i], sp['vel'][i], sp['acc'][i], sp['jerk'][i]), noise['gyro'][k], pr, gains, Jp, dwin, plant.get('dw'))
         hx = torch.cat([hx[1:], (xs + noise['pos'][i + 1])[None]]); hv = torch.cat([hv[1:], (vs + noise['vel'][i + 1])[None]])
         if k % keep_blocks == 0: out.append(xs)
-    x, v, q, w, F, _, _, _, _, tmax, tpen = st
-    return torch.stack(out), dict(x=x, v=v, q=q, w=w, F=F, tilt_max=tmax, tpen=tpen / n)
+    x, v, q, w, F, _, _, _, _, tmax, tpen, _ = st
+    return torch.stack(out), dict(x=x, v=v, q=q, w=w, F=F, tilt_max=tmax, tpen=tpen / n, carry=tuple(st) + (hx, hv))
