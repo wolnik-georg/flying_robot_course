@@ -1,0 +1,59 @@
+# Tuned gains of S0 (one set per scenario).
+# Source: closing picks of the tuning (out/closing/picks_s0.json): per scenario the method with the lowest MEDIAN selection error over its seeds
+# among CMA-ES, Bayesian optimisation (plain and constrained), Sobol sampling and gradient descent, then its best seed. Chosen on the selection error only.
+# The errors below are evaluated with the exact vehicle inertia (frsim): selection error = tuning cells x 9 variants x 3 noise seeds; test error = study cells, 5 noise seeds.
+# Gains are the FULL-precision values of the pick files.
+
+A8:
+  method: Bayesian optimisation (constrained, best observed point)
+  seed: 1
+  selection_error_cm: 4.773675404295527
+  crashed_selection_episodes: 1
+  test_error_cm: {nominal: 2.105, md10: 2.219, md40: 2.657, md60: 3.163}
+  gains:
+    Pxy: 1.75
+    Pz: 12.711214097800921
+    Dxy: 11.864688287430367
+    Dz: 8.137886113318569
+    Iz: 5.273735788578401
+    KRxy: 0.006349014422517433
+    KRz: 0.00216667287634185
+    Kwxy: 0.0015579128135020973
+    Kwz: 0.0005
+    KIxy: 0.0030000000000000005
+
+A4:
+  method: Bayesian optimisation (constrained, best observed point)
+  seed: 3
+  selection_error_cm: 10.006680637941232
+  crashed_selection_episodes: 6
+  test_error_cm: {nominal: 2.539, md10: 2.585, md40: 2.875, md60: 3.728}
+  gains:
+    Pxy: 7.374520171673298
+    Pz: 28.0
+    Dxy: 3.0015951429390912
+    Dz: 8.420994945627712
+    Iz: 5.999999999999998
+    KRxy: 0.010526969213097849
+    KRz: 0.0025033404778790447
+    Kwxy: 0.0012880540361421132
+    Kwz: 0.0005734758140359088
+    KIxy: 0.11999999999999997
+
+A1:
+  method: Bayesian optimisation (constrained, best observed point)
+  seed: 3
+  selection_error_cm: 11.383869744570267
+  crashed_selection_episodes: 6
+  test_error_cm: {nominal: 0.126, md10: 0.133, md40: 0.174, md60: 0.232}
+  gains:
+    Pxy: 1.75
+    Pz: 9.276750139956746
+    Dxy: 1.0
+    Dz: 5.226631240718303
+    Iz: 5.999999999999998
+    KRxy: 0.008307182352642113
+    KRz: 0.002
+    Kwxy: 0.0008620630198498521
+    Kwz: 0.0005
+    KIxy: 0.11999999999999997

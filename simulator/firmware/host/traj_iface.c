@@ -1,0 +1,833 @@
+/**
+ * traj_iface.c — Trajectory upload interface for onboard spline evaluation.
+ *
+ * Declares coefficient buffers and CRTP parameters that allow the laptop to:
+ *   1. Upload position coefficients via ci/cv/cw (one float at a time).
+ *   2. Upload Z-axis coefficients via zci/zcv/zcw (3D trajectories only).
+ *   3. Upload attitude coefficients via aci/acv/acw (planning Mode 2 only).
+ *   4. Set trajectory metadata (origin, hover height, number of segments).
+ *   5. Switch between Mode B (passthrough) and Mode D (onboard eval).
+ *   6. Trigger the onboard trajectory by writing traj.start = 1.
+ *
+ * Position buffer layout (per segment, 19 floats):
+ *   [0]      = duration  (s)
+ *   [1..9]   = cx[0..8] — degree-8 polynomial for x, normalised to t∈[0,1]
+ *   [10..18] = cy[0..8] — degree-8 polynomial for y, normalised to t∈[0,1]
+ * Max 14 segments → 266 floats (ci index 0..265, u16).
+ *
+ * Z-axis buffer layout (per segment, 9 floats):
+ *   [0..8]   = cz[0..8] — degree-8 polynomial for z offset [m], normalised
+ * Max 14 segments → 126 floats (zci index 0..125).
+ * z_mode = 0: z = traj.hz + traj.dz * lap_frac (constant + linear ramp, default).
+ * z_mode = 1: z = traj.hz + poly_eval(cz) — full 3D trajectory (loop, etc.).
+ *
+ * Attitude buffer layout (per segment, 18 floats, planning Mode 2 only):
+ *   [0..8]   = croll[0..8]  — degree-8 polynomial for roll  [rad], normalised
+ *   [9..17]  = cpitch[0..8] — degree-8 polynomial for pitch [rad], normalised
+ * Max 14 segments → 252 floats (aci index 0..251).
+ * att_mode = 0: firmware derives attitude from flatness (default — Mode 0/1 behaviour).
+ * att_mode = 1: firmware evaluates uploaded roll/pitch polynomials at 500 Hz.
+ *
+ * Upload protocol (same for pos, z, and att — different param names):
+ *   set traj.ci/zci/aci = idx   (u8)
+ *   set traj.cv/zcv/acv = value (f32)
+ *   set traj.cw/zcw/acw = 1     (commit trigger; firmware clears to 0 within 2 ms)
+ *
+ * Mode switch:
+ *   traj.mode = 0  → Mode B passthrough (laptop sends full-state setpoints)
+ *   traj.mode = 1  → Mode D onboard eval (all trajectories: flat, helix, loop)
+ *                    z_mode selects Z source: 0=ramp (flat/helix), 1=polynomial (loop)
+ *
+ * These symbols are declared extern in firmware_app/src/lib.rs and accessed there.
+ */
+
+#include "param.h"
+#include "log.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "rpm_filter.h"
+
+/* ── Position coefficient buffer ─────────────────────────────────────────── */
+/* 14 = 12-segment periodic cores (oval/tilted_oval) + 1 entry + 1 exit segment
+ * (Issue B rest-to-rest fix). ci is u16 (14*19 = 266 coefficients > u8 range);
+ * zci/aci stay u8 (14*9 = 126, 14*18 = 252 — both fit).                       */
+#define TRAJ_MAX_SEGS        14u
+#define TRAJ_FLOATS_PER_SEG  19u   /* duration + cx[9] + cy[9] */
+
+float   g_traj_coefs[TRAJ_MAX_SEGS * TRAJ_FLOATS_PER_SEG]; /* zero-initialised by C runtime */
+
+/* ── Z-axis coefficient buffer (3D trajectories: loop, etc.) ─────────────── */
+/* Layout per segment: [cz[9]] — 9 floats, no duration field.                  */
+/* z_mode=0: z = hover_z + dz*lap_frac (linear ramp, circle/figure8/helix).   */
+/* z_mode=1: z = hover_z + poly_eval(cz) — full 3D trajectory.                */
+#define TRAJ_Z_FLOATS_PER_SEG    9u   /* cz[9] */
+
+float   g_traj_z_coefs[TRAJ_MAX_SEGS * TRAJ_Z_FLOATS_PER_SEG]; /* zero-initialised */
+uint8_t g_traj_z_mode    = 0;    /* 0 = ramp (default), 1 = polynomial          */
+
+/* ── Z upload protocol ───────────────────────────────────────────────────── */
+uint8_t g_traj_z_ci      = 0;     /* z coefficient index (0..107)               */
+float   g_traj_z_cv      = 0.0f;  /* z coefficient value to write               */
+uint8_t g_traj_z_cw      = 0;     /* commit flag: laptop sets 1; Rust clears    */
+
+/* ── Attitude coefficient buffer (planning Mode 2 only) ─────────────────── */
+/* Layout per segment: [croll[9], cpitch[9]] — 18 floats, no duration field.  */
+/* att_mode=0: firmware uses flatness (unchanged Mode 0/1 behaviour).          */
+/* att_mode=1: firmware evaluates these polynomials at 500 Hz.                 */
+#define TRAJ_ATT_FLOATS_PER_SEG  18u  /* croll[9] + cpitch[9] */
+
+float   g_traj_att_coefs[TRAJ_MAX_SEGS * TRAJ_ATT_FLOATS_PER_SEG]; /* zero-initialised */
+uint8_t g_traj_att_mode  = 0;    /* 0 = derive from flatness (default), 1 = polynomial */
+
+/* att_ctrl_mode controls HOW the polynomial is blended with feedback (when att_mode=1):
+ *   0 = hard override: polynomial sets rd AND omega_d (both replaced by polynomial).
+ *       Required for loop/flip where flatness is undefined at zero-thrust events.
+ *   1 = hybrid: polynomial provides omega_d feedforward ONLY; rd is still derived from
+ *       the total feedback force via flatness — position tracking errors are always
+ *       reflected in the rotation command. Recommended for normal flat trajectories.
+ */
+uint8_t g_traj_att_ctrl_mode = 1; /* 1 = hybrid (default — stable for all flat trajectories) */
+
+/* ── Attitude upload protocol ────────────────────────────────────────────── */
+uint8_t g_traj_att_ci    = 0;     /* attitude coefficient index (0..215)                 */
+float   g_traj_att_cv    = 0.0f;  /* attitude coefficient value to write at g_traj_att_ci */
+uint8_t g_traj_att_cw    = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
+
+/* ── Trajectory metadata ─────────────────────────────────────────────────── */
+uint8_t g_traj_n_segs    = 0;     /* number of valid segments in g_traj_coefs  */
+uint8_t g_traj_mode      = 0;     /* 0 = passthrough (Mode B), 1 = onboard eval (Mode D) */
+uint8_t g_traj_start     = 0;     /* laptop writes 1 to start; firmware latches T0        */
+uint8_t g_traj_reps      = 0;     /* 0 = loop forever; N = self-stop after N laps         */
+/* Rest-to-rest entry/exit (Issue B fix): the first n_entry segments play ONCE before
+ * the core laps, the last n_exit segments play ONCE after them. The core is the middle
+ * region and is what traj.reps counts. 0/0 = legacy behaviour (wrap all segments). */
+uint8_t g_traj_n_entry   = 0;     /* leading segments played once (0 = none)             */
+uint8_t g_traj_n_exit    = 0;     /* trailing segments played once (0 = none)            */
+float   g_traj_origin_x  = 0.0f;  /* EKF x offset sampled before takeoff [m]             */
+float   g_traj_origin_y  = 0.0f;  /* EKF y offset sampled before takeoff [m]             */
+float   g_traj_hover_z   = 1.0f;  /* constant flight altitude [m]                        */
+float   g_traj_dz        = 0.0f;  /* Z gain per lap [m]; 0=flat, +0.40=ascending helix   */
+
+/* ── Position upload protocol ────────────────────────────────────────────── */
+uint16_t g_traj_coef_ci  = 0;     /* coefficient index (0..265) — u16, see TRAJ_MAX_SEGS */
+float   g_traj_coef_cv   = 0.0f;  /* coefficient value to write at g_traj_coef_ci        */
+uint8_t g_traj_coef_cw   = 0;     /* commit flag: laptop sets 1; Rust clears to 0        */
+
+/* ── Residual-network weight upload ──────────────────────────────────────────
+ * Same index / value / commit shape as the trajectory upload above, for the same reason:
+ * CRTP parameters are the only writable channel that needs no new packet type.
+ *
+ * The count is declared UP FRONT (rnn.n) and checked on commit. A half-arrived network is
+ * the dangerous failure -- it produces plausible numbers rather than an obvious fault, and
+ * would be indistinguishable from a badly trained model. Refusing an incomplete upload turns
+ * a dropped packet into "compensation off", which is diagnosable from the logs.        */
+uint16_t g_rnn_wi  = 0;    /* weight index                                              */
+float    g_rnn_wv  = 0.0f; /* weight value to write at g_rnn_wi                          */
+uint8_t  g_rnn_wc  = 0;    /* commit flag: host sets 1; Rust clears to 0                 */
+uint16_t g_rnn_n   = 0;    /* number of weights the host intends to send                 */
+uint8_t  g_rnn_begin = 0;  /* host sets 1 to start a fresh upload; Rust clears           */
+uint8_t  g_rnn_end   = 0;  /* host sets 1 when done; Rust validates and clears           */
+uint8_t  g_rnn_en    = 0;  /* 0 = predict but do not use; 1 = feed into the controller    */
+uint8_t  g_rnn_ready = 0;  /* read-only: 1 once a complete, finite weight set is loaded   */
+uint8_t  g_rnn_div   = 10; /* evaluate every N controller ticks (1 kHz); 10 => ~100 Hz     */
+uint8_t  g_rnn_rst   = 0;  /* host sets 1 to reset rnn.us_max / us_avg                     */
+
+uint16_t g_rnn_us_last = 0;
+uint16_t g_rnn_us_max  = 0;
+float    g_rnn_us_avg  = 0.0f;
+
+/* Logged so the prediction can be compared against the measured residual in flight --
+ * that comparison IS the evaluation of every learned method in this thesis.            */
+float    g_rnn_pred_x = 0.0f;
+float    g_rnn_pred_y = 0.0f;
+float    g_rnn_pred_z = 0.0f;
+uint8_t  g_rnn_clamped = 0;  /* last evaluation hit the output clamp -- a fault, not a result */
+
+/* Peer positions for the residual model.
+ *
+ * Crazyswarm2 broadcasts every vehicle's pose and the firmware already stores the ones that
+ * are not its own, so the network's main input costs no new communication. Note the API
+ * offers POSITION ONLY -- there is no peer velocity -- so relative velocity is differenced
+ * onboard from the timestamps the same struct carries. */
+#ifdef CRAZYFLIE_FW   /* peer_localization is drone-only; the host simulator injects peers instead */
+#include "peer_localization.h"
+uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
+{
+  uint8_t n = 0;
+  for (uint8_t i = 0; i < max; ++i) {
+    peerLocalizationOtherPosition_t *p = peerLocalizationGetPositionByIdx(i);
+    if (p == NULL) break;
+    if (p->id == 0) continue;
+    xs[n] = p->pos.x; ys[n] = p->pos.y; zs[n] = p->pos.z; ts[n] = p->pos.timestamp;
+    ++n;
+  }
+  return n;
+}
+#endif
+
+void rnn_pred_write(float x, float y, float z, uint8_t clamped)
+{
+  g_rnn_pred_x = x; g_rnn_pred_y = y; g_rnn_pred_z = z; g_rnn_clamped = clamped;
+}
+
+/* Weight-upload protocol — runs in C so g_rnn_* live in this TU (traj_iface.c), the same
+ * objects SWIG / CRTP / the host simulator write. Rust only mutates ResidualNet::w via
+ * cf_rnn_* below; an earlier version cleared duplicate Rust-linked copies of these flags,
+ * which left g_rnn_ready stuck while weights never loaded (SIL rnn_pred_z saturated at ±8). */
+extern void cf_rnn_begin_upload(uint16_t expected);
+extern uint8_t cf_rnn_set_weight(uint16_t idx, float value);
+extern uint8_t cf_rnn_finish_upload(void);
+
+void rnn_protocol_service(void)
+{
+  if (g_rnn_begin) {
+    cf_rnn_begin_upload(g_rnn_n);
+    g_rnn_begin = 0;
+    g_rnn_ready = 0;
+  }
+  if (g_rnn_wc) {
+    (void)cf_rnn_set_weight(g_rnn_wi, g_rnn_wv);
+    g_rnn_wc = 0;
+  }
+  if (g_rnn_end) {
+    g_rnn_ready = cf_rnn_finish_upload();
+    g_rnn_end = 0;
+  }
+}
+
+void oot_rnn_service(void)
+{
+  rnn_protocol_service();
+}
+
+PARAM_GROUP_START(rnn)
+  PARAM_ADD(PARAM_UINT16, wi,    &g_rnn_wi)
+  PARAM_ADD(PARAM_FLOAT,  wv,    &g_rnn_wv)
+  PARAM_ADD(PARAM_UINT8,  wc,    &g_rnn_wc)
+  PARAM_ADD(PARAM_UINT16, n,     &g_rnn_n)
+  PARAM_ADD(PARAM_UINT8,  begin, &g_rnn_begin)
+  PARAM_ADD(PARAM_UINT8,  end,   &g_rnn_end)
+  PARAM_ADD(PARAM_UINT8,  en,    &g_rnn_en)
+  PARAM_ADD(PARAM_UINT8,  ready, &g_rnn_ready)
+  PARAM_ADD(PARAM_UINT8,  div,   &g_rnn_div)
+  PARAM_ADD(PARAM_UINT8,  rst,   &g_rnn_rst)
+PARAM_GROUP_STOP(rnn)
+
+LOG_GROUP_START(rnn)
+  LOG_ADD(LOG_FLOAT, pred_x,  &g_rnn_pred_x)
+  LOG_ADD(LOG_FLOAT, pred_y,  &g_rnn_pred_y)
+  LOG_ADD(LOG_FLOAT, pred_z,  &g_rnn_pred_z)
+  LOG_ADD(LOG_UINT8, clamped, &g_rnn_clamped)
+  LOG_ADD(LOG_UINT8, ready,   &g_rnn_ready)
+  LOG_ADD(LOG_UINT16, us_last, &g_rnn_us_last)
+  LOG_ADD(LOG_UINT16, us_max,  &g_rnn_us_max)
+  LOG_ADD(LOG_FLOAT,  us_avg,  &g_rnn_us_avg)
+LOG_GROUP_STOP(rnn)
+
+/* ── CRTP parameter group ────────────────────────────────────────────────── */
+PARAM_GROUP_START(traj)
+  PARAM_ADD(PARAM_UINT8, mode,     &g_traj_mode)
+  PARAM_ADD(PARAM_UINT8, start,    &g_traj_start)
+  PARAM_ADD(PARAM_UINT8, reps,     &g_traj_reps)
+  PARAM_ADD(PARAM_UINT8, n_entry,  &g_traj_n_entry)
+  PARAM_ADD(PARAM_UINT8, n_exit,   &g_traj_n_exit)
+  PARAM_ADD(PARAM_UINT8, nseg,     &g_traj_n_segs)
+  PARAM_ADD(PARAM_FLOAT, ox,       &g_traj_origin_x)
+  PARAM_ADD(PARAM_FLOAT, oy,       &g_traj_origin_y)
+  PARAM_ADD(PARAM_FLOAT, hz,       &g_traj_hover_z)
+  PARAM_ADD(PARAM_FLOAT, dz,       &g_traj_dz)
+  PARAM_ADD(PARAM_UINT16, ci,      &g_traj_coef_ci)
+  PARAM_ADD(PARAM_FLOAT, cv,       &g_traj_coef_cv)
+  PARAM_ADD(PARAM_UINT8, cw,       &g_traj_coef_cw)
+  PARAM_ADD(PARAM_UINT8, z_mode,   &g_traj_z_mode)
+  PARAM_ADD(PARAM_UINT8, zci,      &g_traj_z_ci)
+  PARAM_ADD(PARAM_FLOAT, zcv,      &g_traj_z_cv)
+  PARAM_ADD(PARAM_UINT8, zcw,      &g_traj_z_cw)
+  PARAM_ADD(PARAM_UINT8, att_mode,      &g_traj_att_mode)
+  PARAM_ADD(PARAM_UINT8, att_ctrl_mode, &g_traj_att_ctrl_mode)
+  PARAM_ADD(PARAM_UINT8, aci,           &g_traj_att_ci)
+  PARAM_ADD(PARAM_FLOAT, acv,           &g_traj_att_cv)
+  PARAM_ADD(PARAM_UINT8, acw,           &g_traj_att_cw)
+PARAM_GROUP_STOP(traj)
+
+/* ── INDI tuning params (runtime-configurable, no reflash needed) ─────────── */
+/* Change via CS2 yaml firmware_params.indi_gains.*, cfclient Parameters tab,   */
+/* or a Python one-liner: cf.param.set_value('indi_gains.kr', '200.0').         */
+uint8_t g_controller_mode = 0;   /* 0=geometric, 1=pos INDI, 2=att INDI, 3=full INDI */
+float g_indi_kr     = 100.0f;    /* KR_INDI X/Y [1/s^2]  — wn = sqrt(KR)  */
+float g_indi_kw     = 30.0f;     /* KW_INDI X/Y [1/s]    — zeta = KW/(2*wn) */
+float g_indi_kr_z   = 100.0f;    /* KR_INDI Z   [1/s^2]  */
+float g_indi_kw_z   = 30.0f;     /* KW_INDI Z   [1/s]    */
+/* Separate attitude gains for ctrl_mode==0 (geometric), added 2026-09-07: kr/kw above were
+ * tuned and locked via INDI (ctrl_mode=3) figure-8 tracking, and geometric's model-based
+ * torque law has no real-time RPM-based correction to compensate the way INDI's incremental
+ * term does -- the same gains are not guaranteed stable for both. Retuning geometric must not
+ * silently change INDI's already-validated gains, so it gets its own pair instead. */
+/* ⚠ UNITS ARE NOT THE SAME AS kr/kw ABOVE. Geometric computes torque = -kr_geo*eR
+ * - kw_geo*eOmega DIRECTLY in [Nm]; INDI's kr/kw produce an angular acceleration
+ * [1/s^2] that only becomes torque later, multiplied by J (~24e-6). A value from the
+ * kr/kw range used here commands roughly 1/J (~40000x) too much torque.
+ *
+ * These defaults were 100.0/30.0 until 2026-09-09 -- copied from the kr/kw block above
+ * with its units, i.e. 10000x too large. That was harmless while the geometric torque
+ * law still read the compile-time KR_X/KW_X constants, but once it started reading
+ * these params a failed/absent param write meant geometric flew at 10000x attitude
+ * gain. The defaults are now the flight-proven constants themselves, so a missing
+ * param degrades to known-good gains instead of a crash. */
+float g_indi_kr_geo   = 0.010f;   /* KR_GEO X/Y [Nm], used only when ctrl_mode==0 */
+float g_indi_kw_geo   = 0.00110f; /* KW_GEO X/Y [Nm*s] */
+float g_indi_kr_z_geo = 0.010f;   /* KR_GEO Z   [Nm]   */
+float g_indi_kw_z_geo = 0.00138f; /* KW_GEO Z   [Nm*s] */
+// float g_indi_kt1    = 1.1421e-10f; /* KT_MOTOR M1 [N/RPM^2] — from hover log 2026-06-10 */
+// float g_indi_kt2    = 1.1421e-10f; /* KT_MOTOR M2 [N/RPM^2] */
+// float g_indi_kt3    = 1.1421e-10f; /* KT_MOTOR M3 [N/RPM^2] */
+// float g_indi_kt4    = 1.1421e-10f; /* KT_MOTOR M4 [N/RPM^2] */
+float g_indi_kt1    = 1.4811e-10f; /* KT_MOTOR M1 [N/RPM²] — Lee hover 2026-06-18_20-22-55, m=36.4g */
+float g_indi_kt2    = 1.4815e-10f;
+float g_indi_kt3    = 1.5319e-10f;
+float g_indi_kt4    = 1.6119e-10f;
+float g_indi_fc_bw  = 60.0f;     /* Butterworth cutoff [Hz] — applied to alpha_raw and alpha_ref */
+/* Per-axis yaw filter cutoff (2026-09-16, NA-INDI comparison item #3, docs/22 sec 2e): their
+ * reference uses ~10 Hz for yaw vs ~40 Hz roll/pitch -- yaw torque (motor drag-torque
+ * differences) is noisier than roll/pitch arm torque. 0.0 (default) = yaw uses fc_bw too,
+ * byte-identical to today's uniform filtering. Only the angular-rate chains (bw_z/bw_pre_z/
+ * bw_tau_z/bw_ref_z) read this -- the position loop's accelerometer prefilter stays on fc_bw. */
+float g_indi_fc_bw_yaw = 0.0f;
+float g_indi_fc_iir = 60.0f;     /* legacy (unused — kept for backwards-compat with old yaml files) */
+float g_indi_mass   = 0.0364f;   /* all-up mass [kg] — CF2.1 + USD + RPM, measured 36.4g */
+/* H1a diagnostic (2026-07-18): force tau_current = tau_prev even when the RPM deck IS active,
+   to isolate whether the ~7-8 Hz tau_x/alp_x limit cycle comes from the RPM-feedback path itself
+   or from motor-mechanical lag (persists either way). 0 = normal (RPM feedback when available). */
+uint8_t g_indi_ff_free = 0;
+
+/* N1 fix toggle (2026-09-16, isolating the 2026-09-09 audit fix for its own A/B test).
+   1 (DEFAULT, current behaviour): alpha_ref = alpha_des - g_indi_kr*eR - g_indi_kw*e_omega
+   ALWAYS, regardless of ctrl_mode -- the 2026-09-09 fix (audit finding N1). Before that fix,
+   alpha_ref used the mode-selected kr_geo/kw_geo pair during modes 0/1 (the SAME pair the
+   geometric torque law itself uses), switching to g_indi_kr/kw only in modes 2/3. That meant
+   alpha_ref's own filter chain (bw_ref_x/y/z) carried ~0.01-scale history through the whole
+   geometric ramp, then jumped to 2400-scale the instant ctrl_mode switched to full INDI --
+   exactly the kind of cold-start-transient-at-the-handover class of bug already found and
+   fixed twice elsewhere in this file (alpha_meas_notch 2026-07-29, bw_tau_x/y/z 2026-09-12).
+   0 = revert to that PRE-FIX mode-selected behaviour, to test whether N1's fix (verified as a
+   no-op at STEADY defaults, single hover-tested once) is neutral, helpful, or harmful across
+   an actual geometric-ramp -> full-INDI handover -- never independently isolated before. */
+uint8_t g_indi_n1_fix = 1;
+
+/* dt source for alpha_raw/alpha_meas's finite difference (2026-09-16, NA-INDI comparison
+   item #5, docs/22_NA_INDI_Repo_Survey.md sec 2e -- "dt resolution", never tested before now,
+   distinct from the filt_dt_us sample-rate-for-filter-DESIGN fix which only changes filter
+   coefficients, not this). 0 (default) = tick-counter dt, (tick-last_tick)*0.001, 1ms-quantised
+   -- up to ~50% error on a single sample under scheduler jitter, directly scaling alpha_raw,
+   the noisiest and most safety-critical signal in the INDI loop. 1 = usecTimestamp()-based dt,
+   microsecond resolution -- the same clock naindi.rs (controller=7/8) already uses for the
+   same purpose. Byte-identical to today at default. */
+uint8_t g_indi_dt_usec = 0;
+
+/* Filter order for the INDI angular-acceleration measurement chain (2026-07-18).
+   0 = legacy: diff(raw omega) -> Butterworth -> alpha_meas. Today's exact behaviour,
+       byte-identical -- standard/upgraded validated gains and results are unaffected.
+   1 = paper order: Butterworth(raw omega) -> diff -> alpha_meas. Matches Tal & Karaman 2021
+       Sec. III-D and stock crazyflie-firmware controller_indi.c (filter_pqr then
+       finite_difference_from_filter) -- verified against both papers and the stock C
+       implementation before adding this, not a guess. Default OFF; enable per-drone in yaml. */
+uint8_t g_indi_filt_order = 0;
+
+/* Increment base filter (2026-07-18). 0 = legacy: tau_current (mu_f) used unfiltered in the INDI
+   increment tau = tau_current + J*(alpha_ref - alpha_meas). Today's exact behaviour.
+   1 = filter tau_current with the SAME Butterworth as alpha_meas so the two increment terms are
+   phase-matched -- Tal & Karaman 2021 Eq. 29/31 (mu_f is FILTERED) and stock crazyflie-firmware
+   controller_indi.c (increment base indi.u[0].o[0] is the filter_pqr'd command). This is the
+   candidate root-cause fix for the ~5-8 Hz attitude limit cycle. Default OFF; enable per-drone. */
+uint8_t g_indi_filt_tau = 0;
+
+/* INDI effectiveness scale (2026-07-18). Multiplies the J in the increment delta_tau = j_scale*J*
+   (alpha_ref - alpha_meas). 1.0 = use J as-is (default, byte-identical). <1.0 = reduce the
+   effectiveness estimate. The brushless J (Busetto 2025) is a Crazyflow SIMULATOR DEFAULT for a
+   45 g drone under a GEOMETRIC controller -- not system-ID'd, not for this 41 g drone, not
+   validated for INDI. If J is too high the INDI attitude loop over-corrects -> ~5-8 Hz limit
+   cycle. Sweep down (1.0 -> 0.8 -> 0.65 -> 0.5) at runtime (no reflash) to find where it stops. */
+float g_indi_j_scale = 1.0f;
+
+/* Output clamps (2026-07-22, mirroring stock C INDI which clamps u_in ±32000 motor units and
+   the outer-loop tilt ±pq_clamp / thrust [MIN,MAX]; we previously clamped NOTHING).
+   Robustness/blow-up containment — NOT a fix for the 6.3 Hz cycle (which lives ~96% inside the
+   clamp-free region, see docs/investigation §15.10). clamp_en is a bitmask so individual clamps
+   can be disabled for aggressive maneuvers: bit0=tau_xy, bit1=tau_z, bit2=tilt, bit3=thrust.
+   Phase-4 inverted/loop flight: clear bit2 (tilt >90 deg is intended) but KEEP bit0/bit1
+   (motor physics is orientation-independent). Default 0 = all off = byte-identical behaviour;
+   enable per-drone in yaml. Values sized from per-motor thrust headroom at hover:
+   tau_xy_max = ARM*4*dF, tau_z_max = TORQUE_RATIO*4*dF (CF21BL dF≈0.1 N -> 14 / 2.5 mNm;
+   standard ~7/1.2 mNm, upgraded ~10/1.7 mNm by the same formula). */
+/* INDI increment-base source (2026-07-22, bench §16 follow-up). 0.0 (default) = RPM base
+ * (today's behaviour, byte-identical). >0 = act_dyn base: first-order model of the previous
+ * (clamped) torque commands with this time constant [s], replacing the RPM reading — the
+ * stock controller_indi.c structure. NOTE the simulator predicts a matched model (0.044 =
+ * bench-measured tau) behaves IDENTICALLY to the RPM base (both equal the applied torque);
+ * this knob exists to verify that on hardware and to probe model-mismatch effects. */
+float   g_indi_act_tau      = 0.0f;
+
+uint8_t g_indi_clamp_en     = 0;       /* bitmask, 0 = all clamps off (default)          */
+float   g_indi_tau_xy_max   = 0.014f;  /* [Nm]  roll/pitch torque clamp (CF21BL default) */
+float   g_indi_tau_z_max    = 0.0025f; /* [Nm]  yaw torque clamp        (CF21BL default) */
+float   g_indi_tilt_max_deg = 30.0f;   /* [deg] max desired-thrust-vector tilt from vertical */
+float   g_indi_thrust_max   = 0.8f;    /* [N]   total thrust clamp (4x THRUST_MAX cf21bl)    */
+
+/* Optional stage-2 notch (band-reject) filter (2026-07-28, shake investigation). The stage-1
+ * Butterworth (fc_bw above) sits at 60-70 Hz and measurably does NOT touch the 5-10 Hz shake band
+ * (|alpha_filtered|/|alpha_raw|=1.000 at 7.22 Hz, 500 Hz SD-log analysis) -- and lowering fc_bw
+ * down into that band was tried and made things 3-4x worse (adds phase lag everywhere, not just
+ * at the shake frequency). This filter instead targets ONLY the diagnosed band (RBJ Audio-EQ-
+ * Cookbook band-reject biquad), applied identically to both alpha_meas and alpha_ref_filt so the
+ * two stay phase-matched (mirrors why fc_bw already applies to both). Default OFF = byte-identical
+ * to prior behaviour. f0/bw are runtime-tunable [Hz] so the notch can be re-centred without a
+ * reflash if the shake frequency drifts (6.3-7.9 Hz measured across different sessions). */
+/* omega_src — where the passthrough branch (g_traj_mode==0: HLC/Mode E, cmdFullState) takes
+ * the desired body rate omega_d from. The Crazyflie HLC builds its body frame Mellinger-style
+ * (y_B = z_B x x_C) in pptraj.c, while our controller's desired_rot/omega_desired build it
+ * Faessler-style (x_B = y_C x z_B). The two agree only when the tilt is axis-aligned, so
+ * trusting setpoint.attitudeRate gives an omega_d that is inconsistent with the R_d the
+ * controller itself uses (measured 0.04-0.22 rad/s on level trajectories; far larger through
+ * zero-thrust). Mode D never had this problem because it computes omega_d locally.
+ *   0 = setpoint.attitudeRate  (default — unchanged behaviour)
+ *   1 = recompute from HLC jerk via omega_desired() — matches Mode D's convention
+ * Falls back to attitudeRate automatically when jerk is absent (cmdFullState memsets it),
+ * so Mode B / hover keepalive are unaffected either way. */
+uint8_t g_indi_omega_src = 0;   /* 0 = setpoint rate (default), 1 = flatness from HLC jerk */
+
+/* frame_conv — which body-frame construction omega_desired()/alpha_desired() use when
+ * turning jerk/snap into omega_d / alpha_des. z_B is unambiguous (thrust direction); the
+ * choice is only how yaw is placed around it, and the two agree only at axis-aligned tilt.
+ *   1 = Mellinger (DEFAULT): y_B = normalize(z_B x x_C), x_B = y_B x z_B.
+ *       Matches desired_rot() (which builds R_d), the official controller_lee.c and
+ *       controller_mellinger.c, and the HLC's pptraj.c -- i.e. everything else on this
+ *       platform. Makes R_d, omega_d and alpha_des share one frame, and makes the locally
+ *       computed omega_d identical to the HLC's (so omega_src stops mattering).
+ *   0 = Faessler et al. 2018 App. A: x_B = normalize(y_C x z_B), y_B = normalize(z_B x x_B).
+ *       What every flight before 2026-08-22 used for omega_d/alpha_des, while R_d was
+ *       already Mellinger -- i.e. the old behaviour was internally mixed. Kept so that
+ *       pre-existing results can be reproduced exactly.
+ * omega_d feeds the KW damping term of BOTH the geometric and INDI attitude laws;
+ * alpha_des feeds the INDI snap feedforward only. Measured effect of the switch on level
+ * trajectories: omega_d 0.002-0.17 rad/s, alpha_des ~1-1.5%.
+ *
+ * SCOPE: this applies to the passthrough branch (Mode E / HLC) ONLY. Mode D (onboard
+ * trajectory eval) is pinned to Faessler in lib.rs via FRAME_CONV_MODE_D and ignores this
+ * parameter, so the completed INDI project's flight results stay reproducible. */
+/* REVERTED TO 0 (Faessler) 2026-09-09, to match finalized-version-for-INDI-project exactly.
+ * The frozen branch computed omega_desired/alpha_desired with the Faessler construction
+ * unconditionally -- that is what flew the whole July campaign. Defaulting to 1 (Mellinger)
+ * silently changed alpha_des on the Mode E passthrough path for every trajectory flight.
+ * Inert in hover (jerk/snap are zero there, so alpha_des is zero either way), so it is NOT
+ * the hover divergence -- and the point of this revert is to leave exactly zero unflown
+ * deltas against the frozen branch. UPDATE: at this default (0), circle/figure-8 have since
+ * flown repeatedly (2026-09-11 stage 1/2) without incident -- it is Mellinger (=1) on
+ * circle/figure-8 that remains untried, not this value.
+ * Mellinger (=1) is still believed the more correct convention (it matches controller_lee.c,
+ * controller_mellinger.c and pptraj.c); re-enable it deliberately, with a trajectory flight
+ * to back it, not as a default. */
+uint8_t g_indi_frame_conv = 0;  /* 0 = Faessler (frozen/flight-proven), 1 = Mellinger */
+
+/* res_sign -- sign of the residual feedforward in the position loop. See the long note at
+ * the f_d assembly in lib.rs. +1 (DEFAULT) reproduces the frozen branch's `.add(a_indi)`,
+ * the configuration that actually flew; -1 is the derivation-correct sign, which has never
+ * flown. Runtime param specifically so the A/B needs no reflash -- set to -1 for one flight,
+ * compare, and do NOT leave it there until a hardware flight backs it up.
+ *
+ * UPDATE 2026-09-12: no longer "the prime suspect" without qualification -- the H0 partition
+ * (ctrl_mode=2, which forces a_indi to zero regardless of this value) crashed on hover ALONE
+ * just as sharply as full INDI's original divergence, so this term cannot be the sole cause.
+ * res_sign=-1 is still untried and still worth testing, but on a weaker footing than before;
+ * see the matching note in lib.rs and `docs/lab_sessions/2026-09-12.md`. */
+int8_t  g_indi_res_sign   = 1;
+
+/* ── Filter-design sample rate ──────────────────────────────────────────────
+ * filt_dt_us — the dt, in MICROSECONDS, used to compute Butterworth/notch
+ * coefficients. DEFAULT 2000 (i.e. 500 Hz), which is what every flight to date
+ * has used and is therefore the flight-proven value. IT IS ALSO WRONG.
+ *
+ * controllerOutOfTree is called from stabilizer.c's main loop, which is
+ * UNCONDITIONAL at RATE_MAIN_LOOP = 1000 Hz ("the sensor should unlock at 1kHz").
+ * There is no RATE_DO_EXECUTE(ATTITUDE_RATE) gate. So the true dt is 1000 us, and
+ * our own dt computation ((tick - last_tick) * 0.001) correctly reports 0.001 --
+ * only the filter COEFFICIENTS were hard-coded to a 500 Hz assumption.
+ *
+ * Consequences, measured 2026-09-10:
+ *   - a Butterworth asked for fc_bw = 60 Hz actually has its -3 dB point at ~206 Hz,
+ *     i.e. it filters ~3.4x less than intended;
+ *   - the stage-2 notch asked for 6.9 Hz actually sits at 13.8 Hz -- exactly 2x --
+ *     which explains why the notch aimed at the measured 6.9 Hz peak never touched it.
+ *
+ * Set 1000 to make fc_bw and notch_f0 mean what they say. Set 0 to derive it from
+ * the measured loop dt each time the filters are (re)initialised.
+ *
+ * DEFAULT LEFT AT 2000 DELIBERATELY: correcting it changes the effective filtering
+ * by ~3.4x, which is a real change in flight behaviour and must not be introduced
+ * silently before the controller-validation flights. */
+uint16_t g_indi_filt_dt_us = 2000;
+
+/* filt_prewarp — 0 (DEFAULT) = the legacy, NOT pre-warped discretisation every flight to
+ * date has used; its actual -3 dB sits ~1.9x above the requested fc (measured: fc_bw=60
+ * gives 115 Hz at 1 kHz). 1 = pre-warped bilinear, K = tan(dt/2*tau), which is the standard
+ * form, is what the rest of the Crazyflie firmware uses (utils/interface/filter.h) and what
+ * NA-INDI inherits, and whose -3 dB lands exactly on the requested fc.
+ *
+ * With filt_prewarp=1 AND filt_dt_us=1000, fc_bw finally means what it says. fc_bw = 206
+ * then reproduces today's actual filtering, so that triple is a behavioural no-op and the
+ * right place to start tuning from. Default 0 to keep the shipped behaviour flight-proven. */
+uint8_t g_indi_filt_prewarp = 0;
+
+/* ── Residual (a_res) conditioning — force/position INDI ────────────────────
+ * NA-INDI clamps and low-pass filters BOTH sides before differencing; we take a
+ * raw instantaneous difference and feed it into f_d -> thrust_vec -> desired_rot()
+ * -> Rd, i.e. straight into the commanded attitude. See docs/22 section 2e.
+ *
+ * res_fc    — Butterworth cutoff [Hz] applied to a_meas and a_model SEPARATELY,
+ *             before the subtraction, so the filter lag cancels in the difference.
+ *             0 = off (default, today's behaviour).
+ * res_clamp — norm clamp [m/s^2] applied to each side before differencing, so one
+ *             bad sample can never reach the control law. 0 = off (default).
+ *             NA-INDI uses 10.0.
+ * Both default OFF so the shipped behaviour is byte-identical until deliberately
+ * enabled for an A/B. */
+float g_indi_res_fc    = 0.0f;
+float g_indi_res_clamp = 0.0f;
+
+/* ── Torque residual conditioning — attitude INDI ────────────────────────────
+ * NA-INDI comparison item #2 (docs/22 sec 2e): our tau_current is already
+ * Butterworth-filtered (indi_gains.filt_tau) but never clamped. Their reference clamps
+ * tau_current's magnitude (0.006 Nm on their airframe) before it feeds the increment.
+ * tau_clamp — norm clamp [Nm] on tau_current, applied before filt_tau's BW filter.
+ *             0 = off (default, today's behaviour, byte-identical). */
+float g_indi_tau_clamp = 0.0f;
+
+uint8_t g_indi_notch_en = 0;    /* 0 = off (default), 1 = on */
+float   g_indi_notch_f0 = 7.2f; /* notch center frequency [Hz] */
+float   g_indi_notch_bw = 5.0f; /* notch bandwidth [Hz] (Q = f0/bw) */
+
+/* rpm_source declared here (used by PARAM_ADD below); full doc comment is at
+ * rpm_get_all()'s definition near the RPM bridge, further down this file.
+ *
+ * 2026-09-18: default flipped 0 -> 1. DShot has been the project's STANDING RPM source
+ * since 2026-09-16 (the optical deck was found to report exactly zero for 2 of 4 motors
+ * throughout real flight, invisible on the bench -- see the long comment at rpm_get_all()
+ * and crazyflies.yaml's cf231_active block). cf231_active already overrides this
+ * explicitly via firmware_params regardless of the compiled default, so this change is
+ * belt-and-suspenders there -- but it also applies to controller=7/8 (naindi.rs/
+ * naindi_hybrid.rs), which share this exact same rpm_get_all() call and had no config of
+ * their own pushing rpm_source at all before now. Reverting to the deck needs new
+ * evidence, not just an unset override. */
+uint8_t g_indi_rpm_source = 1;   /* 0 = optical deck, 1 = DShot (default since 2026-09-18) */
+
+PARAM_GROUP_START(indi_gains)
+  PARAM_ADD(PARAM_UINT8, ctrl_mode, &g_controller_mode)
+  PARAM_ADD(PARAM_FLOAT, kr,     &g_indi_kr)
+  PARAM_ADD(PARAM_FLOAT, kw,     &g_indi_kw)
+  PARAM_ADD(PARAM_FLOAT, kr_z,   &g_indi_kr_z)
+  PARAM_ADD(PARAM_FLOAT, kw_z,   &g_indi_kw_z)
+  PARAM_ADD(PARAM_FLOAT, kr_geo,   &g_indi_kr_geo)
+  PARAM_ADD(PARAM_FLOAT, kw_geo,   &g_indi_kw_geo)
+  PARAM_ADD(PARAM_FLOAT, kr_z_geo, &g_indi_kr_z_geo)
+  PARAM_ADD(PARAM_FLOAT, kw_z_geo, &g_indi_kw_z_geo)
+  PARAM_ADD(PARAM_FLOAT, kt1,    &g_indi_kt1)
+  PARAM_ADD(PARAM_FLOAT, kt2,    &g_indi_kt2)
+  PARAM_ADD(PARAM_FLOAT, kt3,    &g_indi_kt3)
+  PARAM_ADD(PARAM_FLOAT, kt4,    &g_indi_kt4)
+  PARAM_ADD(PARAM_FLOAT, fc_bw,  &g_indi_fc_bw)
+  PARAM_ADD(PARAM_FLOAT, fc_bw_yaw, &g_indi_fc_bw_yaw)
+  PARAM_ADD(PARAM_FLOAT, fc_iir, &g_indi_fc_iir)
+  PARAM_ADD(PARAM_FLOAT, mass,   &g_indi_mass)
+  PARAM_ADD(PARAM_UINT8, ff_free, &g_indi_ff_free)
+  PARAM_ADD(PARAM_UINT8, n1_fix, &g_indi_n1_fix)
+  PARAM_ADD(PARAM_UINT8, dt_usec, &g_indi_dt_usec)
+  PARAM_ADD(PARAM_UINT8, filt_order, &g_indi_filt_order)
+  PARAM_ADD(PARAM_UINT8, filt_tau, &g_indi_filt_tau)
+  PARAM_ADD(PARAM_FLOAT, j_scale, &g_indi_j_scale)
+  PARAM_ADD(PARAM_FLOAT, act_tau,      &g_indi_act_tau)
+  PARAM_ADD(PARAM_UINT8, clamp_en,     &g_indi_clamp_en)
+  PARAM_ADD(PARAM_FLOAT, tau_xy_max,   &g_indi_tau_xy_max)
+  PARAM_ADD(PARAM_FLOAT, tau_z_max,    &g_indi_tau_z_max)
+  PARAM_ADD(PARAM_FLOAT, tilt_max_deg, &g_indi_tilt_max_deg)
+  PARAM_ADD(PARAM_FLOAT, thrust_max,   &g_indi_thrust_max)
+  PARAM_ADD(PARAM_UINT8, omega_src,    &g_indi_omega_src)
+  PARAM_ADD(PARAM_UINT8, frame_conv,   &g_indi_frame_conv)
+  PARAM_ADD(PARAM_INT8,  res_sign,     &g_indi_res_sign)
+  PARAM_ADD(PARAM_UINT16, filt_dt_us,  &g_indi_filt_dt_us)
+  PARAM_ADD(PARAM_UINT8, filt_prewarp, &g_indi_filt_prewarp)
+  PARAM_ADD(PARAM_FLOAT, res_fc,       &g_indi_res_fc)
+  PARAM_ADD(PARAM_FLOAT, res_clamp,    &g_indi_res_clamp)
+  PARAM_ADD(PARAM_FLOAT, tau_clamp,    &g_indi_tau_clamp)
+  PARAM_ADD(PARAM_UINT8, notch_en,     &g_indi_notch_en)
+  PARAM_ADD(PARAM_FLOAT, notch_f0,     &g_indi_notch_f0)
+  PARAM_ADD(PARAM_FLOAT, notch_bw,     &g_indi_notch_bw)
+  PARAM_ADD(PARAM_UINT8, rpm_source,   &g_indi_rpm_source)
+PARAM_GROUP_STOP(indi_gains)
+
+/* ── Position loop gains (runtime-tunable, no reflash needed) ─────────────── */
+float g_kp_xy = 28.0f;  /* position P gain X/Y [m/s² per m]  */
+float g_kp_z  = 30.0f;  /* position P gain Z                  */
+float g_kv_xy = 3.0f;   /* velocity D gain X/Y [m/s² per m/s] */
+float g_kv_z  = 7.0f;   /* velocity D gain Z                  */
+/* Z-only position integral (lib.rs ENABLE_Z_INTEGRAL): separate from joint i_ep / KI_P. */
+float g_ki_z       = 8.0f;  /* [m/s² per m·s] on accumulated z error */
+float g_ki_z_limit = 1.5f;  /* max |i_ez| [m·s] — sized for ~2–20 cm steady offsets */
+
+PARAM_GROUP_START(pos_gains)
+  PARAM_ADD(PARAM_FLOAT, kp_xy, &g_kp_xy)
+  PARAM_ADD(PARAM_FLOAT, kp_z,  &g_kp_z)
+  PARAM_ADD(PARAM_FLOAT, kv_xy, &g_kv_xy)
+  PARAM_ADD(PARAM_FLOAT, kv_z,  &g_kv_z)
+  PARAM_ADD(PARAM_FLOAT, ki_z,       &g_ki_z)
+  PARAM_ADD(PARAM_FLOAT, ki_z_limit, &g_ki_z_limit)
+PARAM_GROUP_STOP(pos_gains)
+
+/* ── controller=10 (ControllerTypeOot5, omar_indi_rust.rs) INDI bitmask ────
+ * Runtime-settable via yaml/cfclient, same role as controller=9's ctrlOmarIndi.indi
+ * (bit0=position INDI, bit1=attitude INDI). Read live every tick by omar_indi_rust.rs,
+ * NOT cached at Init -- default is 3 (both bits on) since this controller's whole point
+ * is being the finalized Rust INDI, not a bare-geometric variant. controller=9 shipped
+ * with the equivalent defaulting to 0 and silently flew plain geometric on its first two
+ * days of hardware attempts before this was caught -- see docs/41 §9 and §13. */
+uint8_t g_oot5_indi = 3;
+float g_oot5_kpos_iz = 0.0f;
+
+void omar_indi_rust_set_kpos_iz(float gain)
+{
+  g_oot5_kpos_iz = gain;
+}
+
+PARAM_GROUP_START(ctrlOot5)
+  PARAM_ADD(PARAM_UINT8, indi, &g_oot5_indi)
+  PARAM_ADD(PARAM_FLOAT, kpos_iz, &g_oot5_kpos_iz)
+PARAM_GROUP_STOP(ctrlOot5)
+
+/* controller=11 (tk_indi.rs): Tal & Karaman 2020 INDI, Table III gains + 30 Hz Butterworth as
+ * defaults. All runtime-settable (yaml firmware_params: ctrlTk.*); read live every tick. */
+float g_tk_kx_xy = 18.0f,  g_tk_kx_z = 13.5f;
+float g_tk_kv_xy = 7.8f,   g_tk_kv_z = 5.9f;
+float g_tk_ka_xy = 0.5f,   g_tk_ka_z = 0.3f;
+float g_tk_kxi_xy = 175.0f, g_tk_kxi_z = 82.0f;
+float g_tk_kom_xy = 19.5f, g_tk_kom_z = 19.2f;
+float g_tk_fc = 30.0f;     /* 2nd-order Butterworth cutoff on motor speeds and IMU [Hz] */
+float g_tk_jrz = 2.5e-8f;  /* rotor + propeller inertia about the spin axis [kg m^2]; regression on 2026-10-08 A8 logs, docs/74 */
+uint8_t g_tk_yaw_lit = 1;  /* 1 = Eq. (25) as printed, 0 = half-angle form */
+
+PARAM_GROUP_START(ctrlTk)
+  PARAM_ADD(PARAM_FLOAT, kx_xy, &g_tk_kx_xy)
+  PARAM_ADD(PARAM_FLOAT, kx_z, &g_tk_kx_z)
+  PARAM_ADD(PARAM_FLOAT, kv_xy, &g_tk_kv_xy)
+  PARAM_ADD(PARAM_FLOAT, kv_z, &g_tk_kv_z)
+  PARAM_ADD(PARAM_FLOAT, ka_xy, &g_tk_ka_xy)
+  PARAM_ADD(PARAM_FLOAT, ka_z, &g_tk_ka_z)
+  PARAM_ADD(PARAM_FLOAT, kxi_xy, &g_tk_kxi_xy)
+  PARAM_ADD(PARAM_FLOAT, kxi_z, &g_tk_kxi_z)
+  PARAM_ADD(PARAM_FLOAT, kom_xy, &g_tk_kom_xy)
+  PARAM_ADD(PARAM_FLOAT, kom_z, &g_tk_kom_z)
+  PARAM_ADD(PARAM_FLOAT, fc, &g_tk_fc)
+  PARAM_ADD(PARAM_FLOAT, jrz, &g_tk_jrz)
+  PARAM_ADD(PARAM_UINT8, yaw_lit, &g_tk_yaw_lit)
+PARAM_GROUP_STOP(ctrlTk)
+
+static float log_tk_thrust, log_tk_rpm_ok, log_tk_ns, log_tk_tau_f;
+void tk_diag_write(float thrust, float rpm_ok, float ns, float tau_f)
+{
+    log_tk_thrust = thrust; log_tk_rpm_ok = rpm_ok; log_tk_ns = ns; log_tk_tau_f = tau_f;
+}
+LOG_GROUP_START(ctrlTk)
+  LOG_ADD(LOG_FLOAT, thrust, &log_tk_thrust)
+  LOG_ADD(LOG_FLOAT, rpm_ok, &log_tk_rpm_ok)
+  LOG_ADD(LOG_FLOAT, ns, &log_tk_ns)
+  LOG_ADD(LOG_FLOAT, tau_f, &log_tk_tau_f)
+LOG_GROUP_STOP(ctrlTk)
+
+/* ── RPM bridge for Rust INDI (Mode 1) ─────────────────────────────────── */
+/* Exposes per-motor RPM via the Crazyflie log system. Two possible sources,
+ * selected at RUNTIME by indi_gains.rpm_source (added 2026-09-11):
+ *
+ *   0 = optical RPM deck, log group "rpm" (m1..m4). Used from the 2026-07-16 switch away
+ *       from DShot (which fixed a catastrophic attitude-INDI divergence at the time, see
+ *       flying_drone_stack/docs/results_2026-07-15_brushless.md) until 2026-09-16, when
+ *       the deck itself was found to report exactly zero for 2 of 4 motors throughout
+ *       real flight -- invisible on the bench, a real in-flight-only hardware defect.
+ *       Requires the deck to be physically fitted (deck.bcRpm=1 force-enables its
+ *       driver, since it has vid/pid=0x00 and never auto-detects).
+ *   1 (DEFAULT since 2026-09-18) = DShot bidirectional ESC telemetry, log group "motor"
+ *       (m1_rpm..m4_rpm). Always running on this platform regardless of this switch
+ *       (CONFIG_MOTORS_ESC_PROTOCOL_DSHOT_BIDIRECTIONAL=y is unconditional in
+ *       app-config-bl -- it is how the ESCs are driven at all) -- this only changes
+ *       which readout INDI's tau_current uses. No deck, no reflective markers, no extra
+ *       hardware. Read by controller=6/7/8 alike (naindi.rs/naindi_hybrid.rs call this
+ *       exact same function) -- there is no separate RPM path per controller.
+ *
+ * WHY THIS IS A RUNTIME SWITCH NOW, NOT A COMPILE-TIME ONE: the 2026-07-16 fix was
+ * real -- switching sources ended a divergence that reflashing gains alone never had.
+ * But the mechanism explanation attached to it was never re-checked against DShot: the
+ * 2026-07-18 H1a test (indi_gains.ff_free) that found the REMAINING bounded 5-8 Hz
+ * oscillation was gain amplification, not an RPM-source or hardware effect, was run
+ * entirely on the deck. DShot was never re-tried at the gains that test's own
+ * conclusion produced. That is a genuinely open question, not a settled one -- see
+ * flying_drone_stack/docs/dshot_rpm_source_plan.md for the full reasoning and the
+ * planned re-test procedure. A runtime switch lets both sources be A/B'd in one
+ * session without reflashing between them, the same reasoning already applied to
+ * ff_free/filt_dt_us/res_sign.
+ *
+ * DShot telemetry uses UINT16_MAX as its own "invalid / no value" sentinel; the
+ * optical deck never reaches that value, so treating it as "absent, fall back" is a
+ * no-op for the deck and a real guard for DShot.
+ *
+ * Two independently-cached logVarId arrays (not one, re-pointed) so switching
+ * rpm_source at runtime needs no cache-invalidation logic -- whichever array wasn't
+ * used yet simply resolves lazily on first read, same as today's single-source path. */
+
+#ifndef UNIT_TEST_MODE
+bool oot_rpm_logs_available(void)
+{
+    logVarId_t id = logGetVarId("rpm", "m1");
+    return logVarIdIsValid(id);
+}
+#endif
+
+/* Filtered RPM (output of rpm_filter_step, i.e. what thrust / torque reconstruction uses), logged next to the raw
+ * DShot value (motor.mN_rpm) so one flight shows raw and filtered side by side. Written whenever a controller calls
+ * rpm_get_all() (controllers 6, 7, 8, 10, 11, 12; Omar C reads the deck itself and does not call it). */
+static uint16_t log_rpmf[4];
+LOG_GROUP_START(rpmf)
+  LOG_ADD(LOG_UINT16, m1, &log_rpmf[0])
+  LOG_ADD(LOG_UINT16, m2, &log_rpmf[1])
+  LOG_ADD(LOG_UINT16, m3, &log_rpmf[2])
+  LOG_ADD(LOG_UINT16, m4, &log_rpmf[3])
+LOG_GROUP_STOP(rpmf)
+
+void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
+{
+    static logVarId_t ids_deck[4]  = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+    static logVarId_t ids_dshot[4] = {0xffffu, 0xffffu, 0xffffu, 0xffffu};
+    static const char *deck_names[4]  = {"m1", "m2", "m3", "m4"};
+    static const char *dshot_names[4] = {"m1_rpm", "m2_rpm", "m3_rpm", "m4_rpm"};
+
+    logVarId_t *ids;
+    const char *group, **names;
+    if (g_indi_rpm_source != 0) {
+        ids = ids_dshot; group = "motor"; names = dshot_names;
+    } else {
+        ids = ids_deck;  group = "rpm";   names = deck_names;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        if (!logVarIdIsValid(ids[i]))
+            ids[i] = logGetVarId(group, names[i]);
+    }
+
+    static uint16_t rpm_prev[4] = {0, 0, 0, 0};
+
+    uint16_t v[4];
+    for (int i = 0; i < 4; i++) {
+        v[i] = logVarIdIsValid(ids[i]) ? (uint16_t)logGetUint(ids[i]) : 0u;
+        v[i] = rpm_filter_step(v[i], g_indi_rpm_source, &rpm_prev[i]);
+        log_rpmf[i] = v[i];   /* 2026-10-13: the value the controller actually uses, for the uSD log (rpmf.m1..m4) */
+    }
+    *m1 = v[0]; *m2 = v[1]; *m3 = v[2]; *m4 = v[3];
+}
+
+/* ── INDI log bridge ────────────────────────────────────────────────────── */
+static float log_alp_raw_x, log_alp_raw_y, log_alp_raw_z;
+static float log_alp_x,     log_alp_y,     log_alp_z;
+static float log_tau_x,     log_tau_y,     log_tau_z;
+static float log_alp_notch_x, log_alp_notch_y, log_alp_notch_z;
+static float log_a_res_x, log_a_res_y, log_a_res_z;
+static float log_e_r_x, log_e_r_y, log_e_r_z, log_e_r_norm;
+/* controller=10 (omar_indi_rust) diagnostics — 2026-09-30 second hardware failure triage */
+static float log_oot5_branch_mode_abs;
+static float log_oot5_thrust_si;
+static float log_oot5_sp_mode_z;
+static float log_oot5_sp_thrust;
+static float log_oot5_sp_mode_x;
+static float log_oot5_sp_mode_y;
+/* Loop dt in microseconds, as MEASURED by the controller each tick. Logged so the
+ * 500-vs-1000 Hz question (see filt_dt_us above) can be settled from a real flight
+ * rather than from reading stabilizer.c. Expect a flat 1000 if the loop is clean. */
+static float log_dt_us;
+
+void indi_log_write(float arx, float ary, float arz,
+                    float ax,  float ay,  float az)
+{
+    log_alp_raw_x = arx; log_alp_raw_y = ary; log_alp_raw_z = arz;
+    log_alp_x = ax;      log_alp_y = ay;      log_alp_z = az;
+}
+
+void indi_tau_write(float tx, float ty, float tz)
+{
+    log_tau_x = tx; log_tau_y = ty; log_tau_z = tz;
+}
+
+/* Stage-2 notch output (indi_gains.notch_en, 2026-07-28) -- alpha_meas AFTER the optional
+ * band-reject filter, always computed/logged regardless of notch_en so alp_raw / alp (stage-1 BW)
+ * / alp_notch (stage-2 notch) can all be compared from one flight. */
+void indi_notch_log_write(float anx, float any, float anz)
+{
+    log_alp_notch_x = anx; log_alp_notch_y = any; log_alp_notch_z = anz;
+}
+
+/* Residual acceleration a_res = a_meas - a_model [m/s^2], world frame (2026-08-22).
+ * Equals f_res/m -- the unmodelled force on the vehicle, dominated by other drones' downwash in
+ * close-proximity formation flight. This is the quantity the residual-learning literature trains
+ * on, so it is the core measurement of the thesis.
+ * Written every tick whenever RPMs are available, REGARDLESS of indi_gains.ctrl_mode, so the
+ * residual can be recorded while flying the plain geometric controller (training data for
+ * Geometric+NN must come from non-INDI flights). Zero when no RPM source is present. */
+void indi_a_res_write(float ax, float ay, float az)
+{
+    log_a_res_x = ax; log_a_res_y = ay; log_a_res_z = az;
+}
+
+/* Geometric attitude error e_R = 0.5*vee(R_des^T R - R^T R_des) [rad, roughly], the same
+ * vector already used in the torque law (Lee et al. 2010; see firmware_app/CLAUDE.md's
+ * gyro_feedback/torque comment). Written unconditionally once per controller_step call in
+ * lib.rs, BEFORE the geometric/INDI branch split, so it is present under every ctrl_mode
+ * (0-3) -- the comparison campaign needs it under all fair-set modes, not just INDI.
+ * Norm is computed in Rust (libm::sqrtf) and passed through rather than recomputed here. */
+void indi_dt_write(float dt_us) { log_dt_us = dt_us; }
+
+void indi_e_r_write(float ex, float ey, float ez, float norm)
+{
+    log_e_r_x = ex; log_e_r_y = ey; log_e_r_z = ez; log_e_r_norm = norm;
+}
+
+void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust,
+                      float sp_mode_x, float sp_mode_y)
+{
+    log_oot5_branch_mode_abs = branch_mode_abs;
+    log_oot5_thrust_si = thrust_si;
+    log_oot5_sp_mode_z = sp_mode_z;
+    log_oot5_sp_thrust = sp_thrust;
+    log_oot5_sp_mode_x = sp_mode_x;
+    log_oot5_sp_mode_y = sp_mode_y;
+}
+
+LOG_GROUP_START(indi)
+  LOG_ADD(LOG_FLOAT, alp_raw_x, &log_alp_raw_x)
+  LOG_ADD(LOG_FLOAT, alp_raw_y, &log_alp_raw_y)
+  LOG_ADD(LOG_FLOAT, alp_raw_z, &log_alp_raw_z)
+  LOG_ADD(LOG_FLOAT, alp_x,     &log_alp_x)
+  LOG_ADD(LOG_FLOAT, alp_y,     &log_alp_y)
+  LOG_ADD(LOG_FLOAT, alp_z,     &log_alp_z)
+  LOG_ADD(LOG_FLOAT, tau_x,     &log_tau_x)
+  LOG_ADD(LOG_FLOAT, tau_y,     &log_tau_y)
+  LOG_ADD(LOG_FLOAT, tau_z,     &log_tau_z)
+  LOG_ADD(LOG_FLOAT, alp_notch_x, &log_alp_notch_x)
+  LOG_ADD(LOG_FLOAT, alp_notch_y, &log_alp_notch_y)
+  LOG_ADD(LOG_FLOAT, alp_notch_z, &log_alp_notch_z)
+  LOG_ADD(LOG_FLOAT, a_res_x,   &log_a_res_x)
+  LOG_ADD(LOG_FLOAT, a_res_y,   &log_a_res_y)
+  LOG_ADD(LOG_FLOAT, a_res_z,   &log_a_res_z)
+  LOG_ADD(LOG_FLOAT, e_r_x,     &log_e_r_x)
+  LOG_ADD(LOG_FLOAT, e_r_y,     &log_e_r_y)
+  LOG_ADD(LOG_FLOAT, e_r_z,     &log_e_r_z)
+  LOG_ADD(LOG_FLOAT, e_r_norm,  &log_e_r_norm)
+  LOG_ADD(LOG_FLOAT, oot5_branch,   &log_oot5_branch_mode_abs)
+  LOG_ADD(LOG_FLOAT, oot5_thrust_si, &log_oot5_thrust_si)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_z, &log_oot5_sp_mode_z)
+  LOG_ADD(LOG_FLOAT, oot5_sp_thrust, &log_oot5_sp_thrust)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_x, &log_oot5_sp_mode_x)
+  LOG_ADD(LOG_FLOAT, oot5_sp_mode_y, &log_oot5_sp_mode_y)
+LOG_GROUP_STOP(indi)

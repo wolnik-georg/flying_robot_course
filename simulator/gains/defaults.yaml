@@ -1,0 +1,22 @@
+# Untuned gains of the five controllers (the starting point of the tuning, and what the simulator uses when no gains file is given).
+# Units: the firmware's own (SI); the position / velocity gains are on acceleration, attitude and rate gains on torque.
+
+tree_controllers:   # S0, S1, S2, S3 share these 10 gains (x and y are tied)
+  Pxy: 7.0   # position proportional gain, x and y [1/s^2 scale of the position loop]
+  Pz: 7.0   # position proportional gain, z
+  Dxy: 4.0   # velocity (damping) gain, x and y
+  Dz: 4.0   # velocity (damping) gain, z
+  Iz: 1.5   # position integral gain, z (removes height offset)
+  KRxy: 0.007   # attitude error gain, roll and pitch
+  KRz: 0.008   # attitude error gain, yaw
+  Kwxy: 0.00115   # angular-rate error gain, roll and pitch
+  Kwz: 0.002   # angular-rate error gain, yaw
+  KIxy: 0.03   # attitude integral gain, roll and pitch
+
+fbl:   # FBL, 6 gains (preset 1 = our gain set; the attitude / rate gains of its inner loop are fixed and not tuned)
+  kp_xy: 14.0   # position proportional gain, x and y
+  kv_xy: 9.5   # velocity gain, x and y
+  ki_xy: 12.0   # position integral gain, x and y
+  kp_z: 11.25   # position proportional gain, z
+  kv_z: 5.4   # velocity gain, z
+  ki_z: 12.0   # position integral gain, z

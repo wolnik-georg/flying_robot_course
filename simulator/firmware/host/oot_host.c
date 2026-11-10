@@ -1,0 +1,341 @@
+/* Host-side glue so the out-of-tree controller can run in the simulator.
+ *
+ * traj_iface.c is compiled unchanged (with the param.h/log.h stubs beside this file)
+ * so the INDI gains, trajectory globals and their tuned defaults come from exactly the
+ * same source as the firmware. Only two things must differ on the host:
+ *
+ *   1. RPM feedback. On the drone rpm_get_all() reads the RPM deck or DShot telemetry
+ *      through the log system. Here the simulator knows the true motor speeds, so it
+ *      pushes them in with oot_set_rpm() and rpm_get_all() returns those. This matters:
+ *      attitude INDI derives tau_current from RPM^2, and without it the controller
+ *      silently falls back to tau_prev -- i.e. degraded INDI, not the real thing.
+ *      traj_iface.c's own rpm_get_all is renamed away by -Drpm_get_all=... at compile
+ *      time, so there is no duplicate symbol.
+ *
+ *   2. Log sinks. The indi_*_write() functions are the firmware's log bridge. Here they
+ *      just latch the latest values so the simulator can read the residual, the INDI
+ *      torque and the filtered angular acceleration -- the same signals the uSD deck
+ *      records in flight.
+ */
+/* setup.py renames traj_iface.c's versions of these out of the way with -D so the
+ * host ones below win. That -D applies to every source in the build, including this
+ * file, so undo it here -- otherwise these definitions would be renamed too and the
+ * firmware's originals would collide with them. */
+#undef rpm_get_all
+#undef indi_log_write
+#undef indi_tau_write
+#undef indi_notch_log_write
+#undef indi_a_res_write
+#undef indi_e_r_write
+#undef oot5_diag_write
+#undef peer_get_all
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "log.h"
+#include "param.h"
+#include "platform_defaults.h"
+
+/* ── symbols the firmware normally provides, stubbed for the host ──────────────
+ * traj_iface.c includes the real firmware log.h (it comes first on the include
+ * path), so it links against the real log API. log.c is not part of the bindings
+ * build, so provide the two functions it actually calls. Returning "not found"
+ * means traj_iface.c's own rpm reader would report zeros -- which is moot, because
+ * that function is renamed away and oot_host.c's version is used instead.
+ *
+ * rust_eh_personality is the unwinding hook a no_std Rust staticlib still
+ * references even when built with panic=abort. Nothing here can unwind, so an
+ * empty definition is enough to satisfy the linker. */
+static uint16_t g_host_rpm[4] = {0, 0, 0, 0};
+
+/* 2026-09-22: controller=9 (controller_omar_indi.c, a literal C copy of the supervisor's own
+ * controller_lee.c) reads RPM via logGetVarId("rpm","mN")/logGetUint() -- a genuinely different
+ * mechanism than rpm_get_all() (which lib.rs/naindi.rs/naindi_hybrid.rs use). Rather than add a
+ * second, parallel test-only RPM array, group="rpm"/name="mN" now resolves to ids 1-4 and reads
+ * back the SAME g_host_rpm[] oot_set_rpm() already writes -- one physical quantity, one place to
+ * set it, whichever read path a given controller happens to use. Every other group/name still
+ * returns "not present"/0, unchanged from before -- this is additive, not a behavior change for
+ * any controller that never asks for "rpm"/"mN". */
+logVarId_t logGetVarId(const char *group, const char *name)
+{
+    if (group && name && group[0] == 'r' && group[1] == 'p' && group[2] == 'm' && group[3] == '\0'
+        && name[0] == 'm' && name[2] == '\0' && name[1] >= '1' && name[1] <= '4') {
+        return (logVarId_t)(name[1] - '0');   /* 1..4 */
+    }
+    return 0xffffu;               /* always "not present" for anything else */
+}
+
+uint32_t logGetUint(logVarId_t varid)
+{
+    if (varid >= 1 && varid <= 4) {
+        return g_host_rpm[varid - 1];
+    }
+    return 0u;
+}
+float    logGetFloat(logVarId_t varid) { (void)varid; return 0.0f; }
+
+void rust_eh_personality(void) {}
+
+void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4)
+{
+    g_host_rpm[0] = m1; g_host_rpm[1] = m2; g_host_rpm[2] = m3; g_host_rpm[3] = m4;
+}
+
+void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4)
+{
+    *m1 = g_host_rpm[0]; *m2 = g_host_rpm[1];
+    *m3 = g_host_rpm[2]; *m4 = g_host_rpm[3];
+}
+
+/* controller=10 (omar_indi_rust.rs): RPM path enabled when rpm log vars resolve — not
+ * deck.bcRpm param (intentional deviation from controller_omar_indi.c). */
+bool oot_rpm_logs_available(void)
+{
+    return logGetVarId("rpm", "m1") != 0xffffu;
+}
+
+/* 2026-09-22: controller=9's controllerOmarIndiInit() calls paramGetVarId("deck","bcRpm") once
+ * to decide whether the RPM path is exercised at all -- report "present" unconditionally so the
+ * INDI branch is actually exercised in host tests, mirroring the exact precedent already used
+ * for the reference's own host_stubs.c (naindi_reference_build_notes.md). paramGetUint always
+ * reads back 1 for the one id this stub hands out, matching "deck present". */
+paramVarId_t paramGetVarId(const char *group, const char *name)
+{
+    (void)group; (void)name;
+    paramVarId_t id = { 1, 0 };
+    return id;
+}
+
+uint32_t paramGetUint(paramVarId_t varid) { (void)varid; return 1u; }
+float    pmGetBatteryVoltage(void) { return 3.8f; }
+
+/* 2026-09-16: controller=8 (naindi_hybrid.rs) calls motorsGetRatio() directly -- their NN's
+ * own input vector uses commanded PWM ratio, not measured RPM (see controller_lee.c's own
+ * comment: "not RPM-free... uses commanded PWM instead"). motors.c is not part of the SIL/host
+ * build (it is a real STM32 PWM/DSHOT driver with no host equivalent), so this symbol would
+ * otherwise be undefined at link time -- same reason rpm_get_all needed a host stub above.
+ * Same injection pattern: a test pushes values with oot_set_pwm_ratio() before stepping the
+ * controller, exactly like oot_set_rpm() does for RPM. */
+static uint16_t g_host_pwm_ratio[4] = {0, 0, 0, 0};
+
+void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4)
+{
+    g_host_pwm_ratio[0] = m1; g_host_pwm_ratio[1] = m2;
+    g_host_pwm_ratio[2] = m3; g_host_pwm_ratio[3] = m4;
+}
+
+uint16_t motorsGetRatio(uint32_t id)
+{
+    if (id < 4) {
+        return g_host_pwm_ratio[id];
+    }
+    return 0;
+}
+
+/* ── log sinks: latch the values the controller publishes ─────────────────── */
+static float l_alp_raw[3], l_alp[3], l_tau[3], l_alp_notch[3], l_a_res[3];
+static float l_e_r[3], l_e_r_norm;
+static float l_oot5_branch, l_oot5_thrust_si, l_oot5_sp_mode_z, l_oot5_sp_thrust;
+static float l_oot5_sp_mode_x, l_oot5_sp_mode_y;
+
+void indi_log_write(float arx, float ary, float arz, float ax, float ay, float az)
+{
+    l_alp_raw[0]=arx; l_alp_raw[1]=ary; l_alp_raw[2]=arz;
+    l_alp[0]=ax; l_alp[1]=ay; l_alp[2]=az;
+}
+void indi_tau_write(float tx, float ty, float tz)      { l_tau[0]=tx; l_tau[1]=ty; l_tau[2]=tz; }
+void indi_notch_log_write(float x, float y, float z)   { l_alp_notch[0]=x; l_alp_notch[1]=y; l_alp_notch[2]=z; }
+void indi_a_res_write(float x, float y, float z)       { l_a_res[0]=x; l_a_res[1]=y; l_a_res[2]=z; }
+void indi_e_r_write(float ex, float ey, float ez, float norm)
+{
+    l_e_r[0]=ex; l_e_r[1]=ey; l_e_r[2]=ez; l_e_r_norm=norm;
+}
+
+void oot5_diag_write(float branch_mode_abs, float thrust_si, float sp_mode_z, float sp_thrust,
+                      float sp_mode_x, float sp_mode_y)
+{
+    l_oot5_branch = branch_mode_abs;
+    l_oot5_thrust_si = thrust_si;
+    l_oot5_sp_mode_z = sp_mode_z;
+    l_oot5_sp_thrust = sp_thrust;
+    l_oot5_sp_mode_x = sp_mode_x;
+    l_oot5_sp_mode_y = sp_mode_y;
+}
+
+/* Readers for Python. a_res is f_res/m -- the residual the thesis measures. */
+float oot_get_a_res(int i)     { return (i>=0 && i<3) ? l_a_res[i]     : 0.0f; }
+float oot_get_tau(int i)       { return (i>=0 && i<3) ? l_tau[i]       : 0.0f; }
+float oot_get_alp(int i)       { return (i>=0 && i<3) ? l_alp[i]       : 0.0f; }
+float oot_get_alp_raw(int i)   { return (i>=0 && i<3) ? l_alp_raw[i]   : 0.0f; }
+float oot_get_alp_notch(int i) { return (i>=0 && i<3) ? l_alp_notch[i] : 0.0f; }
+float oot_get_e_r(int i)       { return (i>=0 && i<3) ? l_e_r[i]       : 0.0f; }
+float oot_get_e_r_norm(void)   { return l_e_r_norm; }
+
+/* Airframe constants the firmware was COMPILED with. The simulator needs these to
+   invert powerDistribution exactly: it turns force into PWM as
+   pwm = force / THRUST_MAX * UINT16_MAX, so the plant must turn PWM back into force
+   the same way, or the drone silently delivers a different thrust than was commanded
+   and every controller shows the same steady-state droop. Exposing them here rather
+   than duplicating the numbers in Python keeps one source of truth: change the
+   platform define and the simulated airframe follows. */
+float oot_thrust_max(void)     { return THRUST_MAX; }
+float oot_arm_length(void)     { return ARM_LENGTH; }
+float oot_thrust2torque(void)  { return THRUST2TORQUE; }
+
+/* 2026-09-22: controller=9 (controller_omar_indi.c) reads its own mass/thrust constant from
+ * platform_defaults_cf21bl.h, separate from g_indi_mass/g_indi_kt1-4 (traj_iface.c's globals,
+ * which THIS controller never touches) -- so crazyflie_server.py's plant sync needs its own
+ * pair of getters, not the ones above (which stay correct for 'oot'/'oot2'/'oot3' as before).
+ * oot_omar_mass() is CF_MASS directly -- no controller instance needed, same as oot_arm_length
+ * above (both are just compile-time platform macros). oot_omar_kt_equiv() converts
+ * MOTORRPM2FORCE (his convention: force = MOTORRPM2FORCE * (rpm in RAD/S)^2) into this
+ * project's own kt convention (force = kt * (rpm in REV/MIN)^2, what the simulated plant's
+ * Quadrotor model and g_indi_kt1-4 both use) by folding in the (2*pi/60)^2 unit conversion --
+ * getting this wrong silently under-thrusts the simulated plant by ~91x, so it is done once
+ * here, not duplicated in Python. */
+float oot_omar_mass(void)      { return CF_MASS; }
+float oot_omar_kt_equiv(void)  { return MOTORRPM2FORCE * 0.010966227112321508f; }
+
+/* ---- Per-vehicle controller state, host simulator only --------------------
+   The simulator drives every simulated drone through this one compiled controller,
+   so without this they would share one set of INDI filters, integrators and last_tick.
+   oot_select_drone(i) parks the current vehicle's state and loads vehicle i's, so each
+   one behaves as if it had the controller to itself -- which on real hardware it does. */
+#include <string.h>
+#include <stdlib.h>
+
+#define OOT_MAX_DRONES 16
+
+extern unsigned char *oot_state_ptr(void);
+extern size_t oot_state_size(void);
+
+/* 2026-09-18: naindi.rs/naindi_hybrid.rs each got their own oot2_state_ptr/oot3_state_ptr
+   (same shape as oot_state_ptr above), so the exact same park/restore logic that already
+   gives 'oot' per-vehicle state can be reused for 'oot2'/'oot3' instead of duplicating it --
+   one generic implementation, three independent slot pools (one per controller, since a
+   sim run could in principle mix them). */
+extern unsigned char *oot2_state_ptr(void);
+extern size_t oot2_state_size(void);
+extern unsigned char *oot3_state_ptr(void);
+extern size_t oot3_state_size(void);
+extern unsigned char *oot5_state_ptr(void);
+extern size_t oot5_state_size(void);
+extern unsigned char *oot6_state_ptr(void);
+extern size_t oot6_state_size(void);
+extern unsigned char *oot7_state_ptr(void);
+extern size_t oot7_state_size(void);
+
+typedef struct {
+  unsigned char *slot[OOT_MAX_DRONES];
+  unsigned char *tmpl;   /* pristine post-Init state */
+  int current;
+} oot_swap_pool_t;
+
+static void oot_swap_select(oot_swap_pool_t *pool, unsigned char *live, size_t n, int idx)
+{
+  if (idx < 0 || idx >= OOT_MAX_DRONES || idx == pool->current) {
+    return;
+  }
+  if (pool->tmpl == NULL) {
+    /* First call, before any vehicle has run: whatever *Init left behind is the correct
+       starting state. Zeroing instead would be subtly wrong -- it would give every vehicle
+       after the first a state Init never produced. */
+    pool->tmpl = malloc(n);
+    memcpy(pool->tmpl, live, n);
+  }
+  if (pool->current >= 0) {
+    memcpy(pool->slot[pool->current], live, n);   /* park the outgoing vehicle */
+  }
+  if (pool->slot[idx] == NULL) {
+    pool->slot[idx] = malloc(n);
+    memcpy(pool->slot[idx], pool->tmpl, n);       /* fresh vehicle, fresh controller */
+  }
+  memcpy(live, pool->slot[idx], n);               /* load the incoming vehicle */
+  pool->current = idx;
+}
+
+static oot_swap_pool_t g_pool_oot  = { .current = -1 };
+static oot_swap_pool_t g_pool_oot2 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot3 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot5 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot6 = { .current = -1 };
+static oot_swap_pool_t g_pool_oot7 = { .current = -1 };
+
+void oot_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot, oot_state_ptr(), oot_state_size(), idx);
+}
+
+void naindi_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot2, oot2_state_ptr(), oot2_state_size(), idx);
+}
+
+void naindi_hybrid_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot3, oot3_state_ptr(), oot3_state_size(), idx);
+}
+
+void oot5_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot5, oot5_state_ptr(), oot5_state_size(), idx);
+}
+
+void oot6_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot6, oot6_state_ptr(), oot6_state_size(), idx);
+}
+
+void oot7_select_drone(int idx)
+{
+  oot_swap_select(&g_pool_oot7, oot7_state_ptr(), oot7_state_size(), idx);
+}
+
+/* ---- Peer positions, host simulator only ----------------------------------
+   On the drone these come from peer_localization, which Crazyswarm2 populates by broadcasting
+   every vehicle's pose. The simulator has no such module, so the SIL layer injects the other
+   vehicles' positions directly and the residual network sees the same input it would in
+   flight. Without this the network would train and run against an empty neighbour list in
+   simulation, which is the one thing that would make a sim dry-run worthless. */
+#define OOT_MAX_PEERS 3
+static float    g_peer_x[OOT_MAX_PEERS], g_peer_y[OOT_MAX_PEERS], g_peer_z[OOT_MAX_PEERS];
+static uint32_t g_peer_t[OOT_MAX_PEERS];
+static uint8_t  g_peer_n = 0;
+
+void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms)
+{
+  if (idx < 0 || idx >= OOT_MAX_PEERS) return;
+  g_peer_x[idx] = x; g_peer_y[idx] = y; g_peer_z[idx] = z; g_peer_t[idx] = t_ms;
+}
+
+void oot_set_peer_count(int n)
+{
+  if (n < 0) n = 0;
+  if (n > OOT_MAX_PEERS) n = OOT_MAX_PEERS;
+  g_peer_n = (uint8_t)n;
+}
+
+uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max)
+{
+  uint8_t n = g_peer_n < max ? g_peer_n : max;
+  for (uint8_t i = 0; i < n; ++i) {
+    xs[i] = g_peer_x[i]; ys[i] = g_peer_y[i]; zs[i] = g_peer_z[i]; ts[i] = g_peer_t[i];
+  }
+  return n;
+}
+
+/* controller=7 (naindi.rs) calls the firmware's usecTimestamp() for its attitude-INDI
+ * wall-clock dt, exactly like the reference controller_lee.c does. usec_time.c is firmware-
+ * only (STM32 TIM7), so provide the host equivalent. A fixed 2000 us (500 Hz, matching
+ * ATTITUDE_RATE) increment per call is used rather than real wall-clock time: a host test
+ * loop can call this fast enough that two consecutive calls return the SAME microsecond,
+ * making dt=0 and the reference's un-guarded `(omega-omega_prev)/dt` divide-by-zero into
+ * NaN -- a host-timing artifact, not a real discrepancy between the two implementations
+ * (real hardware never sees dt=0 at a 2 ms tick period). A fixed increment is deterministic
+ * and reproducible for tests, which real wall-clock time is not. */
+static uint64_t g_fake_usec = 0;
+uint64_t usecTimestamp(void)
+{
+  g_fake_usec += 2000;
+  return g_fake_usec;
+}

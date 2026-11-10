@@ -1,0 +1,59 @@
+# Tuned gains of S1 (one set per scenario).
+# Source: closing picks of the tuning (out/closing/picks_s1.json): per scenario the method with the lowest MEDIAN selection error over its seeds
+# among CMA-ES, Bayesian optimisation (plain and constrained), Sobol sampling and gradient descent, then its best seed. Chosen on the selection error only.
+# The errors below are evaluated with the exact vehicle inertia (frsim): selection error = tuning cells x 9 variants x 3 noise seeds; test error = study cells, 5 noise seeds.
+# Gains are the FULL-precision values of the pick files.
+
+A8:
+  method: CMA-ES
+  seed: 1
+  selection_error_cm: 12.657299375638864
+  crashed_selection_episodes: 6
+  test_error_cm: {nominal: 1.416, md10: 1.457, md40: 1.841, md60: 2.709}
+  gains:
+    Pxy: 10.58626630425872
+    Pz: 18.936854356558044
+    Dxy: 13.966525947229147
+    Dz: 7.2070290733667095
+    Iz: 3.0359049109240694
+    KRxy: 0.015245676344615993
+    KRz: 0.002776083006083443
+    Kwxy: 0.0013098229897179523
+    Kwz: 0.001220641804657886
+    KIxy: 0.005048887161391532
+
+A4:
+  method: CMA-ES
+  seed: 2
+  selection_error_cm: 4.2403165749301195
+  crashed_selection_episodes: 1
+  test_error_cm: {nominal: 1.707, md10: 1.701, md40: 2.122, md60: 4.372}
+  gains:
+    Pxy: 3.3167437550761663
+    Pz: 16.006510719122172
+    Dxy: 4.855251613928512
+    Dz: 11.649848559256291
+    Iz: 4.390426681130895
+    KRxy: 0.010235102268740422
+    KRz: 0.0044737751907602845
+    Kwxy: 0.001323600307643409
+    Kwz: 0.00275729363250257
+    KIxy: 0.115243805686161
+
+A1:
+  method: Sobol sampling
+  seed: 4
+  selection_error_cm: 7.2176653680472285
+  crashed_selection_episodes: 2
+  test_error_cm: {nominal: 3.949, md10: 4.110, md40: 4.279, md60: 4.301}
+  gains:
+    Pxy: 15.212978781403947
+    Pz: 3.0440505012559838
+    Dxy: 11.0419230600016
+    Dz: 9.435428329692387
+    Iz: 3.230230133914922
+    KRxy: 0.00622553496147311
+    KRz: 0.005247638782228627
+    Kwxy: 0.0011368687297892996
+    Kwz: 0.000596467529830364
+    KIxy: 0.0870093633521863

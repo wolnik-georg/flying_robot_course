@@ -1,0 +1,2919 @@
+diff --git a/bindings/cffirmware.i b/bindings/cffirmware.i
+index d4ae77ca..90771dc4 100755
+--- a/bindings/cffirmware.i
++++ b/bindings/cffirmware.i
+@@ -1,3 +1,7 @@
++// LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Exposes the out-of-tree thesis
++// controller and its gain globals to the SIL simulator. Additive only. This tree tracks
++// bitcraze upstream and is deliberately not forked, so these lines stay uncommitted by
++// design. See flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
+ %module cffirmware
+ %include <stdint.i>
+ 
+@@ -19,7 +23,9 @@
+ #include "num.h"
+ #include "controller_mellinger.h"
+ #include "controller_brescianini.h"
++#include "controller_indi.h"
+ #include "controller_lee.h"
++#include "controller_omar_indi.h"
+ #include "power_distribution.h"
+ #include "axis3fSubSampler.h"
+ #include "outlierFilterTdoa.h"
+@@ -40,7 +46,234 @@
+ %include "imu_types.h"
+ %include "controller_mellinger.h"
+ %include "controller_brescianini.h"
++%include "controller_indi.h"
+ %include "controller_lee.h"
++%include "controller_omar_indi.h"
++
++/* ── Out-of-tree controller (flying_drone_stack firmware_app) ────────────────
++ * The same geometric SE(3) / INDI controller that runs on the drone, compiled for
++ * the host and linked in by setup.py. Declared by hand rather than %include'd
++ * because it is a Rust staticlib with no C header.
++ *
++ * Gains are the g_* globals from traj_iface.c, so the simulator tunes the controller
++ * exactly the way crazyflies.yaml does over CRTP -- same names, same defaults.
++ * indi_gains.ctrl_mode is g_controller_mode: 0 geometric, 1 pos INDI, 2 att INDI,
++ * 3 full INDI. Feed true motor speeds with oot_set_rpm() before each step, otherwise
++ * attitude INDI falls back to tau_prev and you are not testing the real thing. */
++%{
++extern void controllerOutOfTreeInit(void);
++extern bool controllerOutOfTreeTest(void);
++extern void controllerOutOfTree(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++/* controller=7 (ControllerTypeOot2): faithful NA-INDI port, firmware_app/src/naindi.rs.
++ * See firmware_app/host/LOCAL_MODIFICATIONS.md. */
++extern void controllerOutOfTree2Init(void);
++extern bool controllerOutOfTree2Test(void);
++extern void controllerOutOfTree2(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++/* Test-only inertia override for host_test_naindi_reference.py -- see naindi.rs module doc. */
++extern void naindi_test_set_j(float x, float y, float z);
++extern void naindi_test_set_arm(float arm, float t2t);
++extern void naindi_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++extern void naindi_test_set_pos_gains(float kp_x, float kp_y, float kp_z, float kd_x, float kd_y, float kd_z, float ki_x, float ki_y, float ki_z);
++extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++/* controller=8 (ControllerTypeOot3): SAME reference file as OOT2 but with use_nn enabled and
++ * their real trained network, firmware_app/src/naindi_hybrid.rs. NOT YET NUMERICALLY VERIFIED
++ * -- see firmware_app/host/LOCAL_MODIFICATIONS.md. */
++extern void controllerOutOfTree3Init(void);
++extern bool controllerOutOfTree3Test(void);
++extern void controllerOutOfTree3(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++/* Test-only: nn_forward alone, bypassing the whole control law -- see naindi_hybrid.rs. */
++extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
++extern void naindi_hybrid_test_set_j(float x, float y, float z);
++extern void naindi_hybrid_test_set_arm(float arm, float t2t);
++extern void naindi_hybrid_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++/* controller=8's NN reads commanded PWM ratio (motorsGetRatio), not RPM -- injected the same
++ * way oot_set_rpm() injects RPM for controller=6/7. See oot_host.c. */
++extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++extern float oot_get_a_res(int i);
++extern float oot_get_e_r(int i);
++extern float oot_get_e_r_norm(void);
++void oot_select_drone(int idx);
++void naindi_select_drone(int idx);
++void naindi_hybrid_select_drone(int idx);
++void oot5_select_drone(int idx);
++extern void controllerOutOfTree6Init(void);
++extern bool controllerOutOfTree6Test(void);
++extern void controllerOutOfTree6(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot6_select_drone(int idx);
++extern void controllerOutOfTree7Init(void);
++extern bool controllerOutOfTree7Test(void);
++extern void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot7_select_drone(int idx);
++extern void controllerOutOfTree5Init(void);
++extern bool controllerOutOfTree5Test(void);
++extern void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
++extern bool oot_rpm_logs_available(void);
++float oot_inertia(int axis);
++void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
++void oot_set_peer_count(int n);
++void oot_rnn_service(void);
++extern uint16_t g_rnn_wi, g_rnn_n;
++extern float g_rnn_wv;
++extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
++extern uint8_t g_rnn_div, g_rnn_rst;
++extern uint16_t g_rnn_us_last, g_rnn_us_max;
++extern float g_rnn_us_avg;
++extern float g_rnn_pred_x, g_rnn_pred_y, g_rnn_pred_z;
++
++float oot_thrust_max(void);
++float oot_arm_length(void);
++float oot_thrust2torque(void);
++float oot_omar_mass(void);
++float oot_omar_kt_equiv(void);
++extern float oot_get_tau(int i);
++extern float oot_get_alp(int i);
++extern float oot_get_alp_raw(int i);
++extern float oot_get_alp_notch(int i);
++extern uint8_t g_controller_mode;
++extern float g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z;
++extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_indi_fc_bw, g_indi_fc_bw_yaw, g_indi_mass;
++extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern float g_ki_z, g_ki_z_limit;
++extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
++extern int8_t g_indi_res_sign;
++extern uint16_t g_indi_filt_dt_us;
++extern uint8_t g_indi_filt_prewarp;
++extern float g_indi_res_fc, g_indi_res_clamp, g_indi_tau_clamp;
++extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en, g_indi_n1_fix, g_indi_dt_usec;
++extern float g_indi_j_scale, g_indi_act_tau;
++extern float g_indi_tau_xy_max, g_indi_tau_z_max, g_indi_tilt_max_deg, g_indi_thrust_max;
++extern float g_indi_notch_f0, g_indi_notch_bw;
++extern float g_tk_kx_xy, g_tk_kx_z, g_tk_kv_xy, g_tk_kv_z, g_tk_ka_xy, g_tk_ka_z, g_tk_kxi_xy, g_tk_kxi_z, g_tk_kom_xy, g_tk_kom_z, g_tk_fc, g_tk_jrz;
++extern uint8_t g_tk_yaw_lit;
++/* controller=10 (ControllerTypeOot5): Omar INDI Rust port, firmware_app/src/omar_indi_rust.rs */
++extern void controllerOutOfTree5Init(void);
++extern bool controllerOutOfTree5Test(void);
++extern void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
++extern bool oot_rpm_logs_available(void);
++extern void oot5_select_drone(int idx);
++extern void controllerOutOfTree6Init(void);
++extern bool controllerOutOfTree6Test(void);
++extern void controllerOutOfTree6(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot6_select_drone(int idx);
++extern void controllerOutOfTree7Init(void);
++extern bool controllerOutOfTree7Test(void);
++extern void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot7_select_drone(int idx);
++%}
++extern void controllerOutOfTreeInit(void);
++extern bool controllerOutOfTreeTest(void);
++extern void controllerOutOfTree(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void controllerOutOfTree2Init(void);
++extern bool controllerOutOfTree2Test(void);
++extern void controllerOutOfTree2(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++/* Test-only inertia override for host_test_naindi_reference.py -- see naindi.rs module doc. */
++extern void naindi_test_set_j(float x, float y, float z);
++extern void naindi_test_set_arm(float arm, float t2t);
++extern void naindi_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++extern void naindi_test_set_pos_gains(float kp_x, float kp_y, float kp_z, float kd_x, float kd_y, float kd_z, float ki_x, float ki_y, float ki_z);
++extern void oot_set_rpm(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++extern void controllerOutOfTree3Init(void);
++extern bool controllerOutOfTree3Test(void);
++extern void controllerOutOfTree3(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void naindi_hybrid_test_nn_forward(const float *input, float *out);
++extern void naindi_hybrid_test_set_j(float x, float y, float z);
++extern void naindi_hybrid_test_set_arm(float arm, float t2t);
++extern void naindi_hybrid_test_set_gains(float kr_x, float kr_y, float kr_z, float komega_x, float komega_y, float komega_z);
++extern void oot_set_pwm_ratio(uint16_t m1, uint16_t m2, uint16_t m3, uint16_t m4);
++extern float oot_get_a_res(int i);
++extern float oot_get_e_r(int i);
++extern float oot_get_e_r_norm(void);
++void oot_select_drone(int idx);
++void naindi_select_drone(int idx);
++void naindi_hybrid_select_drone(int idx);
++void oot5_select_drone(int idx);
++extern void controllerOutOfTree6Init(void);
++extern bool controllerOutOfTree6Test(void);
++extern void controllerOutOfTree6(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot6_select_drone(int idx);
++extern void controllerOutOfTree7Init(void);
++extern bool controllerOutOfTree7Test(void);
++extern void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++void oot7_select_drone(int idx);
++extern void controllerOutOfTree5Init(void);
++extern bool controllerOutOfTree5Test(void);
++extern void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint,
++                                const sensorData_t *sensors, const state_t *state,
++                                const uint32_t tick);
++extern void omar_indi_rust_set_indi(uint8_t mode);
++extern void omar_indi_rust_set_kpos_iz(float gain);
++extern bool oot_rpm_logs_available(void);
++float oot_inertia(int axis);
++void oot_set_peer(int idx, float x, float y, float z, uint32_t t_ms);
++void oot_set_peer_count(int n);
++void oot_rnn_service(void);
++extern uint16_t g_rnn_wi, g_rnn_n;
++extern float g_rnn_wv;
++extern uint8_t g_rnn_wc, g_rnn_begin, g_rnn_end, g_rnn_en, g_rnn_ready, g_rnn_clamped;
++extern uint8_t g_rnn_div, g_rnn_rst;
++extern uint16_t g_rnn_us_last, g_rnn_us_max;
++extern float g_rnn_us_avg;
++extern float g_rnn_pred_x, g_rnn_pred_y, g_rnn_pred_z;
++
++float oot_thrust_max(void);
++float oot_arm_length(void);
++float oot_thrust2torque(void);
++float oot_omar_mass(void);
++float oot_omar_kt_equiv(void);
++extern float oot_get_tau(int i);
++extern float oot_get_alp(int i);
++extern float oot_get_alp_raw(int i);
++extern float oot_get_alp_notch(int i);
++extern uint8_t g_controller_mode;
++extern float g_indi_kr, g_indi_kw, g_indi_kr_z, g_indi_kw_z;
++extern float g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_indi_fc_bw, g_indi_fc_bw_yaw, g_indi_mass;
++extern float g_kp_xy, g_kp_z, g_kv_xy, g_kv_z;
++extern float g_ki_z, g_ki_z_limit;
++extern uint8_t g_indi_frame_conv, g_indi_omega_src, g_indi_clamp_en;
++extern int8_t g_indi_res_sign;
++extern uint16_t g_indi_filt_dt_us;
++extern uint8_t g_indi_filt_prewarp;
++extern float g_indi_res_fc, g_indi_res_clamp, g_indi_tau_clamp;
++extern uint8_t g_indi_ff_free, g_indi_filt_order, g_indi_filt_tau, g_indi_notch_en, g_indi_n1_fix, g_indi_dt_usec;
++extern float g_indi_j_scale, g_indi_act_tau;
++extern float g_indi_tau_xy_max, g_indi_tau_z_max, g_indi_tilt_max_deg, g_indi_thrust_max;
++extern float g_indi_notch_f0, g_indi_notch_bw;
++extern float g_tk_kx_xy, g_tk_kx_z, g_tk_kv_xy, g_tk_kv_z, g_tk_ka_xy, g_tk_ka_z, g_tk_kxi_xy, g_tk_kxi_z, g_tk_kom_xy, g_tk_kom_z, g_tk_fc, g_tk_jrz;
++extern uint8_t g_tk_yaw_lit;
+ %include "power_distribution.h"
+ %include "axis3fSubSampler.h"
+ %include "outlierFilterTdoa.h"
+diff --git a/bindings/setup.py b/bindings/setup.py
+index 5f650752..970a9205 100644
+--- a/bindings/setup.py
++++ b/bindings/setup.py
+@@ -2,8 +2,32 @@
+ 
+ import distutils.command.build
+ from distutils.core import setup, Extension
++# ─── LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT ────────────────────────
++# Links the out-of-tree thesis controller into the SIL bindings so the simulator runs the same
++# Rust source that flies. Additive only; a checkout without that controller still builds.
++# This tree tracks bitcraze upstream and is deliberately NOT forked, so these lines stay
++# uncommitted by design. Patch copy and rationale:
++#   flying_drone_stack/firmware_app/host/cffirmware_bindings.patch
++#   flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md
+ import os
+ 
++# ── Out-of-tree controller (optional) ────────────────────────────────────────
++# When the flying_drone_stack firmware_app has been built for the host, link it in
++# so the SAME geometric/INDI controller that flies on the drone can be exercised in
++# simulation. Not a reimplementation -- the identical Rust source, compiled for
++# x86_64. Build it with:
++#   cd firmware_app && RUSTFLAGS="-C panic=abort" \
++#       cargo build --release --target x86_64-unknown-linux-gnu
++# If the archive is absent the bindings build exactly as before, so this stays
++# optional and nothing breaks for anyone without that repo.
++# [simulator package] OOT_DIR is the directory with the host C files (oot_host.c, traj_iface.c, ns2_weights.c, rpm_filter.h, rust_stubs.c);
++# build_bindings.sh sets OOT_FIRMWARE_APP to simulator/firmware/host. OOT_WITH_RUST=1 additionally links the Rust static library
++# libcf_controller_rs.a (path in OOT_RUST_LIB); default 0 = the cf_rnn_* symbols come from rust_stubs.c.
++OOT_DIR = os.environ.get("OOT_FIRMWARE_APP", "")
++OOT_WITH_RUST = os.environ.get("OOT_WITH_RUST", "0") == "1"
++OOT_LIB = os.environ.get("OOT_RUST_LIB", "")
++OOT_AVAILABLE = bool(OOT_DIR) and os.path.isdir(OOT_DIR) and (not OOT_WITH_RUST or os.path.isfile(OOT_LIB))
++
+ include = [
+     "src/modules/interface",
+     "src/modules/interface/controller",
+@@ -42,6 +66,14 @@ fw_sources = [
+     "src/modules/src/controller/controller_mellinger.c",
+     "src/modules/src/controller/controller_brescianini.c",
+     "src/modules/src/controller/controller_lee.c",
++    "src/modules/src/controller/controller_indi.c",
++    "src/modules/src/controller/position_controller_indi.c",
++    "src/modules/src/controller/controller_omar_indi.c",
++    "src/modules/src/controller/controller_tk_indi.c",
++    "src/modules/src/ns2_residual.c",   # NS2 in C for the Omar tree (weak links to the app symbols)
++    "src/modules/src/fbl_residual.c",   # learned-FBL downwash residual (authors' ROM evaluated exactly) and law, Strategy 3
++    "src/modules/src/fbl_law.c",
++    "src/modules/src/fbl_nn_weights.c",   # trained force network of the FBL residual (export_fbl_nn_weights.py)
+     "src/utils/src/pid.c",
+     "src/utils/src/filter.c",
+     "src/utils/src/num.c",
+@@ -57,17 +89,61 @@ fw_sources = [
+     "src/modules/src/kalman_core/mm_distance.c",
+ ]
+ 
++oot_sources, oot_objects, oot_defines = [], [], []
++if OOT_AVAILABLE:
++    oot_sources = [
++        os.path.join(OOT_DIR, "traj_iface.c"),   # gains/globals, single source of truth
++        os.path.join(OOT_DIR, "oot_host.c"),     # RPM injection + log sinks
++        os.path.join(OOT_DIR, "ns2_weights.c"),  # flash weights of the C NS2 (generated from ns2_v2.npz)
++    ]
++    if OOT_WITH_RUST: oot_objects = [OOT_LIB]
++    else: oot_sources.append(os.path.join(OOT_DIR, "rust_stubs.c"))      # the simulator never calls the Rust controllers
++    # traj_iface.c's rpm_get_all reads the RPM deck through the firmware log system,
++    # which does not exist here; rename it so host/oot_host.c can provide one the
++    # simulator feeds with true motor speeds.
++    # traj_iface.c's RPM reader and log sinks target the firmware's log system, which
++    # does not exist here. Rename them all out of the way; host/oot_host.c provides
++    # replacements the simulator can drive and read.
++    oot_defines = ["-D%s=%s_fw_unused" % (n, n) for n in (
++        "rpm_get_all", "indi_log_write", "indi_tau_write",
++        "indi_notch_log_write", "indi_a_res_write", "indi_e_r_write",
++        "oot5_diag_write", "peer_get_all")]
++    print("[setup] out-of-tree host layer from", OOT_DIR, "with Rust library" if OOT_WITH_RUST else "without Rust library")
++else:
++    print("[setup] out-of-tree controller: not built, skipping (sim will lack 'oot')")
++
+ cffirmware = Extension(
+     "_cffirmware",
+-    include_dirs=include,
+-    sources=fw_sources + ["build/cffirmware_wrap.c"],
++    include_dirs=include + ([OOT_DIR] if OOT_AVAILABLE else []),
++    sources=fw_sources + oot_sources + ["build/cffirmware_wrap.c"],
++    extra_objects=oot_objects,
+     extra_compile_args=[
+         "-O3",
+         # The following flags are also used for compiling the actual firmware
+         "-fno-strict-aliasing",
+         "-Wno-address-of-packed-member",
+         "-DUNIT_TEST_MODE",
+-    ],
++        # Which airframe the firmware believes it is flying. Without this the
++        # bindings fall back to the generic defaults (THRUST_MAX 0.1125 N/motor,
++        # ARM_LENGTH 0.046 m) -- a smaller motor than our thesis drone actually has.
++        # powerDistribution then maps a legitimate force command to a PWM above
++        # UINT16_MAX, the mixer saturates, and controllers that command large
++        # torques (attitude INDI) get three motors cut to zero and never lift off.
++        # This is the same failure that was traced on the upgraded CF2.1 hardware.
++        # Override with OOT_PLATFORM=CONFIG_PLATFORM_CF2 for the brushed drone.
++        "-D" + os.environ.get("OOT_PLATFORM", "CONFIG_PLATFORM_CF21BL"),
++        # 2026-09-23: CF_MASS override, mirrors firmware_app/app-config-bl's
++        # CONFIG_MODIFIED_CF_MASS -- but the embedded build's Kconfig .config and THIS host
++        # build's .config are two entirely separate files (confirmed directly: the embedded
++        # build's app-config-bl override never reached this .config, which still reported
++        # "CONFIG_MODIFY_CF_MASS is not set"). Without this define, every host/SIL test of
++        # controller=9 (and anything else reading CF_MASS) silently used the stock 39.3g
++        # default, not the 42.7g actually flashed to hardware -- a real config-drift risk
++        # between what's tested and what flies. 42700 = Omar's own brushless-established mass
++        # (crazyflie-firmware-omar/configs/cf21blrpm_defconfig), matching app-config-bl.
++        # If app-config-bl's CONFIG_MODIFIED_CF_MASS is ever changed, update this too.
++        "-DCONFIG_MODIFIED_CF_MASS=" + os.environ.get("OOT_CF_MASS_UG", "42700"),
++    ] + oot_defines,
+ )
+ 
+ # Override build command to specify custom "build" directory
+diff --git a/src/modules/interface/controller/controller.h b/src/modules/interface/controller/controller.h
+index 4854009b..8b3a83c5 100644
+--- a/src/modules/interface/controller/controller.h
++++ b/src/modules/interface/controller/controller.h
+@@ -37,6 +37,50 @@ typedef enum {
+   ControllerTypeLee,
+ #ifdef CONFIG_CONTROLLER_OOT
+   ControllerTypeOot,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT2
++  // 2026-09-14: second, independent out-of-tree controller slot -- a 100% faithful Rust
++  // port of Cobo-Briesewitz's controller_lee.c (NA-INDI), kept entirely separate from
++  // ControllerTypeOot (our own geometric/INDI with its ctrl_mode 0-3 scheme) so there is
++  // never ambiguity between "our controller" and "the faithful port". See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md.
++  ControllerTypeOot2,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT3
++  // 2026-09-16: third, independent out-of-tree controller slot -- ControllerTypeOot2 (above)
++  // ports controller_lee.c with `use_nn` left OUT (their INDI, our Strategy 1's second
++  // implementation); this one ports the SAME file with `use_nn` ENABLED, their real trained
++  // network included (Strategy 4, true NA-INDI). Kept fully separate from BOTH ControllerTypeOot
++  // and ControllerTypeOot2 -- own enum value, own dispatch row, own Rust module
++  // (firmware_app/src/naindi_hybrid.rs), no shared state with either -- so none of the three can
++  // ever interfere with another. See firmware_app/host/LOCAL_MODIFICATIONS.md and
++  // docs/strategy_controller_map.html (flying_robot_course repo) for why this is a distinct
++  // strategy from ControllerTypeOot2, not a variant of it.
++  ControllerTypeOot3,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT4
++  // 2026-09-22: fourth, independent out-of-tree controller slot -- a literal C copy of the
++  // supervisor's own controller_lee.c (crazyflie-firmware-omar), NOT a Rust port. Only
++  // identifier names were changed (to avoid colliding with our stock controller_lee.c /
++  // ControllerTypeLee) -- every control-law line is byte-identical to his source. Kept fully
++  // separate from ControllerTypeOot/Oot2/Oot3 -- own enum value, own dispatch row, own C file
++  // (controller_omar_indi.c), no shared state with any of them. See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md and docs/41_Pure_INDI_Implementation_Comparison.md.
++  ControllerTypeOot4,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT5
++  // 2026-09-29: fifth out-of-tree slot -- Rust line-port of controller_omar_indi.c (same law as
++  // ControllerTypeOot4 / stabilizer.controller=9). Separate enum, dispatch row, and module
++  // (firmware_app/src/omar_indi_rust.rs). See LOCAL_MODIFICATIONS.md and docs/41 §13.
++  ControllerTypeOot5,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT6
++  // 2026-10-12: sixth out-of-tree slot -- Tal & Karaman INDI (firmware_app/src/tk_indi.rs).
++  ControllerTypeOot6,
++#endif
++#ifdef CONFIG_CONTROLLER_OOT7
++  // 2026-10-12: seventh out-of-tree slot -- C version of the Tal & Karaman INDI (controller_tk_indi.c).
++  ControllerTypeOot7,
+ #endif
+   ControllerType_COUNT,
+ } ControllerType;
+@@ -57,4 +101,43 @@ bool controllerOutOfTreeTest(void);
+ void controllerOutOfTree(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
+ #endif
+ 
++#ifdef CONFIG_CONTROLLER_OOT2
++// second OOT slot -- see ControllerTypeOot2 above
++void controllerOutOfTree2Init(void);
++bool controllerOutOfTree2Test(void);
++void controllerOutOfTree2(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT3
++// third OOT slot -- see ControllerTypeOot3 above
++void controllerOutOfTree3Init(void);
++bool controllerOutOfTree3Test(void);
++void controllerOutOfTree3(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT4
++// fourth OOT slot -- see ControllerTypeOot4 above (supervisor's INDI, literal C copy)
++void controllerOutOfTree4Init(void);
++bool controllerOutOfTree4Test(void);
++void controllerOutOfTree4(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT5
++void controllerOutOfTree5Init(void);
++bool controllerOutOfTree5Test(void);
++void controllerOutOfTree5(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT7
++void controllerOutOfTree7Init(void);
++bool controllerOutOfTree7Test(void);
++void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
++#ifdef CONFIG_CONTROLLER_OOT6
++void controllerOutOfTree6Init(void);
++bool controllerOutOfTree6Test(void);
++void controllerOutOfTree6(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors, const state_t *state, const stabilizerStep_t stabilizerStep);
++#endif
++
+ #endif //__CONTROLLER_H__
+diff --git a/src/modules/interface/controller/controller_indi.h b/src/modules/interface/controller/controller_indi.h
+index 4e407ae9..e19ed284 100644
+--- a/src/modules/interface/controller/controller_indi.h
++++ b/src/modules/interface/controller/controller_indi.h
+@@ -38,16 +38,44 @@
+ #define ATTITUDE_UPDATE_DT    (float)(1.0f/ATTITUDE_RATE)
+ 
+ // these parameters are used in the filtering of the angular acceleration [Hz]
+-#define STABILIZATION_INDI_FILT_CUTOFF 8.0f
++// 2026-07-22: operator requested 70Hz (note: our ACTUAL flown brushless fc_bw is 60Hz --
++// 70 is what the standard/upgraded brushed drones use, see crazyflies.yaml:244 vs :171/:192).
++// Stock default (8.0f) commented below -- restore to revert.
++// #define STABILIZATION_INDI_FILT_CUTOFF 8.0f
++#define STABILIZATION_INDI_FILT_CUTOFF 70.0f
+ 
+ // the yaw sometimes requires more filtering
+ #define STABILIZATION_INDI_FILT_CUTOFF_R STABILIZATION_INDI_FILT_CUTOFF
+ 
+ // Control effectiveness coefficients values Volodscoi
+-#define STABILIZATION_INDI_G1_P 0.0066146f
+-#define STABILIZATION_INDI_G1_Q 0.0052125f
+-#define STABILIZATION_INDI_G1_R 0.001497f
+-#define STABILIZATION_INDI_G2_R 0.000043475f
++// 2026-07-22: g1/g2 re-derived for THIS airframe (CF21BL brushless) through stock INDI's actual
++// output path (controlModeLegacy, NOT ForceTorque -- verified in controller_indi.c:150/329-332
++// and power_distribution_quadrotor.c's powerDistributionLegacy). Stock defaults were fit for a
++// standard brushed CF2.1 on the SAME legacy mixer; raising ref_rate/ref_err alone (§18.4b) left
++// g1 at that stale scale and produced an UNRELATED low-frequency (1.75 Hz) instability, not our
++// 6.3 Hz cycle -- this is the fix for that gap.
++// Derivation (bench_actuator_2026-07-22_17-12-22.csv static curve + CF21BL kt + ARM_M/TORQUE_RATIO):
++//   dRPM/d(raw cmd) = 0.573 (near-hover slope of the measured command->RPM static curve)
++//   dF/d(raw cmd)   = 2*kt*RPM_hover * dRPM/d(raw) = 6.76e-6 N/unit  (kt=4.10e-10, RPM_hover=14400)
++//   roll/pitch: legacy mixer moves 2 motors +raw/2, 2 motors -raw/2 per unit commanded ->
++//     d(torque)/d(cmd) = ARM_M(0.035355)*2*dF/d(raw) = 4.783e-7 Nm/unit
++//     g1_p = g1_q = d(torque)/d(cmd) / J_xy(23.951e-6) = 0.01997
++//   yaw: legacy mixer moves all 4 motors +-raw (full magnitude, diagonal alternating) ->
++//     d(torque_z)/d(cmd) = TORQUE_RATIO(0.0056928)*4*dF/d(raw) = 1.540e-7 Nm/unit
++//     (g1_r+g2) = d(torque_z)/d(cmd) / J_z(32.347e-6) = 0.00476 -> scaled g1_r/g2 by that ratio
++// CAVEAT: this path is genuinely less certain than our verified ForceTorque mixer reconstruction
++// (§12) -- the legacy mixer is Bitcraze's older, non-SI-calibrated scheme (see their own comment
++// in stabilizer_types.h: "SI units...is probably a better option"). Treat as a best-effort
++// starting point, not an exact calibration -- fly cautiously, incrementally, abort-ready.
++// Original stock defaults commented below -- restore to revert.
++// #define STABILIZATION_INDI_G1_P 0.0066146f
++// #define STABILIZATION_INDI_G1_Q 0.0052125f
++// #define STABILIZATION_INDI_G1_R 0.001497f
++// #define STABILIZATION_INDI_G2_R 0.000043475f
++#define STABILIZATION_INDI_G1_P 0.01997f
++#define STABILIZATION_INDI_G1_Q 0.01997f
++#define STABILIZATION_INDI_G1_R 0.00463f
++#define STABILIZATION_INDI_G2_R 0.000134f
+ 
+ // Control effectiveness coefficients values Max Kemmeren, these will become the new ones, not finalized yet
+ // #define STABILIZATION_INDI_G1_P 0.0032502f
+@@ -56,19 +84,40 @@
+ // #define STABILIZATION_INDI_G2_R 0.00001725f
+ 
+ //Proportional gains inner INDI, attitude error
+-#define STABILIZATION_INDI_REF_ERR_P 5.0f
+-#define STABILIZATION_INDI_REF_ERR_Q 5.0f
+-#define STABILIZATION_INDI_REF_ERR_R 5.0f
++// 2026-07-22: raised P/Q to match our OOT INDI's flown brushless gains (kr=2400, kw=170) for
++// an apples-to-apples shake comparison (docs/investigation_indi_oscillation_2026-07-21.md §18.4).
++// Stock's alpha_ref = ref_rate*(ref_err*eR - e_omega) <=> ours alpha_ref = -kr*eR - kw*e_omega,
++// so ref_rate plays the role of kw and ref_err = kr/kw sets the same PD-zero location.
++// Original stock defaults (5.0f / 24.0f) commented below -- restore to revert.
++// #define STABILIZATION_INDI_REF_ERR_P 5.0f
++// #define STABILIZATION_INDI_REF_ERR_Q 5.0f
++// #define STABILIZATION_INDI_REF_ERR_R 5.0f
++#define STABILIZATION_INDI_REF_ERR_P 14.12f
++#define STABILIZATION_INDI_REF_ERR_Q 14.12f
++#define STABILIZATION_INDI_REF_ERR_R 14.12f
+ 
+ //Derivative gains inner INDI, attitude rate error
+-#define STABILIZATION_INDI_REF_RATE_P 24.0f
+-#define STABILIZATION_INDI_REF_RATE_Q 24.0f
+-#define STABILIZATION_INDI_REF_RATE_R 24.0f
+-
+-// Actuator model coefficient
+-#define STABILIZATION_INDI_ACT_DYN_P 0.03149f
+-#define STABILIZATION_INDI_ACT_DYN_Q 0.03149f
+-#define STABILIZATION_INDI_ACT_DYN_R 0.03149f
++// #define STABILIZATION_INDI_REF_RATE_P 24.0f
++// #define STABILIZATION_INDI_REF_RATE_Q 24.0f
++// #define STABILIZATION_INDI_REF_RATE_R 24.0f
++#define STABILIZATION_INDI_REF_RATE_P 170.0f
++#define STABILIZATION_INDI_REF_RATE_Q 170.0f
++#define STABILIZATION_INDI_REF_RATE_R 170.0f
++
++// Actuator model coefficient (alpha = dt/(dt+tau) at 500 Hz, dt=0.002s; NOT tau directly --
++// verified from the update rule u_act_dyn += act_dyn*(u_in-u_act_dyn) in controller_indi.c).
++// Stock default 0.03149 => tau=61.5ms (brushed-CF2.1 assumption, coincidentally close to our
++// bench-measured brushless tau, but not the same drone -- use our own number).
++// 2026-07-22: set to our bench-measured brushless actuator time constant tau=44ms
++// (docs/investigation §16, bench_actuator_2026-07-22_17-12-22.csv):
++//   alpha = dt/(dt+tau) = 0.002/(0.002+0.044) = 0.04348
++// Original stock default commented below -- restore to revert.
++// #define STABILIZATION_INDI_ACT_DYN_P 0.03149f
++// #define STABILIZATION_INDI_ACT_DYN_Q 0.03149f
++// #define STABILIZATION_INDI_ACT_DYN_R 0.03149f
++#define STABILIZATION_INDI_ACT_DYN_P 0.04348f
++#define STABILIZATION_INDI_ACT_DYN_Q 0.04348f
++#define STABILIZATION_INDI_ACT_DYN_R 0.04348f
+ 
+ /**
+  * @brief angular rates
+diff --git a/src/modules/interface/controller/controller_omar_indi.h b/src/modules/interface/controller/controller_omar_indi.h
+new file mode 100644
+index 00000000..850beaa2
+--- /dev/null
++++ b/src/modules/interface/controller/controller_omar_indi.h
+@@ -0,0 +1,126 @@
++/*
++The MIT License (MIT)
++
++Copyright (c) 2024 Khaled Wahba
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
++*/
++#ifndef __CONTROLLER_OMAR_INDI_H__
++#define __CONTROLLER_OMAR_INDI_H__
++
++#include "stabilizer_types.h"
++#include "ns2_residual.h"
++#include "fbl_residual.h"
++#include "fbl_law.h"
++
++// Learned feedback linearization (Strategy 3, 2026-10-19): configuration and state, additive; inert unless en = 1
++typedef struct {
++    uint8_t en;          // 0 = Omar controller as before (bit-identical), 1 = FBL for the whole flight (no hand-over since 2026-11-04)
++    uint8_t dw_en;       // downwash residual (ROM + network, force and torque) of this drone: 1 = on (bottom drone), 0 = off (top drone); the authors' downwash / use_NN switch
++    float c_d;           // ROM drag coefficient
++    uint8_t preset;      // gain preset: 0 = authors' values, 1 = ours (see fbl_apply_preset in the .c)
++    float kp_xy, kp_z, kv_xy, kv_z, ki_xy, ki_z, kr_xy, kr_z;  // position / velocity / integral / body-rate gains
++    struct vec J;        // inertia used by the FBL torque [kg m^2]
++    float beta, gamma;   // acceleration estimator gains
++    uint8_t inner;       // inner loop: 1 = stock rate PID (paper hardware, default since 2026-10-25); 0 = Eq. 19 P-only body-rate loop, force-torque (as flown 2026-10-24)
++    uint8_t abg_on_new;  // alpha-beta-gamma estimator: 0 = updated every controller tick (as flown); 1 = only on a new EKF velocity (measurement rate)
++    uint8_t nn_en;       // force network on top of the ROM (paper hardware recipe): 1 = ROM + fbl_nn_weights (default since 2026-10-25, no effect if no weights are linked); 0 = ROM only (as flown 2026-10-24)
++    // state / logging
++    uint8_t active, tripped;   // tripped: always 0 since 2026-11-04 (no trip any more; kept so the existing uSD config line stays valid)
++    uint64_t t_prev_us;  // firmware timestamp of the previous FBL tick (real elapsed time for the integral and the filter)
++    float yaw_sp;        // inner = 1: yaw setpoint integrated from the commanded body z rate [deg], as controller_pid.c in rate mode
++    float abg_v[3], abg_age;  // abg_on_new = 1: last velocity sample and time since it changed [s]
++    uint32_t steps, faults;    // faults: always 0 (see tripped)
++    fbl_law_state_t law;
++    fbl_state_t peers;
++    float res_az, res_jz, thrust;
++    struct vec acc_cmd, w_des;
++    struct vec res_aa;   // angular-acceleration residual of the ROM torque [rad/s^2], logged, not applied
++} fbl_cfg_t;
++
++// This structure contains the mutable state and inmutable parameters
++typedef struct controllerOmarIndi_s {
++    float mass;
++    float thrustSi;
++    struct vec J; // Inertia matrix (diagonal matrix); kg m^2
++
++    // Position PID
++    struct vec Kpos_P; // Kp in paper
++    float Kpos_P_limit;
++    struct vec Kpos_D; // Kv in paper
++    float Kpos_D_limit;
++    struct vec Kpos_I; // not in paper
++    float Kpos_I_limit;
++    struct vec i_error_pos;
++    struct vec p_error;
++    struct vec v_error;
++    // Attitude PID
++    struct vec KR;
++    struct vec Komega;
++    struct vec KI;
++    struct vec i_error_att;
++    // INDI
++    uint8_t indi;
++    struct vec omega_prev;
++    uint64_t timestamp_prev;
++    // INDI - logging
++    float f_rpm;
++    struct vec tau_rpm;
++    struct vec tau_rpm_filtered;
++    struct vec tau_gyro_filtered;
++    struct vec tau_gyro;
++
++    struct vec a_rpm;
++    struct vec a_rpm_filtered;
++    struct vec a_imu;
++    struct vec a_imu_filtered;
++
++    // Logging variables
++    struct vec rpy;
++    struct vec rpy_des;
++    struct mat33 R_des;
++    struct vec omega;
++    struct vec omega_r;
++    struct vec u;
++    struct vec omega_des_dot;
++
++    // NS2 learned residual (2026-10-14, additive; inert unless rnn.en = 1)
++    ns2_state_t ns2;
++    // Learned FBL (2026-10-19, additive; inert unless fbl.en = 1)
++    fbl_cfg_t fbl;
++} controllerOmarIndi_t;
++
++
++void controllerOmarIndiInit(controllerOmarIndi_t* self);
++void controllerOmarIndiReset(controllerOmarIndi_t* self);
++void controllerOmarIndi(controllerOmarIndi_t* self, control_t *control, const setpoint_t *setpoint,
++                                         const sensorData_t *sensors,
++                                         const state_t *state,
++                                         const uint32_t tick);
++
++#ifdef CRAZYFLIE_FW
++void controllerOutOfTree4Init(void);
++bool controllerOutOfTree4Test(void);
++void controllerOutOfTree4(control_t *control, const setpoint_t *setpoint,
++                                         const sensorData_t *sensors,
++                                         const state_t *state,
++                                         const uint32_t tick);
++#endif // CRAZYFLIE_FW defined
++
++#endif //__CONTROLLER_OMAR_INDI_H__
+diff --git a/src/modules/interface/fbl_law.h b/src/modules/interface/fbl_law.h
+new file mode 100644
+index 00000000..15f49bfb
+--- /dev/null
++++ b/src/modules/interface/fbl_law.h
+@@ -0,0 +1,61 @@
++/*
++ * Learned-FBL control law (paper Eqs. 15, 10, 19, 17-18), C implementation for the Omar C controller tree. STAGE 3 PREPARATION: lives under
++ * experiments/fbl/stage3_port/c/, NOT in the firmware tree. Port of the authors' `compute_fbl_command` and of `FBLControl._position_commands`
++ * (position PID with integral, alpha-beta-gamma acceleration estimate, acceleration and jerk commands). Specification: docs/fbl/PORT_SPEC.md.
++ *
++ * Frames: R maps body vectors to world (row-major, R[3*i + j]); linear quantities in the world frame; body rates and torques in the body frame.
++ * The thrust is projected on the MEASURED body z axis (Sec. 3.3, footnote 2). The 0.01 N floor protects only the rate inversion.
++ * Residual inputs are the outputs of fbl_residual.c (acceleration and jerk of the downwash; the angular acceleration residual is computed there and logged, the controller passes zero here: stock rate PID).
++ */
++#ifndef FBL_LAW_H
++#define FBL_LAW_H
++
++#include <stdint.h>
++
++typedef struct {
++  float pos_kp[3];   /* position gains (acceleration per m)        bundle: 56, 56, 45 */
++  float vel_kp[3];   /* velocity gains                              38, 38, 21.6 */
++  float int_kp[3];   /* integral gains                              48, 48, 3 */
++  float rate_k[3];   /* body-rate gains (acceleration gains, torque gain = J K)  238, 238, 140 */
++  float inertia[3];  /* diagonal inertia kg m^2 */
++  float mass;        /* kg */
++  float gravity;     /* m/s^2 */
++  float abg_beta;    /* alpha-beta-gamma: velocity correction gain   0.4 */
++  float abg_gamma;   /* acceleration correction gain                 0.1 */
++} fbl_gains_t;
++
++typedef struct {
++  float int_err[3];  /* integral of the position error */
++  float vel_est[3];  /* estimator velocity */
++  float acc_est[3];  /* estimator acceleration */
++  float prev_t;      /* estimator: time of the previous accepted update [s] */
++  float int_t;       /* integral: time of the previous call [s] */
++  uint8_t init;      /* 0 until the first update */
++} fbl_law_state_t;
++
++/* flat output / reference: position, velocity, acceleration, jerk (world frame) */
++typedef struct { float x[3], x_dot[3], x_ddot[3], x_dddot[3]; } fbl_ref_t;
++
++void fbl_gains_default_bundle(fbl_gains_t *g);          /* the bundle's gains with mass and inertia of the 30 g simulation vehicle (change them for ours) */
++void fbl_law_reset(fbl_law_state_t *s);
++
++/* Eqs. 17-18: acceleration and jerk command from the state, the reference and the acceleration estimate (updates the state). t in seconds. */
++void fbl_law_position(fbl_law_state_t *s, const fbl_gains_t *g, float t, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                      float acc_cmd[3], float jerk_cmd[3]);
++
++/* Same with the update interval given directly (the real elapsed time of the controller tick, from the firmware microsecond timestamp; avoids absolute time
++   in float on the drone). Estimator and integral use the same dt, as the bundle's t - prev_t. The first call only initialises. */
++void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                         float acc_cmd[3], float jerk_cmd[3]);
++
++/* Same with separate intervals for the alpha-beta-gamma estimator (dt_est; 0 = no new velocity sample, estimate held) and the integral (dt_int).
++   With dt_est = time since the last new velocity this is the bundle's estimator driven at the measurement rate. The first call only initialises. */
++void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                          float acc_cmd[3], float jerk_cmd[3]);
++
++/* Eqs. 15, 10, 19: thrust [N], desired body rates [rad/s], body torque [N m]. Stateless. */
++void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
++                     const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,
++                     float *thrust, float w_des[3], float torque[3]);
++
++#endif
+diff --git a/src/modules/interface/fbl_residual.h b/src/modules/interface/fbl_residual.h
+new file mode 100644
+index 00000000..d795abb7
+--- /dev/null
++++ b/src/modules/interface/fbl_residual.h
+@@ -0,0 +1,82 @@
++/*
++ * Learned-FBL downwash residual, C implementation for the Omar C controller tree. Authors-aligned version (2026-11-04): the residual is the authors' own
++ * DownwashResidual evaluated in float32 on the drone, nothing else:
++ *   - ROM force and its partials: downwash_force_and_derivs_fo (closed-form jet profile on a 10 x 10 trapezoid grid, evaluated exactly, no table),
++ *   - ROM torque: downwash_torque_fo, converted to a body angular acceleration with our inertia (computed and logged, NOT applied: stock rate PID),
++ *   - force network (Linear(2, nh) -> tanh -> Linear(nh, 3) on (r0, z0)) with the analytic time derivative of the flow frame; no torque network (we have none),
++ *   - geometry as point_line_distance with the neighbour treated as upright: r0 = horizontal distance, z0 = |height difference| (so a neighbour BELOW acts
++ *     too), and NO gate: every neighbour contributes at any distance, the residuals of all neighbours are summed (_predict_residual), the yaw component of the
++ *     angular acceleration is zeroed.
++ * Which drone uses the residual is a per-drone switch outside this module (ctrlFbl.dw_en), like the authors' downwash / use_NN flags.
++ * Our numbers (parameters, not code): mass, C_D, inertia (arguments), propeller radius (the bundle's constants), arm length (FBL_ROM_ARM_LENGTH), network weights.
++ * No dynamic memory, no globals, only sqrtf / tanhf. Specification: docs/fbl/PORT_SPEC.md.
++ */
++#ifndef FBL_RESIDUAL_H
++#define FBL_RESIDUAL_H
++
++#include <stdint.h>
++
++#define FBL_MAX_NEIGHBOURS 3
++#ifndef FBL_ROM_ARM_LENGTH
++#define FBL_ROM_ARM_LENGTH 0.050f   /* m, our airframe (ARM_LENGTH of platform_defaults_cf21bl.h); the authors' simulated vehicle: 0.046 */
++#endif
++
++typedef struct {
++  float acc[3];      /* world frame, m/s^2 */
++  float jerk[3];     /* world frame, m/s^3 */
++  float ang_acc[3];  /* body frame, rad/s^2: ROM torque / inertia, yaw component zero (logged, not applied) */
++  uint8_t n_active;  /* neighbours that contributed */
++} fbl_res_t;
++
++typedef struct {
++  float x, y, z;
++  uint32_t ts;
++} fbl_peer_prev_t;
++
++typedef struct {
++  fbl_peer_prev_t prev[FBL_MAX_NEIGHBOURS]; /* previous peer sample (position, timestamp ms) */
++  float vel[FBL_MAX_NEIGHBOURS][3];         /* last peer velocity estimate */
++} fbl_state_t;
++
++/* Learned force correction of the paper's hardware recipe (ROM + small force network, Sec. 5.2): net_f = Linear(2, nh) -> tanh -> Linear(nh, 3) on (r0, z0),
++   output = local acceleration in the flow frame (x radial toward the neighbour, z = +world z), rotated to the world; jerk = analytic time derivative
++   (network Jacobian along (dr0/dt, dz0/dt) + rotation of the frame), as the bundle's DownwashResidual._acceleration_nn_analytical_jvp. */
++#define FBL_NN_HMAX 16
++typedef struct {
++  uint8_t nh;                    /* hidden neurons (paper hardware: 4; bundle sample: 9); 0 = no network */
++  float w1[FBL_NN_HMAX][2], b1[FBL_NN_HMAX];
++  float w2[3][FBL_NN_HMAX], b2[3];
++} fbl_nn_t;
++
++/* Weights from a generated file (fbl_nn_weights.c, exported from a trained ODEFunc); weak: absent = no network, the residual stays ROM only. */
++extern const fbl_nn_t fbl_nn_weights __attribute__((weak));
++
++/* Network for the residual: NULL (default) = ROM only. */
++void fbl_residual_set_nn(const fbl_nn_t *nn);
++
++/* One neighbour, network term only (for tests against the bundle). Adds to acc / jerk. */
++void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3]);
++
++/* The authors' ROM force (downwash_force_and_derivs_fo) in float32: F [N] and dF/dz0, dF/dr0 [N/m] for an upper vehicle of mass `mass` [kg] at axial
++   distance z0 and radial distance r0 [m], drag coefficient c_d, S = 0.0997. The mass enters only through the jet velocity (it cancels in F / mass). */
++void fbl_rom_force(float z0, float r0, float mass, float c_d, float *F, float *dF_dz0, float *dF_dr0);
++
++/* The authors' ROM torque (downwash_torque_fo, world frame [N m]) for the upright neighbour: r_hat = p_top - p (ego), z_bm = world z. */
++void fbl_rom_torque(float z0, float r0, const float r_hat[3], float mass, float c_d, float tau_world[3]);
++
++void fbl_reset(fbl_state_t *s);
++
++/* One neighbour, explicit states (world frame); R = ego attitude (row-major, body -> world), inertia = diagonal of our J. Adds to out (acc, jerk, ang_acc,
++   n_active). Always contributes. */
++void fbl_residual_pair(const float p[3], const float v[3], const float R[9], const float p_top[3], const float v_top[3], float mass, float c_d,
++                       const float inertia[3], fbl_res_t *out);
++
++/* n <= FBL_MAX_NEIGHBOURS neighbours given as absolute states; sums the pairwise residuals (as the bundle does), then zeroes the yaw angular acceleration. */
++void fbl_residual_eval_abs(const float p[3], const float v[3], const float R[9], const float peer_p[][3], const float peer_v[][3], int n, float mass, float c_d,
++                           const float inertia[3], fbl_res_t *out);
++
++/* Peers from peer_get_all() (weak symbol, same API as for NS2): per-peer velocity by differencing with the NS2 rules (first sample -> zero velocity,
++ * unchanged timestamp -> last estimate, gap 0 < dt < 500 ms -> difference, otherwise resync with zero velocity). */
++void fbl_residual_eval(fbl_state_t *s, const float pos[3], const float vel[3], const float R[9], float mass, float c_d, const float inertia[3], fbl_res_t *out);
++
++#endif
+diff --git a/src/modules/interface/math3d.h b/src/modules/interface/math3d.h
+index 260fe3ff..953c3463 100644
+--- a/src/modules/interface/math3d.h
++++ b/src/modules/interface/math3d.h
+@@ -293,6 +293,16 @@ static inline struct vec vadd4(struct vec a, struct vec b, struct vec c, struct
+ 	// TODO: make sure it compiles to optimal code
+ 	return vadd(vadd(a, b), vadd(c, d));
+ }
++// 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++// (supervisor's INDI, controller_omar_indi.c). His source assumes a newer Bitcraze upstream than
++// this tree is pinned to; vadd5 is a plain upstream helper (also present verbatim in
++// NA-INDI-firmware, same signature), not a customization -- backported so his file compiles
++// unmodified. See firmware_app/host/LOCAL_MODIFICATIONS.md.
++// add 5 vectors.
++static inline struct vec vadd5(struct vec a, struct vec b, struct vec c, struct vec d, struct vec e) {
++	// TODO: make sure it compiles to optimal code
++	return vadd(vadd4(a, b, c, d), e);
++}
+ // subtract b and c from a.
+ static inline struct vec vsub2(struct vec a, struct vec b, struct vec c) {
+ 	return vadd3(a, vneg(b), vneg(c));
+diff --git a/src/modules/interface/ns2_residual.h b/src/modules/interface/ns2_residual.h
+new file mode 100644
+index 00000000..a0a33363
+--- /dev/null
++++ b/src/modules/interface/ns2_residual.h
+@@ -0,0 +1,66 @@
++/*
++ * NS2 (Neural-Swarm 2) learned interaction residual, C implementation for the Omar C controller tree.
++ *
++ * Reproduces flying_drone_stack/firmware_app/src/residual_nn.rs (ResidualNet::eval) and the peer handling in
++ * src/lib.rs (rnn_predict_eval / rnn_predict). Specification: docs/ns2_c_module_spec.md in flying_robot_course.
++ *
++ * Output is a world-frame acceleration, z component only, in m/s^2: the network's estimate of the measured
++ * residual (a_meas - a_model). The Omar controller subtracts it (a_d - a_nn), the same sign as its own INDI term.
++ *
++ * Weights are flash-resident, generated from the frozen .npz by tools/residual/export_weights_c.py into
++ * firmware_app/ns2_weights.c (symbols ns2_w_phi_s / ns2_w_phi_g / ns2_w_rho_s). Parameters and logs are the
++ * existing rnn.* group of traj_iface.c; this module only reads/writes those globals.
++ */
++#ifndef __NS2_RESIDUAL_H__
++#define __NS2_RESIDUAL_H__
++
++#include <stdint.h>
++#include <stdbool.h>
++
++#define NS2_MAX_NEIGHBOURS 3
++
++typedef struct {
++  float x, y, z;
++  uint32_t ts;
++} ns2_peer_prev_t;
++
++typedef struct {
++  ns2_peer_prev_t prev[NS2_MAX_NEIGHBOURS];  // previous peer sample (position, timestamp ms)
++  float vel[NS2_MAX_NEIGHBOURS][3];          // last peer velocity estimate
++  float hold[3];                             // last evaluated prediction (world frame, m/s^2)
++  uint8_t hold_clamped;                      // clamp / fault flag of the held evaluation
++  uint8_t started;                           // 0 until the first evaluation
++} ns2_state_t;
++
++void ns2_reset(ns2_state_t *s);
++
++/* True when the flash weights are linked into this image. */
++bool ns2_weights_present(void);
++
++/* Full evaluation from peer_get_all(); updates the peer-velocity history in s.
++ * pos/vel: own position (m) and velocity (m/s), world frame. mass: kg. */
++void ns2_eval(ns2_state_t *s, const float pos[3], const float vel[3], float mass,
++              float out_accel[3], uint8_t *clamped);
++
++/* Same, with relative states given explicitly (no peer history). rel_p[k] = peer position - own position,
++ * rel_v[k] = peer velocity - own velocity, k < n <= NS2_MAX_NEIGHBOURS. own_z / own_vel feed the ground term. */
++void ns2_eval_rel(const float rel_p[][3], const float rel_v[][3], int n,
++                  float own_z, const float own_vel[3], float mass,
++                  float out_accel[3], uint8_t *clamped);
++
++/* Controller glue, called once per executed controller tick with the main-loop tick:
++ *  - sets rnn.ready (weights are in flash), honours rnn.div / rnn.rst,
++ *  - evaluates on the first call and whenever tick % rnn.div == 0, otherwise republishes the held value,
++ *  - writes rnn.pred_x/y/z, rnn.clamped, rnn.us_*.
++ * The result is in s->hold. Always evaluates (and logs), whatever rnn.en says. */
++void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick);
++
++/* Firmware only: publish rnn.ready = 1 (the weights are in flash). Called at controller init and from ns2_update so the
++ * flag reads 1 as soon as controller 9 is selected, before any setpoint. No-op in host/SIL builds, where rnn.* globals
++ * are shared between drones and controllers and must not be touched as a side effect. */
++void ns2_publish_ready(void);
++
++/* rnn.en != 0 and the weights are present (firmware: and rnn.ready): the prediction may be used by the controller. */
++bool ns2_active(void);
++
++#endif // __NS2_RESIDUAL_H__
+diff --git a/src/modules/interface/stabilizer_types.h b/src/modules/interface/stabilizer_types.h
+index 9751c300..b24d9eef 100644
+--- a/src/modules/interface/stabilizer_types.h
++++ b/src/modules/interface/stabilizer_types.h
+@@ -165,6 +165,12 @@ typedef struct zDistance_s {
+ typedef struct sensorData_s {
+   Axis3f acc;               // Gs
+   Axis3f gyro;              // deg/s
++  // LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. See
++  // flying_robot_course/flying_drone_stack/firmware_app/host/LOCAL_MODIFICATIONS.md.
++  // Ported verbatim from NA-INDI-firmware (Cobo-Briesewitz) so controller=7's INDI
++  // angular-acceleration term reads the same unfiltered gyro signal their reference does,
++  // instead of the LPF'd sensorData.gyro every other controller here uses.
++  Axis3f gyroNoLpf;         // deg/s, no software Lpf
+   Axis3f mag;               // gauss
+   baro_t baro;
+ #ifdef LOG_SEC_IMU
+@@ -253,6 +259,13 @@ typedef struct setpoint_s {
+ 
+   attitude_t attitude;      // deg
+   attitude_t attitudeRate;  // deg/s
++  // 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++  // (supervisor's INDI, controller_omar_indi.c) -- his source assumes a newer Bitcraze upstream
++  // than this tree is pinned to; attitudeAcc is a plain upstream field (also present verbatim in
++  // NA-INDI-firmware), not a customization -- backported so his file compiles unmodified and
++  // reads/writes zero everywhere else, since nothing but controller=9 touches it. See
++  // firmware_app/host/LOCAL_MODIFICATIONS.md.
++  attitude_t attitudeAcc;   // deg/s^2
+   quaternion_t attitudeQuaternion;
+   float thrust;
+   point_t position;         // m
+diff --git a/src/modules/src/controller/controller_omar_indi.c b/src/modules/src/controller/controller_omar_indi.c
+new file mode 100644
+index 00000000..7ca90630
+--- /dev/null
++++ b/src/modules/src/controller/controller_omar_indi.c
+@@ -0,0 +1,854 @@
++/*
++The MIT License (MIT)
++
++Copyright (c) 2024 Khaled Wahba
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
++*/
++
++/*
++This controller is based on the following publication:
++
++Taeyoung Lee, Melvin Leok, and N. Harris McClamroch
++Geometric Tracking Control of a Quadrotor UAV on SE(3)
++CDC 2010
++
++* Difference to Mellinger:
++  * Different angular velocity error
++  * Higher-order terms in attitude controller
++*/
++
++#include <math.h>
++#include <string.h>
++
++#include "log.h"
++#include "param.h"
++
++#include "math3d.h"
++#include "controller_omar_indi.h"
++#include "physicalConstants.h"
++#include "power_distribution.h"
++#include "platform_defaults.h"
++
++#include "filter.h"
++#include "usec_time.h"
++#include "debug.h"
++#include "fbl_law.h"
++#include "fbl_residual.h"
++#include "attitude_controller.h"
++
++static controllerOmarIndi_t g_self = {
++  .mass = CF_MASS,
++
++  // Inertia matrix (diagonal matrix), see
++  // System Identification of the Crazyflie 2.0 Nano Quadrocopter
++  // BA theses, Julian Foerster, ETHZ
++  // https://polybox.ethz.ch/index.php/s/20dde63ee00ffe7085964393a55a91c7
++  .J = {16.571710e-6, 16.655602e-6, 29.261652e-6}, // kg m^2
++
++  // Position PID
++  .Kpos_P = {7.0, 7.0, 7.0}, // Kp in paper
++  .Kpos_P_limit = 100,
++  .Kpos_D = {4.0, 4.0, 4.0}, // Kv in paper
++  .Kpos_D_limit = 100,
++  .Kpos_I = {0.0, 0.0, 0.0}, // not in paper
++  .Kpos_I_limit = 2,
++
++  // Attitude PID
++  .KR = {0.007, 0.007, 0.008},
++  .Komega = {0.00115, 0.00115, 0.002},
++  .KI = {0.03, 0.03, 0.03},
++
++  // INDI
++  .indi = 0,
++
++  // Learned FBL (Strategy 3): configuration at boot, literal copy of what fbl_defaults() used to set at every controller init (preset 1 = ours, see
++  // fbl_apply_preset). The state (law, peers, counters) is zero here and reset by fbl_runtime_reset() at init. The configuration must NOT be reset at the
++  // controller init: CS2 writes the yaml params alphabetically and stabilizer.controller last, so an init that reset the config wiped ctrlFbl.en / cd
++  // (2026-10-24, first FBL flights ran as S0).
++  // 2026-10-25: defaults = the authors' structure for the whole flight: FBL from takeoff to landing like S0-S3 fly their controller.
++  // 2026-11-04 (authors-aligned): the hand-over (z_on / z_off), tilt latch (tilt_max), body-rate limit (w_max) and the NaN trip are removed from the code
++  // (the authors' law has none of them); dw_en switches the whole downwash residual (ROM + network, force and torque) per drone like their downwash / use_NN.
++  .fbl = {
++    .en = 0, .dw_en = 1, .c_d = 0.43f, .preset = 1,
++    .kp_xy = 14.0f, .kp_z = 11.25f, .kv_xy = 9.5f, .kv_z = 5.4f, .ki_xy = 12.0f, .ki_z = 12.0f, .kr_xy = 59.5f, .kr_z = 35.0f,
++    .J = {2.395e-5f, 2.395e-5f, 3.235e-5f}, .beta = 0.4f, .gamma = 0.1f, .inner = 1, .abg_on_new = 0, .nn_en = 1,
++  },
++};
++
++
++static bool rpm_deck_available;
++static logVarId_t logVarRpm1;
++static logVarId_t logVarRpm2;
++static logVarId_t logVarRpm3;
++static logVarId_t logVarRpm4;
++
++static Butterworth2LowPass filter_acc_rpm[3];
++static Butterworth2LowPass filter_acc_imu[3];
++static Butterworth2LowPass filter_tau_rpm[3];
++static Butterworth2LowPass filter_angular_acc[3];
++
++static inline struct vec vclampscl(struct vec value, float min, float max) {
++  return mkvec(
++    clamp(value.x, min, max),
++    clamp(value.y, min, max),
++    clamp(value.z, min, max));
++}
++
++static inline void update_butterworth_2_low_pass_vec(Butterworth2LowPass filter[3], struct vec value) {
++  update_butterworth_2_low_pass(&filter[0], value.x);
++  update_butterworth_2_low_pass(&filter[1], value.y);
++  update_butterworth_2_low_pass(&filter[2], value.z);
++}
++
++static inline struct vec get_butterworth_2_low_pass_vec(Butterworth2LowPass filter[3]) {
++  float x = get_butterworth_2_low_pass(&filter[0]);
++  float y = get_butterworth_2_low_pass(&filter[1]);
++  float z = get_butterworth_2_low_pass(&filter[2]);
++  return mkvec(x, y, z);
++}
++
++
++// ---- Learned FBL branch (Strategy 3, 2026-10-19) -------------------------------------------------------------------------------------
++// Additive and inert unless fbl.en = 1. With fbl.en = 1 and an absolute position setpoint the FBL law replaces the position and attitude controllers below
++// for the whole flight (thrust along the measured body z axis, stock rate PID, downwash compensation = the authors' ROM + network evaluated on the drone, per
++// drone switch fbl.dw_en). No hand-over, tilt latch, rate limit or NaN trip (authors' law; 2026-11-04). Sources: fbl_law.c, fbl_residual.c (host-tested
++// against the authors' code, docs/fbl/EQUIVALENCE_CHECK_2026-11-02.md F10, docs/fbl/PORT_SPEC.md).
++// Gain presets. 0 = the authors' (Hsieh et al.) values exactly as in their code (30 g simulated vehicle, kept for reference/comparison);
++// 1 = ours: position loop (kp, kv, ki_xy) 0.25x, rate loop 0.25x, ki_z 12 -- tuned in the C-in-the-loop plant with 44 ms motor lag
++// (docs/fbl/GAIN_TUNING_2026-10-20.md). The authors' values are unstable with that lag in simulation.
++static void fbl_apply_preset(fbl_cfg_t* f, uint8_t preset)
++{
++  if (preset == 0) {
++    f->kp_xy = 56.0f; f->kp_z = 45.0f; f->kv_xy = 38.0f; f->kv_z = 21.6f; f->ki_xy = 48.0f; f->ki_z = 3.0f; f->kr_xy = 238.0f; f->kr_z = 140.0f;
++  } else {
++    f->kp_xy = 14.0f; f->kp_z = 11.25f; f->kv_xy = 9.5f; f->kv_z = 5.4f; f->ki_xy = 12.0f; f->ki_z = 12.0f; f->kr_xy = 59.5f; f->kr_z = 35.0f;
++  }
++}
++
++static void fbl_preset_changed(void)
++{
++  fbl_apply_preset(&g_self.fbl, g_self.fbl.preset);
++}
++
++static void fbl_runtime_reset(controllerOmarIndi_t* self)
++{
++  // state only; the configuration (en, dw_en, c_d, preset and gains, ...) survives the controller init, see the initializer of g_self
++  fbl_cfg_t* f = &self->fbl;
++  f->active = 0; f->tripped = 0; f->steps = 0; f->faults = 0; f->t_prev_us = 0;     // tripped / faults: always 0 (logged for the existing uSD config only)
++  f->res_az = 0.0f; f->res_jz = 0.0f; f->thrust = 0.0f; f->res_aa = vzero();
++  f->acc_cmd = vzero(); f->w_des = vzero(); f->yaw_sp = 0.0f;
++  f->abg_v[0] = f->abg_v[1] = f->abg_v[2] = 0.0f; f->abg_age = 0.0f;
++  fbl_law_reset(&f->law); fbl_reset(&f->peers);
++}
++
++static float fbl_cap_angle(float angle)
++{
++  // capAngle() of controller_pid.c (static there)
++  float result = angle;
++  while (result > 180.0f) { result -= 360.0f; }
++  while (result < -180.0f) { result += 360.0f; }
++  return result;
++}
++
++// inner = 1: the inner loop the paper's hardware used (Hsieh et al. 2026, Sec. 5.2: FBL sent thrust + body rates, "rely on the high-frequency PID
++// controller onboard"). Reproduces controller_pid.c in rate mode (roll / pitch / yaw modeVelocity) step by step: yaw rate integrated into a yaw
++// setpoint, yaw attitude PID -> yaw rate desired, roll / pitch attitude PIDs reset, rate PIDs on (gyro.x, -gyro.y, gyro.z), legacy mixer, yaw negated.
++// Stock gains (pid_rate.*, pid_attitude.yaw_*); the FBL rate gains kr_xy / kr_z and J are not used. Only difference to stock: at the in-air switch-on
++// the rate PIDs are primed with the current gyro so the D term (on the measurement) does not kick; stock resets them on the ground (gyro ~ 0).
++static void fbl_inner_stock(fbl_cfg_t* f, control_t *control, const sensorData_t *sensors, const state_t *state, bool switch_on,
++                            float thrust, const float w_des[3], float max_thrust, float dt)
++{
++  const float rate_des_roll = degrees(w_des[0]), rate_des_pitch = -degrees(w_des[1]);
++  if (switch_on) {
++    attitudeControllerResetAllPID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw);
++    attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z, sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z);  // prime (zero error)
++    f->yaw_sp = state->attitude.yaw;
++  }
++  // controller_pid.c: modeVelocity yaw -> attitudeDesired.yaw
++  f->yaw_sp = fbl_cap_angle(f->yaw_sp + degrees(w_des[2]) * dt);
++  const float yawMaxDelta = attitudeControllerGetYawMaxDelta();
++  if (yawMaxDelta != 0.0f) {
++    const float delta = fbl_cap_angle(f->yaw_sp - state->attitude.yaw);
++    if (delta > yawMaxDelta) { f->yaw_sp = state->attitude.yaw + yawMaxDelta; }
++    else if (delta < -yawMaxDelta) { f->yaw_sp = state->attitude.yaw - yawMaxDelta; }
++  }
++  f->yaw_sp = fbl_cap_angle(f->yaw_sp);
++
++  float rr, rp, ry;
++  attitudeControllerCorrectAttitudePID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw, 0.0f, 0.0f, f->yaw_sp, &rr, &rp, &ry);
++  attitudeControllerResetRollAttitudePID(state->attitude.roll);
++  attitudeControllerResetPitchAttitudePID(state->attitude.pitch);
++  attitudeControllerCorrectRatePID(sensors->gyro.x, -sensors->gyro.y, sensors->gyro.z, rate_des_roll, rate_des_pitch, ry);
++  attitudeControllerGetActuatorOutput(&control->roll, &control->pitch, &control->yaw);
++  control->yaw = -control->yaw;
++  control->controlMode = controlModeLegacy;
++  control->thrust = thrust / max_thrust * UINT16_MAX;      // per-motor uint16, force-linear with battery compensation: F_motor = u / 65535 * THRUST_MAX
++  if (control->thrust == 0) {                              // controller_pid.c: zero thrust -> zero commands, reset
++    control->roll = 0; control->pitch = 0; control->yaw = 0;
++    attitudeControllerResetAllPID(state->attitude.roll, state->attitude.pitch, state->attitude.yaw);
++    f->yaw_sp = state->attitude.yaw;
++  }
++}
++
++static bool controllerOmarFbl(controllerOmarIndi_t* self, control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors,
++                              const state_t *state, float desiredYaw, float dt)
++{
++  fbl_cfg_t* f = &self->fbl;
++  bool switch_on = false;
++  if (!f->active) { f->active = 1; switch_on = true; }       // first tick of a (re)start: the stock rate PIDs are primed in fbl_inner_stock
++
++  struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
++  struct mat33 R = quat2rotmat(q);
++  // real elapsed time since the previous FBL tick (firmware microsecond timestamp), as the authors' t - prev_t; the first tick after a reset only initialises
++  const uint64_t now_us = usecTimestamp();
++  const float dt_real = (f->law.init && now_us > f->t_prev_us) ? (float)(now_us - f->t_prev_us) * 1e-6f : 0.0f;
++  f->t_prev_us = now_us;
++
++  fbl_gains_t g;
++  for (int i = 0; i < 3; i++) {
++    const bool xy = (i < 2);
++    g.pos_kp[i] = xy ? f->kp_xy : f->kp_z; g.vel_kp[i] = xy ? f->kv_xy : f->kv_z; g.int_kp[i] = xy ? f->ki_xy : f->ki_z; g.rate_k[i] = xy ? f->kr_xy : f->kr_z;
++  }
++  g.inertia[0] = f->J.x; g.inertia[1] = f->J.y; g.inertia[2] = f->J.z;
++  g.mass = self->mass; g.gravity = GRAVITY_MAGNITUDE; g.abg_beta = f->beta; g.abg_gamma = f->gamma;
++
++  const float pos[3] = {state->position.x, state->position.y, state->position.z};
++  const float vel[3] = {state->velocity.x, state->velocity.y, state->velocity.z};
++  fbl_ref_t ref = {
++    .x = {setpoint->position.x, setpoint->position.y, setpoint->position.z},
++    .x_dot = {setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z},
++    .x_ddot = {setpoint->acceleration.x, setpoint->acceleration.y, setpoint->acceleration.z},
++    .x_dddot = {setpoint->jerk.x, setpoint->jerk.y, setpoint->jerk.z},
++  };
++  float acc_cmd[3], jerk_cmd[3];
++  if (f->abg_on_new) {
++    // estimator at the measurement rate (the EKF velocity changes only every ~5-6 ms): update it only on a new sample, with the time since the last one;
++    // the integral keeps the controller rate. The law's first call (after a reset) initialises the estimator.
++    f->abg_age += dt_real;
++    float dt_est = 0.0f;
++    if (!f->law.init || vel[0] != f->abg_v[0] || vel[1] != f->abg_v[1] || vel[2] != f->abg_v[2]) {
++      dt_est = f->abg_age; f->abg_age = 0.0f;
++      f->abg_v[0] = vel[0]; f->abg_v[1] = vel[1]; f->abg_v[2] = vel[2];
++    }
++    fbl_law_position_dt2(&f->law, &g, dt_est, dt_real, pos, vel, &ref, acc_cmd, jerk_cmd);
++  } else {
++    fbl_law_position_dt(&f->law, &g, dt_real, pos, vel, &ref, acc_cmd, jerk_cmd);
++  }
++
++  float Rm[9];
++  for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) Rm[3 * i + j] = R.m[i][j];
++  // downwash residual of all neighbours (authors' ROM + network), switched per drone: dw_en = 0 -> residual zero (the top drone runs the same law without it)
++  fbl_res_t res;
++  if (f->dw_en) {
++    const float Jd[3] = {f->J.x, f->J.y, f->J.z};
++    fbl_residual_set_nn(f->nn_en ? &fbl_nn_weights : 0);      // weak symbol: no weights linked -> 0 -> ROM only
++    fbl_residual_eval(&f->peers, pos, vel, Rm, self->mass, f->c_d, Jd, &res);
++  } else {
++    memset(&res, 0, sizeof(res));
++  }
++  const float w[3] = {radians(sensors->gyro.x), radians(sensors->gyro.y), radians(sensors->gyro.z)};
++  const float res_ang[3] = {0.0f, 0.0f, 0.0f};              // the torque residual (res.ang_acc) is computed and logged, not applied: stock rate PID, as on the authors' hardware
++  float thrust, w_des[3], torque[3];
++  fbl_law_command(Rm, w, acc_cmd, jerk_cmd, desiredYaw, radians(setpoint->attitudeRate.yaw), res.acc, res.jerk, res_ang, &g, &thrust, w_des, torque);
++
++  const float max_thrust = powerDistributionGetMaxThrust();
++  if (thrust < 0.0f) thrust = 0.0f;                           // motor saturation (physical limit: per-motor command 0 ... max), as the authors' rotor-speed clip
++  if (thrust > max_thrust) thrust = max_thrust;
++
++  if (f->inner == 1) {
++    fbl_inner_stock(f, control, sensors, state, switch_on, thrust, w_des, max_thrust, dt);
++    // logged torque = the torque the legacy commands produce (power_distribution_quadrotor.c Legacy vs ForceTorque, per-motor uint16 force-linear)
++    const float k = 4.0f * THRUST_MAX / UINT16_MAX;
++    const int16_t r = control->roll / 2.0f, p = control->pitch / 2.0f;
++    torque[0] = k * 0.707106781f * ARM_LENGTH * r;
++    torque[1] = -k * 0.707106781f * ARM_LENGTH * p;
++    torque[2] = -k * THRUST2TORQUE * control->yaw;
++  } else {
++    control->controlMode = controlModeForceTorque;
++    control->thrustSi = thrust;
++    control->torque[0] = torque[0]; control->torque[1] = torque[1]; control->torque[2] = torque[2];
++  }
++
++  // state shared with the Omar logging
++  self->thrustSi = thrust;
++  self->u = mkvec(torque[0], torque[1], torque[2]);
++  self->rpy = quat2rpy(q);
++  self->omega = mkvec(w[0], w[1], w[2]);
++  self->p_error = mkvec(ref.x[0] - pos[0], ref.x[1] - pos[1], ref.x[2] - pos[2]);
++  self->v_error = mkvec(ref.x_dot[0] - vel[0], ref.x_dot[1] - vel[1], ref.x_dot[2] - vel[2]);
++  {
++    struct vec yc = mkvec(-sinf(desiredYaw), cosf(desiredYaw), 0);
++    struct vec F_d = mkvec(acc_cmd[0] - res.acc[0], acc_cmd[1] - res.acc[1], acc_cmd[2] - res.acc[2] + GRAVITY_MAGNITUDE);
++    struct vec xb = vnormalize(vcross(yc, F_d));
++    struct vec yb = vnormalize(vcross(F_d, xb));
++    struct vec zb = vcross(xb, yb);
++    self->R_des = mcolumns(xb, yb, zb);
++    self->rpy_des = quat2rpy(mat2quat(self->R_des));
++  }
++  f->steps++; f->res_az = res.acc[2]; f->res_jz = res.jerk[2]; f->thrust = thrust; f->res_aa = mkvec(res.ang_acc[0], res.ang_acc[1], res.ang_acc[2]);
++  f->acc_cmd = mkvec(acc_cmd[0], acc_cmd[1], acc_cmd[2]); f->w_des = mkvec(w_des[0], w_des[1], w_des[2]);
++  return true;
++}
++
++void controllerOmarIndiReset(controllerOmarIndi_t* self)
++{
++  self->i_error_pos = vzero();
++  self->i_error_att = vzero();
++}
++
++void controllerOmarIndiInit(controllerOmarIndi_t* self)
++{
++  // copy default values (bindings), or NOP (firmware)
++  *self = g_self;
++  ns2_reset(&self->ns2);
++  ns2_publish_ready();
++  fbl_runtime_reset(self);
++  attitudeControllerInit(1.0f / ATTITUDE_RATE);   // stock attitude / rate PIDs for the FBL inner = 1 path (guarded by isInit; no effect on other paths)
++
++  paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
++  logVarRpm1 = logGetVarId("rpm", "m1");
++  logVarRpm2 = logGetVarId("rpm", "m2");
++  logVarRpm3 = logGetVarId("rpm", "m3");
++  logVarRpm4 = logGetVarId("rpm", "m4");
++
++  rpm_deck_available = (paramGetUint(idDeckBcRpm) == 1);
++
++	for (int8_t i = 0; i < 3; i++) {
++    const float cutoff = 30; // Hz
++		init_butterworth_2_low_pass(&filter_acc_rpm[i], 1 / (2 * M_PI_F * cutoff), 1.0 / ATTITUDE_RATE, 0.0f);
++		init_butterworth_2_low_pass(&filter_acc_imu[i], 1 / (2 * M_PI_F * cutoff), 1.0 / ATTITUDE_RATE, 0.0f);
++
++		init_butterworth_2_low_pass(&filter_tau_rpm[i], 1 / (2 * M_PI_F * cutoff), 1.0 / ATTITUDE_RATE, 0.0f);
++		init_butterworth_2_low_pass(&filter_angular_acc[i], 1 / (2 * M_PI_F * cutoff), 1.0 / ATTITUDE_RATE, 0.0f);
++	}
++
++  self->timestamp_prev = usecTimestamp();
++  self->omega_prev = vzero();
++
++  controllerOmarIndiReset(self);
++}
++
++bool controllerOmarIndiTest(controllerOmarIndi_t* self)
++{
++  return true;
++}
++
++void controllerOmarIndi(controllerOmarIndi_t* self, control_t *control, const setpoint_t *setpoint,
++                                         const sensorData_t *sensors,
++                                         const state_t *state,
++                                         const uint32_t tick)
++{
++
++  if (!RATE_DO_EXECUTE(ATTITUDE_RATE, tick)) {
++    return;
++  }
++
++  // uint64_t startTime = usecTimestamp();
++
++  float dt = (float)(1.0f/ATTITUDE_RATE);
++  // struct vec dessnap = vzero();
++  // Address inconsistency in firmware where we need to compute our own desired yaw angle
++  // Rate-controlled YAW is moving YAW angle setpoint
++  float desiredYaw = 0; //rad
++  if (setpoint->mode.yaw == modeVelocity) {
++    desiredYaw = radians(state->attitude.yaw + setpoint->attitudeRate.yaw * dt);
++  } else if (setpoint->mode.yaw == modeAbs) {
++    desiredYaw = radians(setpoint->attitude.yaw);
++  } else if (setpoint->mode.quat == modeAbs) {
++    struct quat setpoint_quat = mkquat(setpoint->attitudeQuaternion.x, setpoint->attitudeQuaternion.y, setpoint->attitudeQuaternion.z, setpoint->attitudeQuaternion.w);
++    self->rpy_des = quat2rpy(setpoint_quat);
++    desiredYaw = self->rpy_des.z;
++  }
++
++  // INDI
++  float t1 = 0.0f, t2 = 0.0f, t3 = 0.0f, t4 = 0.0f;
++  // The rpm-based force estimate is also computed with indi = 0 (S0, S2) so that the INDI estimate below can be logged under every strategy; it only
++  // enters the control when indi & 1.
++  if (rpm_deck_available) {
++    // compute expected acceleration based on rpm measurements (world frame)
++    uint16_t rpm1 = logGetUint(logVarRpm1);
++    uint16_t rpm2 = logGetUint(logVarRpm2);
++    uint16_t rpm3 = logGetUint(logVarRpm3);
++    uint16_t rpm4 = logGetUint(logVarRpm4);
++
++    t1 = MOTORRPM2FORCE * powf(rpm1 * 2.0f * M_PI_F / 60.0f, 2);
++    t2 = MOTORRPM2FORCE * powf(rpm2 * 2.0f * M_PI_F / 60.0f, 2);
++    t3 = MOTORRPM2FORCE * powf(rpm3 * 2.0f * M_PI_F / 60.0f, 2);
++    t4 = MOTORRPM2FORCE * powf(rpm4 * 2.0f * M_PI_F / 60.0f, 2);
++
++    // DEBUG
++    if (self->indi && tick % 500 == 0) {
++      DEBUG_PRINT("INDI r %d %d %d %d\n", rpm1, rpm2, rpm3, rpm4);
++      
++      DEBUG_PRINT("INDI t %f %f %f %f\n", (double)t1, (double)t2, (double)t3, (double)t4);
++    }
++  }
++  struct vec xc = mkvec(cosf(desiredYaw), sinf(desiredYaw), 0);
++  struct vec yc = mkvec(-sinf(desiredYaw), cosf(desiredYaw), 0);
++
++  if (self->Kpos_I.z != 0.0f
++      && setpoint->mode.x != modeAbs
++      && setpoint->mode.y != modeAbs
++      && setpoint->mode.z != modeAbs) {
++    self->i_error_pos.z = 0.0f;
++  }
++
++  // Learned FBL (Strategy 3, additive): when fbl.en = 1 and the FBL law accepts this tick it replaces the position and attitude controllers below.
++  if (self->fbl.en && (setpoint->mode.x == modeAbs || setpoint->mode.y == modeAbs || setpoint->mode.z == modeAbs)) {
++    if (controllerOmarFbl(self, control, setpoint, sensors, state, desiredYaw, dt)) {
++      return;
++    }
++  } else if (self->fbl.active) {
++    self->fbl.active = 0; fbl_law_reset(&self->fbl.law);
++  }
++
++  // Position controller
++  if (   setpoint->mode.x == modeAbs
++      || setpoint->mode.y == modeAbs
++      || setpoint->mode.z == modeAbs) {
++    struct vec pos_d = mkvec(setpoint->position.x, setpoint->position.y, setpoint->position.z);
++    struct vec vel_d = mkvec(setpoint->velocity.x, setpoint->velocity.y, setpoint->velocity.z);
++    struct vec acc_d = mkvec(setpoint->acceleration.x, setpoint->acceleration.y, setpoint->acceleration.z + GRAVITY_MAGNITUDE);
++    struct vec statePos = mkvec(state->position.x, state->position.y, state->position.z);
++    struct vec stateVel = mkvec(state->velocity.x, state->velocity.y, state->velocity.z);
++
++    // errors
++    struct vec pos_e = vclampscl(vsub(pos_d, statePos), -self->Kpos_P_limit, self->Kpos_P_limit);
++    struct vec vel_e = vclampscl(vsub(vel_d, stateVel), -self->Kpos_D_limit, self->Kpos_D_limit);
++    self->i_error_pos = vadd(self->i_error_pos, vscl(dt, pos_e));
++    if (self->Kpos_I.z != 0.0f) {
++      self->i_error_pos.z = clamp(self->i_error_pos.z, -self->Kpos_I_limit, self->Kpos_I_limit);
++    }
++    self->p_error = pos_e;
++    self->v_error = vel_e;
++
++    // desired acceleration
++    struct vec i_term = veltmul(self->Kpos_I, self->i_error_pos);
++    if (self->Kpos_I.z != 0.0f) {
++      i_term.x = 0.0f;
++      i_term.y = 0.0f;
++      i_term.z = self->Kpos_I.z * self->i_error_pos.z;
++    }
++    struct vec a_d = vadd4(
++      acc_d,
++      veltmul(self->Kpos_D, vel_e),
++      veltmul(self->Kpos_P, pos_e),
++      i_term);
++
++    // NS2 learned residual (2026-10-14). Evaluated and logged under every strategy (rnn.* group of traj_iface.c),
++    // used only when rnn.en = 1: the prediction estimates the measured residual and is subtracted, the same sign
++    // as Omar's own INDI term below. With rnn.en = 0 a_d is untouched (bit-identical to the unpatched controller).
++    {
++      const float ns2_pos[3] = {state->position.x, state->position.y, state->position.z};
++      const float ns2_vel[3] = {state->velocity.x, state->velocity.y, state->velocity.z};
++      ns2_update(&self->ns2, ns2_pos, ns2_vel, self->mass, tick);
++      if (ns2_active()) {
++        a_d = vsub(a_d, mkvec(self->ns2.hold[0], self->ns2.hold[1], self->ns2.hold[2]));
++      }
++    }
++
++    struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
++    struct mat33 R = quat2rotmat(q);
++    struct vec z  = vbasis(2);
++
++    // INDI
++    // The INDI estimate (filtered a_rpm, a_imu) is updated and logged under every strategy; a_indi is applied only when indi & 1 (control unchanged for indi 0).
++    struct vec a_indi = vzero();
++    if (rpm_deck_available) {
++
++      float f_rpm = t1 + t2 + t3 + t4;
++      self->a_rpm = vsub(vscl(f_rpm / self->mass, mvmul(R, z)), mkvec(0.0, 0.0, 9.81f));
++      update_butterworth_2_low_pass_vec(filter_acc_rpm, self->a_rpm);
++
++      // compute acceleration based on IMU (world frame, SI unit, no gravity)
++      self->a_imu = vscl(9.81, mkvec(state->acc.x, state->acc.y, state->acc.z));
++      update_butterworth_2_low_pass_vec(filter_acc_imu, self->a_imu);
++
++      self->a_rpm_filtered = get_butterworth_2_low_pass_vec(filter_acc_rpm);
++      self->a_imu_filtered = get_butterworth_2_low_pass_vec(filter_acc_imu);
++
++      if (self->indi & 1) {
++        a_indi = vsub(self->a_rpm_filtered, self->a_imu_filtered);
++      }
++
++      // DEBUG
++      if ((self->indi & 1) && tick % 500 == 0) {
++        DEBUG_PRINT("INDI p %f %f %f, %f %f %f\n", (double)self->a_rpm_filtered.x, (double)self->a_rpm_filtered.y, (double)self->a_rpm_filtered.z, (double)self->a_imu_filtered.x, (double)self->a_imu_filtered.y, (double)self->a_imu_filtered.z);
++      }
++    }
++
++    control->thrustSi = self->mass*vdot(vadd(a_d, a_indi), mvmul(R, z));
++
++    self->thrustSi = control->thrustSi;
++    // Reset the accumulated error while on the ground
++    if (control->thrustSi < 0.01f) {
++      controllerOmarIndiReset(self);
++    }
++
++    // Compute Desired Rotation matrix
++    struct vec F_d = vadd(a_d, a_indi);
++    struct vec xb = vnormalize(vcross(yc, F_d));
++    struct vec yb = vnormalize(vcross(F_d, xb));
++    struct vec zb = vcross(xb, yb);
++    self->R_des = mcolumns(xb, yb, zb);
++  } else {
++    if (setpoint->mode.z == modeDisable) {
++      if (setpoint->thrust < 1000) {
++          control->controlMode = controlModeForceTorque;
++          control->thrustSi  = 0;
++          control->torque[0] = 0;
++          control->torque[1] = 0;
++          control->torque[2] = 0;
++          controllerOmarIndiReset(self);
++          return;
++      }
++    }
++    const float max_thrust = powerDistributionGetMaxThrust(); // N
++    control->thrustSi = setpoint->thrust / UINT16_MAX * max_thrust;
++
++    struct quat q = rpy2quat(mkvec(
++        radians(setpoint->attitude.roll),
++        -radians(setpoint->attitude.pitch), // This is in the legacy coordinate system where pitch is inverted
++        desiredYaw));
++    self->R_des = quat2rotmat(q);
++  }
++
++  // Attitude controller
++
++  // current rotation [R]
++  struct quat q = mkquat(state->attitudeQuaternion.x, state->attitudeQuaternion.y, state->attitudeQuaternion.z, state->attitudeQuaternion.w);
++  self->rpy = quat2rpy(q);
++  struct mat33 R = quat2rotmat(q);
++
++  // desired rotation [Rdes]
++  struct quat q_des = mat2quat(self->R_des);
++  self->rpy_des = quat2rpy(q_des);
++
++  // rotation error
++  struct mat33 eRM = msub(mmul(mtranspose(self->R_des), R), mmul(mtranspose(R), self->R_des));
++
++  struct vec eR = vscl(0.5f, mkvec(eRM.m[2][1], eRM.m[0][2], eRM.m[1][0]));
++
++  // angular velocity
++  self->omega = mkvec(
++    radians(sensors->gyro.x),
++    radians(sensors->gyro.y),
++    radians(sensors->gyro.z));
++
++  // Compute desired omega
++  struct vec xb = mcolumn(self->R_des, 0);
++  struct vec yb = mcolumn(self->R_des, 1);
++  struct vec zb = mcolumn(self->R_des, 2);
++  struct vec desJerk = mkvec(setpoint->jerk.x, setpoint->jerk.y, setpoint->jerk.z);
++  float c = control->thrustSi / self->mass;
++  float B1 = c;
++  float B3 = -vdot(yc, zb);
++  float C3 = vmag(vcross(yc, zb));
++  float D1 = vdot(xb, desJerk);
++  float D2 = -vdot(yb, desJerk);
++  float D3 = radians(setpoint->attitudeRate.yaw) * vdot(xc, xb);
++  
++  struct vec omega_des = vzero();
++  if (control->thrustSi != 0) {
++    omega_des.x = D2/B1;
++    omega_des.y = D1/B1;
++    omega_des.z = (B1*D3-B3*D1)/(B1*C3);
++  }
++
++  // Compute desired omega dot
++  float setpoint_yaw_ddot = radians(setpoint->attitudeAcc.yaw);
++  float setpoint_yaw_dot = radians(setpoint->attitudeRate.yaw);
++
++  struct vec desSnap = mkvec(setpoint->snap.x, setpoint->snap.y, setpoint->snap.z);
++  float c_dot = vdot(zb, desJerk);
++  float E1 = vdot(xb,desSnap) - 2.0f * c_dot * omega_des.y - c * omega_des.x * omega_des.z;
++  float E2 = -vdot(yb,desSnap) - 2.0f * c_dot * omega_des.x + c * omega_des.y * omega_des.z;
++  float E3 = setpoint_yaw_ddot * vdot(xc, xb) + 2.0f * setpoint_yaw_dot * omega_des.z * vdot(xc, yb) - 2.0f * setpoint_yaw_dot*omega_des.y*vdot(xc,zb) - omega_des.x*omega_des.y*vdot(yc,yb) - omega_des.x*omega_des.z*vdot(yc,zb);
++
++  self->omega_des_dot = vzero();
++  if (control->thrustSi != 0) {
++    self->omega_des_dot.x = E2/B1;
++    self->omega_des_dot.y = E1/B1;
++    self->omega_des_dot.z = (B1*E3-B3*E1)/(B1*C3);
++  }
++
++
++  self->omega_r = mvmul(mmul(mtranspose(R), self->R_des), omega_des);
++
++  struct vec omega_error = vsub(self->omega, self->omega_r);
++  
++  // Integral part on angle
++  self->i_error_att = vadd(self->i_error_att, vscl(dt, eR));
++
++  // compute moments
++  // M = -kR eR - kw ew + w x Jw - J(w x wr)
++  self->u = vadd5(
++    vneg(veltmul(self->KR, eR)),
++    vneg(veltmul(self->Komega, omega_error)),
++    vneg(veltmul(self->KI, self->i_error_att)),
++    vcross(self->omega, veltmul(self->J, self->omega)),
++    vneg(veltmul(self->J, vsub(mvmul(mcrossmat(self->omega), self->omega_r), mvmul(mmul(mtranspose(R), self->R_des), self->omega_des_dot)))));
++
++  struct vec indi_moments;
++  if ((self->indi & 2) && rpm_deck_available) {
++    const float t2t = THRUST2TORQUE;
++    const float arm = 0.707106781f * ARM_LENGTH;
++    self->tau_rpm = mkvec(
++      -arm * t1 - arm * t2 + arm * t3 + arm * t4,
++      -arm * t1 + arm * t2 + arm * t3 - arm * t4,
++      -t2t * t1 + t2t * t2 - t2t * t3 + t2t * t4
++    );
++    update_butterworth_2_low_pass_vec(filter_tau_rpm, self->tau_rpm);
++
++    self->tau_rpm_filtered = get_butterworth_2_low_pass_vec(filter_tau_rpm);
++
++    // angular accelleration
++    uint64_t timestamp = usecTimestamp();
++    float dt = (timestamp - self->timestamp_prev) / 1e6;
++    struct vec angular_acc = vdiv(vsub(self->omega, self->omega_prev), dt);
++    self->tau_gyro = veltmul(self->J, angular_acc);
++
++    update_butterworth_2_low_pass_vec(filter_angular_acc, angular_acc);
++
++    struct vec angular_acc_filtered = get_butterworth_2_low_pass_vec(filter_angular_acc);
++    self->tau_gyro_filtered = veltmul(self->J, angular_acc_filtered);
++
++    self->omega_prev = self->omega;
++    self->timestamp_prev = timestamp;
++
++    indi_moments = vsub(self->tau_rpm_filtered, self->tau_gyro_filtered);
++    self->u = vadd(self->u, indi_moments);
++
++    // DEBUG
++    if (tick % 1000 == 0) {
++      DEBUG_PRINT("INDI a %f %f %f, %f %f %f\n", (double)self->tau_rpm_filtered.x, (double)self->tau_rpm_filtered.y, (double)self->tau_rpm_filtered.z, (double)self->tau_gyro_filtered.x, (double)self->tau_gyro_filtered.y, (double)self->tau_gyro_filtered.z);
++    }
++  }
++
++  control->controlMode = controlModeForceTorque;
++  control->torque[0] = self->u.x;
++  control->torque[1] = self->u.y;
++  control->torque[2] = self->u.z;
++
++  // ticks = usecTimestamp() - startTime;
++}
++
++#ifdef CRAZYFLIE_FW
++
++#include "param.h"
++#include "log.h"
++
++void controllerOutOfTree4Init(void)
++{
++  controllerOmarIndiInit(&g_self);
++}
++
++bool controllerOutOfTree4Test(void)
++{
++  return true;
++}
++
++void controllerOutOfTree4(control_t *control, const setpoint_t *setpoint,
++                                         const sensorData_t *sensors,
++                                         const state_t *state,
++                                         const uint32_t tick)
++{
++  controllerOmarIndi(&g_self, control, setpoint, sensors, state, tick);
++}
++
++PARAM_GROUP_START(ctrlOmarIndi)
++PARAM_ADD(PARAM_FLOAT, KR_x, &g_self.KR.x)
++PARAM_ADD(PARAM_FLOAT, KR_y, &g_self.KR.y)
++PARAM_ADD(PARAM_FLOAT, KR_z, &g_self.KR.z)
++// Attitude I
++PARAM_ADD(PARAM_FLOAT, KI_x, &g_self.KI.x)
++PARAM_ADD(PARAM_FLOAT, KI_y, &g_self.KI.y)
++PARAM_ADD(PARAM_FLOAT, KI_z, &g_self.KI.z)
++// Attitude D
++PARAM_ADD(PARAM_FLOAT, Kw_x, &g_self.Komega.x)
++PARAM_ADD(PARAM_FLOAT, Kw_y, &g_self.Komega.y)
++PARAM_ADD(PARAM_FLOAT, Kw_z, &g_self.Komega.z)
++
++// J
++PARAM_ADD(PARAM_FLOAT, J_x, &g_self.J.x)
++PARAM_ADD(PARAM_FLOAT, J_y, &g_self.J.y)
++PARAM_ADD(PARAM_FLOAT, J_z, &g_self.J.z)
++
++// Position P
++PARAM_ADD(PARAM_FLOAT, Kpos_Px, &g_self.Kpos_P.x)
++PARAM_ADD(PARAM_FLOAT, Kpos_Py, &g_self.Kpos_P.y)
++PARAM_ADD(PARAM_FLOAT, Kpos_Pz, &g_self.Kpos_P.z)
++PARAM_ADD(PARAM_FLOAT, Kpos_P_limit, &g_self.Kpos_P_limit)
++// Position D
++PARAM_ADD(PARAM_FLOAT, Kpos_Dx, &g_self.Kpos_D.x)
++PARAM_ADD(PARAM_FLOAT, Kpos_Dy, &g_self.Kpos_D.y)
++PARAM_ADD(PARAM_FLOAT, Kpos_Dz, &g_self.Kpos_D.z)
++PARAM_ADD(PARAM_FLOAT, Kpos_D_limit, &g_self.Kpos_D_limit)
++// Position I
++PARAM_ADD(PARAM_FLOAT, Kpos_Ix, &g_self.Kpos_I.x)
++PARAM_ADD(PARAM_FLOAT, Kpos_Iy, &g_self.Kpos_I.y)
++PARAM_ADD(PARAM_FLOAT, Kpos_Iz, &g_self.Kpos_I.z)
++PARAM_ADD(PARAM_FLOAT, Kpos_I_limit, &g_self.Kpos_I_limit)
++
++PARAM_ADD(PARAM_FLOAT, mass, &g_self.mass)
++
++PARAM_ADD(PARAM_UINT8, indi, &g_self.indi)
++
++PARAM_GROUP_STOP(ctrlOmarIndi)
++
++
++LOG_GROUP_START(ctrlOmarIndi)
++
++LOG_ADD(LOG_FLOAT, KR_x, &g_self.KR.x)
++LOG_ADD(LOG_FLOAT, KR_y, &g_self.KR.y)
++LOG_ADD(LOG_FLOAT, KR_z, &g_self.KR.z)
++LOG_ADD(LOG_FLOAT, Kw_x, &g_self.Komega.x)
++LOG_ADD(LOG_FLOAT, Kw_y, &g_self.Komega.y)
++LOG_ADD(LOG_FLOAT, Kw_z, &g_self.Komega.z)
++
++LOG_ADD(LOG_FLOAT,Kpos_Px, &g_self.Kpos_P.x)
++LOG_ADD(LOG_FLOAT,Kpos_Py, &g_self.Kpos_P.y)
++LOG_ADD(LOG_FLOAT,Kpos_Pz, &g_self.Kpos_P.z)
++LOG_ADD(LOG_FLOAT,Kpos_Dx, &g_self.Kpos_D.x)
++LOG_ADD(LOG_FLOAT,Kpos_Dy, &g_self.Kpos_D.y)
++LOG_ADD(LOG_FLOAT,Kpos_Dz, &g_self.Kpos_D.z)
++
++
++LOG_ADD(LOG_FLOAT, thrustSi, &g_self.thrustSi)
++LOG_ADD(LOG_FLOAT, torquex, &g_self.u.x)
++LOG_ADD(LOG_FLOAT, torquey, &g_self.u.y)
++LOG_ADD(LOG_FLOAT, torquez, &g_self.u.z)
++
++// current angles
++LOG_ADD(LOG_FLOAT, rpyx, &g_self.rpy.x)
++LOG_ADD(LOG_FLOAT, rpyy, &g_self.rpy.y)
++LOG_ADD(LOG_FLOAT, rpyz, &g_self.rpy.z)
++
++// desired angles
++LOG_ADD(LOG_FLOAT, rpydx, &g_self.rpy_des.x)
++LOG_ADD(LOG_FLOAT, rpydy, &g_self.rpy_des.y)
++LOG_ADD(LOG_FLOAT, rpydz, &g_self.rpy_des.z)
++
++// errors
++LOG_ADD(LOG_FLOAT, error_posx, &g_self.p_error.x)
++LOG_ADD(LOG_FLOAT, error_posy, &g_self.p_error.y)
++LOG_ADD(LOG_FLOAT, error_posz, &g_self.p_error.z)
++
++LOG_ADD(LOG_FLOAT, error_velx, &g_self.v_error.x)
++LOG_ADD(LOG_FLOAT, error_vely, &g_self.v_error.y)
++LOG_ADD(LOG_FLOAT, error_velz, &g_self.v_error.z)
++
++// omega
++LOG_ADD(LOG_FLOAT, omegax, &g_self.omega.x)
++LOG_ADD(LOG_FLOAT, omegay, &g_self.omega.y)
++LOG_ADD(LOG_FLOAT, omegaz, &g_self.omega.z)
++
++// omega_r
++LOG_ADD(LOG_FLOAT, omegarx, &g_self.omega_r.x)
++LOG_ADD(LOG_FLOAT, omegary, &g_self.omega_r.y)
++LOG_ADD(LOG_FLOAT, omegarz, &g_self.omega_r.z)
++
++// omega_des_dot
++LOG_ADD(LOG_FLOAT, omegaddx, &g_self.omega_des_dot.x)
++LOG_ADD(LOG_FLOAT, omegaddy, &g_self.omega_des_dot.y)
++LOG_ADD(LOG_FLOAT, omegaddz, &g_self.omega_des_dot.z)
++
++// LOG_ADD(LOG_UINT32, ticks, &ticks)
++
++// INDI
++LOG_ADD(LOG_FLOAT, f_rpm, &g_self.f_rpm)         // compare to thrustSi
++LOG_ADD(LOG_FLOAT, tau_rpmx, &g_self.tau_rpm.x)  // compare to torquex
++LOG_ADD(LOG_FLOAT, tau_rpmy, &g_self.tau_rpm.y)  // compare to torquey
++LOG_ADD(LOG_FLOAT, tau_rpmz, &g_self.tau_rpm.z)  // compare to torquez
++
++LOG_ADD(LOG_FLOAT, tau_rpm_fx, &g_self.tau_rpm_filtered.x)  // compare to torquex
++LOG_ADD(LOG_FLOAT, tau_rpm_fy, &g_self.tau_rpm_filtered.y)  // compare to torquey
++LOG_ADD(LOG_FLOAT, tau_rpm_fz, &g_self.tau_rpm_filtered.z)  // compare to torquez
++
++LOG_ADD(LOG_FLOAT, tau_gyro_x, &g_self.tau_gyro.x)  // compare to torquex
++LOG_ADD(LOG_FLOAT, tau_gyro_y, &g_self.tau_gyro.y)  // compare to torquey
++LOG_ADD(LOG_FLOAT, tau_gyro_z, &g_self.tau_gyro.z)  // compare to torquez
++
++LOG_ADD(LOG_FLOAT, tau_gyro_fx, &g_self.tau_gyro_filtered.x)  // compare to torquex
++LOG_ADD(LOG_FLOAT, tau_gyro_fy, &g_self.tau_gyro_filtered.y)  // compare to torquey
++LOG_ADD(LOG_FLOAT, tau_gyro_fz, &g_self.tau_gyro_filtered.z)  // compare to torquez
++
++LOG_ADD(LOG_FLOAT, a_rpmx, &g_self.a_rpm.x)
++LOG_ADD(LOG_FLOAT, a_rpmy, &g_self.a_rpm.y)
++LOG_ADD(LOG_FLOAT, a_rpmz, &g_self.a_rpm.z)
++
++LOG_ADD(LOG_FLOAT, a_rpm_fx, &g_self.a_rpm_filtered.x)
++LOG_ADD(LOG_FLOAT, a_rpm_fy, &g_self.a_rpm_filtered.y)
++LOG_ADD(LOG_FLOAT, a_rpm_fz, &g_self.a_rpm_filtered.z)
++
++LOG_ADD(LOG_FLOAT, a_imux, &g_self.a_imu.x)
++LOG_ADD(LOG_FLOAT, a_imuy, &g_self.a_imu.y)
++LOG_ADD(LOG_FLOAT, a_imuz, &g_self.a_imu.z)
++
++LOG_ADD(LOG_FLOAT, a_imu_fx, &g_self.a_imu_filtered.x)
++LOG_ADD(LOG_FLOAT, a_imu_fy, &g_self.a_imu_filtered.y)
++LOG_ADD(LOG_FLOAT, a_imu_fz, &g_self.a_imu_filtered.z)
++
++
++
++LOG_GROUP_STOP(ctrlOmarIndi)
++
++PARAM_GROUP_START(ctrlFbl)
++PARAM_ADD(PARAM_UINT8, en, &g_self.fbl.en)
++PARAM_ADD_WITH_CALLBACK(PARAM_UINT8, preset, &g_self.fbl.preset, fbl_preset_changed)
++PARAM_ADD(PARAM_FLOAT, cd, &g_self.fbl.c_d)
++PARAM_ADD(PARAM_UINT8, dw_en, &g_self.fbl.dw_en)
++PARAM_ADD(PARAM_FLOAT, kp_xy, &g_self.fbl.kp_xy)
++PARAM_ADD(PARAM_FLOAT, kp_z, &g_self.fbl.kp_z)
++PARAM_ADD(PARAM_FLOAT, kv_xy, &g_self.fbl.kv_xy)
++PARAM_ADD(PARAM_FLOAT, kv_z, &g_self.fbl.kv_z)
++PARAM_ADD(PARAM_FLOAT, ki_xy, &g_self.fbl.ki_xy)
++PARAM_ADD(PARAM_FLOAT, ki_z, &g_self.fbl.ki_z)
++PARAM_ADD(PARAM_FLOAT, kr_xy, &g_self.fbl.kr_xy)
++PARAM_ADD(PARAM_FLOAT, kr_z, &g_self.fbl.kr_z)
++PARAM_ADD(PARAM_FLOAT, J_x, &g_self.fbl.J.x)
++PARAM_ADD(PARAM_FLOAT, J_y, &g_self.fbl.J.y)
++PARAM_ADD(PARAM_FLOAT, J_z, &g_self.fbl.J.z)
++PARAM_ADD(PARAM_FLOAT, beta, &g_self.fbl.beta)
++PARAM_ADD(PARAM_FLOAT, gamma, &g_self.fbl.gamma)
++PARAM_ADD(PARAM_UINT8, inner, &g_self.fbl.inner)
++PARAM_ADD(PARAM_UINT8, abg_on_new, &g_self.fbl.abg_on_new)
++PARAM_ADD(PARAM_UINT8, nn_en, &g_self.fbl.nn_en)
++PARAM_GROUP_STOP(ctrlFbl)
++
++LOG_GROUP_START(ctrlFbl)
++LOG_ADD(LOG_UINT8, active, &g_self.fbl.active)
++LOG_ADD(LOG_UINT8, tripped, &g_self.fbl.tripped)
++LOG_ADD(LOG_UINT32, steps, &g_self.fbl.steps)
++LOG_ADD(LOG_UINT32, faults, &g_self.fbl.faults)
++LOG_ADD(LOG_FLOAT, res_az, &g_self.fbl.res_az)
++LOG_ADD(LOG_FLOAT, res_jz, &g_self.fbl.res_jz)
++LOG_ADD(LOG_FLOAT, res_aax, &g_self.fbl.res_aa.x)
++LOG_ADD(LOG_FLOAT, res_aay, &g_self.fbl.res_aa.y)
++LOG_ADD(LOG_FLOAT, res_aaz, &g_self.fbl.res_aa.z)
++LOG_ADD(LOG_FLOAT, thrust, &g_self.fbl.thrust)
++LOG_ADD(LOG_FLOAT, acc_z, &g_self.fbl.acc_cmd.z)
++LOG_ADD(LOG_FLOAT, w_des_x, &g_self.fbl.w_des.x)
++LOG_ADD(LOG_FLOAT, w_des_y, &g_self.fbl.w_des.y)
++LOG_ADD(LOG_FLOAT, w_des_z, &g_self.fbl.w_des.z)
++LOG_ADD(LOG_FLOAT, yaw_sp, &g_self.fbl.yaw_sp)
++LOG_GROUP_STOP(ctrlFbl)
++
++#endif // CRAZYFLIE_FW defined
+diff --git a/src/modules/src/controller/controller_tk_indi.c b/src/modules/src/controller/controller_tk_indi.c
+new file mode 100644
+index 00000000..5566f9fd
+--- /dev/null
++++ b/src/modules/src/controller/controller_tk_indi.c
+@@ -0,0 +1,402 @@
++/**
++ * controller_tk_indi.c -- stabilizer.controller=12 (ControllerTypeOot7): C version of the INDI
++ * controller of Tal & Karaman (2020), arXiv 1809.04048v2. Same law, same parameters and the same
++ * numbers as firmware_app/src/tk_indi.rs (controller=11); checked against both that file and the
++ * literal NumPy reference experiments/analysis/tk_indi_reference.py.
++ *
++ * The law is written in the paper's own frames (world NED, body FRD, xi = body->world, specific
++ * thrust tau < 0); only inputs and outputs are converted from / to the firmware frames
++ * (world ENU, body FLU). Equation numbers are the paper's.
++ *
++ * NOT in the law: clamps, notch, velocity low-pass, integral action. Additions, all marked GUARD:
++ * division-by-zero guards, priming of the filters with the first sample. The motor loop (32)-(36)
++ * of the paper (encoders) does not exist: thrust and torque go to the stock mixer, motor speeds
++ * come from DShot telemetry (rpm_get_all, provided by the app's traj_iface.c).
++ */
++#include <math.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <string.h>
++
++#include "controller.h"
++#include "stabilizer_types.h"
++
++/* The host (SIL) build renames traj_iface.c's versions of these with -D<name>=<name>_fw_unused for
++ * every source file, and oot_host.c provides the host ones. This file must call the host ones, so
++ * undo the rename here (on the drone the macros do not exist, so this is a no-op). */
++#undef rpm_get_all
++#undef indi_tau_write
++#undef indi_a_res_write
++#undef indi_e_r_write
++
++extern void rpm_get_all(uint16_t *m1, uint16_t *m2, uint16_t *m3, uint16_t *m4);
++extern bool oot_rpm_logs_available(void);
++extern void indi_tau_write(float tx, float ty, float tz);
++extern void indi_a_res_write(float ax, float ay, float az);
++extern void indi_e_r_write(float ex, float ey, float ez, float norm);
++extern void tk_diag_write(float thrust, float rpm_ok, float ns, float tau_f);
++extern float g_indi_mass, g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4;
++extern float g_tk_kx_xy, g_tk_kx_z, g_tk_kv_xy, g_tk_kv_z, g_tk_ka_xy, g_tk_ka_z;
++extern float g_tk_kxi_xy, g_tk_kxi_z, g_tk_kom_xy, g_tk_kom_z, g_tk_fc, g_tk_jrz;
++extern uint8_t g_tk_yaw_lit;
++
++#define GRAV 9.81f
++#define DT (1.0f / 1000.0f)   /* the stock stabilizer calls the controller every 1 kHz tick */
++#define PI_F 3.14159265358979f
++#define DEG2RAD (PI_F / 180.0f)
++#define ARM_M 0.0353553f
++#define T2T 0.0056928f
++#ifdef CONFIG_PLATFORM_CF21BL
++static const float J[3] = {23.951e-6f, 23.951e-6f, 32.347e-6f};
++#else
++static const float J[3] = {16.571710e-6f, 16.655602e-6f, 29.261652e-6f};
++#endif
++static const float MIX_X[4] = {-1, -1, 1, 1};
++static const float MIX_Y[4] = {-1, 1, 1, -1};
++static const float MIX_Z[4] = {-1, 1, -1, 1};
++static const float CB[3] = {1, -1, -1};   /* FLU <-> FRD */
++
++typedef float V[3];
++typedef float M[3][3];
++
++static float dot(const float *a, const float *b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
++static void cross(const float *a, const float *b, float *o) {
++  o[0] = a[1]*b[2] - a[2]*b[1]; o[1] = a[2]*b[0] - a[0]*b[2]; o[2] = a[0]*b[1] - a[1]*b[0];
++}
++static float nrm(const float *a) { return sqrtf(dot(a, a)); }
++static void mv(const M m, const float *v, float *o) { for (int i = 0; i < 3; i++) o[i] = dot(m[i], v); }
++static void mtv(const M m, const float *v, float *o) {
++  for (int i = 0; i < 3; i++) o[i] = m[0][i]*v[0] + m[1][i]*v[1] + m[2][i]*v[2];
++}
++static void mm(const M a, const M b, M o) {
++  for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
++    o[i][j] = 0; for (int k = 0; k < 3; k++) o[i][j] += a[i][k]*b[k][j];
++  }
++}
++static void col(const M m, int c, float *o) { o[0] = m[0][c]; o[1] = m[1][c]; o[2] = m[2][c]; }
++static void skew(const float *v, M o) {
++  o[0][0] = 0; o[0][1] = -v[2]; o[0][2] = v[1];
++  o[1][0] = v[2]; o[1][1] = 0; o[1][2] = -v[0];
++  o[2][0] = -v[1]; o[2][1] = v[0]; o[2][2] = 0;
++}
++static const M SKIZ_T = {{0, 1, 0}, {-1, 0, 0}, {0, 0, 0}};   /* [iz]x^T */
++
++static void qmul(const float *a, const float *b, float *o) {
++  o[0] = a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3];
++  o[1] = a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2];
++  o[2] = a[0]*b[2] - a[1]*b[3] + a[2]*b[0] + a[3]*b[1];
++  o[3] = a[0]*b[3] + a[1]*b[2] - a[2]*b[1] + a[3]*b[0];
++}
++static void quat_to_rot(float w, float x, float y, float z, M r) {
++  r[0][0] = 1 - 2*(y*y + z*z); r[0][1] = 2*(x*y - w*z);     r[0][2] = 2*(x*z + w*y);
++  r[1][0] = 2*(x*y + w*z);     r[1][1] = 1 - 2*(x*x + z*z); r[1][2] = 2*(y*z - w*x);
++  r[2][0] = 2*(x*z - w*y);     r[2][1] = 2*(y*z + w*x);     r[2][2] = 1 - 2*(x*x + y*y);
++}
++
++typedef struct {
++  float a0, a1, b0, b1, i[2], o[2];
++  bool primed;
++} Bq;
++
++/* 2nd-order Butterworth, same design as the Bitcraze lpf2p / Omar's filter (q = 0.7071) */
++static void bq_design(Bq *f, float fc, float dt) {
++  float tau = 1.0f / (2.0f * PI_F * fc);
++  float q = 0.7071f;
++  float k = tanf(dt / (2.0f * tau));
++  float poly = k*k + k/q + 1.0f;
++  f->a0 = 2.0f * (k*k - 1.0f) / poly;
++  f->a1 = (k*k - k/q + 1.0f) / poly;
++  f->b0 = k*k / poly;
++  f->b1 = 2.0f * f->b0;
++}
++static float bq_update(Bq *f, float x) {
++  if (!f->primed) {   /* GUARD (not in the paper): start the filter at the first sample */
++    f->i[0] = f->i[1] = x; f->o[0] = f->o[1] = x; f->primed = true;
++  }
++  float y = f->b0*x + f->b1*f->i[0] + f->b0*f->i[1] - f->a0*f->o[0] - f->a1*f->o[1];
++  f->i[1] = f->i[0]; f->i[0] = x; f->o[1] = f->o[0]; f->o[0] = y;
++  return y;
++}
++
++typedef struct {
++  Bq f_a[3], f_s[3], f_w2[4], f_w[4], f_om[3];
++  float prev_om[3], prev_w[4], prev_tau;
++  bool have_prev;
++  float fc_applied;
++  bool initialized;
++} State;
++
++static State ST;
++
++static void design_all(State *s, float fc) {
++  for (int i = 0; i < 3; i++) { bq_design(&s->f_a[i], fc, DT); bq_design(&s->f_s[i], fc, DT); bq_design(&s->f_om[i], fc, DT); }
++  for (int i = 0; i < 4; i++) { bq_design(&s->f_w2[i], fc, DT); bq_design(&s->f_w[i], fc, DT); }
++  s->fc_applied = fc;
++}
++static void reprime(State *s) {
++  for (int i = 0; i < 3; i++) { s->f_a[i].primed = s->f_s[i].primed = s->f_om[i].primed = false; }
++  for (int i = 0; i < 4; i++) { s->f_w2[i].primed = s->f_w[i].primed = false; }
++  s->have_prev = false;
++}
++
++/* Solve the 4x4 system A x = b (Gaussian elimination, partial pivoting). false if singular. */
++static bool solve4(float a[4][4], float b[4], float x[4]) {
++  for (int c = 0; c < 4; c++) {
++    int p = c;
++    for (int r = c + 1; r < 4; r++) if (fabsf(a[r][c]) > fabsf(a[p][c])) p = r;
++    if (fabsf(a[p][c]) < 1e-12f) return false;
++    if (p != c) {
++      for (int k = 0; k < 4; k++) { float t = a[c][k]; a[c][k] = a[p][k]; a[p][k] = t; }
++      float t = b[c]; b[c] = b[p]; b[p] = t;
++    }
++    for (int r = c + 1; r < 4; r++) {
++      float f = a[r][c] / a[c][c];
++      for (int k = c; k < 4; k++) a[r][k] -= f * a[c][k];
++      b[r] -= f * b[c];
++    }
++  }
++  for (int r = 3; r >= 0; r--) {
++    float acc = b[r];
++    for (int k = r + 1; k < 4; k++) acc -= a[r][k] * x[k];
++    x[r] = acc / a[r][r];
++  }
++  return true;
++}
++
++/* Eqs. (14), (15): Omega_ref, Omegadot_ref in the body frame. GUARD: |tau| < 0.5 or singular -> 0. */
++static void feedforward(const M r, float tau, float taud, const float *om, const float *j, const float *sn,
++                        float psid, float psidd, float *om_ref, float *omd_ref) {
++  for (int i = 0; i < 3; i++) om_ref[i] = omd_ref[i] = 0.0f;
++  V bx, by, bz;
++  col(r, 0, bx); col(r, 1, by); col(r, 2, bz);
++  float d = bx[0]*bx[0] + bx[1]*bx[1];
++  float n[2] = {-bx[1], bx[0]};
++  float p[2][3] = {{0, -bz[0], by[0]}, {0, -bz[1], by[1]}};
++  float np_[3];
++  for (int k = 0; k < 3; k++) np_[k] = n[0]*p[0][k] + n[1]*p[1][k];
++  if (fabsf(tau) < 0.5f || d < 1e-9f) return;
++  float sv[3] = {np_[0]/d, np_[1]/d, np_[2]/d};
++  M rs; mm(r, SKIZ_T, rs);
++  float a[4][4];
++  for (int i = 0; i < 3; i++) {
++    for (int k = 0; k < 3; k++) a[i][k] = tau * rs[i][k];
++    a[i][3] = bz[i];
++  }
++  a[3][0] = sv[0]; a[3][1] = sv[1]; a[3][2] = sv[2]; a[3][3] = 0.0f;
++  float a_copy[4][4]; memcpy(a_copy, a, sizeof(a));
++  float b1[4] = {j[0], j[1], j[2], psid}, sol[4];
++  if (!solve4(a, b1, sol)) return;
++  for (int i = 0; i < 3; i++) om_ref[i] = sol[i];
++  /* (15): rhs = [s_ref; psidd] - [R (2 taud + tau [Om]x) [iz]x^T Om ; Sdot Om] */
++  V w, cw, t1, aa;
++  mv(SKIZ_T, om, w);
++  cross(om, w, cw);
++  for (int i = 0; i < 3; i++) t1[i] = 2.0f * taud * w[i] + tau * cw[i];
++  mv(r, t1, aa);
++  M sk, rd; skew(om, sk); mm(r, sk, rd);
++  V dbx, dby, dbz;
++  col(rd, 0, dbx); col(rd, 1, dby); col(rd, 2, dbz);
++  float nd[2] = {-dbx[1], dbx[0]};
++  float pd[2][3] = {{0, -dbz[0], dby[0]}, {0, -dbz[1], dby[1]}};
++  float dd = 2.0f * (bx[0]*dbx[0] + bx[1]*dbx[1]);
++  float sdot[3];
++  for (int k = 0; k < 3; k++) {
++    float t = nd[0]*p[0][k] + nd[1]*p[1][k] + n[0]*pd[0][k] + n[1]*pd[1][k];
++    sdot[k] = t / d - np_[k] * dd / (d * d);
++  }
++  float sdom = dot(sdot, om);
++  float rhs[4] = {sn[0] - aa[0], sn[1] - aa[1], sn[2] - aa[2], psidd - sdom}, sol2[4];
++  if (!solve4(a_copy, rhs, sol2)) return;
++  for (int i = 0; i < 3; i++) omd_ref[i] = sol2[i];
++}
++
++static void w_ned(float x, float y, float z, float *o) { o[0] = y; o[1] = x; o[2] = -z; }
++
++static void step_inner(State *s, control_t *control, const setpoint_t *sp, const sensorData_t *sensors, const state_t *st) {
++  bool in_pos_mode = sp->mode.x == modeAbs || sp->mode.y == modeAbs || sp->mode.z == modeAbs;
++  if (!in_pos_mode) {
++    /* only the position-mode setpoints of the study are supported; everything else = motors off */
++    control->controlMode = controlModeForceTorque;
++    control->thrustSi = 0; control->torqueX = 0; control->torqueY = 0; control->torqueZ = 0;
++    reprime(s);
++    return;
++  }
++
++  float kx[3] = {g_tk_kx_xy, g_tk_kx_xy, g_tk_kx_z};
++  float kv[3] = {g_tk_kv_xy, g_tk_kv_xy, g_tk_kv_z};
++  float ka[3] = {g_tk_ka_xy, g_tk_ka_xy, g_tk_ka_z};
++  float kxi[3] = {g_tk_kxi_xy, g_tk_kxi_xy, g_tk_kxi_z};
++  float kom[3] = {g_tk_kom_xy, g_tk_kom_xy, g_tk_kom_z};
++  float fc = g_tk_fc;
++  if (fc != s->fc_applied && fc > 0.0f) design_all(s, fc);
++  float m = g_indi_mass;
++  float kt[4] = {g_indi_kt1, g_indi_kt2, g_indi_kt3, g_indi_kt4};
++
++  /* inputs: ENU/FLU -> NED/FRD. R_ned = C_W R_enu C_B, C_W: (e,n,u) -> (n,e,-u) */
++  M r_enu, r;
++  quat_to_rot(st->attitudeQuaternion.w, st->attitudeQuaternion.x, st->attitudeQuaternion.y, st->attitudeQuaternion.z, r_enu);
++  for (int j = 0; j < 3; j++) {
++    r[0][j] = r_enu[1][j] * CB[j];
++    r[1][j] = r_enu[0][j] * CB[j];
++    r[2][j] = -r_enu[2][j] * CB[j];
++  }
++  V x, v, om, ab, iz = {0, 0, 1};
++  w_ned(st->position.x, st->position.y, st->position.z, x);
++  w_ned(st->velocity.x, st->velocity.y, st->velocity.z, v);
++  om[0] = sensors->gyroNoLpf.x * DEG2RAD * CB[0];
++  om[1] = sensors->gyroNoLpf.y * DEG2RAD * CB[1];
++  om[2] = sensors->gyroNoLpf.z * DEG2RAD * CB[2];
++  ab[0] = sensors->acc.x * GRAV * CB[0];
++  ab[1] = sensors->acc.y * GRAV * CB[1];
++  ab[2] = sensors->acc.z * GRAV * CB[2];
++
++  /* filtered measurements (Fig. 4) */
++  V rab, a_f, om_f;
++  mv(r, ab, rab);
++  for (int i = 0; i < 3; i++) {
++    a_f[i] = bq_update(&s->f_a[i], rab[i] + GRAV * iz[i]);   /* (16) */
++    om_f[i] = bq_update(&s->f_om[i], om[i]);
++  }
++  bool rpm_ok = oot_rpm_logs_available();
++  uint16_t m1 = 0, m2 = 0, m3 = 0, m4 = 0;
++  if (rpm_ok) rpm_get_all(&m1, &m2, &m3, &m4);
++  float rpm[4] = {(float)m1, (float)m2, (float)m3, (float)m4};
++  V bz, s_f;
++  col(r, 2, bz);
++  float tau_f, w_f[4] = {0, 0, 0, 0};
++  V mu_f_flu = {0, 0, 0};
++  if (rpm_ok) {
++    float t_i[4], tsum = 0.0f;
++    for (int i = 0; i < 4; i++) { t_i[i] = kt[i] * rpm[i] * rpm[i]; tsum += t_i[i]; }
++    float tau_raw = -tsum / m;
++    for (int i = 0; i < 3; i++) s_f[i] = bq_update(&s->f_s[i], tau_raw * bz[i]);
++    float w2sum = 0.0f, tx = 0.0f, ty = 0.0f, tz = 0.0f;
++    for (int i = 0; i < 4; i++) {
++      float w2f = bq_update(&s->f_w2[i], t_i[i]);
++      w_f[i] = bq_update(&s->f_w[i], rpm[i] * 2.0f * PI_F / 60.0f);
++      w2sum += w2f;
++      tx += MIX_X[i] * w2f; ty += MIX_Y[i] * w2f; tz += MIX_Z[i] * w2f;
++    }
++    tau_f = -w2sum / m;
++    mu_f_flu[0] = ARM_M * tx; mu_f_flu[1] = ARM_M * ty; mu_f_flu[2] = T2T * tz;
++  } else {
++    /* GUARD: no motor-speed source -> IMU-only increment (s_f from the measured acceleration) */
++    for (int i = 0; i < 3; i++) s_f[i] = a_f[i] - GRAV * iz[i];
++    tau_f = -nrm(s_f);
++    for (int i = 0; i < 4; i++) { bq_update(&s->f_w2[i], 0.0f); bq_update(&s->f_w[i], 0.0f); }
++  }
++  V omd_f = {0, 0, 0};
++  float wd_f[4] = {0, 0, 0, 0}, taud_f = 0.0f;
++  if (s->have_prev) {
++    for (int i = 0; i < 3; i++) omd_f[i] = (om_f[i] - s->prev_om[i]) / DT;
++    for (int i = 0; i < 4; i++) wd_f[i] = (w_f[i] - s->prev_w[i]) / DT;
++    taud_f = (tau_f - s->prev_tau) / DT;
++  }
++  for (int i = 0; i < 3; i++) s->prev_om[i] = om_f[i];
++  for (int i = 0; i < 4; i++) s->prev_w[i] = w_f[i];
++  s->prev_tau = tau_f;
++  s->have_prev = true;
++  /* mu_f = G1 (w^2)_f + G2 wdot_f (5); the rotor-inertia term G2 acts on the yaw row only */
++  V mu_f;
++  if (rpm_ok) {
++    float jz = 0.0f;
++    for (int i = 0; i < 4; i++) jz += MIX_Z[i] * wd_f[i];
++    float mfz = mu_f_flu[2] + g_tk_jrz * jz;
++    mu_f[0] = mu_f_flu[0] * CB[0]; mu_f[1] = mu_f_flu[1] * CB[1]; mu_f[2] = mfz * CB[2];
++  } else {
++    for (int i = 0; i < 3; i++) mu_f[i] = J[i] * omd_f[i];
++  }
++
++  /* position / acceleration (17), (20), (21) */
++  V xr, vr, ar, jr, sr;
++  w_ned(sp->position.x, sp->position.y, sp->position.z, xr);
++  w_ned(sp->velocity.x, sp->velocity.y, sp->velocity.z, vr);
++  w_ned(sp->acceleration.x, sp->acceleration.y, sp->acceleration.z, ar);
++  w_ned(sp->jerk.x, sp->jerk.y, sp->jerk.z, jr);
++  w_ned(sp->snap.x, sp->snap.y, sp->snap.z, sr);
++  V a_c, s_c;
++  for (int i = 0; i < 3; i++) {
++    a_c[i] = kx[i] * (xr[i] - x[i]) + kv[i] * (vr[i] - v[i]) + ka[i] * (ar[i] - a_f[i]) + ar[i];
++    s_c[i] = s_f[i] + (a_c[i] - a_f[i]);   /* (20) */
++  }
++  float ns = nrm(s_c);
++  float t_c = m * ns;   /* (21) */
++
++  /* incremental attitude (22)-(27) */
++  V u, v_b;
++  if (ns > 1e-6f) { for (int i = 0; i < 3; i++) u[i] = s_c[i] / ns; mtv(r, u, v_b); }
++  else { v_b[0] = 0; v_b[1] = 0; v_b[2] = -1; }   /* (22) GUARD */
++  V cz; cross(iz, v_b, cz);
++  float qbar[4] = {1.0f - dot(iz, v_b), -cz[0], -cz[1], -cz[2]};   /* (23) */
++  float nq = sqrtf(qbar[0]*qbar[0] + qbar[1]*qbar[1] + qbar[2]*qbar[2] + qbar[3]*qbar[3]);
++  if (nq > 1e-9f) { for (int k = 0; k < 4; k++) qbar[k] /= nq; }
++  else { qbar[0] = 0; qbar[1] = 1; qbar[2] = 0; qbar[3] = 0; }   /* GUARD: opposite direction */
++  M rbar, rr;
++  quat_to_rot(qbar[0], qbar[1], qbar[2], qbar[3], rbar);
++  mm(r, rbar, rr);
++  float psi = PI_F / 2.0f - sp->attitude.yaw * DEG2RAD;   /* ENU yaw -> NED heading */
++  V nvec = {sinf(psi), -cosf(psi), 0.0f}, nbar;
++  mtv(rr, nvec, nbar);   /* (24) */
++  float qpsi[4] = {1, 0, 0, 0};
++  if (fabsf(nbar[1]) > 1e-9f) {
++    if (g_tk_yaw_lit) {
++      qpsi[3] = -nbar[0] / nbar[1];   /* (25) as printed */
++    } else {
++      float phi = atanf(-nbar[0] / nbar[1]);
++      qpsi[0] = cosf(phi / 2.0f); qpsi[3] = sinf(phi / 2.0f);
++    }
++  }
++  float nqp = sqrtf(qpsi[0]*qpsi[0] + qpsi[3]*qpsi[3]);
++  qpsi[0] /= nqp; qpsi[3] /= nqp;
++  float qc[4];
++  qmul(qbar, qpsi, qc);   /* (26) */
++  float w = fmaxf(-1.0f, fminf(1.0f, qc[0]));
++  float sq = sqrtf(fmaxf(0.0f, 1.0f - w * w));
++  float kk = sq > 1e-6f ? 2.0f * acosf(w) / sq : 2.0f;
++  V xi_e = {kk * qc[1], kk * qc[2], kk * qc[3]};   /* (27) */
++
++  /* feed-forward (14), (15) with the measured tau_f, xi, Omega_f */
++  V om_ref, omd_ref;
++  feedforward(r, tau_f, taud_f, om_f, jr, sr, -sp->attitudeRate.yaw * DEG2RAD, -sp->attitudeAcc.yaw * DEG2RAD, om_ref, omd_ref);
++  V omd_c, mu_c, mu;
++  for (int i = 0; i < 3; i++) {
++    omd_c[i] = kxi[i] * xi_e[i] + kom[i] * (om_ref[i] - om_f[i]) + omd_ref[i];   /* (28) */
++    mu_c[i] = mu_f[i] + J[i] * (omd_c[i] - omd_f[i]);   /* (31) */
++    mu[i] = mu_c[i] * CB[i];   /* FRD -> FLU */
++  }
++
++  /* a_res = a_meas - a_model [ENU], same definition as controller 6 / 9 / 10 */
++  V ares;
++  for (int i = 0; i < 3; i++) ares[i] = a_f[i] - (s_f[i] + GRAV * iz[i]);
++  indi_a_res_write(ares[1], ares[0], -ares[2]);
++  indi_tau_write(mu[0], mu[1], mu[2]);
++  indi_e_r_write(xi_e[0], -xi_e[1], -xi_e[2], nrm(xi_e));
++  tk_diag_write(t_c, rpm_ok ? 1.0f : 0.0f, ns, tau_f);
++
++  control->controlMode = controlModeForceTorque;
++  control->thrustSi = t_c;
++  control->torqueX = mu[0];
++  control->torqueY = mu[1];
++  control->torqueZ = mu[2];
++}
++
++unsigned char *oot7_state_ptr(void) { return (unsigned char *)&ST; }
++size_t oot7_state_size(void) { return sizeof(State); }
++
++void controllerOutOfTree7Init(void) {
++  memset(&ST, 0, sizeof(ST));
++  design_all(&ST, g_tk_fc > 0.0f ? g_tk_fc : 30.0f);
++  reprime(&ST);
++  ST.initialized = true;
++}
++
++bool controllerOutOfTree7Test(void) { return true; }
++
++void controllerOutOfTree7(control_t *control, const setpoint_t *setpoint, const sensorData_t *sensors,
++                          const state_t *state, const stabilizerStep_t stabilizerStep) {
++  (void)stabilizerStep;
++  if (!ST.initialized) controllerOutOfTree7Init();
++  step_inner(&ST, control, setpoint, sensors, state);
++}
++
+diff --git a/src/modules/src/fbl_law.c b/src/modules/src/fbl_law.c
+new file mode 100644
+index 00000000..4f5da1ee
+--- /dev/null
++++ b/src/modules/src/fbl_law.c
+@@ -0,0 +1,109 @@
++#include "fbl_law.h"
++#include <math.h>
++#include <string.h>
++
++void fbl_gains_default_bundle(fbl_gains_t *g)
++{
++  const float pk[3] = {56.0f, 56.0f, 45.0f}, vk[3] = {38.0f, 38.0f, 21.6f}, ik[3] = {48.0f, 48.0f, 3.0f}, rk[3] = {238.0f, 238.0f, 140.0f};
++  const float J[3] = {1.43e-5f, 1.43e-5f, 2.89e-5f};
++  for (int i = 0; i < 3; i++) { g->pos_kp[i] = pk[i]; g->vel_kp[i] = vk[i]; g->int_kp[i] = ik[i]; g->rate_k[i] = rk[i]; g->inertia[i] = J[i]; }
++  g->mass = 0.03f; g->gravity = 9.81f; g->abg_beta = 0.4f; g->abg_gamma = 0.1f;
++}
++
++void fbl_law_reset(fbl_law_state_t *s) { memset(s, 0, sizeof(*s)); }
++
++static void position_core(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                          float acc_cmd[3], float jerk_cmd[3])
++{
++  /* alpha-beta-gamma acceleration estimate from the velocity (the bundle's estimator); a non-advancing interval skips the update */
++  if (dt_est > 0.0f) {
++    for (int i = 0; i < 3; i++) {
++      const float vel_pred = s->vel_est[i] + dt_est * s->acc_est[i];
++      const float residual = vel[i] - vel_pred;
++      s->vel_est[i] = vel_pred + g->abg_beta * residual;
++      s->acc_est[i] = s->acc_est[i] + (g->abg_gamma / dt_est) * residual;
++    }
++  }
++  for (int i = 0; i < 3; i++) {
++    const float e = pos[i] - ref->x[i];
++    const float ev = vel[i] - ref->x_dot[i];
++    s->int_err[i] += e * dt_int;
++    acc_cmd[i] = ref->x_ddot[i] - g->int_kp[i] * s->int_err[i] - g->pos_kp[i] * e - g->vel_kp[i] * ev;
++    jerk_cmd[i] = ref->x_dddot[i] - g->int_kp[i] * e - g->pos_kp[i] * ev - g->vel_kp[i] * (s->acc_est[i] - ref->x_ddot[i]);
++  }
++}
++
++void fbl_law_position(fbl_law_state_t *s, const fbl_gains_t *g, float t, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                      float acc_cmd[3], float jerk_cmd[3])
++{
++  float dt_est = 0.0f, dt_int = 0.0f;
++  if (!s->init) {
++    /* first call initialises the estimator (estimate 0); the integral clock starts here (the bundle integrates t - 0, which assumes t starts at 0) */
++    for (int i = 0; i < 3; i++) { s->vel_est[i] = vel[i]; s->acc_est[i] = 0.0f; }
++    s->prev_t = t; s->int_t = t; s->init = 1;
++  } else {
++    dt_est = t - s->prev_t;
++    if (dt_est > 0.0f) { s->prev_t = t; } else { dt_est = 0.0f; }
++    dt_int = t - s->int_t;
++    if (dt_int < 0.0f) dt_int = 0.0f;
++    s->int_t = t;
++  }
++  position_core(s, g, dt_est, dt_int, pos, vel, ref, acc_cmd, jerk_cmd);
++}
++
++void fbl_law_position_dt(fbl_law_state_t *s, const fbl_gains_t *g, float dt, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                         float acc_cmd[3], float jerk_cmd[3])
++{
++  float d = dt;
++  if (!s->init) {
++    for (int i = 0; i < 3; i++) { s->vel_est[i] = vel[i]; s->acc_est[i] = 0.0f; }
++    s->init = 1;
++    d = 0.0f;
++  }
++  position_core(s, g, d, d, pos, vel, ref, acc_cmd, jerk_cmd);
++}
++
++void fbl_law_position_dt2(fbl_law_state_t *s, const fbl_gains_t *g, float dt_est, float dt_int, const float pos[3], const float vel[3], const fbl_ref_t *ref,
++                          float acc_cmd[3], float jerk_cmd[3])
++{
++  /* estimator interval and integral interval given separately: the estimator can run at the measurement rate (dt_est = time since the last new
++     velocity, 0 = no new sample: estimate held) while the integral runs at the controller rate. The first call only initialises (as _dt). */
++  if (!s->init) {
++    for (int i = 0; i < 3; i++) { s->vel_est[i] = vel[i]; s->acc_est[i] = 0.0f; }
++    s->init = 1;
++    dt_est = 0.0f; dt_int = 0.0f;
++  }
++  position_core(s, g, dt_est, dt_int, pos, vel, ref, acc_cmd, jerk_cmd);
++}
++
++void fbl_law_command(const float R[9], const float w[3], const float acc_cmd[3], const float jerk_cmd[3], float yaw, float yaw_rate,
++                     const float res_acc[3], const float res_jerk[3], const float res_ang_acc[3], const fbl_gains_t *g,
++                     float *thrust, float w_des[3], float torque[3])
++{
++  /* body axes in the world: columns of R */
++  const float xb[3] = {R[0], R[3], R[6]}, yb[3] = {R[1], R[4], R[7]}, zb[3] = {R[2], R[5], R[8]};
++  /* Eq. 15: thrust along the measured body z axis */
++  float f[3];
++  for (int i = 0; i < 3; i++) f[i] = acc_cmd[i] - res_acc[i];
++  f[2] += g->gravity;
++  const float th = g->mass * (f[0] * zb[0] + f[1] * zb[1] + f[2] * zb[2]);
++  *thrust = th;
++  /* corrected jerk in the body frame: R^T m (j_cmd - j_res); omega_xy = e3 x (that) / max(thrust, 0.01) */
++  float jw[3];
++  for (int i = 0; i < 3; i++) jw[i] = g->mass * (jerk_cmd[i] - res_jerk[i]);
++  float jb[3];
++  for (int i = 0; i < 3; i++) jb[i] = R[0 * 3 + i] * jw[0] + R[1 * 3 + i] * jw[1] + R[2 * 3 + i] * jw[2];
++  const float inv = 1.0f / (th > 0.01f ? th : 0.01f);
++  const float wx = -jb[1] * inv, wy = jb[0] * inv;               /* e3 x jb = (-jb_y, jb_x, 0) */
++  /* Eq. 10: yaw component from d/dt (y_body . heading) = 0 */
++  const float hx = cosf(yaw), hy = sinf(yaw);
++  const float hdx = -yaw_rate * sinf(yaw), hdy = yaw_rate * cosf(yaw);
++  const float denom = xb[0] * hx + xb[1] * hy;
++  float wz = 0.0f;
++  if (fabsf(denom) >= 1e-6f) {
++    wz = (wx * (zb[0] * hx + zb[1] * hy) + (yb[0] * hdx + yb[1] * hdy)) / denom;
++  }
++  w_des[0] = wx; w_des[1] = wy; w_des[2] = wz;
++  /* Eq. 19: torque = J (K (w_des - w) - residual angular acceleration), diagonal J and K */
++  for (int i = 0; i < 3; i++) torque[i] = g->inertia[i] * (g->rate_k[i] * (w_des[i] - w[i]) - res_ang_acc[i]);
++}
+diff --git a/src/modules/src/fbl_nn_weights.c b/src/modules/src/fbl_nn_weights.c
+new file mode 100644
+index 00000000..a537b4b4
+--- /dev/null
++++ b/src/modules/src/fbl_nn_weights.c
+@@ -0,0 +1,9 @@
++/* Generated by experiments/fbl/stage3_port/export_fbl_nn_weights.py from knode_s0977_h4.pth (sha256 630683f816a538e2), tag knode_s0977_h4_cd0.55. Do not edit. */
++#include "fbl_residual.h"
++const fbl_nn_t fbl_nn_weights = {
++  .nh = 4,
++  .w1 = {{0.869367301f, -0.0794358477f}, {-2.96447873f, 0.502544641f}, {0.36294508f, -0.348767281f}, {-0.80364579f, -0.399012148f}},
++  .b1 = {-0.0260919183f, -0.538594186f, 0.26444912f, 0.0790786892f},
++  .w2 = {{-0.278275579f, -0.596521318f, -0.445636719f, -0.226835236f}, {0.238675922f, 0.184005216f, -0.162619084f, -0.501317501f}, {-0.832299173f, -0.86985296f, -0.501201808f, 0.467404276f}},
++  .b2 = {-0.35890916f, -0.0474214554f, -0.237855569f},
++};
+diff --git a/src/modules/src/fbl_residual.c b/src/modules/src/fbl_residual.c
+new file mode 100644
+index 00000000..69516b0a
+--- /dev/null
++++ b/src/modules/src/fbl_residual.c
+@@ -0,0 +1,199 @@
++#include "fbl_residual.h"
++#include <math.h>
++#include <string.h>
++
++/* The host SIL build renames peer_get_all (-Dpeer_get_all=peer_get_all_fw_unused, for traj_iface.c). This module must reference the
++   real name provided by the host layer (oot_host.c, injected peers) or by the firmware, exactly like ns2_residual.c. */
++#undef peer_get_all
++extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max) __attribute__((weak));
++
++void fbl_reset(fbl_state_t *s) { memset(s, 0, sizeof(*s)); }
++
++static const fbl_nn_t *s_nn = 0;
++void fbl_residual_set_nn(const fbl_nn_t *nn) { s_nn = (nn != 0 && nn->nh > 0 && nn->nh <= FBL_NN_HMAX) ? nn : 0; }
++
++void fbl_nn_pair(const fbl_nn_t *nn, const float p[3], const float v[3], const float p_top[3], const float v_top[3], float acc[3], float jerk[3])
++{
++  /* geometry with the upper vehicle upright (flow axis +world z, zero derivative), d = ego - top */
++  const float d[3] = {p[0] - p_top[0], p[1] - p_top[1], p[2] - p_top[2]};
++  const float dd[3] = {v[0] - v_top[0], v[1] - v_top[1], v[2] - v_top[2]};
++  const float z0 = fabsf(d[2]);
++  const float dz0 = (d[2] > 0.0f ? 1.0f : (d[2] < 0.0f ? -1.0f : 0.0f)) * dd[2];
++  const float r0 = sqrtf(d[0] * d[0] + d[1] * d[1]);
++  const float dr0 = (d[0] * dd[0] + d[1] * dd[1]) / (r0 > 1e-12f ? r0 : 1e-12f);
++  /* network value and directional derivative */
++  float f[3] = {nn->b2[0], nn->b2[1], nn->b2[2]}, df[3] = {0.0f, 0.0f, 0.0f};
++  for (int k = 0; k < nn->nh; k++) {
++    const float hk = tanhf(nn->w1[k][0] * r0 + nn->w1[k][1] * z0 + nn->b1[k]);
++    const float gk = (1.0f - hk * hk) * (nn->w1[k][0] * dr0 + nn->w1[k][1] * dz0);
++    for (int i = 0; i < 3; i++) { f[i] += nn->w2[i][k] * hk; df[i] += nn->w2[i][k] * gk; }
++  }
++  /* flow frame [x_n y_n z_n] and its time derivative (Gram-Schmidt as in the bundle, r_hat = top - ego) */
++  const float rh[3] = {-d[0], -d[1], -d[2]}, rhd[3] = {-dd[0], -dd[1], -dd[2]};
++  const float nrm = sqrtf(rh[0] * rh[0] + rh[1] * rh[1] + rh[2] * rh[2]) + 1e-8f;
++  float x0[3], dx0[3];
++  for (int i = 0; i < 3; i++) x0[i] = rh[i] / nrm;
++  const float x0p = x0[0] * rhd[0] + x0[1] * rhd[1] + x0[2] * rhd[2];
++  for (int i = 0; i < 3; i++) dx0[i] = (rhd[i] - x0[i] * x0p) / nrm;
++  const float y0[3] = {-x0[1], x0[0], 0.0f}, dy0[3] = {-dx0[1], dx0[0], 0.0f};          /* z x x0, z = (0, 0, 1) */
++  float yn0 = sqrtf(y0[0] * y0[0] + y0[1] * y0[1]); if (yn0 < 1e-8f) yn0 = 1e-8f;
++  const float yn[3] = {y0[0] / yn0, y0[1] / yn0, 0.0f};
++  const float ynp = yn[0] * dy0[0] + yn[1] * dy0[1];
++  const float dyn[3] = {(dy0[0] - yn[0] * ynp) / yn0, (dy0[1] - yn[1] * ynp) / yn0, 0.0f};
++  const float x1[3] = {yn[1], -yn[0], 0.0f}, dx1[3] = {dyn[1], -dyn[0], 0.0f};          /* y_n x z */
++  float xn0 = sqrtf(x1[0] * x1[0] + x1[1] * x1[1]); if (xn0 < 1e-8f) xn0 = 1e-8f;
++  const float xn[3] = {x1[0] / xn0, x1[1] / xn0, 0.0f};
++  const float xnp = xn[0] * dx1[0] + xn[1] * dx1[1];
++  const float dxn[3] = {(dx1[0] - xn[0] * xnp) / xn0, (dx1[1] - xn[1] * xnp) / xn0, 0.0f};
++  /* acc = R f, jerk = dR f + R df (dz_n = 0) */
++  for (int i = 0; i < 3; i++) {
++    const float zi = (i == 2) ? 1.0f : 0.0f;
++    acc[i] += xn[i] * f[0] + yn[i] * f[1] + zi * f[2];
++    jerk[i] += dxn[i] * f[0] + dyn[i] * f[1] + xn[i] * df[0] + yn[i] * df[1] + zi * df[2];
++  }
++}
++
++/* ---- ROM: the authors' closed-form jet profile on their 10 x 10 trapezoid grid (force_batch_fo.py / torque_batch_fo.py), float32 ---------------- */
++#define ROM_G 9.81f
++#define ROM_RHO 1.293f
++#define ROM_PI 3.14159265358979f
++#define ROM_BD 6.84f
++#define ROM_Z0C 3.08f                 /* virtual origin of the jet: zeta = z0 / l + 3.08 */
++#define ROM_ALPHA 0.414213562f        /* sqrt(2) - 1 */
++#define ROM_S 0.0997f                 /* jet spreading S */
++#define ROM_RPROP_VEL 0.0225f         /* propeller radius of the velocity field (0.045 / 2): the bundle's value, not measured on our drone */
++#define ROM_NG 10
++static const float COS_TH[ROM_NG] = {1.0f, 7.660444431e-01f, 1.736481777e-01f, -5.0e-01f, -9.396926208e-01f, -9.396926208e-01f, -5.0e-01f, 1.736481777e-01f, 7.660444431e-01f, 1.0f};
++static const float SIN_TH[ROM_NG] = {0.0f, 6.427876097e-01f, 9.848077530e-01f, 8.660254038e-01f, 3.420201433e-01f, -3.420201433e-01f, -8.660254038e-01f, -9.848077530e-01f, -6.427876097e-01f, -2.449293598e-16f};
++
++/* radial grid r_j = quad_rad * j / 9 and the trapezoid weight per grid point: 0.25 * dr * dth * (rows touched: 1 at the ends, else 2) * (r_mid of the
++   cells touched in the column): the four-corner sum of the authors' cell formula collected per grid point. wb[j] excludes the row factor and 0.25 dr dth. */
++static void rom_grid(float quad_rad, float rj[ROM_NG], float wb[ROM_NG], float *scale)
++{
++  float mid[ROM_NG - 1];
++  for (int j = 0; j < ROM_NG; j++) rj[j] = quad_rad * (float)j / (float)(ROM_NG - 1);
++  for (int j = 0; j < ROM_NG - 1; j++) mid[j] = 0.5f * (rj[j] + rj[j + 1]);
++  for (int j = 0; j < ROM_NG; j++) wb[j] = (j > 0 ? mid[j - 1] : 0.0f) + (j < ROM_NG - 1 ? mid[j] : 0.0f);
++  *scale = 0.25f * (quad_rad / (float)(ROM_NG - 1)) * (2.0f * ROM_PI / (float)(ROM_NG - 1));
++}
++
++void fbl_rom_force(float z0, float r0, float mass, float c_d, float *F, float *dF_dz0, float *dF_dr0)
++{
++  const float l = 2.0f * (FBL_ROM_ARM_LENGTH + ROM_RPROP_VEL);
++  const float K = (mass * ROM_G / (2.0f * ROM_RHO * ROM_PI * ROM_RPROP_VEL * ROM_RPROP_VEL * 4.0f)) * (ROM_BD * ROM_BD);
++  float rj[ROM_NG], wb[ROM_NG], scale;
++  rom_grid(FBL_ROM_ARM_LENGTH + 0.025f + 0.001f, rj, wb, &scale);       /* integration radius: arm + 0.05 / 2 + 0.001 */
++  const float zeta = z0 / l + ROM_Z0C, lSz = l * ROM_S * zeta;
++  float tF = 0.0f, tz = 0.0f, tr = 0.0f;
++  for (int a = 0; a < ROM_NG; a++) {
++    const float cth = COS_TH[a], rowf = (a == 0 || a == ROM_NG - 1) ? 1.0f : 2.0f;
++    for (int b = 0; b < ROM_NG; b++) {
++      const float r = rj[b];
++      float rp2 = r0 * r0 + r * r + 2.0f * r0 * r * cth;
++      if (rp2 < 0.0f) rp2 = 0.0f;
++      const float Rpt = sqrtf(rp2), eta = Rpt / lSz, e2 = eta * eta, f = 1.0f + ROM_ALPHA * e2, f2 = f * f;
++      const float Vsq = K / (zeta * zeta * f2 * f2);
++      const float dVz = Vsq / (zeta * l) * (-2.0f + 8.0f * ROM_ALPHA * e2 / f);
++      const float dR = (r0 + r * cth) / (Rpt > 1e-15f ? Rpt : 1e-15f);
++      const float dVr = Vsq * (-8.0f * ROM_ALPHA * eta / f) / lSz * dR;
++      const float w = rowf * wb[b];
++      tF += w * Vsq; tz += w * dVz; tr += w * dVr;
++    }
++  }
++  const float coeff = 0.5f * c_d * ROM_RHO * scale;
++  *F = coeff * tF; *dF_dz0 = coeff * tz; *dF_dr0 = coeff * tr;
++}
++
++void fbl_rom_torque(float z0, float r0, const float r_hat[3], float mass, float c_d, float tau_world[3])
++{
++  const float l = 2.0f * (FBL_ROM_ARM_LENGTH + ROM_RPROP_VEL) + 0.002f;   /* torque_batch_fo.py: quad diameter + 0.002 */
++  const float K = (mass * ROM_G / (2.0f * ROM_RHO * ROM_PI * ROM_RPROP_VEL * ROM_RPROP_VEL * 4.0f)) * (ROM_BD * ROM_BD);
++  float rj[ROM_NG], wb[ROM_NG], scale;
++  rom_grid(FBL_ROM_ARM_LENGTH + ROM_RPROP_VEL + 0.001f, rj, wb, &scale);  /* integration radius: arm + 0.045 / 2 + 0.001 */
++  const float zeta = z0 / l + ROM_Z0C, lSz = l * ROM_S * zeta;
++  float o0 = 0.0f, o1 = 0.0f;
++  for (int a = 0; a < ROM_NG; a++) {
++    const float cth = COS_TH[a], sth = SIN_TH[a], rowf = (a == 0 || a == ROM_NG - 1) ? 1.0f : 2.0f;
++    for (int b = 0; b < ROM_NG; b++) {
++      const float r = rj[b];
++      float rp2 = r0 * r0 + r * r - 2.0f * r0 * r * cth;                  /* the torque grid uses the minus sign (the force grid the plus sign) */
++      if (rp2 < 0.0f) rp2 = 0.0f;
++      const float eta = sqrtf(rp2) / lSz, f = 1.0f + ROM_ALPHA * eta * eta, f2 = f * f;
++      const float w = rowf * wb[b] * (K / (zeta * zeta * f2 * f2));
++      o0 += w * (-r * sth); o1 += w * (r * cth);                            /* -(p x e_z) with p = (r cos, r sin, 0) = (-r sin, r cos, 0) */
++    }
++  }
++  /* virtual-wind frame (flow axis = world z): y = z x x_hat, x = y x z, each normalised with the bundle's 1e-12 floor */
++  const float nr = sqrtf(r_hat[0] * r_hat[0] + r_hat[1] * r_hat[1] + r_hat[2] * r_hat[2]) + 1e-18f;
++  const float x0 = r_hat[0] / nr, x1 = r_hat[1] / nr;
++  float ny = sqrtf(x0 * x0 + x1 * x1); if (ny < 1e-12f) ny = 1e-12f;
++  const float y0 = -x1 / ny, y1 = x0 / ny;
++  float nx = sqrtf(y0 * y0 + y1 * y1); if (nx < 1e-12f) nx = 1e-12f;
++  const float xn0 = y1 / nx, xn1 = -y0 / nx;
++  const float coeff = 0.5f * c_d * ROM_RHO * scale;
++  tau_world[0] = coeff * (xn0 * o0 + y0 * o1); tau_world[1] = coeff * (xn1 * o0 + y1 * o1); tau_world[2] = 0.0f;
++}
++
++void fbl_residual_pair(const float p[3], const float v[3], const float R[9], const float p_top[3], const float v_top[3], float mass, float c_d,
++                       const float inertia[3], fbl_res_t *out)
++{
++  /* point_line_distance with the flow axis = world z: r0 horizontal distance, z0 = |height difference| (the neighbour may be above OR below), no gate */
++  const float d[3] = {p[0] - p_top[0], p[1] - p_top[1], p[2] - p_top[2]};
++  const float dd[3] = {v[0] - v_top[0], v[1] - v_top[1], v[2] - v_top[2]};
++  const float z0 = fabsf(d[2]);
++  const float dz0 = (d[2] > 0.0f ? 1.0f : (d[2] < 0.0f ? -1.0f : 0.0f)) * dd[2];                 /* sign(t) * dt/dt */
++  const float r0 = sqrtf(d[0] * d[0] + d[1] * d[1]);
++  const float dr0 = (d[0] * dd[0] + d[1] * dd[1]) / (r0 > 1e-12f ? r0 : 1e-12f);
++  float F, dFz, dFr;
++  fbl_rom_force(z0, r0, mass, c_d, &F, &dFz, &dFr);
++  out->acc[2] += -F / mass;
++  out->jerk[2] += (-1.0f / mass) * (dFz * dz0 + dFr * dr0);
++  if (s_nn) fbl_nn_pair(s_nn, p, v, p_top, v_top, out->acc, out->jerk);
++  /* ROM torque -> body angular acceleration (no torque network: we have none) */
++  const float rh[3] = {-d[0], -d[1], -d[2]};
++  float tw[3];
++  fbl_rom_torque(z0, r0, rh, mass, c_d, tw);
++  for (int i = 0; i < 3; i++) {
++    const float tb = R[0 * 3 + i] * tw[0] + R[1 * 3 + i] * tw[1] + R[2 * 3 + i] * tw[2];
++    out->ang_acc[i] += tb / inertia[i];
++  }
++  out->n_active++;
++}
++
++void fbl_residual_eval_abs(const float p[3], const float v[3], const float R[9], const float peer_p[][3], const float peer_v[][3], int n, float mass, float c_d,
++                           const float inertia[3], fbl_res_t *out)
++{
++  memset(out, 0, sizeof(*out));
++  if (n > FBL_MAX_NEIGHBOURS) n = FBL_MAX_NEIGHBOURS;
++  for (int k = 0; k < n; k++) fbl_residual_pair(p, v, R, peer_p[k], peer_v[k], mass, c_d, inertia, out);
++  out->ang_acc[2] = 0.0f;           /* _predict_residual: the learned model predicts a near-constant yaw torque bias; zeroed */
++}
++
++void fbl_residual_eval(fbl_state_t *s, const float pos[3], const float vel[3], const float R[9], float mass, float c_d, const float inertia[3], fbl_res_t *out)
++{
++  float xs[FBL_MAX_NEIGHBOURS] = {0}, ys[FBL_MAX_NEIGHBOURS] = {0}, zs[FBL_MAX_NEIGHBOURS] = {0};
++  uint32_t ts[FBL_MAX_NEIGHBOURS] = {0};
++  float pp[FBL_MAX_NEIGHBOURS][3] = {{0}}, pv[FBL_MAX_NEIGHBOURS][3] = {{0}};
++  int n = 0;
++  if (peer_get_all != 0) n = (int)peer_get_all(xs, ys, zs, ts, FBL_MAX_NEIGHBOURS);
++  if (n > FBL_MAX_NEIGHBOURS) n = FBL_MAX_NEIGHBOURS;
++  for (int k = 0; k < n; k++) {
++    const uint32_t pt = s->prev[k].ts, ts_new = ts[k], dt_ms = ts_new - pt;
++    if (pt == 0) {
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++    } else if (ts_new == pt) {
++      /* unchanged timestamp: keep the last estimate */
++    } else if (dt_ms > 0 && dt_ms < 500) {
++      const float inv = 1000.0f / (float)dt_ms;
++      s->vel[k][0] = (xs[k] - s->prev[k].x) * inv; s->vel[k][1] = (ys[k] - s->prev[k].y) * inv; s->vel[k][2] = (zs[k] - s->prev[k].z) * inv;
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++    } else {
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++    }
++    pp[k][0] = xs[k]; pp[k][1] = ys[k]; pp[k][2] = zs[k];
++    pv[k][0] = s->vel[k][0]; pv[k][1] = s->vel[k][1]; pv[k][2] = s->vel[k][2];
++  }
++  fbl_residual_eval_abs(pos, vel, R, (const float (*)[3])pp, (const float (*)[3])pv, n, mass, c_d, inertia, out);
++}
+diff --git a/src/modules/src/ns2_residual.c b/src/modules/src/ns2_residual.c
+new file mode 100644
+index 00000000..443b5183
+--- /dev/null
++++ b/src/modules/src/ns2_residual.c
+@@ -0,0 +1,293 @@
++/*
++ * NS2 learned interaction residual -- C implementation (see ns2_residual.h).
++ * Exact counterpart of flying_drone_stack/firmware_app/src/residual_nn.rs and the peer logic in src/lib.rs.
++ */
++#include <math.h>
++#include <string.h>
++
++#include "ns2_residual.h"
++#include "usec_time.h"
++
++/* The host SIL build renames peer_get_all (-Dpeer_get_all=peer_get_all_fw_unused, for traj_iface.c). This module
++ * must call the real one (the injected stub on the host, traj_iface.c on the drone), like host/oot_host.c does. */
++#undef peer_get_all
++
++#define PHI_IN_S 6
++#define PHI_IN_G 4
++#define PHI_L1 25
++#define PHI_L2 40
++#define PHI_L3 40
++#define HIDDEN 20
++#define RHO_L1 40
++#define RHO_L2 40
++#define RHO_L3 40
++#define N_PHI_S 3675
++#define N_PHI_G 3625
++#define N_RHO 4161
++
++#define GATE_DXY 0.2f
++#define GATE_DVX 1.5f
++#define GRAMS_TO_NEWTONS (9.81f / 1000.0f)
++#define OUT_CLAMP 8.0f
++
++/* Symbols provided by firmware_app (traj_iface.c, ns2_weights.c). Weak so that a build without the app still
++ * links; the module is then inert (no weights, rnn.* untouched). */
++extern const float ns2_w_phi_s[N_PHI_S] __attribute__((weak));
++extern const float ns2_w_phi_g[N_PHI_G] __attribute__((weak));
++extern const float ns2_w_rho_s[N_RHO] __attribute__((weak));
++extern uint8_t peer_get_all(float *xs, float *ys, float *zs, uint32_t *ts, uint8_t max) __attribute__((weak));
++extern void rnn_pred_write(float x, float y, float z, uint8_t clamped) __attribute__((weak));
++extern uint8_t g_rnn_en __attribute__((weak));
++extern uint8_t g_rnn_ready __attribute__((weak));
++extern uint8_t g_rnn_div __attribute__((weak));
++extern uint8_t g_rnn_rst __attribute__((weak));
++extern uint16_t g_rnn_us_last __attribute__((weak));
++extern uint16_t g_rnn_us_max __attribute__((weak));
++extern float g_rnn_us_avg __attribute__((weak));
++
++/* Scratch (single caller: the stabilizer task; the host runs drones sequentially in one thread). */
++static float phi_h1[PHI_L1];
++static float phi_h2[PHI_L2];
++static float phi_h3[PHI_L3];
++static float phi_out[HIDDEN];
++static float rho_h1[RHO_L1];
++static float rho_h2[RHO_L2];
++static float rho_h3[RHO_L3];
++static float rho_out[1];
++static float rho_in[HIDDEN];
++
++bool ns2_weights_present(void)
++{
++  return (&ns2_w_phi_s[0] != 0) && (&ns2_w_phi_g[0] != 0) && (&ns2_w_rho_s[0] != 0);
++}
++
++/* One fully-connected layer with ReLU: n_out rows of n_in weights, then n_out biases (nn.Linear). Returns the
++ * offset just past the weights it consumed. */
++static int layer_relu(const float *w, int off, const float *x, int n_in, float *y, int n_out)
++{
++  for (int j = 0; j < n_out; j++) {
++    float acc = w[off + n_out * n_in + j];
++    const int row = off + j * n_in;
++    for (int i = 0; i < n_in; i++) {
++      acc += w[row + i] * x[i];
++    }
++    y[j] = (acc > 0.0f) ? acc : 0.0f;
++  }
++  return off + n_out * n_in + n_out;
++}
++
++static int layer_linear(const float *w, int off, const float *x, int n_in, float *y, int n_out)
++{
++  for (int j = 0; j < n_out; j++) {
++    float acc = w[off + n_out * n_in + j];
++    const int row = off + j * n_in;
++    for (int i = 0; i < n_in; i++) {
++      acc += w[row + i] * x[i];
++    }
++    y[j] = acc;
++  }
++  return off + n_out * n_in + n_out;
++}
++
++static void phi_forward(const float *w, const float *x, int n_in)
++{
++  int o = 0;
++  o = layer_relu(w, o, x, n_in, phi_h1, PHI_L1);
++  o = layer_relu(w, o, phi_h1, PHI_L1, phi_h2, PHI_L2);
++  o = layer_relu(w, o, phi_h2, PHI_L2, phi_h3, PHI_L3);
++  (void)layer_linear(w, o, phi_h3, PHI_L3, phi_out, HIDDEN);
++}
++
++static float rho_forward(const float *w, const float *x)
++{
++  int o = 0;
++  o = layer_relu(w, o, x, HIDDEN, rho_h1, RHO_L1);
++  o = layer_relu(w, o, rho_h1, RHO_L1, rho_h2, RHO_L2);
++  o = layer_relu(w, o, rho_h2, RHO_L2, rho_h3, RHO_L3);
++  (void)layer_linear(w, o, rho_h3, RHO_L3, rho_out, 1);
++  return rho_out[0];
++}
++
++void ns2_reset(ns2_state_t *s)
++{
++  memset(s, 0, sizeof(*s));
++}
++
++void ns2_eval_rel(const float rel_p[][3], const float rel_v[][3], int n,
++                  float own_z, const float own_vel[3], float mass,
++                  float out_accel[3], uint8_t *clamped)
++{
++  *clamped = 0;
++  out_accel[0] = out_accel[1] = out_accel[2] = 0.0f;
++  if (!ns2_weights_present()) {
++    return;
++  }
++
++  for (int i = 0; i < HIDDEN; i++) {
++    rho_in[i] = 0.0f;
++  }
++
++  /* Ground interaction -- unconditional, every evaluation, regardless of neighbours. */
++  {
++    const float ground_x[PHI_IN_G] = {0.0f - own_z, -own_vel[0], -own_vel[1], -own_vel[2]};
++    phi_forward(ns2_w_phi_g, ground_x, PHI_IN_G);
++    for (int i = 0; i < HIDDEN; i++) {
++      rho_in[i] += phi_out[i];
++    }
++  }
++
++  /* Neighbours: every vehicle here is "small", so always phi_S / rho_S. */
++  const int nn = (n < NS2_MAX_NEIGHBOURS) ? n : NS2_MAX_NEIGHBOURS;
++  for (int k = 0; k < nn; k++) {
++    const float *dp = rel_p[k];
++    const float *dv = rel_v[k];
++    const bool gated = (fabsf(dp[0]) < GATE_DXY) && (fabsf(dp[1]) < GATE_DXY) && (fabsf(dv[0]) < GATE_DVX);
++    if (!gated) {
++      continue;
++    }
++    const float x[PHI_IN_S] = {dp[0], dp[1], dp[2], dv[0], dv[1], dv[2]};
++    phi_forward(ns2_w_phi_s, x, PHI_IN_S);
++    for (int i = 0; i < HIDDEN; i++) {
++      rho_in[i] += phi_out[i];
++    }
++  }
++
++  const float faz_grams = rho_forward(ns2_w_rho_s, rho_in);
++  float faz_accel = (faz_grams * GRAMS_TO_NEWTONS) / mass;
++
++  if (!isfinite(faz_accel)) {
++    *clamped = 1;
++    return;
++  }
++  const float mag = fabsf(faz_accel);
++  if (mag > OUT_CLAMP) {
++    *clamped = 1;
++    faz_accel = faz_accel * (OUT_CLAMP / mag);
++  }
++  out_accel[2] = faz_accel;
++}
++
++void ns2_eval(ns2_state_t *s, const float pos[3], const float vel[3], float mass,
++              float out_accel[3], uint8_t *clamped)
++{
++  float xs[NS2_MAX_NEIGHBOURS] = {0}, ys[NS2_MAX_NEIGHBOURS] = {0}, zs[NS2_MAX_NEIGHBOURS] = {0};
++  uint32_t ts[NS2_MAX_NEIGHBOURS] = {0};
++  float rel_p[NS2_MAX_NEIGHBOURS][3] = {{0}};
++  float rel_v[NS2_MAX_NEIGHBOURS][3] = {{0}};
++  int n = 0;
++
++  if (peer_get_all != 0) {
++    n = (int)peer_get_all(xs, ys, zs, ts, NS2_MAX_NEIGHBOURS);
++  }
++  if (n > NS2_MAX_NEIGHBOURS) {
++    n = NS2_MAX_NEIGHBOURS;
++  }
++
++  for (int k = 0; k < n; k++) {
++    float v_peer[3];
++    const uint32_t pt = s->prev[k].ts;
++    const uint32_t ts_new = ts[k];
++    const uint32_t dt_ms = ts_new - pt;  /* wraps like u32::wrapping_sub */
++
++    if (pt == 0) {
++      /* First time seen: no baseline yet, zero relative velocity. */
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++      v_peer[0] = v_peer[1] = v_peer[2] = 0.0f;
++    } else if (ts_new == pt) {
++      /* Timestamp has not advanced: reuse the last estimate. */
++      v_peer[0] = s->vel[k][0]; v_peer[1] = s->vel[k][1]; v_peer[2] = s->vel[k][2];
++    } else if (dt_ms > 0 && dt_ms < 500) {
++      const float inv = 1000.0f / (float)dt_ms;
++      v_peer[0] = (xs[k] - s->prev[k].x) * inv;
++      v_peer[1] = (ys[k] - s->prev[k].y) * inv;
++      v_peer[2] = (zs[k] - s->prev[k].z) * inv;
++      s->vel[k][0] = v_peer[0]; s->vel[k][1] = v_peer[1]; s->vel[k][2] = v_peer[2];
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++    } else {
++      /* Timestamp advanced but the gap is invalid (>= 500 ms, wrap, backwards): resync like first-seen. */
++      s->prev[k].x = xs[k]; s->prev[k].y = ys[k]; s->prev[k].z = zs[k]; s->prev[k].ts = ts_new;
++      s->vel[k][0] = s->vel[k][1] = s->vel[k][2] = 0.0f;
++      v_peer[0] = v_peer[1] = v_peer[2] = 0.0f;
++    }
++
++    rel_p[k][0] = xs[k] - pos[0]; rel_p[k][1] = ys[k] - pos[1]; rel_p[k][2] = zs[k] - pos[2];
++    rel_v[k][0] = v_peer[0] - vel[0]; rel_v[k][1] = v_peer[1] - vel[1]; rel_v[k][2] = v_peer[2] - vel[2];
++  }
++
++  ns2_eval_rel((const float (*)[3])rel_p, (const float (*)[3])rel_v, n, pos[2], vel, mass, out_accel, clamped);
++}
++
++void ns2_publish_ready(void)
++{
++#ifndef UNIT_TEST_MODE
++  if (&g_rnn_ready != 0) {
++    g_rnn_ready = ns2_weights_present() ? 1 : 0;
++  }
++#endif
++}
++
++bool ns2_active(void)
++{
++  if (!ns2_weights_present() || (&g_rnn_en == 0) || (g_rnn_en == 0)) {
++    return false;
++  }
++#ifndef UNIT_TEST_MODE
++  if ((&g_rnn_ready == 0) || (g_rnn_ready == 0)) {
++    return false;
++  }
++#endif
++  return true;
++}
++
++void ns2_update(ns2_state_t *s, const float pos[3], const float vel[3], float mass, uint32_t tick)
++{
++  /* Weights are in flash: the network is ready from boot (the Rust rnn_service that sets this for controller 6
++   * does not run while controller 9 is selected). Firmware builds only, see ns2_publish_ready(). */
++  ns2_publish_ready();
++
++  uint32_t div = 10;
++  if (&g_rnn_div != 0) {
++    div = (g_rnn_div == 0) ? 1 : g_rnn_div;
++  }
++
++  const bool do_eval = (s->started == 0) || ((tick % div) == 0);
++  if (do_eval) {
++#ifndef UNIT_TEST_MODE
++    const uint64_t t0 = usecTimestamp();
++#endif
++    float out[3];
++    uint8_t cl = 0;
++    ns2_eval(s, pos, vel, mass, out, &cl);
++#ifndef UNIT_TEST_MODE
++    const uint64_t t1 = usecTimestamp();
++#endif
++    s->hold[0] = out[0]; s->hold[1] = out[1]; s->hold[2] = out[2];
++    s->hold_clamped = cl;
++    s->started = 1;
++
++    /* Timing, same bookkeeping as rnn_record_timing in lib.rs. Skipped in host builds: the host's usecTimestamp()
++     * stub advances a fake clock by 2000 us per CALL, so two extra calls here would change the dt that the
++     * Omar INDI derives from the same clock (a simulation artifact, not a hardware effect). */
++#ifndef UNIT_TEST_MODE
++    if (&g_rnn_us_last != 0 && &g_rnn_us_max != 0 && &g_rnn_us_avg != 0) {
++      if (&g_rnn_rst != 0 && g_rnn_rst != 0) {
++        g_rnn_us_max = 0;
++        g_rnn_us_avg = 0.0f;
++        g_rnn_rst = 0;
++      }
++      uint32_t us = (uint32_t)(t1 - t0);
++      const uint16_t us16 = (us > 65535u) ? 65535u : (uint16_t)us;
++      g_rnn_us_last = us16;
++      if (us16 > g_rnn_us_max) {
++        g_rnn_us_max = us16;
++      }
++      g_rnn_us_avg = g_rnn_us_avg * (15.0f / 16.0f) + ((float)us) * (1.0f / 16.0f);
++    }
++#endif
++  }
++
++  if (rnn_pred_write != 0) {
++    rnn_pred_write(s->hold[0], s->hold[1], s->hold[2], s->hold_clamped);
++  }
++}
+diff --git a/src/platform/interface/platform_defaults_cf21bl.h b/src/platform/interface/platform_defaults_cf21bl.h
+index e6d3ebd9..77029246 100644
+--- a/src/platform/interface/platform_defaults_cf21bl.h
++++ b/src/platform/interface/platform_defaults_cf21bl.h
+@@ -52,6 +52,22 @@
+     #define CF_MASS 0.0393f  // kg
+ #endif
+ 
++// 2026-09-22 LOCAL MODIFICATION -- INTENTIONAL, DO NOT REVERT. Added for CONFIG_CONTROLLER_OOT4
++// (supervisor's INDI, controller_omar_indi.c -- a literal copy of his controller_lee.c). Both
++// constants below are copied verbatim from his own crazyflie-firmware-omar
++// platform_defaults_cf21bl.h so the ported controller reads the SAME numbers he calibrated for
++// this airframe, not a substitute. MOTORRPM2FORCE was entirely absent from our tree before this.
++// THRUST2TORQUE already existed below but only inside CONFIG_ENABLE_THRUST_BAT_COMPENSATED (an
++// unrelated battery-compensation feature we don't enable on this build) -- defining it here,
++// unconditionally, avoids silently pulling in that feature just to get the constant, and avoids
++// falling back to platform_defaults.h's generic THRUST2TORQUE (0.005964552f, not calibrated for
++// this brushless airframe). See docs/41_Pure_INDI_Implementation_Comparison.md and
++// firmware_app/host/LOCAL_MODIFICATIONS.md.
++#define MOTORRPM2FORCE  3.91194027330774e-08f // force_in_newton = MOTORRPM2FORCE * (motor rpm in rad/s)^2
++#ifndef THRUST2TORQUE
++    #define THRUST2TORQUE   0.00569278844371417f // m -- supervisor's CF21BL calibration
++#endif
++
+ #ifdef CONFIG_ENABLE_THRUST_BAT_COMPENSATED
+     // Minimum and maximum thrust per motor
+     // Note: The maximum thrust is a trade-off between consistency of thrust over all battery levels

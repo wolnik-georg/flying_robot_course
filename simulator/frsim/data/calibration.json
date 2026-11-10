@@ -1,0 +1,24 @@
+{
+ "_note": "Frozen plant calibration of the tuning simulator (plant of record since 2026-10-30). Values copied unchanged; not to be edited.",
+ "source_files": {
+  "calibration": "experiments/tuning/out/plant_calibration_joint_lag30_best_s0.json (joint calibration, motor lag fixed at 30 ms; docs/tuning_plant_p4_2026-10-29.md, docs/tuning_actuator_id_2026-10-29.md)",
+  "plume": "experiments/tuning/out/plume_fit.json (fit_plume_torque.py, 233 flights, 6214 samples)"
+ },
+ "calibration_date": "2026-10-30",
+ "frozen": "2026-11-10",
+ "plant": {
+  "downwash_scale": 1.3417475092169096,
+  "max_motor_force_N": 0.2758040577270282,
+  "motor_lag_ms": 30.0,
+  "gyro_noise_deg_s": 12.07551305582298,
+  "accelerometer_noise_g": 0.08396281971372399,
+  "rpm_delay_ms": 4.0501500631407525,
+  "plume_amplitude_scale": 4.256597762645591,
+  "plume_width_scale": 1.029307665321903
+ },
+ "plume_fit": {
+  "amplitude_N": 0.05372184587709883,
+  "width_m": 0.060804179723357006,
+  "exponent": 0.601427299117919
+ }
+}
