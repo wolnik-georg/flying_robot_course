@@ -10,5 +10,5 @@ Source repo: flying_robot_course, HEAD 846fee17 (last commit touching these file
 | oot_host.c | flying_drone_stack/firmware_app/host/oot_host.c | cd729f3e4677fafdf5220d31704a8e3f767ae810e954733bdd17fd264b1616e1 |
 | rust_stubs.c | new (stubs for cf_rnn_begin_upload / cf_rnn_set_weight / cf_rnn_finish_upload; not in the original build, where libcf_controller_rs.a provides them) | - |
 
-traj_iface.c, oot_host.c and ns2_weights.c are byte-identical to the copies in ~/Desktop/fbl_v2_firmware/stack/firmware_app that the FBL bindings were built from (checked 2026-11-10).
+traj_iface.c, oot_host.c and ns2_weights.c are byte-identical to the copies in the application folder the FBL bindings of the tuning were built from (checked 2026-11-10).
 With OOT_WITH_RUST=1 the Rust library libcf_controller_rs.a is linked instead of rust_stubs.c (build: cd flying_drone_stack/firmware_app && RUSTFLAGS="-C panic=abort" cargo build --release --target x86_64-unknown-linux-gnu).

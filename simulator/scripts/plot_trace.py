@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Plot trace CSV files written by run_scenario.py: position error (x, y, z) and tilt over the scenario time.
   python3 scripts/plot_trace.py trace_S0_A8_nominal_cell0.csv [more.csv ...] [--out plot.png]
-Needs numpy and matplotlib only (no firmware): use any python where matplotlib works. Several files are overlaid (one colour per file)."""
+Needs numpy and matplotlib only (no firmware): use any python where matplotlib works. Several files are overlaid (one
+colour per file).
+Default output: next to the first input file (<name>.png, or <name>_overlay.png for several files)."""
+
 import argparse
 import csv
+from pathlib import Path
 
 import numpy as np
 
@@ -11,6 +15,7 @@ COLORS = ['#1f6feb', '#d1481f', '#2a9d5c', '#8a5cc2', '#8c6d1f']
 
 
 def read(path):
+    """Header and data of a trace CSV file."""
     with open(path) as f:
         rows = list(csv.reader(f))
     head = rows[0]
@@ -18,15 +23,18 @@ def read(path):
 
 
 def plot(paths, out, title=None, labels=None):
+    """Plot the traces (position error and tilt) into the file `out`; returns `out`."""
     import matplotlib
+
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(4, 1, figsize=(8, 8), sharex=True)
     for k, path in enumerate(paths):
         head, d = read(path)
         t = d[:, 0]
         keep = t >= 0
-        label = (labels[k] if labels else path.split('/')[-1].replace('trace_', '').replace('.csv', ''))
+        label = labels[k] if labels else path.split('/')[-1].replace('trace_', '').replace('.csv', '')
         c = COLORS[k % len(COLORS)]
         for j, name in enumerate(['x', 'y', 'z']):
             ax[j].plot(t[keep], 100 * d[keep, 1 + j], color=c, lw=1.2, label=label)
@@ -48,8 +56,10 @@ def plot(paths, out, title=None, labels=None):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('traces', nargs='+')
-    ap.add_argument('--out', default='trace.png')
+    ap.add_argument('--out', default=None, help='default: next to the first input file')
     ap.add_argument('--title', default=None)
     ap.add_argument('--labels', nargs='+', default=None, help='legend names, one per file')
     a = ap.parse_args()
-    print(plot(a.traces, a.out, a.title, a.labels))
+    first = Path(a.traces[0])
+    default = first.with_suffix('.png') if len(a.traces) == 1 else first.with_name(first.stem + '_overlay.png')
+    print(plot(a.traces, a.out or str(default), a.title, a.labels))

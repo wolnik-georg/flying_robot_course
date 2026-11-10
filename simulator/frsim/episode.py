@@ -1,9 +1,12 @@
 """Run one flight: the real firmware controller in the calibrated plant, from takeoff to landing, and return the result.
 
-Per 1 ms tick: reference and top vehicle -> noisy sensors -> firmware controller (every 2 ms for S0 - S3, every 1 ms for FBL) -> mixer and 4 ms command
-delay -> motor lag and thrust law -> downwash force and plume torque (every 2 ms) -> rigid-body step. The order of the random draws is fixed (sensors.py),
+Per 1 ms tick: reference and top vehicle -> noisy sensors -> firmware controller (every 2 ms for S0 - S3, every 1 ms for
+FBL) -> mixer and 4 ms command
+delay -> motor lag and thrust law -> downwash force and plume torque (every 2 ms) -> rigid-body step. The order of the
+random draws is fixed (sensors.py),
 so a given (controller, scenario cell, gains, variant, seed) always gives the same numbers.
 """
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -18,6 +21,7 @@ _TRUTH = {}
 
 
 def _ns2():
+    """The downwash network, loaded once per process."""
     if 'net' not in _TRUTH:
         _TRUTH['net'] = downwash.Ns2Truth()
     return _TRUTH['net']
@@ -25,21 +29,26 @@ def _ns2():
 
 @dataclass
 class EpisodeConfig:
-    """What to simulate. `cell` = settings of the scenario (see frsim.scenarios.cells), None = the study cell of the scenario."""
+    """What to simulate. `cell` = settings of the scenario (see frsim.scenarios.cells), None = the study cell of the
+    scenario."""
+
     controller: str
     scenario: str
     cell: Optional[dict] = None
-    gains: Optional[dict] = None              # names of the controller; missing ones take the default
-    variant: object = 'nominal'               # name or frsim.variants.Variant
+    gains: Optional[dict] = None  # names of the controller; missing ones take the default
+    variant: object = 'nominal'  # name or frsim.variants.Variant
     seed: int = 0
     plant: config.Plant = config.CALIBRATED_PLANT
-    stop_on_crash: bool = False               # stop at the first tilt >= crash limit (faster; the RMS fields of a crashed episode are then not valid)
+    stop_on_crash: bool = (
+        False  # stop at the first tilt >= crash limit (faster; the RMS fields of a crashed episode are then not valid)
+    )
 
 
 @dataclass
 class EpisodeResult:
-    stable: bool                  # False = crashed (tilt limit reached inside the scoring window), error counts as 100 cm
-    completed: bool               # False = the run was stopped early (crash stop or numerical failure)
+    """Result of one episode: RMS errors (cm), tilt, crash flag and time, and the trace."""
+    stable: bool  # False = crashed (tilt limit reached inside the scoring window), error counts as 100 cm
+    completed: bool  # False = the run was stopped early (crash stop or numerical failure)
     x_rms_cm: float
     y_rms_cm: float
     z_rms_cm: float
@@ -51,10 +60,13 @@ class EpisodeResult:
     crash_time_s: Optional[float]  # scenario time of the first sample at / above the crash tilt, None if none
     n_samples: int
     scenario_duration_s: float
-    trace: np.ndarray = field(repr=False, default=None)    # columns: scenario time (s, negative = takeoff / hold), error x / y / z (m), yaw, tilt (deg), fbl active, fbl tripped, position x / y / z (m); every 10 ms
+    # trace columns: scenario time (s, negative = takeoff / hold), error x / y / z (m), yaw, tilt (deg), fbl active,
+    # fbl tripped, position x / y / z (m); one row every 10 ms
+    trace: np.ndarray = field(repr=False, default=None)
 
 
 def _set_xyz(target, value):
+    """Copy a 3-vector into a firmware struct with x, y, z fields."""
     target.x, target.y, target.z = map(float, value)
 
 
@@ -111,19 +123,30 @@ def run_episode(cfg):
         _set_xyz(state.position, measured_x)
         _set_xyz(state.velocity, measured_v)
         qx, qy, qz, qw = map(float, body.q)
-        state.attitudeQuaternion.x, state.attitudeQuaternion.y, state.attitudeQuaternion.z, state.attitudeQuaternion.w = qx, qy, qz, qw
+        (
+            state.attitudeQuaternion.x,
+            state.attitudeQuaternion.y,
+            state.attitudeQuaternion.z,
+            state.attitudeQuaternion.w,
+        ) = qx, qy, qz, qw
         attitude = Rotation.from_quat(body.q)
         rotation = attitude.as_matrix()
-        euler = attitude.as_euler('xyz', degrees=True)          # roll, pitch, yaw (deg); the firmware state uses the legacy pitch sign
-        state.attitude.roll, state.attitude.pitch, state.attitude.yaw = float(euler[0]), float(-euler[1]), float(euler[2])
+        euler = attitude.as_euler(
+            'xyz', degrees=True
+        )  # roll, pitch, yaw (deg); the firmware state uses the legacy pitch sign
+        state.attitude.roll, state.attitude.pitch, state.attitude.yaw = (
+            float(euler[0]),
+            float(-euler[1]),
+            float(euler[2]),
+        )
         _set_xyz(sens.gyro, sen.gyro(body.w))
 
         if controller.tree:
             specific_force = sen.accelerometer(rotation.T @ (body.previous_acceleration + np.array([0, 0, g])) / g)
             _set_xyz(sens.acc, specific_force)
-            _set_xyz(state.acc, rotation @ specific_force - np.array([0, 0, 1.0]))      # world frame, gravity excluded [g]
+            _set_xyz(state.acc, rotation @ specific_force - np.array([0, 0, 1.0]))  # world frame, gravity excluded [g]
             fw.oot_set_rpm(*sen.rpm(body.forces))
-        if (not controller.tree) or i % 2 == 0:                  # S0 - S3 at 500 Hz like the firmware, FBL at 1 kHz
+        if (not controller.tree) or i % 2 == 0:  # S0 - S3 at 500 Hz like the firmware, FBL at 1 kHz
             fw.controllerOmarIndi(omar, control, setpoint, sens, state, i)
 
         if i % 2 == 0:
@@ -137,7 +160,7 @@ def run_episode(cfg):
         thrust, torque = vehicle.wrench(body.forces)
         torque = torque + 1.0 * plume
 
-        if i % 2 == 0:                                           # downwash of the top vehicle (only when it is above)
+        if i % 2 == 0:  # downwash of the top vehicle (only when it is above)
             above = top_position[2] > body.x[2]
             neighbours = [(top_position - body.x, top_velocity - body.v)] if above else []
             a_nn = net.acceleration(neighbours, float(body.x[2]), body.v, mass)
@@ -159,13 +182,15 @@ def run_episode(cfg):
 
 
 def _summarize(r, n_ticks, scenario_s, tree, crash_tilt):
+    """Turn the recorded rows into an EpisodeResult (RMS over the scoring window, crash rule)."""
     ts = r[:, 0] - config.TAKEOFF_S - config.HOLD_S
     window = (ts > config.SCORE_AFTER_S) & (ts <= scenario_s)
     late = (ts > (scenario_s / 2)) & (ts <= scenario_s)
     during = (ts > 0) & (ts <= scenario_s)
 
     def rms(a):
-        return 100 * float(np.sqrt(np.mean(a ** 2))) if a.size else float('nan')
+        """Root mean square in cm (NaN for an empty window)."""
+        return 100 * float(np.sqrt(np.mean(a**2))) if a.size else float('nan')
 
     completed = len(r) * 10 >= n_ticks - 10
     tilt_max = float(r[during, 5].max()) if (ts > 0).any() else float('nan')
@@ -177,9 +202,18 @@ def _summarize(r, n_ticks, scenario_s, tree, crash_tilt):
         stable = bool(completed and not tripped and tilt_max < crash_tilt and active_pct > 99)
     crash_idx = np.nonzero(during & (r[:, 5] >= crash_tilt))[0]
     return EpisodeResult(
-        stable=stable, completed=bool(completed), x_rms_cm=rms(r[window, 1]), y_rms_cm=rms(r[window, 2]), z_rms_cm=rms(r[window, 3]),
-        tilt_max_deg=tilt_max, xy_steady_cm=100 * float(np.hypot(r[late, 1].mean(), r[late, 2].mean())) if late.any() else float('nan'),
+        stable=stable,
+        completed=bool(completed),
+        x_rms_cm=rms(r[window, 1]),
+        y_rms_cm=rms(r[window, 2]),
+        z_rms_cm=rms(r[window, 3]),
+        tilt_max_deg=tilt_max,
+        xy_steady_cm=100 * float(np.hypot(r[late, 1].mean(), r[late, 2].mean())) if late.any() else float('nan'),
         yaw_absmax_deg=float(np.abs(r[(ts > 0) & (ts <= scenario_s), 4]).max()) if (ts > 0).any() else float('nan'),
         tilt_rms_deg=float(np.sqrt(np.mean(r[window, 5] ** 2))) if window.any() else float('nan'),
-        fbl_active_pct=active_pct, crash_time_s=(float(ts[crash_idx[0]]) if len(crash_idx) else None), n_samples=len(r),
-        scenario_duration_s=float(scenario_s), trace=np.column_stack([ts, r[:, 1:]]))
+        fbl_active_pct=active_pct,
+        crash_time_s=(float(ts[crash_idx[0]]) if len(crash_idx) else None),
+        n_samples=len(r),
+        scenario_duration_s=float(scenario_s),
+        trace=np.column_stack([ts, r[:, 1:]]),
+    )

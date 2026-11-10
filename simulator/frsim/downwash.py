@@ -1,26 +1,32 @@
-"""Downwash truth: the force the top vehicle's propeller wash exerts on the bottom vehicle, and the torque of the wash on the rotors.
+"""Downwash truth: the force the top vehicle's propeller wash exerts on the bottom vehicle, and the torque of the wash
+on the rotors.
 
-* Force: the NS2 v2 network (deep-set network trained on 73 flights; z force only), evaluated in float32 on the relative position and velocity of the
-  top vehicle, scaled by the calibrated downwash scale. Weights: data/ns2_v2.npz. Network layout as in the firmware / training code.
-* Torque: fitted Gaussian lift loss per rotor under the top vehicle's axis (plume model), calibrated amplitude and width.
+* Force: the NS2 v2 network (deep-set network trained on 73 flights; z force only), evaluated in float32 on the relative
+  position and velocity of the
+  top vehicle, scaled by the calibrated downwash scale. Weights: data/ns2_v2.npz. Network layout as in the firmware /
+  training code.
+* Torque: fitted Gaussian lift loss per rotor under the top vehicle's axis (plume model), calibrated amplitude and
+  width.
 """
+
 import numpy as np
 
 from . import config
 
 # Network layout (phi: neighbour / ground encoders, rho: decoder), ReLU layers and a linear output layer
 HIDDEN = 20
-PHI_IN_NEIGHBOUR = 6          # relative [dx, dy, dz, dvx, dvy, dvz]
-PHI_IN_GROUND = 4             # ground effect [0 - z, -vx, -vy, -vz]
+PHI_IN_NEIGHBOUR = 6  # relative [dx, dy, dz, dvx, dvy, dvz]
+PHI_IN_GROUND = 4  # ground effect [0 - z, -vx, -vy, -vz]
 RHO_LAYERS = [(HIDDEN, 40), (40, 40), (40, 40), (40, 1)]
 MAX_NEIGHBOURS = 3
-OUTPUT_CLAMP = 8.0            # |force| clamp in the units of the network output
-GATE_DXY = 0.2                # only neighbours closer than this horizontally (m) and slower than GATE_DVX (m/s) relative are used
+OUTPUT_CLAMP = 8.0  # |force| clamp in the units of the network output
+GATE_DXY = 0.2  # only neighbours closer than this horizontally (m) and slower than GATE_DVX (m/s) relative are used
 GATE_DVX = 1.5
 GRAMS_TO_NEWTONS = 9.81 / 1000.0
 
 
 def _phi_layers(input_dim):
+    """Layer sizes (in, out) of an encoder network with the given input size."""
     return [(input_dim, 25), (25, 40), (40, 40), (40, HIDDEN)]
 
 
@@ -34,11 +40,12 @@ OFFSET_RHO = OFFSET_PHI_GROUND + _N_PHI_GROUND
 
 
 def _forward(weights, offset, layers, x, last_linear=True):
+    """Forward pass of a stack of layers stored in the flat weight vector, float32."""
     x = np.asarray(x, np.float32)
     for k, (n_in, n_out) in enumerate(layers):
-        w = weights[offset:offset + n_out * n_in].reshape(n_out, n_in)
+        w = weights[offset : offset + n_out * n_in].reshape(n_out, n_in)
         offset += n_out * n_in
-        b = weights[offset:offset + n_out]
+        b = weights[offset : offset + n_out]
         offset += n_out
         x = (w @ x + b).astype(np.float32)
         if not (last_linear and k == len(layers) - 1):
@@ -74,12 +81,16 @@ class Ns2Truth:
 
 def plume_torque(position, rotation, top_position, plant):
     """Torque (N m, x / y components) from the lift lost by each rotor inside the top vehicle's plume.
-    position, rotation: bottom vehicle position and body-to-world rotation matrix; top_position: top vehicle position."""
+    position, rotation: bottom vehicle position and body-to-world rotation matrix; top_position: top vehicle
+    position."""
     torque = np.zeros(3)
     for rx, ry in config.ROTOR_POSITIONS_M:
         rotor = position + rotation @ np.array([rx, ry, 0.0])
         rho2 = (rotor[0] - top_position[0]) ** 2 + (rotor[1] - top_position[1]) ** 2
-        lift_change = -plant.plume_amplitude_n * (0.4 / max(top_position[2] - rotor[2], 0.05)) ** plant.plume_exponent \
-            * np.exp(-rho2 / (2 * plant.plume_width_m ** 2))
+        lift_change = (
+            -plant.plume_amplitude_n
+            * (0.4 / max(top_position[2] - rotor[2], 0.05)) ** plant.plume_exponent
+            * np.exp(-rho2 / (2 * plant.plume_width_m**2))
+        )
         torque += np.array([ry * lift_change, -rx * lift_change, 0.0])
     return torque

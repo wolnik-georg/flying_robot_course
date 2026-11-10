@@ -1,0 +1,292 @@
+{
+ "info": {
+  "command": "python3 scripts/compare.py --scen A8 --ctrls S0 S1 S2 S3 FBL --gains tuned --seeds 0 1 2 --procs 4 --out examples/compare_A8",
+  "date": "2026-11-10 20:13:42",
+  "plant": {
+   "motor_lag_ms": 30.0,
+   "gyro_noise_deg_s": 12.07551305582298,
+   "accelerometer_noise_g": 0.08396281971372399,
+   "rpm_delay_ms": 4.0501500631407525,
+   "downwash_scale": 1.3417475092169096,
+   "max_motor_force_n": 0.2758040577270282,
+   "plume_amplitude_n": 0.22867228896565014,
+   "plume_width_m": 0.062586208272862,
+   "plume_exponent": 0.601427299117919
+  },
+  "firmware_build": {
+   "so": "_build/crazyflie-firmware/build/_cffirmware.cpython-310-x86_64-linux-gnu.so",
+   "so_mtime": "2026-11-10 18:55:14",
+   "patches_sha256": {
+    "0001-local-snap-ccb0606d.patch": "362351087effb380",
+    "crazyflie-firmware-sim.patch": "bb068fe7c4977a80"
+   }
+  },
+  "frsim_commit": "unknown (simulator/ not committed)",
+  "versions": {
+   "python": "3.10.12",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3"
+  },
+  "variant": {
+   "name": "nominal",
+   "description": "calibrated plant",
+   "motor_lag_ms": null,
+   "gyro_noise_scale": null,
+   "state_delay_ms": 0,
+   "feedforward_scale": null,
+   "lateral_thrust_scale": 1.0
+  }
+ },
+ "scenario": "A8",
+ "variant": {
+  "name": "nominal",
+  "description": "calibrated plant",
+  "motor_lag_ms": null,
+  "gyro_noise_scale": null,
+  "state_delay_ms": 0,
+  "feedforward_scale": null,
+  "lateral_thrust_scale": 1.0
+ },
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "controllers": {
+  "S0": {
+   "gains": {
+    "Pxy": 1.75,
+    "Pz": 12.711214097800921,
+    "Dxy": 11.864688287430367,
+    "Dz": 8.137886113318569,
+    "Iz": 5.273735788578401,
+    "KRxy": 0.006349014422517433,
+    "KRz": 0.00216667287634185,
+    "Kwxy": 0.0015579128135020973,
+    "Kwz": 0.0005,
+    "KIxy": 0.0030000000000000005
+   },
+   "gains_source": "tuned gains from S0.yaml (Bayesian optimisation (constrained, best observed point), seed 1)"
+  },
+  "S1": {
+   "gains": {
+    "Pxy": 10.58626630425872,
+    "Pz": 18.936854356558044,
+    "Dxy": 13.966525947229147,
+    "Dz": 7.2070290733667095,
+    "Iz": 3.0359049109240694,
+    "KRxy": 0.015245676344615993,
+    "KRz": 0.002776083006083443,
+    "Kwxy": 0.0013098229897179523,
+    "Kwz": 0.001220641804657886,
+    "KIxy": 0.005048887161391532
+   },
+   "gains_source": "tuned gains from S1.yaml (CMA-ES, seed 1)"
+  },
+  "S2": {
+   "gains": {
+    "Pxy": 1.75,
+    "Pz": 12.711214097800921,
+    "Dxy": 11.864688287430367,
+    "Dz": 8.137886113318569,
+    "Iz": 5.273735788578401,
+    "KRxy": 0.006349014422517433,
+    "KRz": 0.00216667287634185,
+    "Kwxy": 0.0015579128135020973,
+    "Kwz": 0.0005,
+    "KIxy": 0.0030000000000000005
+   },
+   "gains_source": "tuned gains from S2.yaml (Bayesian optimisation (constrained, best observed point), seed 1)"
+  },
+  "S3": {
+   "gains": {
+    "Pxy": 10.58626630425872,
+    "Pz": 18.936854356558044,
+    "Dxy": 13.966525947229147,
+    "Dz": 7.2070290733667095,
+    "Iz": 3.0359049109240694,
+    "KRxy": 0.015245676344615993,
+    "KRz": 0.002776083006083443,
+    "Kwxy": 0.0013098229897179523,
+    "Kwz": 0.001220641804657886,
+    "KIxy": 0.005048887161391532
+   },
+   "gains_source": "tuned gains from S3.yaml (CMA-ES, seed 1)"
+  },
+  "FBL": {
+   "gains": {
+    "kp_xy": 14.0,
+    "kv_xy": 9.5,
+    "ki_xy": 12.0,
+    "kp_z": 11.25,
+    "kv_z": 5.4,
+    "ki_z": 12.0
+   },
+   "gains_source": "default gains (no tuned set for FBL)"
+  }
+ },
+ "results": [
+  {
+   "controller": "S0",
+   "gains": "tuned gains from S0.yaml (Bayesian optimisation (constrained, best observed point), seed 1)",
+   "error_cm": "2.09",
+   "max_tilt_deg": "16.8",
+   "crashed_episodes": 0,
+   "episodes": 3
+  },
+  {
+   "controller": "S1",
+   "gains": "tuned gains from S1.yaml (CMA-ES, seed 1)",
+   "error_cm": "1.40",
+   "max_tilt_deg": "20.2",
+   "crashed_episodes": 0,
+   "episodes": 3
+  },
+  {
+   "controller": "S2",
+   "gains": "tuned gains from S2.yaml (Bayesian optimisation (constrained, best observed point), seed 1)",
+   "error_cm": "1.95",
+   "max_tilt_deg": "16.2",
+   "crashed_episodes": 0,
+   "episodes": 3
+  },
+  {
+   "controller": "S3",
+   "gains": "tuned gains from S3.yaml (CMA-ES, seed 1)",
+   "error_cm": "2.16",
+   "max_tilt_deg": "21.4",
+   "crashed_episodes": 0,
+   "episodes": 3
+  },
+  {
+   "controller": "FBL",
+   "gains": "default gains (no tuned set for FBL)",
+   "error_cm": "3.56",
+   "max_tilt_deg": "21.3",
+   "crashed_episodes": 0,
+   "episodes": 3
+  }
+ ],
+ "episodes": [
+  {
+   "controller": "S0",
+   "seed": 0,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.0489320334693972,
+   "max_tilt_deg": 16.61793762783833
+  },
+  {
+   "controller": "S0",
+   "seed": 1,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.1507012221764437,
+   "max_tilt_deg": 16.70592386890845
+  },
+  {
+   "controller": "S0",
+   "seed": 2,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.0743562050930517,
+   "max_tilt_deg": 16.751158152114776
+  },
+  {
+   "controller": "S1",
+   "seed": 0,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 1.3722860293461574,
+   "max_tilt_deg": 19.071069823776014
+  },
+  {
+   "controller": "S1",
+   "seed": 1,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 1.3952084545469943,
+   "max_tilt_deg": 19.550406364506763
+  },
+  {
+   "controller": "S1",
+   "seed": 2,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 1.4465889706087085,
+   "max_tilt_deg": 20.21624117400098
+  },
+  {
+   "controller": "S2",
+   "seed": 0,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 1.8727954560385016,
+   "max_tilt_deg": 16.108914069845767
+  },
+  {
+   "controller": "S2",
+   "seed": 1,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.0308913090062384,
+   "max_tilt_deg": 16.06326357443294
+  },
+  {
+   "controller": "S2",
+   "seed": 2,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 1.957541755518055,
+   "max_tilt_deg": 16.220446430208902
+  },
+  {
+   "controller": "S3",
+   "seed": 0,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.013110587908584,
+   "max_tilt_deg": 20.443857773891093
+  },
+  {
+   "controller": "S3",
+   "seed": 1,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.2113165906845,
+   "max_tilt_deg": 20.536814237956904
+  },
+  {
+   "controller": "S3",
+   "seed": 2,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 2.258160086413121,
+   "max_tilt_deg": 21.4305459012824
+  },
+  {
+   "controller": "FBL",
+   "seed": 0,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 3.058468388483597,
+   "max_tilt_deg": 16.676094955464812
+  },
+  {
+   "controller": "FBL",
+   "seed": 1,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 3.7687609572137135,
+   "max_tilt_deg": 16.293907659211072
+  },
+  {
+   "controller": "FBL",
+   "seed": 2,
+   "cell_index": 0,
+   "stable": true,
+   "rms3d_cm": 3.856668644216456,
+   "max_tilt_deg": 21.28801628613475
+  }
+ ]
+}

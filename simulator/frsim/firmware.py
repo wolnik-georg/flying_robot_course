@@ -1,8 +1,10 @@
 """Load the compiled firmware bindings (module `cffirmware`, built by firmware/build_bindings.sh).
 
-Importing the bindings needs their directory on sys.path; this is the only place where that happens. `load()` is cached, so every
+Importing the bindings needs their directory on sys.path; this is the only place where that happens. `load()` is cached,
+so every
 process loads the extension once.
 """
+
 import importlib
 import os
 import sys
@@ -14,7 +16,8 @@ VERBOSE_ENV = 'FRSIM_FIRMWARE_VERBOSE'
 
 
 def _silence_c_stdout():
-    """The firmware's debug printf writes to file descriptor 1 and garbles our output. Point fd 1 at /dev/null and give Python its own copy of
+    """The firmware's debug printf writes to file descriptor 1 and garbles our output. Point fd 1 at /dev/null and give
+    Python its own copy of
     the original stdout. Set FRSIM_FIRMWARE_VERBOSE=1 to keep the firmware output."""
     if os.environ.get(VERBOSE_ENV):
         return
@@ -33,7 +36,10 @@ def load():
         return _module
     build = config.firmware_build_dir()
     if not build.is_dir():
-        raise FileNotFoundError('firmware bindings not found in %s: run simulator/firmware/build_bindings.sh or set %s' % (build, config.FIRMWARE_ENV))
+        raise FileNotFoundError(
+            'firmware bindings not found in %s: run simulator/firmware/build_bindings.sh or set %s'
+            % (build, config.FIRMWARE_ENV)
+        )
     if str(build) not in sys.path:
         sys.path.insert(0, str(build))
     _module = importlib.import_module('cffirmware')
@@ -42,9 +48,16 @@ def load():
 
 
 def build_info():
-    """Path and modification time of the loaded extension (for result files)."""
-    import os
+    """Path and modification time of the firmware extension (for result files); does not load the firmware."""
     import time
-    mod = load()
-    so = getattr(mod, '_cffirmware').__file__
-    return {'so': so, 'so_mtime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(so)))}
+
+    build = config.firmware_build_dir()
+    found = sorted(build.glob('_cffirmware*.so'))
+    if not found:
+        return {'so': None, 'so_mtime': None}
+    so = found[0]
+    try:
+        shown = str(so.relative_to(config.SIMULATOR_DIR))      # relative to simulator/ when inside it
+    except ValueError:
+        shown = str(so)
+    return {'so': shown, 'so_mtime': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(so.stat().st_mtime))}

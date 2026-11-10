@@ -1,6 +1,7 @@
 # Setup
 
 ## Requirements
+* **Python:** tested with 3.10.12 only. The build uses the `python3` that runs `build_bindings.sh`, so other 3.x versions should work but are untested. Linux x86-64 only.
 * Linux x86-64, `git`, `make`, `gcc`, `swig` (4.0), `python3` with `python3-dev` (tested: Python 3.10.12, gcc 11.4, swig 4.0.2).
 * Python packages: `numpy`, `scipy`, `pyyaml` (tested: numpy 2.2.6, scipy 1.15.3; not pinned). `matplotlib` only for plots.
 * About 1 GB of disk for the firmware clone and the build. No GPU, no ROS, no drone.

@@ -16,6 +16,9 @@ It computes the selection error (tuning cells x 9 robustness variants x noise se
 
 The recorded values are the evaluations of the tuning with the exact vehicle inertia (`experiments/tuning/out/closing_exactJ/`), which also feed the closing table.
 
+## Rerun any result from its `summary.json`
+Every result folder of the scripts (`results/<date>_.../`, or the folder given with `--out`) has a `summary.json` with the exact `command` line, the full gain set and its source (`gains`, `gains_source`), the variant and seed, the plant settings, the firmware build (`.so`, patch hashes), the frsim commit and the Python / numpy / scipy versions. To rerun, build the firmware with the same patches (compare `patches_sha256`), then run the stored `command` again; for gains that were not default or tuned, write the stored `gains` into a YAML file and pass it with `--gains FILE`. The numbers are the same on the same firmware build and versions.
+
 ## Rerun one flight
 ```
 python3 scripts/run_scenario.py --ctrl S3 --scen A1 --gains tuned --variant md60

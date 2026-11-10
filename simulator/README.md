@@ -13,20 +13,22 @@ python3 tests/test_smoke.py                   # every controller on every scenar
 Details: [SETUP](docs/SETUP.md). Plots need a working matplotlib (see there).
 
 ## Three examples
+Every script saves its results automatically (see "Where results go"); the examples below were written with `--out examples/<name>`.
+
 **1. One controller, one scenario, with 40 ms extra delay.**
 ```
-python3 scripts/run_scenario.py --ctrl S0 --scen A8 --gains tuned --delay-ms 40 --out examples/run_S0_A8_delay40
+python3 scripts/run_scenario.py --ctrl S0 --scen A8 --gains tuned --delay-ms 40
 ```
 ```
 S0 on A8, tuned gains from S0.yaml (Bayesian optimisation (constrained, best observed point), seed 1), variant: md40 (state delay 40 ms), noise seed 0
-cell  settings                                         x RMS cm y RMS cm z RMS cm   3-D cm  max tilt  result
-0     dz=0.4, span=1.0, duration=6.25, settle=2.0, passes=2     0.39     2.36     0.94     2.57     18.0 deg  ok
+cell settings                                              x RMS cm  y RMS cm  z RMS cm   3-D cm max tilt deg  result
+0    dz=0.4, span=1.0, duration=6.25, settle=2.0, passes=2      0.39      2.36      0.94     2.57      18.0  ok
 ```
-It writes a trace CSV and a plot of the position error and tilt over time ([plot](examples/run_S0_A8_delay40/trace_S0_A8_md40_cell0.png)).
+It writes a trace CSV, a plot of the position error and tilt over time, and the summary ([summary.md](examples/run_S0_A8_delay40/summary.md), [plot](examples/run_S0_A8_delay40/trace_S0_A8_md40_cell0.png)).
 
 **2. Compare controllers.**
 ```
-python3 scripts/compare.py --scen A8 --ctrls S0 S1 S2 S3 FBL --gains tuned --seeds 0 1 2 --out examples/compare_A8
+python3 scripts/compare.py --scen A8 --ctrls S0 S1 S2 S3 FBL --gains tuned --seeds 0 1 2
 ```
 ```
 ctrl  gains                                            error cm   max tilt   crashed
@@ -36,7 +38,7 @@ S2    tuned gains from S2.yaml (Bayesian optimisat         1.95     16.2 deg    
 S3    tuned gains from S3.yaml (CMA-ES, seed 1)            2.16     21.4 deg     0 / 3
 FBL   default gains (no tuned set for FBL)                 3.56     21.3 deg     0 / 3
 ```
-(FBL has no tuned gains yet, so it flies with its default gains here; the others use their tuned gains. The numbers are a single plant-only comparison, not a result of the study.)
+(FBL has no tuned gains yet, so it flies with its default gains here; the others use their tuned gains. The numbers are a single plant-only comparison, not a result of the study.) Output: [summary.md](examples/compare_A8/summary.md).
 
 **3. Selection error and test error of a gain set, as in the tuning.**
 ```
@@ -47,12 +49,17 @@ selection error: 7.2176653680472285 cm  (2 crashed episodes)
 recorded:        7.2176653680472285 cm  (2 crashed episodes)  -> IDENTICAL
 test error (cm): nominal 3.949, ffs0.4 3.960, md10 4.110, md40 4.279, md60 4.301
 ```
+Output: [summary.md](examples/evaluate_S1_A1/summary.md) and one row per episode in `episodes.csv`.
+
 From Python:
 ```python
 from frsim import run_episode, EpisodeConfig
 r = run_episode(EpisodeConfig('S0', 'A8', variant='md40', seed=0))
 print(r.stable, r.x_rms_cm, r.y_rms_cm, r.z_rms_cm)
 ```
+
+## Where results go
+Every script writes one folder `results/<date>_<time>_<script>_<controllers>_<scenario>[_<variant>]/` (git-ignored; `--out DIR` chooses another folder, `--no-save` writes nothing). It contains `summary.md` (readable table with links), `summary.json` (everything needed to rerun: command line, gains and their source, plant settings, firmware build, versions, all results), the trace CSV files, plots and, for `evaluate_gains.py`, `episodes.csv`. Layout: [results/README.md](results/README.md); rerun: [docs/REPRODUCE.md](docs/REPRODUCE.md).
 
 ## Documentation
 [MODEL](docs/MODEL.md) (equations, blocks, all values and sources) - [CONTROLLERS](docs/CONTROLLERS.md) (S0 - S3, FBL, every gain) - [SCENARIOS](docs/SCENARIOS.md) (A1 / A4 / A8, tuning and study cells, adding a scenario) - [SETUP](docs/SETUP.md) - [REPRODUCE](docs/REPRODUCE.md) (rerun the tuned picks and the closing-table numbers; relation to `experiments/tuning/`).
@@ -69,4 +76,4 @@ print(r.stable, r.x_rms_cm, r.y_rms_cm, r.z_rms_cm)
 * The firmware debug output is hidden; the first episode in a process loads the firmware (about a second).
 
 ## Layout
-`frsim/` the package (config, firmware, vehicle, sensors, downwash, scenarios, controllers, variants, episode, metrics, evaluation, parallel; `data/` network weights and frozen calibration) - `gains/` default and tuned gains - `scripts/` command-line tools - `firmware/` patches, host files and `build_bindings.sh` - `tests/` equivalence, smoke, frozen reference episodes - `examples/` outputs used above.
+`frsim/` the package (config, firmware, vehicle, sensors, downwash, scenarios, controllers, variants, episode, metrics, evaluation, results, parallel; `data/` network weights and frozen calibration) - `gains/` default and tuned gains - `scripts/` command-line tools - `results/` where the scripts save (git-ignored) - `firmware/` patches, host files and `build_bindings.sh` - `tests/` equivalence, smoke, frozen reference episodes - `examples/` outputs used above.

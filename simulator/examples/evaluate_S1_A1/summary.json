@@ -1,0 +1,120 @@
+{
+ "info": {
+  "command": "python3 scripts/evaluate_gains.py --ctrl S1 --scen A1 --gains tuned --procs 4 --out examples/evaluate_S1_A1",
+  "date": "2026-11-10 20:15:42",
+  "plant": {
+   "motor_lag_ms": 30.0,
+   "gyro_noise_deg_s": 12.07551305582298,
+   "accelerometer_noise_g": 0.08396281971372399,
+   "rpm_delay_ms": 4.0501500631407525,
+   "downwash_scale": 1.3417475092169096,
+   "max_motor_force_n": 0.2758040577270282,
+   "plume_amplitude_n": 0.22867228896565014,
+   "plume_width_m": 0.062586208272862,
+   "plume_exponent": 0.601427299117919
+  },
+  "firmware_build": {
+   "so": "_build/crazyflie-firmware/build/_cffirmware.cpython-310-x86_64-linux-gnu.so",
+   "so_mtime": "2026-11-10 18:55:14",
+   "patches_sha256": {
+    "0001-local-snap-ccb0606d.patch": "362351087effb380",
+    "crazyflie-firmware-sim.patch": "bb068fe7c4977a80"
+   }
+  },
+  "frsim_commit": "unknown (simulator/ not committed)",
+  "versions": {
+   "python": "3.10.12",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3"
+  }
+ },
+ "controller": "S1",
+ "scenario": "A1",
+ "gains_source": "tuned gains from S1.yaml (Sobol sampling, seed 4)",
+ "gains": {
+  "Pxy": 15.212978781403947,
+  "Pz": 3.0440505012559838,
+  "Dxy": 11.0419230600016,
+  "Dz": 9.435428329692387,
+  "Iz": 3.230230133914922,
+  "KRxy": 0.00622553496147311,
+  "KRz": 0.005247638782228627,
+  "Kwxy": 0.0011368687297892996,
+  "Kwz": 0.000596467529830364,
+  "KIxy": 0.0870093633521863
+ },
+ "selection_error_cm": 7.2176653680472285,
+ "crashed_selection_episodes": 2,
+ "test_error_cm": {
+  "nominal": 3.9492967158808825,
+  "ffs0.4": 3.9597025028819623,
+  "md10": 4.109844141949025,
+  "md40": 4.279036952568907,
+  "md60": 4.301367511197208
+ },
+ "test_error_by_seed_cm": {
+  "nominal": {
+   "0": 3.984734723931312,
+   "1": 3.9560018229026723,
+   "2": 3.8492438018692017,
+   "3": 3.7103358697368836,
+   "4": 4.246167360964343
+  },
+  "ffs0.4": {
+   "0": 3.9880441540748968,
+   "1": 3.9627630572682837,
+   "2": 3.8476700573618317,
+   "3": 3.7445958415593044,
+   "4": 4.255439404145496
+  },
+  "md10": {
+   "0": 4.108332470111869,
+   "1": 4.081662788226247,
+   "2": 3.9164465975418916,
+   "3": 4.109131843454281,
+   "4": 4.333647010410835
+  },
+  "md40": {
+   "0": 4.149628812205277,
+   "1": 4.171712478555701,
+   "2": 4.353631568345924,
+   "3": 4.380794770350519,
+   "4": 4.339417133387114
+  },
+  "md60": {
+   "0": 4.113804960898228,
+   "1": 4.139691051771314,
+   "2": 4.477175518932656,
+   "3": 4.265791355759073,
+   "4": 4.510374668624769
+  }
+ },
+ "recorded": {
+  "method": "Sobol sampling",
+  "seed": 4,
+  "selection_error_cm": 7.2176653680472285,
+  "crashed_selection_episodes": 2,
+  "test_error_cm": {
+   "nominal": 3.949,
+   "md10": 4.11,
+   "md40": 4.279,
+   "md60": 4.301
+  },
+  "gains": {
+   "Pxy": 15.212978781403947,
+   "Pz": 3.0440505012559838,
+   "Dxy": 11.0419230600016,
+   "Dz": 9.435428329692387,
+   "Iz": 3.230230133914922,
+   "KRxy": 0.00622553496147311,
+   "KRz": 0.005247638782228627,
+   "Kwxy": 0.0011368687297892996,
+   "Kwz": 0.000596467529830364,
+   "KIxy": 0.0870093633521863
+  }
+ },
+ "verdict_vs_record": "IDENTICAL",
+ "episodes_csv": "episodes.csv",
+ "selection_cells": "tuning cells x 9 variants x seeds 0-2",
+ "test_cells": "study cells x 5 variants x seeds 0-4"
+}

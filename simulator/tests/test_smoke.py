@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Smoke test: every controller x scenario runs end to end with the default gains (nominal plant, study cell, noise seed 0) and returns finite numbers.
-A crashed flight is allowed (some default-gain flights crash, e.g. FBL on A4); it must still return a result and a trace.
+"""Smoke test: every controller x scenario runs end to end with the default gains (nominal plant, study cell, noise seed
+0) and returns finite numbers.
+A crashed flight is allowed (some default-gain flights crash, e.g. FBL on A4); it must still return a result and a
+trace.
   python3 tests/test_smoke.py [--procs 4] [--no-wait]      (also runs under pytest)
 """
+
 import argparse
 import math
 import sys
@@ -17,6 +20,7 @@ SCENARIOS = ('A1', 'A4', 'A8')
 
 
 def run(procs=2, wait=False):
+    """Run every controller on every scenario; True if all runs return finite results."""
     keys = [(c, s) for c in controllers.CONTROLLERS for s in SCENARIOS]
     if wait:
         wait_for_resources(procs)
@@ -26,11 +30,22 @@ def run(procs=2, wait=False):
         finite = all(math.isfinite(v) for v in (r.x_rms_cm, r.y_rms_cm, r.z_rms_cm)) if r.stable else True
         good = finite and r.n_samples > 100 and r.trace is not None and r.trace.shape[1] == 11
         ok &= good
-        print('%-4s %-3s %s  error %6.2f cm  max tilt %5.1f deg  %s' % (c, s, 'ok  ' if good else 'FAIL', metrics.episode_error(r), r.tilt_max_deg, 'stable' if r.stable else 'crashed'))
+        print(
+            '%-4s %-3s %s  error %6.2f cm  max tilt %5.1f deg  %s'
+            % (
+                c,
+                s,
+                'ok  ' if good else 'FAIL',
+                metrics.episode_error(r),
+                r.tilt_max_deg,
+                'stable' if r.stable else 'crashed',
+            )
+        )
     return ok
 
 
 def test_smoke():
+    """pytest entry."""
     assert run(procs=2)
 
 

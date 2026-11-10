@@ -1,0 +1,88 @@
+{
+ "info": {
+  "command": "python3 scripts/run_scenario.py --ctrl S0 --scen A8 --gains tuned --delay-ms 40 --out examples/run_S0_A8_delay40",
+  "date": "2026-11-10 20:13:12",
+  "plant": {
+   "motor_lag_ms": 30.0,
+   "gyro_noise_deg_s": 12.07551305582298,
+   "accelerometer_noise_g": 0.08396281971372399,
+   "rpm_delay_ms": 4.0501500631407525,
+   "downwash_scale": 1.3417475092169096,
+   "max_motor_force_n": 0.2758040577270282,
+   "plume_amplitude_n": 0.22867228896565014,
+   "plume_width_m": 0.062586208272862,
+   "plume_exponent": 0.601427299117919
+  },
+  "firmware_build": {
+   "so": "_build/crazyflie-firmware/build/_cffirmware.cpython-310-x86_64-linux-gnu.so",
+   "so_mtime": "2026-11-10 18:55:14",
+   "patches_sha256": {
+    "0001-local-snap-ccb0606d.patch": "362351087effb380",
+    "crazyflie-firmware-sim.patch": "bb068fe7c4977a80"
+   }
+  },
+  "frsim_commit": "unknown (simulator/ not committed)",
+  "versions": {
+   "python": "3.10.12",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3"
+  },
+  "variant": {
+   "name": "md40",
+   "description": "state delay 40 ms",
+   "motor_lag_ms": null,
+   "gyro_noise_scale": null,
+   "state_delay_ms": 40,
+   "feedforward_scale": null,
+   "lateral_thrust_scale": 1.0
+  }
+ },
+ "controller": "S0",
+ "scenario": "A8",
+ "cells": "study",
+ "variant": {
+  "name": "md40",
+  "description": "state delay 40 ms",
+  "motor_lag_ms": null,
+  "gyro_noise_scale": null,
+  "state_delay_ms": 40,
+  "feedforward_scale": null,
+  "lateral_thrust_scale": 1.0
+ },
+ "seed": 0,
+ "stop_on_crash": true,
+ "gains": {
+  "Pxy": 1.75,
+  "Pz": 12.711214097800921,
+  "Dxy": 11.864688287430367,
+  "Dz": 8.137886113318569,
+  "Iz": 5.273735788578401,
+  "KRxy": 0.006349014422517433,
+  "KRz": 0.00216667287634185,
+  "Kwxy": 0.0015579128135020973,
+  "Kwz": 0.0005,
+  "KIxy": 0.0030000000000000005
+ },
+ "gains_source": "tuned gains from S0.yaml (Bayesian optimisation (constrained, best observed point), seed 1)",
+ "results": [
+  {
+   "cell_index": 0,
+   "cell": {
+    "dz": 0.4,
+    "span": 1.0,
+    "duration": 6.25,
+    "settle": 2.0,
+    "passes": 2
+   },
+   "x_rms_cm": 0.3907675392358535,
+   "y_rms_cm": 2.357018500714276,
+   "z_rms_cm": 0.942331585332207,
+   "rms3d_cm": 2.5683115658238442,
+   "max_tilt_deg": 17.95950539315521,
+   "crashed": false,
+   "crash_time_s": null,
+   "trace_csv": "trace_S0_A8_md40_cell0.csv",
+   "plot": "trace_S0_A8_md40_cell0.png"
+  }
+ ]
+}
