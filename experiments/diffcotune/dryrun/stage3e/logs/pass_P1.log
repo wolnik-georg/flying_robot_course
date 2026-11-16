@@ -1,0 +1,84 @@
+### Real cost per round (P1; 3-D RMS in cm, mean of the 4 tuning flights)
+
+| Gain set | real 3-D RMS cm | z RMS cm | failed flights (tilt or floor) | flight seeds | minutes (round) |
+|---|---|---|---|---|---|
+| theta_0 | 19.99 | 18.96 | 1 (A1) | [100, 101, 102, 103] | 19.4 |
+| theta_1 | 9.71 | 6.46 | 0 | [110, 111, 112, 113] | 18.6 |
+| theta_2 | 8.30 | 5.72 | 0 | [120, 121, 122, 123] | 18.2 |
+| theta_3 | 8.16 | 5.90 | 0 | [130, 131, 132, 133] | 18.3 |
+| theta_4 | 8.13 | 5.64 | 0 | [140, 141, 142, 143] | 18.2 |
+| theta_5 | 7.77 | 3.93 | 0 | [150, 151, 152, 153] | 0.1 |
+
+Keep-best (lowest real cost over the flown sets): theta_5 (7.77 cm).
+
+Gain-limit hits (projected Adam steps of 51 evaluations per gain; order Pxy Pz Dxy Dz Iz KRxy KRz Kwxy Kwz KIxy):
+
+- tuning after round 0: noise seeds [6000, 6001], hits [6, 0, 8, 0, 27, 0, 0, 0, 0, 18], best epoch 50
+- tuning after round 1: noise seeds [6002, 6003], hits [0, 0, 0, 0, 9, 0, 0, 0, 0, 0], best epoch 47
+- tuning after round 2: noise seeds [6004, 6005], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 14
+- tuning after round 3: noise seeds [6006, 6007], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 50
+- tuning after round 4: noise seeds [6008, 6009], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 11
+
+### beta error after each fit (relative error of each value against the P1 truth, %; no gate)
+
+| Round | thrust gain | motor lag | downwash | plume |
+|---|---|---|---|---|
+| fit of round 0 | -1.6 | -36.0 | +6.1 | +23.3 |
+| fit of round 1 | +12.0 | -21.5 | -9.3 | +39.0 |
+| fit of round 2 | +5.1 | -3.0 | -12.7 | +19.5 |
+| fit of round 3 | +3.7 | +5.0 | -12.8 | +9.0 |
+| fit of round 4 | +6.0 | +5.5 | -11.9 | +13.4 |
+
+### Final evaluation (real drone = frsim with noise, evaluation seeds 2000-2004; 3-D RMS cm / z RMS cm / failed flights of 5; mean over seeds)
+
+| Gain set | A1 | A8 | CIRCLE | FIG8 | A4 cell 1 | A4 cell 2 | OVAL | tuning mean | test mean |
+|---|---|---|---|---|---|---|---|---|---|
+| theta_0 (default) | 37.20 / 35.73 / 5 | 11.44 / 9.47 / 0 | 6.63 / 6.32 / 0 | 6.16 / 5.73 / 0 | 8.80 / 7.14 / 0 | 13.05 / 11.98 / 0 | 5.21 / 5.03 / 0 | 15.36 | 9.02 |
+| theta_best (round 5) | 13.43 / 5.27 / 0 | 6.29 / 4.73 / 0 | 2.90 / 2.03 / 0 | 2.93 / 1.68 / 0 | 9.48 / 7.77 / 0 | 10.99 / 9.75 / 0 | 2.80 / 2.44 / 0 | 6.39 | 7.76 |
+| theta_5 (last flown) | 13.43 / 5.27 / 0 | 6.29 / 4.73 / 0 | 2.90 / 2.03 / 0 | 2.93 / 1.68 / 0 | 9.48 / 7.77 / 0 | 10.99 / 9.75 / 0 | 2.80 / 2.44 / 0 | 6.39 | 7.76 |
+
+### Pass criteria (P1)
+
+| Criterion | result |
+|---|---|
+| a. rounds 2-5 <= round 1 + 1 cm (round 1 = 9.71, limit 10.71) | **yes** (rounds 2-5: 8.30, 8.16, 8.13, 7.77) |
+| b. no flown set after theta_0 fails (tilt or floor) a scenario that theta_0 or theta_1 passed | **yes** (none) |
+| c. theta_best and theta_5 beat theta_0 on the tuning and the test scenarios (mean over 5 seeds) | **yes** (theta_best 6.39 / 7.76, theta_5 6.39 / 7.76, theta_0 15.36 / 9.02, tuning / test) |
+| d. beta per round | reported above, no gate |
+
+Floor / tilt rule per flown gain set (failed = tilt or floor):
+
+| | A1 | A8 | CIRCLE | FIG8 |
+|---|---|---|---|---|
+| theta_0 | FAILED | ok | ok | ok |
+| theta_1 | ok | ok | ok | ok |
+| theta_2 | ok | ok | ok | ok |
+| theta_3 | ok | ok | ok | ok |
+| theta_4 | ok | ok | ok | ok |
+| theta_5 | ok | ok | ok | ok |
+
+### Run-to-run spread, rounds 0-3 (this run against the Stage 3d A + B run; different flight and noise seeds; no gate)
+
+| Round | real cost cm, Stage 3d | real cost cm, this run |
+|---|---|---|
+| theta_0 | 19.80 | 19.99 |
+| theta_1 | 10.16 | 9.71 |
+| theta_2 | 8.53 | 8.30 |
+| theta_3 | 6.86 | 8.16 |
+
+beta error after the fit (%, thrust gain / motor lag / downwash / plume):
+
+| Fit of round | Stage 3d | this run |
+|---|---|---|
+| 0 | -1.8 / -40.5 / +5.0 / +22.2 | -1.6 / -36.0 / +6.1 / +23.3 |
+| 1 | +9.1 / -26.7 / -9.3 / +35.9 | +12.0 / -21.5 / -9.3 / +39.0 |
+| 2 | +11.0 / -8.7 / -10.3 / +16.9 | +5.1 / -3.0 / -12.7 / +19.5 |
+
+theta factors against the default gains (order Pxy Pz Dxy Dz Iz KRxy KRz Kwxy Kwz KIxy):
+
+| Gain set | Stage 3d | this run |
+|---|---|---|
+| theta_1 | 1.21 1.25 0.80 1.09 1.25 1.13 0.98 1.11 0.82 0.80 | 1.25 1.23 0.80 1.24 1.25 1.15 1.09 1.18 0.89 0.80 |
+| theta_2 | 1.10 1.12 0.74 1.08 1.56 1.13 1.05 1.20 0.66 0.77 | 1.02 1.06 0.84 1.26 1.51 1.29 1.14 1.18 0.92 0.84 |
+| theta_3 | 1.07 0.97 0.78 1.35 1.75 1.38 1.12 1.16 0.57 0.77 | 1.00 1.00 0.86 1.21 1.50 1.32 1.11 1.16 0.88 0.86 |
+

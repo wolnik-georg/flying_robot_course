@@ -1,0 +1,78 @@
+flew + wrote A1_dry_merged_usd.csv stable True
+flew + wrote A8_dry_merged_usd.csv stable True
+flew + wrote CIRCLE_dry_merged_usd.csv stable True
+flew + wrote FIG8_dry_merged_usd.csv stable True
+22:53:31 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor True, real 28.87 cm
+22:53:31 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 9.09 cm
+22:53:31 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.15 cm
+22:53:31 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.78 cm
+22:53:31 real 3-D RMS 15.71 cm (mean of the 4 tuning flights); keep-best round 0 (15.71 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+23:05:22 fit beta: J0 0.1842 -> 0.1822 (best epoch 3), psi [-0.019, 0.028, 0.019, 0.024]
+23:17:59 tune theta: J0 0.01008 -> 0.007305 (best epoch 48), gain-limit hits [0, 0, 0, 0, 7, 0, 0, 0, 0, 0]
+23:18:01 round 0 done in 1470 s
+{
+ "controller": "S2",
+ "reference": "dryrun/stage5/results/loop_S2.json",
+ "real_cm": 15.712460576953077,
+ "real_cm_loop_lib": 15.710323074275653,
+ "phi_next_max_abs_diff": 0.0,
+ "psi_max_abs_diff": 0.0,
+ "hits": [
+  0,
+  0,
+  0,
+  0,
+  7,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "hits_loop_lib": [
+  0,
+  0,
+  0,
+  0,
+  7,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "seconds_fly_write": 12.695306301116943,
+ "seconds_ingest": 0.5051064491271973,
+ "seconds_fit": 710.7961447238922,
+ "seconds_tune": 756.7256624698639,
+ "seconds_round": 1470.2180604934692,
+ "phi_next": [
+  -0.11931877110785433,
+  -0.030492211402072027,
+  0.04069726068994481,
+  0.04041132914480098,
+  0.22314355131420976,
+  0.11646082996437639,
+  0.022682245219028604,
+  -0.04185842646557804,
+  0.01358056264374495,
+  0.01557498350607567
+ ],
+ "psi_after_fit": [
+  -0.018983057922094194,
+  0.02797532248079529,
+  0.019143941715592788,
+  0.024324611958998977
+ ],
+ "n_beta": 4,
+ "yaml": "dry5_S2/S2/round_1/gains.yaml",
+ "yaml_roundtrip_max_abs_phi_diff": 9.020562075079397e-17
+}

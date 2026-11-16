@@ -1,0 +1,13 @@
+[
+ {
+  "name": "step1_S1",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S1 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c && date +%T > logs/t_start_step1_S1.txt && /usr/bin/python3 step1_noise_rev_fwd.py > logs/step1_S1.log 2>&1; echo $? > logs/step1_S1.rc; date +%T > logs/t_end_step1_S1.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 8.0,
+  "log": "logs/job_step1_S1.log"
+ }
+]

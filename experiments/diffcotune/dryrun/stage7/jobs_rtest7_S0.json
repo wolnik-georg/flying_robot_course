@@ -1,0 +1,13 @@
+[
+ {
+  "name": "rtest7_S0",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage7 && date +%T > logs/t_start_rtest7_S0.txt && env DIFFCOTUNE_DRY_TAG=_7 /usr/bin/python3 ../../lab/dry_test5.py --controller S0 > logs/rtest7_S0.log 2>&1; echo $? > logs/rtest7_S0.rc; date +%T > logs/t_end_rtest7_S0.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_rtest7_S0.log"
+ }
+]

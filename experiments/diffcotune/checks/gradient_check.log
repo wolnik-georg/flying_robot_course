@@ -1,0 +1,155 @@
+A1 done in 50 s
+A8 done in 35 s
+CIRCLE done in 37 s
+FIG8 done in 26 s
+== COMBINED J_task over A1/A8/CIRCLE/FIG8 (mean), J = 3.850626e-03: PASS
+   Pxy             autograd -6.692895e-08  fd -6.693075e-08  rel 2.70e-05  abs/max 6.1e-11  
+   Pz              autograd -1.510707e-04  fd -1.517421e-04  rel 4.42e-03  abs/max 2.3e-05  
+   Dxy             autograd -3.121056e-05  fd -3.120489e-05  rel 1.82e-04  abs/max 1.9e-07  
+   Dz              autograd -9.067627e-05  fd -8.985823e-05  rel 9.10e-03  abs/max 2.8e-05  
+   Iz              autograd -1.401996e-02  fd -1.402012e-02  rel 1.13e-05  abs/max 5.3e-06  
+   KRxy            autograd -6.155261e-04  fd -6.155258e-04  rel 4.91e-07  abs/max 1.0e-08  
+   KRz             autograd -2.147667e-10  fd -2.166236e-10  rel 8.57e-03  abs/max 6.3e-11  
+   Kwxy            autograd -2.818962e-04  fd -2.818961e-04  rel 4.52e-07  abs/max 4.3e-09  
+   Kwz             autograd +1.540412e-10  fd +1.570196e-10  rel 1.90e-02  abs/max 1.0e-10  
+   KIxy            autograd +2.002245e-04  fd +2.002245e-04  rel 1.69e-08  abs/max 1.1e-10  
+   thrust_gain     autograd -2.967307e-02  fd -2.967058e-02  rel 8.39e-05  abs/max 8.4e-05  
+   motor_lag_ms    autograd +7.898836e-05  fd +7.888865e-05  rel 1.26e-03  abs/max 3.4e-06  
+   downwash_scale  autograd +7.138793e-03  fd +7.135259e-03  rel 4.95e-04  abs/max 1.2e-04  
+   plume_scale     autograd +5.110091e-04  fd +5.109758e-04  rel 6.51e-05  abs/max 1.1e-06  
+== COMBINED J_sysId over A1/A8/CIRCLE/FIG8 (mean), J = 1.248716e-01: PASS
+   Pxy             autograd +1.713412e-02  fd +1.713412e-02  rel 1.59e-09  abs/max 1.7e-10  
+   Pz              autograd -5.394396e-03  fd -5.395674e-03  rel 2.37e-04  abs/max 8.2e-06  
+   Dxy             autograd +1.661326e-02  fd +1.661326e-02  rel 2.11e-07  abs/max 2.2e-08  
+   Dz              autograd +2.653215e-03  fd +2.648571e-03  rel 1.75e-03  abs/max 3.0e-05  
+   Iz              autograd +3.709246e-02  fd +3.709264e-02  rel 4.89e-06  abs/max 1.2e-06  
+   KRxy            autograd -2.608278e-02  fd -2.608277e-02  rel 1.16e-07  abs/max 1.9e-08  
+   KRz             autograd +8.485122e-08  fd +8.485476e-08  rel 4.17e-05  abs/max 2.3e-11  
+   Kwxy            autograd -1.066957e-01  fd -1.066957e-01  rel 1.16e-08  abs/max 7.9e-09  
+   Kwz             autograd -8.373417e-08  fd -8.372919e-08  rel 5.94e-05  abs/max 3.2e-11  
+   KIxy            autograd +1.088619e-02  fd +1.088619e-02  rel 2.86e-08  abs/max 2.0e-09  
+   thrust_gain     autograd +5.847026e-02  fd +5.844901e-02  rel 3.63e-04  abs/max 1.4e-04  
+   motor_lag_ms    autograd +1.507080e-01  fd +1.507083e-01  rel 2.40e-06  abs/max 2.3e-06  
+   downwash_scale  autograd -1.046398e-02  fd -1.045901e-02  rel 4.75e-04  abs/max 3.2e-05  
+   plume_scale     autograd +1.564603e-01  fd +1.564604e-01  rel 5.41e-07  abs/max 5.4e-07  
+== single A1 J_task, J = 1.017399e-02 (not gated; rows failing the same test: 1): 
+   Pxy             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Pz              autograd -5.665696e-03  fd -5.668380e-03  rel 4.74e-04  abs/max 3.0e-05  
+   Dxy             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Dz              autograd +5.658883e-04  fd +5.691578e-04  rel 5.74e-03  abs/max 3.6e-05  
+   Iz              autograd -4.360217e-02  fd -4.360280e-02  rel 1.45e-05  abs/max 7.0e-06  
+   KRxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KIxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   thrust_gain     autograd -9.023377e-02  fd -9.022381e-02  rel 1.10e-04  abs/max 1.1e-04  
+   motor_lag_ms    autograd -5.081419e-06  fd -5.480203e-06  rel 7.28e-02  abs/max 4.4e-06  
+   downwash_scale  autograd +2.658079e-02  fd +2.656665e-02  rel 5.32e-04  abs/max 1.6e-04  
+   plume_scale     autograd +1.324442e-07  fd +0.000000e+00  rel -         abs/max 1.5e-06  FAIL
+== single A1 J_sysId, J = 3.600704e-02 (not gated; rows failing the same test: 1): 
+   Pxy             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Pz              autograd +1.502262e-02  fd +1.501752e-02  rel 3.39e-04  abs/max 2.8e-05  
+   Dxy             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Dz              autograd -1.334252e-03  fd -1.352857e-03  rel 1.38e-02  abs/max 1.0e-04  
+   Iz              autograd +8.529814e-02  fd +8.529885e-02  rel 8.34e-06  abs/max 3.9e-06  
+   KRxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KIxy            autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   thrust_gain     autograd +1.845554e-01  fd +1.844704e-01  rel 4.61e-04  abs/max 4.6e-04  
+   motor_lag_ms    autograd +3.703046e-06  fd +5.151341e-06  rel 2.81e-01  abs/max 7.8e-06  
+   downwash_scale  autograd -5.366611e-02  fd -5.364622e-02  rel 3.71e-04  abs/max 1.1e-04  
+   plume_scale     autograd -3.468474e-07  fd +0.000000e+00  rel -         abs/max 1.9e-06  FAIL
+== single A8 J_task, J = 2.670214e-03 (not gated; rows failing the same test: 0): 
+   Pxy             autograd +4.531868e-04  fd +4.531868e-04  rel 2.20e-09  abs/max 1.1e-10  
+   Pz              autograd +8.488126e-04  fd +8.488116e-04  rel 1.25e-06  abs/max 1.2e-07  
+   Dxy             autograd +2.407752e-04  fd +2.407979e-04  rel 9.41e-05  abs/max 2.6e-06  
+   Dz              autograd -9.494257e-04  fd -9.494230e-04  rel 2.87e-06  abs/max 3.1e-07  
+   Iz              autograd -3.796843e-03  fd -3.796842e-03  rel 3.27e-07  abs/max 1.4e-07  
+   KRxy            autograd -2.479486e-03  fd -2.479485e-03  rel 5.00e-07  abs/max 1.4e-07  
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwxy            autograd -1.073925e-03  fd -1.073925e-03  rel 4.70e-07  abs/max 5.7e-08  
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KIxy            autograd +7.635214e-04  fd +7.635214e-04  rel 7.95e-09  abs/max 6.9e-10  
+   thrust_gain     autograd -8.827118e-03  fd -8.827114e-03  rel 5.24e-07  abs/max 5.2e-07  
+   motor_lag_ms    autograd +3.217145e-04  fd +3.217145e-04  rel 1.61e-09  abs/max 5.9e-11  
+   downwash_scale  autograd +1.535970e-03  fd +1.535969e-03  rel 8.40e-07  abs/max 1.5e-07  
+   plume_scale     autograd +2.043904e-03  fd +2.043903e-03  rel 3.33e-07  abs/max 7.7e-08  
+== single A8 J_sysId, J = 4.569722e-01 (not gated; rows failing the same test: 0): 
+   Pxy             autograd +6.740053e-02  fd +6.740053e-02  rel 1.72e-09  abs/max 1.9e-10  
+   Pz              autograd -3.454410e-02  fd -3.454412e-02  rel 3.57e-07  abs/max 2.0e-08  
+   Dxy             autograd +6.455551e-02  fd +6.455550e-02  rel 2.18e-07  abs/max 2.2e-08  
+   Dz              autograd +1.205364e-02  fd +1.205366e-02  rel 2.30e-06  abs/max 4.4e-08  
+   Iz              autograd +4.917290e-02  fd +4.917292e-02  rel 2.94e-07  abs/max 2.3e-08  
+   KRxy            autograd -1.042555e-01  fd -1.042554e-01  rel 1.15e-07  abs/max 1.9e-08  
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   Kwxy            autograd -4.266058e-01  fd -4.266058e-01  rel 1.18e-08  abs/max 8.0e-09  
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel -         abs/max 0.0e+00 ZERO 
+   KIxy            autograd +4.340296e-02  fd +4.340296e-02  rel 2.84e-08  abs/max 2.0e-09  
+   thrust_gain     autograd -8.093212e-04  fd -8.092716e-04  rel 6.13e-05  abs/max 7.9e-08  
+   motor_lag_ms    autograd +6.028672e-01  fd +6.028672e-01  rel 7.70e-10  abs/max 7.4e-10  
+   downwash_scale  autograd +1.329702e-02  fd +1.329700e-02  rel 1.07e-06  abs/max 2.3e-08  
+   plume_scale     autograd +6.258415e-01  fd +6.258415e-01  rel 1.31e-08  abs/max 1.3e-08  
+== single CIRCLE J_task, J = 1.385485e-03 (not gated; rows failing the same test: 0): 
+   Pxy             autograd -2.278634e-04  fd -2.278635e-04  rel 5.34e-08  abs/max 1.1e-09  
+   Pz              autograd +2.295144e-03  fd +2.295144e-03  rel 1.87e-09  abs/max 4.0e-10  
+   Dxy             autograd -1.371099e-04  fd -1.371099e-04  rel 2.02e-08  abs/max 2.6e-10  
+   Dz              autograd -4.239552e-05  fd -4.239553e-05  rel 1.51e-07  abs/max 6.0e-10  
+   Iz              autograd -4.793444e-03  fd -4.793444e-03  rel 3.61e-09  abs/max 1.6e-09  
+   KRxy            autograd +5.136826e-06  fd +5.136802e-06  rel 4.80e-06  abs/max 2.3e-09  
+   KRz             autograd +5.332659e-11  fd +4.434387e-11  rel 2.03e-01  abs/max 8.4e-10  
+   Kwxy            autograd -2.184732e-05  fd -2.184731e-05  rel 1.43e-07  abs/max 2.9e-10  
+   Kwz             autograd -2.627615e-10  fd -2.512096e-10  rel 4.60e-02  abs/max 1.1e-09  
+   KIxy            autograd +1.612901e-05  fd +1.612901e-05  rel 2.73e-07  abs/max 4.1e-10  
+   thrust_gain     autograd -1.065025e-02  fd -1.065025e-02  rel 1.20e-09  abs/max 1.2e-09  
+   motor_lag_ms    autograd +5.605006e-06  fd +5.604995e-06  rel 1.95e-06  abs/max 1.0e-09  
+   downwash_scale  autograd +2.918047e-04  fd +2.918047e-04  rel 5.20e-08  abs/max 1.4e-09  
+   plume_scale     autograd +0.000000e+00  fd +2.168404e-13  rel -         abs/max 2.0e-11 ZERO 
+== single CIRCLE J_sysId, J = 3.416133e-03 (not gated; rows failing the same test: 0): 
+   Pxy             autograd +4.730984e-04  fd +4.730984e-04  rel 2.88e-08  abs/max 5.3e-10  
+   Pz              autograd -1.164830e-03  fd -1.164830e-03  rel 7.43e-09  abs/max 3.4e-10  
+   Dxy             autograd +6.066736e-04  fd +6.066736e-04  rel 3.82e-09  abs/max 9.0e-11  
+   Dz              autograd +4.639278e-04  fd +4.639278e-04  rel 7.77e-09  abs/max 1.4e-10  
+   Iz              autograd +7.698822e-03  fd +7.698822e-03  rel 3.58e-09  abs/max 1.1e-09  
+   KRxy            autograd +1.771710e-05  fd +1.771711e-05  rel 6.94e-07  abs/max 4.8e-10  
+   KRz             autograd +8.226844e-08  fd +8.228834e-08  rel 2.42e-04  abs/max 7.7e-10  
+   Kwxy            autograd -1.333527e-04  fd -1.333528e-04  rel 1.89e-07  abs/max 9.8e-10  
+   Kwz             autograd -1.363111e-07  fd -1.362968e-07  rel 1.05e-04  abs/max 5.5e-10  
+   KIxy            autograd +6.806211e-05  fd +6.806209e-05  rel 3.17e-07  abs/max 8.4e-10  
+   thrust_gain     autograd +2.578080e-02  fd +2.578080e-02  rel 1.45e-09  abs/max 1.5e-09  
+   motor_lag_ms    autograd -3.043779e-05  fd -3.043780e-05  rel 5.63e-07  abs/max 6.6e-10  
+   downwash_scale  autograd -1.279114e-03  fd -1.279114e-03  rel 3.02e-08  abs/max 1.5e-09  
+   plume_scale     autograd +0.000000e+00  fd +4.336809e-13  rel -         abs/max 1.7e-11 ZERO 
+== single FIG8 J_task, J = 1.172810e-03 (not gated; rows failing the same test: 0): 
+   Pxy             autograd -2.255910e-04  fd -2.255910e-04  rel 2.63e-08  abs/max 6.6e-10  
+   Pz              autograd +1.917456e-03  fd +1.917456e-03  rel 1.43e-09  abs/max 3.0e-10  
+   Dxy             autograd -2.285075e-04  fd -2.285075e-04  rel 5.26e-08  abs/max 1.3e-09  
+   Dz              autograd +6.322785e-05  fd +6.322784e-05  rel 1.23e-07  abs/max 8.6e-10  
+   Iz              autograd -3.887393e-03  fd -3.887393e-03  rel 5.83e-10  abs/max 2.5e-10  
+   KRxy            autograd +1.224537e-05  fd +1.224537e-05  rel 4.15e-07  abs/max 5.7e-10  
+   KRz             autograd -9.123934e-10  fd -9.108382e-10  rel 1.71e-03  abs/max 1.7e-10  
+   Kwxy            autograd -3.181210e-05  fd -3.181210e-05  rel 3.08e-08  abs/max 1.1e-10  
+   Kwz             autograd +8.789263e-10  fd +8.792880e-10  rel 4.11e-04  abs/max 4.0e-11  
+   KIxy            autograd +2.124754e-05  fd +2.124753e-05  rel 5.57e-07  abs/max 1.3e-09  
+   thrust_gain     autograd -8.981163e-03  fd -8.981163e-03  rel 1.14e-09  abs/max 1.1e-09  
+   motor_lag_ms    autograd -6.284667e-06  fd -6.284687e-06  rel 3.18e-06  abs/max 2.2e-09  
+   downwash_scale  autograd +1.466102e-04  fd +1.466102e-04  rel 6.31e-08  abs/max 1.0e-09  
+   plume_scale     autograd +0.000000e+00  fd +1.084202e-13  rel -         abs/max 1.2e-11 ZERO 
+== single FIG8 J_sysId, J = 3.090936e-03 (not gated; rows failing the same test: 0): 
+   Pxy             autograd +6.628668e-04  fd +6.628668e-04  rel 3.19e-08  abs/max 8.7e-10  
+   Pz              autograd -8.912694e-04  fd -8.912694e-04  rel 1.61e-08  abs/max 5.9e-10  
+   Dxy             autograd +1.290857e-03  fd +1.290857e-03  rel 8.65e-09  abs/max 4.6e-10  
+   Dz              autograd -5.704515e-04  fd -5.704515e-04  rel 2.78e-09  abs/max 6.5e-11  
+   Iz              autograd +6.199965e-03  fd +6.199965e-03  rel 1.85e-09  abs/max 4.7e-10  
+   KRxy            autograd -9.335951e-05  fd -9.335950e-05  rel 1.73e-07  abs/max 6.6e-10  
+   KRz             autograd +2.571364e-07  fd +2.571307e-07  rel 2.24e-05  abs/max 2.4e-10  
+   Kwxy            autograd -4.360485e-05  fd -4.360487e-05  rel 4.47e-07  abs/max 8.0e-10  
+   Kwz             autograd -1.986256e-07  fd -1.986200e-07  rel 2.83e-05  abs/max 2.3e-10  
+   KIxy            autograd +7.374740e-05  fd +7.374741e-05  rel 1.17e-07  abs/max 3.5e-10  
+   thrust_gain     autograd +2.435410e-02  fd +2.435410e-02  rel 4.53e-11  abs/max 4.5e-11  
+   motor_lag_ms    autograd -8.474281e-06  fd -8.474259e-06  rel 2.52e-06  abs/max 8.8e-10  
+   downwash_scale  autograd -2.077077e-04  fd -2.077077e-04  rel 1.88e-07  abs/max 1.6e-09  
+   plume_scale     autograd +0.000000e+00  fd +2.168404e-13  rel -         abs/max 8.9e-12 ZERO 
+COMBINED GRADIENT GATE: PASS (same sign and (rel <= 1 % or abs <= 0.1 % of the largest component); h = 1e-06 in log-parameters)

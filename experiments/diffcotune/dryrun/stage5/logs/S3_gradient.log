@@ -1,0 +1,45 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+02:04:56 A1 done 72 s
+02:05:53 A8 done 53 s
+02:06:54 CIRCLE done 59 s
+02:07:32 FIG8 done 36 s
+== COMBINED J_task: FAIL
+   Pxy             autograd +7.275612e-04 fd +7.275612e-04 rel 3.10e-08  abs/max 6.4e-41 
+   Pz              autograd +4.798819e+25 fd -7.097414e-04 rel 6.76e+28  abs/max 1.4e-04 <-- FAIL
+   Dxy             autograd +1.631813e-04 fd +1.631813e-04 rel 2.76e-08  abs/max 1.3e-41 
+   Dz              autograd -2.397965e+25 fd -2.778967e-03 rel 8.63e+27  abs/max 6.8e-05 
+   Iz              autograd +9.286100e+24 fd -5.207088e-03 rel 1.78e+27  abs/max 2.6e-05 <-- FAIL
+   KRxy            autograd +4.319485e-03 fd +4.319485e-03 rel 8.25e-09  abs/max 1.0e-40 
+   KRz             autograd -3.124943e-10 fd -3.140256e-10 rel 4.88e-03  abs/max 4.3e-42 
+   Kwxy            autograd +6.291040e-03 fd +6.291040e-03 rel 4.72e-10  abs/max 8.4e-42 
+   Kwz             autograd +3.541626e-10 fd +3.532331e-10 rel 2.63e-03  abs/max 2.6e-42 
+   KIxy            autograd +4.795138e-04 fd +4.795138e-04 rel 6.64e-08  abs/max 9.0e-41 
+   thrust_gain     autograd +1.726802e+28 fd -1.081096e-02 rel 1.60e+30  abs/max 4.9e-02 <-- FAIL
+   motor_lag_ms    autograd -4.081028e+27 fd +4.615876e-03 rel 8.84e+29  abs/max 1.2e-02 <-- FAIL
+   downwash_scale  autograd -6.195081e+28 fd -6.751622e-04 rel 9.18e+31  abs/max 1.8e-01 <-- FAIL
+   plume_scale     autograd +5.416382e+27 fd -9.465650e-03 rel 5.72e+29  abs/max 1.5e-02 <-- FAIL
+   rpm_delay_ms    autograd +3.534573e+29 fd +7.981881e-04 rel 4.43e+32  abs/max 1.0e+00 <-- FAIL
+   rpm_delay_ms    autograd +0.000000e+00 fd -5.827587e-12 rel 1.00e+00  abs/max 1.6e-41 
+== COMBINED J_sysId: FAIL
+   Pxy             autograd +7.810824e-03 fd +7.810824e-03 rel 3.35e-08  abs/max 5.9e-41 
+   Pz              autograd +3.110467e+28 fd -1.827986e-02 rel 1.70e+30  abs/max 7.1e-03 <-- FAIL
+   Dxy             autograd -1.607813e-02 fd -1.607813e-02 rel 1.64e-08  abs/max 6.0e-41 
+   Dz              autograd +1.102389e+29 fd -3.354204e-02 rel 3.29e+30  abs/max 2.5e-02 <-- FAIL
+   Iz              autograd +2.143656e+27 fd -1.655756e-02 rel 1.29e+29  abs/max 4.9e-04 <-- FAIL
+   KRxy            autograd +8.064565e-02 fd +8.064565e-02 rel 6.98e-10  abs/max 1.3e-41 
+   KRz             autograd +1.957545e-10 fd +1.942348e-10 rel 7.82e-03  abs/max 3.4e-43 
+   Kwxy            autograd +1.085324e-01 fd +1.085324e-01 rel 8.88e-10  abs/max 2.2e-41 
+   Kwz             autograd -4.703289e-10 fd -4.688632e-10 rel 3.13e-03  abs/max 3.3e-43 
+   KIxy            autograd -2.398710e-02 fd -2.398710e-02 rel 6.27e-09  abs/max 3.4e-41 
+   thrust_gain     autograd +4.409700e+30 fd -1.620032e-01 rel 2.72e+31  abs/max 1.0e+00 <-- FAIL
+   motor_lag_ms    autograd -2.963886e+29 fd +6.898934e-02 rel 4.30e+30  abs/max 6.7e-02 <-- FAIL
+   downwash_scale  autograd +5.175353e+29 fd -3.482801e-02 rel 1.49e+31  abs/max 1.2e-01 <-- FAIL
+   plume_scale     autograd +1.210065e+27 fd -1.460239e-01 rel 8.29e+27  abs/max 2.7e-04 <-- FAIL
+   rpm_delay_ms    autograd +4.398694e+29 fd +1.216509e-02 rel 3.62e+31  abs/max 1.0e-01 <-- FAIL
+   rpm_delay_ms    autograd +0.000000e+00 fd -1.026739e-10 rel 1.00e+00  abs/max 2.3e-41 
+single A1: failing rows J_task 7, J_sysId 8 (not gated)
+single A8: failing rows J_task 0, J_sysId 0 (not gated)
+single CIRCLE: failing rows J_task 0, J_sysId 0 (not gated)
+single FIG8: failing rows J_task 0, J_sysId 0 (not gated)
+02:07:32 COMBINED GRADIENT GATE S3: FAIL

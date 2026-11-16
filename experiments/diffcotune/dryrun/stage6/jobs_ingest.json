@@ -1,0 +1,13 @@
+[
+ {
+  "name": "ingest",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage6 && date +%T > logs/t_start_ingest.txt && /usr/bin/python3 /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/ingest_timing.py > logs/ingest.log 2>&1; echo $? > logs/ingest.rc; date +%T > logs/t_end_ingest.txt"
+  ],
+  "procs": 2,
+  "mem_gb": 4.0,
+  "log": "logs/job_ingest.log"
+ }
+]

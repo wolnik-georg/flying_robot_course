@@ -1,0 +1,184 @@
+20:15:40 flights seed 0 real 3-D RMS 10.43 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+20:15:45 flights seed 1 real 3-D RMS 10.47 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+multiprocessing.pool.RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 48, in mapstar
+    return list(map(*args))
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py", line 412, in worker_parts
+    out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/s1_model.py", line 203, in rollout
+    st = fn(st, (sp['pos'][i], sp['vel'][i], acc, sp['jerk'][i]), (sp['top_pos'][i], sp['top_vel'][i]), jit[k], gains, pr, ref.has_top, nets, None if nzt is None else nzt[k], bw)
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 465, in _fn
+    return fn(*args, **kwargs)
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/s1_model.py", line 105, in _block
+    def _block(st, spk, tpk, jit, gains, pr, act_top, nets, nz, bw):
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 632, in _fn
+    return fn(*args, **kwargs)
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1100, in forward
+    return compiled_fn(full_args)
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 321, in runtime_wrapper
+    all_outs = call_func_at_runtime_with_args(
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/utils.py", line 124, in call_func_at_runtime_with_args
+    out = normalize_as_list(f(args))
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 667, in inner_fn
+    outs = compiled_fn(args)
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_functorch/_aot_autograd/runtime_wrappers.py", line 488, in wrapper
+    return compiled_fn(runtime_args)
+  File "/home/georg/.local/lib/python3.10/site-packages/torch/_inductor/codecache.py", line 1478, in __call__
+    return self.current_callable(inputs)
+  File "/tmp/torchinductor_georg/mo/cmomxal52r7r6v5xusus2gvkbumn6p6nzjhounxwtwmj6cawmogo.py", line 2207, in call
+    cpp_fused_add_cat_deg2rad_div_linalg_cross_linalg_vector_norm_mul_rad2deg_stack_sub_sum_unsqueeze_zeros_like_0(buf6, arg22_1, arg5_1, arg14_1, arg0_1, arg21_1, arg2_1, arg20_1, arg13_1, arg16_1, arg23_1, arg24_1, arg15_1, arg1_1, arg25_1, buf3, buf16, arg3_1, arg11_1, arg12_1, buf26, arg26_1, buf32, arg10_1, arg27_1, arg17_1, buf0, buf1, buf2, buf7, buf8, buf9, buf10, buf12, buf13, buf14, buf11, buf15, buf25, buf24, buf23, buf4, buf28, buf27, buf31, buf29, buf30, buf33, buf213, buf34, buf35, buf36, buf37, buf38, buf39, buf42, buf40, buf41, buf63, buf51, buf62, buf66, buf53, buf67, buf52, buf64)
+RuntimeError: Cannot access data pointer of Tensor that doesn't have storage
+Exception raised from throw_data_ptr_access_error at ../c10/core/TensorImpl.cpp:316 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::string) + 0x96 (0x74cc9236c446 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10::detail::torchCheckFail(char const*, char const*, unsigned int, char const*) + 0x68 (0x74cc923167ad in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #2: c10::TensorImpl::throw_data_ptr_access_error() const + 0x34 (0x74cc92344874 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #3: <unknown function> + 0x8f3898 (0x74cc912f3898 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libtorch_python.so)
+frame #4: <unknown function> + 0x528a (0x74cc461e128a in /tmp/torchinductor_georg/w6/cw67hcpingygxmh7kcpnvmdg6umje6gjmo7l37sdmuagti7jj6x5.so)
+frame #5: <unknown function> + 0x18b2b8 (0x5a6262b272b8 in /usr/bin/python3)
+frame #6: PyObject_Call + 0xbb (0x5a6262b3583b in /usr/bin/python3)
+frame #7: _PyEval_EvalFrameDefault + 0x6924 (0x5a6262b17f24 in /usr/bin/python3)
+frame #8: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #9: _PyEval_EvalFrameDefault + 0x56d3 (0x5a6262b16cd3 in /usr/bin/python3)
+frame #10: _PyObject_FastCallDictTstate + 0xc4 (0x5a6262b1cd84 in /usr/bin/python3)
+frame #11: _PyObject_Call_Prepend + 0x5c (0x5a6262b31d5c in /usr/bin/python3)
+frame #12: <unknown function> + 0x29dea4 (0x5a6262c39ea4 in /usr/bin/python3)
+frame #13: _PyObject_MakeTpCall + 0x25b (0x5a6262b1dbab in /usr/bin/python3)
+frame #14: _PyEval_EvalFrameDefault + 0x5a67 (0x5a6262b17067 in /usr/bin/python3)
+frame #15: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #16: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #17: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #18: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #19: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #20: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #21: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #22: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #23: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #24: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #25: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #26: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #27: <unknown function> + 0x8e6ebd (0x74cc912e6ebd in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libtorch_python.so)
+frame #28: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #29: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #30: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #31: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #32: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #33: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #34: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #35: <unknown function> + 0x1f3fa6 (0x5a6262b8ffa6 in /usr/bin/python3)
+frame #36: <unknown function> + 0x1ad944 (0x5a6262b49944 in /usr/bin/python3)
+frame #37: <unknown function> + 0x1fce8a (0x5a6262b98e8a in /usr/bin/python3)
+frame #38: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #39: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #40: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #41: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #42: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #43: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #44: _PyEval_EvalFrameDefault + 0x807 (0x5a6262b11e07 in /usr/bin/python3)
+frame #45: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #46: _PyEval_EvalFrameDefault + 0x807 (0x5a6262b11e07 in /usr/bin/python3)
+frame #47: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #48: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #49: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #50: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #51: <unknown function> + 0x25b036 (0x5a6262bf7036 in /usr/bin/python3)
+frame #52: PyEval_EvalCode + 0x86 (0x5a6262bf6f06 in /usr/bin/python3)
+frame #53: <unknown function> + 0x281a88 (0x5a6262c1da88 in /usr/bin/python3)
+frame #54: <unknown function> + 0x27c0df (0x5a6262c180df in /usr/bin/python3)
+frame #55: PyRun_StringFlags + 0x81 (0x5a6262c11de1 in /usr/bin/python3)
+frame #56: PyRun_SimpleStringFlags + 0x41 (0x5a6262c11c91 in /usr/bin/python3)
+frame #57: Py_RunMain + 0x3d0 (0x5a6262c10fc0 in /usr/bin/python3)
+frame #58: Py_BytesMain + 0x2d (0x5a6262beaf4d in /usr/bin/python3)
+frame #59: <unknown function> + 0x29d90 (0x74cca5a29d90 in /lib/x86_64-linux-gnu/libc.so.6)
+frame #60: __libc_start_main + 0x80 (0x74cca5a29e40 in /lib/x86_64-linux-gnu/libc.so.6)
+frame #61: _start + 0x25 (0x5a6262beae45 in /usr/bin/python3)
+
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c/identifiability5.py", line 32, in <module>
+    p0 = parts_mean(pool, np.zeros(10 + L.N_BETA), tr_by); p1 = parts_mean(pool, x, tr_by)
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage4e/t0_identifiability.py", line 27, in parts_mean
+    res = pool.pool.map(L.worker_parts, jobs, chunksize=1)
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 367, in map
+    return self._map_async(func, iterable, mapstar, chunksize).get()
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 774, in get
+    raise self._value
+RuntimeError: Cannot access data pointer of Tensor that doesn't have storage
+Exception raised from throw_data_ptr_access_error at ../c10/core/TensorImpl.cpp:316 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::string) + 0x96 (0x74cc9236c446 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10::detail::torchCheckFail(char const*, char const*, unsigned int, char const*) + 0x68 (0x74cc923167ad in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #2: c10::TensorImpl::throw_data_ptr_access_error() const + 0x34 (0x74cc92344874 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #3: <unknown function> + 0x8f3898 (0x74cc912f3898 in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libtorch_python.so)
+frame #4: <unknown function> + 0x528a (0x74cc461e128a in /tmp/torchinductor_georg/w6/cw67hcpingygxmh7kcpnvmdg6umje6gjmo7l37sdmuagti7jj6x5.so)
+frame #5: <unknown function> + 0x18b2b8 (0x5a6262b272b8 in /usr/bin/python3)
+frame #6: PyObject_Call + 0xbb (0x5a6262b3583b in /usr/bin/python3)
+frame #7: _PyEval_EvalFrameDefault + 0x6924 (0x5a6262b17f24 in /usr/bin/python3)
+frame #8: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #9: _PyEval_EvalFrameDefault + 0x56d3 (0x5a6262b16cd3 in /usr/bin/python3)
+frame #10: _PyObject_FastCallDictTstate + 0xc4 (0x5a6262b1cd84 in /usr/bin/python3)
+frame #11: _PyObject_Call_Prepend + 0x5c (0x5a6262b31d5c in /usr/bin/python3)
+frame #12: <unknown function> + 0x29dea4 (0x5a6262c39ea4 in /usr/bin/python3)
+frame #13: _PyObject_MakeTpCall + 0x25b (0x5a6262b1dbab in /usr/bin/python3)
+frame #14: _PyEval_EvalFrameDefault + 0x5a67 (0x5a6262b17067 in /usr/bin/python3)
+frame #15: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #16: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #17: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #18: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #19: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #20: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #21: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #22: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #23: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #24: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #25: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #26: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #27: <unknown function> + 0x8e6ebd (0x74cc912e6ebd in /home/georg/.local/lib/python3.10/site-packages/torch/lib/libtorch_python.so)
+frame #28: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #29: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #30: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #31: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #32: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #33: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #34: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #35: <unknown function> + 0x1f3fa6 (0x5a6262b8ffa6 in /usr/bin/python3)
+frame #36: <unknown function> + 0x1ad944 (0x5a6262b49944 in /usr/bin/python3)
+frame #37: <unknown function> + 0x1fce8a (0x5a6262b98e8a in /usr/bin/python3)
+frame #38: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #39: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #40: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #41: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #42: _PyEval_EvalFrameDefault + 0x28e9 (0x5a6262b13ee9 in /usr/bin/python3)
+frame #43: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #44: _PyEval_EvalFrameDefault + 0x807 (0x5a6262b11e07 in /usr/bin/python3)
+frame #45: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #46: _PyEval_EvalFrameDefault + 0x807 (0x5a6262b11e07 in /usr/bin/python3)
+frame #47: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #48: _PyEval_EvalFrameDefault + 0x6c0 (0x5a6262b11cc0 in /usr/bin/python3)
+frame #49: _PyFunction_Vectorcall + 0x7c (0x5a6262b27aec in /usr/bin/python3)
+frame #50: _PyEval_EvalFrameDefault + 0x1992 (0x5a6262b12f92 in /usr/bin/python3)
+frame #51: <unknown function> + 0x25b036 (0x5a6262bf7036 in /usr/bin/python3)
+frame #52: PyEval_EvalCode + 0x86 (0x5a6262bf6f06 in /usr/bin/python3)
+frame #53: <unknown function> + 0x281a88 (0x5a6262c1da88 in /usr/bin/python3)
+frame #54: <unknown function> + 0x27c0df (0x5a6262c180df in /usr/bin/python3)
+frame #55: PyRun_StringFlags + 0x81 (0x5a6262c11de1 in /usr/bin/python3)
+frame #56: PyRun_SimpleStringFlags + 0x41 (0x5a6262c11c91 in /usr/bin/python3)
+frame #57: Py_RunMain + 0x3d0 (0x5a6262c10fc0 in /usr/bin/python3)
+frame #58: Py_BytesMain + 0x2d (0x5a6262beaf4d in /usr/bin/python3)
+frame #59: <unknown function> + 0x29d90 (0x74cca5a29d90 in /lib/x86_64-linux-gnu/libc.so.6)
+frame #60: __libc_start_main + 0x80 (0x74cca5a29e40 in /lib/x86_64-linux-gnu/libc.so.6)
+frame #61: _start + 0x25 (0x5a6262beae45 in /usr/bin/python3)
+

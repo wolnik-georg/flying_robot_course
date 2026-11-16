@@ -1,0 +1,13 @@
+[
+ {
+  "name": "prev_S0_paper",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8 && date +%T > logs/t_start_prev_S0_paper.txt && env DIFFCOTUNE_METHOD=paper /usr/bin/python3 ../../lab/preview.py --controller S0 --loop results/loop_S0_paper.json --serial --out results/preview_S0_paper.json > logs/prev_S0_paper.log 2>&1; echo $? > logs/prev_S0_paper.rc; date +%T > logs/t_end_prev_S0_paper.txt"
+  ],
+  "procs": 1,
+  "mem_gb": 3.0,
+  "log": "logs/job_prev_S0_paper.log"
+ }
+]

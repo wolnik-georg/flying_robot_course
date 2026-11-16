@@ -1,0 +1,12 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+A8 cpu B= 1 rollout 23000: forward 2.0 s, forward+backward 7.2 s, peak RSS so far 1.7 GB
+A8 cpu B=4 ERROR BackendCompilerFailed('backend=\'inductor\' raised:\nAttributeError: \'int\' object has no attribute \'count\'\n\nSet TORCH_LOGS="+dynamo" and TORCHDYNAMO_VERBO
+A8 cpu B=16 ERROR BackendCompilerFailed('backend=\'inductor\' raised:\nAttributeError: \'int\' object has no attribute \'count\'\n\nSet TORCH_LOGS="+dynamo" and TORCHDYNAMO_VERBO
+/home/georg/.local/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:167: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+A8 cuda B= 1 rollout 23000: forward 7.1 s, forward+backward 23.5 s, peak RSS so far 2.5 GB
+A8 cuda B= 4 rollout 23000: forward 8.3 s, forward+backward 26.3 s, peak RSS so far 2.7 GB
+A8 cuda B=16 rollout 23000: forward 8.3 s, forward+backward 27.3 s, peak RSS so far 3.0 GB

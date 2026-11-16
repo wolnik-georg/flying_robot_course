@@ -1,0 +1,22 @@
+16:26:04 method paper, controller S0, lr 0.003, states pvqw, gain limit None, noise in tuning False, paper stop True, grad mode cfwd, tuning set ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], rounds 6
+16:26:13 [nominal cotune lr 0.003] round 0  real 3-D RMS 18.24 cm  z 17.25 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+16:33:41     fit: 29 epochs, converged |dJ| < 1e-3, Jn at the last epoch 0.959, at the best iterate n/a (best=False: the last iterate is returned), psi err [0.276, -0.472, -0.202, 0.303] (448 s)
+16:46:55     tune: 50 epochs, max epochs, Jn at the last epoch 0.624, at the best iterate n/a (best=False: the last iterate is returned) (794 s)
+16:47:02 [nominal cotune lr 0.003] round 1  real 3-D RMS 17.67 cm  z 16.81 cm  crashes 0  psi err [0.276, -0.472, -0.202, 0.303]
+16:48:55     fit: 8 epochs, converged |dJ| < 1e-3, Jn at the last epoch 0.996, at the best iterate n/a (best=False: the last iterate is returned), psi err [0.255, -0.451, -0.181, 0.282] (113 s)
+16:55:53     tune: 30 epochs, converged |dJ| < 1e-3, Jn at the last epoch 0.821, at the best iterate n/a (best=False: the last iterate is returned) (418 s)
+16:56:00 [nominal cotune lr 0.003] round 2  real 3-D RMS 17.57 cm  z 16.68 cm  crashes 0  psi err [0.255, -0.451, -0.181, 0.282]
+16:57:25     fit: 6 epochs, converged |dJ| < 1e-3, Jn at the last epoch 0.997, at the best iterate n/a (best=False: the last iterate is returned), psi err [0.241, -0.457, -0.167, 0.267] (85 s)
+17:01:18     tune: 17 epochs, converged |dJ| < 1e-3, Jn at the last epoch 0.907, at the best iterate n/a (best=False: the last iterate is returned) (233 s)
+17:01:18 halt reason: stopped after 3 rounds (probe) ; largest gain change per round (relative): [0.16, 0.088]
+17:01:18 S0 done; total 35 min

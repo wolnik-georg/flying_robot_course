@@ -1,0 +1,1322 @@
+{
+ "controller": "S1",
+ "h": 1e-06,
+ "combined": {
+  "J_task": {
+   "passed": false,
+   "rows": [
+    {
+     "param": "Pxy",
+     "autograd": 0.00018559479339521758,
+     "fd": 0.0001855947978987452,
+     "rel_err": 2.4265376371052355e-08,
+     "abs_over_max": 1.4765703411468581e-38,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -1.9676372207359918e+24,
+     "fd": 0.00017346670107954267,
+     "rel_err": 1.1343025540295122e+28,
+     "abs_over_max": 0.006451286647161645,
+     "passed": false
+    },
+    {
+     "param": "Dxy",
+     "autograd": -0.003239341367509571,
+     "fd": -0.003239341109749754,
+     "rel_err": 7.957168085418681e-08,
+     "abs_over_max": 8.451163902689827e-37,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -5.375761458066587e+24,
+     "fd": -0.0006975428376050771,
+     "rel_err": 7.706711571325952e+27,
+     "abs_over_max": 0.017625494042940993,
+     "passed": false
+    },
+    {
+     "param": "Iz",
+     "autograd": -7.10176054563518e+22,
+     "fd": -0.0019225696424346353,
+     "rel_err": 3.6938898799223236e+25,
+     "abs_over_max": 0.00023284522419360628,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -0.0034565431548787546,
+     "fd": -0.0034565431296422694,
+     "rel_err": 7.301076325125313e-09,
+     "abs_over_max": 8.274279340963833e-38,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": -1.3126779167237348e-10,
+     "fd": -1.3139175077808707e-10,
+     "rel_err": 0.0009434314177223429,
+     "abs_over_max": 4.0642437287553764e-40,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.0032914132949763016,
+     "fd": 0.003291412555402268,
+     "rel_err": 2.2469806536749587e-07,
+     "abs_over_max": 2.424839313257035e-36,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 1.483580584350016e-10,
+     "fd": 1.437652080715779e-10,
+     "rel_err": 0.03194688356822055,
+     "abs_over_max": 1.5058565628720848e-38,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -0.003443061640034707,
+     "fd": -0.003443061329954137,
+     "rel_err": 9.005955469450718e-08,
+     "abs_over_max": 1.0166602973078572e-36,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -3.049991929286986e+26,
+     "fd": -0.0041608505029766,
+     "rel_err": 7.3302127223871045e+28,
+     "abs_over_max": 1.0,
+     "passed": false
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": 3.0742841912419613e+24,
+     "fd": 0.0007845346101890559,
+     "rel_err": 3.918608753922437e+27,
+     "abs_over_max": 0.010079646971264787,
+     "passed": false
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": -8.499933560060537e+25,
+     "fd": 0.0012841803821229177,
+     "rel_err": 6.618956089337729e+28,
+     "abs_over_max": 0.2786870836752547,
+     "passed": false
+    },
+    {
+     "param": "plume_scale",
+     "autograd": -8.743251526606005e+23,
+     "fd": 0.0036405152169759203,
+     "rel_err": 2.4016522402751534e+26,
+     "abs_over_max": 0.00286664743032614,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 9.416987186274573e+23,
+     "fd": 0.00012389234483564963,
+     "rel_err": 7.600943543983086e+27,
+     "abs_over_max": 0.0030875449524471483,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 5.89534931288993e-13,
+     "rel_err": 1.0,
+     "abs_over_max": 1.9329065287946908e-39,
+     "passed": true
+    }
+   ]
+  },
+  "J_sysId": {
+   "passed": false,
+   "rows": [
+    {
+     "param": "Pxy",
+     "autograd": 0.00379521340007772,
+     "fd": 0.003795213422935588,
+     "rel_err": 6.022814897323241e-09,
+     "abs_over_max": 3.444695455770223e-35,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": 1.2399587007536677e+20,
+     "fd": -0.008803142274952389,
+     "rel_err": 1.4085410209508102e+22,
+     "abs_over_max": 0.00018686257671248052,
+     "passed": false
+    },
+    {
+     "param": "Dxy",
+     "autograd": -0.0663799393426662,
+     "fd": -0.06637993925048044,
+     "rel_err": 1.38875931595097e-09,
+     "abs_over_max": 1.3892453399772043e-34,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": 5.070600079332205e+20,
+     "fd": -0.006652156861302867,
+     "rel_err": 7.622490246477886e+22,
+     "abs_over_max": 0.0007641427055002834,
+     "passed": false
+    },
+    {
+     "param": "Iz",
+     "autograd": 4.035900256708467e+17,
+     "fd": 0.007691495144857995,
+     "rel_err": 5.247224604187123e+19,
+     "abs_over_max": 6.082127742357188e-07,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -0.04566464825306428,
+     "fd": -0.04566464831246529,
+     "rel_err": 1.300809577697906e-09,
+     "abs_over_max": 8.951770840269367e-35,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 5.137932853071743e-10,
+     "fd": 5.140202499753777e-10,
+     "rel_err": 0.00044154810674128665,
+     "abs_over_max": 3.4203722025084893e-37,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.07993898914554613,
+     "fd": 0.0799389888418104,
+     "rel_err": 3.799594358292447e-09,
+     "abs_over_max": 4.577317075307138e-34,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": -6.072246323560395e-10,
+     "fd": -6.025995674674434e-10,
+     "rel_err": 0.007675187866519621,
+     "abs_over_max": 6.970002646218627e-36,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -0.07849723236572528,
+     "fd": -0.07849723222081925,
+     "rel_err": 1.8460017954605908e-09,
+     "abs_over_max": 2.183743251522905e-34,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": 1.8166448094329814e+22,
+     "fd": -0.013703574167969194,
+     "rel_err": 1.325672256862167e+24,
+     "abs_over_max": 0.027376954559508213,
+     "passed": false
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -1.4438903806525642e+21,
+     "fd": 0.02173601373233391,
+     "rel_err": 6.642848124928591e+22,
+     "abs_over_max": 0.002175952125301496,
+     "passed": false
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 9.046722887349118e+21,
+     "fd": 0.004635856176951505,
+     "rel_err": 1.951467548179667e+24,
+     "abs_over_max": 0.013633469796262707,
+     "passed": false
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 1.4324182357574146e+22,
+     "fd": 0.043880780811050846,
+     "rel_err": 3.2643408099900474e+23,
+     "abs_over_max": 0.021586635288811183,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -6.635671639386374e+23,
+     "fd": 0.004081293329078546,
+     "rel_err": 1.625874717729378e+26,
+     "abs_over_max": 1.0,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 2.5106056556617462e-11,
+     "rel_err": 1.0,
+     "abs_over_max": 3.7834989313815886e-35,
+     "passed": true
+    }
+   ]
+  }
+ },
+ "single": {
+  "A1": {
+   "J_task": [
+    {
+     "param": "Pxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -7.870548882943967e+24,
+     "fd": -0.00019625839134721455,
+     "rel_err": 4.0102992941685865e+28,
+     "abs_over_max": 0.006451286647161645,
+     "passed": false
+    },
+    {
+     "param": "Dxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -2.150304583226635e+25,
+     "fd": -2.3789437217022757e-06,
+     "rel_err": 9.038904803044118e+30,
+     "abs_over_max": 0.017625494042940993,
+     "passed": false
+    },
+    {
+     "param": "Iz",
+     "autograd": -2.840704218254072e+23,
+     "fd": -0.00036264732360190115,
+     "rel_err": 7.833241922315899e+26,
+     "abs_over_max": 0.00023284522419360628,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -1.2199967717147944e+27,
+     "fd": 0.0036908717190116316,
+     "rel_err": 3.3054434415333566e+29,
+     "abs_over_max": 1.0,
+     "passed": false
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": 1.2297136764967845e+25,
+     "fd": 9.901455496437103e-06,
+     "rel_err": 1.2419524351134834e+30,
+     "abs_over_max": 0.010079646971264787,
+     "passed": false
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": -3.399973424024215e+26,
+     "fd": 0.0014652015402826998,
+     "rel_err": 2.3204817429882136e+29,
+     "abs_over_max": 0.2786870836752547,
+     "passed": false
+    },
+    {
+     "param": "plume_scale",
+     "autograd": -3.497300610642402e+24,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.00286664743032614,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 3.766794874509829e+24,
+     "fd": 2.583817356035731e-06,
+     "rel_err": 1.457840998594848e+30,
+     "abs_over_max": 0.0030875449524471483,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 1.3552527156068805e-13,
+     "rel_err": 1.0,
+     "abs_over_max": 1.110865821146374e-40,
+     "passed": true
+    }
+   ],
+   "J_sysId": [
+    {
+     "param": "Pxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": 4.959834803014671e+20,
+     "fd": -0.00041965869874201894,
+     "rel_err": 1.1818734647661099e+24,
+     "abs_over_max": 0.00018686257671248052,
+     "passed": false
+    },
+    {
+     "param": "Dxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": 2.028240031732882e+21,
+     "fd": 0.00011765382252975319,
+     "rel_err": 1.7239049170884059e+25,
+     "abs_over_max": 0.0007641427055002834,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": 1.614360102683387e+18,
+     "fd": -0.00029213150943966683,
+     "rel_err": 5.526141653736248e+21,
+     "abs_over_max": 6.082127742357188e-07,
+     "passed": false
+    },
+    {
+     "param": "KRxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": 7.2665792377319254e+22,
+     "fd": 0.004605006756643179,
+     "rel_err": 1.5779736321231592e+25,
+     "abs_over_max": 0.027376954559508213,
+     "passed": false
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -5.775561522610257e+21,
+     "fd": 1.0556810417158835e-05,
+     "rel_err": 5.470934206815698e+26,
+     "abs_over_max": 0.002175952125301496,
+     "passed": false
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 3.618689154939647e+22,
+     "fd": 0.001740849433302851,
+     "rel_err": 2.0786916350795706e+25,
+     "abs_over_max": 0.013633469796262707,
+     "passed": false
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 5.729672943029658e+22,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.021586635288811183,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -2.6542686557545497e+24,
+     "fd": 2.7562681412414414e-06,
+     "rel_err": 9.629936275209601e+29,
+     "abs_over_max": 1.0,
+     "passed": false
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": -4.0657581468206416e-13,
+     "rel_err": 1.0,
+     "abs_over_max": 1.5317809438791858e-37,
+     "passed": true
+    }
+   ]
+  },
+  "A8": {
+   "J_task": [
+    {
+     "param": "Pxy",
+     "autograd": 0.0010815828382776563,
+     "fd": 0.001081582827640315,
+     "rel_err": 9.834976107609917e-09,
+     "abs_over_max": 7.304832302757539e-10,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -0.002354010968864502,
+     "fd": -0.0023540109835365475,
+     "rel_err": 6.232785388586664e-09,
+     "abs_over_max": 1.0075528036586103e-09,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": -0.01269702291440367,
+     "fd": -0.012697021880073156,
+     "rel_err": 8.146245027921619e-08,
+     "abs_over_max": 7.102912990134336e-08,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -0.0028063082258548517,
+     "fd": -0.002806308217924436,
+     "rel_err": 2.825924758353466e-09,
+     "abs_over_max": 5.445943359308967e-10,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": -0.0006786462479301601,
+     "fd": -0.0006786462477051391,
+     "rel_err": 3.3157327177429043e-10,
+     "abs_over_max": 1.545254882832535e-11,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -0.013838131168940764,
+     "fd": -0.01383813106724946,
+     "rel_err": 7.3486299694897315e-09,
+     "abs_over_max": 6.983304461351119e-09,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.013194817669771711,
+     "fd": 0.013194814721742554,
+     "rel_err": 2.234233083044227e-07,
+     "abs_over_max": 2.0244587511886046e-07,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -0.013791488516113053,
+     "fd": -0.013791487269917968,
+     "rel_err": 9.035973134990506e-08,
+     "abs_over_max": 8.55782086909814e-08,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -0.0038006036607435905,
+     "fd": -0.0038006021576414417,
+     "rel_err": 3.9549052662666224e-07,
+     "abs_over_max": 1.0322042749397496e-07,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": 0.003136383920667667,
+     "fd": 0.0031363839225403978,
+     "rel_err": 5.970986809656519e-10,
+     "abs_over_max": 1.2860341122627279e-10,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 0.003798433115876475,
+     "fd": 0.0037984331183876785,
+     "rel_err": 6.611156249094589e-10,
+     "abs_over_max": 1.7244835783248577e-10,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.01456206087609722,
+     "fd": 0.014562060867903681,
+     "rel_err": 5.626634630308945e-10,
+     "abs_over_max": 5.626634627143043e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0004951232375490393,
+     "fd": 0.0004951232323441301,
+     "rel_err": 1.0512350993203114e-08,
+     "abs_over_max": 3.5742943581799673e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 4.336808689942018e-12,
+     "rel_err": 1.0,
+     "abs_over_max": 2.9781558577746627e-10,
+     "passed": true
+    }
+   ],
+   "J_sysId": [
+    {
+     "param": "Pxy",
+     "autograd": 0.014404898117728195,
+     "fd": 0.01440489821868951,
+     "rel_err": 7.008818400785305e-09,
+     "abs_over_max": 3.158176747480439e-10,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -0.03291758555746915,
+     "fd": -0.032917585754410617,
+     "rel_err": 5.982864740046929e-09,
+     "abs_over_max": 6.160537283060995e-10,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": -0.2663475305189574,
+     "fd": -0.26634753014231904,
+     "rel_err": 1.4140860680505498e-09,
+     "abs_over_max": 1.1781645405164473e-09,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -0.025306185668695195,
+     "fd": -0.025306185355566946,
+     "rel_err": 1.237358553352309e-08,
+     "abs_over_max": 9.794982842930556e-10,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": 0.019195933565383357,
+     "fd": 0.01919593352328608,
+     "rel_err": 2.1930309876365116e-09,
+     "abs_over_max": 1.3168473548931267e-10,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -0.18259318254262982,
+     "fd": -0.18259318282365378,
+     "rel_err": 1.5390714470361662e-09,
+     "abs_over_max": 8.79072653940051e-10,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 0.3196822843342647,
+     "fd": 0.319682283131395,
+     "rel_err": 3.7627036473766465e-09,
+     "abs_over_max": 3.7627036332187075e-09,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -0.31396091967393447,
+     "fd": -0.3139609191099568,
+     "rel_err": 1.7963307151850115e-09,
+     "abs_over_max": 1.764181720420981e-09,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -0.10206237776866996,
+     "fd": -0.1020623768832607,
+     "rel_err": 8.675177737742438e-09,
+     "abs_over_max": 2.769653819393208e-09,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": 0.08697976955008072,
+     "fd": 0.08697976955351905,
+     "rel_err": 3.953026053458181e-11,
+     "abs_over_max": 1.0755469164795258e-11,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 0.01616160106019344,
+     "fd": 0.016161601057440578,
+     "rel_err": 1.7033361356131125e-10,
+     "abs_over_max": 8.611249493486871e-12,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.17552312352367547,
+     "fd": 0.17552312324420338,
+     "rel_err": 1.592223743504681e-09,
+     "abs_over_max": 8.742182412313429e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.016334692749663985,
+     "fd": 0.01633469280670763,
+     "rel_err": 3.4921773423512427e-09,
+     "abs_over_max": 1.7843855261684285e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 9.71445146547012e-11,
+     "rel_err": 1.0,
+     "abs_over_max": 3.0387831736439107e-10,
+     "passed": true
+    }
+   ]
+  },
+  "CIRCLE": {
+   "J_task": [
+    {
+     "param": "Pxy",
+     "autograd": -0.0001745730465728304,
+     "fd": -0.00017457302010220888,
+     "rel_err": 1.5163065573529563e-07,
+     "abs_over_max": 2.9370162574683142e-09,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": 0.001808378281262664,
+     "fd": 0.0018083783097280065,
+     "rel_err": 1.5740811722407674e-08,
+     "abs_over_max": 3.1583381466447916e-09,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": -9.327871661980486e-05,
+     "fd": -9.327872458816944e-05,
+     "rel_err": 8.542531654591618e-08,
+     "abs_over_max": 8.841203933055174e-10,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": 2.270073935806467e-05,
+     "fd": 2.270073712340448e-05,
+     "rel_err": 9.843998361398643e-08,
+     "abs_over_max": 2.4794405776818457e-10,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": -0.00380725185693492,
+     "fd": -0.0038072518669619512,
+     "rel_err": 2.6336663921863375e-09,
+     "abs_over_max": 1.11253730463657e-09,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": 3.3299221383522684e-06,
+     "fd": 3.3299325753397002e-06,
+     "rel_err": 3.134293922068892e-06,
+     "abs_over_max": 1.1580234998448161e-09,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": -1.0426244983181163e-11,
+     "fd": -5.637851296924623e-12,
+     "rel_err": 0.8493295466782794,
+     "abs_over_max": 5.312905138034168e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": -1.0319462157718271e-05,
+     "fd": -1.0319477585819803e-05,
+     "rel_err": 1.4950467602141664e-06,
+     "abs_over_max": 1.7118066155166411e-09,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": -2.1587481903762176e-11,
+     "fd": -3.7730235602495554e-11,
+     "rel_err": 0.4278466179963547,
+     "abs_over_max": 1.7910999948517128e-09,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": 7.91120082648634e-06,
+     "fd": 7.911197413314197e-06,
+     "rel_err": 4.314355924398938e-07,
+     "abs_over_max": 3.7870444669521143e-10,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -0.009012759614278183,
+     "fd": -0.009012759609049355,
+     "rel_err": 5.801583548470433e-10,
+     "abs_over_max": 5.801583545104596e-10,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -6.046425763238335e-06,
+     "fd": -6.046419333098629e-06,
+     "rel_err": 1.0634624149943852e-06,
+     "abs_over_max": 7.13448486505627e-10,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": -1.3615392421324705e-06,
+     "fd": -1.3615345829942616e-06,
+     "rel_err": 3.4219756641826307e-06,
+     "abs_over_max": 5.169491263883611e-10,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -1.5340884652231036e-06,
+     "fd": -1.5340997786342236e-06,
+     "rel_err": 7.374625351989421e-06,
+     "abs_over_max": 1.2552660454933675e-09,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": -1.0842021724855044e-12,
+     "rel_err": 1.0,
+     "abs_over_max": 1.202963597040679e-10,
+     "passed": true
+    }
+   ],
+   "J_sysId": [
+    {
+     "param": "Pxy",
+     "autograd": 0.0003348889987333785,
+     "fd": 0.00033488899847666787,
+     "rel_err": 7.665543368258037e-10,
+     "abs_over_max": 1.1577203469354737e-11,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -0.0009231502617661631,
+     "fd": -0.0009231502797434066,
+     "rel_err": 1.947379954784164e-08,
+     "abs_over_max": 8.107425028756362e-10,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": 0.00027561018491564164,
+     "fd": 0.0002756101900522334,
+     "rel_err": 1.8637162074033858e-08,
+     "abs_over_max": 2.3165138064289986e-10,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -0.000802350717924946,
+     "fd": -0.0008023507273077074,
+     "rel_err": 1.1694089712992874e-08,
+     "abs_over_max": 4.231462654551799e-10,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": 0.006417395939827573,
+     "fd": 0.006417395943206922,
+     "rel_err": 5.265919251305525e-10,
+     "abs_over_max": 1.5240277366840286e-10,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -2.2814851292287123e-05,
+     "fd": -2.2814833789547295e-05,
+     "rel_err": 7.671649063499592e-07,
+     "abs_over_max": 7.893432101959572e-10,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 9.395327710957263e-10,
+     "fd": 9.343654322480077e-10,
+     "rel_err": 0.005530318940937726,
+     "abs_over_max": 2.3303802001380267e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 1.9269437162912913e-05,
+     "fd": 1.9269438692251506e-05,
+     "rel_err": 7.936601669150576e-08,
+     "abs_over_max": 6.89705181176584e-11,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": -1.0157716059588044e-09,
+     "fd": -1.0028870095490916e-09,
+     "rel_err": 0.012847505538541021,
+     "abs_over_max": 5.810729515681106e-10,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -4.5977853422301895e-06,
+     "fd": -4.597772900252761e-06,
+     "rel_err": 2.706087859974728e-06,
+     "abs_over_max": 5.611116031661733e-10,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": 0.022173801707971657,
+     "fd": 0.02217380171446945,
+     "rel_err": 2.930391446426024e-10,
+     "abs_over_max": 2.930391446426024e-10,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -1.9155852163323462e-05,
+     "fd": -1.9155860708428007e-05,
+     "rel_err": 4.460830382451192e-07,
+     "abs_over_max": 3.85369394705094e-10,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 0.00029437063022925183,
+     "fd": 0.0002943706361568238,
+     "rel_err": 2.0136424072299978e-08,
+     "abs_over_max": 2.673232150451903e-10,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -5.385853713936022e-06,
+     "fd": -5.385839127111658e-06,
+     "rel_err": 2.708366146801343e-06,
+     "abs_over_max": 6.57840480032286e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 1.951563910473908e-12,
+     "rel_err": 1.0,
+     "abs_over_max": 8.801214765082078e-11,
+     "passed": true
+    }
+   ]
+  },
+  "FIG8": {
+   "J_task": [
+    {
+     "param": "Pxy",
+     "autograd": -0.00016463061812395556,
+     "fd": -0.0001646306159431253,
+     "rel_err": 1.3246808548040674e-08,
+     "abs_over_max": 2.8996885705175704e-10,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": 0.0014357578610360816,
+     "fd": 0.0014357578694739262,
+     "rel_err": 5.8769272914678084e-09,
+     "abs_over_max": 1.1219177448936793e-09,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": -0.00016706383901480897,
+     "fd": -0.00016706383433769123,
+     "rel_err": 2.7995991838228227e-08,
+     "abs_over_max": 6.218817286554363e-10,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -4.184933787324224e-06,
+     "fd": -4.184925897574715e-06,
+     "rel_err": 1.885278187045078e-06,
+     "abs_over_max": 1.0490415964316374e-09,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": -0.002841733126096508,
+     "fd": -0.0028417331314695496,
+     "rel_err": 1.890762141598252e-09,
+     "abs_over_max": 7.144135493798194e-10,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": 8.62862728739367e-06,
+     "fd": 8.628616105042092e-06,
+     "rel_err": 1.295961188074517e-06,
+     "abs_over_max": 1.4868345235413476e-09,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": -5.146449217063127e-10,
+     "fd": -5.199291518154237e-10,
+     "rel_err": 0.010163365702154092,
+     "abs_over_max": 7.026049665051867e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": -1.88450277087867e-05,
+     "fd": -1.8845022547661627e-05,
+     "rel_err": 2.738720561932597e-07,
+     "abs_over_max": 6.8623660116361e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": 6.150197156437685e-10,
+     "fd": 6.127910678888071e-10,
+     "rel_err": 0.00363688028717446,
+     "abs_over_max": 2.9632679669393824e-10,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": 1.1330755147737776e-05,
+     "fd": 1.1330752688106654e-05,
+     "rel_err": 2.170757044232534e-07,
+     "abs_over_max": 3.270389453135789e-10,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": -0.00752091197902447,
+     "fd": -0.007520911964227234,
+     "rel_err": 1.96747888499599e-09,
+     "abs_over_max": 1.9674788811250172e-09,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -2.1005195060865755e-06,
+     "fd": -2.1005179475126756e-06,
+     "rel_err": 7.419950406771707e-07,
+     "abs_over_max": 2.0723203572314058e-10,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": -0.00012555159337640065,
+     "fd": -0.00012555159559571316,
+     "rel_err": 1.7676497899918014e-08,
+     "abs_over_max": 2.950855590477e-10,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -6.035720350945502e-07,
+     "fd": -6.035705789331214e-07,
+     "rel_err": 2.412578544453311e-06,
+     "abs_over_max": 1.936150074430454e-10,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": -1.0299920638612292e-12,
+     "rel_err": 1.0,
+     "abs_over_max": 1.3695042126989878e-10,
+     "passed": true
+    }
+   ],
+   "J_sysId": [
+    {
+     "param": "Pxy",
+     "autograd": 0.0004410664838493057,
+     "fd": 0.00044106647457617387,
+     "rel_err": 2.102434073906963e-08,
+     "abs_over_max": 4.530269548906294e-10,
+     "passed": true
+    },
+    {
+     "param": "Pz",
+     "autograd": -0.0009521743497530007,
+     "fd": -0.0009521743669135135,
+     "rel_err": 1.802244778624671e-08,
+     "abs_over_max": 8.383548286457778e-10,
+     "passed": true
+    },
+    {
+     "param": "Dxy",
+     "autograd": 0.0005521629633769793,
+     "fd": 0.0005521629503450753,
+     "rel_err": 2.3601554574240195e-08,
+     "abs_over_max": 6.366569443765007e-10,
+     "passed": true
+    },
+    {
+     "param": "Dz",
+     "autograd": -0.0006177451937001304,
+     "fd": -0.0006177451848665694,
+     "rel_err": 1.429968418884796e-08,
+     "abs_over_max": 4.3155228775792167e-10,
+     "passed": true
+    },
+    {
+     "param": "Iz",
+     "autograd": 0.005444782608371401,
+     "fd": 0.005444782622378644,
+     "rel_err": 2.572599174916813e-09,
+     "abs_over_max": 6.843058928767978e-10,
+     "passed": true
+    },
+    {
+     "param": "KRxy",
+     "autograd": -4.259561833498759e-05,
+     "fd": -4.2595592417843386e-05,
+     "rel_err": 6.084466193033063e-07,
+     "abs_over_max": 1.2661488165993308e-09,
+     "passed": true
+    },
+    {
+     "param": "KRz",
+     "autograd": 1.115640370132971e-09,
+     "fd": 1.1217155676535029e-09,
+     "rel_err": 0.005415987524574047,
+     "abs_over_max": 2.967959776248599e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwxy",
+     "autograd": 5.440281075692259e-05,
+     "fd": 5.44027971543376e-05,
+     "rel_err": 2.5003466179547986e-07,
+     "abs_over_max": 6.645368312488462e-10,
+     "passed": true
+    },
+    {
+     "param": "Kwz",
+     "autograd": -1.4131269234653534e-09,
+     "fd": -1.4075112603206819e-09,
+     "rel_err": 0.003989782037972559,
+     "abs_over_max": 2.743460154837533e-10,
+     "passed": true
+    },
+    {
+     "param": "KIxy",
+     "autograd": -2.3412003624442887e-05,
+     "fd": -2.3412000419928414e-05,
+     "rel_err": 1.3687486827791308e-07,
+     "abs_over_max": 1.5655244175861856e-10,
+     "passed": true
+    },
+    {
+     "param": "thrust_gain",
+     "autograd": 0.020469271750746944,
+     "fd": 0.0204692717402713,
+     "rel_err": 5.117741749781932e-10,
+     "abs_over_max": 5.117741747162804e-10,
+     "passed": true
+    },
+    {
+     "param": "motor_lag_ms",
+     "autograd": -2.711557851012503e-05,
+     "fd": -2.711557389213637e-05,
+     "rel_err": 1.703076129341898e-07,
+     "abs_over_max": 2.2560590914729868e-10,
+     "passed": true
+    },
+    {
+     "param": "downwash_scale",
+     "autograd": 0.00034660356063344084,
+     "fd": 0.0003466035809057688,
+     "rel_err": 5.8488512800843227e-08,
+     "abs_over_max": 9.903785647813974e-10,
+     "passed": true
+    },
+    {
+     "param": "plume_scale",
+     "autograd": 0.0,
+     "fd": 0.0,
+     "rel_err": null,
+     "abs_over_max": 0.0,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": -6.8898866635415364e-06,
+     "fd": -6.889919407573886e-06,
+     "rel_err": 4.75245505966801e-06,
+     "abs_over_max": 1.5996676749398507e-09,
+     "passed": true
+    },
+    {
+     "param": "rpm_delay_ms",
+     "autograd": 0.0,
+     "fd": 1.734723475976807e-12,
+     "rel_err": 1.0,
+     "abs_over_max": 8.474768897987322e-11,
+     "passed": true
+    }
+   ]
+  }
+ }
+}

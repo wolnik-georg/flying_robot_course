@@ -1,0 +1,17 @@
+1 readback on default store (expected FAIL, exit 1): 1 FAIL: do not fly this round; tell Claude
+2 set + readback (expected PASS, exit 0, float32 tolerance): 0 PASS: 15 gains read back from the firmware equal the fragment
+3 one gain changed by 1 % in the firmware (expected FAIL): 1 ['  Kpos_Dz    fragment 4              firmware 4.039999961853027 MISMATCH']
+4 parameters in the store: 15 (15 gains)
+5 S0 read-back with the switches of S0: PASS (exit 0)
+5 S0 read-back with the switches of another strategy: FAIL as wanted (exit 1)
+5 S1 read-back with the switches of S1: PASS (exit 0)
+5 S1 read-back with the switches of another strategy: FAIL as wanted (exit 1)
+5 S2 read-back with the switches of S2: PASS (exit 0)
+5 S2 read-back with the switches of another strategy: FAIL as wanted (exit 1)
+5 S3 read-back with the switches of S3: PASS (exit 0)
+5 S3 read-back with the switches of another strategy: FAIL as wanted (exit 1)
+6 merge on the yaml of branch main with --strategy S0: PASS, switches unchanged; with --strategy S3: refused
+6 merge on the yaml of branch study_S1 with --strategy S1: PASS, switches unchanged; with --strategy S3: refused
+6 merge on the yaml of branch study_S2 with --strategy S2: PASS, switches unchanged; with --strategy S3: refused
+6 merge on the yaml of branch study_S3 with --strategy S3: PASS, switches unchanged; with --strategy S0: refused
+MOCK TEST PASSED

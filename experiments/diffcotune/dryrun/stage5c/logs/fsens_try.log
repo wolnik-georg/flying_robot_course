@@ -1,0 +1,10 @@
+make_fx 2.5 s, 5644 nodes
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+compile + first call 38 s
+one block: max |compiled - eager vmap(jvp)| 1.110e-16
+eager vmap(jvp)    38.89 ms/block (5 tangents)
+compiled           0.58 ms/block (5 tangents)
+3000 blocks compiled: 1.8 s  (0.59 ms/block)
+3000 blocks eager vmap(jvp): 115.1 s
+x tangent at the end: max |compiled - eager| 1.665e-16 (max |tangent| 2.115e-01);  all state tangents max 1.367e-14

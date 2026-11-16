@@ -1,0 +1,62 @@
+11:54:38 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor True, real 28.87 cm
+11:54:38 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 9.09 cm
+11:54:38 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.15 cm
+11:54:38 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.78 cm
+11:54:38 real 3-D RMS 15.71 cm (mean of the 4 tuning flights); keep-best round 0 (15.71 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+12:07:52 fit beta: J0 0.1842 -> 0.1677 (best epoch 50), psi [-0.361, -0.066, 0.402, -0.059]
+12:20:29 tune theta: J0 0.0668 -> 0.01865 (best epoch 50), gain-limit hits [5, 22, 5, 16, 26, 0, 0, 0, 22, 9]
+12:20:32 round 0 done in 1555 s
+{
+ "controller": "S2",
+ "tag": "b",
+ "perf": {
+  "fit_workers": 4,
+  "fit_threads": 4,
+  "tune_workers": 4,
+  "tune_threads": 4,
+  "warm": false
+ },
+ "grad_mode": "mixed",
+ "seconds_total": 1554.8091473579407,
+ "seconds_ingest": 0.5294632911682129,
+ "seconds_pool_start": 0.006212949752807617,
+ "seconds_pool_start_tune": null,
+ "seconds_fit": 793.596305847168,
+ "seconds_tune": 757.1251428127289,
+ "fit_epochs": {
+  "first": 44.6040141582489,
+  "median_rest": 13.419282674789429,
+  "total": 793.5910127162933,
+  "n": 51
+ },
+ "tune_epochs": {
+  "first": 32.980170249938965,
+  "median_rest": 13.967964768409729,
+  "total": 757.1149706840515,
+  "n": 51
+ },
+ "compile_excess_fit": 31.184731483459473,
+ "compile_excess_tune": 19.012205481529236,
+ "mem_available_start_gb": 24.545787811279297,
+ "mem_available_min_gb": 16.24399185180664,
+ "load_start": 3.2,
+ "load_max": 3.86,
+ "real_cm": 15.712460576953077,
+ "tune_J0": 0.06680374217583834,
+ "tune_J_best": 0.018645704395079905,
+ "fit_J_best": 0.16767061811881206,
+ "env_fx_graph_cache": null,
+ "rel_diff_phi_next": 2.46622815910383,
+ "rel_diff_psi_after_fit": 3.196468509856638e-15,
+ "abs_diff_phi_next": 0.1416613393595264,
+ "abs_diff_psi": 2.220446049250313e-16,
+ "identity_gate_1e-10": false
+}

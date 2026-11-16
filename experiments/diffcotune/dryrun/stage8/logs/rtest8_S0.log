@@ -1,0 +1,82 @@
+flew + wrote A1_dry_merged_usd.csv stable True
+flew + wrote A8_dry_merged_usd.csv stable True
+flew + wrote CIRCLE_dry_merged_usd.csv stable True
+flew + wrote FIG8_dry_merged_usd.csv stable True
+flew + wrote A4_dry_merged_usd.csv stable True
+18:29:14 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+18:29:14 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+18:29:14 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+18:29:15 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+18:29:15 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+18:29:15 real 3-D RMS 18.24 cm (mean of the 5 tuning flights); keep-best round 0 (18.24 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+18:34:01 fit beta: J0 2.702 -> 2.561 (last iterate, stop: converged |dJ| < 1e-3), epochs 18, psi [0.101, -0.11, 0.137, -0.102]
+18:38:04 tune theta: J0 0.2989 -> 0.2152 (last iterate, stop: converged |dJ| < 1e-3), epochs 14, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+18:38:09 round 0 done in 535 s
+{
+ "controller": "S0",
+ "reference": "dryrun/stage8/results/loop_S0_paper.json",
+ "real_cm": 18.235756567601246,
+ "real_cm_loop_lib": 18.235101509473306,
+ "phi_next_max_abs_diff": 0.0,
+ "psi_max_abs_diff": 1.3877787807814457e-17,
+ "hits": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "hits_loop_lib": [
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "seconds_fly_write": 20.40353035926819,
+ "seconds_ingest": 0.8303883075714111,
+ "seconds_fit": 286.16309237480164,
+ "seconds_tune": 243.29006147384644,
+ "seconds_round": 535.1246931552887,
+ "phi_next": [
+  -0.10946269271380293,
+  0.1292966097724581,
+  -0.017139600409263735,
+  0.10381277022226836,
+  -0.11449063582970684,
+  0.12102798771189177,
+  0.10140117420618314,
+  0.1294852844861056,
+  0.12799002954672214,
+  -0.04632177699784678
+ ],
+ "psi_after_fit": [
+  0.10074861890674247,
+  -0.1098796385414158,
+  0.1373414866201531,
+  -0.1021422738418335
+ ],
+ "n_beta": 4,
+ "yaml": "dry5_S0_8/S0/round_1/gains.yaml",
+ "yaml_roundtrip_max_abs_phi_diff": 8.326672684688674e-17
+}

@@ -1,0 +1,13 @@
+[
+ {
+  "name": "gate7_S2",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S2 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage7 && date +%T > logs/t_start_gate7_S2.txt && env DIFFCOTUNE_GRAD_MODE=cfwd /usr/bin/python3 grad_gate7.py /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c/results/loop_S2.json results/loop_S2.json > logs/gate7_S2.log 2>&1; echo $? > logs/gate7_S2.rc; date +%T > logs/t_end_gate7_S2.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_gate7_S2.log"
+ }
+]

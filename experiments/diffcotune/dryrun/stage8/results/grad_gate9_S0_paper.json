@@ -1,0 +1,786 @@
+{
+ "controller": "S0",
+ "tuning": [
+  "A1",
+  "A8",
+  "CIRCLE",
+  "FIG8",
+  "A4"
+ ],
+ "grad_mode": "cfwd",
+ "J_sysId": {
+  "passed": false,
+  "rows": [
+   {
+    "param": "Pxy",
+    "g": 0.0,
+    "fd": 0.9700232475040593,
+    "rel_err": 1.0,
+    "abs_over_max": 0.3485991218806935,
+    "passed": false
+   },
+   {
+    "param": "Pz",
+    "g": 0.0,
+    "fd": 0.28325940379381187,
+    "rel_err": 1.0,
+    "abs_over_max": 0.10179547725381537,
+    "passed": false
+   },
+   {
+    "param": "Dxy",
+    "g": 0.0,
+    "fd": -1.2944423965211005,
+    "rel_err": 1.0,
+    "abs_over_max": 0.4651862560134238,
+    "passed": false
+   },
+   {
+    "param": "Dz",
+    "g": 0.0,
+    "fd": -0.17109471478482519,
+    "rel_err": 1.0,
+    "abs_over_max": 0.061486637032550265,
+    "passed": false
+   },
+   {
+    "param": "Iz",
+    "g": 0.0,
+    "fd": 0.3002114154215807,
+    "rel_err": 1.0,
+    "abs_over_max": 0.10788755430738804,
+    "passed": false
+   },
+   {
+    "param": "KRxy",
+    "g": 0.0,
+    "fd": -2.642442373884668,
+    "rel_err": 1.0,
+    "abs_over_max": 0.9496196029597482,
+    "passed": false
+   },
+   {
+    "param": "KRz",
+    "g": 0.0,
+    "fd": -0.0024736470372044295,
+    "rel_err": 1.0,
+    "abs_over_max": 0.0008889592978632553,
+    "passed": false
+   },
+   {
+    "param": "Kwxy",
+    "g": 0.0,
+    "fd": 0.42389745902315923,
+    "rel_err": 1.0,
+    "abs_over_max": 0.15233684590874938,
+    "passed": false
+   },
+   {
+    "param": "Kwz",
+    "g": 0.0,
+    "fd": 0.0011250121667583102,
+    "rel_err": 1.0,
+    "abs_over_max": 0.0004042977881675996,
+    "passed": false
+   },
+   {
+    "param": "KIxy",
+    "g": 0.0,
+    "fd": -0.5396238839661116,
+    "rel_err": 1.0,
+    "abs_over_max": 0.19392567402942426,
+    "passed": false
+   },
+   {
+    "param": "thrust_gain",
+    "g": -0.22990071481019902,
+    "fd": -0.22990043449522268,
+    "rel_err": 1.2192885888076927e-06,
+    "abs_over_max": 1.0073733269202304e-07,
+    "passed": true
+   },
+   {
+    "param": "motor_lag_ms",
+    "g": 0.2723453217734133,
+    "fd": 0.2723500794055145,
+    "rel_err": 1.7468811140264907e-05,
+    "abs_over_max": 1.7097594072792546e-06,
+    "passed": true
+   },
+   {
+    "param": "downwash_scale",
+    "g": -0.09631538272849062,
+    "fd": -0.09632612466003998,
+    "rel_err": 0.00011151628478017956,
+    "abs_over_max": 3.860348620555897e-06,
+    "passed": true
+   },
+   {
+    "param": "plume_scale",
+    "g": 2.7826325042667364,
+    "fd": 2.781849208544074,
+    "rel_err": 0.00028157375326339445,
+    "abs_over_max": 0.00028149449180281454,
+    "passed": true
+   }
+  ]
+ },
+ "J_task_noisefree": {
+  "passed": false,
+  "rows": [
+   {
+    "param": "Pxy",
+    "g": 0.11318815441385725,
+    "fd": 0.11299249674801004,
+    "rel_err": 0.0017315987475129261,
+    "abs_over_max": 0.00013561283189607364,
+    "passed": true
+   },
+   {
+    "param": "Pz",
+    "g": -0.043306445270392055,
+    "fd": -0.04332073538781955,
+    "rel_err": 0.00032986784041335443,
+    "abs_over_max": 9.904663249861129e-06,
+    "passed": true
+   },
+   {
+    "param": "Dxy",
+    "g": 0.09888617226282015,
+    "fd": 0.09931513095251532,
+    "rel_err": 0.004319167538532104,
+    "abs_over_max": 0.000297316756918777,
+    "passed": true
+   },
+   {
+    "param": "Dz",
+    "g": -0.04823059492909587,
+    "fd": -0.048220281989586056,
+    "rel_err": 0.00021387140606193145,
+    "abs_over_max": 7.148030341888717e-06,
+    "passed": true
+   },
+   {
+    "param": "Iz",
+    "g": 0.0304698237404546,
+    "fd": 0.030457454447407883,
+    "rel_err": 0.0004061170991185616,
+    "abs_over_max": 8.57331529206529e-06,
+    "passed": true
+   },
+   {
+    "param": "KRxy",
+    "g": -0.8535299849502593,
+    "fd": -0.8524513141483503,
+    "rel_err": 0.001265375258394316,
+    "abs_over_max": 0.0007476405358158779,
+    "passed": true
+   },
+   {
+    "param": "KRz",
+    "g": -0.0029445057853353445,
+    "fd": -0.002944505361757166,
+    "rel_err": 1.438537637288517e-07,
+    "abs_over_max": 2.935874558339214e-10,
+    "passed": true
+   },
+   {
+    "param": "Kwxy",
+    "g": -0.6729827859798692,
+    "fd": -0.6731286419925375,
+    "rel_err": 0.00021668371180375817,
+    "abs_over_max": 0.00010109466880011089,
+    "passed": true
+   },
+   {
+    "param": "Kwz",
+    "g": -0.004067433477171821,
+    "fd": -0.004067433057031167,
+    "rel_err": 1.0329380917818124e-07,
+    "abs_over_max": 2.912048635664226e-10,
+    "passed": true
+   },
+   {
+    "param": "KIxy",
+    "g": 0.123426747686126,
+    "fd": 0.12348561906350142,
+    "rel_err": 0.00047674682948414105,
+    "abs_over_max": 4.080450499566064e-05,
+    "passed": true
+   },
+   {
+    "param": "thrust_gain",
+    "g": 0.0,
+    "fd": -0.6772500953933225,
+    "rel_err": 1.0,
+    "abs_over_max": 0.4694107074235187,
+    "passed": false
+   },
+   {
+    "param": "motor_lag_ms",
+    "g": 0.0,
+    "fd": 0.3190942460262747,
+    "rel_err": 1.0,
+    "abs_over_max": 0.22116830515169947,
+    "passed": false
+   },
+   {
+    "param": "downwash_scale",
+    "g": 0.0,
+    "fd": -0.0804602884318939,
+    "rel_err": 1.0,
+    "abs_over_max": 0.0557680555074427,
+    "passed": false
+   },
+   {
+    "param": "plume_scale",
+    "g": 0.0,
+    "fd": 1.4427666107375003,
+    "rel_err": 1.0,
+    "abs_over_max": 1.0,
+    "passed": false
+   }
+  ]
+ },
+ "guard_fitted_beta": [
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 0,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.035512361619119324,
+     "adopted_vs_fd_rel": 8.305639017221104e-09,
+     "reverse_vs_adopted_rel": 0.00013136277716015559,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 1.7703529246598757,
+     "adopted_vs_fd_rel": 1.1014570915438932e-07,
+     "reverse_vs_adopted_rel": 1.791607259153943e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.0021778340281715654,
+     "adopted_vs_fd_rel": 4.492288272765708e-07,
+     "reverse_vs_adopted_rel": 4.529864373396515e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.0019081345356385497,
+     "adopted_vs_fd_rel": 4.65108979442799e-08,
+     "reverse_vs_adopted_rel": 2.4714566256758613e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 3.0276214455520196,
+     "adopted_vs_fd_rel": 1.493189300013663e-07,
+     "reverse_vs_adopted_rel": 2.655906783014183e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.33550817094521534,
+     "adopted_vs_fd_rel": 6.064794977240925e-09,
+     "reverse_vs_adopted_rel": 0.0002797900446090672,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.3702785863259685,
+     "adopted_vs_fd_rel": 1.816091929157406e-07,
+     "reverse_vs_adopted_rel": 2.0733379601693328e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.030579309691125087,
+     "adopted_vs_fd_rel": 2.5841873584556862e-08,
+     "reverse_vs_adopted_rel": 3.519306557584974e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.025726568803438855,
+     "adopted_vs_fd_rel": 5.503316428059381e-09,
+     "reverse_vs_adopted_rel": 4.045834603727863e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 1.6274680466123586,
+     "adopted_vs_fd_rel": 8.42069588835108e-09,
+     "reverse_vs_adopted_rel": 1.1144715727583394e-14,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  },
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 1,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.044074320764972634,
+     "adopted_vs_fd_rel": 1.5957675825438145e-08,
+     "reverse_vs_adopted_rel": 2.3490270733509187e-06,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.9814762387870303,
+     "adopted_vs_fd_rel": 3.354487925211799e-08,
+     "reverse_vs_adopted_rel": 1.1133224693533234e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.0030940776821862235,
+     "adopted_vs_fd_rel": 4.647399981615281e-08,
+     "reverse_vs_adopted_rel": 3.783432315322857e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.00269744474066657,
+     "adopted_vs_fd_rel": 1.4903711873677278e-07,
+     "reverse_vs_adopted_rel": 6.831568840478247e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.9914875562162101,
+     "adopted_vs_fd_rel": 6.691255907269947e-08,
+     "reverse_vs_adopted_rel": 8.940774929353797e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.23348152603428515,
+     "adopted_vs_fd_rel": 3.961919659792666e-10,
+     "reverse_vs_adopted_rel": 3.66707952444206e-06,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.4823388221730178,
+     "adopted_vs_fd_rel": 7.586783727658112e-08,
+     "reverse_vs_adopted_rel": 6.400818703075563e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.03133210462705374,
+     "adopted_vs_fd_rel": 8.002771694619586e-08,
+     "reverse_vs_adopted_rel": 9.529127192642106e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.02552904080304293,
+     "adopted_vs_fd_rel": 2.7730325969582093e-08,
+     "reverse_vs_adopted_rel": 2.723842491333507e-16,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 1.3780914092835759,
+     "adopted_vs_fd_rel": 2.4891069857651684e-07,
+     "reverse_vs_adopted_rel": 1.107703216416515e-14,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  },
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 2,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.05049717374707831,
+     "adopted_vs_fd_rel": 2.8600922699159766e-08,
+     "reverse_vs_adopted_rel": 1.6750647147317405e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.5271236221453338,
+     "adopted_vs_fd_rel": 5.3382708836329014e-08,
+     "reverse_vs_adopted_rel": 2.3263476937722402e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.005452243199700348,
+     "adopted_vs_fd_rel": 3.0094112611881527e-07,
+     "reverse_vs_adopted_rel": 3.38230933457567e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.004377654845584165,
+     "adopted_vs_fd_rel": 4.7310336179384385e-08,
+     "reverse_vs_adopted_rel": 1.028584726156271e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.3816849457166181,
+     "adopted_vs_fd_rel": 1.2040859738020085e-08,
+     "reverse_vs_adopted_rel": 6.292545322438066e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.16213956161857124,
+     "adopted_vs_fd_rel": 2.473717137791528e-09,
+     "reverse_vs_adopted_rel": 7.868591346846465e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.47303648274186777,
+     "adopted_vs_fd_rel": 4.2203494918043666e-08,
+     "reverse_vs_adopted_rel": 5.3047374011294815e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.024082462178263354,
+     "adopted_vs_fd_rel": 1.4241579663620875e-07,
+     "reverse_vs_adopted_rel": 1.601978595257137e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.01766309655406438,
+     "adopted_vs_fd_rel": 1.0797010041277622e-08,
+     "reverse_vs_adopted_rel": 3.930953266955719e-16,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.8478048410302941,
+     "adopted_vs_fd_rel": 2.052952521667849e-07,
+     "reverse_vs_adopted_rel": 3.281827648461999e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  },
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 3,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.05651100360525552,
+     "adopted_vs_fd_rel": 1.9900706881262296e-08,
+     "reverse_vs_adopted_rel": 4.4723670641379575e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.419905749548896,
+     "adopted_vs_fd_rel": 1.069221658171311e-07,
+     "reverse_vs_adopted_rel": 4.4851002472696485e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.0065492122253323955,
+     "adopted_vs_fd_rel": 1.1426976654929275e-07,
+     "reverse_vs_adopted_rel": 2.8614540657955016e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.005695277663919755,
+     "adopted_vs_fd_rel": 1.9898236416279992e-07,
+     "reverse_vs_adopted_rel": 6.24651938602933e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.3375099959528251,
+     "adopted_vs_fd_rel": 7.286595265125041e-08,
+     "reverse_vs_adopted_rel": 6.588399839903671e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.15334844544577939,
+     "adopted_vs_fd_rel": 1.9656875254948113e-09,
+     "reverse_vs_adopted_rel": 2.200984351643271e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.4437993144560543,
+     "adopted_vs_fd_rel": 2.612283743981618e-08,
+     "reverse_vs_adopted_rel": 4.098194533389193e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.016376215340773593,
+     "adopted_vs_fd_rel": 1.3609546750510237e-07,
+     "reverse_vs_adopted_rel": 1.6957149214444195e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.012739105395835651,
+     "adopted_vs_fd_rel": 2.793673219199551e-08,
+     "reverse_vs_adopted_rel": 5.719327993242813e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.548596837077207,
+     "adopted_vs_fd_rel": 3.4823701642446474e-08,
+     "reverse_vs_adopted_rel": 3.623728249890237e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  },
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 4,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.06464290111544663,
+     "adopted_vs_fd_rel": 4.315377115114496e-08,
+     "reverse_vs_adopted_rel": 4.622205753146887e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.3573437801604225,
+     "adopted_vs_fd_rel": 6.379887160875952e-08,
+     "reverse_vs_adopted_rel": 2.15867866370438e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.008813710190300873,
+     "adopted_vs_fd_rel": 5.0560409222423565e-08,
+     "reverse_vs_adopted_rel": 2.4383423736986367e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.007897252326978793,
+     "adopted_vs_fd_rel": 4.5570968889437264e-08,
+     "reverse_vs_adopted_rel": 2.0642519567146168e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.2685598832056118,
+     "adopted_vs_fd_rel": 8.06694081680525e-08,
+     "reverse_vs_adopted_rel": 9.279341020245471e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.11477876399100059,
+     "adopted_vs_fd_rel": 1.116457696255831e-08,
+     "reverse_vs_adopted_rel": 5.518302776647286e-10,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.4180699107400569,
+     "adopted_vs_fd_rel": 1.4912540593536095e-07,
+     "reverse_vs_adopted_rel": 1.866525728709069e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.0077977796743573516,
+     "adopted_vs_fd_rel": 8.756761774066812e-08,
+     "reverse_vs_adopted_rel": 7.8751075366349895e-16,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.006275666592646095,
+     "adopted_vs_fd_rel": 1.6867249022758022e-07,
+     "reverse_vs_adopted_rel": 6.0812668561580755e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 0.38499465653678894,
+     "adopted_vs_fd_rel": 3.268535603245871e-07,
+     "reverse_vs_adopted_rel": 7.796094260073045e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  },
+  {
+   "source": "results/loop_S0_paper.json",
+   "round": 5,
+   "task": [
+    {
+     "scenario": "A1",
+     "norm": 0.059684573882440535,
+     "adopted_vs_fd_rel": 7.591185816469316e-09,
+     "reverse_vs_adopted_rel": 2.689235633484825e-05,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.18118673351468867,
+     "adopted_vs_fd_rel": 2.6050523978248295e-06,
+     "reverse_vs_adopted_rel": 2.658995944054414e-12,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.008197517613792216,
+     "adopted_vs_fd_rel": 6.550922342206702e-07,
+     "reverse_vs_adopted_rel": 6.632009489184358e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.007355444879547193,
+     "adopted_vs_fd_rel": 5.0420715360619404e-08,
+     "reverse_vs_adopted_rel": 6.222216783079068e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 1.0218922227746055,
+     "adopted_vs_fd_rel": 5.9221644154148646e-08,
+     "reverse_vs_adopted_rel": 1.893556649837684e-13,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "sysid": [
+    {
+     "scenario": "A1",
+     "norm": 0.11986468135583281,
+     "adopted_vs_fd_rel": 3.0537594815990784e-09,
+     "reverse_vs_adopted_rel": 2.3050516562696953e-05,
+     "reverse_unreliable": true,
+     "passed": true
+    },
+    {
+     "scenario": "A8",
+     "norm": 0.41896464838172165,
+     "adopted_vs_fd_rel": 1.6478999644605322e-06,
+     "reverse_vs_adopted_rel": 1.1160335439555064e-12,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "CIRCLE",
+     "norm": 0.00920329992957901,
+     "adopted_vs_fd_rel": 1.9052339537602964e-08,
+     "reverse_vs_adopted_rel": 6.258893599526105e-15,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "FIG8",
+     "norm": 0.00711715009652147,
+     "adopted_vs_fd_rel": 7.348020998077868e-09,
+     "reverse_vs_adopted_rel": 1.263254268411482e-14,
+     "reverse_unreliable": false,
+     "passed": true
+    },
+    {
+     "scenario": "A4",
+     "norm": 2.1208362351397203,
+     "adopted_vs_fd_rel": 3.368207685124531e-08,
+     "reverse_vs_adopted_rel": 1.8793397338053915e-13,
+     "reverse_unreliable": false,
+     "passed": true
+    }
+   ],
+   "passed": true
+  }
+ ],
+ "passed": false,
+ "note_posthoc": "Sections 1 and 2 re-judged on the components the loop uses (sysid: beta rows, task: theta rows); the first version of gate9.py compared the unused components (zero by design) and printed FAIL. guard sections unchanged.",
+ "J_sysId_used_beta_rows_passed": true,
+ "J_task_used_theta_rows_passed": true,
+ "passed_posthoc": true
+}

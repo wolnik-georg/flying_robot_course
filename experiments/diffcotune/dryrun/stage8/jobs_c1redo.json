@@ -1,0 +1,13 @@
+[
+ {
+  "name": "c1redo",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S3 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8 && date +%T > logs/t_start_c1redo.txt && env DIFFCOTUNE_TUNING_SET=4 /usr/bin/python3 c1redo.py > logs/c1redo.log 2>&1; echo $? > logs/c1redo.rc; date +%T > logs/t_end_c1redo.txt"
+  ],
+  "procs": 2,
+  "mem_gb": 6.0,
+  "log": "logs/job_c1redo.log"
+ }
+]

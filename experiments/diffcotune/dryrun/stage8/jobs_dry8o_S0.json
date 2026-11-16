@@ -1,0 +1,13 @@
+[
+ {
+  "name": "dry8o_S0",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8 && date +%T > logs/t_start_dry8o_S0.txt && env DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd /usr/bin/python3 run_8.py --tag ours > logs/dry8o_S0.log 2>&1; echo $? > logs/dry8o_S0.rc; date +%T > logs/t_end_dry8o_S0.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_dry8o_S0.log"
+ }
+]

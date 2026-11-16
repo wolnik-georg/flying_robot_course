@@ -1,0 +1,13 @@
+[
+ {
+  "name": "rtest_S3",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S3 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c_rdfix && date +%T > logs/t_start_rtest_S3.txt && env DIFFCOTUNE_DRY_TAG=_5cfix /usr/bin/python3 ../../lab/dry_test5.py --controller S3 --fix-rd > logs/rtest_S3.log 2>&1; echo $? > logs/rtest_S3.rc; date +%T > logs/t_end_rtest_S3.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 8.0,
+  "log": "logs/job_rtest_S3.log"
+ }
+]

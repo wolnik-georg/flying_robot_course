@@ -1,0 +1,16 @@
+A1_2026-10-23_19-47-31   corr [0.0, -0.04, 0.14] | Jw 29.75, best shift -100 ms -> 29.04 | dom freq gx 1.27 / model 1.07 Hz, gy 1.27 / 1.07
+A1_2026-10-23_19-48-59   corr [-0.14, -0.04, 0.2] | Jw 30.87, best shift -100 ms -> 27.16 | dom freq gx 1.27 / model 1.07 Hz, gy 1.27 / 1.07
+A1_2026-10-23_19-50-23   corr [0.03, 0.01, 0.01] | Jw 28.79, best shift -100 ms -> 28.32 | dom freq gx 1.27 / model 1.07 Hz, gy 1.27 / 1.07
+A4_2026-10-23_19-37-24   corr [0.19, 0.16, -0.58] | Jw 5.25, best shift -10 ms -> 5.25 | dom freq gx 1.33 / model 1.00 Hz, gy 1.27 / 1.13
+A4_2026-10-23_19-38-38   corr [0.02, 0.21, -0.42] | Jw 5.51, best shift -80 ms -> 5.28 | dom freq gx 1.33 / model 1.00 Hz, gy 1.27 / 1.13
+A4_2026-10-23_19-40-01   corr [-0.02, 0.18, 0.13] | Jw 2.21, best shift -100 ms -> 1.79 | dom freq gx 1.33 / model 1.07 Hz, gy 1.13 / 0.87
+A4_2026-10-23_19-41-36   corr [0.27, -0.31, 0.64] | Jw 1.81, best shift -80 ms -> 1.52 | dom freq gx 2.00 / model 1.07 Hz, gy 1.20 / 0.87
+A8_2026-10-23_19-43-07   corr [-0.04, 0.07, 0.66] | Jw 2.09, best shift 100 ms -> 1.05 | dom freq gx 1.38 / model 1.03 Hz, gy 1.31 / 0.97
+A8_2026-10-23_19-44-24   corr [0.12, 0.1, 0.75] | Jw 1.73, best shift 100 ms -> 1.13 | dom freq gx 1.24 / model 1.03 Hz, gy 1.38 / 1.17
+A8_2026-10-23_19-45-56   corr [-0.09, -0.03, 0.09] | Jw 1.82, best shift 100 ms -> 1.08 | dom freq gx 1.38 / model 1.03 Hz, gy 1.38 / 0.97
+/home/georg/.local/lib/python3.10/site-packages/numpy/lib/_function_base_impl.py:3045: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage4b/../../lab/gyro_check2.py:61: RuntimeWarning: invalid value encountered in scalar divide
+  slope_model_w_on_q_derivative=[float((wm[m, j] * d[m, j]).sum() / (d[m, j] ** 2).sum()) for j in range(3)])
+model vs frsim {"scenario": "A8", "rms_model": 0.9672714080245965, "rms_frsim": 0.9672646995257311, "max_abs_diff_rad_s": 0.00025708645758885235, "corr_axes": [0.9999999985586658, NaN, NaN], "corr_model_w_vs_model_q_derivative": [0.9980573495520102, NaN, NaN], "slope_model_w_on_q_derivative": [1.0386920065583567, NaN, NaN]}
+model vs frsim {"scenario": "A1", "rms_model": 0.0, "rms_frsim": 0.0, "max_abs_diff_rad_s": 0.0, "corr_axes": [NaN, NaN, NaN], "corr_model_w_vs_model_q_derivative": [NaN, NaN, NaN], "slope_model_w_on_q_derivative": [NaN, NaN, NaN]}

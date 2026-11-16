@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Stage 5 B4: round-0 dry test of `round.py` for one controller (and the S0 regression check): 4 frsim flights of the dry-run plant (P1; S1 / S3: P1RD) with the default gains and flight seeds 100 + i
+are written as fake merged-uSD files (lab/fake_usd.py) and `round.py --controller <C>` runs on them (strict = False as in Stage 4b: loop_lib fits a floor flight of theta_0 on A1 too, top path planned).
+The result must equal the loop_lib dry run with the same seeds: theta_1 (phi after round 0) and beta after the fit of round 0 (max abs difference).
+  python3 dry_test5.py --controller S2|S1|S3   reference = dryrun/stage5/results/loop_<C>.json (rounds[1].phi, rounds[0].psi_after_fit)
+  python3 dry_test5.py --controller S0         reference = lab/results/dry_test.json round_0 (Stage 4b run of round.py, phi_next_loop_lib) and dryrun/stage3e/results/loop_P1.json
+Output lab/results/dry_test5_<C>.json, files in lab/dry5_<C>/. Run with nice -n 19, not while another pool runs."""
+import json, os, shutil, sys, time
+from pathlib import Path
+import numpy as np
+if '--controller' in sys.argv: os.environ['DIFFCOTUNE_CONTROLLER'] = sys.argv[sys.argv.index('--controller') + 1]
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE.parent)); sys.path.insert(0, str(HERE.parent / 'dryrun'))
+import round as RD  # noqa  (first: it sets DIFFCOTUNE_GRAD_MODE from its per-controller table before loop_lib is imported; Stage 5c)
+import loop_lib as L  # noqa
+import fake_usd as F  # noqa
+from frsim.scenarios import tuning_cells  # noqa
+
+C = L.CTRL; PLANT = L.PLANTS['P1RD' if L.N_BETA == 5 else 'P1']
+TAG = os.environ.get('DIFFCOTUNE_DRY_TAG', '')          # Stage 5c: '_5c' = reference = dryrun/stage5c/results/loop_<C>.json (the rerun with the adopted gradient mode), outputs dry_test5_<C>_5c.json / dry5_<C>_5c
+REF = HERE.parent / 'dryrun' / ('stage3e/results/loop_P1.json' if C == 'S0' else ('stage5c_rdfix' if TAG == '_5cfix' else ('stage5c' if TAG == '_5c' else 'stage5')) + '/results/loop_%s.json' % C)
+
+
+def main():
+    DRY = HERE / ('dry5_%s%s' % (C, TAG)); shutil.rmtree(DRY, ignore_errors=True); DRY.mkdir(); RD.init_state(DRY / C)
+    ref = json.load(open(REF)); gains = L.gains_of(np.zeros(10)); logs = DRY / 'round0_logs'; logs.mkdir(); man = []; t0 = time.time()
+    for i, (s, c) in enumerate(L.TUNING):
+        tr, stable = F.fly_500hz(s, c, gains, PLANT, 100 + i); name = '%s_dry_merged_usd.csv' % s; F.write_merged(logs / name, tr, s, c)
+        idx = [k for k, cc in enumerate(tuning_cells(s)) if cc == c][0]; man.append(dict(file=name, scenario=s, cell=idx, role='tuning', attempt=1, rotate_deg=0, lag_s=0)); print('flew + wrote', name, 'stable', stable, flush=True)
+    json.dump(man, open(logs / 'flights.json', 'w'), indent=1); t_fly = time.time() - t0
+    RD.SETTINGS['n_rounds'] = 5
+    rep = RD.run_round(0, logs, DRY / C, top='planned', strict=False)
+    phi_ref = np.array(ref['rounds'][1]['phi']); psi_ref = np.array(ref['rounds'][0]['psi_after_fit'])
+    out = dict(controller=C, reference=str(REF.relative_to(HERE.parent)), real_cm=rep['real']['rms3d_cm'], real_cm_loop_lib=ref['rounds'][0]['real']['rms3d_cm'],
+               phi_next_max_abs_diff=float(np.abs(np.array(rep['phi_next']) - phi_ref).max()), psi_max_abs_diff=float(np.abs(np.array(rep['psi_after_fit']) - psi_ref).max()),
+               hits=rep['tune']['hits'], hits_loop_lib=ref['rounds'][0]['tune']['hits'], seconds_fly_write=t_fly, seconds_ingest=rep['seconds_ingest'], seconds_fit=rep['seconds_fit'], seconds_tune=rep['seconds_tune'], seconds_round=rep['seconds_total'],
+               phi_next=rep['phi_next'], psi_after_fit=rep['psi_after_fit'], n_beta=L.N_BETA, yaml=str((DRY / C / 'round_1' / 'gains.yaml').relative_to(HERE)))
+    ph = RD.yaml_to_phi(DRY / C / 'round_1' / 'gains.yaml'); out['yaml_roundtrip_max_abs_phi_diff'] = float(np.abs(ph - np.array(rep['phi_next'])).max())
+    json.dump(out, open(HERE / 'results' / ('dry_test5_%s%s.json' % (C, TAG)), 'w'), indent=1); print(json.dumps(out, indent=1))
+
+
+if __name__ == '__main__':
+    main()

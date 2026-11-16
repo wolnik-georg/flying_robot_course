@@ -1,0 +1,13 @@
+[
+ {
+  "name": "S1_forward",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S1 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5 && date +%T > logs/t_start_S1_forward.txt && /usr/bin/python3 checks5.py forward > logs/S1_forward.log 2>&1; echo $? > logs/S1_forward.rc; date +%T > logs/t_end_S1_forward.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 4.0,
+  "log": "logs/job_S1_forward.log"
+ }
+]

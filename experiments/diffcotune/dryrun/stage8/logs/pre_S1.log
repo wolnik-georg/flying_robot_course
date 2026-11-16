@@ -1,0 +1,26 @@
+preflight S1 2026-11-15 21:57:38
+[PASS] 1a frsim bindings cffirmware from /home/georg/Desktop/crazyflie-firmware/build
+[PASS] 1b import scipy 
+[PASS] 1b import yaml 
+[PASS] 1b import torch 
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+[PASS] 1c model rollout s1_model compiled, A1 reference, 2350 ticks, finite, 27 s
+[PASS] 2 fly_file --check CIRCLE pad [0.0, 0.3]: pad x window [-0.250, 0.250] m; pad x = 0.000 -> inside (margin 0.250 m); pad y window [-0.500, 2.000] m; pad y = 0.300 -> inside (margin 0.800 m)
+[PASS] 2 fly_file --check FIG8 pad [0.0, 0.3]: pad x window [-0.540, 0.540] m; pad x = 0.000 -> inside (margin 0.540 m); pad y window [-1.080, 1.080] m; pad y = 0.300 -> inside (margin 0.780 m)
+[PASS] 2 OVAL refused refusing: OVAL is dropped from the lab test set (user decision 13 Nov); the file does not 
+[PASS] 3a round_0 gains yaml round trip: max |phi| = 0.0e+00 (default gains)
+[PASS] 3b gains = firmware defaults 15 values equal TREE_DEFAULT_GAINS
+[NOTE] 3c merge on this PC's yaml NOT the branch of S1 (FAIL: yaml before the merge has indi / rnn.en = (0, 0), strategy S1 needs (3, 0) (wrong crazyswarm2 branch?)); on the lab PC the yaml of the strategy branch must be in place and this check must PASS
+[PASS] 3d merge on the yaml of branch study_S1 cf5 indi / rnn.en = (3, 0) kept
+[PASS] 4a flights.json template tuning order ['A1', 'A8', 'A4', 'CIRCLE', 'FIG8'] (lab order), rotate_deg {'A1': None, 'A8': None, 'A4': -90.0, 'CIRCLE': -90.0, 'FIG8': -90.0}, 6 test flights
+[PASS] 4b frozen lab variant (Stage 8b, decision 2) method ours, rounds 6, tuning ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], states pvq, 50 epochs best iterate True, Adam lr 0.01, gain limit 0.25, noise seeds 2, paper stop False, grad mode cfwd, RPM delay fixed 4.0502 ms: must be the frozen "ours" variant
+[PASS] 4d grad mode gradient mode of S1: cfwd (round.py default table), loop_lib.GRAD_MODE cfwd
+[PASS] 5a disk free 426.3 GB, need 2.75 GB (largest 23 Oct merged file 28.7 MB x 32 flights x 3 repeats bound)
+[PASS] 5b load / memory load 17.8 (<= 22), MemAvailable 11.3 GB (>= 3; a pool needs about 6 GB)
+[NOTE] 6 desk-PC paths 3 lines name a desk path in the lab scripts (lab-run scripts: all through a flag or Path.home()): ["fly_file.py:12 read from ~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml (read only; the lab PC's yaml decides at lab ", "fly_file.py:20 YAML = Path.home() / 'Desktop' / 'crazyswarm2' / 'crazyflie' / 'config' / 'crazyflies.yaml'", 'preflight.py:124 if re.search(r"/home/|Desktop|~/", line) and not line.strip().startswith(\'#\') and \'path\' not in f:']
+[NOTE] 7a NS2 weights S1 has no NS2: the model does not load the weights
+[PASS] 7b yaml NS2 switches branch study_S1 (git show): cf5 indi / rnn.en (3, 0) (strategy S1 needs (3, 0)), cf_second (0, 0) (needs (0, 0)); NS2 off as required
+[NOTE] 7b res_sign res_sign in the cf5 block: -1 (lab_check_strategy.py defines only indi and rnn.en as the strategy switches; res_sign is "irrelevant for Omar" per the yaml comment)
+PREFLIGHT PASSED

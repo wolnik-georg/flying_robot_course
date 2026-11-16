@@ -1,0 +1,16 @@
+22:27:42 flights seed 0 real 3-D RMS 10.84 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+22:27:47 flights seed 1 real 3-D RMS 10.55 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+22:46:45 S3 beta error % {'thrust_gain': np.float64(24.6), 'motor_lag_ms': np.float64(-43.8), 'downwash_scale': np.float64(-15.3), 'plume_scale': np.float64(83.6), 'rpm_delay_ms': np.float64(-63.3)} best epoch 50 J 0.1506 -> 0.1326
+22:46:45 parts start {'p': 0.02134, 'v': 0.12187, 'q': 0.00741, 'w': 2.41296} end {'p': 0.02086, 'v': 0.10615, 'q': 0.00559, 'w': 2.30258}
+Traceback (most recent call last):
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c/identifiability5.py", line 40, in <module>
+    if RD: say('rpm delay fitted %.2f ms (truth 8.0, calibration %.2f ms)' % (L.model().RD_START * np.exp(x[14]), L.model().RD_START))
+AttributeError: module 's3_model' has no attribute 'RD_START'

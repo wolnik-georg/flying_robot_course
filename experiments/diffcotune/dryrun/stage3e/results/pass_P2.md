@@ -1,0 +1,58 @@
+### Real cost per round (P2; 3-D RMS in cm, mean of the 4 tuning flights)
+
+| Gain set | real 3-D RMS cm | z RMS cm | failed flights (tilt or floor) | flight seeds | minutes (round) |
+|---|---|---|---|---|---|
+| theta_0 | 19.28 | 18.04 | 1 (A1) | [100, 101, 102, 103] | 19.2 |
+| theta_1 | 9.77 | 6.17 | 0 | [110, 111, 112, 113] | 18.1 |
+| theta_2 | 7.62 | 5.06 | 0 | [120, 121, 122, 123] | 18.1 |
+| theta_3 | 7.60 | 5.04 | 0 | [130, 131, 132, 133] | 18.0 |
+| theta_4 | 7.70 | 5.20 | 0 | [140, 141, 142, 143] | 18.2 |
+| theta_5 | 8.21 | 6.17 | 0 | [150, 151, 152, 153] | 0.1 |
+
+Keep-best (lowest real cost over the flown sets): theta_3 (7.60 cm).
+
+Gain-limit hits (projected Adam steps of 51 evaluations per gain; order Pxy Pz Dxy Dz Iz KRxy KRz Kwxy Kwz KIxy):
+
+- tuning after round 0: noise seeds [6000, 6001], hits [0, 2, 4, 0, 26, 0, 0, 0, 0, 10], best epoch 50
+- tuning after round 1: noise seeds [6002, 6003], hits [6, 6, 0, 0, 6, 8, 0, 0, 0, 0], best epoch 45
+- tuning after round 2: noise seeds [6004, 6005], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 0
+- tuning after round 3: noise seeds [6006, 6007], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 0
+- tuning after round 4: noise seeds [6008, 6009], hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], best epoch 5
+
+### beta error after each fit (relative error of each value against the P1 truth, %; no gate)
+
+| Round | thrust gain | motor lag | downwash | plume |
+|---|---|---|---|---|
+| fit of round 0 | +0.9 | -32.5 | +5.2 | +21.6 |
+| fit of round 1 | +16.2 | -19.8 | -8.8 | +44.4 |
+| fit of round 2 | +9.1 | +7.6 | -7.0 | +12.0 |
+| fit of round 3 | +6.3 | +4.9 | -11.8 | +13.4 |
+| fit of round 4 | +7.0 | +4.5 | -11.9 | +17.9 |
+
+### Final evaluation (real drone = frsim with noise, evaluation seeds 2000-2004; 3-D RMS cm / z RMS cm / failed flights of 5; mean over seeds)
+
+| Gain set | A1 | A8 | CIRCLE | FIG8 | A4 cell 1 | A4 cell 2 | OVAL | tuning mean | test mean |
+|---|---|---|---|---|---|---|---|---|---|
+| theta_0 (default) | 35.55 / 33.70 / 5 | 11.85 / 9.63 / 0 | 6.58 / 6.32 / 0 | 6.05 / 5.71 / 0 | 9.44 / 7.65 / 0 | 13.18 / 12.10 / 0 | 5.20 / 5.02 / 0 | 15.01 | 9.27 |
+| theta_best (round 3) | 13.40 / 8.49 / 0 | 5.61 / 4.19 / 0 | 3.10 / 2.34 / 0 | 3.06 / 2.09 / 0 | 8.40 / 6.63 / 0 | 11.61 / 9.43 / 0 | 2.93 / 2.54 / 0 | 6.29 | 7.65 |
+| theta_5 (last flown) | 14.38 / 10.72 / 0 | 5.57 / 4.20 / 0 | 3.10 / 2.34 / 0 | 3.06 / 2.08 / 0 | 8.46 / 6.76 / 0 | 12.12 / 9.94 / 0 | 2.94 / 2.55 / 0 | 6.53 | 7.84 |
+
+### Pass criteria (P2)
+
+| Criterion | result |
+|---|---|
+| a. rounds 2-5 <= round 1 + 1 cm (round 1 = 9.77, limit 10.77) | **yes** (rounds 2-5: 7.62, 7.60, 7.70, 8.21) |
+| b. no flown set after theta_0 fails (tilt or floor) a scenario that theta_0 or theta_1 passed | **yes** (none) |
+| c. theta_best and theta_5 beat theta_0 on the tuning and the test scenarios (mean over 5 seeds) | **yes** (theta_best 6.29 / 7.65, theta_5 6.53 / 7.84, theta_0 15.01 / 9.27, tuning / test) |
+| d. beta per round | reported above, no gate |
+
+Floor / tilt rule per flown gain set (failed = tilt or floor):
+
+| | A1 | A8 | CIRCLE | FIG8 |
+|---|---|---|---|---|
+| theta_0 | FAILED | ok | ok | ok |
+| theta_1 | ok | ok | ok | ok |
+| theta_2 | ok | ok | ok | ok |
+| theta_3 | ok | ok | ok | ok |
+| theta_4 | ok | ok | ok | ok |
+| theta_5 | ok | ok | ok | ok |

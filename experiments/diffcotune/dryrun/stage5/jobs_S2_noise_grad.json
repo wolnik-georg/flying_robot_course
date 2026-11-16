@@ -1,0 +1,13 @@
+[
+ {
+  "name": "S2_noise_grad",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S2 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5 && date +%T > logs/t_start_S2_noise_grad.txt && bash -c '/usr/bin/python3 checks5.py noise > logs/S2_noise.log 2>&1; /usr/bin/python3 checks5.py gradient > logs/S2_gradient.log 2>&1' > logs/S2_noise_grad.log 2>&1; echo $? > logs/S2_noise_grad.rc; date +%T > logs/t_end_S2_noise_grad.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 5.0,
+  "log": "logs/job_S2_noise_grad.log"
+ }
+]

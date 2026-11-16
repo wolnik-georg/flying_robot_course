@@ -1,0 +1,13 @@
+[
+ {
+  "name": "prev_S2_ours",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S2 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8 && date +%T > logs/t_start_prev_S2_ours.txt && env DIFFCOTUNE_METHOD=ours /usr/bin/python3 ../../lab/preview.py --controller S2 --loop results/loop_S2_ours.json --serial --out results/preview_S2_ours_partial.json > logs/prev_S2_ours.log 2>&1; echo $? > logs/prev_S2_ours.rc; date +%T > logs/t_end_prev_S2_ours.txt"
+  ],
+  "procs": 1,
+  "mem_gb": 3.0,
+  "log": "logs/job_prev_S2_ours.log"
+ }
+]

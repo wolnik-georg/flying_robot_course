@@ -1,0 +1,13 @@
+[
+ {
+  "name": "diag7_cd",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S3 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage7 && date +%T > logs/t_start_diag7_cd.txt && env DIFFCOTUNE_TUNING_SET=4 DIFFCOTUNE_FIX_RD=1 DIFFCOTUNE_GRAD_MODE=mixed /usr/bin/python3 diag7_cd.py > logs/diag7_cd.log 2>&1; echo $? > logs/diag7_cd.rc; date +%T > logs/t_end_diag7_cd.txt"
+  ],
+  "procs": 2,
+  "mem_gb": 6.0,
+  "log": "logs/job_diag7_cd.log"
+ }
+]

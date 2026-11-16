@@ -1,0 +1,46 @@
+"""Stage 3e add-on 3: Pool of loop_lib with a per-scenario top-vehicle path (the logged one) as the peer input of the S0 model. loop_lib itself is not changed (the Stage 3e runs use it).
+`tops[i]` = None (planned top path of frsim) or (top_pos (n, 3), top_vel (n, 3)) on the reference's 1 ms ticks, for tuning scenario i of loop_lib.TUNING. Same maths as loop_lib.worker_rollout."""
+import dataclasses, sys
+from pathlib import Path
+import numpy as np
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent)); sys.path.insert(0, str(HERE.parent / 'dryrun'))
+import loop_lib as L  # noqa
+import reference as R  # noqa
+
+
+def worker_rollout_top(args):
+    kind, scen, cell, x, traces, states, noise_seeds, top = args
+    import torch
+    import costs as C, ingest, s0_model as S
+    ref = R.build(scen, cell)
+    if top is not None:
+        ref = dataclasses.replace(ref, top_pos=top[0], top_vel=top[1])
+    fwd = kind.endswith('_fwd'); grad = (not fwd) or bool(noise_seeds)
+    z = torch.tensor(np.asarray(x)[None], dtype=torch.float64, requires_grad=grad)
+    with torch.set_grad_enabled(grad):
+        if kind.startswith('task') and noise_seeds:
+            nz = np.stack([S.frsim_noise(sd, ref.n_ticks) for sd in noise_seeds], 1)
+            out = S.rollout(ref, z[:, :10].expand(len(noise_seeds), 10), z[:, 10:].expand(len(noise_seeds), 4), compile=True, noise=nz)
+            Js = [C.j_task(out, ref.scenario_s).mean()]
+        elif kind.startswith('task'):
+            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True); Js = [C.j_task(out, ref.scenario_s).sum()]
+        else:
+            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+            Js = [C.j_sysid(out, ingest.on_grid(ingest.from_trace(tr), out['t']), ref.scenario_s, states=states).sum() / len(traces) for tr in traces]
+    J = sum(Js)
+    if fwd:
+        return float(J), None
+    for i, Ji in enumerate(Js):
+        Ji.backward(retain_graph=i < len(Js) - 1)
+    return float(J), z.grad[0].numpy().copy()
+
+
+class PoolTop(L.Pool):
+    def __init__(self, n=4, states=L.ALL_STATES, noise_seeds=None, tops=None):
+        super().__init__(n, states, noise_seeds); self.tops = tops or {}
+
+    def rollouts(self, kind, x, traces_by_scen, scen_list=L.TUNING):
+        res = self.pool.map(worker_rollout_top, [(kind, s, c, x, traces_by_scen.get(i) if traces_by_scen else None, self.states, self.noise_seeds, self.tops.get(i)) for i, (s, c) in enumerate(scen_list)], chunksize=1)
+        J = float(np.mean([r[0] for r in res])); g = None if res[0][1] is None else np.mean([r[1] for r in res], axis=0)
+        return J, g

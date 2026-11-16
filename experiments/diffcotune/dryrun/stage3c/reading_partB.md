@@ -1,0 +1,17 @@
+
+## Reading (facts first, then the reading; no method change)
+
+Facts:
+1. Rounds 3, 4, 5 of (d) fail on all four scenarios with noise on. In A1 the drone never leaves the floor (3-D RMS 50.0 cm = z 50.0, z mean 0.00 m, max tilt 6-9 deg, so the tilt rule does not flag it); CIRCLE reaches 141.7 cm in round 4.
+2. The same gain sets flown with the sensor noise off: A1 1.2 / 1.6 / 0.7 cm (theta_3 / theta_4 / theta_5), CIRCLE theta_3 2.7 cm. With noise on: 50.0 / 50.0 / 50.0 and 83.2 cm.
+3. Model with the true beta against frsim with noise off (check 5): theta_3 A1 1.2 vs 1.2, A8 14.6 vs 14.0, CIRCLE 2.7 vs 2.7, FIG8 42.8 vs 42.3; theta_4 A8 6.3 vs 6.9, CIRCLE 72.9 vs 71.3, FIG8 88.6 vs 88.8. The model with the true beta reproduces the noise-free plant to a few percent.
+4. The model with the beta fitted in the round that tuned the gains predicted 2.0 and 1.7 cm for CIRCLE and FIG8 of theta_3 (true-beta model: 2.7 and 42.8; real: 83.2 and 88.4) and 40.4 / 44.2 cm in A1 for theta_4 / theta_5 only.
+5. Check 1: with the true beta one tune loop from theta_0 gives 7.29 cm on the tuning cells (test 7.00): the same level as the theta_best of (d) (7.08 / 7.11). From theta_2 it gives 5.43 / 9.40. From theta_3 the tune finds no step that lowers the model cost (best epoch 0); the gains stay in the failed region.
+6. Check 2: started at the true beta on the failed flights of round 3 and 4, the fit stays within 10.4 % (thrust, round 3) and 6.5 % of the truth after 50 epochs; the cost changes only by 2 % and 5 %.
+7. Check 3: the velocity part of J_sysId in rounds 0-2 is carried by A1 (0.55 / 0.51 / 0.40 against 0.001-0.02 for the other scenarios): the real A1 oscillates with noise (tilt 29-33 deg). It is not measurement noise: the trace holds the true plant state. In rounds 3-5 the position part grows to 0.34-0.78 (flights on the floor) and the gradients of p and v on the thrust gain have opposite signs (round 4: +0.0925 and -0.0679).
+
+Reading:
+- The fit is not the only cause. The tuning model has no sensor noise, and the gain sets from round 3 on (Dxy x2.5, Iz x3, KIxy x0.3, Pxy x1.8, KRxy x1.8, Kwxy x1.7 in round 3) are stable in the noise-free model with the true beta (A1, CIRCLE) and in noise-free frsim, but unstable with noise in the "real drone": the drone does not leave the floor in A1 and loses height in CIRCLE. Answer to the question asked: yes for A1 and CIRCLE of theta_3, and for A1 of theta_4 and theta_5; for A8 and FIG8 of theta_3 and for CIRCLE / FIG8 of theta_4 / theta_5 the noise-free model with the true beta already predicts the failure (fact 3), the fitted beta did not.
+- The wrong beta hides part of the failure (fact 4) but a right beta does not by itself beat the early loop (fact 5), so the drift is a combination of a model without noise (the gains drift to values that only work noise-free) and a beta that is off.
+- The beta fit does not walk away from the truth when it starts there (fact 6); the cost is nearly flat for those flights. The drift in the loop is cumulative: each round starts at the beta of the last round and moves it by up to 0.01 per epoch (0.5 in log in 50 epochs) in a flat cost with p and v gradients of opposite sign.
+- Whether a noise-robust tuning cost (noise in the tuning model, an added cost term or a bound on the gains) removes the failure was not tested: open, and it would change the method, so it is a decision for the user.

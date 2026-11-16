@@ -1,0 +1,40 @@
+flew + wrote A1_dry_merged_usd.csv stable True
+flew + wrote A8_dry_merged_usd.csv stable True
+flew + wrote CIRCLE_dry_merged_usd.csv stable True
+flew + wrote FIG8_dry_merged_usd.csv stable True
+flew + wrote A4_dry_merged_usd.csv stable True
+23:56:33 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor False, real 18.93 cm
+23:56:33 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 6.64 cm
+23:56:33 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 5.82 cm
+23:56:33 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.13 cm
+23:56:33 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 6.72 cm
+23:56:33 real 3-D RMS 10.08 cm (mean of the 5 tuning flights); keep-best round 0 (10.08 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+00:21:35 fit beta: J0 2.804 -> 2.415 (last iterate, stop: max epochs), epochs 50, psi [-0.003, -0.414, 0.278, -0.038, 0.0]
+00:42:18 tune theta: J0 0.5882 -> 0.275 (last iterate, stop: rose dJ > 1e-3), epochs 39, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Traceback (most recent call last):
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8/../../lab/dry_test5.py", line 46, in <module>
+    main()
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage8/../../lab/dry_test5.py", line 35, in main
+    rep = RD.run_round(0, logs, DRY / C, top='planned', strict=False)
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/round.py", line 160, in run_round
+    pv = PV.run(L, lambda fn, jobs: pool.pool.map(fn, jobs, chunksize=1), x[:10], x[10:], keep['phi'])
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/preview.py", line 46, in run
+    t0 = time.time(); plant = fitted_plant(L, psi); sets = {'new': np.asarray(phi_new, float), 'best': np.asarray(phi_best, float)}
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/preview.py", line 24, in fitted_plant
+    if len(psi) > 4: over['rpm_delay_ms'] = float(L.model().RD_START * np.exp(psi[4])); over['rpm_delay_fractional'] = 1          # S1 / S3: the model's rpm delay is fractional
+AttributeError: module 's3_model' has no attribute 'RD_START'

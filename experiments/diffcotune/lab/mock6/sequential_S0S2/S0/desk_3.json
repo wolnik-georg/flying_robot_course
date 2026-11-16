@@ -1,0 +1,28 @@
+{
+ "controller": "S0",
+ "round": 3,
+ "pid": 3010245,
+ "start": 1794745581.3890483,
+ "expected_min": 23.0,
+ "log": "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_3.log",
+ "cmd": [
+  "nice",
+  "-n",
+  "19",
+  "/usr/bin/python3",
+  "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/round.py",
+  "--controller",
+  "S0",
+  "--round",
+  "3",
+  "--logs",
+  "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_3",
+  "--state-dir",
+  "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0",
+  "--n-rounds",
+  "5",
+  "--top",
+  "planned",
+  "--lenient"
+ ]
+}

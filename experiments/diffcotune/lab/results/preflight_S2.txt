@@ -1,0 +1,22 @@
+preflight S2 2026-11-14 03:35:16
+[PASS] 1a frsim bindings cffirmware from /home/georg/Desktop/crazyflie-firmware/build
+[PASS] 1b import scipy 
+[PASS] 1b import yaml 
+[PASS] 1b import torch 
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+[PASS] 1c model rollout s2_model compiled, A1 reference, 2350 ticks, finite, 13 s
+[PASS] 2 fly_file --check CIRCLE pad [0.0, 0.3]: pad x window [-0.250, 0.250] m; pad x = 0.000 -> inside (margin 0.250 m); pad y window [-0.500, 2.000] m; pad y = 0.300 -> inside (margin 0.800 m)
+[PASS] 2 fly_file --check FIG8 pad [0.0, 0.3]: pad x window [-0.540, 0.540] m; pad x = 0.000 -> inside (margin 0.540 m); pad y window [-1.080, 1.080] m; pad y = 0.300 -> inside (margin 0.780 m)
+[PASS] 2 OVAL refused refusing: OVAL is dropped from the lab test set (user decision 13 Nov); the file does not 
+[PASS] 3a round_0 gains yaml round trip: max |phi| = 0.0e+00 (default gains)
+[PASS] 3b gains = firmware defaults 15 values equal TREE_DEFAULT_GAINS
+[NOTE] 3c merge on this PC's yaml NOT the branch of S2 (FAIL: yaml before the merge has indi / rnn.en = (0, 0), strategy S2 needs (0, 1) (wrong crazyswarm2 branch?)); on the lab PC the yaml of the strategy branch must be in place and this check must PASS
+[PASS] 3d merge on the yaml of branch study_S2 cf5 indi / rnn.en = (0, 1) kept
+[PASS] 4a flights.json template tuning order ['A1', 'A8', 'CIRCLE', 'FIG8'], rotate_deg {'A1': None, 'A8': None, 'CIRCLE': -90.0, 'FIG8': -90.0}, 6 test flights
+[PASS] 4b settings n_rounds 5 (round.py default is 6: pass --n-rounds 5), states pva, gain limit 0.25, lr 0.01, skip_last_fit
+[NOTE] 4c reminder round.py default n_rounds is 6: every round.py command needs --n-rounds 5
+[PASS] 5a disk free 426.7 GB, need 2.75 GB (largest 23 Oct merged file 28.7 MB x 32 flights x 3 repeats bound)
+[PASS] 5b load / memory load 4.1 (<= 22), MemAvailable 15.8 GB (>= 3; a pool needs about 6 GB)
+[NOTE] 6 desk-PC paths 3 lines name a desk path in the lab scripts (lab-run scripts: all through a flag or Path.home()): ["fly_file.py:12 read from ~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml (read only; the lab PC's yaml decides at lab ", "fly_file.py:20 YAML = Path.home() / 'Desktop' / 'crazyswarm2' / 'crazyflie' / 'config' / 'crazyflies.yaml'", 'preflight.py:121 if re.search(r"/home/|Desktop|~/", line) and not line.strip().startswith(\'#\') and \'path\' not in f:']
+PREFLIGHT PASSED

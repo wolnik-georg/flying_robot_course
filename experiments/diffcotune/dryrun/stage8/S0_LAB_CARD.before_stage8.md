@@ -1,0 +1,42 @@
+# S0 lab card (DiffCoTune Split-Alternate, 5 rounds) — Stage 5 A3, 13 Nov 2026
+
+Everything below is copied from the protocol draft (`docs/diffcotune_lab_protocol_S0_DRAFT.md`, "PD") and the existing rules; no new rules. "CSP" = `docs/comparative_study_protocol.md`. Items marked *open* are not stated anywhere.
+
+## Before the block
+
+| # | Do | Source |
+|---|---|---|
+| 1 | Count the uSD files on BOTH cards; archive at ≥ 85 (the card must never reach 100 files) | PD "One round" step 1; `docs/lab_sessions/2026-10-26.md` item 5; memory `feedback_usd_card_file_counter_100_2026-10-19` |
+| 2 | `flying_drone_stack/tools/check_usd_deck.py` on both drones | PD step 3; CSP §4 |
+| 3 | After a flash only: `flying_drone_stack/tools/check_active_controller.py` (console line; a parameter read-back is a cache) | PD step 5; memory `feedback_verify_controller_slot_after_flash_2026-10-13` |
+| 4 | Pad check at the lab PC: `python3 experiments/diffcotune/lab/fly_file.py --cell CIRCLE --check --pad <x> <y> --yaml <lab crazyflies.yaml>`, same for `FIG8` (default pad cf5 (0.0, 0.3)); accepted: FIG8 passes 0.32 m (horizontal) from the parked cf_second, 1 m above it | PD "Decided by the user (13 Nov, after Stage 4d)" item 5 |
+| 5 | `python3 experiments/diffcotune/lab/preflight.py --controller S0 --yaml <lab crazyflies.yaml>` (must print PREFLIGHT PASSED; use `/usr/bin/python3` of the desk PC or the lab PC's python with torch, scipy, yaml) | Stage 5 A1 |
+| 6 | Fresh batteries: rest ≥ 4.1 V; swap if either drone < 4.0 V | CSP §4 (PD "Decided" item 2) |
+| 7 | Round 0 initialised: `python3 lab/round.py --init --controller S0 --state-dir lab/S0` (gains = defaults) | `lab/round.py` doc |
+
+## Per round l = 0 … 4 (gains of the round loaded first)
+
+| # | Do | Source |
+|---|---|---|
+| 1 | `python3 lab/apply_gains.py merge --fragment lab/S0/round_<l>/gains.yaml --yaml <crazyflies.yaml>` → put the `.new` file in place → `lab_check_strategy.py` → launch CS2 | PD P2 option A |
+| 2 | Firmware read-back of the 15 gains on a fresh connection (CS2 stopped): `python3 lab/apply_gains.py readback --uri <cf5 uri> --fragment lab/S0/round_<l>/gains.yaml`; relaunch; again after every battery swap | PD P2, "Decided" item 4 |
+| 3 | Flight 1, A1: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes` (cf5 + cf_second) | PD "Flight card per round" |
+| 4 | Flight 2, A8: `… --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes` | PD flight card |
+| 5 | `set_tree_strategy.py S0 --solo` (cf_second `enabled: false`), `lab_check_strategy.py`, relaunch CS2; gains of the round still on cf5 (`apply_gains.py readback`) | PD flight card |
+| 6 | Flight 3, CIRCLE: `python3 experiments/diffcotune/lab/fly_file.py --cell CIRCLE` | PD flight card, P3 |
+| 7 | Flight 4, FIG8: `python3 experiments/diffcotune/lab/fly_file.py --cell FIG8` | PD flight card, P3 |
+| 8 | Merge the uSD files of the round (merged files only, never radio CSVs): `flying_drone_stack/tools/merge_usd_logs.py` | PD step 7 |
+| 9 | `flights.json` in the round's log folder (template: `python3 lab/flights_template.py --out <folder>/flights.json`; fill in file names; `rotate_deg` CIRCLE −90 and FIG8 −90, A1 / A8 none; attempt 1, 2, 3 for repeats) | PD flight card, P1 |
+| 10 | `python3 lab/round.py --controller S0 --round <l> --logs <folder> --n-rounds 5` (since Stage 5b the default of `--n-rounds` is 5; passing it is harmless) | PD step 8 |
+| 11 | Next gains and report appear in `lab/S0/round_<l+1>/` and `round_<l>/report.md`; the last round writes `gains_theta_best.yaml` | PD step 9 |
+| 12 | Test flights: A4 cell 1 `--scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes` and cell 2 with `--offset 0.075`, 3 flights each, with the default gains (round 0) and with θ_best (after round 4); `rotate_deg` −90, role `test` | PD flight card (lab test cells), "Decided" item 1 |
+
+## Rules
+
+| Rule | Source |
+|---|---|
+| Abort at \|roll\| or \|pitch\| > 25° for 0.5 s, or z < 0.25 m; "for 0.5 s" is read as 0.5 s continuous (user, 13 Nov) | CSP §4; PD "Crash and floor handling", item 10 |
+| Stop after 2 crashes; after a crash toggle `stabilizer.estimator` 1 → 2; human pilot ready | CSP §4; PD "Crash and floor handling" |
+| A crashed, tilted or floor flight is repeated and not used for the fit; at most 2 repeats (attempt ≤ 3) | PD "Crash and floor handling" (implemented in `round.py`) |
+| Battery: fresh packs, rest ≥ 4.1 V, swap if either drone < 4.0 V, repeats included; flights per pack and a voltage limit for a repeat: *not stated* (open) | CSP §4; PD "Decided" item 2, P4 |
+| Never use radio CSVs for the fit (complete uSD logs only) | PD step 7; memory `feedback_analysis_usd_only_2026-10-19` |

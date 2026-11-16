@@ -1,0 +1,13 @@
+[
+ {
+  "name": "s0_b",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage6 && date +%T > logs/t_start_s0_b.txt && /usr/bin/python3 /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/dry_test6.py --controller S0 --tag b --fit-threads 4 --tune-threads 4 --ref /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/dry6_S0_ref.json > logs/s0_b.log 2>&1; echo $? > logs/s0_b.rc; date +%T > logs/t_end_s0_b.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 8.0,
+  "log": "logs/job_s0_b.log"
+ }
+]

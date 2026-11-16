@@ -1,0 +1,30 @@
+19:01:09 [nominal cotune lr 0.01] round 0  real 3-D RMS 19.99 cm  z 18.96 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+19:10:31     fit: 51 epochs, max epochs, Jn at the last epoch 0.986, at the best iterate 0.986 (epoch 50), psi err [-0.056, -0.57, -0.016, 0.28] (561 s)
+19:20:16     tune: 51 epochs, max epochs, Jn at the last epoch 0.283, at the best iterate 0.283 (epoch 50) (586 s)
+19:20:21 [nominal cotune lr 0.01] round 1  real 3-D RMS 9.54 cm  z 5.93 cm  crashes 0  psi err [-0.056, -0.57, -0.016, 0.28]
+19:29:16     fit: 51 epochs, max epochs, Jn at the last epoch 0.998, at the best iterate 0.998 (epoch 43), psi err [-0.009, -0.564, -0.121, 0.267] (535 s)
+19:38:26     tune: 51 epochs, max epochs, Jn at the last epoch 0.525, at the best iterate 0.525 (epoch 50) (549 s)
+19:38:26 estimate for 5 rounds: 93 min
+19:38:31 [nominal cotune lr 0.01] round 2  real 3-D RMS 7.46 cm  z 4.20 cm  crashes 0  psi err [-0.009, -0.564, -0.121, 0.267]
+19:47:23     fit: 51 epochs, max epochs, Jn at the last epoch 0.999, at the best iterate 0.999 (epoch 50), psi err [0.12, -0.499, -0.045, 0.292] (532 s)
+19:56:34     tune: 51 epochs, max epochs, Jn at the last epoch 0.324, at the best iterate 0.324 (epoch 50) (551 s)
+19:56:39 [nominal cotune lr 0.01] round 3  real 3-D RMS 25.72 cm  z 25.55 cm  crashes 0  psi err [0.12, -0.499, -0.045, 0.292]
+20:05:30     fit: 51 epochs, max epochs, Jn at the last epoch 0.992, at the best iterate 0.992 (epoch 38), psi err [-0.238, -0.821, 0.308, 0.324] (531 s)
+20:14:38     tune: 51 epochs, max epochs, Jn at the last epoch 0.452, at the best iterate 0.452 (epoch 50) (548 s)
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py:123: RuntimeWarning: Mean of empty slice.
+  return float((e * e).sum(-1).mean()), float((e[:, 2] ** 2).mean())
+/home/georg/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:145: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py:130: RuntimeWarning: Mean of empty slice.
+  return bool(trace[m, 3].mean() < 0.5 * trace[m, 16].mean())
+20:14:46 [nominal cotune lr 0.01] round 4  real 3-D RMS 91.81 cm  z 77.58 cm  crashes 3  psi err [-0.238, -0.821, 0.308, 0.324]
+20:14:46 halt reason: None
+20:15:52 T2_sg210 evaluated; total 75 min

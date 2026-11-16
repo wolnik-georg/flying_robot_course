@@ -1,0 +1,45 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+03:37:43 J_sysId (mixed): PASS
+   Pxy             mixed -2.538880e-03 fd -2.539288e-03 rel 1.61e-04  
+   Pz              mixed -9.518547e-04 fd -9.518547e-04 rel 6.05e-09  
+   Dxy             mixed +8.814342e-04 fd +8.804811e-04 rel 1.08e-03  
+   Dz              mixed +7.297679e-05 fd +7.316066e-05 rel 2.51e-03  
+   Iz              mixed +4.351193e-03 fd +4.351193e-03 rel 4.54e-09  
+   KRxy            mixed +5.422411e-04 fd +5.423859e-04 rel 2.67e-04  
+   KRz             mixed +5.328058e-10 fd +5.364632e-10 rel 6.82e-03  
+   Kwxy            mixed +1.670339e-02 fd +1.670584e-02 rel 1.46e-04  
+   Kwz             mixed -5.787623e-10 fd -5.802650e-10 rel 2.59e-03  
+   KIxy            mixed -2.127596e-03 fd -2.128794e-03 rel 5.63e-04  
+   thrust_gain     mixed +2.463324e-02 fd +2.463305e-02 rel 7.54e-06  
+   motor_lag_ms    mixed -1.131588e-02 fd -1.131716e-02 rel 1.13e-04  
+   downwash_scale  mixed -9.426727e-03 fd -9.427352e-03 rel 6.63e-05  
+   plume_scale     mixed -1.617485e-02 fd -1.617640e-02 rel 9.58e-05  
+03:40:02 J_task_forward_C: PASS
+03:40:33 J_task_reverse: FAIL (information)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+03:44:56 J_task with noise (reverse, h 1e-7): FAIL
+   Pxy      rev -1.887070e-03 fd -1.887070e-03 rel 1.17e-07  
+   Pz       rev -2.588478e-02 fd -2.588478e-02 rel 6.47e-10  
+   Dxy      rev +2.464842e-02 fd +2.466694e-02 rel 7.51e-04  
+   Dz       rev -5.283129e-04 fd -5.283131e-04 rel 3.42e-07  
+   Iz       rev -5.359589e-02 fd -5.359589e-02 rel 2.51e-09  
+   KRxy     rev -5.376473e-03 fd -5.171537e-03 rel 3.96e-02  <-- FAIL
+   KRz      rev +1.579335e-03 fd +1.579335e-03 rel 1.15e-07  
+   Kwxy     rev -5.427563e-02 fd -5.474467e-02 rel 8.57e-03  
+   Kwz      rev +1.135301e-02 fd +1.135300e-02 rel 6.42e-07  
+   KIxy     rev +3.013169e-02 fd +3.016327e-02 rel 1.05e-03  
+03:44:57 ADOPTED-MODE GRADIENT GATE S2: FAIL

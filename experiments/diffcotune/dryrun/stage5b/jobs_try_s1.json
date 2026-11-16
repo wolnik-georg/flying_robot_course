@@ -1,0 +1,13 @@
+[
+ {
+  "name": "try_s1",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S1 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5b && date +%T > logs/t_start_try_s1.txt && /usr/bin/python3 fwd_try.py 0 > logs/try_s1.log 2>&1; echo $? > logs/try_s1.rc; date +%T > logs/t_end_try_s1.txt"
+  ],
+  "procs": 2,
+  "mem_gb": 4.0,
+  "log": "logs/job_try_s1.log"
+ }
+]

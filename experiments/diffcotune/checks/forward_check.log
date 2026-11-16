@@ -1,0 +1,39 @@
+frsim: 30 episodes in 25 s
+A1 model rollout (5 rows batched, float64 CPU) 20.4 s
+A4 model rollout (5 rows batched, float64 CPU) 20.0 s
+A8 model rollout (5 rows batched, float64 CPU) 19.6 s
+CIRCLE model rollout (5 rows batched, float64 CPU) 14.1 s
+FIG8 model rollout (5 rows batched, float64 CPU) 15.3 s
+OVAL model rollout (5 rows batched, float64 CPU) 19.2 s
+scen    row       frsim cm  model cm    rel %  max dx mm max dq deg    crF    crM pass
+A1      default    10.0878   10.0866   0.0117      0.019     0.0000  False  False yes
+A1      gains1     11.4673   11.4661   0.0098      0.020     0.0000  False  False yes
+A1      gains2      8.9868    8.9855   0.0148      0.024     0.0000  False  False yes
+A1      shift1     23.8524   23.8504   0.0086      0.024     0.0000  False  False yes
+A1      shift2     13.7087   13.7082   0.0034      0.019     0.0000  False  False yes
+A4      default    10.7423   10.7412   0.0109      0.474     0.0581  False  False yes
+A4      gains1     10.3938   10.3936   0.0016      0.018     0.0049  False  False yes
+A4      gains2      9.8656    9.8655   0.0013      0.031     0.0080  False  False yes
+A4      shift1     11.9547   11.9544   0.0024      0.284     0.0302  False  False yes
+A4      shift2      6.6709    6.6705   0.0060      0.096     0.0222  False  False yes
+A8      default     5.1676    5.1674   0.0031      0.017     0.0005  False  False yes
+A8      gains1      5.8588    5.8585   0.0051      0.014     0.0004  False  False yes
+A8      gains2      6.0542    6.0542   0.0014      0.018     0.0008  False  False yes
+A8      shift1     10.7846   10.7844   0.0019      0.036     0.0022  False  False yes
+A8      shift2      5.1011    5.1009   0.0032      0.017     0.0006  False  False yes
+CIRCLE  default     3.7226    3.7222   0.0094      0.017     0.0003  False  False yes
+CIRCLE  gains1      5.0862    5.0857   0.0090      0.015     0.0003  False  False yes
+CIRCLE  gains2      3.0369    3.0366   0.0096      0.019     0.0003  False  False yes
+CIRCLE  shift1      7.2377    7.2373   0.0051      0.018     0.0002  False  False yes
+CIRCLE  shift2      3.8466    3.8463   0.0087      0.017     0.0003  False  False yes
+FIG8    default     3.4250    3.4246   0.0094      0.017     0.0003  False  False yes
+FIG8    gains1      4.7377    4.7372   0.0093      0.015     0.0002  False  False yes
+FIG8    gains2      2.7480    2.7478   0.0096      0.019     0.0003  False  False yes
+FIG8    shift1      6.6611    6.6608   0.0052      0.018     0.0003  False  False yes
+FIG8    shift2      3.4887    3.4884   0.0087      0.017     0.0003  False  False yes
+OVAL    default     3.0327    3.0325   0.0072      0.017     0.0003  False  False yes
+OVAL    gains1      3.9981    3.9978   0.0082      0.015     0.0003  False  False yes
+OVAL    gains2      2.6319    2.6317   0.0069      0.019     0.0003  False  False yes
+OVAL    shift1      5.2850    5.2848   0.0041      0.018     0.0004  False  False yes
+OVAL    shift2      3.2385    3.2383   0.0059      0.017     0.0003  False  False yes
+FORWARD CHECK: PASS (30 cells, tolerance 0.5 % relative 3-D RMS)

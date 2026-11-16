@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Exact forward-mode gradient at compiled speed (DiffCoTune Stage 5c, 14 Nov 2026).
+
+The gradient of a scalar cost with respect to some of the parameters z = [10 gain log-factors, beta log-factors] of S1 / S2 / S3 (S0 also works) by FORWARD SENSITIVITY: the state tangents d state / d z_j are
+carried next to the state through the whole rollout (one tangent per parameter) and the cost gradient is accumulated at the cost rows. It is the same exact automatic-differentiation gradient as reverse mode
+(not a truncation, not a damping); it differs in how it is computed: reverse mode amplifies rounding errors along an unstable mode of the INDI filter states on A1 (Stage 5b), forward mode never meets that mode.
+
+Speed: torch 2.5.1 cannot compile `torch.func.jvp` (dynamo skips the frame). The jvp of ONE 2-ms step (S1: INDI block; S2 / S3: block with the NS2 evaluation of every 5th block), vmapped over the tangents,
+is therefore traced ONCE with `make_fx` into a plain aten graph (the functorch transforms are executed at trace time) and that graph is compiled with `torch.compile`. The cost rows are handled outside: the gradient of the cost
+with respect to the recorded rows (x, v, q, w) is taken by autograd (cheap, exact, only the cost function) and contracted with the recorded tangent rows.
+
+`gradient(...)` returns (J, g) with g of length n = 10 + n_beta (zeros outside `idx`). Float64, CPU.
+"""
+import sys
+from pathlib import Path
+
+import numpy as np
+import torch
+from torch.func import jvp, vmap
+from torch.fx.experimental.proxy_tensor import make_fx
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import s0_model as S0  # noqa: E402
+import s2_model as S2  # noqa: E402
+import reference as R  # noqa: E402
+import ns2_torch as NS2  # noqa: E402
+import s0_torch as T  # noqa: E402
+import costs as C  # noqa: E402
+
+_GRAPHS = {}
+
+
+def _setup(ctrl, dtype):
+    """(block function, extra block args builder, initial state builder, has_hold) per controller."""
+    if ctrl in ('S1', 'S3'):
+        import s1_model as S1
+        M = S1; nb = 5
+        def pr_of(zb):
+            pr = S0.beta_from(zb[:, :4], dtype, 'cpu'); pr['rd'] = S1.RD_START * torch.exp(zb[:, 4]); return pr
+        def call(st, spk, tpk, jit, gains, pr, act, nets, nz, bw): return S1._block(st, spk, tpk, jit, gains, pr, act, nets, nz, bw)
+        def init(sp, B):
+            zeros3 = torch.zeros(B, 3, dtype=dtype)
+            x = (sp['pos'][0] * T.K([1., 1., 0.], dtype, 'cpu')).expand(B, 3).clone(); q = T.K([0., 0., 0., 1.], dtype, 'cpu').expand(B, 4).clone()
+            F = torch.full((B, 4), S1.M * S1.G / 4, dtype=dtype)
+            return (x, zeros3.clone(), q, zeros3.clone(), F, zeros3.clone(), zeros3.clone(), F.clone(), F.clone(), F.clone(), zeros3.clone(),
+                    torch.zeros(B, 4, 3, 4, dtype=dtype), zeros3.clone(), zeros3.clone(), F[None].expand(S1.HIST, B, 4).clone())
+        extra = S1.bw_coeffs(dtype, 'cpu')
+        return M, nb, pr_of, call, init, extra, ctrl == 'S3'
+    M = S2 if ctrl == 'S2' else S0; nb = 4
+    def pr_of(zb): return S0.beta_from(zb, dtype, 'cpu')
+    def call(st, spk, tpk, jit, gains, pr, act, nets, nz, bw): return S0._block(st, spk, tpk, jit, gains, pr, act, nets, nz)
+    def init(sp, B):
+        zeros3 = torch.zeros(B, 3, dtype=dtype)
+        x = (sp['pos'][0] * T.K([1., 1., 0.], dtype, 'cpu')).expand(B, 3).clone(); q = T.K([0., 0., 0., 1.], dtype, 'cpu').expand(B, 4).clone()
+        F = torch.full((B, 4), S0.M * S0.G / 4, dtype=dtype)
+        return (x, zeros3.clone(), q, zeros3.clone(), F, zeros3.clone(), zeros3.clone(), F.clone(), F.clone(), F.clone(), zeros3.clone())
+    return M, nb, pr_of, call, init, None, ctrl == 'S2'
+
+
+def _graph(ctrl, dtype, n, T_, has_top, do_hold, noisy, B, st, hold, z, args):
+    key = (ctrl, str(dtype), n, T_, bool(has_top), bool(do_hold), bool(noisy), B)
+    if key in _GRAPHS:
+        return _GRAPHS[key]
+    M, nbeta, pr_of, call, init, bw, has_hold = _setup(ctrl, dtype)
+    nets = S0.net(dtype, 'cpu')
+
+    def f(st_, hold_, z_, c):
+        gains = S0.gains_from(z_[:, :10], dtype, 'cpu'); pr = pr_of(z_[:, 10:])
+        nz = c['nz'] if noisy else None
+        acc = c['acc']
+        if has_hold and do_hold:
+            xm, vm = (st_[0], st_[1]) if nz is None else (st_[0] + nz[..., 0:3], st_[1] + nz[..., 3:6])
+            active = torch.full((B,), bool(has_top), dtype=torch.bool)
+            hold_ = NS2.faz(nets, c['tpk'][0] - xm, c['vpk'] - vm, xm[..., 2], vm, S0.M, active)
+        if has_hold:
+            acc = acc - torch.cat([torch.zeros_like(st_[0][..., :2]), hold_[..., None]], -1)
+        out = call(tuple(st_), (c['pos'], c['vel'], acc, c['jerk']), (c['tpk'][0], c['tpk'][1]), c['jit'], gains, pr, has_top, nets, nz, bw)
+        return out, hold_
+
+    def one(st_, hold_, z_, tst, thold, tz, c):
+        return jvp(lambda s_, h_, zz: f(s_, h_, zz, c), (st_, hold_, z_), (tst, thold, tz))
+
+    def batched(st_, hold_, z_, tst, thold, tz, c):
+        return vmap(one, in_dims=(None, None, None, 0, 0, 0, None), out_dims=(None, 0))(st_, hold_, z_, tst, thold, tz, c)
+    if B > 1:
+        S0._patch_inductor_loop_split()
+    snap = dict(T._CACHE)                       # s0_torch.K memoises constants: entries first created while make_fx traces are tracing artefacts (no storage); they must not stay in the cache (Stage 5c: the identifiability job crashed with
+    try:                                        # 'Cannot access data pointer of Tensor that doesn't have storage' in a later compiled call of the same worker)
+        with torch.no_grad():
+            gm = make_fx(batched, tracing_mode='real')(*args)
+    finally:
+        T._CACHE.clear(); T._CACHE.update(snap)
+    _GRAPHS[key] = torch.compile(gm, dynamic=False)
+    return _GRAPHS[key]
+
+
+def rollout_tangents(ctrl, ref, z, idx, noise=None, B=1, keep_blocks=5, dtype=torch.float64, n_blocks=None):
+    """Closed-loop rollout with forward sensitivities. z (n,) parameter vector; idx: indices of the parameters that get a tangent; noise None or (n_ticks // 2, ncol) / (n_blocks, B, ncol) array.
+    Returns dict like model.rollout (t, idx, x, v, q, w rows (R, B, .), ref_pos) plus 'tx', 'tv', 'tq', 'tw' (T, R, B, .) tangents of the rows."""
+    M, nbeta, pr_of, call, init, bw, has_hold = _setup(ctrl, dtype)
+    n = 10 + nbeta; nb = (ref.n_ticks // 2) if n_blocks is None else n_blocks
+    t = lambda a: torch.as_tensor(np.asarray(a), dtype=dtype)
+    sp = {k: t(getattr(ref, k)) for k in ('pos', 'vel', 'acc', 'jerk', 'top_pos', 'top_vel')}
+    jit = torch.as_tensor(R.command_jitter(nb))
+    zt = torch.as_tensor(np.asarray(z, float), dtype=dtype)[None].expand(B, n).clone()
+    idx = list(idx); T_ = len(idx); tz = torch.zeros(T_, B, n, dtype=dtype); tz[torch.arange(T_), :, torch.as_tensor(idx)] = 1.0
+    st = init(sp, B); tst = tuple(torch.zeros((T_,) + a.shape, dtype=dtype) for a in st)
+    hold = torch.zeros(B, dtype=dtype); thold = torch.zeros(T_, B, dtype=dtype)
+    nzt = None
+    if noise is not None:
+        nzt = torch.as_tensor(np.asarray(noise)[:nb], dtype=dtype)
+        nzt = nzt[:, None, :].expand(nb, B, nzt.shape[-1]) if nzt.ndim == 2 else nzt
+    rows = {k: [] for k in 'xvqw'}; trows = {k: [] for k in 'xvqw'}; ridx = []; zeros_nz = torch.zeros(B, 12 if ctrl in ('S1', 'S3') else 9, dtype=dtype)
+    with torch.no_grad():
+        for k in range(nb):
+            i = 2 * k
+            if k % keep_blocks == 0:
+                for name, j in zip('xvqw', range(4)):
+                    rows[name].append(st[j]); trows[name].append(tst[j])
+                ridx.append(i)
+            do_hold = bool(has_hold and k % S2.NS2_EVERY_BLOCKS == 0)
+            jj = k // S2.NS2_EVERY_BLOCKS
+            vpk = torch.zeros(3, dtype=dtype) if (jj < 2 or not do_hold) else (sp['top_pos'][i] - sp['top_pos'][i - 2 * S2.NS2_EVERY_BLOCKS]) / 0.01
+            c = dict(pos=sp['pos'][i], vel=sp['vel'][i], acc=sp['acc'][i], jerk=sp['jerk'][i], tpk=(sp['top_pos'][i], sp['top_vel'][i]), jit=jit[k], vpk=vpk, nz=(nzt[k] if nzt is not None else zeros_nz))
+            args = (tuple(st), hold, zt, tst, thold, tz, c)
+            g = _graph(ctrl, dtype, n, T_, ref.has_top, do_hold, noise is not None, B, st, hold, zt, args)
+            (st, hold), (tst, thold) = g(*args)
+    ridx = np.array(ridx)
+    return dict(t=ref.time_s[ridx], idx=ridx, x=torch.stack(rows['x']), v=torch.stack(rows['v']), q=torch.stack(rows['q']), w=torch.stack(rows['w']),
+                ref_pos=sp['pos'][ridx], tx=torch.stack(trows['x'], 1), tv=torch.stack(trows['v'], 1), tq=torch.stack(trows['q'], 1), tw=torch.stack(trows['w'], 1))
+
+
+def gradient(ctrl, ref, scenario_s, kind, z, idx, traces=None, states=('p', 'v', 'q', 'w'), noise_seeds=None, model=None):
+    """(J, g) of the cost used by loop_lib.worker_rollout: kind 'task' (mean over the noise rows if noise_seeds, else sum over the single row) or 'sysid' (mean over the traces of J_sysId, one trace per flight)."""
+    import ingest
+    M = model
+    noise = None; B = 1
+    if kind == 'task' and noise_seeds:
+        noise = np.stack([M.frsim_noise(sd, ref.n_ticks) for sd in noise_seeds], 1); B = len(noise_seeds)
+    o = rollout_tangents(ctrl, ref, z, idx, noise=noise, B=B)
+    leaves = {k: o[k].clone().requires_grad_(True) for k in 'xvqw'}
+    out = dict(t=o['t'], x=leaves['x'], v=leaves['v'], q=leaves['q'], w=leaves['w'], ref_pos=o['ref_pos'])
+    if kind == 'task':
+        J = C.j_task(out, scenario_s).mean() if noise_seeds else C.j_task(out, scenario_s).sum()
+    else:
+        J = sum(C.j_sysid(out, ingest.on_grid(ingest.from_trace(tr), out['t']), scenario_s, states=states).sum() / len(traces) for tr in traces)
+    gr = torch.autograd.grad(J, [leaves[k] for k in 'xvqw'], allow_unused=True)      # w is unused by J_sysId = p+v+q
+    gr = [torch.zeros_like(leaves[k]) if g_ is None else g_ for g_, k in zip(gr, 'xvqw')]
+    gz = sum(torch.einsum('rbc,trbc->t', g_, o['t' + k]) for g_, k in zip(gr, 'xvqw'))
+    # noise rows: the parameters are shared by the B rows, J is the mean over the rows, so the sum over b of (dJ / d row_b) . (tangent of row_b) is the full gradient
+    full = np.zeros(len(np.asarray(z)))
+    full[list(idx)] = gz.numpy()
+    return float(J), full

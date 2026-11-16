@@ -1,0 +1,31 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+default Pxy    autograd -4.42502e-03 fd -4.48498e-03 rel 0.0134 abs/largest 0.00025 ok
+default Pz     autograd -4.52981e-02 fd -5.39312e-01 rel 0.9160 abs/largest 2.01940 FAIL
+default Dxy    autograd  6.42854e-02 fd  6.43002e-02 rel 0.0002 abs/largest 0.00006 ok
+default Dz     autograd  3.25340e-03 fd -4.91084e-01 rel 1.0066 abs/largest 2.02072 FAIL
+default Iz     autograd -6.84443e-02 fd -6.84515e-02 rel 0.0001 abs/largest 0.00003 ok
+default KRxy   autograd  6.42470e-02 fd  6.35888e-02 rel 0.0104 abs/largest 0.00269 FAIL
+default KRz    autograd  6.88214e-04 fd  6.87348e-04 rel 0.0013 abs/largest 0.00000 ok
+default Kwxy   autograd -2.44634e-01 fd -2.42211e-01 rel 0.0100 abs/largest 0.00990 FAIL
+default Kwz    autograd  4.20664e-02 fd  4.21013e-02 rel 0.0008 abs/largest 0.00014 ok
+default KIxy   autograd  7.78298e-02 fd  7.76883e-02 rel 0.0018 abs/largest 0.00058 ok
+default J 0.039975 FAIL 249 s
+round1  Pxy    autograd -3.59725e-03 fd -3.55709e-03 rel 0.0113 abs/largest 0.00012 ok
+round1  Pz     autograd -7.00793e-02 fd -6.91017e-02 rel 0.0141 abs/largest 0.00280 FAIL
+round1  Dxy    autograd -2.11896e-03 fd -1.99621e-03 rel 0.0615 abs/largest 0.00035 ok
+round1  Dz     autograd  5.82757e-04 fd  6.09522e-04 rel 0.0439 abs/largest 0.00008 ok
+round1  Iz     autograd -4.09864e-02 fd -4.10793e-02 rel 0.0023 abs/largest 0.00027 ok
+round1  KRxy   autograd -3.48753e-01 fd -3.56069e-01 rel 0.0205 abs/largest 0.02098 FAIL
+round1  KRz    autograd -2.37712e-02 fd -2.38093e-02 rel 0.0016 abs/largest 0.00011 ok
+round1  Kwxy   autograd -2.89583e-01 fd -2.95466e-01 rel 0.0199 abs/largest 0.01687 FAIL
+round1  Kwz    autograd  1.52491e-01 fd  1.51224e-01 rel 0.0084 abs/largest 0.00363 ok
+round1  KIxy   autograd -3.62709e-03 fd -3.77022e-03 rel 0.0380 abs/largest 0.00041 ok
+round1 J 0.00679293 FAIL 185 s
+GRADIENT CHECK WITH NOISE: FAIL

@@ -1,0 +1,13 @@
+[
+ {
+  "name": "S3_ident_real",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S3 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5 && date +%T > logs/t_start_S3_ident_real.txt && bash -c '/usr/bin/python3 identifiability5.py > logs/S3_ident.log 2>&1; /usr/bin/python3 realdata5.py > logs/S3_realdata.log 2>&1' > logs/S3_ident_real.log 2>&1; echo $? > logs/S3_ident_real.rc; date +%T > logs/t_end_S3_ident_real.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 6.0,
+  "log": "logs/job_S3_ident_real.log"
+ }
+]

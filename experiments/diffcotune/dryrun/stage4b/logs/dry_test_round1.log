@@ -1,0 +1,181 @@
+15:23:26 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor False, real 16.27 cm
+15:23:27 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 7.67 cm
+15:23:27 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 5.31 cm
+15:23:27 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.06 cm
+15:23:27 real 3-D RMS 9.71 cm (mean of the 4 tuning flights); keep-best round 1 (9.71 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+15:33:34 fit beta: J0 0.1548 -> 0.1507 (best epoch 50), psi [-0.11, 0.164, 0.165, -0.028]
+15:43:56 tune theta: J0 0.009438 -> 0.006724 (best epoch 47), gain-limit hits [0, 0, 0, 0, 9, 0, 0, 0, 0, 0]
+15:43:58 round 1 done in 1232 s
+{
+ "round_0": {
+  "real_cm": 19.988178568413346,
+  "real_cm_loop_lib": 19.987809090230673,
+  "phi_next_max_abs_diff": 0.0,
+  "psi_max_abs_diff": 0.0,
+  "phi_next": [
+   0.22314355131420976,
+   0.20357767384706946,
+   -0.22314355131420976,
+   0.21410770767758322,
+   0.22314355131420976,
+   0.14087815398089332,
+   0.0867089613267545,
+   0.16815121295139193,
+   -0.11372269326854889,
+   -0.22314355131420976
+  ],
+  "phi_next_loop_lib": [
+   0.22314355131420976,
+   0.20357767384706946,
+   -0.22314355131420976,
+   0.21410770767758322,
+   0.22314355131420976,
+   0.14087815398089332,
+   0.0867089613267545,
+   0.16815121295139193,
+   -0.11372269326854889,
+   -0.22314355131420976
+  ],
+  "keep_best": {
+   "cost": 0.03995272824827786,
+   "rms3d_cm": 19.988178568413346,
+   "round": 0,
+   "phi": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "hits": [
+   6,
+   0,
+   8,
+   0,
+   27,
+   0,
+   0,
+   0,
+   0,
+   18
+  ],
+  "hits_loop_lib": [
+   6,
+   0,
+   8,
+   0,
+   27,
+   0,
+   0,
+   0,
+   0,
+   18
+  ],
+  "seconds_ingest": 0.49903154373168945,
+  "seconds_fit": 607.291360616684,
+  "seconds_tune": 598.8345849514008,
+  "seconds_round": 1208.61625289917,
+  "note": "from lab/dry/S0/round_0/report.json (round 0 run 14:29-14:50, not redone)"
+ },
+ "round_1": {
+  "real_cm": 9.713291831562104,
+  "real_cm_loop_lib": 9.71073414363846,
+  "phi_next_max_abs_diff": 0.0,
+  "psi_max_abs_diff": 0.0,
+  "phi_next": [
+   0.017632440137078258,
+   0.05530847597374684,
+   -0.17120957242974325,
+   0.22857495237622813,
+   0.4151654844406654,
+   0.254371007251347,
+   0.13202476099962757,
+   0.16960522490784033,
+   -0.08496936627406584,
+   -0.17683230873586264
+  ],
+  "phi_next_loop_lib": [
+   0.017632440137078258,
+   0.05530847597374684,
+   -0.17120957242974325,
+   0.22857495237622813,
+   0.4151654844406654,
+   0.254371007251347,
+   0.13202476099962757,
+   0.16960522490784033,
+   -0.08496936627406584,
+   -0.17683230873586264
+  ],
+  "keep_best": {
+   "cost": 0.009434803820509109,
+   "rms3d_cm": 9.713291831562104,
+   "round": 1,
+   "phi": [
+    0.22314355131420976,
+    0.20357767384706946,
+    -0.22314355131420976,
+    0.21410770767758322,
+    0.22314355131420976,
+    0.14087815398089332,
+    0.0867089613267545,
+    0.16815121295139193,
+    -0.11372269326854889,
+    -0.22314355131420976
+   ]
+  },
+  "hits": [
+   0,
+   0,
+   0,
+   0,
+   9,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "hits_loop_lib": [
+   0,
+   0,
+   0,
+   0,
+   9,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "seconds_ingest": 0.5265583992004395,
+  "seconds_fit": 607.6896562576294,
+  "seconds_tune": 621.445965051651,
+  "seconds_round": 1231.7237536907196,
+  "seconds_fly_write": null
+ },
+ "yaml_roundtrip": {
+  "S0/round_0/gains.yaml": {
+   "max_abs_phi": 0.0,
+   "vs_state": 0.0
+  },
+  "S0/round_1/gains.yaml": {
+   "max_abs_phi": 0.22314355131420976,
+   "vs_state": 2.220446049250313e-16
+  },
+  "S0/round_2/gains.yaml": {
+   "max_abs_phi": 0.4151654844406655,
+   "vs_state": 8.326672684688674e-17

@@ -1,0 +1,11 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+CPU forward done 29 s
+CPU gradients done 183 s
+/home/georg/.local/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:167: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+forward  max relative difference of the task 3-D RMS (%) per point and scenario {'default': [0.001, 0.0003, 0.0004, 0.0001], 'gains round 1 of (d)': [0.0001, 0.0001, 0.0003, 0.0001], 'true P1 beta': [0.0008, 0.0, 0.0005, 0.0002]} (35 s)
+gradient task at default: J gpu 5.35292178e-03 cpu 5.35296893e-03, all 14 parameters pass: False, worst relative 3.01e+05, worst abs/max 2.74e+04 (44 s)
+gradient sysid at default: J gpu 1.73061922e-01 cpu 1.73061737e-01, all 14 parameters pass: False, worst relative 5.77e+06, worst abs/max 3.67e+06 (28 s)
+gradient task at x = (0, 0.5 log true beta): J gpu 1.39146671e-02 cpu 1.39143772e-02, all 14 parameters pass: False, worst relative 522, worst abs/max 76.1 (29 s)
+gradient sysid at x = (0, 0.5 log true beta): J gpu 1.60498902e-01 cpu 1.60499092e-01, all 14 parameters pass: False, worst relative 1.15e+04, worst abs/max 1.15e+04 (28 s)

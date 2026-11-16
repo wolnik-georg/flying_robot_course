@@ -1,0 +1,10 @@
+1) same set as new and best: PREVIEW PASSED
+candidate [0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 0.0, 0.0, 0.0, 0.0] events ['crash']
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py:201: RuntimeWarning: Mean of empty slice.
+  return float((e * e).sum(-1).mean()), float((e[:, 2] ** 2).mean())
+/home/georg/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:145: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+2) crashing set as new, default gains as best:
+PREVIEW FAILED: A8 seed 2000: crash; A8 seed 2001: crash
+predicted 3-D RMS (mean over the 1 tuning scenarios and 2 seeds): new set nan cm, best flown set 11.69 cm (18 s)
+  A8      new: nan cm crash | nan cm crash          best: 11.6 cm floor | 11.8 cm floor

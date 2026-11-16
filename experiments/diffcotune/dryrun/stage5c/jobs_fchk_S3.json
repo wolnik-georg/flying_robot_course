@@ -1,0 +1,13 @@
+[
+ {
+  "name": "fchk_S3",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S3 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c && date +%T > logs/t_start_fchk_S3.txt && /usr/bin/python3 fsens_check.py > logs/fchk_S3.log 2>&1; echo $? > logs/fchk_S3.rc; date +%T > logs/t_end_fchk_S3.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 8.0,
+  "log": "logs/job_fchk_S3.log"
+ }
+]

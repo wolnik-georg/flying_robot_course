@@ -1,0 +1,16 @@
+03:45:22 flights seed 0 real 3-D RMS 10.43 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+03:45:27 flights seed 1 real 3-D RMS 10.47 cm, per flight [(False, False), (False, False), (False, False), (False, False)]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+03:59:00 S1 beta error % {'thrust_gain': np.float64(-1.5), 'motor_lag_ms': np.float64(-30.4), 'downwash_scale': np.float64(-43.1), 'plume_scale': np.float64(8.5), 'rpm_delay_ms': np.float64(-44.4)} best epoch 50 J 0.1367 -> 0.07929
+03:59:00 parts start {'p': 0.01444, 'v': 0.11464, 'q': 0.00758, 'w': 2.20156} end {'p': 0.00773, 'v': 0.06739, 'q': 0.00417, 'w': 1.55184}
+Traceback (most recent call last):
+  File "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5c/identifiability5.py", line 41, in <module>
+    import config as _cfg; _rd0 = float(_cfg.CALIBRATED_PLANT.rpm_delay_ms)
+ModuleNotFoundError: No module named 'config'

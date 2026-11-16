@@ -1,0 +1,6 @@
+eager vmap(jvp) 37.6 ms/block
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+compile+first 1 s
+compiled vmap(jvp) 40.7 ms/block
+max |compiled - eager| (primal and tangent) 0.000e+00

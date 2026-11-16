@@ -1,0 +1,283 @@
+13:18:27 === mode sequential root /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2
+13:18:27 SWITCH to S0 (round 0):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment sequential_S0S2/S0/round_0/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment sequential_S0S2/S0/round_0/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:18:40 manifest S0 0 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_0/flights.json (4 flights)
+13:18:40 started desk step of S0 round 0 (pid 3009118, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_0.log); expected about 23 min (estimate)
+13:21:09 manifest S0 1 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_1/flights.json (4 flights)
+13:21:09 started desk step of S0 round 1 (pid 3009474, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_1.log); expected about 23 min (estimate)
+13:23:42 manifest S0 2 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_2/flights.json (4 flights)
+13:23:42 started desk step of S0 round 2 (pid 3009851, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_2.log); expected about 23 min (estimate)
+13:26:21 manifest S0 3 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_3/flights.json (4 flights)
+13:26:21 started desk step of S0 round 3 (pid 3010245, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_3.log); expected about 23 min (estimate)
+13:29:09 manifest S0 4 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S0/round_4/flights.json (4 flights)
+13:29:09 started desk step of S0 round 4 (pid 3010687, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S0/desk_4.log); expected about 23 min (estimate)
+13:29:13 SWITCH to S2 (round 0):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment sequential_S0S2/S2/round_0/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment sequential_S0S2/S2/round_0/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:29:26 manifest S2 0 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S2/round_0/flights.json (4 flights)
+13:29:26 started desk step of S2 round 0 (pid 3010868, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S2/desk_0.log); expected about 23 min (estimate)
+13:33:14 manifest S2 1 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S2/round_1/flights.json (4 flights)
+13:33:14 started desk step of S2 round 1 (pid 3011413, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S2/desk_1.log); expected about 23 min (estimate)
+13:37:02 manifest S2 2 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S2/round_2/flights.json (4 flights)
+13:37:02 started desk step of S2 round 2 (pid 3011871, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S2/desk_2.log); expected about 23 min (estimate)
+13:41:02 manifest S2 3 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S2/round_3/flights.json (4 flights)
+13:41:02 started desk step of S2 round 3 (pid 3012375, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S2/desk_3.log); expected about 23 min (estimate)
+13:44:53 manifest S2 4 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/session_logs/S2/round_4/flights.json (4 flights)
+13:44:53 started desk step of S2 round 4 (pid 3012849, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/sequential_S0S2/S2/desk_4.log); expected about 23 min (estimate)
+13:44:57 sequential done in 1591 s
+13:44:57 uSD file budget (assumption: 1 file per flight and card, not stated in the repository; repeats not counted):
+  per controller: 20 tuning + 12 test flights = 32 files per card; 2 controller(s) in the session = 64 files
+  start count 10 + 64 = 74 at the end (archive rule: at >= 85, never reach 100)
+  no archive needed during the session
+  files only count; the file-to-flight assignment is explicit (manifest + registry), never by arrival time
+13:44:57 === mode interleaved root /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2
+13:44:58 SWITCH to S0 (round 0):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S0/round_0/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S0/round_0/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:45:11 manifest S0 0 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S0/round_0/flights.json (4 flights)
+13:45:11 started desk step of S0 round 0 (pid 3013015, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/desk_0.log); expected about 23 min (estimate)
+13:45:11 STATUS after S0 round 0:
+   == session status (13:45) ==
+   S0 round 0 desk RUNNING (pid 3013015), ready at about 14:08 (expected 23 min, estimate)
+   fly S2 round 0: A1, A8, then --solo CIRCLE, FIG8
+   NEXT for the drones: S2 round 0 (loaded now: S0)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_0/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_0/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+      S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:45:11 SWITCH to S2 (round 0):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S2/round_0/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S2/round_0/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:45:26 manifest S2 0 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S2/round_0/flights.json (4 flights)
+13:47:37 started desk step of S2 round 0 (pid 3013369, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/desk_0.log); expected about 23 min (estimate)
+13:47:37 STATUS after S2 round 0:
+   == session status (13:47) ==
+   fly S0 round 1: A1, A8, then --solo CIRCLE, FIG8
+   S2 round 0 desk RUNNING (pid 3013369), ready at about 14:10 (expected 23 min, estimate)
+   NEXT for the drones: S0 round 1 (loaded now: S2)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_1/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_1/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:47:38 SWITCH to S0 (round 1):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S0/round_1/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S0/round_1/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:47:54 manifest S0 1 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S0/round_1/flights.json (4 flights)
+13:51:10 started desk step of S0 round 1 (pid 3013851, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/desk_1.log); expected about 23 min (estimate)
+13:51:10 STATUS after S0 round 1:
+   == session status (13:51) ==
+   S0 round 1 desk RUNNING (pid 3013851), ready at about 14:14 (expected 23 min, estimate)
+   fly S2 round 1: A1, A8, then --solo CIRCLE, FIG8
+   NEXT for the drones: S2 round 1 (loaded now: S0)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_1/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_1/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+      S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:51:11 SWITCH to S2 (round 1):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S2/round_1/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S2/round_1/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:51:27 manifest S2 1 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S2/round_1/flights.json (4 flights)
+13:53:38 started desk step of S2 round 1 (pid 3014190, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/desk_1.log); expected about 23 min (estimate)
+13:53:38 STATUS after S2 round 1:
+   == session status (13:53) ==
+   fly S0 round 2: A1, A8, then --solo CIRCLE, FIG8
+   S2 round 1 desk RUNNING (pid 3014190), ready at about 14:16 (expected 23 min, estimate)
+   NEXT for the drones: S0 round 2 (loaded now: S2)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_2/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_2/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:53:39 SWITCH to S0 (round 2):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S0/round_2/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S0/round_2/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:53:56 manifest S0 2 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S0/round_2/flights.json (4 flights)
+13:57:13 started desk step of S0 round 2 (pid 3014767, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/desk_2.log); expected about 23 min (estimate)
+13:57:13 STATUS after S0 round 2:
+   == session status (13:57) ==
+   S0 round 2 desk RUNNING (pid 3014767), ready at about 14:20 (expected 23 min, estimate)
+   fly S2 round 2: A1, A8, then --solo CIRCLE, FIG8
+   NEXT for the drones: S2 round 2 (loaded now: S0)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_2/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_2/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+      S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:57:14 SWITCH to S2 (round 2):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S2/round_2/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S2/round_2/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+13:57:30 manifest S2 2 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S2/round_2/flights.json (4 flights)
+13:59:32 started desk step of S2 round 2 (pid 3015103, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/desk_2.log); expected about 23 min (estimate)
+13:59:32 STATUS after S2 round 2:
+   == session status (13:59) ==
+   fly S0 round 3: A1, A8, then --solo CIRCLE, FIG8
+   S2 round 2 desk RUNNING (pid 3015103), ready at about 14:22 (expected 23 min, estimate)
+   NEXT for the drones: S0 round 3 (loaded now: S2)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_3/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_3/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:59:33 SWITCH to S0 (round 3):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S0/round_3/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S0/round_3/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+13:59:50 manifest S0 3 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S0/round_3/flights.json (4 flights)
+14:03:08 started desk step of S0 round 3 (pid 3015558, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/desk_3.log); expected about 23 min (estimate)
+14:03:09 STATUS after S0 round 3:
+   == session status (14:03) ==
+   S0 round 3 desk RUNNING (pid 3015558), ready at about 14:26 (expected 23 min, estimate)
+   fly S2 round 3: A1, A8, then --solo CIRCLE, FIG8
+   NEXT for the drones: S2 round 3 (loaded now: S0)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_3/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_3/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+      S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+14:03:10 SWITCH to S2 (round 3):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S2/round_3/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S2/round_3/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+14:03:26 manifest S2 3 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S2/round_3/flights.json (4 flights)
+14:05:34 started desk step of S2 round 3 (pid 3015933, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/desk_3.log); expected about 23 min (estimate)
+14:05:34 STATUS after S2 round 3:
+   == session status (14:05) ==
+   fly S0 round 4: A1, A8, then --solo CIRCLE, FIG8
+   S2 round 3 desk RUNNING (pid 3015933), ready at about 14:28 (expected 23 min, estimate)
+   NEXT for the drones: S0 round 4 (loaded now: S2)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_4/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/round_4/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+14:05:35 SWITCH to S0 (round 4):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S0 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 0; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S0/round_4/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S0
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S0/round_4/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 0 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+14:05:51 manifest S0 4 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S0/round_4/flights.json (4 flights)
+14:09:08 started desk step of S0 round 4 (pid 3016379, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S0/desk_4.log); expected about 23 min (estimate)
+14:09:08 STATUS after S0 round 4:
+   == session status (14:09) ==
+   S0 round 4 desk RUNNING (pid 3016379), ready at about 14:32 (expected 23 min, estimate)
+   fly S2 round 4: A1, A8, then --solo CIRCLE, FIG8
+   NEXT for the drones: S2 round 4 (loaded now: S0)
+   switch:
+      stop CS2 (the radio is shared)
+      python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+      python3 experiments/diffcotune/lab/apply_gains.py merge --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_4/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+      python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+      launch CS2 (applies the yaml firmware_params to the drones)
+      stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/round_4/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+      relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+      S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+14:09:09 SWITCH to S2 (round 4):
+   stop CS2 (the radio is shared)
+   python3 flying_drone_stack/tools/set_tree_strategy.py S2 --yaml <crazyflies.yaml>     # cf5 indi 0, rnn.en 1; cf_second enabled
+   python3 experiments/diffcotune/lab/apply_gains.py merge --fragment interleaved_S0S2/S2/round_4/gains.yaml --yaml <crazyflies.yaml>     # the 15 gains of this controller's round; put the .new file in place
+   python3 flying_drone_stack/tools/lab_check_strategy.py     # read-only: the yaml CS2 will read describes strategy S2
+   launch CS2 (applies the yaml firmware_params to the drones)
+   stop CS2 again; python3 experiments/diffcotune/lab/apply_gains.py readback --uri <cf5 uri> --fragment interleaved_S0S2/S2/round_4/gains.yaml     # 15 gains + stabilizer.controller 9, indi 0, rnn.en 1 from the firmware, fresh connection (S0 lab card, per-round items 1 and 2)
+   relaunch CS2; read the `Update parameter "rnn.en"` lines of cf5 in the launch output
+   S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here
+14:09:22 manifest S2 4 wrote /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/session_logs/S2/round_4/flights.json (4 flights)
+14:09:22 started desk step of S2 round 4 (pid 3016518, log /home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/mock6/interleaved_S0S2/S2/desk_4.log); expected about 23 min (estimate)
+14:09:22 STATUS after S2 round 4:
+   == session status (14:09) ==
+   S2 round 4 desk RUNNING (pid 3016518), ready at about 14:32 (expected 23 min, estimate)
+   NEXT: wait for the desk steps above (drones: test flights with the default gains of the loaded controller if some are left)
+14:09:27 interleaved done in 1470 s
+14:09:27 uSD file budget (assumption: 1 file per flight and card, not stated in the repository; repeats not counted):
+  per controller: 20 tuning + 12 test flights = 32 files per card; 2 controller(s) in the session = 64 files
+  start count 10 + 64 = 74 at the end (archive rule: at >= 85, never reach 100)
+  no archive needed during the session
+  files only count; the file-to-flight assignment is explicit (manifest + registry), never by arrival time
+14:09:27 IDENTICAL sequential vs interleaved: {"S0": {"keep_identical": true, "phi_last_identical": true, "psi_last_identical": true, "best_yaml_identical": true, "max_abs_phi_diff": 0.0}, "S2": {"keep_identical": true, "phi_last_identical": true, "psi_last_identical": true, "best_yaml_identical": true, "max_abs_phi_diff": 0.0}}

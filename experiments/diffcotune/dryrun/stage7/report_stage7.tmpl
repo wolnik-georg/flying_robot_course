@@ -1,0 +1,40 @@
+# Stage 7 report: S3 diagnosis, NS2 weights check (15 Nov 2026, desk only)
+
+Superseded in part by Stage 8 (user decision 15 Nov, 16:00): the planned reruns (chain3) were stopped; this report holds the diagnosis results and the preflight NS2 check. Jobs: `diag7_S3`, `fix_S3`, `diag7_cd`, `fix_S1`, `diag7_S1`, `c1redo` (logs in `logs/`, results in `results/`).
+
+**Correction to Stage 5c:** step 1 compared reverse and forward mode at the fitted β of *Stage 5* (RPM delay still fitted); the β of the RPM-delay-fixed runs (rdfix) were never tested.
+
+## 1. S3 diagnosis (point: θ₀ and β after the round-0 fit of the rdfix run, noise seeds 6000 / 6001, the 4-scenario set of that run)
+
+**a. Descent test** (J = mean over the 4 tuning scenarios; steps along −g/|g|, last row one Adam step of lr 0.01):
+
+@TABLE@
+
+* Noise-free, the prediction is exact (1.456e-7 against 1.456e-7 at step 1e-5): the model and its gradient agree.
+* With noise (the tuning step as the loop runs it) the cost **rises** at 1e-5 and 1e-4 although the predicted decrease is −5.4 and −54: at this point the noisy gradient is |g| = 5.4e5, almost all of it from A1 (norm per scenario 2.2e6 / 0.023 / 5e-4 / 4e-4). The first Adam step of the loop therefore follows a direction that is not a descent direction of the noisy cost.
+* **Not rounding:** forward mode (compiled forward sensitivity) and reverse mode give the **same** gradient on every scenario in rounds 0–3 (cosine 1.000; A1 norm forward: @RN@; reverse: @RC@). The finite difference of the noisy A1 cost along the gradient direction **does not converge**: h 1e-6: @F6@, 1e-7: @F7@, 1e-8: @F8@, against the gradient value @GV@. For S1 at its own fitted β the finite difference equals the gradient at every h (@S1FD@) and the descent test passes (dJ −1.5e-7 against −1.5e-7 at 1e-5).
+
+**b. Landscape** (21-point slices of the noisy cost, ±25 % per gain; table `results/landscape_table.md`, figures `figs/landscape_S3_S1.png`, `figs/fd_A1_S3_S1.png`): in S3 every gain gives an A1 slice with 11–16 direction changes in 20 steps (roughness 0.31–0.67), while A8, CIRCLE and FIG8 are smooth (0–3 changes, roughness ≤ 0.06). S1 at its own β: A1 has 0–8 changes (roughness ≤ 0.17), the others 0–3. **The noisy A1 cost of the S3 model is not smooth in the gains**: the gradient is exact where it exists but useless for steps of 1e-2. Without noise A1 is smooth (the noise-free forward gradient is about 1e-2 and matches its prediction), so the roughness comes from sensor noise acting on the S3 closed loop on A1 (at this point the model's S3 sits 8.8 cm too high on A1, S1 2.4 cm).
+
+**c. NS2 path.** (1) With the controller-side NS2 term set to zero the S3 model equals the S1 model exactly (difference 0.0 on A1, A8, CIRCLE at θ₀ and random gains; job `c1redo`; the first version of this check in `diag7_cd.json` removed the plant downwash too and is void). With NS2 on the difference to S1 is 0.34 / 0.31 (A1), 0.10 / 0.08 (A8), 0.14 / 0.12 (CIRCLE) (max abs over x, v, 3000 blocks). (2) S3 model against frsim: the Stage 5 forward check (`dryrun/stage5/results/S3_forward_check.json`), not repeated. (3) Derivative of the NS2 output with respect to the measured state: autograd against central finite differences, largest difference about 1e-10 (A1 and A8, 3 states each). (4) The clamp at 8 m/s² is never active (0 of 2350 A1 and 0 of 2650 A8 evaluations); a peer is above in 100 %; the hold is −2.54 m/s² on average on A1 and −0.25 on A8; the first two feeds give zero hold as in frsim. (5) Code: S2 and S3 use the same function `s2_model.ns2_hold`; no detach or no_grad on the NS2 path.
+
+**d. INDI + NS2 interaction** (A1 / A8, θ₀, β of the round-0 fit): INDI disturbance term a_indi,z mean 3.12 (S3) against 3.44 m/s² (S1) on A1; correlation of the NS2 hold with a_indi,z −0.99 (S3) against −0.40 (S1): the two counteract each other in the model. The same quantities inside frsim are not logged here (not available); the model agrees with frsim in position within 0.5 % (Stage 5).
+
+**e. Ablation (NS2 off in the tuning model only):** not run (superseded by Stage 8; the cause is already separated: noise on A1).
+
+## 2. Fix or options
+
+No model bug found (c1 exact, NS2 derivative correct, forward = reverse). Nothing changed in the S3 model. The cause is a property of the noisy A1 cost of S3. Options (each a deviation or a different method; not adopted here): (i) no noise in the tuning step (the paper's setting; it is in the Stage 8 variant, where A1 is smooth); (ii) leave A1 out of the S3 tuning cost; (iii) many more noise seeds per round (cost × the number of seeds); (iv) a smaller learning rate; (v) leave S3 untuned. Probes of the options were not run in this stage (replaced by Stage 8). **S3 lab-ready on the desk side with the old method (Stage 7): no.**
+
+## 3. NS2 weights check
+
+Source of record for the weights of the S2 / S3 models: `flying_drone_stack/tools/residual/weights/registry.json`, entry `ns2_v2` (released 17 Oct 2026), equal to `weights/ns2_v2.sha256` and to the file the models load (`simulator/frsim/data/ns2_v2.npz`): sha256 9450131abb06a7199c78107c08ae9d8e508ca9b297d15960dbcd009871fc2d97. The ARM image `study_tree_v2.bin` (sha256 3ae7304a…, `docs/s3_indi_ns2_decision_2026-10-18.md`) contains these weights per that document; **the image on the drones is not read by the check** (no radio): open. Yaml switches of record: `ctrlOmarIndi.indi` / `rnn.en` of cf5 per strategy branch of crazyswarm2 (`study_S1`: 3 / 0, `study_S2`: 0 / 1, `study_S3`: 3 / 1, S0 on `main`: 0 / 0), cf_second 0 / 0.
+`lab/preflight.py` item 7 checks the hash (S2, S3) and the yaml switches (all four); mock test `lab/test_preflight_ns2.py`: right values pass, one flipped bit in the weights fails S2 and S3, one wrong `rnn.en` fails S2 and S3, S1 with the yaml of S2 fails: ALL CASES AS EXPECTED.
+
+## 4. Preflight per controller
+Run for S0 and S2 after their Stage 8 dry runs: see `dryrun/stage8/LAB_TOMORROW.md`.
+
+## 5. Open points
+1. Which part of the S3 loop amplifies the sensor noise on A1: not established; the paper variant has no noise in the tuning step.
+2. The weights in the image on the drones: not checked by the tools.
+3. INDI and NS2 terms inside frsim: not available.

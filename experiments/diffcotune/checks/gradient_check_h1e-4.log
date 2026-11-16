@@ -1,0 +1,100 @@
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+== A1 J_task  J = 1.017399e-02   worst relative error 1.324e+293  FAIL   (autograd 26 s incl. one rollout with graph, 28-row FD batch 21 s)
+   Pxy             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Pz              autograd -5.665696e-03  fd -5.667164e-03  rel 2.59e-04 
+   Dxy             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Dz              autograd +5.658883e-04  fd +5.692056e-04  rel 5.83e-03 
+   Iz              autograd -4.360217e-02  fd -4.360163e-02  rel 1.23e-05 
+   KRxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KIxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   thrust_gain     autograd -9.023377e-02  fd -9.021841e-02  rel 1.70e-04 
+   motor_lag_ms    autograd -5.081419e-06  fd -5.480210e-06  rel 7.28e-02 
+   downwash_scale  autograd +2.658079e-02  fd +2.656544e-02  rel 5.78e-04 
+   plume_scale     autograd +1.324442e-07  fd +0.000000e+00  rel 1.32e+293 
+== A1 J_sysId  J = 3.600704e-02   worst relative error 3.468e+293  FAIL   (autograd 26 s incl. one rollout with graph, 28-row FD batch 21 s)
+   Pxy             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Pz              autograd +1.502262e-02  fd +1.501544e-02  rel 4.78e-04 
+   Dxy             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Dz              autograd -1.334252e-03  fd -1.352933e-03  rel 1.38e-02 
+   Iz              autograd +8.529814e-02  fd +8.529561e-02  rel 2.97e-05 
+   KRxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KIxy            autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   thrust_gain     autograd +1.845554e-01  fd +1.844601e-01  rel 5.17e-04 
+   motor_lag_ms    autograd +3.703046e-06  fd +5.151353e-06  rel 2.81e-01 
+   downwash_scale  autograd -5.366611e-02  fd -5.364353e-02  rel 4.21e-04 
+   plume_scale     autograd -3.468474e-07  fd +0.000000e+00  rel 3.47e+293 
+== A8 J_task  J = 2.670214e-03   worst relative error 7.164e-04  PASS   (autograd 21 s incl. one rollout with graph, 28-row FD batch 22 s)
+   Pxy             autograd +4.531868e-04  fd +4.531980e-04  rel 2.48e-05 
+   Pz              autograd +8.488126e-04  fd +8.489855e-04  rel 2.04e-04 
+   Dxy             autograd +2.407752e-04  fd +2.407831e-04  rel 3.28e-05 
+   Dz              autograd -9.494257e-04  fd -9.494844e-04  rel 6.18e-05 
+   Iz              autograd -3.796843e-03  fd -3.796976e-03  rel 3.51e-05 
+   KRxy            autograd -2.479486e-03  fd -2.479706e-03  rel 8.84e-05 
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwxy            autograd -1.073925e-03  fd -1.074219e-03  rel 2.73e-04 
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KIxy            autograd +7.635214e-04  fd +7.635143e-04  rel 9.33e-06 
+   thrust_gain     autograd -8.827118e-03  fd -8.827552e-03  rel 4.91e-05 
+   motor_lag_ms    autograd +3.217145e-04  fd +3.217145e-04  rel 7.30e-08 
+   downwash_scale  autograd +1.535970e-03  fd +1.537071e-03  rel 7.16e-04 
+   plume_scale     autograd +2.043904e-03  fd +2.044092e-03  rel 9.20e-05 
+== A8 J_sysId  J = 4.569722e-01   worst relative error 5.412e-02  FAIL   (autograd 21 s incl. one rollout with graph, 28-row FD batch 22 s)
+   Pxy             autograd +6.740053e-02  fd +6.740054e-02  rel 9.02e-08 
+   Pz              autograd -3.454410e-02  fd -3.454452e-02  rel 1.21e-05 
+   Dxy             autograd +6.455551e-02  fd +6.455709e-02  rel 2.44e-05 
+   Dz              autograd +1.205364e-02  fd +1.204640e-02  rel 6.00e-04 
+   Iz              autograd +4.917290e-02  fd +4.917464e-02  rel 3.53e-05 
+   KRxy            autograd -1.042555e-01  fd -1.042817e-01  rel 2.52e-04 
+   KRz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   Kwxy            autograd -4.266058e-01  fd -4.266563e-01  rel 1.18e-04 
+   Kwz             autograd +0.000000e+00  fd +0.000000e+00  rel - ZERO
+   KIxy            autograd +4.340296e-02  fd +4.340409e-02  rel 2.60e-05 
+   thrust_gain     autograd -8.093212e-04  fd -8.556323e-04  rel 5.41e-02 
+   motor_lag_ms    autograd +6.028672e-01  fd +6.028672e-01  rel 8.10e-08 
+   downwash_scale  autograd +1.329702e-02  fd +1.340547e-02  rel 8.09e-03 
+   plume_scale     autograd +6.258415e-01  fd +6.258597e-01  rel 2.91e-05 
+W1111 18:03:39.891000 1674468 torch/_dynamo/convert_frame.py:844] [0/8] torch._dynamo hit config.cache_size_limit (8)
+W1111 18:03:39.891000 1674468 torch/_dynamo/convert_frame.py:844] [0/8]    function: '_block' (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/s0_model.py:122)
+W1111 18:03:39.891000 1674468 torch/_dynamo/convert_frame.py:844] [0/8]    last reason: 0/0: tensor 'L['st'][0]' requires_grad mismatch. expected requires_grad=0
+W1111 18:03:39.891000 1674468 torch/_dynamo/convert_frame.py:844] [0/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W1111 18:03:39.891000 1674468 torch/_dynamo/convert_frame.py:844] [0/8] To diagnose recompilation issues, see https://pytorch.org/docs/main/torch.compiler_troubleshooting.html.
+== CIRCLE J_task  J = 1.585613e-03   worst relative error 7.946e-03  PASS   (autograd 130 s incl. one rollout with graph, 28-row FD batch 14 s)
+   Pxy             autograd -2.620353e-04  fd -2.620342e-04  rel 4.26e-06 
+   Pz              autograd +2.534270e-03  fd +2.534471e-03  rel 7.94e-05 
+   Dxy             autograd -1.193348e-04  fd -1.193356e-04  rel 6.28e-06 
+   Dz              autograd -1.139179e-05  fd -1.148304e-05  rel 7.95e-03 
+   Iz              autograd -5.668401e-03  fd -5.668372e-03  rel 5.17e-06 
+   KRxy            autograd -1.865856e-06  fd -1.865857e-06  rel 2.98e-07 
+   KRz             autograd +1.258112e-09  fd +1.257994e-09  rel 9.39e-05 
+   Kwxy            autograd -9.894603e-06  fd -9.893068e-06  rel 1.55e-04 
+   Kwz             autograd -2.610193e-09  fd -2.610101e-09  rel 3.52e-05 
+   KIxy            autograd +2.041190e-05  fd +2.041096e-05  rel 4.59e-05 
+   thrust_gain     autograd -1.319897e-02  fd -1.319849e-02  rel 3.66e-05 
+   motor_lag_ms    autograd +2.877840e-05  fd +2.877715e-05  rel 4.34e-05 
+   downwash_scale  autograd +2.452789e-04  fd +2.452777e-04  rel 4.53e-06 
+   plume_scale     autograd +0.000000e+00  fd +2.168404e-15  rel - ZERO
+== CIRCLE J_sysId  J = 6.965194e-03   worst relative error 1.258e-04  PASS   (autograd 130 s incl. one rollout with graph, 28-row FD batch 14 s)
+   Pxy             autograd -1.151223e-04  fd -1.151317e-04  rel 8.17e-05 
+   Pz              autograd -1.111894e-03  fd -1.111928e-03  rel 3.07e-05 
+   Dxy             autograd +1.694421e-03  fd +1.694427e-03  rel 3.74e-06 
+   Dz              autograd +3.587081e-04  fd +3.587532e-04  rel 1.26e-04 
+   Iz              autograd +9.027529e-03  fd +9.028104e-03  rel 6.36e-05 
+   KRxy            autograd +1.280870e-03  fd +1.280870e-03  rel 1.24e-08 
+   KRz             autograd +1.567609e-06  fd +1.567609e-06  rel 2.44e-07 
+   Kwxy            autograd -4.563055e-03  fd -4.563068e-03  rel 2.79e-06 
+   Kwz             autograd -6.112127e-06  fd -6.112127e-06  rel 2.03e-08 
+   KIxy            autograd +1.115708e-03  fd +1.115716e-03  rel 7.08e-06 
+   thrust_gain     autograd +5.406515e-02  fd +5.406564e-02  rel 9.01e-06 
+   motor_lag_ms    autograd +1.001820e-03  fd +1.001821e-03  rel 1.12e-06 
+   downwash_scale  autograd -1.530792e-03  fd -1.530783e-03  rel 5.84e-06 
+   plume_scale     autograd +0.000000e+00  fd +4.336809e-15  rel - ZERO
+GRADIENT CHECK: FAIL (tolerance 1 % per parameter, h = 0.0001 in log-parameters)

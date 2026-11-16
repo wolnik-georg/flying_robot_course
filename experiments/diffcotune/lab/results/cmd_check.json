@@ -1,0 +1,518 @@
+{
+ "run_formation": [
+  {
+   "name": "A1",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes",
+   "rotate_arg_deg": 0.0,
+   "ingest_rotate_deg": 0.0,
+   "lab_duration_s": 15.0,
+   "frsim_scenario_s": 15.0,
+   "params": {
+    "dz": 0.375,
+    "hold": 15.0,
+    "rotate_deg": 0.0
+   },
+   "realised": {
+    "peak_speed": 0.0,
+    "peak_accel": 0.0,
+    "speed_requested": null,
+    "period_effective": null,
+    "period_pinned": false,
+    "path_kind": "fixed"
+   },
+   "max_diff_bottom_path_mm": 0.0,
+   "max_diff_top_minus_bottom_mm": 0.0,
+   "dz_start_lab_m": 0.375,
+   "dz_start_frsim_m": 0.375,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    0.0,
+    0.0,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.0,
+    0.0,
+    0.875
+   ],
+   "margin_to_flight_space_m": {
+    "x": 1.0,
+    "y": 2.0,
+    "z_floor": 0.5,
+    "z_ceiling": 0.825
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.0,
+    0.0
+   ],
+   "role": "tuning",
+   "cell": {
+    "dz": 0.375,
+    "hold": 15.0
+   }
+  },
+  {
+   "name": "A8",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes",
+   "rotate_arg_deg": 0.0,
+   "ingest_rotate_deg": 0.0,
+   "lab_duration_s": 18.0,
+   "frsim_scenario_s": 18.0,
+   "params": {
+    "dz": 0.375,
+    "span": 1.0,
+    "duration": 8.0,
+    "settle": 2.0,
+    "passes": 2,
+    "rotate_deg": 0.0
+   },
+   "realised": {
+    "peak_speed": 0.2734,
+    "peak_accel": 0.1174,
+    "speed_requested": null,
+    "period_effective": null,
+    "period_pinned": false,
+    "path_kind": "fixed"
+   },
+   "max_diff_bottom_path_mm": 0.2981691425862909,
+   "max_diff_top_minus_bottom_mm": 0.5963382851725818,
+   "dz_start_lab_m": 0.375,
+   "dz_start_frsim_m": 0.375,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    0.0,
+    -0.5,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.0,
+    0.5,
+    0.875
+   ],
+   "margin_to_flight_space_m": {
+    "x": 1.0,
+    "y": 1.499999331972735,
+    "z_floor": 0.5,
+    "z_ceiling": 0.825
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.0,
+    0.0
+   ],
+   "role": "tuning",
+   "cell": {
+    "dz": 0.375,
+    "span": 1.0,
+    "duration": 8.0,
+    "settle": 2.0,
+    "passes": 2
+   }
+  },
+  {
+   "name": "A4 cell 1",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes",
+   "rotate_arg_deg": 90.0,
+   "ingest_rotate_deg": -90.0,
+   "lab_duration_s": 15.000000000000002,
+   "frsim_scenario_s": 15.000000000000002,
+   "params": {
+    "dz": 0.4,
+    "offset": 0.125,
+    "axis": "y",
+    "motion": "line",
+    "speed": 0.35,
+    "length": 1.2,
+    "radius": 0.45,
+    "period": 8.0,
+    "laps": 2.0,
+    "rotate_deg": 90.0
+   },
+   "realised": {
+    "peak_speed": 0.35,
+    "peak_accel": 0.1603,
+    "speed_requested": 0.35,
+    "period_effective": 8.0,
+    "period_pinned": false,
+    "path_kind": "line"
+   },
+   "max_diff_bottom_path_mm": 0.37592489734455947,
+   "max_diff_top_minus_bottom_mm": 0.37592489734455947,
+   "dz_start_lab_m": 0.4,
+   "dz_start_frsim_m": 0.4,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    -0.062,
+    -0.6,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.062,
+    0.6,
+    0.9
+   ],
+   "margin_to_flight_space_m": {
+    "x": 0.9375,
+    "y": 1.3999999998377377,
+    "z_floor": 0.5,
+    "z_ceiling": 0.7999999999999999
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.062,
+    -0.6
+   ],
+   "role": "test",
+   "cell": {
+    "dz": 0.4,
+    "offset": 0.125,
+    "speed": 0.35,
+    "axis": "y",
+    "motion": "line"
+   }
+  },
+  {
+   "name": "A4 cell 2",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.075 --motion line --rotate 90 --height 0.5 --auto-center --yes",
+   "rotate_arg_deg": 90.0,
+   "ingest_rotate_deg": -90.0,
+   "lab_duration_s": 15.000000000000002,
+   "frsim_scenario_s": 15.000000000000002,
+   "params": {
+    "dz": 0.4,
+    "offset": 0.075,
+    "axis": "y",
+    "motion": "line",
+    "speed": 0.35,
+    "length": 1.2,
+    "radius": 0.45,
+    "period": 8.0,
+    "laps": 2.0,
+    "rotate_deg": 90.0
+   },
+   "realised": {
+    "peak_speed": 0.35,
+    "peak_accel": 0.1603,
+    "speed_requested": 0.35,
+    "period_effective": 8.0,
+    "period_pinned": false,
+    "path_kind": "line"
+   },
+   "max_diff_bottom_path_mm": 0.37592489734455947,
+   "max_diff_top_minus_bottom_mm": 0.37592489734455947,
+   "dz_start_lab_m": 0.4,
+   "dz_start_frsim_m": 0.4,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    -0.038,
+    -0.6,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.038,
+    0.6,
+    0.9
+   ],
+   "margin_to_flight_space_m": {
+    "x": 0.9625,
+    "y": 1.3999999998377377,
+    "z_floor": 0.5,
+    "z_ceiling": 0.7999999999999999
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.038,
+    -0.6
+   ],
+   "role": "test",
+   "cell": {
+    "dz": 0.4,
+    "offset": 0.075,
+    "speed": 0.35,
+    "axis": "y",
+    "motion": "line"
+   }
+  },
+  {
+   "name": "A8 as flown 23 Oct (study cell, --passes 4)",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.4 --speed 0.35 --height 0.5 --passes 4 --auto-center --yes",
+   "rotate_arg_deg": 0.0,
+   "ingest_rotate_deg": 0.0,
+   "lab_duration_s": 27.0,
+   "frsim_scenario_s": 14.5,
+   "params": {
+    "dz": 0.4,
+    "span": 1.0,
+    "duration": 6.25,
+    "settle": 2.0,
+    "passes": 4,
+    "rotate_deg": 0.0
+   },
+   "realised": {
+    "peak_speed": 0.35,
+    "peak_accel": 0.1923,
+    "speed_requested": null,
+    "period_effective": null,
+    "period_pinned": false,
+    "path_kind": "fixed"
+   },
+   "max_diff_bottom_path_mm": 0.05345606482831666,
+   "max_diff_top_minus_bottom_mm": 0.10691212965663333,
+   "dz_start_lab_m": 0.4,
+   "dz_start_frsim_m": 0.4,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    0.0,
+    -0.5,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.0,
+    0.5,
+    0.9
+   ],
+   "margin_to_flight_space_m": {
+    "x": 1.0,
+    "y": 1.4999982071010278,
+    "z_floor": 0.5,
+    "z_ceiling": 0.7999999999999999
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.0,
+    0.0
+   ],
+   "role": "extra",
+   "cell": {
+    "dz": 0.4,
+    "span": 1.0,
+    "duration": 6.25,
+    "settle": 2.0,
+    "passes": 2
+   }
+  },
+  {
+   "name": "A8 tuning cell with --speed instead of --duration",
+   "command": "ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --speed 0.2734375 --passes 2 --height 0.5 --auto-center --yes",
+   "rotate_arg_deg": 0.0,
+   "ingest_rotate_deg": 0.0,
+   "lab_duration_s": 18.0,
+   "frsim_scenario_s": 18.0,
+   "params": {
+    "dz": 0.375,
+    "span": 1.0,
+    "duration": 8.0,
+    "settle": 2.0,
+    "passes": 2,
+    "rotate_deg": 0.0
+   },
+   "realised": {
+    "peak_speed": 0.2734,
+    "peak_accel": 0.1174,
+    "speed_requested": null,
+    "period_effective": null,
+    "period_pinned": false,
+    "path_kind": "fixed"
+   },
+   "max_diff_bottom_path_mm": 0.2981691425862909,
+   "max_diff_top_minus_bottom_mm": 0.5963382851725818,
+   "dz_start_lab_m": 0.375,
+   "dz_start_frsim_m": 0.375,
+   "start_z_lab_m": 0.5,
+   "start_z_frsim_m": 0.5,
+   "curve_first_point_mm": [
+    [
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     0.0,
+     0.0,
+     0.0
+    ]
+   ],
+   "start_is_relative_with_shift": true,
+   "absolute_path_min": [
+    0.0,
+    -0.5,
+    0.5
+   ],
+   "absolute_path_max": [
+    0.0,
+    0.5,
+    0.875
+   ],
+   "margin_to_flight_space_m": {
+    "x": 1.0,
+    "y": 1.499999331972735,
+    "z_floor": 0.5,
+    "z_ceiling": 0.825
+   },
+   "safety_problems": [],
+   "spec_problems": [],
+   "anchor_xy_centred": [
+    0.0,
+    0.0
+   ],
+   "role": "extra",
+   "cell": {
+    "dz": 0.375,
+    "span": 1.0,
+    "duration": 8.0,
+    "settle": 2.0,
+    "passes": 2
+   }
+  }
+ ],
+ "solo_files": {
+  "circle": {
+   "lab_cell": true,
+   "note": "",
+   "pad_window": {
+    "x": [
+     -0.2500000166066626,
+     0.25000002839468893
+    ],
+    "y": [
+     -0.5000000663034814,
+     1.9999999559790047
+    ]
+   },
+   "fits_at_pad": true,
+   "file": "circle_frsim_rot90_tuning_mode1.csv",
+   "cell_duration_s": 9.064926,
+   "max_pos_diff_mm": 0.0026427089977465457,
+   "rotate_deg_in_file": 90.0,
+   "n_existing_files": 17,
+   "nearest_existing_file": "circle_mode1_kt0.9.csv",
+   "nearest_existing_duration_s": 8.388008,
+   "nearest_duration_difference_s": 0.6769180000000006,
+   "exact_duration_match": false
+  },
+  "figure8": {
+   "lab_cell": true,
+   "note": "",
+   "pad_window": {
+    "x": [
+     -0.5400000421297151,
+     0.5400000160162961
+    ],
+    "y": [
+     -1.0800000297113086,
+     1.0800000036190545
+    ]
+   },
+   "fits_at_pad": true,
+   "file": "figure8_frsim_rot90_tuning_mode1.csv",
+   "cell_duration_s": 11.064486,
+   "max_pos_diff_mm": 0.0029396498736344867,
+   "rotate_deg_in_file": 90.0,
+   "n_existing_files": 33,
+   "nearest_existing_file": "figure8_mode1_kt0.008.csv",
+   "nearest_existing_duration_s": 10.364486000000001,
+   "nearest_duration_difference_s": 0.6999999999999993,
+   "exact_duration_match": false
+  },
+  "oval": {
+   "lab_cell": false,
+   "note": "OVAL dropped from the lab test set (user, 13 Nov)",
+   "pad_window": {
+    "x": [
+     0.30908999844977547,
+     0.999999988157156
+    ],
+    "y": [
+     -0.2000000193407241,
+     0.20000004148707617
+    ]
+   },
+   "fits_at_pad": false,
+   "file": "oval_frsim_study_mode1.csv",
+   "cell_duration_s": 14.689722,
+   "max_pos_diff_mm": 0.002964370274471939,
+   "rotate_deg_in_file": 0.0,
+   "n_existing_files": 16,
+   "nearest_existing_file": "oval_mode1_kt0.05.csv",
+   "nearest_existing_duration_s": 13.073459999999997,
+   "nearest_duration_difference_s": 1.6162620000000025,
+   "exact_duration_match": false
+  }
+ }
+}

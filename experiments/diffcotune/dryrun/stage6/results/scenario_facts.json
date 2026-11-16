@@ -1,0 +1,120 @@
+{
+ "scenarios": [
+  {
+   "name": "A1 tuning (dz 0.375)",
+   "scenario": "A1",
+   "role": "tuning",
+   "ticks": 23500,
+   "blocks": 11750,
+   "scenario_s": 15.0,
+   "total_s": 23.5,
+   "two_drones": true
+  },
+  {
+   "name": "A8 tuning (dz 0.375, 8.0 s)",
+   "scenario": "A8",
+   "role": "tuning",
+   "ticks": 26500,
+   "blocks": 13250,
+   "scenario_s": 18.0,
+   "total_s": 26.5,
+   "two_drones": true
+  },
+  {
+   "name": "CIRCLE (slow version)",
+   "scenario": "CIRCLE",
+   "role": "tuning",
+   "ticks": 17564,
+   "blocks": 8782,
+   "scenario_s": 9.064926,
+   "total_s": 17.564,
+   "two_drones": false
+  },
+  {
+   "name": "FIG8 (slow version)",
+   "scenario": "FIG8",
+   "role": "tuning",
+   "ticks": 19564,
+   "blocks": 9782,
+   "scenario_s": 11.064486,
+   "total_s": 19.564,
+   "two_drones": false
+  },
+  {
+   "name": "A4 cell 1 (test)",
+   "scenario": "A4",
+   "role": "test",
+   "ticks": 23500,
+   "blocks": 11750,
+   "scenario_s": 15.000000000000002,
+   "total_s": 23.5,
+   "two_drones": true
+  },
+  {
+   "name": "A4 cell 2 (test)",
+   "scenario": "A4",
+   "role": "test",
+   "ticks": 23500,
+   "blocks": 11750,
+   "scenario_s": 15.000000000000002,
+   "total_s": 23.5,
+   "two_drones": true
+  },
+  {
+   "name": "OVAL (not flyable at the pad)",
+   "scenario": "OVAL",
+   "role": "test",
+   "ticks": 23189,
+   "blocks": 11594,
+   "scenario_s": 14.689722,
+   "total_s": 23.189,
+   "two_drones": false
+  },
+  {
+   "name": "A1 study cell (dz 0.45)",
+   "scenario": "A1",
+   "role": "study",
+   "ticks": 23500,
+   "blocks": 11750,
+   "scenario_s": 15.0,
+   "total_s": 23.5,
+   "two_drones": true
+  },
+  {
+   "name": "A8 study cell (dz 0.4, 6.25 s)",
+   "scenario": "A8",
+   "role": "study",
+   "ticks": 23000,
+   "blocks": 11500,
+   "scenario_s": 14.5,
+   "total_s": 23.0,
+   "two_drones": true
+  }
+ ],
+ "options": {
+  "A: current (A1, A8, CIRCLE, FIG8)": {
+   "flights": 4,
+   "flying_min": 5.7733333333333325,
+   "desk_min_estimate": 22.5,
+   "longest_blocks": 13250
+  },
+  "B: solo only (CIRCLE, FIG8)": {
+   "flights": 2,
+   "flying_min": 2.8866666666666663,
+   "desk_min_estimate": 16.610943396226414,
+   "longest_blocks": 9782
+  },
+  "C: study settings (A1 study, A8 study, CIRCLE, FIG8)": {
+   "flights": 4,
+   "flying_min": 5.7733333333333325,
+   "desk_min_estimate": 19.952830188679247,
+   "longest_blocks": 11750
+  },
+  "D1: without A8 (A1, CIRCLE, FIG8)": {
+   "flights": 3,
+   "flying_min": 4.329999999999999,
+   "desk_min_estimate": 19.952830188679247,
+   "longest_blocks": 11750
+  }
+ }
+}

@@ -1,0 +1,68 @@
+15:43:58 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor False, real 16.27 cm
+15:43:59 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 7.67 cm
+15:43:59 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 5.31 cm
+15:43:59 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.06 cm
+15:43:59 real 3-D RMS 9.71 cm (mean of the 4 tuning flights); keep-best round 1 (9.71 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+15:53:44 fit beta: J0 0.1548 -> 0.1507 (best epoch 50), psi [-0.11, 0.164, 0.165, -0.028]
+16:03:30 tune theta: J0 0.009438 -> 0.006724 (best epoch 47), gain-limit hits [0, 0, 0, 0, 9, 0, 0, 0, 0, 0]
+16:03:32 round 1 done in 1174 s
+{
+ "real_cm": 9.713291831562104,
+ "real_cm_loop_lib": 9.71073414363846,
+ "psi_max_abs_diff": 0.0,
+ "keep_best": {
+  "cost": 0.009434803820509109,
+  "rms3d_cm": 9.713291831562104,
+  "round": 1,
+  "phi": [
+   0.22314355131420976,
+   0.20357767384706946,
+   -0.22314355131420976,
+   0.21410770767758322,
+   0.22314355131420976,
+   0.14087815398089332,
+   0.0867089613267545,
+   0.16815121295139193,
+   -0.11372269326854889,
+   -0.22314355131420976
+  ]
+ },
+ "hits": [
+  0,
+  0,
+  0,
+  0,
+  9,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "hits_loop_lib": [
+  0,
+  0,
+  0,
+  0,
+  9,
+  0,
+  0,
+  0,
+  0,
+  0
+ ],
+ "seconds_ingest": 0.5778563022613525,
+ "seconds_fit": 585.1590092182159,
+ "seconds_tune": 586.4709515571594,
+ "seconds_round": 1174.189204454422,
+ "same_as_strict_false_phi_next": 0.0,
+ "same_as_strict_false_psi": null
+}

@@ -1,0 +1,13 @@
+[
+ {
+  "name": "fwdchk_S0",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/stage5b && date +%T > logs/t_start_fwdchk_S0.txt && /usr/bin/python3 fwd_checks.py > logs/fwdchk_S0.log 2>&1; echo $? > logs/fwdchk_S0.rc; date +%T > logs/t_end_fwdchk_S0.txt"
+  ],
+  "procs": 5,
+  "mem_gb": 6.0,
+  "log": "logs/job_fwdchk_S0.log"
+ }
+]

@@ -1,0 +1,27 @@
+18:44:20 method ours, controller S0, lr 0.01, states pvq, gain limit 0.25, noise in tuning True, paper stop False, grad mode cfwd, tuning set ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], rounds 6
+18:44:27 [nominal cotune lr 0.01] round 0  real 3-D RMS 18.24 cm  z 17.25 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+18:57:12     fit: 51 epochs, max epochs, Jn at the last epoch 0.954, at the best iterate 0.936 (epoch 46), psi err [-0.055, -0.805, -0.433, 0.494] (765 s)
+19:11:38     tune: 51 epochs, max epochs, Jn at the last epoch 0.384, at the best iterate 0.384 (epoch 49) (867 s)
+19:11:47 [nominal cotune lr 0.01] round 1  real 3-D RMS 9.69 cm  z 6.01 cm  crashes 0  psi err [-0.055, -0.805, -0.433, 0.494]
+19:23:57     fit: 51 epochs, max epochs, Jn at the last epoch 0.713, at the best iterate 0.713 (epoch 50), psi err [0.093, -0.314, -0.531, -0.027] (729 s)
+19:36:41     tune: 51 epochs, max epochs, Jn at the last epoch 0.458, at the best iterate 0.458 (epoch 50) (764 s)
+19:36:48 [nominal cotune lr 0.01] round 2  real 3-D RMS 9.14 cm  z 7.23 cm  crashes 0  psi err [0.093, -0.314, -0.531, -0.027]
+19:48:55     fit: 51 epochs, max epochs, Jn at the last epoch 0.924, at the best iterate 0.924 (epoch 50), psi err [0.014, -0.137, -0.133, 0.061] (727 s)
+20:01:39     tune: 51 epochs, max epochs, Jn at the last epoch 0.340, at the best iterate 0.340 (epoch 50) (764 s)
+20:01:46 [nominal cotune lr 0.01] round 3  real 3-D RMS 15.96 cm  z 15.69 cm  crashes 0  psi err [0.014, -0.137, -0.133, 0.061]
+21:06:46     fit: 51 epochs, max epochs, Jn at the last epoch 0.625, at the best iterate 0.620 (epoch 39), psi err [-0.17, 0.013, 0.214, -0.181] (3899 s)
+21:20:16     tune: 51 epochs, max epochs, Jn at the last epoch 0.277, at the best iterate 0.277 (epoch 43) (811 s)
+21:20:16 halt reason: a round took more than 45 min ; largest gain change per round (relative): [0.25, 0.25, 0.25]
+21:21:38 S0 done; total 157 min
+/usr/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

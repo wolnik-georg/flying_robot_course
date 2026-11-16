@@ -1,0 +1,19 @@
+21:39:39 --- test 1: process limit (3 jobs of 6 processes, limit 16: two run, the third waits)
+21:39:39 started proc-test-0 (pid 2244256, procs 6, mem estimate 0.3 GB)
+21:39:40 started proc-test-1 (pid 2244257, procs 6, mem estimate 0.3 GB)
+21:39:41 waiting for proc-test-2: processes 12 + 6 > 16
+21:39:52 proc-test-0 finished, exit code 0
+21:39:52 started proc-test-2 (pid 2244311, procs 6, mem estimate 0.3 GB)
+21:39:54 proc-test-1 finished, exit code 0
+21:40:05 proc-test-2 finished, exit code 0
+21:40:06 --- test 2: load limit (limit 0.01, a 6 s CPU burner keeps the load above it; with the limit this low nothing may start until the load average falls; limit raised after 15 s to finish)
+21:40:06 waiting for load-test: load 2.1 > 0.0
+21:40:11 waiting for load-test: load 2.0 > 0.0
+21:40:16 waiting for load-test: load 1.9 > 0.0
+21:40:21 started load-test (pid 2244449, procs 1, mem estimate 0.1 GB)
+21:40:23 load-test finished, exit code 0
+21:40:24 --- test 3: memory limit (job estimate = MemAvailable - 2 GB with the 3 GB rule: must wait; the estimate is then set to 0.1 GB after 8 s)
+21:40:24 waiting for mem-test: memory: available 11.5 - reserved 0.0 - job 9.5 = 2.0 < 3.0 GB
+21:40:32 started mem-test (pid 2244504, procs 1, mem estimate 0.1 GB)
+21:40:34 mem-test finished, exit code 0
+21:40:35 self-test done

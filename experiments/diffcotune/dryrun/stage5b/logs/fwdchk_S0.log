@@ -1,0 +1,73 @@
+15:26:01 flights for J_sysId (noise off)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+15:27:06 task reverse (warm) 23.1 s
+15:34:39 task forward 453.5 s
+15:35:55 task FD done
+== COMBINED task forward vs FD: PASS
+   Pxy             fwd +2.204643e-03 fd +2.204643e-03 rel 7.68e-09  abs/max 4.2e-10 
+   Pz              fwd -1.151272e-03 fd -1.151272e-03 rel 1.08e-08  abs/max 3.1e-10 
+   Dxy             fwd +3.911283e-04 fd +3.911283e-04 rel 2.83e-08  abs/max 2.8e-10 
+   Dz              fwd +9.398275e-04 fd +9.398275e-04 rel 2.84e-09  abs/max 6.7e-11 
+   Iz              fwd -1.785908e-02 fd -1.785908e-02 rel 1.54e-09  abs/max 6.8e-10 
+   KRxy            fwd -4.505886e-03 fd -4.505886e-03 rel 1.34e-09  abs/max 1.5e-10 
+   KRz             fwd -6.774705e-11 fd -6.938894e-11 rel 2.37e-02  abs/max 4.1e-11 
+   Kwxy            fwd -7.738740e-03 fd -7.738791e-03 rel 6.63e-06  abs/max 1.3e-06 
+   Kwz             fwd -3.070625e-11 fd -3.469447e-11 rel 1.15e-01  abs/max 9.9e-11 
+   KIxy            fwd +3.046612e-03 fd +3.046612e-03 rel 2.30e-09  abs/max 1.8e-10 
+   thrust_gain     fwd -4.010463e-02 fd -4.010463e-02 rel 2.39e-10  abs/max 2.4e-10 
+   motor_lag_ms    fwd +4.414202e-03 fd +4.414202e-03 rel 1.98e-09  abs/max 2.2e-10 
+   downwash_scale  fwd +1.177501e-02 fd +1.177501e-02 rel 1.68e-11  abs/max 4.9e-12 
+   plume_scale     fwd +9.149000e-03 fd +9.149005e-03 rel 5.22e-07  abs/max 1.2e-07 
+  (a) A1     task  max|fwd-rev|/max|fwd| 3.994e-03   max|rev| 1.290e-01
+  (a) A8     task  max|fwd-rev|/max|fwd| 1.033e-14   max|rev| 3.660e-02
+  (a) CIRCLE task  max|fwd-rev|/max|fwd| 7.304e-15   max|rev| 9.262e-03
+  (a) FIG8   task  max|fwd-rev|/max|fwd| 1.921e-15   max|rev| 8.127e-03
+15:36:37 sysid reverse (warm) 21.1 s
+15:44:28 sysid forward 471.2 s
+15:45:40 sysid FD done
+== COMBINED sysid forward vs FD: PASS
+   Pxy             fwd +9.981034e-03 fd +9.981034e-03 rel 6.51e-09  abs/max 9.1e-10 
+   Pz              fwd +8.436466e-03 fd +8.436466e-03 rel 5.45e-12  abs/max 6.4e-13 
+   Dxy             fwd -4.676645e-03 fd -4.676645e-03 rel 7.97e-09  abs/max 5.2e-10 
+   Dz              fwd +4.615559e-03 fd +4.615559e-03 rel 3.97e-09  abs/max 2.6e-10 
+   Iz              fwd +3.708482e-02 fd +3.708482e-02 rel 1.25e-09  abs/max 6.5e-10 
+   KRxy            fwd -2.232751e-02 fd -2.232751e-02 rel 3.37e-10  abs/max 1.1e-10 
+   KRz             fwd +5.440660e-10 fd +5.429684e-10 rel 2.02e-03  abs/max 1.5e-11 
+   Kwxy            fwd -2.425055e-02 fd -2.425063e-02 rel 3.41e-06  abs/max 1.2e-06 
+   Kwz             fwd -5.120479e-10 fd -5.074066e-10 rel 9.15e-03  abs/max 6.5e-11 
+   KIxy            fwd +5.030754e-03 fd +5.030754e-03 rel 1.13e-08  abs/max 7.9e-10 
+   thrust_gain     fwd +7.149953e-02 fd +7.149953e-02 rel 9.59e-11  abs/max 9.6e-11 
+   motor_lag_ms    fwd +1.803020e-02 fd +1.803020e-02 rel 1.03e-09  abs/max 2.6e-10 
+   downwash_scale  fwd -1.532089e-02 fd -1.532089e-02 rel 2.32e-09  abs/max 5.0e-10 
+   plume_scale     fwd +4.297994e-02 fd +4.297995e-02 rel 1.79e-07  abs/max 1.1e-07 
+  (a) A1     sysid max|fwd-rev|/max|fwd| 2.329e-03   max|rev| 2.738e-01
+  (a) A8     sysid max|fwd-rev|/max|fwd| 9.848e-15   max|rev| 1.719e-01
+  (a) CIRCLE sysid max|fwd-rev|/max|fwd| 5.025e-15   max|rev| 2.348e-02
+  (a) FIG8   sysid max|fwd-rev|/max|fwd| 1.103e-15   max|rev| 1.888e-02
+15:45:40 (b) COMBINED GATE forward S0: PASS
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+== (c) NOISE forward vs FD (h 1e-5): FAIL   forward 482.3 s reverse 23.5 s
+   Pxy      fwd -4.425020e-03 fd -4.484976e-03 rel 1.34e-02  abs/max 1.1e-04 reverse -4.425e-03 
+   Pz       fwd -4.529814e-02 fd -5.393116e-01 rel 9.16e-01  abs/max 9.2e-01 reverse -4.530e-02 <-- FAIL
+   Dxy      fwd +6.428537e-02 fd +6.430018e-02 rel 2.30e-04  abs/max 2.7e-05 reverse +6.429e-02 
+   Dz       fwd +3.253397e-03 fd -4.910843e-01 rel 1.01e+00  abs/max 9.2e-01 reverse +3.253e-03 <-- FAIL
+   Iz       fwd -6.844427e-02 fd -6.845155e-02 rel 1.06e-04  abs/max 1.3e-05 reverse -6.844e-02 
+   KRxy     fwd +6.424704e-02 fd +6.358884e-02 rel 1.04e-02  abs/max 1.2e-03 reverse +6.425e-02 <-- FAIL
+   KRz      fwd +6.882143e-04 fd +6.873481e-04 rel 1.26e-03  abs/max 1.6e-06 reverse +6.882e-04 
+   Kwxy     fwd -2.446340e-01 fd -2.422113e-01 rel 1.00e-02  abs/max 4.5e-03 reverse -2.446e-01 <-- FAIL
+   Kwz      fwd +4.206642e-02 fd +4.210131e-02 rel 8.29e-04  abs/max 6.5e-05 reverse +4.207e-02 
+   KIxy     fwd +7.782981e-02 fd +7.768830e-02 rel 1.82e-03  abs/max 2.6e-04 reverse +7.783e-02 
