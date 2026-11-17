@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Stage 8d T2 tests of rule R3 in round.py (fake uSD files from lab/dry5_S0_8o/round0_logs; epochs reduced to 2 and ONE worker so that it is a light single-process test; logic only, the numbers are not method results).
+  python3 test_r3_mock.py            (a) A1 floor x3 + fallback -> round completes, 4 flights fitted, set not eligible, keep-best unchanged; A1 floor x3 without fallback -> clear message, nothing written as the next round;
+                                         round 0 with 3 failed attempts -> no fallback needed, round completes, no eligible set
+  python3 test_r3_mock.py --regress  (b) all flights usable (lenient, as the old dry test): round.py now against round.py.before_stage8d on the same folder: theta_1 and beta after the fit identical (diff 0.0)
+Scratch folder: argument --work <dir> (default lab/results/r3_mock_work). nice -n 19, MemAvailable >= 6 GB."""
+import importlib.util, json, os, shutil, sys, time
+from pathlib import Path
+os.environ.setdefault('DIFFCOTUNE_CONTROLLER', 'S0'); os.environ.setdefault('DIFFCOTUNE_METHOD', 'ours'); os.environ.setdefault('OMP_NUM_THREADS', '2'); os.environ.setdefault('TORCHINDUCTOR_COMPILE_THREADS', '1')
+WORK = Path(sys.argv[sys.argv.index('--work') + 1]) if '--work' in sys.argv else None
+sys.argv = [sys.argv[0], '--controller', 'S0', '--no-preview'] + [a for a in sys.argv[1:] if a == '--regress']
+HERE = Path(__file__).resolve().parent; sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE.parent)); sys.path.insert(0, str(HERE.parent / 'dryrun'))
+import numpy as np
+import round as RD  # noqa
+SRC = HERE / 'dry5_S0_8o' / 'round0_logs'; WORK = WORK or HERE / 'results' / 'r3_mock_work'
+Orig = RD.LP.PoolTop; RD.LP.PoolTop = lambda n=None, **kw: Orig(1, **kw)          # one worker: light
+RD.SETTINGS['epochs'] = 2; RD.SETTINGS['n_rounds'] = 6
+ok = True
+def check(name, cond, info=''):
+    global ok; ok &= bool(cond); print('PASS' if cond else 'FAIL', name, info, flush=True)
+def folder(name, a1_attempts, fallback):
+    f = WORK / name / 'logs'; shutil.rmtree(WORK / name, ignore_errors=True); f.mkdir(parents=True); man = []
+    for s in ('A8', 'A4', 'CIRCLE', 'FIG8'): shutil.copy(SRC / ('%s_dry_merged_usd.csv' % s), f / ('%s_dry_merged_usd.csv' % s))
+    src_man = {m['scenario']: m for m in json.load(open(SRC / 'flights.json'))}
+    for s in ('A8', 'A4', 'CIRCLE', 'FIG8'): man.append(dict(src_man[s]))
+    for a in range(1, a1_attempts + 1):
+        shutil.copy(SRC / 'A1_dry_merged_usd.csv', f / ('A1_a%d.csv' % a)); man.append(dict(src_man['A1'], file='A1_a%d.csv' % a, attempt=a))
+    if fallback: shutil.copy(SRC / 'A1_dry_merged_usd.csv', f / 'A1_fallback.csv'); man.append(dict(src_man['A1'], file='A1_fallback.csv', attempt=4, role='fallback'))
+    json.dump(man, open(f / 'flights.json', 'w'), indent=1); return f, WORK / name / 'S0'
+def state_round(sd, l, keep):
+    RD.init_state(sd); st = json.load(open(sd / 'round_0' / 'state.json'))
+    if l > 0:
+        (sd / ('round_%d' % l)).mkdir(exist_ok=True); st.update(round=l, keep=keep, history=[dict(round=0, rms3d_cm=10.0, phi=[0.0] * 10, psi_after_fit=st['psi'])]); json.dump(st, open(sd / ('round_%d' % l) / 'state.json', 'w'), indent=1)
+        RD.gains_to_yaml(np.zeros(10), sd / ('round_%d' % l) / 'gains.yaml', 'mock')
+        RD.gains_to_yaml(np.zeros(10), sd / 'round_0' / 'gains.yaml', 'mock')
+def main():
+    global ok
+    KEEP0 = dict(cost=0.01, rms3d_cm=10.0, round=0, phi=[0.0] * 10)
+    if '--regress' in sys.argv:
+        import importlib.machinery; ld = importlib.machinery.SourceFileLoader('round_old', str(HERE / 'round.py.before_stage8d')); spec = importlib.util.spec_from_loader('round_old', ld); old = importlib.util.module_from_spec(spec); ld.exec_module(old)
+        old.LP.PoolTop = RD.LP.PoolTop; old.SETTINGS['epochs'] = 2; old.SETTINGS['n_rounds'] = 6; res = {}
+        for nm, mod in (('old', old), ('new', RD)):
+            d = WORK / ('regress_' + nm); shutil.rmtree(d, ignore_errors=True); shutil.copytree(SRC, d / 'logs'); mod.init_state(d / 'S0'); t0 = time.time()
+            res[nm] = mod.run_round(0, d / 'logs', d / 'S0', top='planned', strict=False); print(nm, 'round 0 done in %.0f s' % (time.time() - t0), flush=True)
+        d1 = float(np.abs(np.array(res['old']['phi_next']) - np.array(res['new']['phi_next'])).max()); d2 = float(np.abs(np.array(res['old']['psi_after_fit']) - np.array(res['new']['psi_after_fit'])).max())
+        check('b regression, all flights usable: theta_1 diff %.1e, beta diff %.1e, real cost equal' % (d1, d2), d1 == 0.0 and d2 == 0.0 and res['old']['real']['cost'] == res['new']['real']['cost'])
+        check('b new fields only added (eligible True, no r3 block)', res['new']['eligible'] is True and 'r3' not in res['new'])
+    else:
+        f, sd = folder('with_fallback', 3, True); state_round(sd, 1, KEEP0); rep = RD.run_round(1, f, sd, top='planned', strict=True)
+        a1 = [x for x in rep['flights'] if x['scenario'] == 'A1' and x['role'] == 'tuning']
+        check('a1 the A1 attempts are floor flights in the ingest (test premise)', len(a1) == 3 and all(x['floor'] for x in a1), [x['floor'] for x in a1])
+        check('a2 A1 x3 + fallback: round completes, 4 flights fitted, set not eligible', rep.get('eligible') is False and len(rep['real']['tries']) == 4 and rep['r3']['scenarios'] == ['A1'] and 'phi_next' in rep and rep['r3']['theta_best_round'] == 0)
+        check('a3 fallback flight not used', [x for x in rep['flights'] if x['role'] == 'fallback'][0]['used'] is False and rep['per_scenario_cm']['A1'] is None)
+        nxt = json.load(open(sd / 'round_2' / 'state.json')); check('a4 keep-best of the next state unchanged (round 0), history marks not eligible', nxt['keep']['round'] == 0 and nxt['history'][-1].get('eligible') is False)
+        f, sd = folder('no_fallback', 3, False); state_round(sd, 1, KEEP0); rep = RD.run_round(1, f, sd, top='planned', strict=True)
+        check('a5 A1 x3 without fallback: clear message, nothing fitted, no next round', 'R3' in rep['status'] and "['A1']" in rep['status'] and 'round_0' in rep['status'] and not (sd / 'round_2').exists() and 'phi_next' not in rep, rep['status'][:200])
+        f, sd = folder('round0', 3, False); state_round(sd, 0, None); rep = RD.run_round(0, f, sd, top='planned', strict=True)
+        st1 = json.load(open(sd / 'round_1' / 'state.json'))
+        check('a6 round 0 with 3 failed attempts: no fallback needed, round completes, no eligible set yet', rep['eligible'] is False and st1['keep'] is None and len(rep['real']['tries']) == 4)
+        f, sd = folder('two_attempts', 2, False); state_round(sd, 1, KEEP0); rep = RD.run_round(1, f, sd, top='planned', strict=True)
+        check('a7 only 2 failed attempts: old behaviour (repeat needed, nothing fitted)', 'repeat' in rep['status'] and not (sd / 'round_2').exists())
+
+    print('ALL PASS' if ok else 'SOME FAILED'); return 0 if ok else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

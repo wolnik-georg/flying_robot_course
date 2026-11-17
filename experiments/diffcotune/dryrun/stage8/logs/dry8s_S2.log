@@ -1,0 +1,34 @@
+18:31:48 method ours, controller S2, lr 0.01, states pvq, gain limit 0.25, noise in tuning True, paper stop False, grad mode cfwd, tuning set ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], rounds 6
+18:32:09 [nominal cotune lr 0.01] round 0  real 3-D RMS 14.47 cm  z 13.24 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+18:50:15     fit: 51 epochs, max epochs, Jn at the last epoch 0.652, at the best iterate 0.599 (epoch 16), psi err [0.256, -0.296, -0.265, 0.304] (1086 s)
+19:10:19     tune: 51 epochs, max epochs, Jn at the last epoch 0.785, at the best iterate 0.785 (epoch 50) (1204 s)
+19:10:25 [nominal cotune lr 0.01] round 1  real 3-D RMS 9.64 cm  z 7.59 cm  crashes 0  psi err [0.256, -0.296, -0.265, 0.304]
+19:26:02     fit: 51 epochs, max epochs, Jn at the last epoch 0.965, at the best iterate 0.948 (epoch 10), psi err [0.201, -0.233, -0.208, 0.27] (936 s)
+19:42:26     tune: 51 epochs, max epochs, Jn at the last epoch 0.777, at the best iterate 0.777 (epoch 50) (985 s)
+19:42:36 [nominal cotune lr 0.01] round 2  real 3-D RMS 7.85 cm  z 4.26 cm  crashes 0  psi err [0.201, -0.233, -0.208, 0.27]
+19:58:07     fit: 51 epochs, max epochs, Jn at the last epoch 0.973, at the best iterate 0.949 (epoch 41), psi err [0.185, -0.234, -0.127, 0.238] (931 s)
+20:15:28     tune: 51 epochs, max epochs, Jn at the last epoch 0.787, at the best iterate 0.787 (epoch 50) (1042 s)
+20:15:37 [nominal cotune lr 0.01] round 3  real 3-D RMS 6.72 cm  z 3.52 cm  crashes 0  psi err [0.185, -0.234, -0.127, 0.238]
+20:31:16     fit: 51 epochs, max epochs, Jn at the last epoch 0.980, at the best iterate 0.978 (epoch 48), psi err [0.147, -0.111, -0.026, 0.11] (939 s)
+20:48:33     tune: 51 epochs, max epochs, Jn at the last epoch 0.829, at the best iterate 0.795 (epoch 44) (1037 s)
+20:48:40 [nominal cotune lr 0.01] round 4  real 3-D RMS 5.98 cm  z 3.31 cm  crashes 0  psi err [0.147, -0.111, -0.026, 0.11]
+21:03:51     fit: 51 epochs, max epochs, Jn at the last epoch 0.987, at the best iterate 0.972 (epoch 47), psi err [0.156, -0.158, 0.04, 0.086] (911 s)
+21:20:38     tune: 51 epochs, max epochs, Jn at the last epoch 0.824, at the best iterate 0.823 (epoch 49) (1006 s)
+21:20:45 [nominal cotune lr 0.01] round 5  real 3-D RMS 5.92 cm  z 3.21 cm  crashes 0  psi err [0.156, -0.158, 0.04, 0.086]
+21:20:45 halt reason: None ; largest gain change per round (relative): [0.25, 0.25, 0.135, 0.25, 0.199]
+21:22:12 S2 done; total 170 min

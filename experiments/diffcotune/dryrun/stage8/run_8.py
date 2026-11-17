@@ -24,11 +24,12 @@ if __name__ == '__main__':
             if a.stop_after and len(r['rounds']) >= a.stop_after: halt['why'] = 'stopped after %d rounds (probe)' % a.stop_after
         rec = L.run_loop(pool, plant, 'cotune', M['lr'], n_rounds=M['n_rounds'], log=say, stop=False, best=M['best'], paper_stop=M['paper_stop'], skip_last_fit=True, on_round=save, stop_after=lambda r: halt['why'] is not None,
                          noise_seeds_of=(lambda l: (6000 + 2 * l, 6001 + 2 * l)) if M['noise'] else None, gain_limit=M['gain_limit'], seed_base=100)
-        rec['halt'] = halt['why']; rec['method'] = L.METHOD; rec['method_settings'] = {k: (list(v) if isinstance(v, tuple) else v) for k, v in M.items()}
+        rec['halt'] = halt['why'] or rec.get('halt'); rec['restart_best'] = L.RESTART_BEST; rec['method'] = L.METHOD; rec['method_settings'] = {k: (list(v) if isinstance(v, tuple) else v) for k, v in M.items()}
         ph = [np.array(r['phi']) for r in rec['rounds']]
         rec['max_gain_change_per_round'] = [float(np.abs(np.exp(ph[i + 1] - ph[i]) - 1).max()) for i in range(len(ph) - 1)]          # largest relative change of any gain between consecutive flown sets
         save(rec); L.jdump(rec, RES / ('loop_%s_%s.json' % (C, a.tag))); say('halt reason:', halt['why'], '; largest gain change per round (relative):', np.round(rec['max_gain_change_per_round'], 3).tolist())
-        if not a.no_eval:
+        if rec['best'].get('phi') is None: say('no eligible set after extension: ask the user (no evaluation, theta_0 is NOT used as a fallback)')          # Stage 8d2, strict mode only
+        elif not a.no_eval:
             phis = {'theta_0': np.zeros(10), 'theta_best': np.array(rec['best']['phi'])}
             ev = {k: L.evaluate(pool, p, plant, seeds=EVAL_SEEDS) for k, p in phis.items()}
             L.jdump(dict(controller=C, method=L.METHOD, phis={k: p.tolist() for k, p in phis.items()}, best_round=rec['best']['round'], rounds_flown=len(rec['rounds']), halt=halt['why'], eval=ev, seconds=time.time() - t_start), RES / ('eval_%s_%s.json' % (C, a.tag)))

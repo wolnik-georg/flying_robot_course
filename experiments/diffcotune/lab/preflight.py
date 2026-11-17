@@ -125,6 +125,12 @@ def main():
                 hits.append('%s:%d %s' % (f, i, line.strip()[:110]))
     code = [h for h in hits if 'sys.argv' not in h]
     res(True, '6 desk-PC paths', '%d lines name a desk path in the lab scripts (lab-run scripts: all through a flag or Path.home()): %s' % (len(code), code[:4]), note=True)
+    # ---- 6b rule R3 in round.py (Stage 8d, user decision 16 Nov): version marker
+    rtxt = (HERE / 'round.py').read_text(); mk = re.search(r"R3_VERSION = '([^']+)'", rtxt)
+    res(mk is not None and "role'] == 'fallback'" in rtxt, '6b round.py has rule R3', ('marker %s' % mk.group(1)) if mk else 'R3_VERSION marker not found in round.py (old round.py: a scenario with 3 failed attempts would stop the round)')
+    res('extension_round_added' in rtxt and 'NO_ELIGIBLE_SET.md' in rtxt, '6c round.py has the extension rounds (no eligible set after round 5: up to 2 more rounds, never theta_0)', 'markers extension_round_added / NO_ELIGIBLE_SET.md' if 'extension_round_added' in rtxt else 'old round.py: with no eligible set the last round would write no extension (update stage 8d2)')
+    rsm = re.search(r"RS_VERSION = '([^']+)'", rtxt)
+    res(rsm is not None and 'two R3 rounds in a row' in rtxt and 'restart_from_best' in rtxt, '6d round.py has rule RS (R3 round: tuning restarts from theta_best; two R3 rounds in a row: stop, final gains = theta_best)', ('marker %s' % rsm.group(1)) if rsm else 'RS_VERSION marker not found in round.py (old round.py: an R3 round would tune on from the crashed set)')
     # ---- 7 NS2 weights and switches (Stage 7; desk only, read only)
     ns2_checks(ctrl, a, res)
     return end()

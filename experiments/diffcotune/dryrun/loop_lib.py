@@ -226,6 +226,29 @@ def fly_set(pool, phi, plant, scen_list, seeds, max_tries=3):
     return [final[i] for i in range(len(scen_list))]
 
 
+# Stage 8d (user decision 16 Nov, option C): DIFFCOTUNE_DRY_STRICT=1 runs the dry run with the lab's flight rule and rule R3 (a flight is usable when it did not crash and is not a floor flight;
+# a not usable flight is repeated with theta_l, at most 2 repeats, seed + 1000 x tries; the beta fit uses the usable flights only; a scenario with 3 failed attempts gets one fallback flight with
+# theta_best (not used for the fit, the cost or theta_best); a set with such a scenario is not eligible for keep-best). Default 0 = the old behaviour, bit-identical.
+STRICT = os.environ.get('DIFFCOTUNE_DRY_STRICT', '0') == '1'
+RESTART_BEST = os.environ.get('DIFFCOTUNE_RESTART_BEST', '0') == '1'          # Stage 8e rule RS (user decision 17 Nov), only with DIFFCOTUNE_DRY_STRICT=1: an R3 round restarts the tuning step from theta_best; two R3 rounds in a row stop the loop (result theta_best). Default 0 = Stage 8d, bit-identical
+EXT_MAX = 2          # Stage 8d2: extension rounds in strict mode (user decision 16 Nov)
+
+
+def fly_set_strict(pool, phi, plant, scen_list, seeds, max_tries=3):
+    """Stage 8d: per scenario the list of all attempts (dict(trace, cost, z_cost, floor, crashed, tilt, seed, tries, usable)); the attempts of one scenario stop at the first usable one or after max_tries."""
+    gains = gains_of(phi); att = {i: [] for i in range(len(scen_list))}; todo = list(att)
+    while todo:
+        jobs = [(scen_list[i][0], scen_list[i][1], gains, plant, seeds[i] + 1000 * len(att[i])) for i in todo]
+        res = pool.fly(jobs); nxt = []
+        for i, job, (tr, stable, tilt) in zip(todo, jobs, res):
+            sc = R.build(*scen_list[i]).scenario_s; c, cz = flight_cost(tr, sc); fl_ = floor_failed(tr, sc)
+            att[i].append(dict(trace=tr, cost=c, z_cost=cz, floor=fl_, seed=job[4], tries=len(att[i]) + 1, crashed=not stable, tilt=tilt, usable=bool(stable and not fl_)))
+            if not att[i][-1]['usable'] and len(att[i]) < max_tries:
+                nxt.append(i)
+        todo = nxt
+    return [att[i] for i in range(len(scen_list))]
+
+
 def round_cost(flights):
     """Real cost of a gain set: mean over the scenarios of the mean squared 3-D error [m^2]; 3-D RMS and z RMS in cm."""
     c = float(np.mean([f['cost'] for f in flights])); cz = float(np.mean([f['z_cost'] for f in flights]))
@@ -352,29 +375,64 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
     fit, to report beta after the last round. Returns the record dict."""
     x = np.zeros(10 + N_BETA); rec = dict(plant=plant, method=method, lr=lr, stop=stop, best_iterate=best, states=list(pool.states), rounds=[]); keep = None   # keep = keep-best over the flown gain sets (Stage 3d: renamed, it used to shadow the flag `best`)
     phi_idx = np.arange(10); psi_idx = PSI_FIT_IDX
-    last = n_rounds + (1 if extra_final_flight else 0)
-    for l in range(last):
+    prev_r3 = False; rs_stop = False          # Stage 8e rule RS state
+    nr = n_rounds; ext = 0          # Stage 8d2: nr = number of planned rounds; in strict mode up to EXT_MAX extension rounds (l = 6, 7) are added while no flown set is eligible
+    l = -1
+    while True:
+        l += 1
+        if l >= nr + (1 if extra_final_flight else 0): break          # same count as the old range(n_rounds + extra) when nr is not extended
         t0 = time.time()
-        fl = fly_set(pool, x[:10], plant, TUNING, [seed_base + 10 * l + i for i in range(len(TUNING))])      # Stage 3e: seed_base 100 for the new flight seeds (default 0 = Stage 3b to 3d)
+        if STRICT:          # Stage 8d: lab flight rule + R3 (see the comment at STRICT); fl = the last attempt of every scenario ("as flown", the old definition of the real cost)
+            seeds_l = [seed_base + 10 * l + i for i in range(len(TUNING))]
+            att = fly_set_strict(pool, x[:10], plant, TUNING, seeds_l); used = [next((a for a in at if a['usable']), None) for at in att]
+            fl = [at[-1] for at in att]; r3 = [i for i, u in enumerate(used) if u is None]; fb = {}
+            if r3 and keep is not None and keep.get('eligible', True):          # R3 fallback flight with theta_best (round 0: no theta_best yet, no fallback); not used for the fit, the cost or theta_best
+                fres = pool.fly([(TUNING[i][0], TUNING[i][1], gains_of(np.array(keep['phi'])), plant, seeds_l[i] + 1000 * 3) for i in r3])
+                for i, (tr_, st_, ti_) in zip(r3, fres):
+                    sc_ = R.build(*TUNING[i]).scenario_s; c_, cz_ = flight_cost(tr_, sc_)
+                    fb[i] = dict(scenario=TUNING[i][0], theta_round=keep['round'], cost=c_, z_cost=cz_, floor=floor_failed(tr_, sc_), crashed=not st_, tilt=ti_, seed=seeds_l[i] + 1000 * 3, used=False)
+            uf = [u for u in used if u is not None]
+            rcu = dict(cost=float(np.mean([u['cost'] for u in uf])), rms3d_cm=100 * float(np.mean([u['cost'] for u in uf])) ** 0.5, z_rms_cm=100 * float(np.mean([u['z_cost'] for u in uf])) ** 0.5, n_used=len(uf)) if uf else None
+        else:
+            fl = fly_set(pool, x[:10], plant, TUNING, [seed_base + 10 * l + i for i in range(len(TUNING))])      # Stage 3e: seed_base 100 for the new flight seeds (default 0 = Stage 3b to 3d)
         rc = round_cost(fl)
         r = dict(round=l, phi=x[:10].tolist(), psi=x[10:].tolist(), real=rc, seconds_fly=time.time() - t0,
                  flights=[dict(scenario=TUNING[i][0], cost=f['cost'], z_cost=f['z_cost'], floor=f['floor'], crashed=f['crashed'], tries=f['tries'], seed=f['seed']) for i, f in enumerate(fl)])   # Stage 3d: per flight
-        if keep is None or rc['cost'] <= keep['cost']:
+        if STRICT:          # Stage 8d: keep-best over the ELIGIBLE sets (no scenario with 3 failed attempts), cost = mean over the used flights
+            r['strict'] = True; r['real_used'] = rcu; r['eligible'] = not r3; r['r3_scenarios'] = [TUNING[i][0] for i in r3]
+            r['flights'] = [dict(f_, attempts=[dict(tries=a['tries'], cost=a['cost'], rms3d_cm=100 * a['cost'] ** 0.5, floor=a['floor'], crashed=a['crashed'], tilt=a['tilt'], seed=a['seed'], used=a is used[i]) for a in att[i]], used_attempt=(used[i]['tries'] if used[i] is not None else None), failed_all=used[i] is None,
+                                 fallback=({k: v for k, v in fb[i].items()} if i in fb else None)) for i, f_ in enumerate(r['flights'])]
+            if not r3 and (keep is None or rcu['cost'] <= keep['cost']):
+                keep = dict(cost=rcu['cost'], round=l, phi=x[:10].tolist(), eligible=True)
+            if keep is None and l == nr - 1 and ext < EXT_MAX:          # Stage 8d2 (user decision 16 Nov): no eligible set after the last planned round = fly one more round (theta tuned after this round), up to 2
+                nr += 1; ext += 1; r['extension_round_added'] = ext
+            if RESTART_BEST:          # Stage 8e rule RS 1b: R3 in this round and in the previous one, theta_best exists -> no further tuning, result = theta_best, no new gain set is flown
+                r['restart_from_best'] = False; r['prev_r3'] = prev_r3
+                if r3 and prev_r3 and keep is not None: rs_stop = True; r['rs_stop'] = 'two R3 rounds in a row'; rec['rs_stop'] = 'two R3 rounds in a row'; rec['halt'] = 'two R3 rounds in a row'
+                prev_r3 = bool(r3)
+        elif keep is None or rc['cost'] <= keep['cost']:
             keep = dict(cost=rc['cost'], round=l, phi=x[:10].tolist())
         log('[%s %s lr %g] round %d  real 3-D RMS %.2f cm  z %.2f cm  crashes %d  psi err %s' % (plant['variant'], method, lr, l, rc['rms3d_cm'], rc['z_rms_cm'], rc['crashed'], np.round(x[10:] - PSI_TRUE, 3).tolist()))
+        if STRICT: fl = [u if u is not None else f for u, f in zip(used, fl)]          # Stage 8d: below, only the usable flights are fitted (scen_idx); fl[i] is the flight whose trace is used
         traces = {i: [f['trace'] if trace_fn is None else trace_fn(f['trace'], l, i)] for i, f in enumerate(fl)}      # Stage 4e: trace_fn = measured-gyro variants of the fit target (default: the state trace as it is)
         t1 = time.time()
-        if method == 'cotune' and l < n_rounds and not (skip_last_fit and l == n_rounds - 1):   # skip_last_fit: theta_6 is never flown, so the fit of the last round is unused (default off)
-            fit_fn = lambda xx: pool.rollouts('sysid', xx, traces)
+        if method == 'cotune' and l < nr and not (skip_last_fit and l == nr - 1) and not (STRICT and all(u is None for u in used)) and not rs_stop:   # Stage 8d: no usable flight at all in strict mode = no fit   # skip_last_fit: theta_6 is never flown, so the fit of the last round is unused (default off)
+            if STRICT:          # Stage 8d: fit on the usable flights only (equal weights over them); the scenario list is the subset, the traces are re-indexed
+                sub = [i for i, u in enumerate(used) if u is not None]; tr_sub = {j: traces[i] for j, i in enumerate(sub)}
+                fit_fn = lambda xx: pool.rollouts('sysid', xx, tr_sub, scen_list=[TUNING[i] for i in sub])
+            else:
+                fit_fn = lambda xx: pool.rollouts('sysid', xx, traces)
             cf = (lambda xx, ii: fd_check(pool, 'sysid', xx, ii, traces)) if l in checks_rounds else None
             x, rf = adam_inner(fit_fn, x, psi_idx, lr, checks=set(check_epochs) if cf else None, check_fn=cf, label='fit beta, round %d' % l, stop=stop, best=best, paper_stop=paper_stop)
             r['fit'] = rf; r['seconds_fit'] = time.time() - t1
             log('    fit: %d epochs, %s, Jn at the last epoch %.3f, at the best iterate %s, psi err %s (%.0f s)' % (rf['epochs'], rf['reason'], rf['log'][-1]['Jn'], _jn_best(rf), np.round(x[10:] - PSI_TRUE, 3).tolist(), r['seconds_fit']))
         r['psi_after_fit'] = x[10:].tolist()
         t2 = time.time()
-        if l < n_rounds - 1 or (extra_final_flight and l < n_rounds):
+        if (l < nr - 1 or (extra_final_flight and l < nr)) and not rs_stop:
             pool.noise_seeds = tuple(noise_seeds_of(l)) if noise_seeds_of else None      # Stage 3d variant A: fixed noise seeds of this round's tuning step
             r['noise_seeds'] = pool.noise_seeds
+            if RESTART_BEST and r3 and keep is not None:          # Stage 8e rule RS 1a: the tuning step of an R3 round starts from theta_best (the +-25 % box is around theta_best); the beta fit above is unchanged
+                x = np.array(x, float); x[:10] = np.array(keep['phi']); r['restart_from_best'] = True; r['restart_theta_best_round'] = keep['round']
             tune_fn = lambda xx: pool.rollouts('task', xx, None)
             x, rt = adam_inner(tune_fn, x, phi_idx, lr, label='tune theta, round %d' % l, stop=stop, best=best, limit=None if not gain_limit else float(np.log(1 + gain_limit)), paper_stop=paper_stop)
             r['tune'] = rt; r['seconds_tune'] = time.time() - t2
@@ -383,8 +441,14 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
         rec['rounds'].append(r)
         if on_round:
             on_round(rec)          # Stage 3d: partial record saved after every round
+        if rs_stop: break          # Stage 8e rule RS 1b
         if stop_after is not None and stop_after(rec):      # Stage 4e: early stop of the loop after this round (the record keeps the rounds done)
             break
+    if STRICT:
+        rec['strict'] = True
+        rec['extension_rounds_used'] = ext
+        if keep is None: keep = dict(cost=None, round=None, phi=None, eligible=False, note='no eligible set after extension: ask the user' if ext >= EXT_MAX else 'no eligible set (loop stopped early): ask the user')          # never theta_0 as a silent fallback
+        elif ext: log('extension rounds used: %d' % ext)
     rec['best'] = keep
     return rec
 

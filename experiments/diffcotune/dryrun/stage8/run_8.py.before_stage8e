@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Stage 8: dry run of one controller with DIFFCOTUNE_METHOD = ours | paper (loop_lib.METHOD_SETTINGS), 6 rounds (l = 0 ... 5, 6 x 5 tuning flights, the last update flown, no fit or tuning after round 5), plant P1 (S0, S2) or P1RD (S1, S3),
+flight seeds 100 + 10 l + i (i = index in loop_lib.TUNING: A1, A8, CIRCLE, FIG8, A4 cell 1), evaluation seeds 2000-2004 for theta_0 and theta_best. Controller from DIFFCOTUNE_CONTROLLER, gradient mode from DIFFCOTUNE_GRAD_MODE.
+  python3 run_8.py --tag <t> [--stop-after N]   (N rounds flown, for the learning-rate probes)  -> results/loop_<C>_<tag>.json, eval_<C>_<tag>.json
+Halts (and says so) when a round takes more than 45 min or the estimate for 6 rounds exceeds 4 h."""
+import argparse, sys, time
+from pathlib import Path
+import numpy as np
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1])); sys.path.insert(0, str(HERE.parent))
+import loop_lib as L  # noqa
+RES = HERE / 'results'; RES.mkdir(exist_ok=True); EVAL_SEEDS = (2000, 2001, 2002, 2003, 2004)
+def say(*a): print(time.strftime('%H:%M:%S'), *a, flush=True)
+if __name__ == '__main__':
+    ap = argparse.ArgumentParser(); ap.add_argument('--tag', required=True); ap.add_argument('--stop-after', type=int, default=None); ap.add_argument('--no-eval', action='store_true'); a = ap.parse_args()
+    M = L.METHOD_SETTINGS[L.METHOD]; C = L.CTRL; plant = L.PLANTS['P1RD' if L.N_BETA == 5 else 'P1']; halt = {'why': None}; t_start = time.time()
+    say('method %s, controller %s, lr %g, states %s, gain limit %s, noise in tuning %s, paper stop %s, grad mode %s, tuning set %s, rounds %d' % (L.METHOD, C, M['lr'], ''.join(M['states']), M['gain_limit'], M['noise'], M['paper_stop'], L.GRAD_MODE, [s for s, _ in L.TUNING], M['n_rounds']))
+    pool = L.Pool(len(L.TUNING), states=M['states'])
+    try:
+        def save(r):
+            L.jdump(r, RES / ('loop_%s_%s.json' % (C, a.tag)))
+            if r['rounds'][-1]['seconds_round'] > 45 * 60: halt['why'] = 'a round took more than 45 min'
+            if len(r['rounds']) == 2 and np.mean([x['seconds_round'] for x in r['rounds']]) * M['n_rounds'] > 4 * 3600: halt['why'] = 'estimate for %d rounds above 4 h' % M['n_rounds']
+            if a.stop_after and len(r['rounds']) >= a.stop_after: halt['why'] = 'stopped after %d rounds (probe)' % a.stop_after
+        rec = L.run_loop(pool, plant, 'cotune', M['lr'], n_rounds=M['n_rounds'], log=say, stop=False, best=M['best'], paper_stop=M['paper_stop'], skip_last_fit=True, on_round=save, stop_after=lambda r: halt['why'] is not None,
+                         noise_seeds_of=(lambda l: (6000 + 2 * l, 6001 + 2 * l)) if M['noise'] else None, gain_limit=M['gain_limit'], seed_base=100)
+        rec['halt'] = halt['why']; rec['method'] = L.METHOD; rec['method_settings'] = {k: (list(v) if isinstance(v, tuple) else v) for k, v in M.items()}
+        ph = [np.array(r['phi']) for r in rec['rounds']]
+        rec['max_gain_change_per_round'] = [float(np.abs(np.exp(ph[i + 1] - ph[i]) - 1).max()) for i in range(len(ph) - 1)]          # largest relative change of any gain between consecutive flown sets
+        save(rec); L.jdump(rec, RES / ('loop_%s_%s.json' % (C, a.tag))); say('halt reason:', halt['why'], '; largest gain change per round (relative):', np.round(rec['max_gain_change_per_round'], 3).tolist())
+        if rec['best'].get('phi') is None: say('no eligible set after extension: ask the user (no evaluation, theta_0 is NOT used as a fallback)')          # Stage 8d2, strict mode only
+        elif not a.no_eval:
+            phis = {'theta_0': np.zeros(10), 'theta_best': np.array(rec['best']['phi'])}
+            ev = {k: L.evaluate(pool, p, plant, seeds=EVAL_SEEDS) for k, p in phis.items()}
+            L.jdump(dict(controller=C, method=L.METHOD, phis={k: p.tolist() for k, p in phis.items()}, best_round=rec['best']['round'], rounds_flown=len(rec['rounds']), halt=halt['why'], eval=ev, seconds=time.time() - t_start), RES / ('eval_%s_%s.json' % (C, a.tag)))
+        say(C, 'done; total %.0f min' % ((time.time() - t_start) / 60))
+    finally:
+        pool.close()

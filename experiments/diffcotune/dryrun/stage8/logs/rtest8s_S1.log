@@ -1,0 +1,97 @@
+flew + wrote A1_dry_merged_usd.csv attempt 1 stable True
+flew + wrote A8_dry_merged_usd.csv attempt 1 stable True
+flew + wrote CIRCLE_dry_merged_usd.csv attempt 1 stable True
+flew + wrote FIG8_dry_merged_usd.csv attempt 1 stable True
+flew + wrote A4_dry_merged_usd.csv attempt 1 stable True
+01:59:54 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor False, real 17.72 cm
+01:59:54 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 7.04 cm
+01:59:54 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 5.90 cm
+01:59:55 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 5.25 cm
+01:59:55 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 5.40 cm
+01:59:55 real 3-D RMS 9.54 cm (mean of the 5 usable tuning flights); keep-best round 0 (9.54 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+02:17:32 fit beta: J0 0.1651 -> 0.07732 (best epoch 50), epochs 51, psi [0.321, -0.339, -0.438, -0.436, 0.0]
+02:36:34 tune theta: J0 0.003883 -> 0.001988 (best epoch 50), epochs 51, gain-limit hits [0, 9, 28, 13, 27, 26, 9, 0, 23, 27]
+02:36:58 PREVIEW PASSED
+predicted 3-D RMS (mean over the 5 tuning scenarios and 2 seeds): new set 3.25 cm, best flown set 5.06 cm (24 s)
+  A1      new: 9.5 cm | 9.5 cm                      best: 12.3 cm | 12.1 cm
+  A8      new: 2.1 cm | 2.3 cm                      best: 4.4 cm | 4.9 cm
+  CIRCLE  new: 1.5 cm | 1.6 cm                      best: 2.3 cm | 2.2 cm
+  FIG8    new: 1.5 cm | 1.5 cm                      best: 2.2 cm | 2.1 cm
+  A4      new: 1.6 cm | 1.5 cm                      best: 4.3 cm | 3.8 cm
+02:37:03 round 0 done in 2229 s
+{
+ "controller": "S1",
+ "reference": "dryrun/stage8/results/loop_S1_ours_strict.json",
+ "real_cm": 9.538853449633923,
+ "real_cm_loop_lib": 9.536262946313666,
+ "strict_dry": true,
+ "r3": null,
+ "phi_next_max_abs_diff": 0.0,
+ "psi_max_abs_diff": 0.0,
+ "hits": [
+  0,
+  9,
+  28,
+  13,
+  27,
+  26,
+  9,
+  0,
+  23,
+  27
+ ],
+ "hits_loop_lib": [
+  0,
+  9,
+  28,
+  13,
+  27,
+  26,
+  9,
+  0,
+  23,
+  27
+ ],
+ "seconds_fly_write": 24.730430841445923,
+ "seconds_ingest": 0.7346069812774658,
+ "seconds_fit": 1057.7186999320984,
+ "seconds_tune": 1141.6216413974762,
+ "seconds_round": 2229.1853189468384,
+ "phi_next": [
+  0.19232915531751033,
+  -0.22314355131420976,
+  0.22314355131420976,
+  0.22314355131420976,
+  0.22314355131420976,
+  0.22314355131420976,
+  0.22314355131420976,
+  -0.21675609075851984,
+  0.22314355131420976,
+  0.22314355131420976
+ ],
+ "psi_after_fit": [
+  0.3208624157336174,
+  -0.3393048418335529,
+  -0.43818449324104547,
+  -0.4361477124467251,
+  0.0
+ ],
+ "n_beta": 5,
+ "yaml": "dry5_S1_8s/S1/round_1/gains.yaml",
+ "yaml_roundtrip_max_abs_phi_diff": 5.551115123125783e-17
+}

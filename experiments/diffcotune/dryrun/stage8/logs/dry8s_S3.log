@@ -1,0 +1,38 @@
+03:35:47 method ours, controller S3, lr 0.01, states pvq, gain limit 0.25, noise in tuning True, paper stop False, grad mode cfwd, tuning set ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], rounds 6
+03:36:00 [nominal cotune lr 0.01] round 0  real 3-D RMS 10.07 cm  z 7.23 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357, -0.681]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+03:55:55     fit: 51 epochs, max epochs, Jn at the last epoch 0.686, at the best iterate 0.686 (epoch 50), psi err [0.424, -0.894, -0.51, 0.072, -0.681] (1195 s)
+04:18:12     tune: 51 epochs, max epochs, Jn at the last epoch 0.866, at the best iterate 0.866 (epoch 50) (1337 s)
+04:18:18 [nominal cotune lr 0.01] round 1  real 3-D RMS 9.71 cm  z 7.16 cm  crashes 0  psi err [0.424, -0.894, -0.51, 0.072, -0.681]
+04:35:30     fit: 51 epochs, max epochs, Jn at the last epoch 0.752, at the best iterate 0.752 (epoch 50), psi err [0.416, -1.339, -0.954, -0.219, -0.681] (1032 s)
+04:53:34     tune: 51 epochs, max epochs, Jn at the last epoch 0.580, at the best iterate 0.579 (epoch 49) (1084 s)
+04:53:41 [nominal cotune lr 0.01] round 2  real 3-D RMS 7.21 cm  z 5.09 cm  crashes 0  psi err [0.416, -1.339, -0.954, -0.219, -0.681]
+05:09:59     fit: 51 epochs, max epochs, Jn at the last epoch 0.850, at the best iterate 0.850 (epoch 50), psi err [0.002, -1.746, -1.406, 0.032, -0.681] (978 s)
+05:27:49     tune: 51 epochs, max epochs, Jn at the last epoch 0.496, at the best iterate 0.496 (epoch 50) (1070 s)
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py:201: RuntimeWarning: Mean of empty slice.
+  return float((e * e).sum(-1).mean()), float((e[:, 2] ** 2).mean())
+/home/georg/.local/lib/python3.10/site-packages/numpy/_core/_methods.py:145: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+/home/georg/Desktop/flying_robot_course/experiments/diffcotune/dryrun/loop_lib.py:208: RuntimeWarning: Mean of empty slice.
+  return bool(trace[m, 3].mean() < 0.5 * trace[m, 16].mean())
+05:28:12 [nominal cotune lr 0.01] round 3  real 3-D RMS nan cm  z nan cm  crashes 5  psi err [0.002, -1.746, -1.406, 0.032, -0.681]
+05:47:20     tune: 51 epochs, max epochs, Jn at the last epoch 0.340, at the best iterate 0.336 (epoch 42) (1148 s)
+05:47:31 [nominal cotune lr 0.01] round 4  real 3-D RMS nan cm  z nan cm  crashes 5  psi err [0.002, -1.746, -1.406, 0.032, -0.681]
+06:07:05     tune: 51 epochs, max epochs, Jn at the last epoch 0.207, at the best iterate 0.207 (epoch 50) (1174 s)
+06:07:14 [nominal cotune lr 0.01] round 5  real 3-D RMS nan cm  z nan cm  crashes 5  psi err [0.002, -1.746, -1.406, 0.032, -0.681]
+06:07:14 halt reason: None ; largest gain change per round (relative): [0.067, 0.25, 0.25, 0.25, 0.25]
+06:08:50 S3 done; total 153 min

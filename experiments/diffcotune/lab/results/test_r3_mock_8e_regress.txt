@@ -1,0 +1,30 @@
+12:03:48 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:03:49 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:03:49 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:03:49 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:03:50 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:03:50 real 3-D RMS 18.24 cm (mean of the 5 tuning flights); keep-best round 0 (18.24 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+12:07:30 fit beta: J0 0.1554 -> 0.1545 (best epoch 2), epochs 3, psi [-0.02, -0.02, 0.019, 0.009]
+12:12:05 tune theta: J0 0.0146 -> 0.01335 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+12:12:13 round 0 done in 506 s
+old round 0 done in 506 s
+12:12:13 ingest A1_dry_merged_usd.csv                    A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:12:13 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:12:13 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:12:13 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:12:14 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:12:14 real 3-D RMS 18.24 cm (mean of the 5 usable tuning flights); keep-best round 0 (18.24 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+12:15:13 fit beta: J0 0.1554 -> 0.1545 (best epoch 2), epochs 3, psi [-0.02, -0.02, 0.019, 0.009]
+12:18:37 tune theta: J0 0.0146 -> 0.01335 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+12:18:42 round 0 done in 389 s
+new round 0 done in 389 s
+PASS b regression, all flights usable: theta_1 diff 0.0e+00, beta diff 0.0e+00, real cost equal 
+PASS b new fields only added (eligible True, no r3 block) 
+ALL PASS
+rc 0

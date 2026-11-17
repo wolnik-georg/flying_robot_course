@@ -41,7 +41,7 @@ def desk_info(root, c, l):
 
 def desk_done(root, c, l, n_rounds=5):
     sd = Path(root) / c
-    return (sd / ('round_%d' % (l + 1)) / 'state.json').exists() or (l == n_rounds - 1 and (sd / ('round_%d' % l) / 'report.json').exists())
+    return (sd / ('round_%d' % (l + 1)) / 'state.json').exists() or (sd / ('round_%d' % l) / 'state_after.json').exists()          # Stage 8d2: state_after.json = the last round (also after extension rounds)
 
 
 def flights_registered(logs, c, l):
@@ -77,7 +77,10 @@ def cmd_status(a):
         l, done = rounds_state(a.root, c)
         if l is None: lines.append('%s: not initialised (python3 lab/round.py --init --controller %s --state-dir %s/%s)' % (c, c, a.root, c)); continue
         reg = flights_registered(a.logs, c, l); dk = desk_info(a.root, c, l)
-        if l >= a.n_rounds: lines.append('%s: all %d rounds done; gains_theta_best.yaml in %s/%s/round_%d/ ; next: test flights with theta_best' % (c, a.n_rounds, a.root, c, a.n_rounds - 1)); continue
+        if (Path(a.root) / c / ('round_%d' % l) / 'state_after.json').exists():          # Stage 8d2: the last round (planned or extension) has its desk step done
+            if (Path(a.root) / c / ('round_%d' % l) / 'gains_theta_best.yaml').exists(): lines.append('%s: all %d rounds done (extension rounds: %d); gains_theta_best.yaml in %s/%s/round_%d/ ; next: test flights with theta_best' % (c, l + 1, max(0, l + 1 - a.n_rounds), a.root, c, l))
+            else: lines.append('%s: no eligible set after extension: ask the user (round_%d/NO_ELIGIBLE_SET.md); no final gains file' % (c, l))
+            continue
         if dk and dk['alive']: eta = dk['start'] + 60 * dk['expected_min']; lines.append('%s round %d desk RUNNING (pid %d), ready at about %s (expected %.0f min, estimate)' % (c, l, dk['pid'], hhmm(eta), dk['expected_min']))
         elif reg is not None and not desk_done(a.root, c, l, a.n_rounds): lines.append('%s round %d: flights registered, desk step not started: run `session.py desk --controller %s --round %d --logs %s/%s/round_%d`' % (c, l, c, l, a.logs, c, l))
         elif reg is None: nxt[c] = l; lines.append('fly %s round %d: A1, A8, then --solo CIRCLE, FIG8' % (c, l))
@@ -120,10 +123,20 @@ def cmd_manifest(a):
         rot = {'CIRCLE': -90.0, 'FIG8': -90.0, 'A4': -90.0}.get(scen)
         if getattr(a, 'fake_frame', False): rot = 0.0          # mock test only: the fake files are written in the model frame, already in time
         man.append(dict(file=str(p), scenario=scen, cell=cell, role=role, attempt=att, rotate_deg=rot, lag_s=(0 if getattr(a, 'fake_frame', False) else None))); mt.append((scen, role, p.stat().st_mtime, p.name))
+    for kv in (getattr(a, 'fallback', None) or []):          # Stage 8d2 (user decision 16 Nov): rule R3 fallback flight = ONE flight per R3 scenario with theta_best, role fallback, attempt 4, not used for the fit
+        key, f = kv.split('=', 1); p = (inbox / f) if not Path(f).is_absolute() else Path(f)
+        if not p.exists(): sys.exit('file not found: %s' % p)
+        if not a.fallback_gains: sys.exit('--fallback needs --fallback-gains <the gains.yaml of theta_best, e.g. lab/<C>/round_K/gains.yaml>')
+        rk = str(p.resolve()); prev = reg.get(rk)
+        if prev and (prev['controller'], prev['round']) != (a.controller, a.round): sys.exit('%s is already registered for %s round %d: refused' % (p.name, prev['controller'], prev['round']))
+        if any(m['scenario'] == key and m['role'] == 'fallback' for m in man): sys.exit('only ONE fallback flight per scenario (%s)' % key)
+        man.append(dict(file=str(p), scenario=key, cell=0, role='fallback', attempt=4, rotate_deg={'CIRCLE': -90.0, 'FIG8': -90.0, 'A4': -90.0}.get(key) if not getattr(a, 'fake_frame', False) else 0.0, lag_s=(0 if getattr(a, 'fake_frame', False) else None), gains=str(a.fallback_gains)))
+        mt.append((key, 'fallback', p.stat().st_mtime, p.name))
     order = [s for s, _ in TUNING_ORDER]; tun = [x for x in mt if x[1] == 'tuning' and x[0] in order]
     first = {}
     for s, r, t, n in tun: first.setdefault(s, t)
     seq = sorted(first, key=lambda s: first[s]); warn = [] if seq == [s for s in order if s in first] else ['WARNING: modification times are not in the card order %s (got %s): check the assignment' % (order, seq)]
+    if getattr(a, 'append', False) and Path(a.out).exists(): man = [m for m in json.load(open(a.out)) if not (m['role'] == 'fallback' and m['scenario'] in {x['scenario'] for x in man if x['role'] == 'fallback'})] + man          # --append: add the fallback entries to the flights.json of the round (the round's tuning flights are already in it)
     for m in man: reg[str(Path(m['file']).resolve())] = dict(controller=a.controller, round=a.round, scenario=m['scenario'], role=m['role'], time=time.time())
     reg_f.parent.mkdir(parents=True, exist_ok=True); json.dump(reg, open(reg_f, 'w'), indent=1)
     Path(a.out).parent.mkdir(parents=True, exist_ok=True); json.dump(man, open(a.out, 'w'), indent=1); print('wrote %s (%d flights)' % (a.out, len(man))); [print(w) for w in warn]
@@ -147,7 +160,7 @@ def main():
     p.add_argument('--n-rounds', type=int, default=6); p.add_argument('--timeline-min', default=None)
     p = sub.add_parser('desk'); p.add_argument('--lenient', action='store_true', help='mock test only (round.py --lenient)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--logs', required=True); p.add_argument('--root', default=str(HERE))
     p.add_argument('--n-rounds', type=int, default=6); p.add_argument('--top', default=None); p.add_argument('--expected-min', type=float, default=23.0); p.add_argument('--now', action='store_true'); p.add_argument('--print-only', action='store_true')
-    p = sub.add_parser('manifest'); p.add_argument('--fake-frame', action='store_true', help='mock test only: rotate_deg 0 and lag_s 0 (files of fake_round_flights.py)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--inbox', required=True); p.add_argument('--out', required=True); p.add_argument('--root', default=str(HERE)); p.add_argument('--assign', nargs='+', required=True)
+    p = sub.add_parser('manifest'); p.add_argument('--fake-frame', action='store_true', help='mock test only: rotate_deg 0 and lag_s 0 (files of fake_round_flights.py)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--inbox', required=True); p.add_argument('--out', required=True); p.add_argument('--root', default=str(HERE)); p.add_argument('--assign', nargs='*', default=[]); p.add_argument('--fallback', nargs='+', default=None, metavar='SCEN=file', help='rule R3: the ONE fallback flight per failed scenario (theta_best), role fallback, attempt 4'); p.add_argument('--fallback-gains', default=None, help='gains.yaml of theta_best used for the fallback flight'); p.add_argument('--append', action='store_true', help='add the fallback entries to the existing --out flights.json')
     p = sub.add_parser('switch'); p.add_argument('--to', required=True, choices=list(SWITCH)); p.add_argument('--solo', action='store_true'); p.add_argument('--yaml', default='<crazyflies.yaml>'); p.add_argument('--uri', default='<cf5 uri>'); p.add_argument('--fragment', default=None)
     p = sub.add_parser('cards'); p.add_argument('--start-count', type=int, required=True); p.add_argument('--pair', nargs='+', default=None)
     a = ap.parse_args()

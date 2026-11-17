@@ -1,0 +1,12 @@
+PASS 1a RS: R3 round 1 tunes from theta_best (round 0 = zeros), not from theta_1 (array([0., 0.]), [0.10048181890575342, 0.10048181890575342])
+PASS 1b round 0 and the round after the R3 round start from their own theta 
+PASS 1c the beta fit of the R3 round is unchanged (4 usable scenarios, fit flights without A1), loop not stopped 
+PASS 2 R3 in round 0: no theta_best, tuning from theta_0, restart False, no stop 
+PASS 3a two R3 rounds in a row: loop ends after round 2, halt reason, theta_best = round 0 (3, {'cost': 0.0, 'round': 0, 'phi': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 'eligible': True})
+PASS 3b the stopping round has no fit and no tuning step, and no later flight is made 
+PASS 3c the first R3 round (round 1) restarted from theta_best and still had its tuning step 
+PASS 4 R3 in rounds 1 and 3 (not consecutive): no stop, 5 rounds, both restarted from theta_best 
+PASS 5 R3 rounds 0 and 1 without theta_best: no stop, no restart 
+PASS 6a RS = 0, R3 round 1: tuning from theta_1 (Stage 8d behaviour), no RS fields 
+PASS 6b RS = 0, two R3 rounds in a row: loop goes on to round 4, no stop fields 
+ALL PASS

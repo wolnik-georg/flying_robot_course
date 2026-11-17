@@ -12,7 +12,7 @@ CTRLS = ['S0', 'S2', 'S1', 'S3']
 def analyse(C, tag):
     rec = J(R / ('loop_%s_%s.json' % (C, tag))); ev = J(R / ('eval_%s_%s.json' % (C, tag)))
     if rec is None: return None
-    rd = rec['rounds']; n = len(rd); out = dict(n=n, complete=(n == 6 and rec.get('halt') is None and ev is not None))
+    rd = rec['rounds']; n = len(rd); out = dict(n=n, ext=rec.get('extension_rounds_used', 0), complete=(n == 6 + rec.get('extension_rounds_used', 0) and rec.get('halt') is None and ev is not None))          # Stage 8d2: extension rounds (strict mode, up to 2) make the loop 7 or 8 rounds
     out['real'] = [r['real']['rms3d_cm'] for r in rd]
     out['crash'] = [sum(bool(f['crashed']) for f in r['flights']) for r in rd]; out['floor'] = [sum(bool(f['floor']) for f in r['flights']) for r in rd]
     out['floor_scen'] = [[f['scenario'] for f in r['flights'] if f['floor']] for r in rd]
@@ -22,6 +22,12 @@ def analyse(C, tag):
     r_ = out['real']
     out['a'] = (all(r_[l] <= r_[1] + 1.0 for l in range(2, n)) if n >= 5 else None)
     fl = [{f['scenario']: bool(f['crashed'] or f['floor']) for f in r['flights']} for r in rd]
+    out['strict'] = bool(rec.get('strict'))
+    if out['strict']:          # Stage 8d: strict dry run (lab flight rule + R3): a scenario counts as failed in round l if no usable attempt exists; real cost as flown (last attempt) stays 'real'
+        fl = [{f['scenario']: bool(f['failed_all']) for f in r['flights']} for r in rd]
+        out['real_used'] = [r['real_used']['rms3d_cm'] if r.get('real_used') else None for r in rd]; out['eligible'] = [bool(r.get('eligible')) for r in rd]; out['r3'] = [r.get('r3_scenarios') or [] for r in rd]
+        out['attempts'] = [sum(len(f['attempts']) for f in r['flights']) for r in rd]; out['fallbacks'] = [sum(1 for f in r['flights'] if f.get('fallback')) for r in rd]
+        out['best_eligible'] = (rec['best'] or {}).get('eligible', True); out['best_note'] = (rec['best'] or {}).get('note')
     out['b'] = (not [1 for l in range(1, n) for s in fl[l] if fl[l][s] and not (fl[0][s] and fl[1][s])]) if n >= 2 else None
     if ev:
         e0, eb = ev['eval']['theta_0'], ev['eval']['theta_best']
@@ -59,6 +65,19 @@ def main():
         rt = J(LAB / 'results' / ('dry_test5_%s_8o.json' % C)); gt = J(R / ('grad_gate9_%s_ours.json' % C))
         L.append('| round test (round.py round 0 against the dry run) | %s | |' % ('not yet' if rt is None else 'θ₁ difference %.1e, β difference %.1e, %.1f min' % (rt['phi_next_max_abs_diff'], rt['psi_max_abs_diff'], rt['seconds_round'] / 60)))
         L.append('| gradient check at the fitted β of every round | %s | |' % ('not yet' if gt is None else ('passed' if gt.get('passed') else 'see %s (sections 1–2 are judged on the used components in the fixed version)' % ('results/grad_gate9_%s_ours.json' % C))))
+        st_ = analyse(C, 'ours_strict')
+        if st_ is not None:
+            L.append('| **strict dry run (lab flight rule + R3), tag ours_strict** | |')
+            L.append('| real cost as flown per round (cm, last attempt of each scenario) | %s |' % row_real(st_))
+            L.append('| real cost over the used flights per round (cm) | %s |' % ' → '.join('n/a' if v is None else '%.2f' % v for v in st_['real_used']))
+            L.append('| attempts per round (all scenarios) / R3 cases (scenario) / fallback flights | %s / %s / %s |' % (' '.join(map(str, st_['attempts'])), ' '.join(','.join(x) if x else '-' for x in st_['r3']), ' '.join(map(str, st_['fallbacks']))))
+            L.append('| eligible for keep-best per round | %s ; keep-best round %s%s |' % (' '.join('yes' if e else 'no' for e in st_['eligible']), st_['best_round'], '' if st_['best_eligible'] else ' (NO ELIGIBLE SET: default gains)'))
+            L.append('| criteria a / b / c | %s / %s / %s |' % (yn(st_['a']), yn(st_['b']), yn(st_['c'])))
+            L.append('| means (cm) | %s |' % ('not yet' if 'tun0' not in st_ else 'tuning %.2f → %.2f; held-out A4 cell 2 %.2f → %.2f; in-sample A4 cell 1 %.2f → %.2f' % (st_['tun0'], st_['tunb'], st_['held0'], st_['heldb'], st_['ins0'], st_['insb'])))
+            L.append('| desk minutes per round (round 0 … 4) | %s |' % ' '.join('%.0f' % x for x in st_['minutes'][:5]))
+            rts = J(LAB / 'results' / ('dry_test5_%s_8s.json' % C)); gts = J(R / ('grad_gate9_%s_ours_strict.json' % C))
+            L.append('| round test (strict) | %s |' % ('not yet' if rts is None else 'θ₁ difference %.1e, β difference %.1e' % (rts['phi_next_max_abs_diff'], rts['psi_max_abs_diff'])))
+            L.append('| gradient check (strict run) | %s |' % ('not yet' if gts is None else ('passed' if gts.get('passed') or gts.get('passed_posthoc') else 'see results/grad_gate9_%s_ours_strict.json' % C)))
         pv = o['preview'] if o else None
         if pv: L.append('| safety preview of each round\'s θ (replay) | %s | |' % '; '.join('round %d %s (real %.1f cm)' % (x['round'], 'PASSED' if x['preview']['passed'] else 'FAILED', x['real_cm']) for x in pv))
         verdict = 'not yet' if (o is None or not o['complete']) else ('yes' if (o['a'] and o['b'] and o['c']) else 'no')

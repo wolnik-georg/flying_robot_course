@@ -1,0 +1,22 @@
+14:52:18 method ours, controller S0, lr 0.01, states pvq, gain limit 0.25, noise in tuning True, paper stop False, grad mode cfwd, tuning set ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], rounds 6
+14:52:26 [nominal cotune lr 0.01] round 0  real 3-D RMS 18.24 cm  z 17.25 cm  crashes 0  psi err [0.223, -0.405, -0.262, 0.357]
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+15:07:56     fit: 51 epochs, max epochs, Jn at the last epoch 0.954, at the best iterate 0.936 (epoch 46), psi err [-0.055, -0.805, -0.433, 0.494] (930 s)
+15:24:37     tune: 51 epochs, max epochs, Jn at the last epoch 0.384, at the best iterate 0.384 (epoch 49) (1001 s)
+15:24:37 halt reason: stopped after 1 rounds (probe) ; largest gain change per round (relative): []
+15:24:37 S0 done; total 32 min
+{"theta1_max_abs_diff": 0.0, "psi_after_fit_max_abs_diff": 0.0, "real_cm_diff": 0.0, "passed": true, "reference": "results/loop_S0_ours.json", "new": "results/loop_S0_regress8s.json"}

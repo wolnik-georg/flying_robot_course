@@ -1,0 +1,17 @@
+PASS 1a three attempts on A1 in round 1 [1, 2, 3]
+PASS 1b fallback flown once with theta_best 
+PASS 1c fit of round 1 gets 4 scenarios without A1 [['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4']]
+PASS 1d round 1 not eligible, r3 scenario listed 
+PASS 1e keep-best skips round 1 (round 2 or 0) 2
+PASS 1f as-flown cost differs from used cost (A1 floor flight included in as-flown) 
+PASS 2 floor on attempt 1 only: attempt 2 used, set eligible, seed + 1000 
+PASS 2b a crash on attempt 1 is repeated the same way 
+PASS 3 round 0, 3 failed attempts: no fallback flight, not eligible 
+PASS 4 no eligible set after 3 + 2 rounds: best has no phi (no theta_0), note "ask the user", 5 rounds, extension 2 (5, {'cost': None, 'round': None, 'phi': None, 'eligible': False, 'note': 'no eligib
+PASS 6a one extension round flown, eligible, becomes theta_best (4, 3)
+PASS 6b the update after the last planned round was computed (fit + tune before the extension round) 
+PASS 7 eligible sets: no extension round 
+PASS 8 two extension rounds, round 4 eligible = theta_best 
+PASS 9 eligible round 0 exists: last planned round not eligible, no extension, theta_best = round 0 
+PASS 5 fallback of round 2 uses theta_best of the eligible sets so far (round 0 or 0-eligible best) 0
+ALL PASS

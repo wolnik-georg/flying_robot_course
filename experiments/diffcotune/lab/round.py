@@ -91,14 +91,14 @@ def init_state(sd):
 
 
 def cell_of(scen, role, idx):
-    return (tuning_cells(scen) if (role == 'tuning' and scen != 'A4') else study_cells(scen))[idx]          # Stage 7: A4 cell 1 is a tuning scenario (study cell 0 of A4)
+    return (tuning_cells(scen) if (role in ('tuning', 'fallback') and scen != 'A4') else study_cells(scen))[idx]          # Stage 7: A4 cell 1 is a tuning scenario (study cell 0 of A4)
 
 
 # ------------------------------------------------------------------------------------------------------------- the round
 def run_round(l, folder, sd, top='auto', strict=True):
     t_start = time.time(); sd = Path(sd); folder = Path(folder); rd = sd / ('round_%d' % l)
     st = json.load(open(rd / 'state.json')); S = st['settings']; assert st['round'] == l, 'state is for round %d' % st['round']
-    phi_l = np.array(st['phi']); psi = np.array(st['psi']); last = l == S['n_rounds'] - 1
+    phi_l = np.array(st['phi']); psi = np.array(st['psi']); ext = st.get('ext', 0); last0 = l == S['n_rounds'] + ext - 1          # Stage 8d2: ext = extension rounds added so far (state), `last` is decided after keep-best (below)
     man = json.load(open(folder / 'flights.json'))
     # 1. ingest + gate + selection
     t0 = time.time(); ing = []
@@ -118,37 +118,71 @@ def run_round(l, folder, sd, top='auto', strict=True):
         ok = [g for g in cands if good(g)]
         pick[s] = ok[0] if ok else None
     missing = [s for s, g in pick.items() if g is None]
+    # Stage 8d, rule R3 (user decision 16 Nov): a scenario with 3 failed attempts (attempts 1, 2, 3 all present, none usable) gets ONE fallback flight with theta_best (manifest role 'fallback', attempt 4);
+    # it is not used for the fit, the cost or theta_best; the beta fit uses the usable flights of the other scenarios; theta_l is not eligible for keep-best. Round 0 (no theta_best yet): no fallback flight.
+    R3_VERSION = 'R3-2026-11-16'; RS_VERSION = 'RS-2026-11-17'; EXT_MAX = 2          # Stage 8d2: extension rounds l = 6, 7 (user decision 16 Nov)
+    r3 = [s for s in missing if {1, 2, 3} <= {g['m']['attempt'] for g in ing if g['m']['role'] == 'tuning' and g['scenario'] == s}]
+    need_more = [s for s in missing if s not in r3]
+    fb = {g['scenario']: g for g in ing if g['m']['role'] == 'fallback' and g['scenario'] in r3}
     seconds_ingest = time.time() - t0
     flights = [dict(scenario=g['scenario'], file=g['m']['file'], attempt=g['m']['attempt'], role=g['m']['role'], gate_ok=g['gate']['ok'], gate_reasons=g['gate']['reasons'],
                     rows=g['gate']['rows'], rate_hz=g['gate']['rate_hz'], gap_fraction=g['gate']['gap_fraction'], frame=g.get('frame'), reference_check=g.get('reference_check'),
                     crashed=g.get('flags', {}).get('crashed'), floor=g.get('flags', {}).get('floor'), tilt_max_deg=g.get('flags', {}).get('tilt_max_deg'),
-                    rms3d_cm=g.get('rms3d_cm'), used=any(g is p for p in pick.values())) for g in ing]
+                    rms3d_cm=g.get('rms3d_cm'), used=any(g is p for p in pick.values()) and g['m']['role'] != 'fallback') for g in ing]
     rep = dict(round=l, controller=L.CTRL, phi=phi_l.tolist(), psi_before=psi.tolist(), flights=flights, missing=missing, seconds_ingest=seconds_ingest)
-    if missing:
-        rep['status'] = 'no usable flight for %s: repeat (attempt <= 3), nothing fitted' % missing
+    keep0 = st['keep']; no_fb = [s for s in r3 if s not in fb]
+    # Stage 8e3 (T3b, planning agent 17 Nov): every scenario R3 (3 attempts each, no usable flight) is not a stop when theta_best exists and every fallback flight is present: no beta fit (beta unchanged, as loop_lib.py with 0 usable flights),
+    # theta_l not eligible, RS restart from theta_best or RS stop. Without theta_best (round 0) nothing can be fallen back on: stop and ask the user.
+    all_r3 = len(missing) == len(L.TUNING) and not need_more
+    theta0_failed = all_r3 and keep0 is None
+    if need_more or (r3 and keep0 is not None and no_fb) or theta0_failed or (len(missing) == len(L.TUNING) and not all_r3):
+        if theta0_failed: rep['status'] = 'theta_0 failed on every scenario: stop and ask the user (check drone and setup). Nothing fitted, no next round written.'
+        elif need_more or not r3: rep['status'] = 'no usable flight for %s: repeat (attempt <= 3), nothing fitted' % missing
+        else:
+            rep['status'] = ('R3: %s failed all 3 attempts. Fly each of them ONCE more with theta_best = the gains of round %d (%s) (session.py manifest writes it as role "fallback", attempt 4; the fallback flight is not used for the fit), then run this command again. If the fallback flight itself fails: pause, check and fix the drone and setup (battery, props, mocap, EKF toggle) and fly the fallback once more; the round continues either way. A lab day that must stop resumes next session from the saved state (%s). Nothing fitted, no next round written.' % (no_fb, keep0['round'], sd / ('round_%d' % keep0['round']) / 'gains.yaml', rd / 'state.json'))
         rd.mkdir(exist_ok=True); json.dump(rep, open(rd / 'report.json', 'w'), indent=1); (rd / 'report.md').write_text('# Round %d: %s\n' % (l, rep['status'])); say(rep['status'])
         return rep
-    fl = [dict(cost=pick[s]['cost_m2'], z_cost=pick[s]['z_cost_m2'], crashed=False, floor=False, tries=pick[s]['m']['attempt'] - 1) for s, _ in L.TUNING]
-    rc = L.round_cost(fl); rep['real'] = rc
-    rep['per_scenario_cm'] = {s: pick[s]['rms3d_cm'] for s, _ in L.TUNING}
+    fl = [dict(cost=pick[s]['cost_m2'], z_cost=pick[s]['z_cost_m2'], crashed=False, floor=False, tries=pick[s]['m']['attempt'] - 1) for s, _ in L.TUNING if pick[s] is not None]          # Stage 8d: used flights only (all 5 unless R3)
+    rc = L.round_cost(fl) if fl else dict(cost=float('nan'), rms3d_cm=float('nan'), z_rms_cm=float('nan'), crashed=0, floor=0, tries=[]); rep['real'] = rc          # Stage 8e3: no usable flight on any scenario (all R3): cost nan
+    rep['eligible'] = not r3; rep['r3_version'] = R3_VERSION
+    if r3: rep['r3'] = dict(scenarios=r3, fallback_files={s: fb[s]['m']['file'] for s in fb}, theta_best_round=None if keep0 is None else keep0['round'], fallback_flags={s: dict(crashed=fb[s].get('flags', {}).get('crashed'), floor=fb[s].get('flags', {}).get('floor'), gate_ok=fb[s]['gate']['ok']) for s in fb}, note='fallback flights are not used for the fit, the cost or theta_best; this set is not eligible for keep-best; a failed fallback flight is only recorded (pause, fix the setup, fly it once more, the round continues either way)')
+    rep['per_scenario_cm'] = {s: (pick[s]['rms3d_cm'] if pick[s] is not None else None) for s, _ in L.TUNING}
     rep['test_cm'] = {'%s[%d]' % (g['scenario'], g['m']['cell']): g['rms3d_cm'] for g in ing if g['m']['role'] == 'test' and g.get('usable')}
     keep = st['keep']
-    if keep is None or rc['cost'] <= keep['cost']:
+    if not r3 and (keep is None or rc['cost'] <= keep['cost']):          # Stage 8d: a set with an R3 scenario is not eligible for keep-best
         keep = dict(cost=rc['cost'], rms3d_cm=rc['rms3d_cm'], round=l, phi=phi_l.tolist())
-    rep['keep_best'] = keep; say('real 3-D RMS %.2f cm (mean of the %d tuning flights); keep-best round %d (%.2f cm)' % (rc['rms3d_cm'], len(L.TUNING), keep['round'], keep['rms3d_cm']))
+    extend = last0 and keep is None and ext < EXT_MAX; last = last0 and not extend          # Stage 8d2 (user decision 16 Nov): no eligible set after the last planned round = extension round (up to 2), the fit and the tuning step are done as in any other round
+    if extend: rep['extension_round_added'] = ext + 1; say('no eligible set after round %d: extension round %d of %d (the update after this round is computed as usual)' % (l, ext + 1, EXT_MAX))
+    rep['extension_rounds_used'] = ext + (1 if extend else 0)
+    # Stage 8e, rule RS (user decision 17 Nov): (a) an R3 round with a theta_best restarts the tuning step from theta_best (box +-25 % around theta_best; the beta fit is unchanged);
+    # (b) R3 in this round and in the previous one (state history) with a theta_best: no further tuning, final gains = theta_best, no new gain set
+    prev_r3 = bool(st['history'] and st['history'][-1].get('r3')); rs_restart = bool(r3 and keep is not None); rs_stop = bool(r3 and prev_r3 and keep is not None)
+    rep['rs_version'] = RS_VERSION; rep['prev_r3'] = prev_r3; rep['restart_from_best'] = rs_restart and not rs_stop; rep['rs_stop'] = rs_stop
+    if rs_stop:
+        last = True; extend = False; rep['extension_round_added'] = None; rep['extension_rounds_used'] = ext
+        rep['status'] = 'Tuning stopped: two R3 rounds in a row. Final gains = theta_best (round %d). Fly the test flights with theta_best.' % keep['round']; say(rep['status'])
+    elif rs_restart: say('RS: R3 in this round (%s), the tuning step starts from theta_best (round %d), not from theta_%d' % (r3, keep['round'], l))
+    rep['keep_best'] = keep; say('real 3-D RMS %.2f cm (mean of the %d usable tuning flights%s); keep-best %s' % (rc['rms3d_cm'], len(fl), ('; R3 on %s, set NOT eligible' % r3) if r3 else '', ('round %d (%.2f cm)' % (keep['round'], keep['rms3d_cm'])) if keep else 'none yet (no eligible set)'))
     x = np.r_[phi_l, psi]
-    traces = {i: [pick[s]['trace']] for i, (s, _) in enumerate(L.TUNING)}
-    tops = {i: (pick[s_]['ref'].top_pos, pick[s_]['ref'].top_vel) for i, (s_, _) in enumerate(L.TUNING) if pick[s_]['ref'].has_top and (top == 'logged' or (top == 'auto' and s_ in TOP_FROM_LOG))}
-    rep['top_path'] = {s_: ('logged' if i in tops else 'planned') for i, (s_, _) in enumerate(L.TUNING)}
+    traces = {i: [pick[s]['trace']] for i, (s, _) in enumerate(L.TUNING) if pick[s] is not None}
+    tops = {i: (pick[s_]['ref'].top_pos, pick[s_]['ref'].top_vel) for i, (s_, _) in enumerate(L.TUNING) if pick[s_] is not None and pick[s_]['ref'].has_top and (top == 'logged' or (top == 'auto' and s_ in TOP_FROM_LOG))}
+    rep['top_path'] = {s_: ('logged' if i in tops else 'planned') for i, (s_, _) in enumerate(L.TUNING)}          # R3 scenario: planned top in the tuning step
     pool = LP.PoolTop(len(L.TUNING), states=tuple(S['states']), tops=tops)
     try:
         t1 = time.time()
-        if not (last and S['skip_last_fit']):
-            x, rf = L.adam_inner(lambda xx: pool.rollouts('sysid', xx, traces), x, L.PSI_FIT_IDX, S['lr'], K2=S['epochs'], label='fit beta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False))
+        if not ((last and S['skip_last_fit']) or rs_stop or not traces):          # Stage 8e3: no trace = no beta fit, beta unchanged
+            if r3:          # Stage 8d R3: the fit uses the usable flights of the other scenarios (equal weights over them); scenario list and tops re-indexed to that subset
+                sub = [i for i in range(len(L.TUNING)) if i in traces]; tr_sub = {j: traces[i] for j, i in enumerate(sub)}; pool.tops = {j: tops[i] for j, i in enumerate(sub) if i in tops}
+                fit_fn = lambda xx: pool.rollouts('sysid', xx, tr_sub, scen_list=[L.TUNING[i] for i in sub])
+            else:
+                fit_fn = lambda xx: pool.rollouts('sysid', xx, traces)
+            x, rf = L.adam_inner(fit_fn, x, L.PSI_FIT_IDX, S['lr'], K2=S['epochs'], label='fit beta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False))
             rep['fit'] = dict(epochs=rf['epochs'], J0=rf['J0'], J_best=rf['J_best'], best_epoch=rf['best_epoch'], J_end=rf.get('J_end'), reason=rf.get('reason')); say('fit beta: J0 %.4g -> %.4g (%s), epochs %d, psi %s' % (rf['J0'], rf['J_best'] if rf['J_best'] is not None else rf['J_end'], ('best epoch %d' % rf['best_epoch']) if rf['best_epoch'] is not None else 'last iterate, stop: %s' % rf['reason'], rf['epochs'], np.round(x[10:], 3).tolist()))
+        pool.tops = tops
         rep['seconds_fit'] = time.time() - t1; rep['psi_after_fit'] = x[10:].tolist()
         t2 = time.time()
         if not last:
+            if rs_restart: x = np.array(x, float); x[:10] = np.array(keep['phi'])          # Stage 8e rule RS 1a
             pool.noise_seeds = tuple(S['noise_seed_base'] + S['n_noise_seeds'] * l + j for j in range(S['n_noise_seeds'])) if S.get('noise', True) else None          # Stage 8: paper = no noise in the tuning step
             x, rt = L.adam_inner(lambda xx: pool.rollouts('task', xx, None), x, np.arange(10), S['lr'], K2=S['epochs'], label='tune theta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False),
                                  limit=float(np.log(1 + S['gain_limit'])) if S['gain_limit'] else None)
@@ -157,22 +191,24 @@ def run_round(l, folder, sd, top='auto', strict=True):
         rep['seconds_tune'] = time.time() - t2
         if not last and not NO_PREVIEW:          # Stage 8b: safety preview of the new gain set in the existing pool workers (never changes theta)
             import preview as PV
-            pv = PV.run(L, lambda fn, jobs: pool.pool.map(fn, jobs, chunksize=1), x[:10], x[10:], keep['phi'])
+            pv = PV.run(L, lambda fn, jobs: pool.pool.map(fn, jobs, chunksize=1), x[:10], x[10:], keep['phi'] if keep else [0.0] * 10)
             rep['preview'] = dict(verdict=pv['verdict'], passed=pv['passed'], fails=[list(f) for f in pv['fails']], mean_rms_cm=pv['mean_rms_cm'], seconds=pv['seconds'], notes_worse=[list(n) for n in pv['notes_worse']], text=PV.text(pv, L)); say(rep['preview']['text'])
     finally:
         pool.close()
     phi_next = x[:10]; psi_next = x[10:]
     rep.update(phi_next=None if last else phi_next.tolist(), psi_after=psi_next.tolist(), theta_factors_next=None if last else dict(zip(L.GAIN_NAMES, np.exp(phi_next - phi_l).round(4).tolist())),
-               theta_factors_vs_default=dict(zip(L.GAIN_NAMES, np.exp(phi_l).round(4).tolist())), last_round=last, recommendation_if_last=dict(theta_best_round=keep['round']) if last else None)
+               theta_factors_vs_default=dict(zip(L.GAIN_NAMES, np.exp(phi_l).round(4).tolist())), last_round=last, recommendation_if_last=(dict(theta_best_round=keep['round'] if keep else None, eligible_set=keep is not None) if last else None))
     rep['seconds_total'] = time.time() - t_start
-    st_next = dict(round=l + 1, phi=phi_next.tolist(), psi=psi_next.tolist(), keep=keep, settings=S, controller=L.CTRL,
-                   history=st['history'] + [dict(round=l, rms3d_cm=rc['rms3d_cm'], phi=phi_l.tolist(), psi_after_fit=rep['psi_after_fit'])])
+    st_next = dict(round=l + 1, phi=phi_next.tolist(), psi=psi_next.tolist(), keep=keep, settings=S, controller=L.CTRL, ext=ext + (1 if extend else 0),
+                   history=st['history'] + [dict(round=l, rms3d_cm=rc['rms3d_cm'], phi=phi_l.tolist(), psi_after_fit=rep['psi_after_fit'], **(dict(eligible=False, r3=r3, restart_from_best=bool(rs_restart and not rs_stop)) if r3 else {}))])
     rep['seed_info'] = dict(noise_seed_base=S['noise_seed_base'], note='noise seeds of the tuning step of round l: base + 2 l, base + 2 l + 1')
     rd.mkdir(exist_ok=True); json.dump(rep, open(rd / 'report.json', 'w'), indent=1)
-    md = ['# Round %d report (%s, method version "A + B")' % (l, L.CTRL), '', 'Real cost (mean of the tuning flights, 3-D RMS): **%.2f cm**; keep-best: round %d (%.2f cm).' % (rc['rms3d_cm'], keep['round'], keep['rms3d_cm']), '',
+    md = ['# Round %d report (%s, method version "A + B")' % (l, L.CTRL), '', 'Real cost (mean of the %d usable tuning flights, 3-D RMS): **%.2f cm**; keep-best: %s.' % (len(fl), rc['rms3d_cm'], ('round %d (%.2f cm)' % (keep['round'], keep['rms3d_cm'])) if keep else 'none yet (no eligible set)')] + (['', '**R3: %s failed 3 attempts; fallback flight(s) with theta_best (round %s) not used for the fit; this set is NOT eligible for keep-best.**' % (r3, keep0['round'] if keep0 else 'n/a, no theta_best yet')] if r3 else []) + ['',
           '| scenario | file | attempt | gate | crashed | floor | 3-D RMS cm | used |', '|---|---|---|---|---|---|---|---|']
     for f in flights:
         md.append('| %s | %s | %d | %s | %s | %s | %.2f | %s |' % (f['scenario'], f['file'], f['attempt'], 'ok' if f['gate_ok'] else ';'.join(f['gate_reasons']), f['crashed'], f['floor'], f['rms3d_cm'] or float('nan'), 'yes' if f['used'] else 'no'))
+    if rep.get('status'): md += ['', '**%s**' % rep['status']]
+    if rep.get('restart_from_best'): md += ['', '**RS: the tuning step of this round started from theta_best (round %d), not from theta_%d (R3 in this round).**' % (keep['round'], l)]
     md += ['', 'Test flights (not used for the update): %s' % rep['test_cm'], '', 'beta (log-factors) after the fit: %s' % np.round(psi_next, 4).tolist(),
            'theta flown (factor to the default gains): %s' % rep['theta_factors_vs_default']]
     if not last:
@@ -183,12 +219,17 @@ def run_round(l, folder, sd, top='auto', strict=True):
     if not last:
         nd = sd / ('round_%d' % (l + 1)); nd.mkdir(exist_ok=True)
         json.dump(st_next, open(nd / 'state.json', 'w'), indent=1)
-        gains_to_yaml(phi_next, nd / 'gains.yaml', 'round %d: theta_%d from round %d (method version A + B, keep-best round %d)' % (l + 1, l + 1, l, keep['round']))
+        gains_to_yaml(phi_next, nd / 'gains.yaml', 'round %d: theta_%d from round %d (method version A + B, keep-best %s)' % (l + 1, l + 1, l, ('round %d' % keep['round']) if keep else 'none yet'))
         if 'preview' in rep:
-            (nd / 'PREVIEW.txt').write_text(rep['preview']['text'] + '\n' + ('' if rep['preview']['passed'] else 'DO NOT FLY THIS SET WITHOUT ASKING THE USER; default action: fly the best flown set again (round %d). The gains file gains.yaml is written unchanged.\n' % keep['round'])); json.dump(rep['preview'], open(nd / 'preview.json', 'w'), indent=1)
+            (nd / 'PREVIEW.txt').write_text(rep['preview']['text'] + '\n' + ('' if rep['preview']['passed'] else 'DO NOT FLY THIS SET WITHOUT ASKING THE USER; default action: fly the best flown set again (%s). The gains file gains.yaml is written unchanged.\n' % (('round %d' % keep['round']) if keep else 'none eligible yet: the default gains, round 0'))); json.dump(rep['preview'], open(nd / 'preview.json', 'w'), indent=1)
     else:
         json.dump(st_next, open(rd / 'state_after.json', 'w'), indent=1)
-        gains_to_yaml(np.array(keep['phi']), rd / 'gains_theta_best.yaml', 'theta_best = theta_%d (keep-best over the flown gain sets)' % keep['round'])
+        if keep:
+            gains_to_yaml(np.array(keep['phi']), rd / 'gains_theta_best.yaml', 'theta_best = theta_%d (keep-best over the eligible flown gain sets; extension rounds used: %d)' % (keep['round'], ext))
+        else:          # Stage 8d2: never theta_0 as a silent fallback, no final gains file
+            msg = 'no eligible set after extension: ask the user (extension rounds used: %d). No final gains file is written; theta_0 is NOT a fallback.' % ext
+            rep['status'] = msg; (rd / 'NO_ELIGIBLE_SET.md').write_text('# ' + msg + '\n'); say(msg); json.dump(rep, open(rd / 'report.json', 'w'), indent=1)
+        if ext: say('extension rounds used: %d' % ext)
     say('round %d done in %.0f s' % (l, rep['seconds_total']))
     return rep
 

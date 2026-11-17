@@ -1,0 +1,64 @@
+11:57:12 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+11:57:12 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+11:57:12 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+11:57:12 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+11:57:12 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+11:57:13 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+11:57:13 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+11:57:13 no eligible set after round 5: extension round 1 of 2 (the update after this round is computed as usual)
+11:57:13 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best none yet (no eligible set)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+12:00:19 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+12:03:27 tune theta: J0 0.0131 -> 0.01163 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+12:03:30 round 5 done in 378 s
+PASS c1 no eligible set after the last planned round: extension round 1 (state round 6 with ext 1, gains.yaml, no state_after, no final gains) 
+12:03:30 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:03:31 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:03:31 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:03:31 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:03:31 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:03:32 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+12:03:32 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+12:03:32 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best none yet (no eligible set)
+12:03:35 no eligible set after extension: ask the user (extension rounds used: 2). No final gains file is written; theta_0 is NOT a fallback.
+12:03:35 extension rounds used: 2
+12:03:35 round 7 done in 5 s
+PASS d no eligible set after extension: message "ask the user", NO_ELIGIBLE_SET.md, no gains_theta_best.yaml, no next round no eligible set after extension: ask the user (extension rounds used: 2). No final gains file is written; theta_0 is NOT a fallback.
+12:03:35 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:03:35 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:03:35 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:03:36 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:03:36 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:03:36 real 3-D RMS 18.24 cm (mean of the 5 usable tuning flights); keep-best round 6 (18.24 cm)
+12:03:39 extension rounds used: 1
+12:03:39 round 6 done in 4 s
+PASS e extension round eligible: it is the last round, gains_theta_best.yaml written, extension rounds used 1 
+12:03:39 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:03:39 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:03:39 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:03:40 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:03:40 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:03:40 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+12:03:40 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+12:03:41 ingest A1_fallback.csv                          A1 attempt 4: gate ok, crashed False floor True, real 37.13 cm
+12:03:41 RS: R3 in this round (['A1']), the tuning step starts from theta_best (round 2), not from theta_5
+12:03:41 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best round 2 (10.00 cm)
+12:03:43 round 5 done in 4 s
+PASS f eligible keep-best exists: no extension, last round writes gains_theta_best.yaml 
+12:03:43 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+12:03:44 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+12:03:44 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+12:03:44 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+12:03:45 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+12:03:45 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+12:03:46 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+12:03:46 R3: ['A1'] failed all 3 attempts. Fly each of them ONCE more with theta_best = the gains of round 0 (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/r3_mock_work/msg/S0/round_0/gains.yaml) (session.py manifest writes it as role "fallback", attempt 4; the fallback flight is not used for the fit), then run this command again. If the fallback flight itself fails: pause, check and fix the drone and setup (battery, props, mocap, EKF toggle) and fly the fallback once more; the round continues either way. A lab day that must stop resumes next session from the saved state (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/r3_mock_work/msg/S0/round_1/state.json). Nothing fitted, no next round written.
+PASS g R3 message: fallback failure rule + resume sentence 
+PASS h1 manifest --fallback --append: tuning entries kept, one fallback entry (A1, attempt 4, gains file) 
+PASS h2 two fallback flights for one scenario refused 
+PASS h3 --fallback without --fallback-gains refused 
+PASS i cell_of accepts role fallback 
+ALL PASS
+rc 0

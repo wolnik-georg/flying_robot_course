@@ -1,0 +1,54 @@
+17:11:46 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+17:11:46 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+17:11:46 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+17:11:47 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+17:11:47 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+17:11:47 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+17:11:47 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+17:11:48 ingest A1_fallback.csv                          A1 attempt 4: gate ok, crashed False floor True, real 37.13 cm
+17:11:48 RS: R3 in this round (['A1']), the tuning step starts from theta_best (round 0), not from theta_1
+17:11:48 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best round 0 (10.00 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+17:14:20 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+17:17:28 tune theta: J0 0.01316 -> 0.01213 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+17:17:31 round 1 done in 346 s
+PASS a1 the A1 attempts are floor flights in the ingest (test premise) [True, True, True]
+PASS a2 A1 x3 + fallback: round completes, 4 flights fitted, set not eligible 
+PASS a3 fallback flight not used 
+PASS a4 keep-best of the next state unchanged (round 0), history marks not eligible 
+17:17:32 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+17:17:32 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+17:17:32 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+17:17:32 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+17:17:32 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+17:17:32 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+17:17:33 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+17:17:33 R3: ['A1'] failed all 3 attempts. Fly each of them ONCE more with theta_best = the gains of round 0 (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/r3_mock_work/no_fallback/S0/round_0/gains.yaml) (session.py manifest writes it as role "fallback", attempt 4; the fallback flight is not used for the fit), then run this command again. If the fallback flight itself fails: pause, check and fix the drone and setup (battery, props, mocap, EKF toggle) and fly the fallback once more; the round continues either way. A lab day that must stop resumes next session from the saved state (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/r3_mock_work/no_fallback/S0/round_1/state.json). Nothing fitted, no next round written.
+PASS a5 A1 x3 without fallback: clear message, nothing fitted, no next round R3: ['A1'] failed all 3 attempts. Fly each of them ONCE more with theta_best = the gains of round 0 (/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/results/r3_mock_work/no_fallback
+17:17:33 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+17:17:33 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+17:17:33 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+17:17:33 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+17:17:33 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+17:17:33 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+17:17:34 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+17:17:34 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best none yet (no eligible set)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+17:20:33 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+17:24:13 tune theta: J0 0.01344 -> 0.01252 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+17:24:21 round 0 done in 408 s
+PASS a6 round 0 with 3 failed attempts: no fallback needed, round completes, no eligible set yet 
+17:24:21 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+17:24:21 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+17:24:21 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+17:24:21 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+17:24:22 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+17:24:22 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+17:24:22 no usable flight for ['A1']: repeat (attempt <= 3), nothing fitted
+PASS a7 only 2 failed attempts: old behaviour (repeat needed, nothing fitted) 
+ALL PASS
+rc 0
