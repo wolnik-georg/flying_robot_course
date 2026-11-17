@@ -23,7 +23,7 @@ os.environ.setdefault('TORCHINDUCTOR_COMPILE_THREADS', '1')
 if '--controller' in sys.argv:            # Stage 5: the controller selects the model of loop_lib BEFORE it is imported (default S0 = Stage 4 behaviour)
     os.environ['DIFFCOTUNE_CONTROLLER'] = sys.argv[sys.argv.index('--controller') + 1]
 # Stage 5b: gradient mode of the model (loop_lib.GRAD_MODE; same autodiff gradient, other differentiation mode). Default per controller, written here: S0 'reverse'; S1, S2, S3 'mixed' since Stage 5c (eager forward mode is exact but about 20-60 x slower, not adopted: dryrun/stage5b/report_stage5b.md; the compiled forward sensitivity of dryrun/stage5c/report_stage5c.md is as fast as reverse). --grad-mode overrides. Set BEFORE loop_lib is imported (spawned workers inherit it).
-GRAD_MODE_DEFAULT = dict(S0='cfwd', S1='cfwd', S2='cfwd', S3='cfwd')          # Stage 7 (user decision 15 Nov): the compiled forward sensitivity for every gradient on every scenario, all four controllers (same gradient as reverse mode; reverse stays in the checks). Before: S0 reverse, S1-S3 mixed (Stage 5c)
+GRAD_MODE_DEFAULT = dict(S0='cfwd', S1='cfwd', S2='cfwd', S3='cfwd', FBL='cfwd')          # Stage 7 (user decision 15 Nov): the compiled forward sensitivity for every gradient on every scenario, all four controllers (same gradient as reverse mode; reverse stays in the checks). Before: S0 reverse, S1-S3 mixed (Stage 5c)
 _OLD_DEFAULT = dict(S0='reverse', S1='mixed2', S2='mixed2', S3='mixed2')          # Stage 7: mixed2 (= mixed + the noisy A1 task gradient of the tuning step by the compiled forward sensitivity; user decision 15 Nov, same gradient); was 'mixed' in Stage 5c          # Stage 5c: mixed = exact forward sensitivity (compiled) for the noise-free beta fit on A1, compiled reverse elsewhere (S0 unchanged)
 # Stage 8b (user decision 15 Nov evening): the lab method is 'ours' (loop_lib.METHOD_SETTINGS['ours'], DiffCoTune's co-tuning loop with DiffTune's quadrotor settings, 6 rounds); `--method paper` selects the paper-faithful variant (tested in Stage 8, not adopted). The learning rate of the paper variant is
 # DIFFCOTUNE_LR (default in loop_lib, chosen in Stage 8 step 1c). Set BEFORE loop_lib is imported.
@@ -32,9 +32,14 @@ os.environ.setdefault('DIFFCOTUNE_METHOD', 'ours')          # Stage 8b (user dec
 _ctrl = sys.argv[sys.argv.index('--controller') + 1] if '--controller' in sys.argv else 'S0'
 os.environ['DIFFCOTUNE_GRAD_MODE'] = sys.argv[sys.argv.index('--grad-mode') + 1] if '--grad-mode' in sys.argv else GRAD_MODE_DEFAULT.get(_ctrl, 'reverse')
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): S1 / S3 keep the RPM delay at the calibration (4.0502 ms) and fit the other four beta (loop_lib.FIX_RD). The table is True for S1 and S3 (flipped 15 Nov after the Stage 5c round tests with the delay fitted had run; switch: --fix-rd / --fit-rd). Set BEFORE loop_lib is imported.
-FIX_RD_DEFAULT = dict(S0=False, S1=True, S2=False, S3=True)
+FIX_RD_DEFAULT = dict(S0=False, S1=True, S2=False, S3=True, FBL=False)
 os.environ['DIFFCOTUNE_FIX_RD'] = '1' if '--fix-rd' in sys.argv else ('0' if '--fit-rd' in sys.argv else ('1' if FIX_RD_DEFAULT.get(_ctrl, False) else '0'))
 NO_PREVIEW = '--no-preview' in sys.argv          # Stage 8b
+FBL_VARIANT = None
+if _ctrl == 'FBL':          # Stage F2: the FBL variant (base | rom | both) is chosen per block with --variant (DIFFCOTUNE_FBL_VARIANT / FRSIM_FBL_VARIANT are set before loop_lib is imported)
+    FBL_VARIANT = sys.argv[sys.argv.index('--variant') + 1] if '--variant' in sys.argv else os.environ.get('DIFFCOTUNE_FBL_VARIANT')
+    assert FBL_VARIANT in ('base', 'rom', 'both'), 'FBL needs --variant base | rom | both (net is never tuned)'
+    os.environ['DIFFCOTUNE_FBL_VARIANT'] = FBL_VARIANT
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent)); sys.path.insert(0, str(HERE.parent / 'dryrun'))
 import loop_lib as L  # noqa
@@ -46,11 +51,17 @@ from frsim.scenarios import study_cells, tuning_cells  # noqa
 # gain of the model -> firmware parameter(s) of the ctrlOmarIndi group (controller_omar_indi.c PARAM_GROUP ctrlOmarIndi, lines 679-717 of crazyflie-firmware); x and y tied
 GAIN_PARAMS = [('Pxy', ['Kpos_Px', 'Kpos_Py']), ('Pz', ['Kpos_Pz']), ('Dxy', ['Kpos_Dx', 'Kpos_Dy']), ('Dz', ['Kpos_Dz']), ('Iz', ['Kpos_Iz']),
                ('KRxy', ['KR_x', 'KR_y']), ('KRz', ['KR_z']), ('Kwxy', ['Kw_x', 'Kw_y']), ('Kwz', ['Kw_z']), ('KIxy', ['KI_x', 'KI_y'])]
+# Stage F2: FBL gains -> firmware parameters of the ctrlFbl group (controller_omar_indi.c PARAM_GROUP ctrlFbl); kr_xy / kr_z are not tuned and not written (unused with inner 1); the variant switches per block
+FBL_GAIN_PARAMS = [('kp_xy', ['kp_xy']), ('kv_xy', ['kv_xy']), ('ki_xy', ['ki_xy']), ('kp_z', ['kp_z']), ('kv_z', ['kv_z']), ('ki_z', ['ki_z'])]
+FBL_SWITCHES = {'base': (0, 0), 'rom': (1, 0), 'both': (1, 1)}          # variant -> (dw_en, nn_en)
+FBL_FIXED_PARAMS = [('en', 1), ('inner', 1), ('cd', 0.55)]          # as the crazyswarm2 branch study_FBL_stock (en 1, inner 1, cd 0.55)
+if _ctrl == 'FBL': GAIN_PARAMS = FBL_GAIN_PARAMS
 ROBOT = 'cf5'          # the study drone (crazyflies.yaml: cf5 = bottom, scored)
 # the peer input of the S0 model: the LOGGED top-drone path for the two-drone tuning scenarios (decision 13 Nov: on 23 Oct A1 it moves the model from 10.1 to 20.4-20.7 cm against the real 20.5-22.1 cm)
 TOP_FROM_LOG = ('A1', 'A8')
 _M = L.METHOD_SETTINGS[L.METHOD]          # Stage 8: ours | paper (DIFFCOTUNE_METHOD)
 SETTINGS = dict(method=L.METHOD, lr=_M['lr'], epochs=50, best_iterate=_M['best'], paper_stop=_M['paper_stop'], noise=_M['noise'], states=list(_M['states']), gain_limit=_M['gain_limit'], noise_seed_base=6000, n_noise_seeds=2, skip_last_fit=True, n_rounds=_M['n_rounds'], grad_mode=os.environ.get('DIFFCOTUNE_GRAD_MODE', 'reverse'), fix_rd=os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1')
+if L.CTRL == 'FBL': SETTINGS['fbl_variant'] = FBL_VARIANT          # Stage F2: the state records the variant of the block (S0-S3 state files are unchanged)
 
 
 def say(*a):
@@ -63,7 +74,13 @@ def gains_to_yaml(phi, path, header=''):
     g = L.gains_of(np.asarray(phi, float))
     lines = ['# DiffCoTune %s gains to fly (Stage 4a / 5). Merge into the cf5 block of the study_%s crazyflies.yaml; written by lab/round.py, not applied by it.' % (L.CTRL, L.CTRL)]
     lines += ['# ' + h for h in header.splitlines() if h]
-    lines += ['robots:', '  %s:' % ROBOT, '    firmware_params:', '      ctrlOmarIndi:']
+    if L.CTRL == 'FBL':          # Stage F2: ctrlFbl fragment: en 1, inner 1, cd 0.55, the variant switches dw_en / nn_en, then the 6 gains
+        dw, nn = FBL_SWITCHES[FBL_VARIANT]
+        lines += ['# FBL variant: %s (dw_en %d, nn_en %d). kr_xy / kr_z are not written (not tuned, unused with inner 1).' % (FBL_VARIANT, dw, nn), 'robots:', '  %s:' % ROBOT, '    firmware_params:', '      ctrlFbl:']
+        for k, v in FBL_FIXED_PARAMS + [('dw_en', dw), ('nn_en', nn)]:
+            lines.append('        %s: %r' % (k, v))
+    else:
+        lines += ['robots:', '  %s:' % ROBOT, '    firmware_params:', '      ctrlOmarIndi:']
     for name, params in GAIN_PARAMS:
         for p in params:
             lines.append('        %s: %r' % (p, float(g[name])))
@@ -73,8 +90,8 @@ def gains_to_yaml(phi, path, header=''):
 def yaml_to_phi(path):
     """yaml fragment -> theta (phi = log(gain / default)); the x / y pairs must be equal."""
     import yaml
-    d = yaml.safe_load(open(path))['robots'][ROBOT]['firmware_params']['ctrlOmarIndi']
-    phi = np.zeros(10)
+    d = yaml.safe_load(open(path))['robots'][ROBOT]['firmware_params']['ctrlFbl' if L.CTRL == 'FBL' else 'ctrlOmarIndi']
+    phi = np.zeros(L.NG)
     for i, (name, params) in enumerate(GAIN_PARAMS):
         vals = [float(d[p]) for p in params]
         assert max(vals) == min(vals), 'tied gains differ: %s' % params
@@ -85,8 +102,8 @@ def yaml_to_phi(path):
 # ------------------------------------------------------------------------------------------------------------- state
 def init_state(sd):
     rd = Path(sd) / 'round_0'; rd.mkdir(parents=True, exist_ok=True)
-    st = dict(round=0, phi=[0.0] * 10, psi=[0.0] * L.N_BETA, keep=None, history=[], settings=SETTINGS, controller=L.CTRL)
-    json.dump(st, open(rd / 'state.json', 'w'), indent=1); gains_to_yaml(np.zeros(10), rd / 'gains.yaml', 'round 0: firmware default gains')
+    st = dict(round=0, phi=[0.0] * L.NG, psi=[0.0] * L.N_BETA, keep=None, history=[], settings=SETTINGS, controller=L.CTRL)
+    json.dump(st, open(rd / 'state.json', 'w'), indent=1); gains_to_yaml(np.zeros(L.NG), rd / 'gains.yaml', 'round 0: firmware default gains' if L.CTRL != 'FBL' else 'round 0: preset 1 (theta_0)')
     return st
 
 
@@ -98,6 +115,7 @@ def cell_of(scen, role, idx):
 def run_round(l, folder, sd, top='auto', strict=True):
     t_start = time.time(); sd = Path(sd); folder = Path(folder); rd = sd / ('round_%d' % l)
     st = json.load(open(rd / 'state.json')); S = st['settings']; assert st['round'] == l, 'state is for round %d' % st['round']
+    if L.CTRL == 'FBL': assert S.get('fbl_variant') == FBL_VARIANT, 'state of round %d is for FBL variant %s, this command runs %s' % (l, S.get('fbl_variant'), FBL_VARIANT)          # Stage F2
     phi_l = np.array(st['phi']); psi = np.array(st['psi']); ext = st.get('ext', 0); last0 = l == S['n_rounds'] + ext - 1          # Stage 8d2: ext = extension rounds added so far (state), `last` is decided after keep-best (below)
     man = json.load(open(folder / 'flights.json'))
     # 1. ingest + gate + selection
@@ -177,25 +195,25 @@ def run_round(l, folder, sd, top='auto', strict=True):
             else:
                 fit_fn = lambda xx: pool.rollouts('sysid', xx, traces)
             x, rf = L.adam_inner(fit_fn, x, L.PSI_FIT_IDX, S['lr'], K2=S['epochs'], label='fit beta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False))
-            rep['fit'] = dict(epochs=rf['epochs'], J0=rf['J0'], J_best=rf['J_best'], best_epoch=rf['best_epoch'], J_end=rf.get('J_end'), reason=rf.get('reason')); say('fit beta: J0 %.4g -> %.4g (%s), epochs %d, psi %s' % (rf['J0'], rf['J_best'] if rf['J_best'] is not None else rf['J_end'], ('best epoch %d' % rf['best_epoch']) if rf['best_epoch'] is not None else 'last iterate, stop: %s' % rf['reason'], rf['epochs'], np.round(x[10:], 3).tolist()))
+            rep['fit'] = dict(epochs=rf['epochs'], J0=rf['J0'], J_best=rf['J_best'], best_epoch=rf['best_epoch'], J_end=rf.get('J_end'), reason=rf.get('reason')); say('fit beta: J0 %.4g -> %.4g (%s), epochs %d, psi %s' % (rf['J0'], rf['J_best'] if rf['J_best'] is not None else rf['J_end'], ('best epoch %d' % rf['best_epoch']) if rf['best_epoch'] is not None else 'last iterate, stop: %s' % rf['reason'], rf['epochs'], np.round(x[L.NG:], 3).tolist()))
         pool.tops = tops
-        rep['seconds_fit'] = time.time() - t1; rep['psi_after_fit'] = x[10:].tolist()
+        rep['seconds_fit'] = time.time() - t1; rep['psi_after_fit'] = x[L.NG:].tolist()
         t2 = time.time()
         if not last:
-            if rs_restart: x = np.array(x, float); x[:10] = np.array(keep['phi'])          # Stage 8e rule RS 1a
+            if rs_restart: x = np.array(x, float); x[:L.NG] = np.array(keep['phi'])          # Stage 8e rule RS 1a
             pool.noise_seeds = tuple(S['noise_seed_base'] + S['n_noise_seeds'] * l + j for j in range(S['n_noise_seeds'])) if S.get('noise', True) else None          # Stage 8: paper = no noise in the tuning step
-            x, rt = L.adam_inner(lambda xx: pool.rollouts('task', xx, None), x, np.arange(10), S['lr'], K2=S['epochs'], label='tune theta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False),
+            x, rt = L.adam_inner(lambda xx: pool.rollouts('task', xx, None), x, np.arange(L.NG), S['lr'], K2=S['epochs'], label='tune theta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False),
                                  limit=float(np.log(1 + S['gain_limit'])) if S['gain_limit'] else None)
             rep['tune'] = dict(epochs=rt['epochs'], J0=rt['J0'], J_best=rt['J_best'], J_end=rt.get('J_end'), best_epoch=rt['best_epoch'], hits=rt['hits'], noise_seeds=(list(pool.noise_seeds) if pool.noise_seeds else None), epochs_used=rt['epochs'], reason=rt.get('reason'))
             say('tune theta: J0 %.4g -> %.4g (%s), epochs %d, gain-limit hits %s' % (rt['J0'], rt['J_best'] if rt['J_best'] is not None else rt['J_end'], ('best epoch %d' % rt['best_epoch']) if rt['best_epoch'] is not None else 'last iterate, stop: %s' % rt['reason'], rt['epochs'], rt['hits']))
         rep['seconds_tune'] = time.time() - t2
         if not last and not NO_PREVIEW:          # Stage 8b: safety preview of the new gain set in the existing pool workers (never changes theta)
             import preview as PV
-            pv = PV.run(L, lambda fn, jobs: pool.pool.map(fn, jobs, chunksize=1), x[:10], x[10:], keep['phi'] if keep else [0.0] * 10)
+            pv = PV.run(L, lambda fn, jobs: pool.pool.map(fn, jobs, chunksize=1), x[:L.NG], x[L.NG:], keep['phi'] if keep else [0.0] * L.NG)
             rep['preview'] = dict(verdict=pv['verdict'], passed=pv['passed'], fails=[list(f) for f in pv['fails']], mean_rms_cm=pv['mean_rms_cm'], seconds=pv['seconds'], notes_worse=[list(n) for n in pv['notes_worse']], text=PV.text(pv, L)); say(rep['preview']['text'])
     finally:
         pool.close()
-    phi_next = x[:10]; psi_next = x[10:]
+    phi_next = x[:L.NG]; psi_next = x[L.NG:]
     rep.update(phi_next=None if last else phi_next.tolist(), psi_after=psi_next.tolist(), theta_factors_next=None if last else dict(zip(L.GAIN_NAMES, np.exp(phi_next - phi_l).round(4).tolist())),
                theta_factors_vs_default=dict(zip(L.GAIN_NAMES, np.exp(phi_l).round(4).tolist())), last_round=last, recommendation_if_last=(dict(theta_best_round=keep['round'] if keep else None, eligible_set=keep is not None) if last else None))
     rep['seconds_total'] = time.time() - t_start
@@ -239,8 +257,8 @@ def main():
     ap.add_argument('--controller', default='S0'); ap.add_argument('--round', type=int); ap.add_argument('--logs'); ap.add_argument('--init', action='store_true')
     ap.add_argument('--state-dir', default=None); ap.add_argument('--n-rounds', type=int, default=None); ap.add_argument('--grad-mode', choices=['reverse', 'forward', 'mixed', 'mixed2', 'cfwd'], default=None)
     ap.add_argument('--lenient', action='store_true', help='dry / mock tests only: fit floor flights too (as the dry runs do); a real round keeps the strict rule'); ap.add_argument('--method', choices=['paper', 'ours'], default=None, help='Stage 8b: ours (default of the lab, frozen) or paper (tested, not adopted)'); ap.add_argument('--no-preview', action='store_true', help='Stage 8b: skip the frsim safety preview of the new gain set'); ap.add_argument('--fix-rd', action='store_true', help='Stage 5c: keep the RPM delay of S1 / S3 at the calibration'); ap.add_argument('--fit-rd', action='store_true', help='fit the RPM delay (Stage 5c reference runs)')
-    ap.add_argument('--top', default='auto', choices=['auto', 'logged', 'planned'], help='peer path of the S0 model: auto = logged for A1 / A8 (default), planned = frsim top path')
-    a = ap.parse_args(); a.state_dir = a.state_dir or str(HERE / a.controller)
+    ap.add_argument('--variant', choices=['base', 'rom', 'both'], default=None, help='FBL only (Stage F2): the variant of the block; the state folder is lab/FBL<variant> by default'); ap.add_argument('--top', default='auto', choices=['auto', 'logged', 'planned'], help='peer path of the S0 model: auto = logged for A1 / A8 (default), planned = frsim top path')
+    a = ap.parse_args(); a.state_dir = a.state_dir or str(HERE / (a.controller + (FBL_VARIANT or '')))
     assert a.controller == L.CTRL and a.controller in L.MODEL_MODULES, 'controller must be one of S0 S1 S2 S3'
     if a.n_rounds:
         SETTINGS['n_rounds'] = a.n_rounds

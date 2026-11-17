@@ -26,7 +26,12 @@ from frsim.scenarios import study_cells, tuning_cells  # noqa: E402
 
 # Stage 5: the controller of the run (S0 default = all earlier behaviour). Set DIFFCOTUNE_CONTROLLER=S2|S1|S3 in the environment BEFORE the import (spawned workers inherit it).
 CTRL = os.environ.get('DIFFCOTUNE_CONTROLLER', 'S0')
-MODEL_MODULES = {'S0': 's0_model', 'S2': 's2_model', 'S1': 's1_model', 'S3': 's3_model'}
+MODEL_MODULES = {'S0': 's0_model', 'S2': 's2_model', 'S1': 's1_model', 'S3': 's3_model', 'FBL': 'fbl_model'}
+# Stage F2 (FBL): NG = number of tuned gains (10 for S0-S3, 6 for FBL); the FBL variant (base | rom | both) is DIFFCOTUNE_FBL_VARIANT and is passed to frsim as FRSIM_FBL_VARIANT (set before any worker is spawned)
+NG = 6 if CTRL == 'FBL' else 10
+if CTRL == 'FBL':
+    os.environ['FRSIM_FBL_VARIANT'] = os.environ.get('DIFFCOTUNE_FBL_VARIANT', 'both')
+    assert os.environ['FRSIM_FBL_VARIANT'] in ('base', 'rom', 'both'), 'FBL variants to tune: base, rom, both (net is never tuned, decision D3)'
 # Stage 5b: how the gradient of the scalar cost is computed. 'reverse' (default, all earlier results) = torch.autograd backward, compiled block; 'forward' = forward mode (torch.func.jacfwd: one tangent per parameter,
 # batched with vmap, eager block); both give the same autodiff gradient. Environment variable DIFFCOTUNE_GRAD_MODE, set BEFORE the import (spawned workers inherit it).
 GRAD_MODE = os.environ.get('DIFFCOTUNE_GRAD_MODE', 'reverse')
@@ -45,7 +50,7 @@ METHOD_SETTINGS = {'ours': dict(lr=0.01, best=True, states=('p', 'v', 'q'), gain
 N_BETA = 5 if CTRL in ('S1', 'S3') else 4          # S1 / S3 carry the rpm delay as a fifth beta (decision 5b.2 of the plan)
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): DIFFCOTUNE_FIX_RD=1 keeps the fifth beta (RPM delay) of S1 / S3 at the calibration (psi = 0, 4.0502 ms) and fits only the other four; the model still has N_BETA = 5 entries. Default off (= all earlier results).
 FIX_RD = os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1' and N_BETA == 5
-PSI_FIT_IDX = np.arange(10, 10 + N_BETA - (1 if FIX_RD else 0))             # the beta entries the fit moves
+PSI_FIT_IDX = np.arange(NG, NG + N_BETA - (1 if FIX_RD else 0))             # the beta entries the fit moves
 
 
 def model():
@@ -53,12 +58,12 @@ def model():
     return importlib.import_module(MODEL_MODULES[CTRL])
 
 
-GAIN_NAMES = list(controllers.TREE_GAIN_NAMES)
-GAIN_DEFAULT = np.array([controllers.TREE_DEFAULT_GAINS[k] for k in GAIN_NAMES])
+GAIN_NAMES = list(controllers.FBL_GAIN_NAMES if CTRL == 'FBL' else controllers.TREE_GAIN_NAMES)
+GAIN_DEFAULT = np.array([(controllers.FBL_DEFAULT_GAINS if CTRL == 'FBL' else controllers.TREE_DEFAULT_GAINS)[k] for k in GAIN_NAMES])
 ALL_STATES = ('p', 'v', 'q', 'w')          # Stage 3 J_sysId: position, velocity, attitude, body rates
 BETA_NAMES = ['thrust_gain', 'motor_lag_ms', 'downwash_scale', 'plume_scale']
 SCORE_AFTER_S = config.SCORE_AFTER_S
-CRASH_TILT_DEG = config.CRASH_TILT_DEG['tree']
+CRASH_TILT_DEG = config.CRASH_TILT_DEG['fbl' if CTRL == 'FBL' else 'tree']
 
 # Stage 7 (user decision 15 Nov): the tuning set has FIVE scenarios: A1, A8, CIRCLE, FIG8 and A4 cell 1 (study cell 0 of A4: dz 0.4, speed 0.35, offset 0.125, line), test = A4 cell 2 (held out; A4 cell 1 is in-sample) and OVAL (frsim only, not flyable at the pad).
 # DIFFCOTUNE_TUNING_SET=4 gives the Stage 3-6 set (four scenarios, test A4 cells 1 and 2 and OVAL) for checks that must reproduce earlier results. Default: 5.
@@ -103,9 +108,12 @@ def worker_rollout(args):
     mixed_task_a1 = GRAD_MODE == 'mixed2' and kind == 'task' and scen == 'A1' and not force_rev_mode and not force_fwd_mode and not fwd          # Stage 7
     cfwd_all = GRAD_MODE == 'cfwd' and not force_rev_mode and not force_fwd_mode and not fwd          # Stage 7
     if (force_comp_fwd or mixed_a1 or mixed_task_a1 or cfwd_all) and not fwd:
-        import fsens
         n_all = np.asarray(x).shape[0]
-        return fsens.gradient(CTRL, ref, ref.scenario_s, kind, x, range(n_all) if force_comp_fwd else (range(10) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(10, n_all)), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
+        if CTRL == 'FBL':          # Stage F2: forward sensitivity of the FBL model (fbl/fsens_fbl.py); the S0-S3 path below is unchanged
+            sys.path.insert(0, str(HERE.parent / 'fbl')); import fsens_fbl
+            return fsens_fbl.gradient_loop(ref, ref.scenario_s, kind, x, range(n_all) if force_comp_fwd else (range(NG) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(NG, n_all)), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
+        import fsens
+        return fsens.gradient(CTRL, ref, ref.scenario_s, kind, x, range(n_all) if force_comp_fwd else (range(NG) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(NG, n_all)), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
     if (force_fwd_mode or (GRAD_MODE == 'forward' and not force_rev_mode)) and not fwd:
         return _worker_rollout_forward(kind, scen, ref, x, traces, states, noise_seeds, S)
     grad = (not fwd) or bool(noise_seeds)          # the compiled CPU graph of several rows needs autograd on even for the cost alone (Stage 3c: Inductor inference bug)
@@ -113,13 +121,13 @@ def worker_rollout(args):
     with torch.set_grad_enabled(grad):
         if kind.startswith('task') and noise_seeds:
             nz = np.stack([S.frsim_noise(sd, ref.n_ticks) for sd in noise_seeds], 1)
-            out = S.rollout(ref, z[:, :10].expand(len(noise_seeds), 10), z[:, 10:].expand(len(noise_seeds), z.shape[1] - 10), compile=True, noise=nz)
+            out = S.rollout(ref, z[:, :NG].expand(len(noise_seeds), NG), z[:, NG:].expand(len(noise_seeds), z.shape[1] - NG), compile=True, noise=nz)
             Js = [C.j_task(out, ref.scenario_s).mean()]          # mean over the noise seeds (rows)
         elif kind.startswith('task'):
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+            out = S.rollout(ref, z[:, :NG], z[:, NG:], compile=True)
             Js = [C.j_task(out, ref.scenario_s).sum()]
         else:
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+            out = S.rollout(ref, z[:, :NG], z[:, NG:], compile=True)
             Js = [C.j_sysid(out, ingest.on_grid(ingest.from_trace(tr), out['t']), ref.scenario_s, states=states).sum() / len(traces) for tr in traces]
     J = sum(Js)
     if fwd:
@@ -140,13 +148,13 @@ def _worker_rollout_forward(kind, scen, ref, x, traces, states, noise_seeds, S):
 
     def f(z):
         if nz is not None:
-            out = S.rollout(ref, z[:, :10].expand(len(noise_seeds), 10), z[:, 10:].expand(len(noise_seeds), z.shape[1] - 10), compile=False, noise=nz)
+            out = S.rollout(ref, z[:, :NG].expand(len(noise_seeds), NG), z[:, NG:].expand(len(noise_seeds), z.shape[1] - NG), compile=False, noise=nz)
             J = C.j_task(out, ref.scenario_s).mean()
         elif kind.startswith('task'):
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=False)
+            out = S.rollout(ref, z[:, :NG], z[:, NG:], compile=False)
             J = C.j_task(out, ref.scenario_s).sum()
         else:
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=False)
+            out = S.rollout(ref, z[:, :NG], z[:, NG:], compile=False)
             J = sum(C.j_sysid(out, ingest.on_grid(t_, out['t']), ref.scenario_s, states=states).sum() / len(traces) for t_ in tg)
         return J, J.detach()
     z = torch.tensor(np.asarray(x)[None], dtype=torch.float64)
@@ -373,8 +381,8 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
     """method: 'cotune' (fit beta then tune theta every round) or 'tune_only' (theta tuned in the unfitted model, beta0). Rounds l = 0 ... n_rounds-1
     fly theta_l; the update after the last round is only computed when `extra_final_flight` (pilot: its cost is the criterion) or, for the
     fit, to report beta after the last round. Returns the record dict."""
-    x = np.zeros(10 + N_BETA); rec = dict(plant=plant, method=method, lr=lr, stop=stop, best_iterate=best, states=list(pool.states), rounds=[]); keep = None   # keep = keep-best over the flown gain sets (Stage 3d: renamed, it used to shadow the flag `best`)
-    phi_idx = np.arange(10); psi_idx = PSI_FIT_IDX
+    x = np.zeros(NG + N_BETA); rec = dict(plant=plant, method=method, lr=lr, stop=stop, best_iterate=best, states=list(pool.states), rounds=[]); keep = None   # keep = keep-best over the flown gain sets (Stage 3d: renamed, it used to shadow the flag `best`)
+    phi_idx = np.arange(NG); psi_idx = PSI_FIT_IDX
     prev_r3 = False; rs_stop = False          # Stage 8e rule RS state
     nr = n_rounds; ext = 0          # Stage 8d2: nr = number of planned rounds; in strict mode up to EXT_MAX extension rounds (l = 6, 7) are added while no flown set is eligible
     l = -1
@@ -384,7 +392,7 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
         t0 = time.time()
         if STRICT:          # Stage 8d: lab flight rule + R3 (see the comment at STRICT); fl = the last attempt of every scenario ("as flown", the old definition of the real cost)
             seeds_l = [seed_base + 10 * l + i for i in range(len(TUNING))]
-            att = fly_set_strict(pool, x[:10], plant, TUNING, seeds_l); used = [next((a for a in at if a['usable']), None) for at in att]
+            att = fly_set_strict(pool, x[:NG], plant, TUNING, seeds_l); used = [next((a for a in at if a['usable']), None) for at in att]
             fl = [at[-1] for at in att]; r3 = [i for i, u in enumerate(used) if u is None]; fb = {}
             if r3 and keep is not None and keep.get('eligible', True):          # R3 fallback flight with theta_best (round 0: no theta_best yet, no fallback); not used for the fit, the cost or theta_best
                 fres = pool.fly([(TUNING[i][0], TUNING[i][1], gains_of(np.array(keep['phi'])), plant, seeds_l[i] + 1000 * 3) for i in r3])
@@ -394,16 +402,16 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
             uf = [u for u in used if u is not None]
             rcu = dict(cost=float(np.mean([u['cost'] for u in uf])), rms3d_cm=100 * float(np.mean([u['cost'] for u in uf])) ** 0.5, z_rms_cm=100 * float(np.mean([u['z_cost'] for u in uf])) ** 0.5, n_used=len(uf)) if uf else None
         else:
-            fl = fly_set(pool, x[:10], plant, TUNING, [seed_base + 10 * l + i for i in range(len(TUNING))])      # Stage 3e: seed_base 100 for the new flight seeds (default 0 = Stage 3b to 3d)
+            fl = fly_set(pool, x[:NG], plant, TUNING, [seed_base + 10 * l + i for i in range(len(TUNING))])      # Stage 3e: seed_base 100 for the new flight seeds (default 0 = Stage 3b to 3d)
         rc = round_cost(fl)
-        r = dict(round=l, phi=x[:10].tolist(), psi=x[10:].tolist(), real=rc, seconds_fly=time.time() - t0,
+        r = dict(round=l, phi=x[:NG].tolist(), psi=x[NG:].tolist(), real=rc, seconds_fly=time.time() - t0,
                  flights=[dict(scenario=TUNING[i][0], cost=f['cost'], z_cost=f['z_cost'], floor=f['floor'], crashed=f['crashed'], tries=f['tries'], seed=f['seed']) for i, f in enumerate(fl)])   # Stage 3d: per flight
         if STRICT:          # Stage 8d: keep-best over the ELIGIBLE sets (no scenario with 3 failed attempts), cost = mean over the used flights
             r['strict'] = True; r['real_used'] = rcu; r['eligible'] = not r3; r['r3_scenarios'] = [TUNING[i][0] for i in r3]
             r['flights'] = [dict(f_, attempts=[dict(tries=a['tries'], cost=a['cost'], rms3d_cm=100 * a['cost'] ** 0.5, floor=a['floor'], crashed=a['crashed'], tilt=a['tilt'], seed=a['seed'], used=a is used[i]) for a in att[i]], used_attempt=(used[i]['tries'] if used[i] is not None else None), failed_all=used[i] is None,
                                  fallback=({k: v for k, v in fb[i].items()} if i in fb else None)) for i, f_ in enumerate(r['flights'])]
             if not r3 and (keep is None or rcu['cost'] <= keep['cost']):
-                keep = dict(cost=rcu['cost'], round=l, phi=x[:10].tolist(), eligible=True)
+                keep = dict(cost=rcu['cost'], round=l, phi=x[:NG].tolist(), eligible=True)
             if keep is None and l == nr - 1 and ext < EXT_MAX:          # Stage 8d2 (user decision 16 Nov): no eligible set after the last planned round = fly one more round (theta tuned after this round), up to 2
                 nr += 1; ext += 1; r['extension_round_added'] = ext
             if RESTART_BEST:          # Stage 8e rule RS 1b: R3 in this round and in the previous one, theta_best exists -> no further tuning, result = theta_best, no new gain set is flown
@@ -411,8 +419,8 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
                 if r3 and prev_r3 and keep is not None: rs_stop = True; r['rs_stop'] = 'two R3 rounds in a row'; rec['rs_stop'] = 'two R3 rounds in a row'; rec['halt'] = 'two R3 rounds in a row'
                 prev_r3 = bool(r3)
         elif keep is None or rc['cost'] <= keep['cost']:
-            keep = dict(cost=rc['cost'], round=l, phi=x[:10].tolist())
-        log('[%s %s lr %g] round %d  real 3-D RMS %.2f cm  z %.2f cm  crashes %d  psi err %s' % (plant['variant'], method, lr, l, rc['rms3d_cm'], rc['z_rms_cm'], rc['crashed'], np.round(x[10:] - PSI_TRUE, 3).tolist()))
+            keep = dict(cost=rc['cost'], round=l, phi=x[:NG].tolist())
+        log('[%s %s lr %g] round %d  real 3-D RMS %.2f cm  z %.2f cm  crashes %d  psi err %s' % (plant['variant'], method, lr, l, rc['rms3d_cm'], rc['z_rms_cm'], rc['crashed'], np.round(x[NG:] - PSI_TRUE, 3).tolist()))
         if STRICT: fl = [u if u is not None else f for u, f in zip(used, fl)]          # Stage 8d: below, only the usable flights are fitted (scen_idx); fl[i] is the flight whose trace is used
         traces = {i: [f['trace'] if trace_fn is None else trace_fn(f['trace'], l, i)] for i, f in enumerate(fl)}      # Stage 4e: trace_fn = measured-gyro variants of the fit target (default: the state trace as it is)
         t1 = time.time()
@@ -425,14 +433,14 @@ def run_loop(pool, plant, method, lr, n_rounds=6, extra_final_flight=False, chec
             cf = (lambda xx, ii: fd_check(pool, 'sysid', xx, ii, traces)) if l in checks_rounds else None
             x, rf = adam_inner(fit_fn, x, psi_idx, lr, checks=set(check_epochs) if cf else None, check_fn=cf, label='fit beta, round %d' % l, stop=stop, best=best, paper_stop=paper_stop)
             r['fit'] = rf; r['seconds_fit'] = time.time() - t1
-            log('    fit: %d epochs, %s, Jn at the last epoch %.3f, at the best iterate %s, psi err %s (%.0f s)' % (rf['epochs'], rf['reason'], rf['log'][-1]['Jn'], _jn_best(rf), np.round(x[10:] - PSI_TRUE, 3).tolist(), r['seconds_fit']))
-        r['psi_after_fit'] = x[10:].tolist()
+            log('    fit: %d epochs, %s, Jn at the last epoch %.3f, at the best iterate %s, psi err %s (%.0f s)' % (rf['epochs'], rf['reason'], rf['log'][-1]['Jn'], _jn_best(rf), np.round(x[NG:] - PSI_TRUE, 3).tolist(), r['seconds_fit']))
+        r['psi_after_fit'] = x[NG:].tolist()
         t2 = time.time()
         if (l < nr - 1 or (extra_final_flight and l < nr)) and not rs_stop:
             pool.noise_seeds = tuple(noise_seeds_of(l)) if noise_seeds_of else None      # Stage 3d variant A: fixed noise seeds of this round's tuning step
             r['noise_seeds'] = pool.noise_seeds
             if RESTART_BEST and r3 and keep is not None:          # Stage 8e rule RS 1a: the tuning step of an R3 round starts from theta_best (the +-25 % box is around theta_best); the beta fit above is unchanged
-                x = np.array(x, float); x[:10] = np.array(keep['phi']); r['restart_from_best'] = True; r['restart_theta_best_round'] = keep['round']
+                x = np.array(x, float); x[:NG] = np.array(keep['phi']); r['restart_from_best'] = True; r['restart_theta_best_round'] = keep['round']
             tune_fn = lambda xx: pool.rollouts('task', xx, None)
             x, rt = adam_inner(tune_fn, x, phi_idx, lr, label='tune theta, round %d' % l, stop=stop, best=best, limit=None if not gain_limit else float(np.log(1 + gain_limit)), paper_stop=paper_stop)
             r['tune'] = rt; r['seconds_tune'] = time.time() - t2
@@ -493,7 +501,7 @@ def worker_parts(args):
     ref = R.build(scen, cell)
     z = torch.tensor(np.asarray(x)[None], dtype=torch.float64)
     with torch.no_grad():
-        out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+        out = S.rollout(ref, z[:, :NG], z[:, NG:], compile=True)
         J, parts = C.j_sysid(out, ingest.on_grid(ingest.from_trace(tr), out['t']), ref.scenario_s, parts=True)
     return float(J), {k: float(v) for k, v in parts.items()}
 

@@ -21,18 +21,21 @@ def worker_rollout_top(args):
     mixed_task_a1 = L.GRAD_MODE == 'mixed2' and kind == 'task' and scen == 'A1' and not fwd          # Stage 7: noisy task gradient of the tuning step on A1 by the compiled forward sensitivity
     cfwd_all = L.GRAD_MODE == 'cfwd' and not fwd          # Stage 7: compiled forward sensitivity for every gradient
     if (L.GRAD_MODE in ('mixed', 'mixed2') and kind == 'sysid' and scen == 'A1') or mixed_task_a1 or cfwd_all:          # Stage 5c: the noise-free beta fit on A1 by the exact compiled forward sensitivity (fsens.py), as loop_lib.worker_rollout
+        if L.CTRL == 'FBL':          # Stage F2: FBL forward sensitivity (fbl/fsens_fbl.py); S0-S3 path unchanged
+            import sys as _sys; _sys.path.insert(0, str(L.HERE.parent / 'fbl')); import fsens_fbl
+            return fsens_fbl.gradient_loop(ref, ref.scenario_s, kind, x, range(L.NG) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(L.NG, np.asarray(x).shape[0]), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
         import fsens
-        return fsens.gradient(L.CTRL, ref, ref.scenario_s, kind, x, range(10) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(10, np.asarray(x).shape[0]), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
+        return fsens.gradient(L.CTRL, ref, ref.scenario_s, kind, x, range(L.NG) if (mixed_task_a1 or (cfwd_all and kind == 'task')) else range(L.NG, np.asarray(x).shape[0]), traces=traces, states=states, noise_seeds=noise_seeds, model=S)
     z = torch.tensor(np.asarray(x)[None], dtype=torch.float64, requires_grad=grad)
     with torch.set_grad_enabled(grad):
         if kind.startswith('task') and noise_seeds:
             nz = np.stack([S.frsim_noise(sd, ref.n_ticks) for sd in noise_seeds], 1)
-            out = S.rollout(ref, z[:, :10].expand(len(noise_seeds), 10), z[:, 10:].expand(len(noise_seeds), z.shape[1] - 10), compile=True, noise=nz)
+            out = S.rollout(ref, z[:, :L.NG].expand(len(noise_seeds), L.NG), z[:, L.NG:].expand(len(noise_seeds), z.shape[1] - L.NG), compile=True, noise=nz)
             Js = [C.j_task(out, ref.scenario_s).mean()]
         elif kind.startswith('task'):
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True); Js = [C.j_task(out, ref.scenario_s).sum()]
+            out = S.rollout(ref, z[:, :L.NG], z[:, L.NG:], compile=True); Js = [C.j_task(out, ref.scenario_s).sum()]
         else:
-            out = S.rollout(ref, z[:, :10], z[:, 10:], compile=True)
+            out = S.rollout(ref, z[:, :L.NG], z[:, L.NG:], compile=True)
             Js = [C.j_sysid(out, ingest.on_grid(ingest.from_trace(tr), out['t']), ref.scenario_s, states=states).sum() / len(traces) for tr in traces]
     J = sum(Js)
     if fwd:

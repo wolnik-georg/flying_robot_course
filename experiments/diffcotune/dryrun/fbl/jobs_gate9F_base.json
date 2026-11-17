@@ -1,0 +1,13 @@
+[
+ {
+  "name": "gate9F_base",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=FBL DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1 DIFFCOTUNE_FBL_VARIANT=base; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_gate9F_base.txt && /usr/bin/python3 /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/fbl/gate9F.py --tag FBLbase --loop results/loop_FBL_FBLbase_ours_strict.json > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/gate9F_base.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/gate9F_base.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_gate9F_base.txt"
+  ],
+  "procs": 2,
+  "mem_gb": 5.0,
+  "log": "logs/job_gate9F_base.log"
+ }
+]

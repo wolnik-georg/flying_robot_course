@@ -1,0 +1,68 @@
+variant base: frsim 14 episodes 56 s
+  base A1 model 25 s
+  base A8 model 32 s
+  base CIRCLE model 14 s
+  base FIG8 model 16 s
+  base A4 model 19 s
+  base A4c2 model 25 s
+  base OVAL model 23 s
+variant rom: frsim 14 episodes 64 s
+  rom A1 model 31 s
+  rom A8 model 30 s
+  rom CIRCLE model 15 s
+  rom FIG8 model 24 s
+  rom A4 model 23 s
+  rom A4c2 model 43 s
+  rom OVAL model 39 s
+variant both: frsim 14 episodes 57 s
+  both A1 model 25 s
+  both A8 model 32 s
+  both CIRCLE model 16 s
+  both FIG8 model 18 s
+  both A4 model 29 s
+  both A4c2 model 29 s
+  both OVAL model 21 s
+var   scen    row            frsim cm   model cm    rel %     dx mm    dv mm/s     dq deg    crF    crM pass
+base  A1      calibration      0.0241     0.0241   0.1771    0.0092     0.0269    0.00000  False  False True
+base  A1      P1               0.0447     0.0447   0.0087    0.0115     0.0426    0.00000  False  False True
+base  A8      calibration      2.4623     2.4608   0.0594    0.0445     0.1371    0.00564  False  False True
+base  A8      P1               3.0012     2.9998   0.0483    0.0520     0.2094    0.00673  False  False True
+base  CIRCLE  calibration      0.7222     0.7228   0.0898    0.0381     0.0685    0.00186  False  False True
+base  CIRCLE  P1               1.2677     1.2690   0.1042    0.0381     0.0779    0.00183  False  False True
+base  FIG8    calibration      0.4896     0.4905   0.1755    0.0504     0.0791    0.00167  False  False True
+base  FIG8    P1               1.1038     1.1055   0.1584    0.0513     0.0889    0.00177  False  False True
+base  A4      calibration     29.5574    29.5568   0.0019    0.1089     0.3880    0.00734  False  False True
+base  A4      P1              17.1723    17.1711   0.0072    0.0795     0.1491    0.00383  False  False True
+base  A4c2    calibration     31.1714    31.1632   0.0263    0.6519     1.5013    0.01547  False  False True
+base  A4c2    P1              16.3987    16.3977   0.0063    0.1271     0.7301    0.00832  False  False True
+base  OVAL    calibration      0.6772     0.6775   0.0374    0.0364     0.0661    0.00173  False  False True
+base  OVAL    P1               1.0471     1.0477   0.0627    0.0489     0.1107    0.00170  False  False True
+rom   A1      calibration      0.2204     0.2204   0.0187    0.0086     0.0192    0.00000  False  False True
+rom   A1      P1               0.9701     0.9701   0.0023    0.0084     0.0256    0.00000  False  False True
+rom   A8      calibration      2.4778     2.4771   0.0308    0.0445     0.1324    0.00576  False  False True
+rom   A8      P1               2.2412     2.2398   0.0633    0.0502     0.1541    0.00622  False  False True
+rom   CIRCLE  calibration      0.7222     0.7228   0.0898    0.0381     0.0685    0.00186  False  False True
+rom   CIRCLE  P1               1.2677     1.2690   0.1042    0.0381     0.0779    0.00183  False  False True
+rom   FIG8    calibration      0.4896     0.4905   0.1755    0.0504     0.0791    0.00167  False  False True
+rom   FIG8    P1               1.1038     1.1055   0.1584    0.0513     0.0889    0.00177  False  False True
+rom   A4      calibration     21.7229    21.5116   0.9727  252.5312  2518.8443  122.40899   True   True False
+rom   A4      P1              15.3817    15.3808   0.0056    0.1003     2.1556    0.33379  False  False True
+rom   A4c2    calibration     26.5551    24.1651   9.0000 1380.9719  2727.6677  179.97292   True   True False
+rom   A4c2    P1              15.5103    15.5095   0.0054    0.0950     0.4257    0.01025  False  False True
+rom   OVAL    calibration      0.6772     0.6775   0.0374    0.0364     0.0661    0.00173  False  False True
+rom   OVAL    P1               1.0471     1.0477   0.0627    0.0489     0.1107    0.00170  False  False True
+both  A1      calibration      0.1812     0.1812   0.0214    0.0112     0.0283    0.00000  False  False True
+both  A1      P1               0.8076     0.8075   0.0026    0.0091     0.0308    0.00000  False  False True
+both  A8      calibration      2.5180     2.5174   0.0237    0.0559     0.2192    0.00495  False  False True
+both  A8      P1               2.4847     2.4835   0.0482    0.0692     0.3660    0.00671  False  False True
+both  CIRCLE  calibration      0.7222     0.7228   0.0898    0.0381     0.0685    0.00186  False  False True
+both  CIRCLE  P1               1.2677     1.2690   0.1042    0.0381     0.0779    0.00183  False  False True
+both  FIG8    calibration      0.4896     0.4905   0.1755    0.0504     0.0791    0.00167  False  False True
+both  FIG8    P1               1.1038     1.1055   0.1584    0.0513     0.0889    0.00177  False  False True
+both  A4      calibration     23.0337    21.2221   7.8651 1290.4472  2520.6551  177.59068   True   True False
+both  A4      P1              15.6188    15.6150   0.0240    1.2553     6.7760    0.05397  False  False True
+both  A4c2    calibration     22.3057    22.7085   1.8055  726.0571  1676.3167  179.99606   True   True False
+both  A4c2    P1              15.4042    15.3249   0.5144    3.8837    15.6200    1.11097  False  False False
+both  OVAL    calibration      0.6772     0.6775   0.0374    0.0364     0.0661    0.00173  False  False True
+both  OVAL    P1               1.0471     1.0477   0.0627    0.0489     0.1107    0.00170  False  False True
+FORWARD CHECK FBL: FAIL (42 cells with a frsim reference, tolerance 0.5 % relative 3-D RMS)

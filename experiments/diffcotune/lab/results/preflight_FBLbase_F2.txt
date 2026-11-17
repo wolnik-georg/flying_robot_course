@@ -1,0 +1,31 @@
+preflight FBL 2026-11-17 21:38:06
+[PASS] 1a frsim bindings cffirmware from /home/georg/Desktop/crazyflie-firmware/build
+[PASS] 1b import scipy 
+[PASS] 1b import yaml 
+[PASS] 1b import torch 
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+[PASS] 1c model rollout fbl_model compiled, A1 reference, 2350 ticks, finite, 29 s
+[PASS] 2 fly_file --check CIRCLE pad [0.0, 0.3]: pad x window [-0.250, 0.250] m; pad x = 0.000 -> inside (margin 0.250 m); pad y window [-0.500, 2.000] m; pad y = 0.300 -> inside (margin 0.800 m)
+[PASS] 2 fly_file --check FIG8 pad [0.0, 0.3]: pad x window [-0.540, 0.540] m; pad x = 0.000 -> inside (margin 0.540 m); pad y window [-1.080, 1.080] m; pad y = 0.300 -> inside (margin 0.780 m)
+[PASS] 2 OVAL refused refusing: OVAL is dropped from the lab test set (user decision 13 Nov); the file does not 
+[PASS] 3a round_0 gains yaml round trip: max |phi| = 0.0e+00 (default gains)
+[PASS] 3b FBL fragment = preset 1 + switches variant base: 11 values: 6 gains = FBL_DEFAULT_GAINS, en 1, inner 1, cd 0.55, dw_en 0, nn_en 0, no kr
+[PASS] 3c merge on a copy of the yaml only the 15 ctrlOmarIndi values differ, switches of FBL unchanged (checked inside cmd_merge): /home/georg/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml
+[PASS] 3d merge on the yaml of branch study_FBL_stock only cf5 ctrlFbl values differ (branch study_FBL_stock, read with git show)
+[PASS] 4a flights.json template tuning order ['A1', 'A8', 'A4', 'CIRCLE', 'FIG8'] (lab order), rotate_deg {'A1': None, 'A8': None, 'A4': -90.0, 'CIRCLE': -90.0, 'FIG8': -90.0}, 6 test flights
+[PASS] 4b frozen lab variant (Stage 8b, decision 2) method ours, rounds 6, tuning ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'], states pvq, 50 epochs best iterate True, Adam lr 0.01, gain limit 0.25, noise seeds 2, paper stop False, grad mode cfwd, RPM delay n/a: must be the frozen "ours" variant
+[PASS] 4d grad mode gradient mode of FBL: cfwd (round.py default table), loop_lib.GRAD_MODE cfwd
+[NOTE] 5a disk no 23 Oct merged files to size the logs
+[PASS] 5b load / memory load 12.7 (<= 22), MemAvailable 14.4 GB (>= 3; a pool needs about 6 GB)
+[NOTE] 6 desk-PC paths 5 lines name a desk path in the lab scripts (lab-run scripts: all through a flag or Path.home()): ["fly_file.py:12 read from ~/Desktop/crazyswarm2/crazyflie/config/crazyflies.yaml (read only; the lab PC's yaml decides at lab ", "fly_file.py:20 YAML = Path.home() / 'Desktop' / 'crazyswarm2' / 'crazyflie' / 'config' / 'crazyflies.yaml'", 'preflight.py:132 if re.search(r"/home/|Desktop|~/", line) and not line.strip().startswith(\'#\') and \'path\' not in f:', "preflight.py:157 repo = Path.home() / 'Desktop' / 'crazyswarm2'"]
+[PASS] 6b round.py has rule R3 marker R3-2026-11-16
+[PASS] 6c round.py has the extension rounds (no eligible set after round 5: up to 2 more rounds, never theta_0) markers extension_round_added / NO_ELIGIBLE_SET.md
+[PASS] 6d round.py has rule RS (R3 round: tuning restarts from theta_best; two R3 rounds in a row: stop, final gains = theta_best) marker RS-2026-11-17
+[PASS] 8a FBL variant variant base: residual False, ROM False, net False (model flags); frsim switch FRSIM_FBL_VARIANT read in controllers.configure: True
+[PASS] 8b model settings (decisions D1, D5, D7) SG_R 0, quantisation False, crash tilt 45 deg
+[PASS] 8c yaml of branch study_FBL_stock cf5 ctrlFbl en 1, inner 1, cd 0.55 (read only); the yaml values nn_en 1 / dw_en None are replaced by the fragment of the variant
+[PASS] 8d candidate image (LAB_PLAN.md:10) sha256 e3593a6f39a4 = the .sha256 file; which image the drones run: not checkable offline (check_active_controller.py / fbl_bench_check.py in the lab)
+[PASS] 8e uSD channels usd_fbl_config.txt logs the raw variable of every channel usd_ingest reads (16 of 16)
+PREFLIGHT PASSED

@@ -56,8 +56,8 @@ BETA_ABG, GAMMA_ABG, C_D = 0.4, 0.1, 0.55          # firmware beta, gamma (fbl.b
 THRUST_MAX_N = 0.2; MAX_THRUST = 4 * THRUST_MAX_N; U16 = 65535.0; IDLE_COUNTS = 7000.0
 RATE_KP, RATE_KI, RATE_KD, RATE_IL = (200.0, 200.0, 120.0), (400.0, 400.0, 16.7), (2.5, 2.5, 0.0), (33.3, 33.3, 166.7)
 YAW_KP, YAW_KI, YAW_KD, YAW_IL = 6.0, 1.0, 0.35, 360.0
-SG_R = float(os.environ.get('FBL_SG_R', '0.03'))                          # gradient-only safeguard of v2o (forward values unchanged); carried over, an open decision
-QUANT = bool(int(os.environ.get('FBL_QUANT', '1')))                       # integer truncations of the firmware in the forward pass, straight-through gradient
+SG_R = float(os.environ.get('FBL_SG_R', '0'))                             # Stage F2 decision D1 (17 Nov): stop-gradient radius off by default (exact gradient, F1: 18 of 18 rows PASS); v2o used 0.03 (env FBL_SG_R)
+QUANT = bool(int(os.environ.get('FBL_QUANT', '0')))                       # Stage F2 decision D5: quantisation off in the fit and the tuning step (as S0-S3, s0_model.py: not modelled); FBL_QUANT=1 = integer truncations of the firmware in the forward pass, straight-through gradient
 NFS = 29                                                                  # fst: vel_est 0:3, acc_est 3:6, int_err 6:9, init 9, peer_prev 10:13, peer_vel 13:16, peer_pos 16:19, peer_cnt 19, yaw_sp 20, rate_int 21:24, rate_prev 24:27, yaw_int 27, yaw_prev 28
 NN = dict(w1=[[0.869367301, -0.0794358477], [-2.96447873, 0.502544641], [0.36294508, -0.348767281], [-0.80364579, -0.399012148]], b1=[-0.0260919183, -0.538594186, 0.26444912, 0.0790786892],
           w2=[[-0.278275579, -0.596521318, -0.445636719, -0.226835236], [0.238675922, 0.184005216, -0.162619084, -0.501317501], [-0.832299173, -0.86985296, -0.501201808, 0.467404276]], b2=[-0.35890916, -0.0474214554, -0.237855569])
@@ -293,20 +293,55 @@ def rollout(ref, phi, psi, dtype=torch.float64, device='cpu', keep_blocks=5, com
     st = (x, zeros3.clone(), q, zeros3.clone(), F, torch.zeros(B, NFS, dtype=dtype, device=device), F.clone(), F.clone(), F.clone(), zeros3.clone())
     fn = _block
     if compile:
+        if B > 1:
+            S0._patch_inductor_loop_split()          # the CPU Inductor crashes on batches of rows > 1 in try_loop_split (Stage 3d, s0_model)
         key = (flg, ref.has_top)
         if key not in _COMPILED:
             _COMPILED[key] = torch.compile(_block, dynamic=False)
         fn = _COMPILED[key]
-    nzt = None if noise is None else torch.as_tensor(np.asarray(noise)[:2 * nb], dtype=dtype, device=device)
+    nzt = None
+    if noise is not None:          # (n_blocks, 9) shared by all rows, or (n_blocks, B, 9) one sequence per row (frsim_noise)
+        nzt = torch.as_tensor(np.asarray(noise)[:nb], dtype=dtype, device=device)
+        nzt = nzt[:, None, :].expand(nb, B, 9) if nzt.ndim == 2 else nzt
     rows = {'x': [], 'v': [], 'q': [], 'w': []}; idx = []
     for k in range(nb):
         i = 2 * k
         if k % keep_blocks == 0:
             rows['x'].append(st[0]); rows['v'].append(st[1]); rows['q'].append(st[2]); rows['w'].append(st[3]); idx.append(i)
-        st = fn(st, (sp['pos'][i], sp['vel'][i], sp['acc'][i], sp['jerk'][i]), (sp['top_pos'][i], sp['top_vel'][i]), jit[k], gains, pr, ref.has_top, nets, k % 5 == 0, flg, None if nzt is None else nzt[i])
+        st = fn(st, (sp['pos'][i], sp['vel'][i], sp['acc'][i], sp['jerk'][i]), (sp['top_pos'][i], sp['top_vel'][i]), jit[k], gains, pr, ref.has_top, nets, k % 5 == 0, flg, None if nzt is None else nzt[k])
     idx = np.array(idx)
+    check_finite(ref, rows, 'rollout')
     return dict(t=ref.time_s[idx], idx=idx, x=torch.stack(rows['x']), v=torch.stack(rows['v']), q=torch.stack(rows['q']), w=torch.stack(rows['w']),
                 ref_pos=sp['pos'][idx], ref_vel=sp['vel'][idx], ref_q=S0._flat_rows(ref, idx, dtype, device), final=st)
+
+
+def frsim_noise(seed, n_ticks, plant=None):
+    """The sensor noise sequence of frsim's FBL for one seed as the (n_ticks // 2, 9) array the model needs (position 3 [m], velocity 3 [m/s], gyro 3 [deg/s]).
+    frsim/sensors.py: one np.random.default_rng(seed) per episode; per 1 ms tick Sensors.state() draws position (3, std STATE_NOISE_POSITION_M) and velocity (3, STATE_NOISE_VELOCITY_M_S),
+    then Sensors.gyro() draws 3 (std plant.gyro_noise_deg_s * variant scale, 1 for 'nominal'); accelerometer and rpm are drawn only for the tree controllers (episode.py: `if controller.tree`),
+    so FBL draws 9 per tick. Generator.normal(0, std, n) = std * standard_normal, so the stream is reproduced exactly. The controller advances on even ticks only (episode.py:167, controllerOmarIndi
+    rate gate), so only the even ticks are kept (as s0_model.frsim_noise does for S0)."""
+    plant = config.CALIBRATED_PLANT if plant is None else plant
+    z = np.random.default_rng(seed).standard_normal((n_ticks, 9))[::2]
+    std = np.array([config.STATE_NOISE_POSITION_M] * 3 + [config.STATE_NOISE_VELOCITY_M_S] * 3 + [plant.gyro_noise_deg_s] * 3)
+    return z * std
+
+
+def r0_min(ref, x_rows):
+    """Smallest horizontal distance [m] between the vehicle and the top vehicle over the recorded rows (None for solo scenarios)."""
+    if not ref.has_top: return None
+    n = x_rows.shape[0]; tp = torch.as_tensor(np.asarray(ref.top_pos)[10 * np.arange(n)], dtype=x_rows.dtype)          # rows are every 10 ticks (keep_blocks 5)
+    d = x_rows - tp[:, None, :]
+    return float(torch.sqrt((d[..., 0] ** 2 + d[..., 1] ** 2)).min())
+
+
+def check_finite(ref, rows, where, label=''):
+    """Decision D1 (F2): a non-finite state stops the run with scenario, time of the first bad row and the smallest r0; no silent clamp."""
+    xs = torch.stack(rows['x']).detach()
+    bad = ~torch.isfinite(xs).all(-1).all(-1)
+    if bad.any():
+        k = int(torch.nonzero(bad)[0]); good = xs[~bad]
+        raise FloatingPointError('FBL model: non-finite state in %s (%s, scenario %s, first bad row %d, scenario time %.3f s, r0_min over the finite rows %s)' % (where, label, getattr(ref, 'scenario', '?'), k, float(ref.time_s[min(2 * 5 * k, len(ref.time_s) - 1)]), None if (not ref.has_top or len(good) == 0) else '%.4f m' % r0_min(ref, good)))
 
 
 def tilt_deg(q):

@@ -1,0 +1,13 @@
+[
+ {
+  "name": "dryF_base",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=FBL DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1 DIFFCOTUNE_FBL_VARIANT=base; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_dryF_base.txt && env DIFFCOTUNE_DRY_STRICT=1 DIFFCOTUNE_RESTART_BEST=1 /usr/bin/python3 run_8.py --tag FBLbase_ours_strict --no-eval > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/dryF_base.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/dryF_base.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_dryF_base.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_dryF_base.log"
+ }
+]

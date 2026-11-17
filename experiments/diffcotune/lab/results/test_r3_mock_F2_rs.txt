@@ -1,0 +1,77 @@
+22:47:10 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+22:47:10 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+22:47:10 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+22:47:10 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+22:47:10 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+22:47:10 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+22:47:11 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+22:47:11 ingest A1_fallback.csv                          A1 attempt 4: gate ok, crashed False floor True, real 37.13 cm
+22:47:11 RS: R3 in this round (['A1']), the tuning step starts from theta_best (round 0), not from theta_1
+22:47:11 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best round 0 (10.00 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+22:50:17 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+22:53:55 tune theta: J0 0.01079 -> 0.01009 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+22:53:58 round 1 done in 409 s
+PASS r1 R3 + fallback with theta_best: tuning step starts from theta_best (0.05), not theta_1 (0) 
+22:53:58 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+22:53:58 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+22:53:59 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+22:53:59 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+22:53:59 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+22:53:59 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+22:53:59 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+22:53:59 ingest A1_fallback.csv                          A1 attempt 4: gate ok, crashed False floor True, real 37.13 cm
+22:53:59 Tuning stopped: two R3 rounds in a row. Final gains = theta_best (round 0). Fly the test flights with theta_best.
+22:53:59 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best round 0 (10.00 cm)
+22:54:01 round 2 done in 3 s
+PASS r2 two R3 rounds in a row: stop message, gains_theta_best.yaml = theta_best, no next round, no tuning step Tuning stopped: two R3 rounds in a row. Final gains = theta_best (round 0). Fly the test flights with theta_best.
+PASS r2b the final gains file holds theta_best (0.05 in every gain) 
+22:54:02 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+22:54:02 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+22:54:02 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+22:54:02 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+22:54:03 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+22:54:03 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+22:54:03 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+22:54:03 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best none yet (no eligible set)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+22:57:35 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+23:02:49 tune theta: J0 0.01344 -> 0.01252 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+23:02:55 round 0 done in 533 s
+PASS r3 R3 in round 0 (no theta_best): no restart, tuning from theta_0 
+23:02:55 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+23:02:55 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+23:02:56 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+23:02:56 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+23:02:56 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+23:02:56 ingest A1_a2.csv                                A1 attempt 2: gate ok, crashed False floor True, real 37.13 cm
+23:02:57 ingest A1_a3.csv                                A1 attempt 3: gate ok, crashed False floor True, real 37.13 cm
+23:02:57 ingest A1_fallback.csv                          A1 attempt 4: gate ok, crashed False floor True, real 37.13 cm
+23:02:57 RS: R3 in this round (['A1']), the tuning step starts from theta_best (round 0), not from theta_2
+23:02:57 real 3-D RMS 8.43 cm (mean of the 4 usable tuning flights; R3 on ['A1'], set NOT eligible); keep-best round 0 (10.00 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+23:06:38 fit beta: J0 0.02871 -> 0.02871 (best epoch 0), epochs 3, psi [0.0, 0.0, 0.0, 0.0]
+23:11:29 tune theta: J0 0.01053 -> 0.01039 (best epoch 1), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+23:11:35 round 2 done in 520 s
+PASS r4 R3 in round 2 after an eligible round 1: restart, no stop, next round written 
+23:11:35 ingest A8_dry_merged_usd.csv                    A8 attempt 1: gate ok, crashed False floor False, real 11.82 cm
+23:11:35 ingest A4_dry_merged_usd.csv                    A4 attempt 1: gate ok, crashed False floor False, real 8.04 cm
+23:11:36 ingest CIRCLE_dry_merged_usd.csv                CIRCLE attempt 1: gate ok, crashed False floor False, real 6.51 cm
+23:11:36 ingest FIG8_dry_merged_usd.csv                  FIG8 attempt 1: gate ok, crashed False floor False, real 6.15 cm
+23:11:36 ingest A1_a1.csv                                A1 attempt 1: gate ok, crashed False floor True, real 37.13 cm
+23:11:36 real 3-D RMS 18.24 cm (mean of the 5 usable tuning flights); keep-best round 0 (10.00 cm)
+/home/georg/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:716: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+No CUDA runtime is found, using CUDA_HOME='/usr'
+23:15:32 fit beta: J0 0.1554 -> 0.1545 (best epoch 2), epochs 3, psi [-0.02, -0.02, 0.019, 0.009]
+23:19:20 tune theta: J0 0.01419 -> 0.01305 (best epoch 2), epochs 3, gain-limit hits [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+23:19:26 round 1 done in 471 s
+PASS r5 no R3 (all flights usable): no restart, tuning from theta_l (0) 
+ALL PASS
+rc 0

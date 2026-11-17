@@ -30,7 +30,7 @@ if __name__ == '__main__':
         save(rec); L.jdump(rec, RES / ('loop_%s_%s.json' % (C, a.tag))); say('halt reason:', halt['why'], '; largest gain change per round (relative):', np.round(rec['max_gain_change_per_round'], 3).tolist())
         if rec['best'].get('phi') is None: say('no eligible set after extension: ask the user (no evaluation, theta_0 is NOT used as a fallback)')          # Stage 8d2, strict mode only
         elif not a.no_eval:
-            phis = {'theta_0': np.zeros(10), 'theta_best': np.array(rec['best']['phi'])}
+            phis = {'theta_0': np.zeros(L.NG), 'theta_best': np.array(rec['best']['phi'])}
             ev = {k: L.evaluate(pool, p, plant, seeds=EVAL_SEEDS) for k, p in phis.items()}
             L.jdump(dict(controller=C, method=L.METHOD, phis={k: p.tolist() for k, p in phis.items()}, best_round=rec['best']['round'], rounds_flown=len(rec['rounds']), halt=halt['why'], eval=ev, seconds=time.time() - t_start), RES / ('eval_%s_%s.json' % (C, a.tag)))
         say(C, 'done; total %.0f min' % ((time.time() - t_start) / 60))

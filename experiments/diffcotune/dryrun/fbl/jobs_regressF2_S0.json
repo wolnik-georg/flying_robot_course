@@ -1,0 +1,13 @@
+[
+ {
+  "name": "regressF2_S0",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=S0 DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_regressF2_S0.txt && /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/regressF2.sh S0 > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/regressF2_S0.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/regressF2_S0.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_regressF2_S0.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_regressF2_S0.log"
+ }
+]

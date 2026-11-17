@@ -28,6 +28,8 @@ import reference as R
 from frsim import config
 
 BOTTOM_PREFIX = 'cf5'
+import os
+CRASH_KEY = 'fbl' if os.environ.get('DIFFCOTUNE_CONTROLLER') == 'FBL' else 'tree'          # Stage F2 (decision D7): FBL crash limit 45 deg (frsim config.CRASH_TILT_DEG['fbl']); S0-S3 unchanged
 TWO_DRONE = ('A1', 'A4', 'A8')
 GAP_MS = 3.0            # check_usd_log_quality.py: a sample gap is dt > 3 ms ...
 GAP_FRACTION = 0.001    # ... and more than 0.1 % of the samples is "the card cannot keep up"
@@ -225,7 +227,7 @@ def flight_flags(tr, ref):
     q = tr[:, 7:11]; tilt = np.degrees(np.arccos(np.clip(1 - 2 * (q[:, 0] ** 2 + q[:, 1] ** 2), -1, 1)))
     ref_z = np.interp(t[m], ref.time_s, ref.pos[:, 2]).mean() if m.any() else float('nan')
     return dict(scored_from_s=float(config.SCORE_AFTER_S), scored_to_s=float(ref.scenario_s), n_scored=int(m.sum()), tilt_max_deg=float(tilt[sc].max()) if sc.any() else float('nan'),
-                crashed=bool(sc.any() and tilt[sc].max() >= config.CRASH_TILT_DEG['tree']), floor=bool(m.any() and tr[m, 3].mean() < 0.5 * ref_z),
+                crashed=bool(sc.any() and tilt[sc].max() >= config.CRASH_TILT_DEG[CRASH_KEY]), floor=bool(m.any() and tr[m, 3].mean() < 0.5 * ref_z),
                 z_mean_m=float(tr[m, 3].mean()) if m.any() else float('nan'), ref_z_mean_m=float(ref_z))
 
 

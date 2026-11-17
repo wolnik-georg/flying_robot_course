@@ -17,7 +17,7 @@ import argparse, json, os, subprocess, sys, time
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
 TUNING_ORDER = [('A1', 'two drones'), ('A8', 'two drones'), ('A4', 'two drones'), ('CIRCLE', '--solo'), ('FIG8', '--solo')]          # Stage 7: A4 cell 1 is the third tuning flight (user decision 15 Nov)
-SWITCH = {'S0': (0, 0), 'S1': (3, 0), 'S2': (0, 1), 'S3': (3, 1)}
+SWITCH = {'S0': (0, 0), 'S1': (3, 0), 'S2': (0, 1), 'S3': (3, 1), 'FBL': None}          # Stage F2: FBL is not a switch of the tree (own branch study_FBL_stock, variants dw_en / nn_en)
 ARCHIVE_AT = 85; HARD_LIMIT = 100          # memory feedback_usd_card_file_counter_100_2026-10-19: archive at >= 85, never reach 100
 FILES_PER_FLIGHT_PER_CARD = 1             # ASSUMPTION, not stated in the repository (one log file per flight and drone); check at the first block
 TEST_FLIGHTS = 12; TUNING_FLIGHTS = 30     # per controller (6 rounds x 5 since Stage 8; test: A4 cell 2 3 + 3, A4 cell 1 3 + 3)
@@ -54,7 +54,19 @@ def flights_registered(logs, c, l):
 def hhmm(t): return time.strftime('%H:%M', time.localtime(t))
 
 
-def switch_commands(to, solo=False, root='lab', yaml='<crazyflies.yaml>', uri='<cf5 uri>', frag=None):
+def switch_commands_fbl(variant, solo=False, root='lab', yaml='<crazyflies.yaml>', uri='<cf5 uri>', frag=None):
+    """Stage F2: the FBL block (crazyswarm2 branch study_FBL_stock, image per docs/fbl/LAB_PLAN.md:10). The gains fragment carries ctrlFbl en 1, inner 1, cd 0.55, dw_en, nn_en and the 6 gains."""
+    dw, nn = {'base': (0, 0), 'rom': (1, 0), 'both': (1, 1)}[variant]
+    return ['stop CS2 (the radio is shared); crazyswarm2 on branch study_FBL_stock (read only: copy its crazyflies.yaml, never edit the repo)',
+            'python3 flying_drone_stack/tools/fbl_prime_controller.py %s     # cf5 on controller 9 BEFORE the CS2 launch (the controller init wipes the ctrlFbl values of a fresh boot); after every power cycle of cf5' % uri,
+            'python3 experiments/diffcotune/fbl/apply_gains_fbl.py merge --fragment %s --yaml %s     # ctrlFbl: en 1, inner 1, cd 0.55, dw_en %d, nn_en %d + the 6 gains; put the .new file in place' % (frag or '<fragment>', yaml, dw, nn),
+            'launch CS2 (applies the yaml firmware_params); stop CS2 again; python3 experiments/diffcotune/fbl/apply_gains_fbl.py readback --uri %s --fragment %s     # fresh connection: gains, en, inner, cd, dw_en, nn_en, stabilizer.controller 9' % (uri, frag or '<fragment>'),
+            'after a flash only: python3 flying_drone_stack/tools/check_active_controller.py %s 9' % uri,
+            'relaunch CS2; %s' % ('cf_second disabled (solo scenarios CIRCLE, FIG8)' if solo else 'cf_second enabled (A1, A8, A4)')]
+
+
+def switch_commands(to, solo=False, root='lab', yaml='<crazyflies.yaml>', uri='<cf5 uri>', frag=None, variant=None):
+    if to == 'FBL': return switch_commands_fbl(variant or 'base', solo, root, yaml, uri, frag)
     indi, en = SWITCH[to]
     seq = ['stop CS2 (the radio is shared)',
            'python3 flying_drone_stack/tools/set_tree_strategy.py %s --yaml %s%s     # cf5 indi %d, rnn.en %d%s' % (to, yaml, ' --solo' if solo else '', indi, en, '; cf_second enabled: false' if solo else '; cf_second enabled')]
@@ -97,15 +109,16 @@ def cmd_status(a):
 
 
 def cmd_desk(a):
+    tag = a.controller + (getattr(a, 'variant', None) or '')          # Stage F2: state folder lab/FBL<variant>
     l = a.round; reg = flights_registered(Path(a.logs).parent.parent, a.controller, l) if a.logs else None
     need = Path(a.logs) / 'flights.json'
     if not need.exists(): sys.exit('no flights.json in %s' % a.logs)
     if not a.now and not flights_registered(Path(a.logs).parent.parent, a.controller, l): sys.exit('the tuning flights of round %d are not registered (manifest); use --now to start anyway' % l)
-    cmd = ['nice', '-n', '19', sys.executable, str(HERE / 'round.py'), '--controller', a.controller, '--round', str(l), '--logs', a.logs, '--state-dir', str(Path(a.root) / a.controller), '--n-rounds', str(a.n_rounds)] + (['--top', a.top] if a.top else []) + (['--lenient'] if getattr(a, 'lenient', False) else [])
-    logf = Path(a.root) / a.controller / ('desk_%d.log' % l); logf.parent.mkdir(parents=True, exist_ok=True)
+    cmd = ['nice', '-n', '19', sys.executable, str(HERE / 'round.py'), '--controller', a.controller, '--round', str(l), '--logs', a.logs, '--state-dir', str(Path(a.root) / tag), '--n-rounds', str(a.n_rounds)] + (['--variant', a.variant] if getattr(a, 'variant', None) else []) + (['--top', a.top] if a.top else []) + (['--lenient'] if getattr(a, 'lenient', False) else [])
+    logf = Path(a.root) / tag / ('desk_%d.log' % l); logf.parent.mkdir(parents=True, exist_ok=True)
     if a.print_only: print(' '.join(cmd)); return
     p = subprocess.Popen(cmd, stdout=open(logf, 'w'), stderr=subprocess.STDOUT, start_new_session=True)
-    json.dump(dict(controller=a.controller, round=l, pid=p.pid, start=time.time(), expected_min=a.expected_min, log=str(logf), cmd=cmd), open(Path(a.root) / a.controller / ('desk_%d.json' % l), 'w'), indent=1)
+    json.dump(dict(controller=a.controller, round=l, pid=p.pid, start=time.time(), expected_min=a.expected_min, log=str(logf), cmd=cmd), open(Path(a.root) / tag / ('desk_%d.json' % l), 'w'), indent=1)
     print('started desk step of %s round %d (pid %d, log %s); expected about %.0f min (estimate)' % (a.controller, l, p.pid, logf, a.expected_min))
 
 
@@ -158,16 +171,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('status'); p.add_argument('--pair', nargs='+', default=['S0', 'S2']); p.add_argument('--root', default=str(HERE)); p.add_argument('--logs', default=str(HERE / 'session_logs')); p.add_argument('--loaded', default=None)
     p.add_argument('--n-rounds', type=int, default=6); p.add_argument('--timeline-min', default=None)
-    p = sub.add_parser('desk'); p.add_argument('--lenient', action='store_true', help='mock test only (round.py --lenient)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--logs', required=True); p.add_argument('--root', default=str(HERE))
+    p = sub.add_parser('desk'); p.add_argument('--variant', choices=['base', 'rom', 'both'], default=None, help='FBL only'); p.add_argument('--lenient', action='store_true', help='mock test only (round.py --lenient)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--logs', required=True); p.add_argument('--root', default=str(HERE))
     p.add_argument('--n-rounds', type=int, default=6); p.add_argument('--top', default=None); p.add_argument('--expected-min', type=float, default=23.0); p.add_argument('--now', action='store_true'); p.add_argument('--print-only', action='store_true')
     p = sub.add_parser('manifest'); p.add_argument('--fake-frame', action='store_true', help='mock test only: rotate_deg 0 and lag_s 0 (files of fake_round_flights.py)'); p.add_argument('--controller', required=True); p.add_argument('--round', type=int, required=True); p.add_argument('--inbox', required=True); p.add_argument('--out', required=True); p.add_argument('--root', default=str(HERE)); p.add_argument('--assign', nargs='*', default=[]); p.add_argument('--fallback', nargs='+', default=None, metavar='SCEN=file', help='rule R3: the ONE fallback flight per failed scenario (theta_best), role fallback, attempt 4'); p.add_argument('--fallback-gains', default=None, help='gains.yaml of theta_best used for the fallback flight'); p.add_argument('--append', action='store_true', help='add the fallback entries to the existing --out flights.json')
-    p = sub.add_parser('switch'); p.add_argument('--to', required=True, choices=list(SWITCH)); p.add_argument('--solo', action='store_true'); p.add_argument('--yaml', default='<crazyflies.yaml>'); p.add_argument('--uri', default='<cf5 uri>'); p.add_argument('--fragment', default=None)
+    p = sub.add_parser('switch'); p.add_argument('--variant', choices=['base', 'rom', 'both'], default=None, help='FBL only'); p.add_argument('--to', required=True, choices=list(SWITCH)); p.add_argument('--solo', action='store_true'); p.add_argument('--yaml', default='<crazyflies.yaml>'); p.add_argument('--uri', default='<cf5 uri>'); p.add_argument('--fragment', default=None)
     p = sub.add_parser('cards'); p.add_argument('--start-count', type=int, required=True); p.add_argument('--pair', nargs='+', default=None)
     a = ap.parse_args()
     if a.cmd == 'status': cmd_status(a)
     elif a.cmd == 'desk': cmd_desk(a)
     elif a.cmd == 'manifest': cmd_manifest(a)
-    elif a.cmd == 'switch': print('\n'.join(switch_commands(a.to, a.solo, yaml=a.yaml, uri=a.uri, frag=a.fragment)))
+    elif a.cmd == 'switch': print('\n'.join(switch_commands(a.to, a.solo, yaml=a.yaml, uri=a.uri, frag=a.fragment, variant=a.variant)))
     elif a.cmd == 'cards': cmd_cards(a)
 
 

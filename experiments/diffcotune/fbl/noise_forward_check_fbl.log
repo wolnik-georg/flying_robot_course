@@ -1,0 +1,113 @@
+variant base: frsim 60 episodes 255 s
+  base A1 model 6 rows 47 s
+  base A8 model 6 rows 54 s
+  base CIRCLE model 6 rows 35 s
+  base FIG8 model 6 rows 26 s
+  base A4 model 6 rows 21 s
+variant rom: frsim 60 episodes 258 s
+  rom A1 model 6 rows 49 s
+  rom A8 model 6 rows 40 s
+  rom CIRCLE model 6 rows 18 s
+  rom FIG8 model 6 rows 24 s
+  rom A4 model 6 rows 29 s
+variant both: frsim 60 episodes 219 s
+  both A1 model 6 rows 45 s
+  both A8 model 6 rows 38 s
+  both CIRCLE model 6 rows 35 s
+  both FIG8 model 6 rows 38 s
+  both A4 model 6 rows 57 s
+var   scen    gains     seed  frsim cm  model cm    rel %    sens % stable   crF   crM pass
+base  A1      preset1   1000    61.879    79.733  28.8536   35.1937 False   True  True yes
+base  A1      preset1   1001    80.931    64.027  20.8863  137.6334 False   True  True yes
+base  A1      gains1    1000    63.069    57.004   9.6158    1.2967 False   True  True yes
+base  A1      gains1    1001    29.958    29.773   0.6201    0.0006 True    True  True NO
+base  A1      gains2    1000    54.497    39.401  27.6993    1.4738 False   True  True yes
+base  A1      gains2    1001    91.598    91.623   0.0274    0.0095 True    True  True yes
+base  A8      preset1   1000    12.092    12.095   0.0232    0.0026 True   False False yes
+base  A8      preset1   1001     8.615     8.615   0.0046    0.0010 True   False False yes
+base  A8      gains1    1000    12.433    12.434   0.0088    0.0000 True   False False yes
+base  A8      gains1    1001     8.574     8.576   0.0269    0.0006 True   False False yes
+base  A8      gains2    1000    12.852    12.854   0.0127    0.0005 True   False False yes
+base  A8      gains2    1001    10.405    10.406   0.0094    0.0009 True   False False yes
+base  CIRCLE  preset1   1000     2.307     2.307   0.0030    0.0018 True   False False yes
+base  CIRCLE  preset1   1001     2.146     2.146   0.0035    0.0023 True   False False yes
+base  CIRCLE  gains1    1000     2.261     2.262   0.0055    0.0045 True   False False yes
+base  CIRCLE  gains1    1001     2.027     2.027   0.0075    0.0001 True   False False yes
+base  CIRCLE  gains2    1000     2.586     2.586   0.0037    0.0014 True   False False yes
+base  CIRCLE  gains2    1001     2.513     2.513   0.0064    0.0002 True   False False yes
+base  FIG8    preset1   1000     1.912     1.912   0.0023    0.0033 True   False False yes
+base  FIG8    preset1   1001     1.502     1.502   0.0040    0.0008 True   False False yes
+base  FIG8    gains1    1000     1.715     1.715   0.0032    0.0038 True   False False yes
+base  FIG8    gains1    1001     1.459     1.459   0.0042    0.0001 True   False False yes
+base  FIG8    gains2    1000     2.369     2.369   0.0032    0.0000 True   False False yes
+base  FIG8    gains2    1001     1.754     1.754   0.0007    0.0016 True   False False yes
+base  A4      preset1   1000    36.901    36.883   0.0475    0.0266 True   False False yes
+base  A4      preset1   1001    13.820    13.821   0.0113    0.0000 True   False False yes
+base  A4      gains1    1000    40.909    40.914   0.0121    0.0003 True   False False yes
+base  A4      gains1    1001    37.391    37.407   0.0419    0.0009 True   False False yes
+base  A4      gains2    1000    22.480    17.147  23.7227    1.0217 False  False False NO
+base  A4      gains2    1001    15.971    15.977   0.0386    0.0005 True   False False yes
+rom   A1      preset1   1000    39.085    39.898   2.0795    0.2726 True    True  True NO
+rom   A1      preset1   1001    47.412    52.084   9.8550   26.7736 False   True  True yes
+rom   A1      gains1    1000    62.973    62.970   0.0049    0.0010 True    True  True yes
+rom   A1      gains1    1001    51.195    63.885  24.7868    6.3793 False   True  True yes
+rom   A1      gains2    1000   105.904   108.824   2.7570   29.3169 False   True  True yes
+rom   A1      gains2    1001    78.552    77.074   1.8810    0.0004 True    True  True NO
+rom   A8      preset1   1000     9.321     9.322   0.0168    0.0019 True   False False yes
+rom   A8      preset1   1001     6.811     6.811   0.0049    0.0002 True   False False yes
+rom   A8      gains1    1000     8.608     8.614   0.0713    0.0090 True   False False yes
+rom   A8      gains1    1001     6.537     6.539   0.0284    0.0036 True   False False yes
+rom   A8      gains2    1000    11.240    11.240   0.0059    0.0003 True   False False yes
+rom   A8      gains2    1001     8.859     8.860   0.0091    0.0009 True   False False yes
+rom   CIRCLE  preset1   1000     2.307     2.307   0.0030    0.0018 True   False False yes
+rom   CIRCLE  preset1   1001     2.146     2.146   0.0035    0.0023 True   False False yes
+rom   CIRCLE  gains1    1000     2.261     2.262   0.0055    0.0045 True   False False yes
+rom   CIRCLE  gains1    1001     2.027     2.027   0.0075    0.0001 True   False False yes
+rom   CIRCLE  gains2    1000     2.586     2.586   0.0037    0.0014 True   False False yes
+rom   CIRCLE  gains2    1001     2.513     2.513   0.0064    0.0002 True   False False yes
+rom   FIG8    preset1   1000     1.912     1.912   0.0023    0.0033 True   False False yes
+rom   FIG8    preset1   1001     1.502     1.502   0.0040    0.0008 True   False False yes
+rom   FIG8    gains1    1000     1.715     1.715   0.0032    0.0038 True   False False yes
+rom   FIG8    gains1    1001     1.459     1.459   0.0042    0.0001 True   False False yes
+rom   FIG8    gains2    1000     2.369     2.369   0.0032    0.0000 True   False False yes
+rom   FIG8    gains2    1001     1.754     1.754   0.0007    0.0016 True   False False yes
+rom   A4      preset1   1000    38.898    38.921   0.0586    0.0003 True   False False yes
+rom   A4      preset1   1001    12.403    12.406   0.0230    0.0002 True   False False yes
+rom   A4      gains1    1000    36.274    36.285   0.0321    0.0001 True   False False yes
+rom   A4      gains1    1001    38.609    38.618   0.0224    0.0029 True   False False yes
+rom   A4      gains2    1000    14.265    14.259   0.0421    0.0099 True   False False yes
+rom   A4      gains2    1001    13.371    13.376   0.0322    0.0003 True   False False yes
+both  A1      preset1   1000    69.062    67.671   2.0138    0.3142 True    True  True NO
+both  A1      preset1   1001    78.044    78.097   0.0677    0.9743 False   True  True yes
+both  A1      gains1    1000    68.212    68.240   0.0415    0.0013 True    True  True yes
+both  A1      gains1    1001   159.998    87.598  45.2506   34.8740 False   True  True yes
+both  A1      gains2    1000    47.805    37.078  22.4383    1.4705 False   True  True yes
+both  A1      gains2    1001    89.503    89.483   0.0227    0.0185 True    True  True yes
+both  A8      preset1   1000    10.546    10.551   0.0443    0.0007 True   False False yes
+both  A8      preset1   1001     7.176     7.176   0.0023    0.0004 True   False False yes
+both  A8      gains1    1000     8.705     8.706   0.0077    0.0024 True   False False yes
+both  A8      gains1    1001     6.582     6.583   0.0091    0.0007 True   False False yes
+both  A8      gains2    1000    11.795    11.796   0.0114    0.0033 True   False False yes
+both  A8      gains2    1001     9.438     9.438   0.0010    0.0023 True   False False yes
+both  CIRCLE  preset1   1000     2.307     2.307   0.0030    0.0018 True   False False yes
+both  CIRCLE  preset1   1001     2.146     2.146   0.0035    0.0023 True   False False yes
+both  CIRCLE  gains1    1000     2.261     2.262   0.0055    0.0045 True   False False yes
+both  CIRCLE  gains1    1001     2.027     2.027   0.0075    0.0001 True   False False yes
+both  CIRCLE  gains2    1000     2.586     2.586   0.0037    0.0014 True   False False yes
+both  CIRCLE  gains2    1001     2.513     2.513   0.0064    0.0002 True   False False yes
+both  FIG8    preset1   1000     1.912     1.912   0.0023    0.0033 True   False False yes
+both  FIG8    preset1   1001     1.502     1.502   0.0040    0.0008 True   False False yes
+both  FIG8    gains1    1000     1.715     1.715   0.0032    0.0038 True   False False yes
+both  FIG8    gains1    1001     1.459     1.459   0.0042    0.0001 True   False False yes
+both  FIG8    gains2    1000     2.369     2.369   0.0032    0.0000 True   False False yes
+both  FIG8    gains2    1001     1.754     1.754   0.0007    0.0016 True   False False yes
+both  A4      preset1   1000    31.046    31.089   0.1380    0.0571 True   False False yes
+both  A4      preset1   1001    13.345    13.350   0.0403    0.0000 True   False False yes
+both  A4      gains1    1000    36.208    36.491   0.7814    0.1733 True   False False NO
+both  A4      gains1    1001    38.660    38.700   0.1049    0.0108 True   False False yes
+both  A4      gains2    1000    20.892    12.484  40.2455    9.0639 False  False False NO
+both  A4      gains2    1001    13.719    13.723   0.0310    0.0029 True   False False yes
+base: 28 of 30 cells pass; stable cells 25; max rel (stable) 0.6201 %
+rom: 28 of 30 cells pass; stable cells 27; max rel (stable) 2.0795 %
+both: 27 of 30 cells pass; stable cells 26; max rel (stable) 2.0138 %
+NOISE FORWARD CHECK FBL: FAIL

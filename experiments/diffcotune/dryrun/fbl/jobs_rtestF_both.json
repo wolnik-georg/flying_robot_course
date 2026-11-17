@@ -1,0 +1,13 @@
+[
+ {
+  "name": "rtestF_both",
+  "argv": [
+   "bash",
+   "-c",
+   "export DIFFCOTUNE_CONTROLLER=FBL DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1 DIFFCOTUNE_FBL_VARIANT=both; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_rtestF_both.txt && /usr/bin/python3 /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/lab/dry_test5_fbl.py --controller FBL --variant both --strict-dry > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_both.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_both.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_rtestF_both.txt"
+  ],
+  "procs": 6,
+  "mem_gb": 10.0,
+  "log": "logs/job_rtestF_both.log"
+ }
+]

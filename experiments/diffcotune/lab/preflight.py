@@ -18,6 +18,8 @@ sys.path.insert(0, str(HERE)); sys.path.insert(0, str(TOP)); sys.path.insert(0, 
 FAILS = []
 if '--controller' in sys.argv:            # Stage 5: select the model of loop_lib before it is imported
     os.environ['DIFFCOTUNE_CONTROLLER'] = sys.argv[sys.argv.index('--controller') + 1]
+if '--variant' in sys.argv:               # Stage F2: FBL variant base | rom | both (round.py reads --variant from sys.argv too)
+    os.environ['DIFFCOTUNE_FBL_VARIANT'] = sys.argv[sys.argv.index('--variant') + 1]
 
 
 def res(ok, name, msg='', note=False):
@@ -27,7 +29,7 @@ def res(ok, name, msg='', note=False):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--variant', choices=['base', 'rom', 'both'], default=None, help='FBL only (Stage F2)'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
     import numpy as np
     ctrl = a.controller; print('preflight', ctrl, time.strftime('%Y-%m-%d %H:%M:%S'), flush=True)
     # ---- 1 imports
@@ -49,7 +51,7 @@ def main():
         MODEL = _model_module(ctrl)
         ref = R.build('A1', tuning_cells('A1')[0]); t0 = time.time()
         with torch.no_grad():
-            o = MODEL.rollout(ref, np.zeros((1, 10)), np.zeros((1, MODEL.N_BETA if hasattr(MODEL, 'N_BETA') else 4)), compile=True)
+            o = MODEL.rollout(ref, np.zeros((1, L.NG)), np.zeros((1, MODEL.N_BETA if hasattr(MODEL, 'N_BETA') else 4)), compile=True)
         x = o['x'].numpy(); res(bool(np.isfinite(x).all()), '1c model rollout', '%s compiled, A1 reference, %d ticks, finite, %.0f s' % (MODEL.__name__, x.shape[0], time.time() - t0))
     except Exception as e:
         res(False, '1c model rollout', repr(e))
@@ -70,11 +72,17 @@ def main():
         sd = Path(td) / ctrl; RD.init_state(sd); rd = sd / 'round_0'
         st = json.load(open(rd / 'state.json')); phi = RD.yaml_to_phi(rd / 'gains.yaml')
         res(float(np.abs(phi).max()) < 1e-12 and float(np.abs(np.array(st['phi'])).max()) == 0.0, '3a round_0 gains', 'yaml round trip: max |phi| = %.1e (default gains)' % float(np.abs(phi).max()))
-        g = AG.load_fragment(rd / 'gains.yaml'); dflt = {p: float(L.GAIN_DEFAULT[i]) for i, (n, ps) in enumerate(RD.GAIN_PARAMS) for p in ps}
-        res(all(abs(g[k] - v) <= 1e-12 * abs(v) for k, v in dflt.items()) and len(g) == 15, '3b gains = firmware defaults', '%d values equal TREE_DEFAULT_GAINS' % len(g))
+        if ctrl == 'FBL':          # Stage F2: the FBL fragment = ctrlFbl en 1, inner 1, cd 0.55, dw_en / nn_en of the variant, the 6 gains = preset 1 (FBL_DEFAULT_GAINS)
+            import apply_gains_fbl_shim as AGF  # noqa
+            g = AGF.AG.load_fragment(rd / 'gains.yaml'); dflt = {p: float(L.GAIN_DEFAULT[i]) for i, (n, ps) in enumerate(RD.GAIN_PARAMS) for p in ps}; dw, nn = RD.FBL_SWITCHES[RD.FBL_VARIANT]
+            fixed = dict(en=1.0, inner=1.0, cd=0.55, dw_en=float(dw), nn_en=float(nn))
+            res(all(abs(g[k] - v) <= 1e-12 * abs(v) for k, v in dflt.items()) and all(g.get(k) == v for k, v in fixed.items()) and len(g) == 11 and 'kr_xy' not in g, '3b FBL fragment = preset 1 + switches', 'variant %s: %d values: 6 gains = FBL_DEFAULT_GAINS, en 1, inner 1, cd 0.55, dw_en %d, nn_en %d, no kr' % (RD.FBL_VARIANT, len(g), dw, nn))
+        else:
+            g = AG.load_fragment(rd / 'gains.yaml'); dflt = {p: float(L.GAIN_DEFAULT[i]) for i, (n, ps) in enumerate(RD.GAIN_PARAMS) for p in ps}
+            res(all(abs(g[k] - v) <= 1e-12 * abs(v) for k, v in dflt.items()) and len(g) == 15, '3b gains = firmware defaults', '%d values equal TREE_DEFAULT_GAINS' % len(g))
         src = Path(a.yaml) if a.yaml else FF.YAML
         if src.exists():
-            out = Path(td) / 'merged.yaml'; ns = argparse.Namespace(fragment=str(rd / 'gains.yaml'), yaml=str(src), out=str(out), strategy=ctrl)
+            out = Path(td) / 'merged.yaml'; ns = argparse.Namespace(fragment=str(rd / 'gains.yaml'), yaml=str(src), out=str(out), strategy=(None if ctrl == 'FBL' else ctrl))
             try:
                 import contextlib, io
                 with contextlib.redirect_stdout(io.StringIO()): AG.cmd_merge(ns)
@@ -87,14 +95,14 @@ def main():
         else:
             res(False, '3c merge', 'yaml not found: %s (pass --yaml)' % src, note=True)
         # merge on the yaml of the strategy's branch of crazyswarm2 (read only: git show, nothing checked out) when the repo is here
-        br = {'S0': 'main', 'S1': 'study_S1', 'S2': 'study_S2', 'S3': 'study_S3'}[ctrl]; repo = FF.YAML.parents[2]
+        br = {'S0': 'main', 'S1': 'study_S1', 'S2': 'study_S2', 'S3': 'study_S3', 'FBL': 'study_FBL_stock'}[ctrl]; repo = FF.YAML.parents[2]
         if (repo / '.git').exists():
             r = subprocess.run(['git', '-C', str(repo), 'show', '%s:crazyflie/config/crazyflies.yaml' % br], capture_output=True, text=True)
             if r.returncode == 0:
-                y = Path(td) / 'branch.yaml'; y.write_text(r.stdout); ns = argparse.Namespace(fragment=str(rd / 'gains.yaml'), yaml=str(y), out=str(Path(td) / 'b_merged.yaml'), strategy=ctrl)
+                y = Path(td) / 'branch.yaml'; y.write_text(r.stdout); ns = argparse.Namespace(fragment=str(rd / 'gains.yaml'), yaml=str(y), out=str(Path(td) / 'b_merged.yaml'), strategy=(None if ctrl == 'FBL' else ctrl))
                 try:
                     with contextlib.redirect_stdout(io.StringIO()): AG.cmd_merge(ns)
-                    res(True, '3d merge on the yaml of branch ' + br, 'cf5 indi / rnn.en = %s kept' % (AG.SWITCHES[ctrl],))
+                    res(True, '3d merge on the yaml of branch ' + br, ('cf5 indi / rnn.en = %s kept' % (AG.SWITCHES[ctrl],)) if ctrl != 'FBL' else 'only cf5 ctrlFbl values differ (branch study_FBL_stock, read with git show)')
                 except SystemExit as e:
                     res(False, '3d merge on the yaml of branch ' + br, str(e)[:200])
     # ---- 4 settings
@@ -132,8 +140,42 @@ def main():
     rsm = re.search(r"RS_VERSION = '([^']+)'", rtxt)
     res(rsm is not None and 'two R3 rounds in a row' in rtxt and 'restart_from_best' in rtxt, '6d round.py has rule RS (R3 round: tuning restarts from theta_best; two R3 rounds in a row: stop, final gains = theta_best)', ('marker %s' % rsm.group(1)) if rsm else 'RS_VERSION marker not found in round.py (old round.py: an R3 round would tune on from the crashed set)')
     # ---- 7 NS2 weights and switches (Stage 7; desk only, read only)
-    ns2_checks(ctrl, a, res)
+    if ctrl == 'FBL': fbl_checks(a, res)
+    else: ns2_checks(ctrl, a, res)
     return end()
+
+
+def fbl_checks(a, res):
+    """Stage F2 (FBL): 8a the variant and its model flags / the frsim variant switch (simulator patch 0001); 8b the yaml of branch study_FBL_stock has ctrlFbl en 1, inner 1, cd 0.55 (read with git show); 8c the candidate image named in docs/fbl/LAB_PLAN.md
+    exists and has the sha256 of its .sha256 file (the file only; which image is on the drones is not checkable offline); 8d the usd config usd_fbl_config.txt holds every channel usd_ingest reads; 8e crash limit 45 deg for FBL."""
+    import hashlib, yaml as _y, fly_file as FF
+    import fbl_model as FM
+    var = os.environ.get('DIFFCOTUNE_FBL_VARIANT'); flg = FM.flags(var) if var in FM.VARIANTS else None
+    import frsim.controllers as FC
+    res(flg is not None and var in ('base', 'rom', 'both'), '8a FBL variant', 'variant %s: residual %s, ROM %s, net %s (model flags); frsim switch FRSIM_FBL_VARIANT read in controllers.configure: %s' % (var, *(flg or ('?', '?', '?')), 'FRSIM_FBL_VARIANT' in Path(FC.__file__).read_text()))
+    res(FM.SG_R == 0 and not FM.QUANT and FM.TILT_CRASH_DEG == 45.0, '8b model settings (decisions D1, D5, D7)', 'SG_R %g, quantisation %s, crash tilt %g deg' % (FM.SG_R, FM.QUANT, FM.TILT_CRASH_DEG))
+    repo = Path.home() / 'Desktop' / 'crazyswarm2'
+    if (repo / '.git').exists():
+        r = subprocess.run(['git', '-C', str(repo), 'show', 'study_FBL_stock:crazyflie/config/crazyflies.yaml'], capture_output=True, text=True)
+        if r.returncode == 0:
+            c = _y.safe_load(r.stdout)['robots']['cf5']['firmware_params']; f = c.get('ctrlFbl', {})
+            res(f.get('en') == 1 and f.get('inner') == 1 and abs(float(f.get('cd', 0)) - 0.55) < 1e-9, '8c yaml of branch study_FBL_stock', 'cf5 ctrlFbl en %s, inner %s, cd %s (read only); the yaml values nn_en %s / dw_en %s are replaced by the fragment of the variant' % (f.get('en'), f.get('inner'), f.get('cd'), f.get('nn_en'), f.get('dw_en')))
+        else: res(False, '8c yaml of branch study_FBL_stock', 'git show failed: ' + r.stderr.strip()[:100], note=True)
+    else: res(False, '8c yaml of branch study_FBL_stock', 'crazyswarm2 repo not found at %s' % repo, note=True)
+    root = Path.home() / 'Desktop' / 'flying_robot_course'; art = root / 'flying_drone_stack' / 'firmware_app' / 'build_artifacts'; img = art / 'study_tree_v2_fbl_stockinner_nn4_full_candidate.bin'; shaf = art / 'study_tree_v2_fbl_stockinner_nn4_full_candidate.sha256'
+    if img.exists() and shaf.exists():
+        h = hashlib.sha256(img.read_bytes()).hexdigest(); want = shaf.read_text().split()[0]
+        res(h == want, '8d candidate image (LAB_PLAN.md:10)', 'sha256 %s %s the .sha256 file; which image the drones run: not checkable offline (check_active_controller.py / fbl_bench_check.py in the lab)' % (h[:12], '=' if h == want else '!='))
+    else: res(False, '8d candidate image', 'file not found in %s' % art, note=True)
+    cfg = root / 'flying_drone_stack' / 'tools' / 'usd_fbl_config.txt'; sys.path.insert(0, str(root / 'flying_drone_stack' / 'tools'))
+    try:
+        from decode_usd_log import RENAME
+        inv = {v: k for k, v in RENAME.items()}; have = set(cfg.read_text().split())
+        import usd_ingest as U
+        need = list(U.STATE_COLS) + list(U.Q_COLS); miss = [n for n in need if inv.get(n) not in have]
+        res(not miss, '8e uSD channels', 'usd_fbl_config.txt logs the raw variable of every channel usd_ingest reads (%d of %d)%s' % (len(need) - len(miss), len(need), '; missing %s' % miss if miss else ''))
+    except Exception as e:
+        res(False, '8e uSD channels', repr(e)[:150], note=True)
 
 
 def ns2_checks(ctrl, a, res):
@@ -184,6 +226,7 @@ def ns2_checks(ctrl, a, res):
 def _model_module(ctrl):
     import importlib
     if ctrl == 'S0': return importlib.import_module('s0_model')
+    if ctrl == 'FBL': return importlib.import_module('fbl_model')
     return importlib.import_module('%s_model' % ctrl.lower())
 
 
