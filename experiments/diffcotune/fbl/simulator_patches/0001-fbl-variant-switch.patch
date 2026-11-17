@@ -1,0 +1,21 @@
+--- a/frsim/controllers.py	2026-11-17 19:02:52.365104261 +0100
++++ b/frsim/controllers.py	2026-11-17 19:02:52.365104261 +0100
+@@ -11,6 +11,7 @@
+ S0 - S3 share the same 10 gains; FBL has 6 gains. Everything that is not a gain is fixed here (one place per strategy).
+ """
+ 
++import os
+ from dataclasses import dataclass
+ 
+ from . import config
+@@ -129,6 +130,10 @@
+     omar.fbl.inner = 1  # stock rate loop inside FBL, flown from takeoff to landing
+     omar.fbl.abg_on_new = 0
+     omar.fbl.nn_en = 1  # 4-neuron force network of the FBL residual on
++    _fbl_variant = os.environ.get('FRSIM_FBL_VARIANT', 'both')  # Stage F1 (DiffCoTune FBL): base = no residual, rom = ROM only, both = ROM + net (default, unchanged)
++    if _fbl_variant != 'both':
++        omar.fbl.dw_en = 0 if _fbl_variant == 'base' else 1
++        omar.fbl.nn_en = 0
+     omar.fbl.c_d = 0.55  # drag coefficient of the FBL residual model
+     fw.cvar.g_rnn_div = 10  # NS2 evaluated every 10th controller tick
+     fw.cvar.g_rnn_en = int(controller.ns2) if controller.tree else 0
