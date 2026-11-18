@@ -52,12 +52,17 @@ prep() {  # prep <S0|S2|S1|S3> <round>
   python3 flying_drone_stack/tools/lab_check_strategy.py "$(dirname "$(dirname "$(dirname "$YAML")")")" || die "lab_check_strategy failed"
   ask "Launch CS2 now (it applies the yaml to the drones), wait until both drones are connected, then STOP CS2 again"
   need_cs2_stopped
+  # cflib checks need the radio: CS2 must be stopped for all of them
   hw python3 "$LAB/apply_gains.py" readback --uri "$CF5_URI" --fragment "$G" --strategy "$C" || die "READBACK MISMATCH: do not fly"
-  ask "Relaunch CS2"
   hw python3 flying_drone_stack/tools/check_active_controller.py "$CF5_URI" 9 || die "cf5 is not running controller 9"
   hw python3 flying_drone_stack/tools/check_active_controller.py "$CF2_URI" 9 || die "cf_second is not running controller 9"
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF5_URI" || die "usd deck check cf5"
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF2_URI" || die "usd deck check cf_second"
+  ask "Relaunch CS2 (drones on the pad, motors idle) for the uSD gate ground test"
+  # uSD gate (2026-11-18): the CS2 broadcast path must make BOTH decks write; needs the new crazyswarm2 build + yaml topic usd_status
+  hw python3 flying_drone_stack/tools/usd_gate_ground_test.py --mode pass || die "uSD gate failed: do not fly"
+  echo ">>> REMINDER: the gate test left one test file (usd.runTag 888) on each card. Archive it before the flights"
+  echo ">>>   (power off, cards out, move thesis* to _archive_<date>_gate_tests, cards back, then usd_card_count.py --expect 0)."
   note "PREP OK $C round $L (readback, controller 9 x2, usd deck x2)"
 }
 

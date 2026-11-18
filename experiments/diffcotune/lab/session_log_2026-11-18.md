@@ -41,3 +41,8 @@ Open: real lab-PC yaml needed (sha256sum on both machines) before preflight S2 c
 - HEAD 7b9b00dd; ~/lab_yaml/crazyflies.yaml sha256 bd6c05e9... (S0); LAB_SESSION_ACTIVE present.
 - Preflight S0 (~/lab_yaml yaml) PASSED (27 s). Preflight S2 (scratch copy switched with set_tree_strategy.py, sha f373260c...) PASSED.
 - Not yet done: round.py --init S0/S2, shakedown, flights. session_helpers/lab_env.sh does not exist in this tree.
+
+## uSD gate (lab agent, evening)
+- crazyswarm2 commit 7bac495 on main and the 11 study_* branches (usd_gate.py, yaml `usd_status` topic, run_formation + simple_flight gate, tests). Yaml sha256 S0 bd6c05e9... -> ac37a09e...; S2 f373260c... -> 16fb8c4d...; full table in experiments/diffcotune/lab/USD_GATE_LAB_STEPS.md.
+- The two shas above (bd6c05e9, f373260c) in earlier entries of this log are the PRE-gate values.
+- ~/lab_yaml/crazyflies.yaml refreshed to the new main yaml (old copy: crazyflies.yaml.before_usd_gate_2026-11-18).
