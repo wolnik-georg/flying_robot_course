@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# One-command lab runner for the lab PC (2026-11-18). Wraps ONLY the commands of S0_LAB_CARD.md /
+# INTERLEAVED_LAB_CARD.md; no new rules. You do: mocap, launch CS2, stop CS2 when asked, fly (Enter).
+#
+#   experiments/diffcotune/lab/lab_run.sh shakedown          # S0 round 0 gains, checks, ONE A1 (not a tuning flight)
+#   experiments/diffcotune/lab/lab_run.sh round S0 0         # S0 round 0: prep + A1, A8, A4, solo switch, CIRCLE, FIG8
+#   experiments/diffcotune/lab/lab_run.sh round S2 0         # same for S2 (switches the yaml to S2 first)
+#   experiments/diffcotune/lab/lab_run.sh prep S2 0          # only the prep part (yaml, checks, readback)
+#   experiments/diffcotune/lab/lab_run.sh fly A1             # one flight: A1 | A8 | A4 | CIRCLE | FIG8
+#
+# Run from ~/flying_robot_course in the shell where `ros2` works. Override if needed:
+#   YAML=/path/to/crazyflies.yaml  CF5_URI=radio://0/80/2M/E7E7E7BB02  CF2_URI=radio://0/80/2M/E7E7E7E7E7
+# DRY=1 prints hardware commands instead of running them (yaml edits still happen: use a scratch YAML).
+set -u
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+LAB="$REPO/experiments/diffcotune/lab"
+if [ -z "${YAML:-}" ]; then
+  for c in "$HOME/georg/ros2_ws/src/crazyswarm2" "$HOME/ros2_ws/src/crazyswarm2" "$HOME/Desktop/crazyswarm2"; do
+    [ -f "$c/crazyflie/config/crazyflies.yaml" ] && { YAML="$c/crazyflie/config/crazyflies.yaml"; break; }
+  done
+fi
+YAML="${YAML:-/NOT_FOUND/set_YAML}"
+CF5_URI="${CF5_URI:-radio://0/80/2M/E7E7E7BB02}"
+CF2_URI="${CF2_URI:-radio://0/80/2M/E7E7E7E7E7}"
+LOG="${LOG:-$HOME/lab_run_log_$(date +%F).txt}"
+DRY="${DRY:-0}"
+cd "$REPO" || exit 1
+
+say()  { printf '\n=== %s\n' "$*"; }
+note() { printf '%s  %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "$LOG"; }
+die()  { echo "STOP: $*" >&2; note "STOP: $*"; exit 1; }
+ask()  { [ "$DRY" = 1 ] && return 0; read -r -p ">>> $* [Enter = go, Ctrl-C = stop] " _; }
+hw()   { if [ "$DRY" = 1 ]; then echo "[dry] $*"; else "$@"; fi; }   # hardware command
+need_cs2_stopped() {
+  [ "$DRY" = 1 ] && return 0
+  while pgrep -f crazyflie_server >/dev/null 2>&1; do
+    echo "CS2 (crazyflie_server) still running: stop it (the radio is shared)."; read -r -p ">>> stopped? [Enter] " _
+  done
+}
+
+prep() {  # prep <S0|S2|S1|S3> <round>
+  local C="$1" L="$2" G="$LAB/$1/round_$2/gains.yaml"
+  [ -f "$G" ] || die "no $G (round.py --init / desk step not done for $C round $L)"
+  [ -f "$YAML" ] || die "yaml not found: $YAML (set YAML=...)"
+  say "PREP $C round $L   yaml=$YAML"
+  need_cs2_stopped
+  cp -n "$YAML" "$YAML.before_lab_run_2026-11-18" 2>/dev/null
+  python3 flying_drone_stack/tools/set_tree_strategy.py "$C" --yaml "$YAML" || die "set_tree_strategy failed"
+  python3 "$LAB/apply_gains.py" merge --fragment "$G" --yaml "$YAML" --out "$YAML.new" || die "merge failed"
+  mv "$YAML.new" "$YAML" || die "could not put the merged yaml in place"
+  note "$C round $L yaml sha256 $(sha256sum "$YAML" | cut -c1-16)"
+  python3 flying_drone_stack/tools/lab_check_strategy.py "$(dirname "$(dirname "$(dirname "$YAML")")")" || die "lab_check_strategy failed"
+  ask "Launch CS2 now (it applies the yaml to the drones), wait until both drones are connected, then STOP CS2 again"
+  need_cs2_stopped
+  hw python3 "$LAB/apply_gains.py" readback --uri "$CF5_URI" --fragment "$G" --strategy "$C" || die "READBACK MISMATCH: do not fly"
+  ask "Relaunch CS2"
+  hw python3 flying_drone_stack/tools/check_active_controller.py "$CF5_URI" 9 || die "cf5 is not running controller 9"
+  hw python3 flying_drone_stack/tools/check_active_controller.py "$CF2_URI" 9 || die "cf_second is not running controller 9"
+  hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF5_URI" || die "usd deck check cf5"
+  hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF2_URI" || die "usd deck check cf_second"
+  note "PREP OK $C round $L (readback, controller 9 x2, usd deck x2)"
+}
+
+fly() {  # fly <scenario> [controller] [round]
+  local S="$1" T="${2:-?}" R="${3:-?}"; local cmd=()
+  command -v ros2 >/dev/null 2>&1 || [ "$DRY" = 1 ] || die "ros2 not found: source your workspace first"
+  case "$S" in
+    A1)     cmd=(ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes);;
+    A8)     cmd=(ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes);;
+    A4)     cmd=(ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes);;
+    CIRCLE|FIG8) cmd=(python3 "$LAB/fly_file.py" --cell "$S" --yaml "$YAML");;
+    *) die "unknown scenario $S";;
+  esac
+  say "FLIGHT $S ($T round $R). Abort: |roll| or |pitch| > 25 deg for 0.5 s, or z < 0.25 m. Hand on abort."
+  ask "Fly $S now"
+  note "START $S controller=$T round=$R"
+  hw "${cmd[@]}"; local rc=$?
+  note "END   $S controller=$T round=$R exit=$rc   (clean/crash/repeat: tell the agent; one uSD file per drone expected)"
+}
+
+round() {  # round <C> <l>
+  local C="$1" L="$2"
+  prep "$C" "$L"
+  fly A1 "$C" "$L"; fly A8 "$C" "$L"; fly A4 "$C" "$L"
+  say "SOLO SWITCH for CIRCLE / FIG8 (cf_second disabled)"
+  need_cs2_stopped_after_flights() { ask "Stop CS2 (flights 1-3 done)"; need_cs2_stopped; }
+  need_cs2_stopped_after_flights
+  python3 flying_drone_stack/tools/set_tree_strategy.py "$C" --solo --yaml "$YAML" || die "solo switch failed"
+  python3 flying_drone_stack/tools/lab_check_strategy.py "$(dirname "$(dirname "$(dirname "$YAML")")")" || die "lab_check_strategy failed"
+  ask "Launch CS2, wait for cf5, then STOP CS2 again (for the readback)"; need_cs2_stopped
+  hw python3 "$LAB/apply_gains.py" readback --uri "$CF5_URI" --fragment "$LAB/$C/round_$L/gains.yaml" --strategy "$C" || die "READBACK MISMATCH: do not fly"
+  ask "Relaunch CS2"
+  fly CIRCLE "$C" "$L"; fly FIG8 "$C" "$L"
+  note "ROUND DONE $C round $L. Next: copy uSD files, tell the agent the file<->flight assignment and times."
+}
+
+case "${1:-}" in
+  shakedown) prep S0 0; fly A1 S0-shakedown 0;;
+  prep)      [ $# -eq 3 ] || die "usage: prep <S0|S2> <round>"; prep "$2" "$3";;
+  round)     [ $# -eq 3 ] || die "usage: round <S0|S2> <round>"; round "$2" "$3";;
+  fly)       [ $# -eq 2 ] || die "usage: fly <A1|A8|A4|CIRCLE|FIG8>"; fly "$2";;
+  *) sed -n 2,13p "$0"; exit 1;;
+esac
