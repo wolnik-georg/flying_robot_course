@@ -16,7 +16,7 @@ job('regressF2_S2', 'S2', None, 6, 10.0, '%s/regressF2.sh S2' % HERE)
 for v in ('base', 'rom', 'both'):
     tag = 'FBL' + v
     job('gateF_' + v, 'FBL', v, 2, 5.0, '%s %s/fbl/gate9F.py --tag %s --preset' % (PY, TOP, tag))
-    job('dryF_' + v, 'FBL', v, 6, 10.0, 'env DIFFCOTUNE_DRY_STRICT=1 DIFFCOTUNE_RESTART_BEST=1 %s run_8.py --tag %s_ours_strict --no-eval' % (PY, tag))
-    job('rtestF_' + v, 'FBL', v, 6, 10.0, '%s %s/lab/dry_test5_fbl.py --controller FBL --variant %s --strict-dry' % (PY, TOP, v))
+    job('dryF_' + v, 'FBL', v, 4, 13.0, 'env DIFFCOTUNE_POOL=3 DIFFCOTUNE_DRY_STRICT=1 DIFFCOTUNE_RESTART_BEST=1 %s run_8.py --tag %s_ours_strict --no-eval' % (PY, tag))
+    job('rtestF_' + v, 'FBL', v, 4, 13.0, 'env DIFFCOTUNE_POOL=3 %s %s/lab/dry_test5_fbl.py --controller FBL --variant %s --strict-dry' % (PY, TOP, v))
     job('gate9F_' + v, 'FBL', v, 2, 5.0, '%s %s/fbl/gate9F.py --tag %s --loop results/loop_FBL_%s_ours_strict.json' % (PY, TOP, tag, tag))
 (HERE / 'f2_jobs.txt').write_text('\n'.join(jobs) + '\n'); print(jobs)

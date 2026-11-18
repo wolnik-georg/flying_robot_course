@@ -176,6 +176,7 @@ def worker_fly(args):
 class Pool:
     def __init__(self, n=None, states=ALL_STATES, noise_seeds=None):
         n = len(TUNING) if n is None else n          # Stage 7: one worker per tuning scenario (5)
+        n = min(n, int(os.environ['DIFFCOTUNE_POOL'])) if os.environ.get('DIFFCOTUNE_POOL') else n  # F2b: fewer workers (memory); results do not depend on n (independent tasks, chunksize 1)
         self.states = tuple(states); self.noise_seeds = tuple(noise_seeds) if noise_seeds else None
         self.pool = mp.get_context('spawn').Pool(n, initializer=_w_init)
         self.n = n

@@ -4,10 +4,10 @@
   "argv": [
    "bash",
    "-c",
-   "export DIFFCOTUNE_CONTROLLER=FBL DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1 DIFFCOTUNE_FBL_VARIANT=rom; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_rtestF_rom.txt && /usr/bin/python3 /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/lab/dry_test5_fbl.py --controller FBL --variant rom --strict-dry > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_rom.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_rom.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_rtestF_rom.txt"
+   "export DIFFCOTUNE_CONTROLLER=FBL DIFFCOTUNE_METHOD=ours DIFFCOTUNE_GRAD_MODE=cfwd OMP_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=1 DIFFCOTUNE_FBL_VARIANT=rom; cd /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/stage8 && date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_start_rtestF_rom.txt && env DIFFCOTUNE_POOL=3 /usr/bin/python3 /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/lab/dry_test5_fbl.py --controller FBL --variant rom --strict-dry > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_rom.log 2>&1; echo $? > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/rtestF_rom.rc; date +%T > /home/georg/Desktop/flying_robot_course_fbl/experiments/diffcotune/dryrun/fbl/logs/t_end_rtestF_rom.txt"
   ],
-  "procs": 6,
-  "mem_gb": 10.0,
+  "procs": 4,
+  "mem_gb": 13.0,
   "log": "logs/job_rtestF_rom.log"
  }
 ]
