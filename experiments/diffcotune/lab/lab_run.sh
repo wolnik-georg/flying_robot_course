@@ -2,11 +2,11 @@
 # One-command lab runner for the lab PC (2026-11-18). Wraps ONLY the commands of S0_LAB_CARD.md /
 # INTERLEAVED_LAB_CARD.md; no new rules. You do: mocap, launch CS2, stop CS2 when asked, fly (Enter).
 #
-#   experiments/diffcotune/lab/lab_run.sh shakedown          # S0 round 0 gains, checks, ONE A1 (not a tuning flight)
-#   experiments/diffcotune/lab/lab_run.sh round S0 0         # S0 round 0: prep + A1, A8, A4, solo switch, CIRCLE, FIG8
-#   experiments/diffcotune/lab/lab_run.sh round S2 0         # same for S2 (switches the yaml to S2 first)
-#   experiments/diffcotune/lab/lab_run.sh prep S2 0          # only the prep part (yaml, checks, readback)
-#   experiments/diffcotune/lab/lab_run.sh fly A1             # one flight: A1 | A8 | A4 | CIRCLE | FIG8
+#   lab_run.sh prep S0 0      # yaml switch + gains merge, checks, readback (everything before the flights)
+#   lab_run.sh flights        # prints the exact flight commands to copy (you fly them yourself)
+#   lab_run.sh solo S0 0      # after A1, A8, A4: cf_second off, check, readback (before CIRCLE / FIG8)
+# (prep S0 0 is also the shakedown prep: then fly only A1.)
+# Paths: experiments/diffcotune/lab/lab_run.sh
 #
 # Run from ~/flying_robot_course in the shell where `ros2` works. Override if needed:
 #   YAML=/path/to/crazyflies.yaml  CF5_URI=radio://0/80/2M/E7E7E7BB02  CF2_URI=radio://0/80/2M/E7E7E7E7E7
@@ -61,43 +61,36 @@ prep() {  # prep <S0|S2|S1|S3> <round>
   note "PREP OK $C round $L (readback, controller 9 x2, usd deck x2)"
 }
 
-fly() {  # fly <scenario> [controller] [round]
-  local S="$1" T="${2:-?}" R="${3:-?}"; local cmd=()
-  command -v ros2 >/dev/null 2>&1 || [ "$DRY" = 1 ] || die "ros2 not found: source your workspace first"
-  case "$S" in
-    A1)     cmd=(ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes);;
-    A8)     cmd=(ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes);;
-    A4)     cmd=(ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes);;
-    CIRCLE|FIG8) cmd=(python3 "$LAB/fly_file.py" --cell "$S" --yaml "$YAML");;
-    *) die "unknown scenario $S";;
-  esac
-  say "FLIGHT $S ($T round $R). Abort: |roll| or |pitch| > 25 deg for 0.5 s, or z < 0.25 m. Hand on abort."
-  ask "Fly $S now"
-  note "START $S controller=$T round=$R"
-  hw "${cmd[@]}"; local rc=$?
-  note "END   $S controller=$T round=$R exit=$rc   (clean/crash/repeat: tell the agent; one uSD file per drone expected)"
+flights() {
+  cat <<EOT
+
+Flights (run them yourself, one after the other, hand on abort: |roll| or |pitch| > 25 deg for 0.5 s, or z < 0.25 m):
+ 1 A1  : ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes
+ 2 A8  : ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes
+ 3 A4  : ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes
+ then  : stop CS2, run   experiments/diffcotune/lab/lab_run.sh solo <S0|S2> <round>   (cf_second off)
+ 4 CIRCLE: python3 experiments/diffcotune/lab/fly_file.py --cell CIRCLE --yaml $YAML
+ 5 FIG8  : python3 experiments/diffcotune/lab/fly_file.py --cell FIG8 --yaml $YAML
+(shakedown: only flight 1)
+EOT
 }
 
-round() {  # round <C> <l>
-  local C="$1" L="$2"
-  prep "$C" "$L"
-  fly A1 "$C" "$L"; fly A8 "$C" "$L"; fly A4 "$C" "$L"
-  say "SOLO SWITCH for CIRCLE / FIG8 (cf_second disabled)"
-  need_cs2_stopped_after_flights() { ask "Stop CS2 (flights 1-3 done)"; need_cs2_stopped; }
-  need_cs2_stopped_after_flights
+solo() {  # solo <C> <round>
+  local C="$1" L="$2" G="$LAB/$1/round_$2/gains.yaml"
+  [ -f "$G" ] || die "no $G"; [ -f "$YAML" ] || die "yaml not found: $YAML"
+  say "SOLO SWITCH $C round $L (cf_second disabled)"
+  need_cs2_stopped
   python3 flying_drone_stack/tools/set_tree_strategy.py "$C" --solo --yaml "$YAML" || die "solo switch failed"
   python3 flying_drone_stack/tools/lab_check_strategy.py "$(dirname "$(dirname "$(dirname "$YAML")")")" || die "lab_check_strategy failed"
   ask "Launch CS2, wait for cf5, then STOP CS2 again (for the readback)"; need_cs2_stopped
-  hw python3 "$LAB/apply_gains.py" readback --uri "$CF5_URI" --fragment "$LAB/$C/round_$L/gains.yaml" --strategy "$C" || die "READBACK MISMATCH: do not fly"
-  ask "Relaunch CS2"
-  fly CIRCLE "$C" "$L"; fly FIG8 "$C" "$L"
-  note "ROUND DONE $C round $L. Next: copy uSD files, tell the agent the file<->flight assignment and times."
+  hw python3 "$LAB/apply_gains.py" readback --uri "$CF5_URI" --fragment "$G" --strategy "$C" || die "READBACK MISMATCH: do not fly"
+  note "SOLO OK $C round $L"
+  echo; echo ">>> Relaunch CS2, then fly CIRCLE and FIG8 (commands: lab_run.sh flights)"
 }
 
 case "${1:-}" in
-  shakedown) prep S0 0; fly A1 S0-shakedown 0;;
-  prep)      [ $# -eq 3 ] || die "usage: prep <S0|S2> <round>"; prep "$2" "$3";;
-  round)     [ $# -eq 3 ] || die "usage: round <S0|S2> <round>"; round "$2" "$3";;
-  fly)       [ $# -eq 2 ] || die "usage: fly <A1|A8|A4|CIRCLE|FIG8>"; fly "$2";;
-  *) sed -n 2,13p "$0"; exit 1;;
+  prep)    [ $# -eq 3 ] || die "usage: prep <S0|S2> <round>"; prep "$2" "$3"; flights;;
+  solo)    [ $# -eq 3 ] || die "usage: solo <S0|S2> <round>"; solo "$2" "$3";;
+  flights) flights;;
+  *) sed -n 2,10p "$0"; exit 1;;
 esac
