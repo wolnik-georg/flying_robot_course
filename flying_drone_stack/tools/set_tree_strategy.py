@@ -15,7 +15,15 @@ def sub(pat, new):
     s, n = re.subn(pat, new, s, count=1)
     if n != 1: sys.exit(f"anchor not found: {pat[:60]} (is the tree_S*.patch applied to this yaml?)")
 sub(r"(indi: )\d(\s+# 2026-10-14 tree strategy: 0 = Omar geometric)", rf"\g<1>{indi}\2")
-sub(r"(en: )\d(\s+# 2026-10-14 tree strategy: 1 = NS2)", rf"\g<1>{en}\2")
+# 2026-11-18: the cf5 rnn.en comment on crazyswarm2 main / study_S* is "# S<k>: NS2 ..." (not the 2026-10-14 anchor); accept both
+label = {"S0": "S0: NS2 off (geometric)", "S1": "S1: NS2 off, INDI on", "S2": "S2: NS2 on (C, flash weights) on top of the geometric Omar", "S3": "S3: NS2 on (C, flash weights) together with full INDI (two plain switches)"}[a.strategy]
+if re.search(r"en: \d\s+# 2026-10-14 tree strategy: 1 = NS2", s):
+    sub(r"(en: )\d(\s+# 2026-10-14 tree strategy: 1 = NS2)", rf"\g<1>{en}\2")
+else:
+    i5 = s.index("\n  cf5:\n"); j5 = s.find("\n  cf", i5 + 8)          # restrict to the cf5 block
+    blk, n = re.subn(r"(\n\s+rnn:\n\s+en: )\d(\s+# )S\d: NS2[^\n]*", rf"\g<1>{en}\g<2>{label}", s[i5:j5], count=1)
+    if n != 1: sys.exit("anchor not found: cf5 rnn.en with a '# S<k>: NS2' comment")
+    s = s[:i5] + blk + s[j5:]
 lines = s.split("\n"); inblk = False
 for i, l in enumerate(lines):
     if re.match(r"^  cf_second:", l): inblk = True
