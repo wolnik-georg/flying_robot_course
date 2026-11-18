@@ -1,0 +1,55 @@
+--- a/frsim/sensors.py
++++ b/frsim/sensors.py
+@@ -5,11 +5,32 @@
+ gyro (3), then for S0 - S3 accelerometer (3) and rpm (4, zero standard deviation but drawn).
+ """
+ 
++import math
++import os
++
+ import numpy as np
+ 
+ from . import config
+ 
+ 
++GYRO_LPF_HZ, GYRO_LPF_RATE_HZ = 80.0, 1000.0   # drone sensor driver: lpf2pInit(&gyroLpf[i], 1000, 80), fbl_v2_firmware/fw/src/hal/src/sensors_bmi088_bmp3xx.c:140, :555; applied to sensorData.gyro at 1 kHz (:339)
++
++
++class Lpf2p:
++    """Second-order low-pass of the firmware (fw/src/utils/src/filter.c lpf2pSetCutoffFreq / lpf2pApply), same discrete form, float64."""
++    def __init__(self, sample_freq=GYRO_LPF_RATE_HZ, cutoff_freq=GYRO_LPF_HZ):
++        fr = sample_freq / cutoff_freq; ohm = math.tan(math.pi / fr); c = 1.0 + 2.0 * math.cos(math.pi / 4.0) * ohm + ohm * ohm
++        self.b0 = ohm * ohm / c; self.b1 = 2.0 * self.b0; self.b2 = self.b0
++        self.a1 = 2.0 * (ohm * ohm - 1.0) / c; self.a2 = (1.0 - 2.0 * math.cos(math.pi / 4.0) * ohm + ohm * ohm) / c
++        self.d1 = np.zeros(3); self.d2 = np.zeros(3)
++
++    def apply(self, sample):
++        d0 = sample - self.d1 * self.a1 - self.d2 * self.a2
++        out = d0 * self.b0 + self.d1 * self.b1 + self.d2 * self.b2
++        self.d2 = self.d1; self.d1 = d0
++        return out
++
++
+ class Sensors:
+     """Noise and delay of all sensors of one episode (see the module docstring for the draw order)."""
+     def __init__(self, seed, plant, variant, tree, noise=True):
+@@ -23,6 +44,9 @@
+         )
+         self.delay_ms = int(variant.state_delay_ms)
+         self.tree = tree
++        # Stage F2c: the drone's gyro driver low-pass (2nd order, 80 Hz at 1 kHz) for the FBL controller only (S0 - S3 unchanged: their controller has its own filters and the 12.08 deg/s
++        # noise was fitted with them); FRSIM_FBL_GYRO_LPF=0 switches it off (the F1 / F2 behaviour).
++        self._gyro_lpf = None if tree or os.environ.get('FRSIM_FBL_GYRO_LPF', '1') == '0' else Lpf2p()
+         self._state_queue = []
+         self._rpm_queue = []
+ 
+@@ -43,7 +67,8 @@
+ 
+     def gyro(self, angular_velocity):
+         """Gyro (deg/s) with vibration noise."""
+-        return np.degrees(angular_velocity) + self._normal(self.gyro_noise, 3)
++        g = np.degrees(angular_velocity) + self._normal(self.gyro_noise, 3)
++        return g if self._gyro_lpf is None else self._gyro_lpf.apply(g)
+ 
+     def accelerometer(self, specific_force_g):
+         """Accelerometer reading (g) = true specific force + noise."""

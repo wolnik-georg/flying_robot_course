@@ -26,7 +26,7 @@ def _init(sp, B, dtype):
     zeros3 = torch.zeros(B, 3, dtype=dtype)
     x = (sp['pos'][0] * T.K([1., 1., 0.], dtype, 'cpu')).expand(B, 3).clone(); q = T.K([0., 0., 0., 1.], dtype, 'cpu').expand(B, 4).clone()
     F = torch.full((B, 4), FM.M * FM.G / 4, dtype=dtype)
-    return (x, zeros3.clone(), q, zeros3.clone(), F, torch.zeros(B, FM.NFS, dtype=dtype), F.clone(), F.clone(), F.clone(), zeros3.clone())
+    return (x, zeros3.clone(), q, zeros3.clone(), F, torch.zeros(B, FM.NFS_ALL, dtype=dtype), F.clone(), F.clone(), F.clone(), zeros3.clone())
 
 
 def _graph(variant, has_top, feed, T_, B, dtype, args, noisy=False):
@@ -64,10 +64,10 @@ def rollout_tangents(ref, z, idx, variant, keep_blocks=5, dtype=torch.float64, n
     jit = torch.as_tensor(R.command_jitter(nb))
     zt = torch.as_tensor(np.asarray(z, float), dtype=dtype)[None].expand(B, NZ).clone()
     nzt = None
-    if noise is not None:          # (n_blocks, B, 9) from fbl_model.frsim_noise
+    if noise is not None:          # (n_blocks, B, 18) from fbl_model.frsim_noise (Stage F2c: both ticks of a block)
         nzt = torch.as_tensor(np.asarray(noise)[:nb], dtype=dtype)
-        nzt = nzt[:, None, :].expand(nb, B, 9) if nzt.ndim == 2 else nzt
-    zeros_nz = torch.zeros(B, 9, dtype=dtype)
+        nzt = nzt[:, None, :].expand(nb, B, 18) if nzt.ndim == 2 else nzt
+    zeros_nz = torch.zeros(B, 18, dtype=dtype)
     idx = list(idx); T_ = len(idx); tz = torch.zeros(T_, B, NZ, dtype=dtype); tz[torch.arange(T_), :, torch.as_tensor(idx)] = 1.0
     st = _init(sp, B, dtype); tst = tuple(torch.zeros((T_,) + a.shape, dtype=dtype) for a in st)
     rows = {k: [] for k in 'xvqw'}; trows = {k: [] for k in 'xvqw'}; ridx = []

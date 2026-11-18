@@ -56,6 +56,12 @@ if __name__ == '__main__':
                 for seed in (1000, 1001):
                     r, tr, thr, dt = run('FBL', 'base', 'A1', plant, seed, 0, 0, l); s = summ(r, tr); out['gyro x%g|%s|%d' % (l, plant, seed)] = s
                     print('gyro x%-5g %-11s %d crash %-5s t_crash %s tilt_max %6.1f tilt_rms %5.1f' % (l, plant, seed, s['crash'], s['crash_time_s'], s['tilt_max_deg'], s['tilt_rms_deg']), flush=True)
+    elif mode == 'lpf':  # Stage F2c.2: full noise (12.08 deg/s) with the drone's gyro low-pass in frsim (FRSIM_FBL_GYRO_LPF default 1); base / rom / both, preset 1
+        for var in ('base', 'rom', 'both'):
+            for plant in PLANTS:
+                for seed in (1000, 1001):
+                    r, tr, thr, dt = run('FBL', var, 'A1', plant, seed, 1, 1, 1); s = summ(r, tr); s['rms3d_cm'] = float(np.sqrt(s['x_rms_cm'] ** 2 + s['y_rms_cm'] ** 2 + s['z_rms_cm'] ** 2)); out['%s|%s|%d' % (var, plant, seed)] = s
+                    print('%-5s %-11s %d crash %-5s tilt_max %5.1f tilt_rms %4.1f rms3d %.2f cm (x %.2f y %.2f z %.2f)' % (var, plant, seed, s['crash'], s['tilt_max_deg'], s['tilt_rms_deg'], s['rms3d_cm'], s['x_rms_cm'], s['y_rms_cm'], s['z_rms_cm']), flush=True)
     elif mode == 's0':
         for plant in PLANTS:
             for seed in (1000, 1001):

@@ -58,6 +58,9 @@ RATE_KP, RATE_KI, RATE_KD, RATE_IL = (200.0, 200.0, 120.0), (400.0, 400.0, 16.7)
 YAW_KP, YAW_KI, YAW_KD, YAW_IL = 6.0, 1.0, 0.35, 360.0
 SG_R = float(os.environ.get('FBL_SG_R', '0'))                             # Stage F2 decision D1 (17 Nov): stop-gradient radius off by default (exact gradient, F1: 18 of 18 rows PASS); v2o used 0.03 (env FBL_SG_R)
 QUANT = bool(int(os.environ.get('FBL_QUANT', '0')))                       # Stage F2 decision D5: quantisation off in the fit and the tuning step (as S0-S3, s0_model.py: not modelled); FBL_QUANT=1 = integer truncations of the firmware in the forward pass, straight-through gradient
+GYRO_LPF = os.environ.get('FBL_GYRO_LPF', '1') != '0'                      # Stage F2c (E1): the drone's gyro driver low-pass (2nd order, 80 Hz at 1 kHz, hal/src/sensors_bmi088_bmp3xx.c:140, :339, :555) on the measured gyro, as frsim/sensors.py (FRSIM_FBL_GYRO_LPF)
+_FR = 1000.0 / 80.0; _OHM = math.tan(math.pi / _FR); _C = 1.0 + 2.0 * math.cos(math.pi / 4.0) * _OHM + _OHM * _OHM
+LPF_B0 = _OHM * _OHM / _C; LPF_B1 = 2.0 * LPF_B0; LPF_A1 = 2.0 * (_OHM * _OHM - 1.0) / _C; LPF_A2 = (1.0 - 2.0 * math.cos(math.pi / 4.0) * _OHM + _OHM * _OHM) / _C   # filter.c lpf2pSetCutoffFreq
 NFS = 29                                                                  # fst: vel_est 0:3, acc_est 3:6, int_err 6:9, init 9, peer_prev 10:13, peer_vel 13:16, peer_pos 16:19, peer_cnt 19, yaw_sp 20, rate_int 21:24, rate_prev 24:27, yaw_int 27, yaw_prev 28
 NN = dict(w1=[[0.869367301, -0.0794358477], [-2.96447873, 0.502544641], [0.36294508, -0.348767281], [-0.80364579, -0.399012148]], b1=[-0.0260919183, -0.538594186, 0.26444912, 0.0790786892],
           w2=[[-0.278275579, -0.596521318, -0.445636719, -0.226835236], [0.238675922, 0.184005216, -0.162619084, -0.501317501], [-0.832299173, -0.86985296, -0.501201808, 0.467404276]], b2=[-0.35890916, -0.0474214554, -0.237855569])
@@ -256,6 +259,15 @@ def _physics(x, v, q, w, F, tau_pl, fext_held, sub, cm2, cm3, jit, pr, tpk, act_
     return x, v, q, w, F, tau_pl, fext_held
 
 
+NFS_ALL = NFS + 6                                                         # fst + the two delay elements of the gyro low-pass (3 + 3)
+
+
+def _lpf(d1, d2, s):
+    """filter.c lpf2pApply on a (B, 3) sample: returns (output, new d1, new d2)."""
+    d0 = s - d1 * LPF_A1 - d2 * LPF_A2
+    return d0 * LPF_B0 + d1 * LPF_B1 + d2 * LPF_B0, d0, d1
+
+
 def _block(st, spk0, tpk, jit, gains, pr, act_top, nets, feed, flg, nz=None):
     """One block = frsim ticks 2k and 2k+1: peer feed (every 5th block), FBL step on the state at the start of tick 2k, command queued (4 ms delay), two 1 ms physics steps
     (downwash force and plume torque on the first)."""
@@ -266,9 +278,16 @@ def _block(st, spk0, tpk, jit, gains, pr, act_top, nets, feed, flg, nz=None):
     Jp = T.K(J_PLANT, dtype, dev); gvec = T.K([0, 0, -G], dtype, dev)
     xm, vm, gy = x, v, torch.rad2deg(w)
     if nz is not None: xm, vm, gy = x + nz[..., 0:3], v + nz[..., 3:6], gy + nz[..., 6:9]
+    fst, gl = fst[..., :NFS], fst[..., NFS:]
+    if GYRO_LPF: gy, d1, d2 = _lpf(gl[..., 0:3], gl[..., 3:6], gy)                       # tick 2k: the gyro the controller reads
     fst, cmd = fbl_step(fst, gains, spk0, xm, vm, q, gy, tpk[0], feed, act_top, res_on, rom_on, net_on)
     fext_held = torch.zeros_like(x)
     x, v, q, w, F, tau_pl, fext_held = _physics(x, v, q, w, F, tau_pl, fext_held, 0, cm2, cm3, jit, pr, tpk, act_top, nets, Jp, gvec, a_m)
+    if GYRO_LPF:                                                                          # tick 2k + 1: the filter runs at 1 kHz, the controller does not read this sample
+        gy1 = torch.rad2deg(w)
+        if nz is not None: gy1 = gy1 + nz[..., 15:18]
+        _, d1, d2 = _lpf(d1, d2, gy1); fst = torch.cat([fst, d1, d2], -1)
+    else: fst = torch.cat([fst, gl], -1)
     x, v, q, w, F, tau_pl, fext_held = _physics(x, v, q, w, F, tau_pl, fext_held, 1, cm2, cm3, jit, pr, tpk, act_top, nets, Jp, gvec, a_m)
     return (x, v, q, w, F, fst, cmd, cm1, cm2, tau_pl)
 
@@ -290,7 +309,7 @@ def rollout(ref, phi, psi, dtype=torch.float64, device='cpu', keep_blocks=5, com
     x = (sp['pos'][0] * T.K([1., 1., 0.], dtype, device)).expand(B, 3).clone()
     q = T.K([0., 0., 0., 1.], dtype, device).expand(B, 4).clone()
     F = torch.full((B, 4), M * G / 4, dtype=dtype, device=device)
-    st = (x, zeros3.clone(), q, zeros3.clone(), F, torch.zeros(B, NFS, dtype=dtype, device=device), F.clone(), F.clone(), F.clone(), zeros3.clone())
+    st = (x, zeros3.clone(), q, zeros3.clone(), F, torch.zeros(B, NFS_ALL, dtype=dtype, device=device), F.clone(), F.clone(), F.clone(), zeros3.clone())
     fn = _block
     if compile:
         if B > 1:
@@ -300,9 +319,9 @@ def rollout(ref, phi, psi, dtype=torch.float64, device='cpu', keep_blocks=5, com
             _COMPILED[key] = torch.compile(_block, dynamic=False)
         fn = _COMPILED[key]
     nzt = None
-    if noise is not None:          # (n_blocks, 9) shared by all rows, or (n_blocks, B, 9) one sequence per row (frsim_noise)
+    if noise is not None:          # (n_blocks, 18) shared by all rows, or (n_blocks, B, 18) one sequence per row (frsim_noise)
         nzt = torch.as_tensor(np.asarray(noise)[:nb], dtype=dtype, device=device)
-        nzt = nzt[:, None, :].expand(nb, B, 9) if nzt.ndim == 2 else nzt
+        nzt = nzt[:, None, :].expand(nb, B, 18) if nzt.ndim == 2 else nzt
     rows = {'x': [], 'v': [], 'q': [], 'w': []}; idx = []
     for k in range(nb):
         i = 2 * k
@@ -322,9 +341,10 @@ def frsim_noise(seed, n_ticks, plant=None):
     so FBL draws 9 per tick. Generator.normal(0, std, n) = std * standard_normal, so the stream is reproduced exactly. The controller advances on even ticks only (episode.py:167, controllerOmarIndi
     rate gate), so only the even ticks are kept (as s0_model.frsim_noise does for S0)."""
     plant = config.CALIBRATED_PLANT if plant is None else plant
-    z = np.random.default_rng(seed).standard_normal((n_ticks, 9))[::2]
+    z = np.random.default_rng(seed).standard_normal((n_ticks, 9))
     std = np.array([config.STATE_NOISE_POSITION_M] * 3 + [config.STATE_NOISE_VELOCITY_M_S] * 3 + [plant.gyro_noise_deg_s] * 3)
-    return z * std
+    nb = n_ticks // 2; z = z[:2 * nb].reshape(nb, 18)
+    return z * np.concatenate([std, std])          # Stage F2c: (n_blocks, 18) = tick 2k (9) and tick 2k+1 (9); the gyro low-pass needs the gyro noise of the odd ticks too (columns 15:18)
 
 
 def r0_min(ref, x_rows):
