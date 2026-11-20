@@ -8,14 +8,14 @@
 #   Terminal 1:  cd ~/flying_robot_course && mkdir -p debug/lab_logs && ros2 launch crazyflie launch.py 2>&1 | tee debug/lab_logs/cs2_launch_$(date +%H%M%S).log
 #                (wait until both drones are connected + 10 s)
 #   Terminal 2:  cd ~/flying_robot_course && experiments/diffcotune/lab/usd_cs2_diag.sh
-# At the end it offers to commit + push the log files (only debug/lab_logs/usd_diag_* and cs2_launch_*).
+# The script never commits or pushes; it only writes the log files (debug/lab_logs/usd_diag_*). You commit and push yourself.
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$REPO" || exit 1
 mkdir -p debug/lab_logs
 TS=$(date +%H%M%S)
-OUT="debug/lab_logs/usd_diag_$(date +%F)_$TS.log"
-LAUNCHLOG=$(ls -t debug/lab_logs/cs2_launch_*.log 2>/dev/null | head -1)
+OUT="$REPO/debug/lab_logs/usd_diag_$(date +%F)_$TS.log"
+LAUNCHLOG=$(ls -t "$REPO"/debug/lab_logs/cs2_launch_*.log 2>/dev/null | head -1)
 WS="${WS:-$HOME/georg/ros2_ws}"
 CS2SRC="${CS2SRC:-$WS/src/crazyswarm2}"
 
@@ -103,7 +103,4 @@ log "How to read: event_published=NO -> ROS side of the server never sees the se
 log "             server_forwarded yes + drone unchanged -> the drone/firmware ignores it. All yes + drone changed -> runtime path works (then the gate/flight script is the problem)."
 log "LOG FILE: $OUT"
 
-read -r -p ">>> Commit + push $OUT and the launch log now? [y/N] " a
-if [ "${a:-}" = y ] || [ "${a:-}" = Y ]; then
-  git add "$OUT" ${LAUNCHLOG:+"$LAUNCHLOG"} && git commit -q -m "uSD/CS2 runtime-param diagnosis log $(date +%F_%H%M)" && git push -q && log "pushed."
-fi
+log "Log written (not committed). To share it:  cd $REPO && git add debug/lab_logs && git commit -m logs && git push"

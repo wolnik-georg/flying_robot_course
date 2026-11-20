@@ -5,7 +5,7 @@
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"; cd "$REPO" || exit 1
 WS="${WS:-$HOME/georg/ros2_ws}"; CS2SRC="$WS/src/crazyswarm2"
-OUT="debug/lab_logs/rebuild_server_$(date +%F_%H%M%S).log"; mkdir -p debug/lab_logs
+OUT="$REPO/debug/lab_logs/rebuild_server_$(date +%F_%H%M%S).log"; mkdir -p "$REPO/debug/lab_logs"
 log() { printf '%s\n' "$*" | tee -a "$OUT"; }
 pgrep -f crazyflie_server >/dev/null && { echo "STOP: CS2 is running. Stop it first (Ctrl-C in the launch terminal)."; exit 1; }
 log "=== ROS package history (what changed in ROS, with dates)"
@@ -21,13 +21,20 @@ log ""
 log "=== BEFORE: $(ls -l --time-style=full-iso "$WS/build/crazyflie/crazyflie_server" 2>&1 | cut -c1-200)"
 cp -a "$WS/build/crazyflie/crazyflie_server" "$HOME/crazyflie_server.before_rebuild_$(date +%F_%H%M)" 2>&1 | tee -a "$OUT"
 log "crazyswarm2 src: $(git -C "$CS2SRC" log --oneline -1 | cut -c1-80)  branch $(git -C "$CS2SRC" branch --show-current)"
+log "=== submodules of crazyswarm2 (the build needs crazyflie/deps/*):"
+git -C "$CS2SRC" submodule status 2>&1 | tee -a "$OUT"
+if [ ! -f "$CS2SRC/crazyflie/deps/crazyflie_tools/CMakeLists.txt" ]; then
+  log "STOP: crazyflie/deps/crazyflie_tools is empty (git submodules not checked out). Run:"
+  log "  cd $CS2SRC && git submodule update --init --recursive      # needs network; checks out the submodule commits recorded by main"
+  log "then rerun this script. The server binary has NOT been changed."
+  exit 1
+fi
 cd "$WS" || exit 1
 log "=== colcon build crazyflie (several minutes)"
-colcon build --symlink-install --packages-select crazyflie 2>&1 | tee -a "$OLDPWD/$OUT" | tail -15
+colcon build --symlink-install --packages-select crazyflie 2>&1 | tee -a "$OUT" | tail -15
 cd "$REPO"
 BIN="$WS/install/crazyflie/lib/crazyflie/crazyflie_server"
 log "=== AFTER: $(ls -lL --time-style=full-iso "$BIN" 2>&1 | cut -c1-200)"
 log "pacing marker count in the NEW binary: $(strings "$(readlink -f "$BIN")" 2>/dev/null | grep -c CS2_CONNECT_PARAM_PACE)   (must be >= 1)"
 log "LOG FILE: $OUT"
-read -r -p ">>> Commit + push the log now? [y/N] " a
-if [ "${a:-}" = y ] || [ "${a:-}" = Y ]; then git add "$OUT" && git commit -q -m "CS2 server rebuild log $(date +%F_%H%M)" && git push -q && log pushed.; fi
+echo ">>> Log written (not committed). To share it:  cd $REPO && git add debug/lab_logs && git commit -m logs && git push"
