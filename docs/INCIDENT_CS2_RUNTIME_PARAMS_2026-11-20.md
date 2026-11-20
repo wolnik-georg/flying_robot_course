@@ -12,6 +12,7 @@
 | Same server, same ROS versions, clean container | Works (receives its own events) → the cause is specific to the lab PC | planning agent, Docker `ros:jazzy` |
 | After the fix | all 5 sets forwarded once, drone values change (999 / 997 / 995 both); gate pass OK (thesis02 ≈ 509 kB both); negative OK | `usd_diag_2026-11-20_195200.log`, `debug.log` (d3037b06) |
 | Lab PC delivers the server's own events? | **No:** 0 `[diag]` lines with the fix running | `cs2_launch_195100.log` |
+| In flight (20:44 A8, 20:45 A4) | gate VERIFIED on both, uSD files decode, runTag per flight correct | `cs2_launch_2043*.log`, `experiments/logs/usd_raw/2026-11-20/cf5/` |
 
 ## Consequences
 - 18 Nov S0 round 0 and the 20 Nov A1/A8/A4 attempts have no uSD files → unusable; re-fly.
@@ -37,3 +38,9 @@
 - `experiments/diffcotune/lab/usd_cs2_diag.sh`: runtime-set path, layer by layer.
 - `experiments/diffcotune/lab/param_event_selftest.py`: ROS-only event delivery check.
 - `flying_drone_stack/tools/usd_gate_ground_test.py`: pass / negative.
+
+## Status
+**CLOSED 2026-11-20:** fixed, validated on the ground and in flight. Session doc `docs/lab_sessions/2026-11-20.md`.
+Still open, not blocking:
+- hold ROS on the lab PC (admin);
+- the exact lab-PC mechanism.
