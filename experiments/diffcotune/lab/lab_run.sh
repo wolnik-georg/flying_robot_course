@@ -38,12 +38,29 @@ need_cs2_stopped() {
   done
 }
 
+stack_guard() {  # 2026-11-20 incident: an unnoticed ROS reinstall on the lab PC silently killed every runtime param set
+  local CS2DIR WS BIN FP FPFILE="$HOME/.ros_jazzy_fingerprint_validated"
+  CS2DIR="$(dirname "$(dirname "$(dirname "$YAML")")")"; WS="$(dirname "$(dirname "$CS2DIR")")"
+  BIN="$WS/install/crazyflie/lib/crazyflie/crazyflie_server"
+  [ "$DRY" = 1 ] && return 0
+  grep -q "CS2_RUNTIME_PARAMS_POST_SET_V1" "$(readlink -f "$BIN")" 2>/dev/null \
+    || die "server binary $BIN lacks the runtime-param fix (crazyswarm2 71219f3): run experiments/diffcotune/lab/apply_runtime_param_fix.sh"
+  FP="$(dpkg-query -W -f='${Package} ${Version}\n' 'ros-jazzy-*' 2>/dev/null | sort | sha256sum | cut -c1-16)"
+  if [ -f "$FPFILE" ] && [ "$(cat "$FPFILE")" != "$FP" ]; then
+    echo "!!! ROS PACKAGES CHANGED since the last validated session ($(cat "$FPFILE") -> $FP)."
+    echo "!!! Someone updated/reinstalled ROS. The uSD gate test below must pass before ANY flight; tell the planning agent."
+    note "ROS fingerprint changed $(cat "$FPFILE") -> $FP"
+    ask "Understood (continue to the checks)"
+  fi
+  ROS_FP_NOW="$FP"
+}
 prep() {  # prep <S0|S2|S1|S3> <round>
   local C="$1" L="$2" G="$LAB/$1/round_$2/gains.yaml"
   [ -f "$G" ] || die "no $G (round.py --init / desk step not done for $C round $L)"
   [ -f "$YAML" ] || die "yaml not found: $YAML (set YAML=...)"
   say "PREP $C round $L   yaml=$YAML"
   need_cs2_stopped
+  stack_guard
   cp -n "$YAML" "$YAML.before_lab_run_2026-11-18" 2>/dev/null
   python3 flying_drone_stack/tools/set_tree_strategy.py "$C" --yaml "$YAML" || die "set_tree_strategy failed"
   python3 "$LAB/apply_gains.py" merge --fragment "$G" --yaml "$YAML" --out "$YAML.new" || die "merge failed"
@@ -64,6 +81,7 @@ prep() {  # prep <S0|S2|S1|S3> <round>
   echo ">>> REMINDER: the gate test left one test file (usd.runTag 888) on each card. Archive it before the flights"
   echo ">>>   (power off, cards out, move thesis* to _archive_<date>_gate_tests, cards back, then usd_card_count.py --expect 0)."
   note "PREP OK $C round $L (readback, controller 9 x2, usd deck x2)"
+  [ "$DRY" = 1 ] || { echo "${ROS_FP_NOW:-}" > "$HOME/.ros_jazzy_fingerprint_validated"; note "ROS fingerprint validated: ${ROS_FP_NOW:-}"; }
 }
 
 flights() {
