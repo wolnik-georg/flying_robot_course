@@ -13,7 +13,7 @@ exec > >(tee -a "$OUT") 2>&1
 fail() { echo; echo "STOP: $*"; echo "Log: $OUT"; exit 1; }
 
 if pgrep -f "crazyflie_server" >/dev/null; then fail "CS2 is running. Stop it (Ctrl+C in its terminal), then run this again."; fi
-source /opt/ros/jazzy/setup.bash
+set +u; source /opt/ros/jazzy/setup.bash; set -u   # ROS setup scripts use unset variables
 
 echo "== 1. yaml backup + sha before"
 cp "$YAML" "$HOME/crazyflies.yaml.before_fix_$(date +%H%M%S)"
@@ -27,7 +27,7 @@ git merge-base --is-ancestor 71219f3 HEAD || fail "71219f3 is not in this branch
 echo "yaml sha after:  $(sha256sum "$YAML" | cut -c1-16)   (must equal 'before')"
 
 echo "== 3. build the server"
-cd "$WS" && colcon build --symlink-install --packages-select crazyflie || fail "build failed"
+cd "$WS" && { set +u; colcon build --symlink-install --packages-select crazyflie; RC=$?; set -u; } && [ $RC -eq 0 ] || fail "build failed"
 BIN=$WS/install/crazyflie/lib/crazyflie/crazyflie_server
 N=$(grep -c "CS2_RUNTIME_PARAMS_POST_SET_V1" "$(readlink -f "$BIN")")
 echo "fix marker in binary: $N   (must be 1 or more)"
