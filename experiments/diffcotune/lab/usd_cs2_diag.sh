@@ -35,6 +35,11 @@ YSRC="$CS2SRC/crazyflie/config/crazyflies.yaml"
 YINS="$WS/install/crazyflie/share/crazyflie/config/crazyflies.yaml"
 log "yaml src sha $(sha256sum "$YSRC" 2>&1 | cut -c1-16)   install sha $(sha256sum "$YINS" 2>&1 | cut -c1-16)   (install is a symlink? $(readlink "$YINS" 2>&1 || true))"
 log "query_all_values_on_connect in yaml: $(grep -n query_all_values "$YSRC" 2>&1 | head -2)"
+log "ROS: ROS_DISTRO=${ROS_DISTRO:-unset} RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-unset}"
+log "--- apt/dpkg ROS-related install/upgrade lines (last 40; look for dates after 2026-10-24):"
+{ grep -hE "ros-(jazzy|humble|rolling)|rclcpp|rmw|fastrtps|cyclonedds" /var/log/apt/history.log* /var/log/dpkg.log* 2>/dev/null | grep -E "upgrade|install|Upgrade|Install" | tail -40; } 2>&1 | cut -c1-220 | tee -a "$OUT"
+log "--- ldd of the server (missing libs / rclcpp):"
+ldd "$BIN" 2>&1 | grep -E "not found|rclcpp" | tee -a "$OUT"
 log "crazyflie_server processes: $(pgrep -af crazyflie_server | cut -c1-120 | tr '\n' ';')"
 log "launch log used for server lines: ${LAUNCHLOG:-NONE (start CS2 with the tee command from the header)}"
 pgrep -f crazyflie_server >/dev/null || { log "STOP: CS2 is not running. Start it (Terminal 1 command in the header), then rerun."; exit 1; }
@@ -48,8 +53,8 @@ val() {  # val <cf> -> "runTag fatWrBps" from the usd_status topic (what the dro
 loglines() { [ -n "$LAUNCHLOG" ] && wc -l < "$LAUNCHLOG" || echo 0; }
 
 RES=()   # verdict lines
-probe() {  # probe <label> <ros param name> <value> <cf to read back>
-  local label="$1" pname="$2" value="$3" cf="$4"
+probe() {  # probe <label> <ros param name> <value> <cf to read back> [grep pattern for the server Update line, default usd\.]
+  local label="$1" pname="$2" value="$3" cf="$4" pat="${5:-usd\.}"
   local EV="/tmp/usd_diag_ev_${TS}_${label}.txt"
   sec "TEST $label: ros2 param set /crazyflie_server $pname $value"
   local before after L0 L1 ev_seen srv_seen
@@ -65,9 +70,9 @@ probe() {  # probe <label> <ros param name> <value> <cf to read back>
   if [ -n "$LAUNCHLOG" ]; then
     log "--- server log lines produced during the test:"
     tail -n +$((L0+1)) "$LAUNCHLOG" | head -$((L1-L0+5)) | cut -c1-220 | tee -a "$OUT"
-    srv_seen=$(tail -n +$((L0+1)) "$LAUNCHLOG" | grep -c "Update parameter.*usd\.")
+    srv_seen=$(tail -n +$((L0+1)) "$LAUNCHLOG" | grep -c "Update parameter.*${pat}")
   else srv_seen="n/a"; fi
-  ev_seen=$(grep -c "usd" "$EV" 2>/dev/null)
+  ev_seen=$(grep -c "${pat%\\.}" "$EV" 2>/dev/null)
   log "--- parameter_events lines mentioning usd: $ev_seen ; server 'Update parameter usd.*' lines: $srv_seen"
   RES+=("$label: event_published=$([ "${ev_seen:-0}" -gt 0 ] && echo yes || echo NO)  server_forwarded=$([ "$srv_seen" = n/a ] && echo n/a || { [ "${srv_seen:-0}" -gt 0 ] && echo yes || echo NO; })  drone_before=[$before] drone_after=[$after]")
 }
@@ -79,6 +84,9 @@ probe cf5_cli        cf5.params.usd.runTag        999 cf5
 probe cf2_cli        cf_second.params.usd.runTag  997 cf_second
 probe all_broadcast  all.params.usd.runTag        995 cf5
 log "cf_second after broadcast: $(val cf_second)"
+# generic harmless param that exists in the stock TOC (LED bitmask, no effect on flight): does ANY runtime set produce a server Update line?
+probe generic_led_on  cf5.params.led.bitmask 1 cf5 'led\.bitmask'
+probe generic_led_off cf5.params.led.bitmask 0 cf5 'led\.bitmask'
 
 sec "3. PYTHON GATE TEST (CS2 path used by the flight scripts; writes one test file per card if it works, no motors)"
 L0=$(loglines)
