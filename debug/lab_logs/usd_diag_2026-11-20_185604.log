@@ -1,0 +1,129 @@
+
+=== 1. ENVIRONMENT (18:56:04)
+host flightcontrol1  user flyingrobots  ROS_DOMAIN_ID=unset  RMW=default
+flying_robot_course: 3aef3b20 usd_cs2_diag.sh: add ROS-upgrade/ldd checks and a generic LED-param runtime test (planning agent steps 1-2)
+crazyswarm2 src /home/flyingrobots/georg/ros2_ws/src/crazyswarm2: 7bac495 uSD start gate: yaml usd_status topic (usd.runTag + usd.fatWrBps, 5 Hz), usd_gate.  branch main
+$ ls -l --time-style=full-iso /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server
+lrwxrwxrwx 1 flyingrobots flyingrobots 65 2026-05-07 16:45:18.576038454 +0200 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server -> /home/flyingrobots/georg/ros2_ws/build/crazyflie/crazyflie_server
+pacing marker count in server binary: 0   (src of main has it; 0 = binary older than 2026-09-29)
+server source mtime: 2026-09-29 17:33:35.394516924 +0200
+yaml src sha 67b8e047c1a57423   install sha 67b8e047c1a57423   (install is a symlink? /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml)
+query_all_values_on_connect in yaml: 
+ROS: ROS_DISTRO=jazzy RMW_IMPLEMENTATION=unset
+--- apt/dpkg ROS-related install/upgrade lines (last 40; look for dates after 2026-10-24):
+2026-11-20 16:20:38 status installed ros-jazzy-demo-nodes-cpp:amd64 0.33.11-1noble.20261105.092654
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-publisher:amd64 1.7.3-1noble.20261105.145422
+2026-11-20 16:20:38 status installed ros-jazzy-launch-testing-ros:amd64 0.26.13-1noble.20261105.101710
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-service-caller:amd64 1.2.2-1noble.20261105.152429
+2026-11-20 16:20:38 status installed ros-jazzy-tf2-geometry-msgs:amd64 0.36.23-1noble.20261105.105021
+2026-11-20 16:20:38 status installed ros-jazzy-lifecycle:amd64 0.33.11-1noble.20261105.090304
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2-storage-default-plugins:amd64 0.26.11-1noble.20261105.162013
+2026-11-20 16:20:38 status installed ros-jazzy-interactive-markers:amd64 2.5.5-1noble.20261105.105736
+2026-11-20 16:20:38 status installed ros-jazzy-ros2lifecycle:amd64 0.32.14-1noble.20261105.102617
+2026-11-20 16:20:38 status installed ros-jazzy-tf2-sensor-msgs:amd64 0.36.23-1noble.20261105.104423
+2026-11-20 16:20:38 status installed ros-jazzy-robot-state-publisher:amd64 3.3.4-1noble.20261105.103958
+2026-11-20 16:20:38 status installed ros-jazzy-tf2-eigen:amd64 0.36.23-1noble.20261105.104956
+2026-11-20 16:20:38 status installed ros-jazzy-ros2component:amd64 0.32.14-1noble.20261105.125612
+2026-11-20 16:20:38 status installed ros-jazzy-point-cloud-transport:amd64 4.0.10-1noble.20261105.094227
+2026-11-20 16:20:38 status installed ros-jazzy-rviz-common:amd64 14.1.24-1noble.20261105.104010
+2026-11-20 16:20:38 status installed ros-jazzy-image-transport:amd64 5.1.8-1noble.20261105.094051
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-reconfigure:amd64 1.6.4-1noble.20261105.145406
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2-compression:amd64 0.26.11-1noble.20261105.125924
+2026-11-20 16:20:38 status installed ros-jazzy-tf2-bullet:amd64 0.36.23-1noble.20261105.105004
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-msg:amd64 1.5.3-1noble.20261105.145319
+2026-11-20 16:20:38 status installed ros-jazzy-ros2cli-common-extensions:amd64 0.3.1-1noble.20261105.150105
+2026-11-20 16:20:38 status installed ros-jazzy-tf2-kdl:amd64 0.36.23-1noble.20261105.105217
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2-transport:amd64 0.26.11-1noble.20261105.140846
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2-compression-zstd:amd64 0.26.11-1noble.20261105.162045
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-image-view:amd64 1.3.0-2noble.20261105.103701
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2-py:amd64 0.26.11-1noble.20261105.145218
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-bag:amd64 1.5.6-1noble.20261105.145912
+2026-11-20 16:20:38 status installed ros-jazzy-dummy-robot-bringup:amd64 0.33.11-1noble.20261105.114431
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-srv:amd64 1.2.3-1noble.20261105.151046
+2026-11-20 16:20:38 status installed ros-jazzy-ros2bag:amd64 0.26.11-1noble.20261105.163929
+2026-11-20 16:20:38 status installed ros-jazzy-rviz-default-plugins:amd64 14.1.24-1noble.20261105.110836
+2026-11-20 16:20:38 status installed ros-jazzy-rviz2:amd64 14.1.24-1noble.20261105.153247
+2026-11-20 16:20:38 status installed ros-jazzy-ros-core:amd64 0.11.0-1noble.20261105.150350
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-action:amd64 2.2.1-1noble.20261105.151031
+2026-11-20 16:20:38 status installed ros-jazzy-geometry2:amd64 0.36.23-1noble.20261105.112046
+2026-11-20 16:20:38 status installed ros-jazzy-rosbag2:amd64 0.26.11-1noble.20261105.164454
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-bag-plugins:amd64 1.5.6-1noble.20261105.164632
+2026-11-20 16:20:38 status installed ros-jazzy-rqt-common-plugins:amd64 1.2.0-4noble.20261105.164757
+2026-11-20 16:20:38 status installed ros-jazzy-ros-base:amd64 0.11.0-1noble.20261105.164630
+2026-11-20 16:20:38 status installed ros-jazzy-desktop:amd64 0.11.0-1noble.20261105.164848
+--- ldd of the server (missing libs / rclcpp):
+	librclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x0000779d4b800000)
+	librclcpp_action.so => /opt/ros/jazzy/lib/librclcpp_action.so (0x0000779d4b6a9000)
+crazyflie_server processes: 334590 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server --ros-args -r __node:=crazyflie;
+launch log used for server lines: debug/lab_logs/cs2_launch_185557.log
+
+=== 2. BASELINE (what the drones report now) (18:56:04)
+cf5: 777.0 0.0    cf_second: 777.0 0.0    (runTag fatWrBps; a value like 777 = leftover from an earlier cflib test, power-cycle clears it)
+
+=== TEST cf5_cli: ros2 param set /crazyflie_server cf5.params.usd.runTag 999 (18:56:07)
+drone cf5 before (runTag fatWrBps): 777.0 0.0 
+$ ros2 param set /crazyflie_server cf5.params.usd.runTag 999
+Set parameter successful
+drone cf5 after  (runTag fatWrBps): 777.0 0.0 
+--- server log lines produced during the test:
+--- parameter_events lines mentioning usd: 1 ; server 'Update parameter usd.*' lines: 0
+
+=== TEST cf2_cli: ros2 param set /crazyflie_server cf_second.params.usd.runTag 997 (18:56:14)
+drone cf_second before (runTag fatWrBps): 777.0 0.0 
+$ ros2 param set /crazyflie_server cf_second.params.usd.runTag 997
+Set parameter successful
+drone cf_second after  (runTag fatWrBps): 777.0 0.0 
+--- server log lines produced during the test:
+[crazyflie_server-2] [WARN] [1795197381.698683772] [crazyflie_server]: [cf5] High latency: 10.0 ms
+--- parameter_events lines mentioning usd: 1 ; server 'Update parameter usd.*' lines: 0
+
+=== TEST all_broadcast: ros2 param set /crazyflie_server all.params.usd.runTag 995 (18:56:23)
+drone cf5 before (runTag fatWrBps): 777.0 0.0 
+$ ros2 param set /crazyflie_server all.params.usd.runTag 995
+Set parameter successful
+drone cf5 after  (runTag fatWrBps): 777.0 0.0 
+--- server log lines produced during the test:
+[crazyflie_server-2] [WARN] [1795197389.678471352] [crazyflie_server]: [all] Motion capture rate off (#: 1, Avg: 100.3, Min: 86.8, Max: 120.3)
+--- parameter_events lines mentioning usd: 1 ; server 'Update parameter usd.*' lines: 0
+cf_second after broadcast: 777.0 0.0 
+
+=== TEST generic_led_on: ros2 param set /crazyflie_server cf5.params.led.bitmask 1 (18:56:32)
+drone cf5 before (runTag fatWrBps): 777.0 0.0 
+$ ros2 param set /crazyflie_server cf5.params.led.bitmask 1
+Set parameter successful
+drone cf5 after  (runTag fatWrBps): 777.0 0.0 
+--- server log lines produced during the test:
+[crazyflie_server-2] [WARN] [1795197398.698768788] [crazyflie_server]: [cf5] High latency: 10.1 ms
+--- parameter_events lines mentioning usd: 1 ; server 'Update parameter usd.*' lines: 0
+
+=== TEST generic_led_off: ros2 param set /crazyflie_server cf5.params.led.bitmask 0 (18:56:40)
+drone cf5 before (runTag fatWrBps): 777.0 0.0 
+$ ros2 param set /crazyflie_server cf5.params.led.bitmask 0
+Set parameter successful
+drone cf5 after  (runTag fatWrBps): 777.0 0.0 
+--- server log lines produced during the test:
+--- parameter_events lines mentioning usd: 1 ; server 'Update parameter usd.*' lines: 0
+
+=== 3. PYTHON GATE TEST (CS2 path used by the flight scripts; writes one test file per card if it works, no motors) (18:56:48)
+[gate-test] mode=pass drones=['cf5', 'cf_second'] runTag=888
+[gate-test] usd params in the server list (allcfs.paramTypeDict): {'usd.logging': True, 'usd.runTag': True}
+[gate-test]   /cf5: {'usd.logging': True, 'usd.runTag': True}
+[gate-test]   /cf_second: {'usd.logging': True, 'usd.runTag': True}
+[gate-test] precheck: {"drones": {"cf5": {"already_writing": false, "fatWrBps_max": 0.0, "passed": true, "reason": "", "runTag_seen": 777.0, "samples": 2, "tag_ok": false, "topic_alive": true, "topic_seen": true}, "cf_second": {"already_writing": false, "fatWrBps_max": 0.0, "passed": true, "reason": "", "runTag_seen": 777.0, "samples": 2, "tag_ok": false, "topic_alive": true, "topic_seen": true}}, "missing_params": [], "passed": true, "phase": "precheck"}
+[gate-test] start: {"broadcast": {"logging": [true, ""], "runTag": [true, ""]}, "drones": {"cf5": {"fatWrBps_max": 0.0, "passed": false, "reason": "no sustained write with the right tag (runTag seen 777.0, max fatWrBps 0)", "retries": 1, "retry_set": {"logging": [true, ""], "runTag": [true, ""]}, "runTag_seen": 777.0, "samples": 20, "tag_ok": false, "topic_seen": true}, "cf_second": {"fatWrBps_max": 0.0, "passed": false, "reason": "no sustained write with the right tag (runTag seen 777.0, max fatWrBps 0)", "retries": 1, "retry_set": {"logging": [true, ""], "runTag": [true, ""]}, "runTag_seen": 777.0, "samples": 20, "tag_ok": false, "topic_seen": true}}, "missing_params": [], "passed": false, "phase": "start", "reason": "cf5: no sustained write with the right tag (runTag seen 777.0, max fatWrBps 0); cf_second: no sustained write with the right tag (runTag seen 777.0, max fatWrBps 0)", "run_tag": 888, "t_start_monotonic": 1795197411.774497}
+[gate-test] stop: {"drones": {"cf5": {"stopped": true}, "cf_second": {"stopped": true}}, "passed": true, "phase": "stop"}
+[gate-test] test files (runTag 888) are now on the cards: ARCHIVE them before any flight
+[gate-test] RESULT: UNEXPECTED (mode pass)
+
+=== server log lines during the gate test (look for 'Update parameter' usd.runTag / usd.logging) (18:57:00)
+
+=== 4. VERDICT LINES (18:57:00)
+cf5_cli: event_published=yes  server_forwarded=NO  drone_before=[777.0 0.0 ] drone_after=[777.0 0.0 ]
+cf2_cli: event_published=yes  server_forwarded=NO  drone_before=[777.0 0.0 ] drone_after=[777.0 0.0 ]
+all_broadcast: event_published=yes  server_forwarded=NO  drone_before=[777.0 0.0 ] drone_after=[777.0 0.0 ]
+generic_led_on: event_published=yes  server_forwarded=NO  drone_before=[777.0 0.0 ] drone_after=[777.0 0.0 ]
+generic_led_off: event_published=yes  server_forwarded=NO  drone_before=[777.0 0.0 ] drone_after=[777.0 0.0 ]
+
+How to read: event_published=NO -> ROS side of the server never sees the set. event yes + server_forwarded NO -> the server callback drops it.
+             server_forwarded yes + drone unchanged -> the drone/firmware ignores it. All yes + drone changed -> runtime path works (then the gate/flight script is the problem).
+LOG FILE: debug/lab_logs/usd_diag_2026-11-20_185604.log
