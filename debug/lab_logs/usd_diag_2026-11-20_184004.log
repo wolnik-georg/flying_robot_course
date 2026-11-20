@@ -1,0 +1,16 @@
+
+=== 1. ENVIRONMENT (18:40:04)
+host flightcontrol1  user flyingrobots  ROS_DOMAIN_ID=unset  RMW=default
+flying_robot_course: 1ce4dde8 usd_cs2_diag.sh: one-command diagnosis of runtime usd.* param delivery through CS2 (events, server forward, drone readback), logs to debug/lab_logs
+crazyswarm2 src /home/flyingrobots/georg/ros2_ws/src/crazyswarm2: 7bac495 uSD start gate: yaml usd_status topic (usd.runTag + usd.fatWrBps, 5 Hz), usd_gate.  branch main
+$ ls -l --time-style=full-iso /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server
+lrwxrwxrwx 1 flyingrobots flyingrobots 65 2026-05-07 16:45:18.576038454 +0200 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server -> /home/flyingrobots/georg/ros2_ws/build/crazyflie/crazyflie_server
+pacing marker count in server binary: 0   (src of main has it; 0 = binary older than 2026-09-29)
+server source mtime: 2026-09-29 17:33:35.394516924 +0200
+yaml src sha 67b8e047c1a57423   install sha 67b8e047c1a57423   (install is a symlink? /home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/config/crazyflies.yaml)
+query_all_values_on_connect in yaml: 
+crazyflie_server processes: 330907 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server --ros-args -r __node:=crazyflie;
+launch log used for server lines: debug/lab_logs/cs2_launch_183938.log
+
+=== 2. BASELINE (what the drones report now) (18:40:04)
+cf5:    cf_second:    (runTag fatWrBps; a value like 777 = leftover from an earlier cflib test, power-cycle clears it)
