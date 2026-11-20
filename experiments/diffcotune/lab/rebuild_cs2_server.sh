@@ -24,10 +24,12 @@ log "crazyswarm2 src: $(git -C "$CS2SRC" log --oneline -1 | cut -c1-80)  branch 
 log "=== submodules of crazyswarm2 (the build needs crazyflie/deps/*):"
 git -C "$CS2SRC" submodule status 2>&1 | tee -a "$OUT"
 if [ ! -f "$CS2SRC/crazyflie/deps/crazyflie_tools/CMakeLists.txt" ]; then
-  log "STOP: crazyflie/deps/crazyflie_tools is empty (git submodules not checked out). Run:"
-  log "  cd $CS2SRC && git submodule update --init --recursive      # needs network; checks out the submodule commits recorded by main"
-  log "then rerun this script. The server binary has NOT been changed."
-  exit 1
+  log "crazyflie_tools submodule is empty: checking it out (needs network; only touches crazyflie/deps)"
+  git -C "$CS2SRC" submodule update --init --recursive 2>&1 | tee -a "$OUT"
+  if [ ! -f "$CS2SRC/crazyflie/deps/crazyflie_tools/CMakeLists.txt" ]; then
+    log "STOP: submodule checkout failed (see above). The server binary has NOT been changed."
+    exit 1
+  fi
 fi
 cd "$WS" || exit 1
 log "=== colcon build crazyflie (several minutes)"
@@ -37,4 +39,5 @@ BIN="$WS/install/crazyflie/lib/crazyflie/crazyflie_server"
 log "=== AFTER: $(ls -lL --time-style=full-iso "$BIN" 2>&1 | cut -c1-200)"
 log "pacing marker count in the NEW binary: $(strings "$(readlink -f "$BIN")" 2>/dev/null | grep -c CS2_CONNECT_PARAM_PACE)   (must be >= 1)"
 log "LOG FILE: $OUT"
+echo ">>> NEXT: Terminal 1: ros2 launch crazyflie launch.py 2>&1 | tee $REPO/debug/lab_logs/cs2_launch_$(date +%H%M%S).log  (wait for both drones + 10 s), Terminal 2: experiments/diffcotune/lab/usd_cs2_diag.sh"
 echo ">>> Log written (not committed). To share it:  cd $REPO && git add debug/lab_logs && git commit -m logs && git push"
