@@ -1,48 +1,28 @@
-build  crazyswarm2  flying_robot_course  install  log  motion_capture_tracking
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src$ cd crazyswarm2/
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ git log --oneline -3 ; git status -sb | head -3
-7bac495 (HEAD -> main, origin/main, origin/HEAD) uSD start gate: yaml usd_status topic (usd.runTag + usd.fatWrBps, 5 Hz), usd_gate.py, run_formation + simple_flight verify per drone that the decks write (ground precheck refuses takeoff, in-air failure lands), --no-usd-gate override; unit tests
-80c54c8 yaml: cf_second uri E7E7E7E7E9 -> E7E7E7E7E7 (drone answers on E7 after the 2026-11-18 reflash with fbl_v2b)
-4523421 run_formation: controller-variant record in every flight's meta.json (ctrlFbl / strategy params as the server holds them before takeoff, incl. live param sets; crazyswarm2 branch + commit)
-## main...origin/main
- M crazyflie/config/crazyflies.yaml
-?? crazyflie/config/crazyflies.yaml.before_lab_run_2026-11-18
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ ls -l ~/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server | grep -c "CS2_CONNECT_PARAM_PACE"
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ strings ~/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server | grep -c "CS2_CONNECT_PARAM_PACE"
 0
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ cd ../..
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ source /opt/ros/jazzy/setup.bash
-source /home/flyingrobots/venv/bin/activate
-colcon build --symlink-install --packages-select crazyflie_examples
-. install/local_setup.bash
-Starting >>> crazyflie_examples
---- stderr: crazyflie_examples                           
-/home/flyingrobots/venv/lib/python3.12/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.
-!!
-
-        ********************************************************************************
-        Please avoid running ``setup.py`` directly.
-        Instead, use pypa/build, pypa/installer or other
-        standards-based tools.
-
-        See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.
-        ********************************************************************************
-
-!!
-  self.initialize_options()
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ ros2 topic echo /cf5/usd_status --once
+header:
+  stamp:
+    sec: 1795195662
+    nanosec: 120871585
+  frame_id: world
+timestamp: 1198407
+values:
+- 777.0
+- 0.0
 ---
-Finished <<< crazyflie_examples [0.45s]
-
-Summary: 1 package finished [0.57s]
-  1 package had stderr output: crazyflie_examples
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws$ cd src/crazyswarm2/
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ ls -l ~/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server | grep -c "CS2_CONNECT_PARAM_PACE"
-0
-(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ git log --oneline -3 ; git status -sb | head -3
-7bac495 (HEAD -> main, origin/main, origin/HEAD) uSD start gate: yaml usd_status topic (usd.runTag + usd.fatWrBps, 5 Hz), usd_gate.py, run_formation + simple_flight verify per drone that the decks write (ground precheck refuses takeoff, in-air failure lands), --no-usd-gate override; unit tests
-80c54c8 yaml: cf_second uri E7E7E7E7E9 -> E7E7E7E7E7 (drone answers on E7 after the 2026-11-18 reflash with fbl_v2b)
-4523421 run_formation: controller-variant record in every flight's meta.json (ctrlFbl / strategy params as the server holds them before takeoff, incl. live param sets; crazyswarm2 branch + commit)
-## main...origin/main
- M crazyflie/config/crazyflies.yaml
-?? crazyflie/config/crazyflies.yaml.before_lab_run_2026-11-18
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ ros2 param set /crazyflie_server cf5.params.usd.runTag 999
+Set parameter successful
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ sleep 2
+(venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ ros2 topic echo /cf5/usd_status --once
+header:
+  stamp:
+    sec: 1795195696
+    nanosec: 917851485
+  frame_id: world
+timestamp: 1233207
+values:
+- 777.0
+- 0.0
+---
 (venv) flyingrobots@flightcontrol1:~/georg/ros2_ws/src/crazyswarm2$ 
-
