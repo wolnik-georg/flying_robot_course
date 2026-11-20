@@ -54,29 +54,33 @@ ros-jazzy-rmw-implementation 2.15.7-1noble.20261105.083506
 
 === BEFORE: -rwxrwxr-x 1 flyingrobots flyingrobots 5768944 2026-05-07 16:45:18.423037159 +0200 /home/flyingrobots/georg/ros2_ws/build/crazyflie/crazyflie_server
 crazyswarm2 src: 7bac495 uSD start gate: yaml usd_status topic (usd.runTag + usd.fatWrBps, 5 Hz),  branch main
-tee: debug/lab_logs/rebuild_server_2026-11-20_190024.log: No such file or directory
+=== submodules of crazyswarm2 (the build needs crazyflie/deps/*):
+-b9f156368d5171740ffa2e4fd57e5d6d3a35999e crazyflie/deps/crazyflie_tools
+crazyflie_tools submodule is empty: checking it out (needs network; only touches crazyflie/deps)
+Submodule 'crazyflie/deps/crazyflie_tools' (https://github.com/whoenig/crazyflie_tools.git) registered for path 'crazyflie/deps/crazyflie_tools'
+Cloning into '/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/deps/crazyflie_tools'...
+Submodule path 'crazyflie/deps/crazyflie_tools': checked out 'b9f156368d5171740ffa2e4fd57e5d6d3a35999e'
+Submodule 'crazyflie_cpp' (https://github.com/whoenig/crazyflie_cpp.git) registered for path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp'
+Cloning into '/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/deps/crazyflie_tools/crazyflie_cpp'...
+Submodule path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp': checked out '505db571d2a5a5cef87153140643d499330b5438'
+Submodule 'crazyflie-link-cpp' (https://github.com/bitcraze/crazyflie-link-cpp.git) registered for path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp'
+Cloning into '/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp'...
+Submodule path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp': checked out '424454bd0c8f9e1460ff4faa5c043a5f42f13d7d'
+Submodule 'libusb' (https://github.com/libusb/libusb.git) registered for path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/libusb'
+Submodule 'pybind11' (https://github.com/pybind/pybind11.git) registered for path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/pybind11'
+Cloning into '/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/libusb'...
+Cloning into '/home/flyingrobots/georg/ros2_ws/src/crazyswarm2/crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/pybind11'...
+Submodule path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/libusb': checked out '683e3cf21ed37d4492c20cea8de810c4d95ae8b6'
+Submodule path 'crazyflie/deps/crazyflie_tools/crazyflie_cpp/crazyflie-link-cpp/pybind11': checked out '5b0a6fc2017fcc176545afe3e09c9f9885283242'
 === colcon build crazyflie (several minutes)
+Starting >>> crazyflie
+[Processing: crazyflie]
+Finished <<< crazyflie [43.1s]
 
-
-CMake Error at /opt/ros/jazzy/share/ament_cmake_core/cmake/symlink_install/ament_cmake_symlink_install_targets.cmake:67 (message):
-  ament_cmake_symlink_install_targets() 'comCheck' is not a target
-Call Stack (most recent call first):
-  /opt/ros/jazzy/share/ament_cmake_core/cmake/symlink_install/install.cmake:37 (ament_cmake_symlink_install_targets)
-  CMakeLists.txt:101 (install)
-
-
----
-Failed   <<< crazyflie [0.63s, exited with code 1]
-
-Summary: 0 packages finished [0.76s]
-  1 package failed: crazyflie
-  1 package had stderr output: crazyflie
-=== AFTER: -rwxrwxr-x 1 flyingrobots flyingrobots 5768944 2026-05-07 16:45:18.423037159 +0200 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server
-pacing marker count in the NEW binary: 0   (must be >= 1)
-LOG FILE: debug/lab_logs/rebuild_server_2026-11-20_190024.log
->>> Commit + push the log now? [y/N] y
-Username for 'https://github.com': 
-Password for 'https://github.com': 
-remote: No anonymous write access.
-fatal: Authentication failed for 'https://github.com/wolnik-georg/flying_robot_course.git/'
+Summary: 1 package finished [43.2s]
+=== AFTER: -rwxrwxr-x 1 flyingrobots flyingrobots 5785168 2026-11-20 19:13:14.125300999 +0100 /home/flyingrobots/georg/ros2_ws/install/crazyflie/lib/crazyflie/crazyflie_server
+pacing marker count in the NEW binary: 1   (must be >= 1)
+LOG FILE: /home/flyingrobots/georg/flying_robot_course/debug/lab_logs/rebuild_server_2026-11-20_191226.log
+>>> NEXT: Terminal 1: ros2 launch crazyflie launch.py 2>&1 | tee /home/flyingrobots/georg/flying_robot_course/debug/lab_logs/cs2_launch_191314.log  (wait for both drones + 10 s), Terminal 2: experiments/diffcotune/lab/usd_cs2_diag.sh
+>>> Log written (not committed). To share it:  cd /home/flyingrobots/georg/flying_robot_course && git add debug/lab_logs && git commit -m logs && git push
 (venv) flyingrobots@flightcontrol1:~/georg/flying_robot_course$ 
