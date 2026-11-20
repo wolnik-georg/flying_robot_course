@@ -1,0 +1,17 @@
+== 1. yaml backup + sha before
+yaml sha before: 67b8e047c1a57423
+== 2. pull crazyswarm2
+Already up to date.
+crazyswarm2 HEAD: 71219f3 (main)
+yaml sha after:  67b8e047c1a57423   (must equal 'before')
+== 3. build the server
+Starting >>> crazyflie
+[Processing: crazyflie]
+Finished <<< crazyflie [35.2s]
+
+Summary: 1 package finished [35.3s]
+fix marker in binary: 1   (must be 1 or more)
+== 4. pull flying_robot_course
+Already up to date.
+
+DONE: fix built. Next: step 2 (launch CS2). Log: /home/flyingrobots/georg/flying_robot_course/debug/lab_logs/apply_fix_2026-11-20_194213.log
