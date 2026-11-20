@@ -40,13 +40,17 @@ log "launch log used for server lines: ${LAUNCHLOG:-NONE (start CS2 with the tee
 pgrep -f crazyflie_server >/dev/null || { log "STOP: CS2 is not running. Start it (Terminal 1 command in the header), then rerun."; exit 1; }
 
 val() {  # val <cf> -> "runTag fatWrBps" from the usd_status topic (what the drone itself reports)
-  timeout 8 ros2 topic echo --once --field values "/$1/usd_status" 2>/dev/null | grep -E '^- ' | sed 's/^- //' | tr '\n' ' '
+  local raw v
+  raw=$(timeout 10 ros2 topic echo --once "/$1/usd_status" 2>&1)
+  v=$(printf '%s\n' "$raw" | sed -n '/^values:/,$p' | grep -E '^- ' | sed 's/^- //' | tr '\n' ' ')
+  if [ -n "$v" ]; then printf '%s' "$v"; else printf 'NO_DATA(raw: %s)' "$(printf '%s' "$raw" | head -c 120 | tr '\n' ' ')"; fi
 }
 loglines() { [ -n "$LAUNCHLOG" ] && wc -l < "$LAUNCHLOG" || echo 0; }
 
 RES=()   # verdict lines
 probe() {  # probe <label> <ros param name> <value> <cf to read back>
-  local label="$1" pname="$2" value="$3" cf="$4" EV="/tmp/usd_diag_ev_${TS}_${label}.txt"
+  local label="$1" pname="$2" value="$3" cf="$4"
+  local EV="/tmp/usd_diag_ev_${TS}_${label}.txt"
   sec "TEST $label: ros2 param set /crazyflie_server $pname $value"
   local before after L0 L1 ev_seen srv_seen
   before=$(val "$cf"); log "drone $cf before (runTag fatWrBps): $before"
@@ -92,6 +96,6 @@ log "             server_forwarded yes + drone unchanged -> the drone/firmware i
 log "LOG FILE: $OUT"
 
 read -r -p ">>> Commit + push $OUT and the launch log now? [y/N] " a
-if [ "$a" = y ] || [ "$a" = Y ]; then
+if [ "${a:-}" = y ] || [ "${a:-}" = Y ]; then
   git add "$OUT" ${LAUNCHLOG:+"$LAUNCHLOG"} && git commit -q -m "uSD/CS2 runtime-param diagnosis log $(date +%F_%H%M)" && git push -q && log "pushed."
 fi
