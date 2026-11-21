@@ -6,3 +6,4 @@
 - A1 cf5 (bottom drone) sank to ~0.16 m and tilted up to ~39 deg from t=13 s (cf_second clean). Start batteries cf5 4.02 V, cf_second 3.79 V (below the >= 4.1 V rule).
 - USER DECISION 2026-11-21: sag and high tilt of the bottom drone in the stacked A1 is expected downwash; the 25 deg abort rule does not make sense for this scenario and is waived for A1 in the stack. Shakedown counts as passed. Start the auto-tuning (S0 round 0). Battery rule (>= 4.1 V) still applies.
 - Note: round.py flags a flight as crashed only above the tree crash tilt limit and as floor if mean z in the scored window < 0.5 * reference z (usd_ingest.flight_flags); not checked for the shakedown file (needs merged/decoded file).
+- USER DECISION 2026-11-21: battery rule >= 4.1 V dropped; fly as long as the pack reads above 3.5 V (applies to S0 round 0 onward).
