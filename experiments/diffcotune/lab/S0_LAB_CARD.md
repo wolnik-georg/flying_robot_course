@@ -21,7 +21,7 @@ Everything below is copied from the protocol draft (`docs/diffcotune_lab_protoco
 | 1 | `python3 lab/apply_gains.py merge --fragment lab/S0/round_<l>/gains.yaml --yaml <crazyflies.yaml>` → put the `.new` file in place → `lab_check_strategy.py` → launch CS2 | PD P2 option A |
 | 2 | Firmware read-back of the 15 gains on a fresh connection (CS2 stopped): `python3 lab/apply_gains.py readback --uri <cf5 uri> --fragment lab/S0/round_<l>/gains.yaml`; relaunch; again after every battery swap | PD P2, "Decided" item 4 |
 | 3 | Flight 1, A1: `ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes` (cf5 + cf_second) | PD "Flight card per round" |
-| 4 | Flight 2, A8: `… --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes` | PD flight card |
+| 4 | Flight 2, A8: `… --scenario A8 --dz 0.375 --passes 4 --height 0.5 --auto-center --yes` | PD flight card |
 | 4a | Flight 3 (Stage 8, new), A4 cell 1: `… --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes` (cf5 + cf_second, before the `--solo` switch; this is a tuning flight now, in-sample; the held-out test cell is A4 cell 2) | Stage 8, user decision 15 Nov |
 | 5 | (after flights 1–3) `set_tree_strategy.py S0 --solo` (cf_second `enabled: false`), `lab_check_strategy.py`, relaunch CS2; gains of the round still on cf5 (`apply_gains.py readback`) | PD flight card |
 | 6 | Flight 4, CIRCLE: `python3 experiments/diffcotune/lab/fly_file.py --cell CIRCLE` | PD flight card, P3 |

@@ -22,12 +22,12 @@ from crazyflie_examples.formations import scenarios as SC, poly4d, safety  # noq
 PREFIX = ['--auto-center', '--yes']
 CELLS = [  # (name, role, frsim scenario, cell, command arguments)
     ('A1', 'tuning', 'A1', tuning_cells('A1')[0], ['--scenario', 'A1', '--dz', '0.375', '--hold', '15.0', '--height', '0.5']),
-    ('A8', 'tuning', 'A8', tuning_cells('A8')[0], ['--scenario', 'A8', '--dz', '0.375', '--duration', '8.0', '--passes', '2', '--height', '0.5']),
+    ('A8', 'tuning', 'A8', tuning_cells('A8')[0], ['--scenario', 'A8', '--dz', '0.375', '--passes', '4', '--height', '0.5']),
     ('A4 cell 1', 'test', 'A4', study_cells('A4')[0], ['--scenario', 'A4', '--dz', '0.4', '--speed', '0.35', '--offset', '0.125', '--motion', 'line', '--rotate', '90', '--height', '0.5']),
     ('A4 cell 2', 'test', 'A4', study_cells('A4')[1], ['--scenario', 'A4', '--dz', '0.4', '--speed', '0.35', '--offset', '0.075', '--motion', 'line', '--rotate', '90', '--height', '0.5']),
 ]
 EXTRA = [('A8 as flown 23 Oct (study cell, --passes 4)', 'A8', study_cells('A8')[0], ['--scenario', 'A8', '--dz', '0.4', '--speed', '0.35', '--height', '0.5', '--passes', '4']),
-         ('A8 tuning cell with --speed instead of --duration', 'A8', tuning_cells('A8')[0], ['--scenario', 'A8', '--dz', '0.375', '--speed', '0.2734375', '--passes', '2', '--height', '0.5'])]
+         ('A8 tuning cell with --speed instead of --duration', 'A8', tuning_cells('A8')[0], ['--scenario', 'A8', '--dz', '0.375', '--speed', repr(0.2734375 * 8.0 / 6.0), '--passes', '4', '--height', '0.5'])]
 
 
 def table_pos(tables, t):

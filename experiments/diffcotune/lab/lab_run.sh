@@ -89,7 +89,7 @@ flights() {
 
 Flights (run them yourself, one after the other, hand on abort: |roll| or |pitch| > 25 deg for 0.5 s, or z < 0.25 m):
  1 A1  : ros2 run crazyflie_examples run_formation --scenario A1 --dz 0.375 --hold 15.0 --height 0.5 --auto-center --yes
- 2 A8  : ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --duration 8.0 --passes 2 --height 0.5 --auto-center --yes
+ 2 A8  : ros2 run crazyflie_examples run_formation --scenario A8 --dz 0.375 --passes 4 --height 0.5 --auto-center --yes
  3 A4  : ros2 run crazyflie_examples run_formation --scenario A4 --dz 0.4 --speed 0.35 --offset 0.125 --motion line --rotate 90 --height 0.5 --auto-center --yes
  then  : stop CS2, run   experiments/diffcotune/lab/lab_run.sh solo <S0|S2> <round>   (cf_second off)
  4 CIRCLE: python3 experiments/diffcotune/lab/fly_file.py --cell CIRCLE --yaml $YAML
