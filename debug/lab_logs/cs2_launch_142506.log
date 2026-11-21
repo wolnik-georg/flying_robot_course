@@ -1,0 +1,42 @@
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-11-21-14-25-06-557809-flightcontrol1-408521
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [408526]
+[INFO] [crazyflie_server-2]: process started with pid [408527]
+[INFO] [teleop-3]: process started with pid [408528]
+[INFO] [joy_node-4]: process started with pid [408529]
+[INFO] [gui.py-5]: process started with pid [408530]
+[crazyflie_server-2] [INFO] [1795267506.683817633] [crazyflie_server]: CS2_CONNECT_PARAM_PACE_V1 connect-param pacing: ENABLED (150ms per firmware_params write on connect)
+[motion_capture_tracking_node-1] logClouds=0
+[teleop-3] [INFO] [1795267506.688524787] [teleop]: Mode changed to high_level
+[crazyflie_server-2] [WARN] [1795267506.692323387] [crazyflie_server]: [cf5] Received unrequested data for block: 3
+[crazyflie_server-2] [INFO] [1795267506.693106403] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1795267506.696914612] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1795267506.700952130] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1795267506.706926750] [crazyflie_server]: [cf5] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1795267506.708709741] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1795267506.719904878] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found:DECK_DISCOVERY: Backend found:DECK_DISCOVERY: Backend found:DECK_FORCED: CONFIG_DECK_FORCEDECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1795267506.728668743] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driDECK_CORE: Calling INIT on driIMU: BMI088: Using I2C interfauSD: wait for sensors
+[crazyflie_server-2] [INFO] [1795267506.730175476] [crazyflie_server]: [cf5] K].
+[crazyflie_server-2] [INFO] [1795267506.731441725] [crazyflie_server]: [cf5] OK]
+[crazyflie_server-2] [INFO] [1795267506.732572518] [crazyflie_server]: [cf5] ]
+[crazyflie_server-2] [INFO] [1795267506.733981482] [crazyflie_server]: [cf5]  (1) estimator
+[crazyflie_server-2] [INFO] [1795267506.738069704] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6 driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1795267506.739712765] [crazyflie_server]: [cf5] tem.c.
+[crazyflie_server-2] [INFO] [1795267506.743749626] [crazyflie_server]: [cf5] SYS: NRF51 version: 2024.10 (CEEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1795267506.745937242] [crazyflie_server]: [cf5] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1795267506.748163579] [crazyflie_server]: [cf5] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1795267506.749870901] [crazyflie_server]: [cf5] ion...
+[crazyflie_server-2] [INFO] [1795267506.753348651] [crazyflie_server]: [cf5] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1795267506.754654223] [crazyflie_server]: [cf5] uSD: [OK].
+[joy_node-4] [INFO] [1795267506.898131961] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1795267507.122048422] [motion_capture_tracking]: ICP did not converge! for rigidBody cf5
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1795267507.122124850] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1795267507.122131034] [motion_capture_tracking]: No updated pose for cf5 for 0.000434 s.
+[motion_capture_tracking_node-1] [WARN] [1795267507.122135979] [motion_capture_tracking]: No updated pose for cf_second for 0.000434 s.
