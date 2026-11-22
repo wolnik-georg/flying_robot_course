@@ -1,0 +1,79 @@
+--- controller_omar_indi.fw.before_dshot.c	2026-11-22 15:42:36.085374814 +0100
++++ controller_omar_indi.fw.after_dshot.c	2026-11-22 15:42:47.626534235 +0100
+@@ -52,6 +52,7 @@
+ #include "fbl_law.h"
+ #include "fbl_residual.h"
+ #include "attitude_controller.h"
++#include "rpm_filter.h"   // per-motor DShot spike filter, byte-identical to flying_drone_stack/firmware_app/rpm_filter.h (the Rust controllers use it through rpm_get_all)
+ 
+ static controllerOmarIndi_t g_self = {
+   .mass = CF_MASS,
+@@ -93,7 +94,11 @@
+ };
+ 
+ 
+-static bool rpm_deck_available;
++// 2026-11-22: RPM source = DShot telemetry (log group "motor", m1_rpm..m4_rpm), passed through the same spike filter as the Rust controllers
++// (rpm_filter_step with rpm_source 1, state per motor). It replaces the optical deck (log group "rpm", deck.bcRpm == 1), which is not used any more.
++#define OMAR_RPM_SOURCE_DSHOT 1
++static bool rpm_available;                 // all four DShot RPM log variables exist
++static uint16_t rpm_prev[4];               // per-motor hold state of rpm_filter_step
+ static logVarId_t logVarRpm1;
+ static logVarId_t logVarRpm2;
+ static logVarId_t logVarRpm3;
+@@ -322,13 +327,13 @@
+   fbl_runtime_reset(self);
+   attitudeControllerInit(1.0f / ATTITUDE_RATE);   // stock attitude / rate PIDs for the FBL inner = 1 path (guarded by isInit; no effect on other paths)
+ 
+-  paramVarId_t idDeckBcRpm = paramGetVarId("deck", "bcRpm");
+-  logVarRpm1 = logGetVarId("rpm", "m1");
+-  logVarRpm2 = logGetVarId("rpm", "m2");
+-  logVarRpm3 = logGetVarId("rpm", "m3");
+-  logVarRpm4 = logGetVarId("rpm", "m4");
++  logVarRpm1 = logGetVarId("motor", "m1_rpm");
++  logVarRpm2 = logGetVarId("motor", "m2_rpm");
++  logVarRpm3 = logGetVarId("motor", "m3_rpm");
++  logVarRpm4 = logGetVarId("motor", "m4_rpm");
+ 
+-  rpm_deck_available = (paramGetUint(idDeckBcRpm) == 1);
++  rpm_available = logVarIdIsValid(logVarRpm1) && logVarIdIsValid(logVarRpm2) && logVarIdIsValid(logVarRpm3) && logVarIdIsValid(logVarRpm4);
++  for (int8_t i = 0; i < 4; i++) { rpm_prev[i] = 0; }
+ 
+ 	for (int8_t i = 0; i < 3; i++) {
+     const float cutoff = 30; // Hz
+@@ -381,12 +386,12 @@
+   float t1 = 0.0f, t2 = 0.0f, t3 = 0.0f, t4 = 0.0f;
+   // The rpm-based force estimate is also computed with indi = 0 (S0, S2) so that the INDI estimate below can be logged under every strategy; it only
+   // enters the control when indi & 1.
+-  if (rpm_deck_available) {
++  if (rpm_available) {
+     // compute expected acceleration based on rpm measurements (world frame)
+-    uint16_t rpm1 = logGetUint(logVarRpm1);
+-    uint16_t rpm2 = logGetUint(logVarRpm2);
+-    uint16_t rpm3 = logGetUint(logVarRpm3);
+-    uint16_t rpm4 = logGetUint(logVarRpm4);
++    uint16_t rpm1 = rpm_filter_step((uint16_t)logGetUint(logVarRpm1), OMAR_RPM_SOURCE_DSHOT, &rpm_prev[0]);
++    uint16_t rpm2 = rpm_filter_step((uint16_t)logGetUint(logVarRpm2), OMAR_RPM_SOURCE_DSHOT, &rpm_prev[1]);
++    uint16_t rpm3 = rpm_filter_step((uint16_t)logGetUint(logVarRpm3), OMAR_RPM_SOURCE_DSHOT, &rpm_prev[2]);
++    uint16_t rpm4 = rpm_filter_step((uint16_t)logGetUint(logVarRpm4), OMAR_RPM_SOURCE_DSHOT, &rpm_prev[3]);
+ 
+     t1 = MOTORRPM2FORCE * powf(rpm1 * 2.0f * M_PI_F / 60.0f, 2);
+     t2 = MOTORRPM2FORCE * powf(rpm2 * 2.0f * M_PI_F / 60.0f, 2);
+@@ -482,7 +487,7 @@
+     // INDI
+     // The INDI estimate (filtered a_rpm, a_imu) is updated and logged under every strategy; a_indi is applied only when indi & 1 (control unchanged for indi 0).
+     struct vec a_indi = vzero();
+-    if (rpm_deck_available) {
++    if (rpm_available) {
+ 
+       float f_rpm = t1 + t2 + t3 + t4;
+       self->a_rpm = vsub(vscl(f_rpm / self->mass, mvmul(R, z)), mkvec(0.0, 0.0, 9.81f));
+@@ -618,7 +623,7 @@
+     vneg(veltmul(self->J, vsub(mvmul(mcrossmat(self->omega), self->omega_r), mvmul(mmul(mtranspose(R), self->R_des), self->omega_des_dot)))));
+ 
+   struct vec indi_moments;
+-  if ((self->indi & 2) && rpm_deck_available) {
++  if ((self->indi & 2) && rpm_available) {
+     const float t2t = THRUST2TORQUE;
+     const float arm = 0.707106781f * ARM_LENGTH;
+     self->tau_rpm = mkvec(
