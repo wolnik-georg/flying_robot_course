@@ -1,0 +1,475 @@
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-11-22-17-40-16-640474-flightcontrol1-533179
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [533184]
+[INFO] [crazyflie_server-2]: process started with pid [533185]
+[INFO] [teleop-3]: process started with pid [533186]
+[INFO] [joy_node-4]: process started with pid [533187]
+[INFO] [gui.py-5]: process started with pid [533188]
+[crazyflie_server-2] [INFO] [1795365616.755037508] [crazyflie_server]: CS2_CONNECT_PARAM_PACE_V1 connect-param pacing: ENABLED (150ms per firmware_params write on connect)
+[teleop-3] [INFO] [1795365616.760489728] [teleop]: Mode changed to high_level
+[motion_capture_tracking_node-1] logClouds=0
+[crazyflie_server-2] [INFO] [1795365616.766354809] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1795365616.766376437] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1795365616.768622059] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1795365616.771774924] [crazyflie_server]: [cf5] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1795365616.772953568] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1795365616.775005064] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1795365616.776987070] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1795365616.779569031] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1795365616.781594162] [crazyflie_server]: [cf5] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1795365616.782742534] [crazyflie_server]: [cf5] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1795365616.784991408] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1795365616.786171263] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1795365616.788397692] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1795365616.790386944] [crazyflie_server]: [cf5] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1795365616.791426324] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1795365616.793326753] [crazyflie_server]: [cf5] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1795365616.795196100] [crazyflie_server]: [cf5] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1795365616.797018547] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1795365616.799156760] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1795365616.801221769] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1795365616.803507876] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1795365616.805414048] [crazyflie_server]: [cf5] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1795365616.807413066] [crazyflie_server]: [cf5] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1795365616.808592293] [crazyflie_server]: [cf5] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1795365616.809759271] [crazyflie_server]: [cf5] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1795365616.811585961] [crazyflie_server]: [cf5] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1795365616.812761953] [crazyflie_server]: [cf5] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1795365616.813821099] [crazyflie_server]: [cf5] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1795365616.815741205] [crazyflie_server]: [cf5] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1795365616.816878244] [crazyflie_server]: [cf5] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1795365616.818681815] [crazyflie_server]: [cf5] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1795365616.819731108] [crazyflie_server]: [cf5] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1795365616.821742685] [crazyflie_server]: [cf5] uSD: malloc buffer 8192 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1795365616.822485075] [crazyflie_server]: [cf5] Requesting parameters...
+[crazyflie_server-2] [INFO] [1795365616.826502776] [crazyflie_server]: [cf5] Param TOC: 463 entries with CRC 3198878159
+[crazyflie_server-2] [INFO] [1795365616.826577995] [crazyflie_server]: [cf5] Param TOC: found cache.
+[joy_node-4] [INFO] [1795365616.968154411] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[crazyflie_server-2] [INFO] [1795365617.196318263] [crazyflie_server]: [cf5] reqParamTOC: 0.429966 s (463 params)
+[crazyflie_server-2] [INFO] [1795365617.196382054] [crazyflie_server]: [cf5] connect-param pacing: ENABLED (150ms) applying 63 firmware_params from yaml
+[crazyflie_server-2] [INFO] [1795365617.196400911] [crazyflie_server]: [cf5] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1795365617.346521187] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KI_x" to 0.031575
+[crazyflie_server-2] [INFO] [1795365617.496635339] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KI_y" to 0.031575
+[crazyflie_server-2] [INFO] [1795365617.646745157] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_x" to 0.007433
+[crazyflie_server-2] [INFO] [1795365617.796877349] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_y" to 0.007433
+[crazyflie_server-2] [INFO] [1795365617.946987301] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_z" to 0.008247
+[crazyflie_server-2] [INFO] [1795365618.097095901] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dx" to 4.231553
+[crazyflie_server-2] [INFO] [1795365618.247869899] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dy" to 4.231553
+[crazyflie_server-2] [INFO] [1795365618.397987814] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dz" to 3.838952
+[crazyflie_server-2] [INFO] [1795365618.548100054] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Iz" to 1.454292
+[crazyflie_server-2] [INFO] [1795365618.698241053] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Px" to 6.522162
+[crazyflie_server-2] [INFO] [1795365618.848393421] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Py" to 6.522162
+[crazyflie_server-2] [INFO] [1795365618.998540209] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Pz" to 6.631393
+[crazyflie_server-2] [INFO] [1795365619.148650526] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_x" to 0.001072
+[crazyflie_server-2] [INFO] [1795365619.298780614] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_y" to 0.001072
+[crazyflie_server-2] [INFO] [1795365619.448938110] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_z" to 0.001920
+[crazyflie_server-2] [INFO] [1795365619.599085892] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.indi" to 3
+[crazyflie_server-2] [INFO] [1795365619.749221273] [crazyflie_server]: [cf5] Update parameter "ctrlOot5.indi" to 3
+[crazyflie_server-2] [INFO] [1795365619.899315549] [crazyflie_server]: [cf5] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1795365620.049467745] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365620.199624636] [crazyflie_server]: [cf5] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1795365620.349806260] [crazyflie_server]: [cf5] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1795365620.499953509] [crazyflie_server]: [cf5] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1795365620.650096950] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1795365620.800262497] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1795365620.950493837] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1795365621.100674463] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1795365621.250919858] [crazyflie_server]: [cf5] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1795365621.401088609] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1795365621.551257586] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795365621.701427686] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1795365621.851600755] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795365622.001766022] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1795365622.151987393] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1795365622.302155643] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1795365622.452341892] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1795365622.602525433] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1795365622.752692009] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1795365622.902854431] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1795365623.053013747] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1795365623.203174260] [crazyflie_server]: [cf5] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1795365623.353339548] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1795365623.503490075] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1795365623.653647403] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1795365623.803807645] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1795365623.953973770] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1795365624.104125253] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795365624.254273255] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795365624.404449031] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1795365624.554625628] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1795365624.704794471] [crazyflie_server]: [cf5] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1795365624.854982625] [crazyflie_server]: [cf5] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1795365625.005172407] [crazyflie_server]: [cf5] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1795365625.155352701] [crazyflie_server]: [cf5] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1795365625.305527460] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795365625.455702635] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795365625.605873421] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1795365625.756052349] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1795365625.906232496] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1795365626.056456164] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1795365626.206622516] [crazyflie_server]: [cf5] Update parameter "rnn.en" to 1
+[crazyflie_server-2] [INFO] [1795365626.356800378] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795365626.507014272] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795365626.507109005] [crazyflie_server]: [cf5] connect-param pacing: finished 63 writes in 9.31 s
+[crazyflie_server-2] [INFO] [1795365626.507195502] [crazyflie_server]: [cf5] ref frame: world
+[crazyflie_server-2] [INFO] [1795365626.507282528] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree4 (9) controller
+[crazyflie_server-2] [INFO] [1795365626.512484572] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795365626.513333309] [crazyflie_server]: [cf5] Log TOC: 674 entries with CRC 4243357080
+[crazyflie_server-2] [INFO] [1795365626.513376341] [crazyflie_server]: [cf5] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1795365626.513960176] [crazyflie_server]: [cf5] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.521092529] [crazyflie_server]: [cf5] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.526862181] [crazyflie_server]: [cf5] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.533783600] [crazyflie_server]: [cf5] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.540660039] [crazyflie_server]: [cf5] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.547053501] [crazyflie_server]: [cf5] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.554182473] [crazyflie_server]: [cf5] Logging to rpm at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.559806973] [crazyflie_server]: [cf5] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1795365626.566830324] [crazyflie_server]: [cf5] Logging to usd_status at 5 Hz
+[crazyflie_server-2] [INFO] [1795365626.572976083] [crazyflie_server]: [cf5] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1795365626.579872366] [crazyflie_server]: [cf5] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1795365626.586105753] [crazyflie_server]: [cf5] Requesting memories...
+[crazyflie_server-2] [INFO] [1795365626.588850039] [crazyflie_server]: [cf5] Memories: 7
+[crazyflie_server-2] [INFO] [1795365626.626586385] [crazyflie_server]: CS2_RUNTIME_PARAMS_POST_SET_V1 runtime params: forwarded by the post-set callback (not /parameter_events)
+[crazyflie_server-2] [WARN] [1795365626.627954209] [crazyflie_server]: [cf5] last latency update: 9.868284 s
+[crazyflie_server-2] [INFO] [1795365626.753474296] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365626.754466617] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365627.253465395] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365627.254468067] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [WARN] [1795365627.586564141] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 16749. Received: 50823
+[crazyflie_server-2] [WARN] [1795365627.586647726] [crazyflie_server]: [cf5] Unexpected number of broadcast packets. Sent: 96. Received: 47647
+[crazyflie_server-2] [INFO] [1795365627.752448482] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365627.753521205] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365628.253468961] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365628.254475090] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365628.752473877] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365628.753528772] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365629.252464928] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365629.253551482] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365629.751459343] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365629.752472283] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365630.250477086] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365630.252483466] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365630.749513758] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365630.750502634] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365631.249468861] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365631.250459913] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365631.748410443] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365631.749524945] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365632.247432899] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365632.248395855] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365632.747431746] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365632.748428712] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365633.247416003] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365633.248420979] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365633.746416416] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365633.747415834] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365633.806637831] [crazyflie_server]: [cf5] Update parameter "traj.mode" to 0
+[crazyflie_server-2] [INFO] [1795365633.807741164] [crazyflie_server]: [cf5] Update parameter "traj.start" to 0
+[crazyflie_server-2] [INFO] [1795365633.808857652] [crazyflie_server]: [cf5] Update parameter "traj.reps" to 0
+[crazyflie_server-2] [INFO] [1795365633.809998665] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365633.811132786] [crazyflie_server]: [cf5] notify_setpoints_stop(remain_valid_millisecs100, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365634.012252864] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 1
+[crazyflie_server-2] [INFO] [1795365634.019432467] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1795365634.245425468] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365634.247424270] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365634.745422597] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365634.746430768] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365635.013574861] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795365635.019430222] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795365635.022418946] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (49)
+[crazyflie_server-2] [INFO] [1795365635.214701197] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 1
+[crazyflie_server-2] [INFO] [1795365635.244426376] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365635.245444222] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365635.415842940] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 0
+[crazyflie_server-2] [INFO] [1795365635.743417632] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365635.745424334] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365636.244480204] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365636.245429231] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365636.743455126] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365636.744441015] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365637.242415899] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365637.243415448] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365637.742430607] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365637.744428398] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365638.242415547] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365638.244417342] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365638.438879361] [crazyflie_server]: [cf5] upload_trajectory(id=0, offset=0)
+[crazyflie_server-2] [INFO] [1795365638.741982484] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365638.743699148] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [WARN] [1795365639.017891127] [crazyflie_server]: [cf5] last latency update: 1.246459 s
+[crazyflie_server-2] [INFO] [1795365639.018595445] [crazyflie_server]: [all] Update parameter "usec.reset" to 1
+[crazyflie_server-2] [INFO] [1795365639.035792156] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 40.000000
+[crazyflie_server-2] [INFO] [1795365639.036010004] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 30.000000
+[crazyflie_server-2] [INFO] [1795365639.036190049] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 8.000000
+[crazyflie_server-2] [INFO] [1795365639.036343463] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 10.000000
+[crazyflie_server-2] [INFO] [1795365639.036535115] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795365639.036736116] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365639.036926358] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795365639.037131381] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795365639.037341485] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795365639.037504428] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [WARN] [1795365639.075457997] [crazyflie_server]: [cf5] High latency: 57.6 ms
+[crazyflie_server-2] [INFO] [1795365639.241426007] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365639.242418769] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365639.739421530] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365639.741451957] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365640.019444915] [crazyflie_server]: [cf5] arm(1)
+[crazyflie_server-2] [INFO] [1795365640.028458724] [crazyflie_server]: [cf5] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1795365640.039423326] [crazyflie_server]: [cf5] SUP: Ready to fly
+[crazyflie_server-2] [INFO] [1795365640.239417519] [crazyflie_server]: [cf5] INDI r 705 941 897 628
+[crazyflie_server-2] [INFO] [1795365640.242415681] [crazyflie_server]: [cf5] INDI t 0.000213 0.000379 0.000345 0.000169
+[crazyflie_server-2] [INFO] [1795365640.519660576] [crazyflie_server]: [cf5] takeoff(height=1.000000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365640.741417003] [crazyflie_server]: [cf5] INDI r 3229 3019 3238 3787
+[crazyflie_server-2] [INFO] [1795365640.743415642] [crazyflie_server]: [cf5] INDI t 0.004472 0.003909 0.004497 0.006152
+[crazyflie_server-2] [INFO] [1795365640.746416007] [crazyflie_server]: [cf5] INDI p -0.001698 -0.001109 -9.357056, 0.015756 0.008853 0.027182
+[crazyflie_server-2] [INFO] [1795365641.239418752] [crazyflie_server]: [cf5] INDI r 8417 2587 10000 19920
+[crazyflie_server-2] [INFO] [1795365641.242454596] [crazyflie_server]: [cf5] INDI t 0.030392 0.002871 0.042899 0.170226
+[crazyflie_server-2] [INFO] [1795365641.246486911] [crazyflie_server]: [cf5] INDI p -0.047768 -0.087948 -4.066185, -0.124021 -0.324933 1.090915
+[crazyflie_server-2] [INFO] [1795365641.249414754] [crazyflie_server]: [cf5] INDI a 0.006508 -0.005563 0.000611, 0.000479 0.000016 0.000083
+[crazyflie_server-2] [INFO] [1795365641.742451445] [crazyflie_server]: [cf5] INDI r 16181 19569 18726 17006
+[crazyflie_server-2] [INFO] [1795365641.744419423] [crazyflie_server]: [cf5] INDI t 0.112320 0.164280 0.150431 0.124066
+[crazyflie_server-2] [INFO] [1795365641.747415506] [crazyflie_server]: [cf5] INDI p -0.208222 1.748545 2.760671, -0.669938 1.858496 2.667775
+[crazyflie_server-2] [INFO] [1795365642.243415493] [crazyflie_server]: [cf5] INDI r 16393 14792 15822 15873
+[crazyflie_server-2] [INFO] [1795365642.245414974] [crazyflie_server]: [cf5] INDI t 0.115283 0.093864 0.107392 0.108085
+[crazyflie_server-2] [INFO] [1795365642.248414982] [crazyflie_server]: [cf5] INDI p 0.766761 -0.381102 0.363847, 1.020754 -0.222990 -0.357526
+[crazyflie_server-2] [INFO] [1795365642.252415804] [crazyflie_server]: [cf5] INDI a 0.000041 -0.000718 -0.000050, 0.000024 -0.000389 -0.001790
+[crazyflie_server-2] [INFO] [1795365642.743416617] [crazyflie_server]: [cf5] INDI r 13888 14836 14880 13550
+[crazyflie_server-2] [INFO] [1795365642.745414948] [crazyflie_server]: [cf5] INDI t 0.082742 0.094424 0.094985 0.078764
+[crazyflie_server-2] [INFO] [1795365642.748436300] [crazyflie_server]: [cf5] INDI p -0.879848 -0.260509 -1.503701, -0.786392 -0.143133 -1.730352
+[crazyflie_server-2] [INFO] [1795365643.242436712] [crazyflie_server]: [cf5] INDI r 13661 14705 13736 15822
+[crazyflie_server-2] [INFO] [1795365643.244417105] [crazyflie_server]: [cf5] INDI t 0.080059 0.092764 0.080941 0.107392
+[crazyflie_server-2] [INFO] [1795365643.247456733] [crazyflie_server]: [cf5] INDI p 0.142686 -0.042638 -1.421482, 0.332220 0.065551 -1.219979
+[crazyflie_server-2] [INFO] [1795365643.252451361] [crazyflie_server]: [cf5] INDI a 0.000289 -0.000377 -0.000047, 0.000015 -0.000197 -0.000225
+[crazyflie_server-2] [INFO] [1795365643.743434466] [crazyflie_server]: [cf5] INDI r 13698 16722 14409 17006
+[crazyflie_server-2] [INFO] [1795365643.745483841] [crazyflie_server]: [cf5] INDI t 0.080494 0.119957 0.089067 0.124066
+[crazyflie_server-2] [INFO] [1795365643.748422237] [crazyflie_server]: [cf5] INDI p -0.383912 -0.305526 -0.268459, -0.398917 -0.172916 0.125970
+[crazyflie_server-2] [INFO] [1795365644.019780482] [crazyflie_server]: [cf5] go_to(position=0.000000,0.300000,1.000000 m, yaw=0.000000 rad, duration=2.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365644.242416702] [crazyflie_server]: [cf5] INDI r 15576 16666 16181 14367
+[crazyflie_server-2] [INFO] [1795365644.244417142] [crazyflie_server]: [cf5] INDI t 0.104078 0.119154 0.112320 0.088548
+[crazyflie_server-2] [INFO] [1795365644.247415521] [crazyflie_server]: [cf5] INDI p -0.658669 -0.201831 0.014103, -0.822978 -0.160580 0.135063
+[crazyflie_server-2] [INFO] [1795365644.252417130] [crazyflie_server]: [cf5] INDI a -0.000842 0.001172 0.000246, -0.000554 0.000437 -0.000284
+[crazyflie_server-2] [INFO] [1795365644.743450939] [crazyflie_server]: [cf5] INDI r 16025 14970 14925 16666
+[crazyflie_server-2] [INFO] [1795365644.745417728] [crazyflie_server]: [cf5] INDI t 0.110165 0.096137 0.095560 0.119154
+[crazyflie_server-2] [INFO] [1795365644.748424857] [crazyflie_server]: [cf5] INDI p 0.908060 0.956008 0.293419, 1.312737 0.862268 0.457413
+[crazyflie_server-2] [INFO] [1795365645.242438041] [crazyflie_server]: [cf5] INDI r 14492 16949 15015 16025
+[crazyflie_server-2] [INFO] [1795365645.244417385] [crazyflie_server]: [cf5] INDI t 0.090096 0.123236 0.096716 0.110165
+[crazyflie_server-2] [INFO] [1795365645.247415291] [crazyflie_server]: [cf5] INDI p -0.336393 -0.181399 -0.112326, -0.215829 -0.343959 0.292191
+[crazyflie_server-2] [INFO] [1795365645.252414045] [crazyflie_server]: [cf5] INDI a -0.000222 0.000614 -0.000031, -0.000019 0.000659 0.000043
+[crazyflie_server-2] [INFO] [1795365645.742422309] [crazyflie_server]: [cf5] INDI r 14619 16077 14450 16556
+[crazyflie_server-2] [INFO] [1795365645.744455567] [crazyflie_server]: [cf5] INDI t 0.091682 0.110881 0.089574 0.117587
+[crazyflie_server-2] [INFO] [1795365645.748418595] [crazyflie_server]: [cf5] INDI p 0.657342 -0.518365 -0.282324, 0.705207 -0.368357 -0.076637
+[crazyflie_server-2] [INFO] [1795365646.242415800] [crazyflie_server]: [cf5] INDI r 15873 14836 15723 15432
+[crazyflie_server-2] [INFO] [1795365646.244414809] [crazyflie_server]: [cf5] INDI t 0.108085 0.094424 0.106052 0.102163
+[crazyflie_server-2] [INFO] [1795365646.247417569] [crazyflie_server]: [cf5] INDI p 0.519161 -0.060735 0.021583, 0.720486 -0.016803 0.043581
+[crazyflie_server-2] [INFO] [1795365646.251418206] [crazyflie_server]: [cf5] INDI a -0.000002 -0.000059 -0.000095, -0.000139 -0.000050 -0.001751
+[crazyflie_server-2] [INFO] [1795365646.519973691] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1795365646.520146275] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1795365646.520209076] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1795365646.520356953] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1795365646.520534910] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795365646.520718360] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1795365646.520892383] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795365646.521050335] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1795365646.521189661] [crazyflie_server]: [cf5] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1795365646.521275428] [crazyflie_server]: [cf5] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1795365646.521411424] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1795365646.521616571] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1795365646.521815376] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1795365646.521916490] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1795365646.522027183] [crazyflie_server]: [cf5] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1795365646.522161639] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1795365646.522330413] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1795365646.522431185] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1795365646.522560650] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1795365646.522700953] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1795365646.522860279] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1795365646.522996766] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795365646.523126987] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365646.523267714] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795365646.523448190] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795365646.523524529] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795365646.523670315] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795365646.742456717] [crazyflie_server]: [cf5] INDI r 14044 16666 14880 15625
+[crazyflie_server-2] [INFO] [1795365646.744419907] [crazyflie_server]: [cf5] INDI t 0.084611 0.119154 0.094985 0.104734
+[crazyflie_server-2] [INFO] [1795365646.748418192] [crazyflie_server]: [cf5] INDI p -0.458186 -0.318748 -0.325631, -0.540818 -0.254419 -0.128156
+[crazyflie_server-2] [INFO] [1795365647.242452746] [crazyflie_server]: [cf5] INDI r 15151 15527 15290 16233
+[crazyflie_server-2] [INFO] [1795365647.244452079] [crazyflie_server]: [cf5] INDI t 0.098476 0.103424 0.100291 0.113043
+[crazyflie_server-2] [INFO] [1795365647.247417155] [crazyflie_server]: [cf5] INDI p 0.479113 0.130408 -0.033497, 0.509621 0.323395 0.131008
+[crazyflie_server-2] [INFO] [1795365647.251422122] [crazyflie_server]: [cf5] INDI a 0.000587 -0.000513 0.000234, 0.000296 -0.000271 0.001568
+[crazyflie_server-2] [INFO] [1795365647.520576280] [crazyflie_server]: [all] Update parameter "usd.runTag" to 1795365647
+[crazyflie_server-2] [INFO] [1795365647.620728574] [crazyflie_server]: [all] Update parameter "usd.logging" to 1
+[crazyflie_server-2] [INFO] [1795365647.743424049] [crazyflie_server]: [cf5] INDI r 15772 15723 16666 14492
+[crazyflie_server-2] [INFO] [1795365647.745424032] [crazyflie_server]: [cf5] INDI t 0.106714 0.106052 0.119154 0.090096
+[crazyflie_server-2] [INFO] [1795365647.748417832] [crazyflie_server]: [cf5] INDI p -0.831613 -0.522779 -0.194911, -0.887130 -0.407727 -0.194340
+[crazyflie_server-2] [INFO] [1795365648.241424712] [crazyflie_server]: [cf5] INDI r 15723 14970 15432 15772
+[crazyflie_server-2] [INFO] [1795365648.244435359] [crazyflie_server]: [cf5] INDI t 0.106052 0.096137 0.102163 0.106714
+[crazyflie_server-2] [INFO] [1795365648.247433584] [crazyflie_server]: [cf5] INDI p 0.620981 0.070618 -0.011758, 0.960578 0.173657 -0.025934
+[crazyflie_server-2] [INFO] [1795365648.251457570] [crazyflie_server]: [cf5] INDI a 0.000089 -0.000530 -0.000164, -0.000102 -0.000486 -0.001549
+[crazyflie_server-2] [INFO] [1795365648.743424091] [crazyflie_server]: [cf5] INDI r 14285 16181 14836 16556
+[crazyflie_server-2] [INFO] [1795365648.745427858] [crazyflie_server]: [cf5] INDI t 0.087540 0.112320 0.094424 0.117587
+[crazyflie_server-2] [INFO] [1795365648.748436125] [crazyflie_server]: [cf5] INDI p -0.119125 0.025396 -0.217694, -0.090146 0.163129 0.130187
+[crazyflie_server-2] [INFO] [1795365648.796425849] [crazyflie_server]: [cf5] uSD: Logging to: thesis71
+[crazyflie_server-2] [INFO] [1795365649.242477416] [crazyflie_server]: [cf5] INDI r 15822 14662 16233 15576
+[crazyflie_server-2] [INFO] [1795365649.244424601] [crazyflie_server]: [cf5] INDI t 0.107392 0.092222 0.113043 0.104078
+[crazyflie_server-2] [INFO] [1795365649.247431573] [crazyflie_server]: [cf5] INDI p 0.235743 0.256046 -0.179735, 0.241742 0.434821 0.096973
+[crazyflie_server-2] [INFO] [1795365649.251417000] [crazyflie_server]: [cf5] INDI a 0.000772 -0.000233 0.000141, 0.000331 -0.000195 0.000639
+[crazyflie_server-2] [INFO] [1795365649.742419166] [crazyflie_server]: [cf5] INDI r 15576 14880 15923 15723
+[crazyflie_server-2] [INFO] [1795365649.744436984] [crazyflie_server]: [cf5] INDI t 0.104078 0.094985 0.108767 0.106052
+[crazyflie_server-2] [INFO] [1795365649.747417144] [crazyflie_server]: [cf5] INDI p -0.183821 -0.209461 0.103508, 0.065684 -0.113370 0.156854
+[crazyflie_server-2] [INFO] [1795365649.775493587] [crazyflie_server]: [all] start_trajectory(id=0, timescale=1.000000, reversed=0, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365650.241425661] [crazyflie_server]: [cf5] INDI r 14245 17182 14792 16025
+[crazyflie_server-2] [INFO] [1795365650.244424519] [crazyflie_server]: [cf5] INDI t 0.087051 0.126647 0.093864 0.110165
+[crazyflie_server-2] [INFO] [1795365650.247426443] [crazyflie_server]: [cf5] INDI p -0.806067 -0.056671 -0.086327, -0.772253 -0.014523 0.079967
+[crazyflie_server-2] [INFO] [1795365650.251432405] [crazyflie_server]: [cf5] INDI a -0.000315 0.000949 0.000010, -0.000368 0.000416 0.000588
+[crazyflie_server-2] [INFO] [1795365650.742425832] [crazyflie_server]: [cf5] INDI r 15772 15151 15432 16339
+[crazyflie_server-2] [INFO] [1795365650.744436396] [crazyflie_server]: [cf5] INDI t 0.106714 0.098476 0.102163 0.114525
+[crazyflie_server-2] [INFO] [1795365650.747419844] [crazyflie_server]: [cf5] INDI p -0.028061 1.208151 -0.100971, 0.092750 1.331345 0.038725
+[crazyflie_server-2] [INFO] [1795365651.243415459] [crazyflie_server]: [cf5] INDI r 15822 14970 15015 15822
+[crazyflie_server-2] [INFO] [1795365651.245418741] [crazyflie_server]: [cf5] INDI t 0.107392 0.096137 0.096716 0.107392
+[crazyflie_server-2] [INFO] [1795365651.248440471] [crazyflie_server]: [cf5] INDI p -0.024870 0.534165 -0.051242, 0.401070 0.424907 0.322480
+[crazyflie_server-2] [INFO] [1795365651.252431747] [crazyflie_server]: [cf5] INDI a -0.000106 -0.000291 0.000020, 0.000038 0.000032 -0.001723
+[crazyflie_server-2] [INFO] [1795365651.743451341] [crazyflie_server]: [cf5] INDI r 14204 16949 14367 16447
+[crazyflie_server-2] [INFO] [1795365651.745415363] [crazyflie_server]: [cf5] INDI t 0.086550 0.123236 0.088548 0.116044
+[crazyflie_server-2] [INFO] [1795365651.748464259] [crazyflie_server]: [cf5] INDI p 0.163989 -0.268128 -0.167428, 0.267574 -0.388236 -0.031441
+[crazyflie_server-2] [INFO] [1795365652.243436728] [crazyflie_server]: [cf5] INDI r 15197 16393 14792 15723
+[crazyflie_server-2] [INFO] [1795365652.245417183] [crazyflie_server]: [cf5] INDI t 0.099075 0.115283 0.093864 0.106052
+[crazyflie_server-2] [INFO] [1795365652.248417414] [crazyflie_server]: [cf5] INDI p 1.068305 -0.615212 -0.331101, 0.957042 -0.672013 -0.126659
+[crazyflie_server-2] [INFO] [1795365652.252429362] [crazyflie_server]: [cf5] INDI a -0.000319 -0.000089 0.000244, -0.000202 -0.000181 0.001545
+[crazyflie_server-2] [INFO] [1795365652.743418320] [crazyflie_server]: [cf5] INDI r 15673 15673 16556 14619
+[crazyflie_server-2] [INFO] [1795365652.745416401] [crazyflie_server]: [cf5] INDI t 0.105378 0.105378 0.117587 0.091682
+[crazyflie_server-2] [INFO] [1795365652.748416148] [crazyflie_server]: [cf5] INDI p 0.595626 -0.521215 -0.104054, 0.356130 -0.565849 0.043634
+[crazyflie_server-2] [INFO] [1795365653.244415492] [crazyflie_server]: [cf5] INDI r 14970 15384 15873 14367
+[crazyflie_server-2] [INFO] [1795365653.246415357] [crazyflie_server]: [cf5] INDI t 0.096137 0.101528 0.108085 0.088548
+[crazyflie_server-2] [INFO] [1795365653.249415050] [crazyflie_server]: [cf5] INDI p 0.250938 -0.658942 -0.420657, 0.141366 -0.593281 -0.246000
+[crazyflie_server-2] [INFO] [1795365653.253416305] [crazyflie_server]: [cf5] INDI a -0.000102 0.000949 -0.000076, -0.000181 0.000148 -0.001751
+[crazyflie_server-2] [INFO] [1795365653.744416462] [crazyflie_server]: [cf5] INDI r 13661 17543 14792 16025
+[crazyflie_server-2] [INFO] [1795365653.746434266] [crazyflie_server]: [cf5] INDI t 0.080059 0.132025 0.093864 0.110165
+[crazyflie_server-2] [INFO] [1795365653.749416999] [crazyflie_server]: [cf5] INDI p -1.434762 -1.165837 -0.416232, -1.730067 -1.008663 -0.303574
+[crazyflie_server-2] [INFO] [1795365654.244426564] [crazyflie_server]: [cf5] INDI r 15432 16611 15873 15151
+[crazyflie_server-2] [INFO] [1795365654.246425545] [crazyflie_server]: [cf5] INDI t 0.102163 0.118369 0.108085 0.098476
+[crazyflie_server-2] [INFO] [1795365654.249427968] [crazyflie_server]: [cf5] INDI p -1.144465 -0.779960 0.105599, -1.352459 -0.605804 0.195217
+[crazyflie_server-2] [INFO] [1795365654.253418935] [crazyflie_server]: [cf5] INDI a -0.000292 0.000750 0.000324, -0.000423 0.000289 0.000946
+[crazyflie_server-2] [INFO] [1795365654.744425552] [crazyflie_server]: [cf5] INDI r 15723 14492 15432 15527
+[crazyflie_server-2] [INFO] [1795365654.746426487] [crazyflie_server]: [cf5] INDI t 0.106052 0.090096 0.102163 0.103424
+[crazyflie_server-2] [INFO] [1795365654.750424881] [crazyflie_server]: [cf5] INDI p -0.891182 -0.408639 -0.260433, -0.547759 -0.097651 -0.178574
+[crazyflie_server-2] [INFO] [1795365655.244416226] [crazyflie_server]: [cf5] INDI r 14204 16666 14836 17182
+[crazyflie_server-2] [INFO] [1795365655.246419537] [crazyflie_server]: [cf5] INDI t 0.086550 0.119154 0.094424 0.126647
+[crazyflie_server-2] [INFO] [1795365655.251434803] [crazyflie_server]: [cf5] INDI p -0.905493 -0.387293 0.043311, -0.679311 -0.147497 0.155518
+[crazyflie_server-2] [INFO] [1795365655.254480080] [crazyflie_server]: [cf5] INDI a 0.000555 0.000068 0.000116, -0.000004 0.000297 0.000995
+[crazyflie_server-2] [INFO] [1795365655.744424995] [crazyflie_server]: [cf5] INDI r 15015 15576 14662 16835
+[crazyflie_server-2] [INFO] [1795365655.746424795] [crazyflie_server]: [cf5] INDI t 0.096716 0.104078 0.092222 0.121583
+[crazyflie_server-2] [INFO] [1795365655.749424541] [crazyflie_server]: [cf5] INDI p 0.533905 0.012749 -0.129465, 0.815261 0.428894 0.036155
+[crazyflie_server-2] [INFO] [1795365656.245421436] [crazyflie_server]: [cf5] INDI r 15384 13404 16233 15923
+[crazyflie_server-2] [INFO] [1795365656.247453516] [crazyflie_server]: [cf5] INDI t 0.101528 0.077075 0.113043 0.108767
+[crazyflie_server-2] [INFO] [1795365656.251454598] [crazyflie_server]: [cf5] INDI p 1.296185 1.146388 -0.364268, 1.663942 1.608560 -0.225827
+[crazyflie_server-2] [INFO] [1795365656.255415934] [crazyflie_server]: [cf5] INDI a 0.001440 -0.000750 -0.000049, 0.000564 -0.000330 -0.001715
+[crazyflie_server-2] [INFO] [1795365656.745472766] [crazyflie_server]: [cf5] INDI r 13774 16722 14662 16556
+[crazyflie_server-2] [INFO] [1795365656.747427246] [crazyflie_server]: [cf5] INDI t 0.081389 0.119957 0.092222 0.117587
+[crazyflie_server-2] [INFO] [1795365656.751424624] [crazyflie_server]: [cf5] INDI p 0.781569 0.179518 -0.282286, 0.800146 0.409545 -0.064017
+[crazyflie_server-2] [INFO] [1795365657.246424480] [crazyflie_server]: [cf5] INDI r 15015 17006 15432 14749
+[crazyflie_server-2] [INFO] [1795365657.248425181] [crazyflie_server]: [cf5] INDI t 0.096716 0.124066 0.102163 0.093319
+[crazyflie_server-2] [INFO] [1795365657.252423814] [crazyflie_server]: [cf5] INDI p 0.041090 -0.707919 -0.049901, -0.294472 -0.540536 0.120253
+[crazyflie_server-2] [INFO] [1795365657.255424791] [crazyflie_server]: [cf5] INDI a -0.000835 0.001259 0.000341, -0.000612 0.000515 0.001237
+[crazyflie_server-2] [INFO] [1795365657.746424240] [crazyflie_server]: [cf5] INDI r 15290 14044 15873 14880
+[crazyflie_server-2] [INFO] [1795365657.748426806] [crazyflie_server]: [cf5] INDI t 0.100291 0.084611 0.108085 0.094985
+[crazyflie_server-2] [INFO] [1795365657.752424892] [crazyflie_server]: [cf5] INDI p 0.826927 0.995754 -0.593020, 0.731085 1.188215 -0.277536
+[crazyflie_server-2] [INFO] [1795365658.247425062] [crazyflie_server]: [cf5] INDI r 14005 16233 14880 17921
+[crazyflie_server-2] [INFO] [1795365658.249424453] [crazyflie_server]: [cf5] INDI t 0.084142 0.113043 0.094985 0.137776
+[crazyflie_server-2] [INFO] [1795365658.253478380] [crazyflie_server]: [cf5] INDI p -0.163116 0.958924 0.089812, -0.240747 1.139559 0.436283
+[crazyflie_server-2] [INFO] [1795365658.256426344] [crazyflie_server]: [cf5] INDI a 0.001151 -0.000254 0.000081, 0.000522 -0.000388 0.000695
+[crazyflie_server-2] [INFO] [1795365658.747424627] [crazyflie_server]: [cf5] INDI r 14880 17123 15527 14367
+[crazyflie_server-2] [INFO] [1795365658.749426342] [crazyflie_server]: [cf5] INDI t 0.094985 0.125779 0.103424 0.088548
+[crazyflie_server-2] [INFO] [1795365658.754460518] [crazyflie_server]: [cf5] INDI p -2.065510 -0.300383 -0.387200, -2.398453 -0.449109 -0.326273
+[crazyflie_server-2] [INFO] [1795365659.247426429] [crazyflie_server]: [cf5] INDI r 16501 14880 15527 15015
+[crazyflie_server-2] [INFO] [1795365659.251424163] [crazyflie_server]: [cf5] INDI t 0.116807 0.094985 0.103424 0.096716
+[crazyflie_server-2] [INFO] [1795365659.254479850] [crazyflie_server]: [cf5] INDI p -0.748600 0.181290 -0.038309, -0.523705 -0.040928 -0.010643
+[crazyflie_server-2] [INFO] [1795365659.257424171] [crazyflie_server]: [cf5] INDI a -0.000520 -0.000306 0.000011, -0.000031 -0.000256 -0.001642
+[crazyflie_server-2] [INFO] [1795365659.748414874] [crazyflie_server]: [cf5] INDI r 15015 16891 14619 16129
+[crazyflie_server-2] [INFO] [1795365659.751416824] [crazyflie_server]: [cf5] INDI t 0.096716 0.122394 0.091682 0.111600
+[crazyflie_server-2] [INFO] [1795365659.754425210] [crazyflie_server]: [cf5] INDI p -0.097533 -0.725804 -0.049290, 0.229433 -0.966605 0.190435
+[crazyflie_server-2] [INFO] [1795365660.249440000] [crazyflie_server]: [cf5] INDI r 14245 16835 13440 17006
+[crazyflie_server-2] [INFO] [1795365660.252424648] [crazyflie_server]: [cf5] INDI t 0.087051 0.121583 0.077490 0.124066
+[crazyflie_server-2] [INFO] [1795365660.255424242] [crazyflie_server]: [cf5] INDI p 0.933985 -0.741329 -0.360425, 1.069842 -0.845626 -0.247939
+[crazyflie_server-2] [INFO] [1795365660.259423822] [crazyflie_server]: [cf5] INDI a -0.000014 -0.000877 0.000191, -0.000018 -0.000418 0.001073
+[crazyflie_server-2] [INFO] [1795365660.749429566] [crazyflie_server]: [cf5] INDI r 16025 14534 16181 15673
+[crazyflie_server-2] [INFO] [1795365660.752424147] [crazyflie_server]: [cf5] INDI t 0.110165 0.090619 0.112320 0.105378
+[crazyflie_server-2] [INFO] [1795365660.755427842] [crazyflie_server]: [cf5] INDI p 0.372878 0.020776 -0.069799, 0.544917 0.262470 0.047314
+[crazyflie_server-2] [INFO] [1795365661.250425718] [crazyflie_server]: [cf5] INDI r 14880 15974 15576 15243
+[crazyflie_server-2] [INFO] [1795365661.253478856] [crazyflie_server]: [cf5] INDI t 0.094985 0.109465 0.104078 0.099675
+[crazyflie_server-2] [INFO] [1795365661.256478341] [crazyflie_server]: [cf5] INDI p -0.692019 -0.564830 -0.199239, -0.633270 -0.511254 -0.069475
+[crazyflie_server-2] [INFO] [1795365661.259429229] [crazyflie_server]: [cf5] INDI a -0.000206 0.001138 -0.000059, -0.000348 0.000551 -0.001499
+[crazyflie_server-2] [INFO] [1795365661.340436582] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 40.000000
+[crazyflie_server-2] [INFO] [1795365661.340660696] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 30.000000
+[crazyflie_server-2] [INFO] [1795365661.340797299] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 8.000000
+[crazyflie_server-2] [INFO] [1795365661.340973271] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 10.000000
+[crazyflie_server-2] [INFO] [1795365661.341156996] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795365661.341357061] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365661.341557478] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795365661.341700777] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795365661.341865239] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795365661.342024869] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795365661.751427951] [crazyflie_server]: [cf5] INDI r 14749 16611 14492 16501
+[crazyflie_server-2] [INFO] [1795365661.753468209] [crazyflie_server]: [cf5] INDI t 0.093319 0.118369 0.090096 0.116807
+[crazyflie_server-2] [INFO] [1795365661.756425312] [crazyflie_server]: [cf5] INDI p 0.470174 -0.236690 -0.067620, 0.360813 -0.292624 0.025826
+[crazyflie_server-2] [INFO] [1795365662.252425897] [crazyflie_server]: [cf5] INDI r 16025 14619 15772 16286
+[crazyflie_server-2] [INFO] [1795365662.254467343] [crazyflie_server]: [cf5] INDI t 0.110165 0.091682 0.106714 0.113783
+[crazyflie_server-2] [INFO] [1795365662.257424364] [crazyflie_server]: [cf5] INDI p 0.402518 0.299713 -0.040623, 0.516988 0.568600 0.048043
+[crazyflie_server-2] [INFO] [1795365662.261425551] [crazyflie_server]: [cf5] INDI a 0.000830 -0.000798 0.000254, 0.000356 -0.000458 0.000422
+[crazyflie_server-2] [INFO] [1795365662.340556626] [crazyflie_server]: [all] land(height=0.060000 m, duration=2.000000 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365662.751425014] [crazyflie_server]: [cf5] INDI r 13966 14005 15151 13927
+[crazyflie_server-2] [INFO] [1795365662.754423785] [crazyflie_server]: [cf5] INDI t 0.083674 0.084142 0.098476 0.083207
+[crazyflie_server-2] [INFO] [1795365662.758426896] [crazyflie_server]: [cf5] INDI p -0.157486 -0.015434 -1.464656, -0.060383 0.121003 -1.417161
+[crazyflie_server-2] [INFO] [1795365663.252424864] [crazyflie_server]: [cf5] INDI r 14204 15432 13736 16393
+[crazyflie_server-2] [INFO] [1795365663.255424605] [crazyflie_server]: [cf5] INDI t 0.086550 0.102163 0.080941 0.115283
+[crazyflie_server-2] [INFO] [1795365663.258426132] [crazyflie_server]: [cf5] INDI p 0.241253 -0.178642 -1.082459, 0.432858 -0.107281 -0.691305
+[crazyflie_server-2] [INFO] [1795365663.262423812] [crazyflie_server]: [cf5] INDI a -0.000080 -0.000373 -0.000006, -0.000271 -0.000088 -0.000241
+[crazyflie_server-2] [INFO] [1795365663.752425237] [crazyflie_server]: [cf5] INDI r 14577 17985 15723 18050
+[crazyflie_server-2] [INFO] [1795365663.755426497] [crazyflie_server]: [cf5] INDI t 0.091156 0.138761 0.106052 0.139766
+[crazyflie_server-2] [INFO] [1795365663.758427121] [crazyflie_server]: [cf5] INDI p -0.589243 0.051428 1.176082, -0.717221 0.276890 1.768458
+[crazyflie_server-2] [INFO] [1795365664.253424951] [crazyflie_server]: [cf5] INDI r 16666 15576 14577 14749
+[crazyflie_server-2] [INFO] [1795365664.255473168] [crazyflie_server]: [cf5] INDI t 0.119154 0.104078 0.091156 0.093319
+[crazyflie_server-2] [INFO] [1795365664.258426687] [crazyflie_server]: [cf5] INDI p 0.703176 -0.644850 -0.350160, 0.838426 -0.782461 0.754741
+[crazyflie_server-2] [INFO] [1795365664.263425372] [crazyflie_server]: [cf5] INDI a -0.001137 -0.000869 0.000178, -0.000692 -0.000129 -0.000372
+[crazyflie_server-2] [INFO] [1795365664.752417799] [crazyflie_server]: [cf5] INDI r 3140 3213 3272 3561
+[crazyflie_server-2] [INFO] [1795365664.754420749] [crazyflie_server]: [cf5] INDI t 0.004229 0.004428 0.004592 0.005439
+[crazyflie_server-2] [INFO] [1795365665.250468032] [crazyflie_server]: [cf5] INDI r 2693 2566 2659 2880
+[crazyflie_server-2] [INFO] [1795365665.253423486] [crazyflie_server]: [cf5] INDI t 0.003111 0.002824 0.003033 0.003558
+[crazyflie_server-2] [INFO] [1795365665.340789195] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1795365665.385426131] [crazyflie_server]: [cf5] uSD: Wrote 2871628 B to: thesis71 (8039 of 8853 events)
+[crazyflie_server-2] [INFO] [1795365665.540907375] [crazyflie_server]: [cf5] arm(0)
+[crazyflie_server-2] [INFO] [1795365665.540980576] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1795365665.557369717] [crazyflie_server]: [cf5] Update parameter "traj.mode" to 0
+[crazyflie_server-2] [INFO] [1795365665.558491873] [crazyflie_server]: [cf5] Update parameter "traj.start" to 0
+[crazyflie_server-2] [INFO] [1795365665.559583440] [crazyflie_server]: [cf5] Update parameter "traj.reps" to 0
+[crazyflie_server-2] [INFO] [1795365665.560670694] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795365665.561708804] [crazyflie_server]: [cf5] notify_setpoints_stop(remain_valid_millisecs100, group_mask=0)
+[crazyflie_server-2] [INFO] [1795365665.569427721] [crazyflie_server]: [cf5] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1795365665.589427180] [crazyflie_server]: [cf5] SUP: Disarming
+[crazyflie_server-2] [INFO] [1795365665.749427590] [crazyflie_server]: [cf5] INDI r 833 700 756 1008
+[crazyflie_server-2] [INFO] [1795365665.752424907] [crazyflie_server]: [cf5] INDI t 0.000297 0.000210 0.000245 0.000435
+[crazyflie_server-2] [INFO] [1795365665.795479630] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1795365666.248426007] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365666.249429229] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365666.747424854] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365666.748428648] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365667.247478529] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365667.248430060] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365667.746425530] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365667.747428638] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365668.245475742] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365668.246485104] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365668.745471700] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365668.746471477] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365669.244482868] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365669.245508869] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365669.745476288] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365669.746497013] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365670.244480543] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365670.245487577] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
+[crazyflie_server-2] [INFO] [1795365670.743472049] [crazyflie_server]: [cf5] INDI r 0 0 0 0
+[crazyflie_server-2] [INFO] [1795365670.744476016] [crazyflie_server]: [cf5] INDI t 0.0 0.0 0.0 0.0
