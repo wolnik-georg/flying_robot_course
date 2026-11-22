@@ -2,7 +2,7 @@
 # One-command lab runner for the lab PC (2026-11-18). Wraps ONLY the commands of S0_LAB_CARD.md /
 # INTERLEAVED_LAB_CARD.md; no new rules. You do: mocap, launch CS2, stop CS2 when asked, fly (Enter).
 #
-#   lab_run.sh prep S0 0      # yaml switch + gains merge, checks, readback (everything before the flights)
+#   lab_run.sh prep S0 0      # yaml switch + gains merge, checks, readback (everything before the flights; S1/S3 also check the DShot RPM log vars)
 #   lab_run.sh flights        # prints the exact flight commands to copy (you fly them yourself)
 #   lab_run.sh solo S0 0      # after A1, A8, A4: cf_second off, check, readback (before CIRCLE / FIG8)
 # (prep S0 0 is also the shakedown prep: then fly only A1.)
@@ -75,6 +75,9 @@ prep() {  # prep <S0|S2|S1|S3> <round>
   hw python3 flying_drone_stack/tools/check_active_controller.py "$CF2_URI" 9 || die "cf_second is not running controller 9"
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF5_URI" || die "usd deck check cf5"
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF2_URI" || die "usd deck check cf_second"
+  case "$C" in S1|S3)   # 2026-11-22: Omar C INDI reads DShot RPM (motor.mN_rpm), not the optical deck (deck.bcRpm is not needed any more)
+    hw python3 flying_drone_stack/tools/check_dshot_rpm.py "$CF5_URI" || die "DShot RPM log variables missing on cf5 (S1/S3 INDI would be off): wrong image?";;
+  esac
   ask "Relaunch CS2 (drones on the pad, motors idle) for the uSD gate ground test"
   # uSD gate (2026-11-18): the CS2 broadcast path must make BOTH decks write; needs the new crazyswarm2 build + yaml topic usd_status
   hw python3 flying_drone_stack/tools/usd_gate_ground_test.py --mode pass || die "uSD gate failed: do not fly"

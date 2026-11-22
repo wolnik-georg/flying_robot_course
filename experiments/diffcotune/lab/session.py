@@ -66,7 +66,7 @@ def switch_commands(to, solo=False, root='lab', yaml='<crazyflies.yaml>', uri='<
     if to in ('S2', 'S3'):
         seq.append('S2 / S3 beyond S0: rnn.en 1 on cf5 (NS2 in the controller); a neighbour (cf_second) enabled for A1 / A8 (two-drone flights), disabled with --solo for CIRCLE / FIG8. NOT STATED in the tools: NS2 weights '
                    'are part of the flashed image (study_tree_v2.bin per the docs; check_active_controller.py only after a flash), `res_sign` and `rnn.ready` need no action here')
-    if to in ('S1', 'S3'): seq.append('S1 / S3: INDI needs deck.bcRpm == 1 (docs/study_parameter_decisions.md line 21); check in the first block')
+    if to in ('S1', 'S3'): seq.append('S1 / S3: INDI reads DShot RPM (motor.mN_rpm) since the DShot image (2026-11-22), needs no deck.bcRpm; lab_run.sh prep checks the log variables')
     return seq
 
 
