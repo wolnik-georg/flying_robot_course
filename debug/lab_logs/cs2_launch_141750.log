@@ -1,0 +1,380 @@
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-11-22-14-17-50-387999-flightcontrol1-487990
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [487995]
+[INFO] [crazyflie_server-2]: process started with pid [487996]
+[INFO] [teleop-3]: process started with pid [487997]
+[INFO] [joy_node-4]: process started with pid [487998]
+[INFO] [gui.py-5]: process started with pid [487999]
+[crazyflie_server-2] [INFO] [1795353470.505672449] [crazyflie_server]: CS2_CONNECT_PARAM_PACE_V1 connect-param pacing: ENABLED (150ms per firmware_params write on connect)
+[teleop-3] [INFO] [1795353470.512713579] [teleop]: Mode changed to high_level
+[crazyflie_server-2] [INFO] [1795353470.514454843] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1795353470.516959535] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[motion_capture_tracking_node-1] logClouds=0
+[crazyflie_server-2] [INFO] [1795353470.519219130] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1795353470.522566531] [crazyflie_server]: [cf5] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1795353470.523758440] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1795353470.525793811] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1795353470.527855149] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1795353470.530494430] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1795353470.532529664] [crazyflie_server]: [cf5] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1795353470.533747113] [crazyflie_server]: [cf5] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1795353470.536598286] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1795353470.537903541] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1795353470.540298968] [crazyflie_server]: [cf5] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1795353470.542217405] [crazyflie_server]: [cf5] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1795353470.543288768] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1795353470.545222873] [crazyflie_server]: [cf5] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1795353470.547264155] [crazyflie_server]: [cf5] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1795353470.549144820] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1795353470.551308012] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1795353470.553345789] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1795353470.555659089] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1795353470.557643337] [crazyflie_server]: [cf5] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1795353470.559591731] [crazyflie_server]: [cf5] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1795353470.560778038] [crazyflie_server]: [cf5] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1795353470.562007769] [crazyflie_server]: [cf5] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1795353470.563817802] [crazyflie_server]: [cf5] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1795353470.564984430] [crazyflie_server]: [cf5] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1795353470.566170348] [crazyflie_server]: [cf5] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1795353470.568293477] [crazyflie_server]: [cf5] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1795353470.569570958] [crazyflie_server]: [cf5] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1795353470.571533933] [crazyflie_server]: [cf5] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1795353470.573235510] [crazyflie_server]: [cf5] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1795353470.576500128] [crazyflie_server]: [cf5] uSD: malloc buffer 8192 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1795353470.578733356] [crazyflie_server]: [cf5] Requesting parameters...
+[crazyflie_server-2] [INFO] [1795353470.590926199] [crazyflie_server]: [cf5] Param TOC: 463 entries with CRC 3198878159
+[crazyflie_server-2] [INFO] [1795353470.590982725] [crazyflie_server]: [cf5] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1795353470.625580187] [crazyflie_server]: [cf5] reqParamTOC: 0.111127 s (463 params)
+[crazyflie_server-2] [INFO] [1795353470.625650229] [crazyflie_server]: [cf5] connect-param pacing: ENABLED (150ms) applying 63 firmware_params from yaml
+[crazyflie_server-2] [INFO] [1795353470.625671928] [crazyflie_server]: [cf5] Update parameter "commander.enHighLevel" to 1
+[joy_node-4] [INFO] [1795353470.734262948] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[crazyflie_server-2] [INFO] [1795353470.775757470] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KI_x" to 0.050826
+[crazyflie_server-2] [INFO] [1795353470.925877013] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KI_y" to 0.050826
+[motion_capture_tracking_node-1] [pcl::IterativeClosestPoint::computeTransformation] Not enough correspondences found. Relax your threshold parameters.
+[motion_capture_tracking_node-1] [WARN] [1795353470.945950228] [motion_capture_tracking]: ICP did not converge! for rigidBody cf_second
+[motion_capture_tracking_node-1] [WARN] [1795353470.946010738] [motion_capture_tracking]: No updated pose for cf_second for 0.000482 s.
+[crazyflie_server-2] [INFO] [1795353471.075987580] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_x" to 0.014784
+[crazyflie_server-2] [INFO] [1795353471.226112757] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_y" to 0.014784
+[crazyflie_server-2] [INFO] [1795353471.376228925] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.KR_z" to 0.005555
+[crazyflie_server-2] [INFO] [1795353471.526335835] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dx" to 6.356485
+[crazyflie_server-2] [INFO] [1795353471.676439629] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dy" to 6.356485
+[crazyflie_server-2] [INFO] [1795353471.826578219] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Dz" to 4.251846
+[crazyflie_server-2] [INFO] [1795353471.976688570] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Iz" to 3.307994
+[crazyflie_server-2] [INFO] [1795353472.126789101] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Px" to 11.669801
+[crazyflie_server-2] [INFO] [1795353472.276893042] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Py" to 11.669801
+[crazyflie_server-2] [INFO] [1795353472.426999234] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kpos_Pz" to 6.532290
+[crazyflie_server-2] [INFO] [1795353472.577138793] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_x" to 0.001230
+[crazyflie_server-2] [INFO] [1795353472.727311289] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_y" to 0.001230
+[crazyflie_server-2] [INFO] [1795353472.877431602] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.Kw_z" to 0.001236
+[crazyflie_server-2] [INFO] [1795353473.027546262] [crazyflie_server]: [cf5] Update parameter "ctrlOmarIndi.indi" to 0
+[crazyflie_server-2] [INFO] [1795353473.177677139] [crazyflie_server]: [cf5] Update parameter "ctrlOot5.indi" to 3
+[crazyflie_server-2] [INFO] [1795353473.327865377] [crazyflie_server]: [cf5] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1795353473.478027236] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353473.628222609] [crazyflie_server]: [cf5] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1795353473.778465564] [crazyflie_server]: [cf5] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1795353473.928620382] [crazyflie_server]: [cf5] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1795353474.078798991] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1795353474.228987825] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1795353474.379270076] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1795353474.529536758] [crazyflie_server]: [cf5] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1795353474.679751592] [crazyflie_server]: [cf5] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1795353474.829932168] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1795353474.980111586] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795353475.130310481] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1795353475.280509443] [crazyflie_server]: [cf5] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795353475.430774047] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1795353475.581039995] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1795353475.731279396] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1795353475.881464263] [crazyflie_server]: [cf5] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1795353476.031724135] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1795353476.181982343] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1795353476.332149009] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1795353476.482330557] [crazyflie_server]: [cf5] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1795353476.632520673] [crazyflie_server]: [cf5] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1795353476.782740935] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1795353476.932905119] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1795353477.083079243] [crazyflie_server]: [cf5] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1795353477.233356528] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1795353477.383515496] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1795353477.533682457] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795353477.683951223] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795353477.834167697] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1795353477.984480333] [crazyflie_server]: [cf5] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1795353478.134675368] [crazyflie_server]: [cf5] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1795353478.284900561] [crazyflie_server]: [cf5] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1795353478.435089854] [crazyflie_server]: [cf5] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1795353478.585259513] [crazyflie_server]: [cf5] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1795353478.735416697] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795353478.885567518] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795353479.035745804] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1795353479.185937806] [crazyflie_server]: [cf5] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1795353479.336125841] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1795353479.486265571] [crazyflie_server]: [cf5] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1795353479.636437646] [crazyflie_server]: [cf5] Update parameter "rnn.en" to 1
+[crazyflie_server-2] [INFO] [1795353479.786625612] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353479.936823248] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795353479.936933123] [crazyflie_server]: [cf5] connect-param pacing: finished 63 writes in 9.31 s
+[crazyflie_server-2] [INFO] [1795353479.937034323] [crazyflie_server]: [cf5] ref frame: world
+[crazyflie_server-2] [INFO] [1795353479.937117085] [crazyflie_server]: [cf5] CONTROLLER: Using OutOfTree4 (9) controller
+[crazyflie_server-2] [INFO] [1795353479.940502606] [crazyflie_server]: [cf5] Log TOC: 674 entries with CRC 4243357080
+[crazyflie_server-2] [INFO] [1795353479.940590284] [crazyflie_server]: [cf5] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1795353479.941160337] [crazyflie_server]: [cf5] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.943590878] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795353479.947614984] [crazyflie_server]: [cf5] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.953570619] [crazyflie_server]: [cf5] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.959341701] [crazyflie_server]: [cf5] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.965525510] [crazyflie_server]: [cf5] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.971336293] [crazyflie_server]: [cf5] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.978603822] [crazyflie_server]: [cf5] Logging to rpm at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.984824483] [crazyflie_server]: [cf5] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1795353479.990880742] [crazyflie_server]: [cf5] Logging to usd_status at 5 Hz
+[crazyflie_server-2] [INFO] [1795353479.996360800] [crazyflie_server]: [cf5] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1795353480.002853591] [crazyflie_server]: [cf5] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1795353480.009389323] [crazyflie_server]: [cf5] Requesting memories...
+[crazyflie_server-2] [INFO] [1795353480.012078750] [crazyflie_server]: [cf5] Memories: 7
+[crazyflie_server-2] [INFO] [1795353480.053921908] [crazyflie_server]: [cf_second] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1795353480.059104192] [crazyflie_server]: [cf_second] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1795353480.064096734] [crazyflie_server]: [cf_second] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[crazyflie_server-2] [INFO] [1795353480.071465191] [crazyflie_server]: [cf_second] SYS: I am 0x38393533343547120036003C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1795353480.074286150] [crazyflie_server]: [cf_second] CFGBLK: v1, verification [OK]
+[crazyflie_server-2] [INFO] [1795353480.078770106] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1795353480.083661776] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: forced
+[crazyflie_server-2] [INFO] [1795353480.088360390] [crazyflie_server]: [cf_second] DECK_DISCOVERY: Backend found: deckctrl
+[crazyflie_server-2] [INFO] [1795353480.092900733] [crazyflie_server]: [cf_second] DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[crazyflie_server-2] [INFO] [1795353480.095770171] [crazyflie_server]: [cf_second] DECK_CORE: 2 deck(s) found
+[crazyflie_server-2] [INFO] [1795353480.100801410] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1795353480.103135364] [crazyflie_server]: [cf_second] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1795353480.108753864] [crazyflie_server]: [cf_second] DECK_CORE: Calling INIT on driver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1795353480.113340798] [crazyflie_server]: [cf_second] IMU: BMI088: Using I2C interface.
+[crazyflie_server-2] [INFO] [1795353480.115573225] [crazyflie_server]: [cf_second] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1795353480.120073574] [crazyflie_server]: [cf_second] IMU: BMI088 Gyro connection [OK].
+[crazyflie_server-2] [INFO] [1795353480.124724177] [crazyflie_server]: [cf_second] IMU: BMI088 Accel connection [OK]
+[crazyflie_server-2] [INFO] [1795353480.128986474] [crazyflie_server]: [cf_second] IMU: BMP390 I2C connection [OK]
+[crazyflie_server-2] [INFO] [1795353480.133843453] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1795353480.138521306] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree (6) controller
+[crazyflie_server-2] [INFO] [1795353480.144042097] [crazyflie_server]: [cf_second] MTR-DRV: Using brushless motor driver: BIDIR-DSHOT300
+[crazyflie_server-2] [INFO] [1795353480.149129724] [crazyflie_server]: [cf_second] SYS: About to run tests in system.c.
+[crazyflie_server-2] [INFO] [1795353480.154098758] [crazyflie_server]: [cf_second] SYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1795353480.157196511] [crazyflie_server]: [cf_second] EEPROM: I2C connection [OK].
+[crazyflie_server-2] [INFO] [1795353480.159712977] [crazyflie_server]: [cf_second] STORAGE: Storage check [OK].
+[crazyflie_server-2] [INFO] [1795353480.164267963] [crazyflie_server]: [cf_second] IMU: BMI088 gyro self-test [OK]
+[crazyflie_server-2] [INFO] [1795353480.167008093] [crazyflie_server]: [cf_second] DECK_CORE: Deck 0 test [OK].
+[crazyflie_server-2] [INFO] [1795353480.169174534] [crazyflie_server]: [cf_second] SYS: Self test passed!
+[crazyflie_server-2] [INFO] [1795353480.173846252] [crazyflie_server]: [cf_second] STAB: Wait for sensor calibration...
+[crazyflie_server-2] [INFO] [1795353480.176167410] [crazyflie_server]: [cf_second] SYS: Free heap: 15408 bytes
+[crazyflie_server-2] [INFO] [1795353480.181117139] [crazyflie_server]: [cf_second] STAB: Starting stabilizer loop
+[crazyflie_server-2] [INFO] [1795353480.183340606] [crazyflie_server]: [cf_second] uSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1795353480.187639982] [crazyflie_server]: [cf_second] uSD: malloc buffer 8192 bytes uSD: [OK].
+[crazyflie_server-2] [INFO] [1795353480.189802291] [crazyflie_server]: [cf_second] Requesting parameters...
+[crazyflie_server-2] [INFO] [1795353480.201791201] [crazyflie_server]: [cf_second] Param TOC: 463 entries with CRC 3198878159
+[crazyflie_server-2] [INFO] [1795353480.201865420] [crazyflie_server]: [cf_second] Param TOC: found cache.
+[crazyflie_server-2] [INFO] [1795353480.224383440] [crazyflie_server]: [cf_second] reqParamTOC: 0.172344 s (463 params)
+[crazyflie_server-2] [INFO] [1795353480.224436696] [crazyflie_server]: [cf_second] connect-param pacing: ENABLED (150ms) applying 46 firmware_params from yaml
+[crazyflie_server-2] [INFO] [1795353480.224452059] [crazyflie_server]: [cf_second] Update parameter "commander.enHighLevel" to 1
+[crazyflie_server-2] [INFO] [1795353480.374565270] [crazyflie_server]: [cf_second] Update parameter "ctrlOmarIndi.Kpos_Iz" to 1.500000
+[crazyflie_server-2] [INFO] [1795353480.524790506] [crazyflie_server]: [cf_second] Update parameter "ctrlOmarIndi.indi" to 0
+[crazyflie_server-2] [INFO] [1795353480.674969526] [crazyflie_server]: [cf_second] Update parameter "indi_gains.clamp_en" to 11
+[crazyflie_server-2] [INFO] [1795353480.825228599] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353480.975514737] [crazyflie_server]: [cf_second] Update parameter "indi_gains.dt_usec" to 1
+[crazyflie_server-2] [INFO] [1795353481.125700759] [crazyflie_server]: [cf_second] Update parameter "indi_gains.fc_bw" to 206.000000
+[crazyflie_server-2] [INFO] [1795353481.275858775] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ff_free" to 0
+[crazyflie_server-2] [INFO] [1795353481.426039442] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_dt_us" to 1000
+[crazyflie_server-2] [INFO] [1795353481.576300232] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_order" to 1
+[crazyflie_server-2] [INFO] [1795353481.726494459] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_prewarp" to 1
+[crazyflie_server-2] [INFO] [1795353481.876640117] [crazyflie_server]: [cf_second] Update parameter "indi_gains.filt_tau" to 1
+[crazyflie_server-2] [INFO] [1795353482.026786523] [crazyflie_server]: [cf_second] Update parameter "indi_gains.j_scale" to 1.000000
+[crazyflie_server-2] [INFO] [1795353482.177063753] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr" to 2400.000000
+[crazyflie_server-2] [INFO] [1795353482.327366573] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795353482.477581511] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z" to 2400.000000
+[crazyflie_server-2] [INFO] [1795353482.627789022] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kr_z_geo" to 0.010000
+[crazyflie_server-2] [INFO] [1795353482.777991287] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt1" to 0.000000
+[crazyflie_server-2] [INFO] [1795353482.928151734] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt2" to 0.000000
+[crazyflie_server-2] [INFO] [1795353483.078333658] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt3" to 0.000000
+[crazyflie_server-2] [INFO] [1795353483.228513873] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kt4" to 0.000000
+[crazyflie_server-2] [INFO] [1795353483.378692635] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw" to 170.000000
+[crazyflie_server-2] [INFO] [1795353483.528872197] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_geo" to 0.001100
+[crazyflie_server-2] [INFO] [1795353483.679036722] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z" to 170.000000
+[crazyflie_server-2] [INFO] [1795353483.829200336] [crazyflie_server]: [cf_second] Update parameter "indi_gains.kw_z_geo" to 0.001380
+[crazyflie_server-2] [INFO] [1795353483.979381325] [crazyflie_server]: [cf_second] Update parameter "indi_gains.mass" to 0.041000
+[crazyflie_server-2] [INFO] [1795353484.129547229] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_bw" to 3.000000
+[crazyflie_server-2] [INFO] [1795353484.279702315] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_en" to 0
+[crazyflie_server-2] [INFO] [1795353484.429875469] [crazyflie_server]: [cf_second] Update parameter "indi_gains.notch_f0" to 6.900000
+[crazyflie_server-2] [INFO] [1795353484.580048469] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_clamp" to 10.000000
+[crazyflie_server-2] [INFO] [1795353484.730337790] [crazyflie_server]: [cf_second] Update parameter "indi_gains.res_fc" to 80.000000
+[crazyflie_server-2] [INFO] [1795353484.880520806] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_xy_max" to 0.045000
+[crazyflie_server-2] [INFO] [1795353485.030703128] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tau_z_max" to 0.002500
+[crazyflie_server-2] [INFO] [1795353485.180897556] [crazyflie_server]: [cf_second] Update parameter "indi_gains.thrust_max" to 0.800000
+[crazyflie_server-2] [INFO] [1795353485.331152536] [crazyflie_server]: [cf_second] Update parameter "indi_gains.tilt_max_deg" to 30.000000
+[crazyflie_server-2] [INFO] [1795353485.481358504] [crazyflie_server]: [cf_second] Update parameter "locSrv.extPosStdDev" to 0.001000
+[crazyflie_server-2] [INFO] [1795353485.631544511] [crazyflie_server]: [cf_second] Update parameter "locSrv.extQuatStdDev" to 0.050000
+[crazyflie_server-2] [INFO] [1795353485.781741657] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795353485.931998934] [crazyflie_server]: [cf_second] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795353486.082191306] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_xy" to 64.000000
+[crazyflie_server-2] [INFO] [1795353486.232391502] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kp_z" to 48.000000
+[crazyflie_server-2] [INFO] [1795353486.382570035] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_xy" to 5.000000
+[crazyflie_server-2] [INFO] [1795353486.532750512] [crazyflie_server]: [cf_second] Update parameter "pos_gains.kv_z" to 7.000000
+[crazyflie_server-2] [INFO] [1795353486.682954599] [crazyflie_server]: [cf_second] Update parameter "rnn.en" to 0
+[crazyflie_server-2] [INFO] [1795353486.833143290] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353486.983353927] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795353486.983441919] [crazyflie_server]: [cf_second] connect-param pacing: finished 46 writes in 6.76 s
+[crazyflie_server-2] [INFO] [1795353486.983524782] [crazyflie_server]: [cf_second] ref frame: world
+[crazyflie_server-2] [INFO] [1795353486.983599976] [crazyflie_server]: [cf_second] CONTROLLER: Using OutOfTree4 (9) controller
+[crazyflie_server-2] [INFO] [1795353486.995380262] [crazyflie_server]: [cf_second] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795353486.997564473] [crazyflie_server]: [cf_second] Log TOC: 674 entries with CRC 4243357080
+[crazyflie_server-2] [INFO] [1795353486.997645979] [crazyflie_server]: [cf_second] Log TOC: found cache.
+[crazyflie_server-2] [INFO] [1795353486.998198417] [crazyflie_server]: [cf_second] Logging to attitude at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.011316075] [crazyflie_server]: [cf_second] Logging to gyro_acc at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.023826376] [crazyflie_server]: [cf_second] Logging to indi_a_res at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.036190660] [crazyflie_server]: [cf_second] Logging to indi_alp_notch at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.047399284] [crazyflie_server]: [cf_second] Logging to indi_alp_raw at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.059292223] [crazyflie_server]: [cf_second] Logging to indi_state at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.072047689] [crazyflie_server]: [cf_second] Logging to state at 20 Hz
+[crazyflie_server-2] [INFO] [1795353487.084798681] [crazyflie_server]: [cf_second] Logging to usd_status at 5 Hz
+[crazyflie_server-2] [INFO] [1795353487.096475467] [crazyflie_server]: [cf_second] Logging to /pose at 10 Hz
+[crazyflie_server-2] [INFO] [1795353487.109164353] [crazyflie_server]: [cf_second] Logging to /status at 1 Hz
+[crazyflie_server-2] [INFO] [1795353487.122585459] [crazyflie_server]: [cf_second] Requesting memories...
+[crazyflie_server-2] [INFO] [1795353487.127903347] [crazyflie_server]: [cf_second] Memories: 7
+[crazyflie_server-2] [INFO] [1795353487.191482078] [crazyflie_server]: CS2_RUNTIME_PARAMS_POST_SET_V1 runtime params: forwarded by the post-set callback (not /parameter_events)
+[crazyflie_server-2] [WARN] [1795353487.192831871] [crazyflie_server]: [cf_second] last latency update: 7.147019 s
+[crazyflie_server-2] [WARN] [1795353487.193061729] [crazyflie_server]: [cf5] last latency update: 16.682930 s
+[crazyflie_server-2] [WARN] [1795353487.193915534] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 18638. Received: 27804
+[crazyflie_server-2] [WARN] [1795353487.193938352] [crazyflie_server]: [cf5] Unexpected number of broadcast packets. Sent: 0. Received: 25503
+[crazyflie_server-2] [WARN] [1795353487.194492767] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 1. Received: 518
+[crazyflie_server-2] [WARN] [1795353487.195045847] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 0. Received: 513
+[crazyflie_server-2] [WARN] [1795353487.195833135] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 0. Received: 509
+[crazyflie_server-2] [WARN] [1795353487.195855779] [crazyflie_server]: [cf5] Low broadcast receive rate (0.00 < 0.90). Sent: 1. Received: 0
+[crazyflie_server-2] [WARN] [1795353487.197337610] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 1. Received: 506
+[crazyflie_server-2] [WARN] [1795353487.198735977] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 0. Received: 507
+[crazyflie_server-2] [WARN] [1795353487.200141919] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 1. Received: 511
+[crazyflie_server-2] [WARN] [1795353488.011664204] [crazyflie_server]: [cf5] Unexpected number of unicast packets. Sent: 339. Received: 428
+[crazyflie_server-2] [WARN] [1795353488.063157300] [crazyflie_server]: [cf_second] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1795353489.063172190] [crazyflie_server]: [cf_second] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1795353489.526587302] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [WARN] [1795353492.062176704] [crazyflie_server]: [cf_second] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1795353492.524549067] [crazyflie_server]: [cf5] High latency: 10.1 ms
+[crazyflie_server-2] [WARN] [1795353493.525536526] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [WARN] [1795353494.525536985] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [INFO] [1795353494.733432113] [crazyflie_server]: [all] Update parameter "usec.reset" to 1
+[crazyflie_server-2] [INFO] [1795353494.750045683] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 1
+[crazyflie_server-2] [INFO] [1795353494.750245937] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 1
+[crazyflie_server-2] [INFO] [1795353494.805536021] [crazyflie_server]: [cf5] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [INFO] [1795353494.806107398] [crazyflie_server]: [cf_second] ESTIMATOR: Using Complementary (1) estimator
+[crazyflie_server-2] [WARN] [1795353495.062117920] [crazyflie_server]: [cf_second] High latency: 10.0 ms
+[crazyflie_server-2] [INFO] [1795353495.733635119] [crazyflie_server]: [cf5] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795353495.733981848] [crazyflie_server]: [cf_second] Update parameter "stabilizer.estimator" to 2
+[crazyflie_server-2] [INFO] [1795353495.744122619] [crazyflie_server]: [cf_second] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795353495.745541011] [crazyflie_server]: [cf5] ESTIMATOR: Using Kalman (2) estimator
+[crazyflie_server-2] [INFO] [1795353495.750100376] [crazyflie_server]: [cf_second] ESTKALMAN: WARNING: Kalman prediction rate off (74)
+[crazyflie_server-2] [INFO] [1795353495.751544903] [crazyflie_server]: [cf5] ESTKALMAN: WARNING: Kalman prediction rate off (76)
+[crazyflie_server-2] [INFO] [1795353495.933827393] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 1
+[crazyflie_server-2] [INFO] [1795353495.933932368] [crazyflie_server]: [cf_second] Update parameter "kalman.resetEstimation" to 1
+[crazyflie_server-2] [INFO] [1795353496.134133801] [crazyflie_server]: [cf5] Update parameter "kalman.resetEstimation" to 0
+[crazyflie_server-2] [INFO] [1795353496.134404597] [crazyflie_server]: [cf_second] Update parameter "kalman.resetEstimation" to 0
+[crazyflie_server-2] [WARN] [1795353498.524539832] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1795353499.144396396] [rclcpp]: Failed to get parameters: parameter 'cf5.params.stabilizer.controller' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.156666502] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlOmarIndi.indi' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.157591434] [rclcpp]: Failed to get parameters: parameter 'cf5.params.rnn.en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.158230702] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.158855685] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.inner' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.159480963] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.nn_en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.160185634] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.abg_on_new' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.160994441] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.preset' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.161700000] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.cd' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.162485498] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kp_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.163112664] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kv_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.163691429] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.ki_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.164281400] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kp_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.164999625] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kv_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.165667191] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.ki_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.166240453] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kr_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.166801174] [rclcpp]: Failed to get parameters: parameter 'cf5.params.ctrlFbl.kr_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.167379117] [rclcpp]: Failed to get parameters: cf5.params.ctrlFbl.z_on
+[crazyflie_server-2] [WARN] [1795353499.167957526] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.stabilizer.controller' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.170990582] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlOmarIndi.indi' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.171584056] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.rnn.en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.172211057] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.172844368] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.inner' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.173637940] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.nn_en' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.174308788] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.abg_on_new' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.174905853] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.preset' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.175503289] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.cd' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.176092909] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kp_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.176694908] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kv_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.177312442] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.ki_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.177906391] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kp_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.178490628] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kv_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.179073987] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.ki_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.179678177] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kr_xy' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.180341631] [rclcpp]: Failed to get parameters: parameter 'cf_second.params.ctrlFbl.kr_z' is not initialized
+[crazyflie_server-2] [WARN] [1795353499.180929051] [rclcpp]: Failed to get parameters: cf_second.params.ctrlFbl.z_on
+[crazyflie_server-2] [INFO] [1795353499.181629048] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353499.181969843] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353499.182161803] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795353499.182387686] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795353499.182791881] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795353499.182967522] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795353499.183207295] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353499.183510456] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353499.482160806] [crazyflie_server]: [cf_second] arm(1)
+[crazyflie_server-2] [INFO] [1795353499.482269907] [crazyflie_server]: [cf5] arm(1)
+[crazyflie_server-2] [INFO] [1795353499.495106380] [crazyflie_server]: [cf_second] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1795353499.495529642] [crazyflie_server]: [cf5] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1795353499.512112677] [crazyflie_server]: [cf_second] SUP: Ready to fly
+[crazyflie_server-2] [INFO] [1795353499.515530342] [crazyflie_server]: [cf5] SUP: Ready to fly
+[crazyflie_server-2] [INFO] [1795353499.982160722] [crazyflie_server]: [cf5] takeoff(height=0.500000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1795353500.132416827] [crazyflie_server]: [cf_second] takeoff(height=0.875000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [WARN] [1795353502.525538946] [crazyflie_server]: [cf5] High latency: 11.0 ms
+[crazyflie_server-2] [INFO] [1795353503.782756419] [crazyflie_server]: [cf5] go_to(position=0.000000,-0.500000,0.500000 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [INFO] [1795353503.932948504] [crazyflie_server]: [cf_second] go_to(position=0.000000,0.500000,0.875000 m, yaw=0.000000 rad, duration=3.000000 s, relative=0, group_mask=0)
+[crazyflie_server-2] [INFO] [1795353507.583533493] [crazyflie_server]: [cf5] upload_trajectory(id=0, offset=0)
+[crazyflie_server-2] [INFO] [1795353507.821318857] [crazyflie_server]: [cf_second] upload_trajectory(id=0, offset=0)
+[crazyflie_server-2] [WARN] [1795353508.082239326] [crazyflie_server]: [cf_second] last latency update: 1.023127 s
+[crazyflie_server-2] [WARN] [1795353508.093133796] [crazyflie_server]: [cf_second] High latency: 10.9 ms
+[crazyflie_server-2] [INFO] [1795353508.582845086] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353508.583161821] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353508.583401814] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795353508.583757603] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795353508.584025759] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795353508.584294891] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795353508.584502113] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353508.584714861] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353508.883145796] [crazyflie_server]: [all] Update parameter "usd.runTag" to 1795353508
+[crazyflie_server-2] [INFO] [1795353508.983421671] [crazyflie_server]: [all] Update parameter "usd.logging" to 1
+[crazyflie_server-2] [WARN] [1795353509.075103585] [crazyflie_server]: [cf_second] High latency: 23.0 ms
+[crazyflie_server-2] [INFO] [1795353509.170530188] [crazyflie_server]: [cf5] uSD: Logging to: thesis25
+[crazyflie_server-2] [INFO] [1795353509.275114355] [crazyflie_server]: [cf_second] uSD: Logging to: thesis19
+[crazyflie_server-2] [WARN] [1795353510.010555456] [crazyflie_server]: [cf5] Unexpected number of broadcast packets. Sent: 95. Received: 102
+[crazyflie_server-2] [INFO] [1795353510.437400783] [crazyflie_server]: [all] start_trajectory(id=0, timescale=1.000000, reversed=0, group_mask=0)
+[crazyflie_server-2] [WARN] [1795353510.529537004] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1795353515.524527132] [crazyflie_server]: [cf5] High latency: 10.0 ms
+[crazyflie_server-2] [WARN] [1795353527.529537638] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1795353528.529540791] [crazyflie_server]: [cf5] High latency: 15.0 ms
+[crazyflie_server-2] [WARN] [1795353535.526526629] [crazyflie_server]: [cf5] High latency: 12.0 ms
+[crazyflie_server-2] [INFO] [1795353537.437552863] [crazyflie_server]: [cf5] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353537.437756530] [crazyflie_server]: [cf5] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353537.437988930] [crazyflie_server]: [cf5] Update parameter "indi_gains.rpm_source" to 1
+[crazyflie_server-2] [INFO] [1795353537.438258423] [crazyflie_server]: [cf5] Update parameter "indi_gains.res_sign" to -1
+[crazyflie_server-2] [INFO] [1795353537.438502618] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z" to 16.000000
+[crazyflie_server-2] [INFO] [1795353537.438709111] [crazyflie_server]: [cf5] Update parameter "pos_gains.ki_z_limit" to 1.500000
+[crazyflie_server-2] [INFO] [1795353537.438938377] [crazyflie_server]: [cf_second] Update parameter "stabilizer.controller" to 9
+[crazyflie_server-2] [INFO] [1795353537.439313241] [crazyflie_server]: [cf_second] Update parameter "indi_gains.ctrl_mode" to 0
+[crazyflie_server-2] [INFO] [1795353537.737794353] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1795353537.737870920] [crazyflie_server]: [cf5] land(height=0.060000 m, duration=3.000000 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1795353537.737934850] [crazyflie_server]: [cf_second] land(height=0.060000 m, duration=3.279717 s, group_mask=0)
+[crazyflie_server-2] [INFO] [1795353537.815544246] [crazyflie_server]: [cf5] uSD: Wrote 4932232 B to: thesis25 (13811 of 14390 events)
+[crazyflie_server-2] [INFO] [1795353537.817117259] [crazyflie_server]: [cf_second] uSD: Wrote 4947583 B to: thesis19 (13854 of 14392 events)
+[crazyflie_server-2] [INFO] [1795353542.017775387] [crazyflie_server]: [cf_second] arm(0)
+[crazyflie_server-2] [INFO] [1795353542.017841087] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [INFO] [1795353542.017850663] [crazyflie_server]: [cf5] arm(0)
+[crazyflie_server-2] [INFO] [1795353542.055117538] [crazyflie_server]: [cf_second] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [INFO] [1795353542.097541637] [crazyflie_server]: [cf5] PLAT: WARNING: arming via platform port is deprecated, use supervisor port
+[crazyflie_server-2] [WARN] [1795353542.106112729] [crazyflie_server]: [cf_second] High latency: 54.0 ms
+[crazyflie_server-2] [INFO] [1795353542.111113820] [crazyflie_server]: [cf_second] SUP: Disarming
+[crazyflie_server-2] [INFO] [1795353542.112537584] [crazyflie_server]: [cf5] SUP: Disarming
+[crazyflie_server-2] [INFO] [1795353542.419090424] [crazyflie_server]: [all] Update parameter "usd.logging" to 0
+[crazyflie_server-2] [WARN] [1795353542.529577116] [crazyflie_server]: [cf5] High latency: 15.0 ms
