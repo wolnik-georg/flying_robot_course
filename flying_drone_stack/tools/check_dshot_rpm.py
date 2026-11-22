@@ -3,7 +3,9 @@ Usage: python3 flying_drone_stack/tools/check_dshot_rpm.py [radio uri] [--requir
 Default (prep, motors idle): the four log variables motor.m1_rpm..m4_rpm must exist in the log TOC (the controller's own availability test
 is exactly this), and they are read for about 1 s and printed (idle: 0 or 65535 = no value is normal). Exit 0 if the variables exist.
 --require-spin (ground / hover test, motors turning): additionally every motor must report 0 < rpm < 28000 in the last 10 samples.
-Read-only: nothing is written to the drone. Not tested on hardware when written."""
+Read-only: nothing is written to the drone. Not tested on hardware when written.
+LIMIT: motor.mN_rpm exist on the OLD image too, so this check cannot tell which image is flashed. Image proof = sha256 of the file before flashing + the hover
+check (experiments/diffcotune/lab/dshot_rpm/hover_report.py on the uSD file)."""
 import sys
 import time
 
@@ -22,7 +24,7 @@ with SyncCrazyflie(URI, cf=Crazyflie(rw_cache="./cache")) as scf:
     group = scf.cf.log.toc.toc.get("motor", {})
     missing = [n for n in NAMES if n.split(".")[1] not in group]
     if missing:
-        print("MISSING in the log TOC:", ", ".join(missing), ": STOP, S1/S3 INDI would be silently off")
+        print("MISSING in the log TOC:", ", ".join(missing), ": STOP, the DShot RPM log variables are missing (S1/S3 INDI would be silently off)")
         sys.exit(2)
     lg = LogConfig(name="dshot_rpm", period_in_ms=20)
     for n in NAMES:
@@ -43,4 +45,4 @@ with SyncCrazyflie(URI, cf=Crazyflie(rw_cache="./cache")) as scf:
             sys.exit(1)
         print("DShot RPM plausible on all four motors: OK")
     else:
-        print("OK (log variables exist; idle values 0 / 65535 are normal)")
+        print("OK (log variables exist; this does NOT prove which image is flashed; idle values 0 / 65535 are normal)")

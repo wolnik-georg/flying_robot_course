@@ -21,3 +21,9 @@ The new image is built with the same setting (flag unset).
 ## 4. lab_run.sh prep
 `prep S1|S3`: new step after the uSD deck checks: `flying_drone_stack/tools/check_dshot_rpm.py <cf5 uri>` (CS2 stopped; four log variables motor.m1_rpm..m4_rpm must exist in the log TOC = the controller's own availability test; prints one second of values, idle 0 / 65535 is normal; exit 0). `--require-spin` (Step 3 ground / hover test, motors turning): every motor 0 < rpm < 28000. There was no deck.bcRpm check inside `lab_run.sh`; the manual `check_deck_bcrpm.py` of 22 Nov (7f888376) is removed; `session.py` status text updated. **The tool is not tested on hardware** (written without a drone; compiles).
 Preflight S1 and S3 with the current code: **PREFLIGHT PASSED** (both; check 3c NOTE as before: this PC's yaml is not on the strategy branch).
+
+## Addendum 2026-11-22 (Step 3 preparation)
+- `check_dshot_rpm.py` only proves that the log variables exist (they exist on the old image too). Image proof = sha256 of the file before flashing (9e133f76...) + the hover check below. Wording in the tool and in `lab_run.sh` fixed.
+- **`ctrlOmarIndi.f_rpm` is not an image test:** it is never assigned in `controller_omar_indi.c` (line 492 declares a local `float f_rpm` that shadows `self->f_rpm`; the LOG_ADD at line 792 logs `g_self.f_rpm`), so it reads 0 on every image (S0 round 4 uSD file: 0.000). Use `a_rpm_fz` instead: without a working RPM path `a_rpm_filtered` stays 0 (S1/S3 INDI silently off); with it, hover a_rpm_fz is about 2.7-2.8 m/s2.
+- The expected hover thrust from the DShot rpm is about **0.54 N** = m (g + 2.7) with m = 0.0427 kg (S0 round 4 A1: 0.536 N). The "about 0.50 N" in the Step 1 text was a miscalculation; the +2.7 m/s2 offset itself is right.
+- `hover_report.py <merged cf5 csv> [t_from t_to]`: motor.mN_rpm range (0 < rpm < 28000, outliers counted), thrust, a_rpm_fz, a_imu_fz and the difference; tested on S0 round 4 A1 (RESULT OK).

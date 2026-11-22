@@ -49,3 +49,4 @@
 - Process note: flights continued after the first flip in both round-5 blocks, against the stop decision.
 - Test flights (S0_LAB_CARD item 12): pending, skipped for now by user decision, not cancelled.
 - Cards: cf5 thesis42, cf_second thesis30 (no archive needed). cf5 flipped about 10 times today: check props, motors and frame before the next flight.
+- 16:2x IMAGE CHANGE for S1/S3: Omar C reads DShot RPM now. New image fbl_v2b_dshot_candidate.bin sha256 9e133f76dfc4dd30372aeab8fff1d59e093325f64e170ccb40646050c35657c0 (only controller_omar_indi.c + rpm_filter.h differ from the image of record 87bd963e, RPM_FILTER_HOLD_SENTINEL unset in both). S0 and S2 were tuned (rounds 0-5) on 87bd963e; their control is unchanged (indi 0; the RPM path only feeds logging). The S1/S3 tuning runs on 9e133f76. Details: experiments/diffcotune/lab/dshot_rpm/.

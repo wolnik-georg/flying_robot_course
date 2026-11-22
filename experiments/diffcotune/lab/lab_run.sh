@@ -76,7 +76,7 @@ prep() {  # prep <S0|S2|S1|S3> <round>
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF5_URI" || die "usd deck check cf5"
   hw python3 flying_drone_stack/tools/check_usd_deck.py "$CF2_URI" || die "usd deck check cf_second"
   case "$C" in S1|S3)   # 2026-11-22: Omar C INDI reads DShot RPM (motor.mN_rpm), not the optical deck (deck.bcRpm is not needed any more)
-    hw python3 flying_drone_stack/tools/check_dshot_rpm.py "$CF5_URI" || die "DShot RPM log variables missing on cf5 (S1/S3 INDI would be off): wrong image?";;
+    hw python3 flying_drone_stack/tools/check_dshot_rpm.py "$CF5_URI" || die "DShot RPM log variables missing on cf5 (S1/S3 INDI would be off)"; echo ">>> check_dshot_rpm only proves the log variables exist, not the image: verify the flashed image sha (9e133f76) and run the hover check after the first S1/S3 hover";;
   esac
   ask "Relaunch CS2 (drones on the pad, motors idle) for the uSD gate ground test"
   # uSD gate (2026-11-18): the CS2 broadcast path must make BOTH decks write; needs the new crazyswarm2 build + yaml topic usd_status

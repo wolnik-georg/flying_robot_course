@@ -32,3 +32,6 @@ Gains file: `S2/round_4/gains.yaml`, sha256 prefix `d3ecb62d` (full: `d3ecb62d13
 
 ## Test flights
 Pending (S0_LAB_CARD item 12: A4 cell 2 offset 0.075 held-out and A4 cell 1 offset 0.125 in-sample, 3 x round 0 gains + 3 x theta_best, role test). Skipped for now by user decision, not cancelled.
+
+## Image note (2026-11-22)
+S0 and S2 were tuned and flown on image 87bd963e (fbl_v2b_candidate.bin). Their control is unchanged by the DShot change (indi 0: the RPM path only feeds logging). S1 and S3 are tuned on 9e133f76 (fbl_v2b_dshot_candidate.bin, Omar C reads DShot RPM). See experiments/diffcotune/lab/dshot_rpm/STEP2_RESULT.md.
