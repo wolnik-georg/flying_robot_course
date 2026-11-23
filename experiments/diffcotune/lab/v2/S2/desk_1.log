@@ -1,0 +1,45 @@
+21:17:57 ingest A1.csv                                   A1 attempt 1: gate ok, crashed False floor False, real 13.03 cm
+21:17:57 ingest A8.csv                                   A8 attempt 1: gate ok, crashed False floor False, real 4.03 cm
+21:17:58 ingest A4.csv                                   A4 attempt 1: gate ok, crashed False floor False, real 5.09 cm
+21:17:58 ingest CIRCLE.csv                               CIRCLE attempt 1: gate ok, crashed False floor False, real 7.72 cm
+21:17:58 ingest FIG8.csv                                 FIG8 attempt 1: gate ok, crashed False floor False, real 8.15 cm
+21:17:58 real 3-D RMS 8.22 cm (mean of the 5 usable tuning flights); keep-best round 1 (8.22 cm)
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+Process SpawnPoolWorker-3:
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 131, in worker
+    put((job, i, result))
+  File "/usr/lib/python3.10/multiprocessing/queues.py", line 377, in put
+    self._writer.send_bytes(obj)
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 200, in send_bytes
+    self._send_bytes(m[offset:offset + size])
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 411, in _send_bytes
+    self._send(header + buf)
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 368, in _send
+    n = write(self._handle, buf)
+BrokenPipeError: [Errno 32] Broken pipe
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/usr/lib/python3.10/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/usr/lib/python3.10/multiprocessing/pool.py", line 136, in worker
+    put((job, i, (False, wrapped)))
+  File "/usr/lib/python3.10/multiprocessing/queues.py", line 377, in put
+    self._writer.send_bytes(obj)
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 200, in send_bytes
+    self._send_bytes(m[offset:offset + size])
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 411, in _send_bytes
+    self._send(header + buf)
+  File "/usr/lib/python3.10/multiprocessing/connection.py", line 368, in _send
+    n = write(self._handle, buf)
+BrokenPipeError: [Errno 32] Broken pipe
+/usr/lib/python3.10/multiprocessing/resource_tracker.py:224: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
