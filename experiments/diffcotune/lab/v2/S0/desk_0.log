@@ -1,0 +1,24 @@
+18:59:51 ingest A1_att1.csv                              A1 attempt 1: gate ok, crashed True floor False, real 30.92 cm
+18:59:51 ingest A1_att2.csv                              A1 attempt 2: gate ok, crashed False floor False, real 18.70 cm
+18:59:53 ingest A8.csv                                   A8 attempt 1: gate ok, crashed False floor False, real 6.01 cm
+18:59:53 ingest A4.csv                                   A4 attempt 1: gate ['top drone missing'], crashed False floor False, real 7.79 cm
+18:59:54 ingest A4_att2.csv                              A4 attempt 2: gate ok, crashed False floor False, real 9.57 cm
+18:59:54 ingest CIRCLE.csv                               CIRCLE attempt 1: gate ok, crashed False floor False, real 6.08 cm
+18:59:55 ingest FIG8.csv                                 FIG8 attempt 1: gate ok, crashed False floor False, real 6.30 cm
+18:59:55 real 3-D RMS 10.53 cm (mean of the 5 usable tuning flights); keep-best round 0 (10.53 cm)
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+No CUDA runtime is found, using CUDA_HOME='/usr'
+19:15:15 fit beta: J0 7.313 -> 5.779 (best epoch 50), epochs 51, psi [-0.0, 0.142, 0.421, -0.169]
+19:31:58 tune theta: J0 0.03377 -> 0.02668 (best epoch 23), epochs 51, gain-limit hits [9, 20, 21, 0, 5, 0, 0, 0, 0, 15]
+19:32:25 PREVIEW PASSED
+predicted 3-D RMS (mean over the 5 tuning scenarios and 2 seeds): new set 6.95 cm, best flown set 7.96 cm (27 s)
+  A1      new: 16.4 cm tilt | 16.4 cm tilt          best: 20.4 cm tilt+floor | 20.5 cm tilt+floor
+  A8      new: 4.9 cm | 4.7 cm                      best: 5.8 cm | 5.6 cm
+  CIRCLE  new: 3.1 cm | 3.2 cm                      best: 3.5 cm | 3.5 cm
+  FIG8    new: 3.1 cm | 3.1 cm                      best: 3.3 cm | 3.4 cm
+  A4      new: 7.3 cm floor | 7.2 cm floor          best: 7.0 cm floor | 6.7 cm floor
+  events the best flown set shows too (not counted): A1 seed 2000 tilt, A1 seed 2001 tilt, A4 seed 2000 floor, A4 seed 2001 floor
+19:32:30 round 0 done in 1960 s
