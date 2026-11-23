@@ -195,3 +195,12 @@ predicted 3-D RMS (mean over the 5 tuning scenarios and 2 seeds): new set 6.78 c
   FIG8    new: 1.9 cm | 1.5 cm                      best: 1.9 cm | 1.5 cm
   A4      new: 4.0 cm | 5.3 cm                      best: 5.1 cm | 5.7 cm
 ```
+
+## Planning agent check and user decision (23 Nov night)
+
+- Round 0 is NOT re-flown: round 0 reuses the flown default-gain round 0 flights of all four (user decision); the next flights are the v2.1 round 1 sets.
+- Checked OK: all steps in [0.90, 1.10]; rpm_delay fitted for S1/S3 only (0.769 / 0.887); J_sysId total falls for all four; KR/Kw 5.9-6.5.
+- Note S1: the J_sysId p part rises 0.0112 -> 0.0156 while the total falls 3.80 -> 1.79 (the w part dominates, 3.66 -> 1.74).
+- S1, S0, S2 round 1: PREVIEW PASSED, cleared to fly.
+- S3 round 1: PREVIEW FAILED (A1 floor in sim, both seeds). USER DECISION: fly it anyway. Reason: the set is within +-1 % of the default gains (tune best epoch 1); those gains flew A1 on hardware with 4.2 cm and no floor; in sim the best flown set itself crashes on A1 seed 2001.
+- Next session: prep and cards for round 1 of all four (GAINS_ROOT=lab/v21), S1 + S3 first, then S0 + S2; at most 2 desk steps at once; uSD logs only, cards < 85 files; lab lock before the first flight (FBL worktree untouched).
