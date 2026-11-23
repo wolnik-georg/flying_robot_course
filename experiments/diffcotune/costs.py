@@ -27,7 +27,7 @@ def window(t, scenario_s, kind='task'):
 # body rates by differential flatness, reference.flat_ref), the same four parts as J_sysId. Default (ours): the position-only cost below.
 # Protocol v2 (user decision 23 Nov): DIFFCOTUNE_METHOD=ours2 = the frozen 'ours' method with the task cost of DiffTune's hardware loss, ||p - p*||^2 + tr(I - R*^T R)/2 (weight 1, per tick, mean over the task window);
 # R* = the attitude of the reference by differential flatness (reference.flat_ref, the same q* as TASK_FORM 'paper'). tr(I - R*^T R)/2 = 1 - cos(angle) = 2 (1 - <q, q*>^2) for unit quaternions (sign invariant).
-TASK_FORM = {'paper': 'paper', 'ours2': 'att'}.get(os.environ.get('DIFFCOTUNE_METHOD', 'ours'), 'position')
+TASK_FORM = {'paper': 'paper', 'ours2': 'att', 'ours21': 'att'}.get(os.environ.get('DIFFCOTUNE_METHOD', 'ours'), 'position')
 
 
 def j_task(out, scenario_s, scale=1.0):

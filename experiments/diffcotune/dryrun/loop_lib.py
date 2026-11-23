@@ -38,12 +38,15 @@ assert GRAD_MODE in ('reverse', 'forward', 'mixed', 'mixed2', 'cfwd'), GRAD_MODE
 # task cost = unweighted full-state ||x - x*||^2 (costs.TASK_FORM), J_sysId = unweighted p + v + q + w, the paper's stop rule on the raw cost (change < 1e-3 or rise > 1e-3, cap K/2 = 50 epochs, the LAST iterate is returned),
 # no sensor noise in the tuning step, no +-25 % trust region (gains stay positive: they are exp(phi) times the defaults), plain Adam lr from DIFFCOTUNE_LR (Stage 8 step 1c), 6 rounds. 'ours' = the frozen method of Stages 3-7, now with 6 rounds (decision 8).
 METHOD = os.environ.get('DIFFCOTUNE_METHOD', 'ours')
-assert METHOD in ('ours', 'paper', 'ours2'), METHOD
+assert METHOD in ('ours', 'paper', 'ours2', 'ours21'), METHOD
 METHOD_SETTINGS = {'ours': dict(lr=0.01, best=True, states=('p', 'v', 'q'), gain_limit=0.25, noise=True, paper_stop=False, n_rounds=6),
                    'paper': dict(lr=float(os.environ.get('DIFFCOTUNE_LR', '0.01'))          # Stage 8 step 1c: 0.01 chosen by the probe rule (S0, real error after round 1: 1e-3 18.31, 3e-3 17.67, 1e-2 17.24 cm)
                            , best=False, states=('p', 'v', 'q', 'w'), gain_limit=None, noise=False, paper_stop=True, n_rounds=6),
                    # Protocol v2 (user decision 23 Nov, docs/diffcotune_decisions_2026-11-23.md): 'ours' with the cost ||p - p*||^2 + tr(I - R*^T R)/2 (costs.TASK_FORM 'att'), J_sysId states p, v, q, w and the RPM delay fitted for S1 / S3 (FIX_RD default off); everything else as 'ours'
-                   'ours2': dict(lr=0.01, best=True, states=('p', 'v', 'q', 'w'), gain_limit=0.25, noise=True, paper_stop=False, n_rounds=6)}
+                   'ours2': dict(lr=0.01, best=True, states=('p', 'v', 'q', 'w'), gain_limit=0.25, noise=True, paper_stop=False, n_rounds=6),
+                   # Protocol v2.1 (user decision 23 Nov evening, docs/diffcotune_decisions_2026-11-23.md decision 4): ours2 with the gain step limited to +-10 % per round, every round (DiffTune trust region); everything else as ours2
+                   # linear_limit: theta_new in [(1 - gain_limit), (1 + gain_limit)] x theta_l (log bounds [log 0.9, log 1.1], asymmetric), exactly DiffTune's +-10 %
+                   'ours21': dict(lr=0.01, best=True, states=('p', 'v', 'q', 'w'), gain_limit=0.10, linear_limit=True, noise=True, paper_stop=False, n_rounds=6)}
 N_BETA = 5 if CTRL in ('S1', 'S3') else 4          # S1 / S3 carry the rpm delay as a fifth beta (decision 5b.2 of the plan)
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): DIFFCOTUNE_FIX_RD=1 keeps the fifth beta (RPM delay) of S1 / S3 at the calibration (psi = 0, 4.0502 ms) and fits only the other four; the model still has N_BETA = 5 entries. Default off (= all earlier results).
 FIX_RD = os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1' and N_BETA == 5
@@ -310,13 +313,21 @@ def _jn_best(rf):
     return '%.3f (epoch %d)' % (rf['J_best'] / rf['J0'], rf['best_epoch'])
 
 
+def _limit_box(x0, idx, limit):
+    """Box around the starting point for the projected Adam step: limit None / 0 = no box (lo = hi = x0, unused); a float w = symmetric log half width [x0 - w, x0 + w] (ours, ours2: w = log 1.25);
+    a tuple (a, b) = log offsets [x0 + a, x0 + b] (protocol v2.1 'ours21': (log 0.9, log 1.1) = theta_new in [0.9, 1.1] x theta, DiffTune's linear +-10 %)."""
+    x0 = np.array(x0, float)[idx]
+    if isinstance(limit, (tuple, list)): return x0 + limit[0], x0 + limit[1]
+    return x0 - (limit or 0), x0 + (limit or 0)
+
+
 def _adam_paper(eval_fn, x0, idx, lr, K2, label, limit=None):
     """Stage 4e (T1): the literal stop rule of the paper (arXiv 2505.24068, p. 4, Alg. 2 and 3) on the RAW cost in SI units (no normalisation):
     stop when |J_k - J_{k-1}| < 1e-3 or J_k > J_{k-1} + 1e-3 (k >= 1); the LAST iterate is returned, i.e. the iterate x_k whose cost J_k triggered the
     stop, also after a rise (the paper returns (beta_k, theta_i)). At most K2 epochs; if no stop fires the iterate after K2 updates is not evaluated
     (the last evaluated iterate x_{K2-1} is returned). Same Adam (beta1 0.9, beta2 0.999, eps 1e-8, reset per loop) and the same projection onto
     +-limit (log half width) as _adam_best. Non-finite cost: previous iterate (not stated in the paper). `epochs` = number of cost evaluations (rollouts)."""
-    hits = np.zeros(len(idx), int); lo = np.array(x0, float)[idx] - (limit or 0); hi = np.array(x0, float)[idx] + (limit or 0)
+    hits = np.zeros(len(idx), int); lo, hi = _limit_box(x0, idx, limit)
     x = np.array(x0, float); m = np.zeros(len(idx)); v = np.zeros(len(idx)); log = []; J0 = None; J_prev = None; x_prev = x.copy(); reason = 'max epochs'
     for k in range(K2):
         t0 = time.time()
@@ -344,7 +355,7 @@ def _adam_best(eval_fn, x0, idx, lr, K2, checks, check_fn, label, limit=None):
     """limit (Stage 3d, deviation 11): None, or the half width w = log(1.25) of a box around the starting point x0[idx] (the flown gains theta_l); after every
     Adam step the coordinates are projected onto [x0 - w, x0 + w] (projected Adam). `hits` = per coordinate the number of projected steps on which the
     projection changed the value."""
-    hits = np.zeros(len(idx), int); lo = np.array(x0, float)[idx] - (limit or 0); hi = np.array(x0, float)[idx] + (limit or 0)
+    hits = np.zeros(len(idx), int); lo, hi = _limit_box(x0, idx, limit)
     x = np.array(x0, float); m = np.zeros(len(idx)); v = np.zeros(len(idx)); log = []; J0 = None; reason = 'max epochs'
     bx, bJ, bk = x.copy(), np.inf, -1
     for k in range(K2 + 1):

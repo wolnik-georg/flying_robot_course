@@ -33,7 +33,7 @@ _ctrl = sys.argv[sys.argv.index('--controller') + 1] if '--controller' in sys.ar
 os.environ['DIFFCOTUNE_GRAD_MODE'] = sys.argv[sys.argv.index('--grad-mode') + 1] if '--grad-mode' in sys.argv else GRAD_MODE_DEFAULT.get(_ctrl, 'reverse')
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): S1 / S3 keep the RPM delay at the calibration (4.0502 ms) and fit the other four beta (loop_lib.FIX_RD). The table is True for S1 and S3 (flipped 15 Nov after the Stage 5c round tests with the delay fitted had run; switch: --fix-rd / --fit-rd). Set BEFORE loop_lib is imported.
 FIX_RD_DEFAULT = dict(S0=False, S1=True, S2=False, S3=True)
-if os.environ.get('DIFFCOTUNE_METHOD') == 'ours2' or ('--method' in sys.argv and sys.argv[sys.argv.index('--method') + 1] == 'ours2'): FIX_RD_DEFAULT = dict(S0=False, S1=False, S2=False, S3=False)          # protocol v2 (decision 3): the RPM delay is fitted for S1 / S3
+if os.environ.get('DIFFCOTUNE_METHOD') in ('ours2', 'ours21') or ('--method' in sys.argv and sys.argv[sys.argv.index('--method') + 1] in ('ours2', 'ours21')): FIX_RD_DEFAULT = dict(S0=False, S1=False, S2=False, S3=False)          # protocol v2 (decision 3): the RPM delay is fitted for S1 / S3
 os.environ['DIFFCOTUNE_FIX_RD'] = '1' if '--fix-rd' in sys.argv else ('0' if '--fit-rd' in sys.argv else ('1' if FIX_RD_DEFAULT.get(_ctrl, False) else '0'))
 NO_PREVIEW = '--no-preview' in sys.argv          # Stage 8b
 HERE = Path(__file__).resolve().parent
@@ -51,7 +51,7 @@ ROBOT = 'cf5'          # the study drone (crazyflies.yaml: cf5 = bottom, scored)
 # the peer input of the S0 model: the LOGGED top-drone path for the two-drone tuning scenarios (decision 13 Nov: on 23 Oct A1 it moves the model from 10.1 to 20.4-20.7 cm against the real 20.5-22.1 cm)
 TOP_FROM_LOG = ('A1', 'A8')
 _M = L.METHOD_SETTINGS[L.METHOD]          # Stage 8: ours | paper (DIFFCOTUNE_METHOD)
-SETTINGS = dict(method=L.METHOD, lr=_M['lr'], epochs=50, best_iterate=_M['best'], paper_stop=_M['paper_stop'], noise=_M['noise'], states=list(_M['states']), gain_limit=_M['gain_limit'], noise_seed_base=6000, n_noise_seeds=2, skip_last_fit=True, n_rounds=_M['n_rounds'], grad_mode=os.environ.get('DIFFCOTUNE_GRAD_MODE', 'reverse'), fix_rd=os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1')
+SETTINGS = dict(method=L.METHOD, lr=_M['lr'], epochs=50, best_iterate=_M['best'], paper_stop=_M['paper_stop'], noise=_M['noise'], states=list(_M['states']), gain_limit=_M['gain_limit'], noise_seed_base=6000, n_noise_seeds=2, skip_last_fit=True, n_rounds=_M['n_rounds'], **({'linear_limit': True} if _M.get('linear_limit') else {}), grad_mode=os.environ.get('DIFFCOTUNE_GRAD_MODE', 'reverse'), fix_rd=os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1')
 
 
 def say(*a):
@@ -187,7 +187,7 @@ def run_round(l, folder, sd, top='auto', strict=True):
             if rs_restart: x = np.array(x, float); x[:10] = np.array(keep['phi'])          # Stage 8e rule RS 1a
             pool.noise_seeds = tuple(S['noise_seed_base'] + S['n_noise_seeds'] * l + j for j in range(S['n_noise_seeds'])) if S.get('noise', True) else None          # Stage 8: paper = no noise in the tuning step
             x, rt = L.adam_inner(lambda xx: pool.rollouts('task', xx, None), x, np.arange(10), S['lr'], K2=S['epochs'], label='tune theta, round %d' % l, stop=False, best=not S.get('paper_stop', False), paper_stop=S.get('paper_stop', False),
-                                 limit=float(np.log(1 + S['gain_limit'])) if S['gain_limit'] else None)
+                                 limit=((float(np.log(1 - S['gain_limit'])), float(np.log(1 + S['gain_limit']))) if S.get('linear_limit') else float(np.log(1 + S['gain_limit']))) if S['gain_limit'] else None)
             rep['tune'] = dict(epochs=rt['epochs'], J0=rt['J0'], J_best=rt['J_best'], J_end=rt.get('J_end'), best_epoch=rt['best_epoch'], hits=rt['hits'], noise_seeds=(list(pool.noise_seeds) if pool.noise_seeds else None), epochs_used=rt['epochs'], reason=rt.get('reason'))
             say('tune theta: J0 %.4g -> %.4g (%s), epochs %d, gain-limit hits %s' % (rt['J0'], rt['J_best'] if rt['J_best'] is not None else rt['J_end'], ('best epoch %d' % rt['best_epoch']) if rt['best_epoch'] is not None else 'last iterate, stop: %s' % rt['reason'], rt['epochs'], rt['hits']))
         rep['seconds_tune'] = time.time() - t2
@@ -240,7 +240,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--controller', default='S0'); ap.add_argument('--round', type=int); ap.add_argument('--logs'); ap.add_argument('--init', action='store_true')
     ap.add_argument('--state-dir', default=None); ap.add_argument('--n-rounds', type=int, default=None); ap.add_argument('--grad-mode', choices=['reverse', 'forward', 'mixed', 'mixed2', 'cfwd'], default=None)
-    ap.add_argument('--lenient', action='store_true', help='dry / mock tests only: fit floor flights too (as the dry runs do); a real round keeps the strict rule'); ap.add_argument('--method', choices=['paper', 'ours', 'ours2'], default=None, help='Stage 8b: ours (default, frozen protocol v1) or paper (tested, not adopted); ours2 = protocol v2 (23 Nov: cost position + attitude, J_sysId p v q w, RPM delay fitted for S1 / S3)'); ap.add_argument('--no-preview', action='store_true', help='Stage 8b: skip the frsim safety preview of the new gain set'); ap.add_argument('--fix-rd', action='store_true', help='Stage 5c: keep the RPM delay of S1 / S3 at the calibration'); ap.add_argument('--fit-rd', action='store_true', help='fit the RPM delay (Stage 5c reference runs)')
+    ap.add_argument('--lenient', action='store_true', help='dry / mock tests only: fit floor flights too (as the dry runs do); a real round keeps the strict rule'); ap.add_argument('--method', choices=['paper', 'ours', 'ours2', 'ours21'], default=None, help='Stage 8b: ours (default, frozen protocol v1) or paper (tested, not adopted); ours2 = protocol v2 (23 Nov: cost position + attitude, J_sysId p v q w, RPM delay fitted for S1 / S3); ours21 = ours2 with the gain step limited to +-10 % per round (protocol v2.1)'); ap.add_argument('--no-preview', action='store_true', help='Stage 8b: skip the frsim safety preview of the new gain set'); ap.add_argument('--fix-rd', action='store_true', help='Stage 5c: keep the RPM delay of S1 / S3 at the calibration'); ap.add_argument('--fit-rd', action='store_true', help='fit the RPM delay (Stage 5c reference runs)')
     ap.add_argument('--top', default='auto', choices=['auto', 'logged', 'planned'], help='peer path of the S0 model: auto = logged for A1 / A8 (default), planned = frsim top path')
     a = ap.parse_args(); a.state_dir = a.state_dir or str(HERE / a.controller)
     assert a.controller == L.CTRL and a.controller in L.MODEL_MODULES, 'controller must be one of S0 S1 S2 S3'

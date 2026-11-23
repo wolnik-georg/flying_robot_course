@@ -30,7 +30,7 @@ def res(ok, name, msg='', note=False):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--method', choices=['ours', 'ours2'], default='ours'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--method', choices=['ours', 'ours2', 'ours21'], default='ours'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
     import numpy as np
     ctrl = a.controller; print('preflight', ctrl, time.strftime('%Y-%m-%d %H:%M:%S'), flush=True)
     # ---- 1 imports
@@ -107,10 +107,14 @@ def main():
     res(idx_ok and rot['CIRCLE'] == -90.0 and rot['FIG8'] == -90.0 and (rot.get('A4') == -90.0 or 'A4' not in rot) and len(m) == nt + 6, '4a flights.json template', 'tuning order %s (lab order), rotate_deg %s, %d test flights' % ([x['scenario'] for x in m[:nt]], rot, sum(x['role'] == 'test' for x in m)))
     old = RD.SETTINGS['n_rounds']; sys.argv = ['round.py']
     S_ = RD.SETTINGS; scen_ok = [s for s, _ in L.TUNING] == ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'] and L.TUNING_SET == '5'
-    v2 = S_['method'] == 'ours2'          # protocol v2 (23 Nov): same as the frozen variant but states p v q w and the RPM delay fitted
-    frozen = (S_['method'] in ('ours', 'ours2') and S_['n_rounds'] == 6 and S_['skip_last_fit'] and S_['states'] == (['p', 'v', 'q', 'w'] if v2 else ['p', 'v', 'q']) and S_['gain_limit'] == 0.25 and S_['lr'] == 0.01 and not S_['paper_stop'] and S_['noise'] and S_['n_noise_seeds'] == 2
+    v2 = S_['method'] in ('ours2', 'ours21'); glim = 0.10 if S_['method'] == 'ours21' else 0.25          # protocol v2 (23 Nov): same as the frozen variant but states p v q w and the RPM delay fitted
+    frozen = (S_['method'] in ('ours', 'ours2', 'ours21') and S_['n_rounds'] == 6 and S_['skip_last_fit'] and S_['states'] == (['p', 'v', 'q', 'w'] if v2 else ['p', 'v', 'q']) and S_['gain_limit'] == glim and bool(S_.get('linear_limit', False)) == (S_['method'] == 'ours21') and S_['lr'] == 0.01 and not S_['paper_stop'] and S_['noise'] and S_['n_noise_seeds'] == 2
               and S_['epochs'] == 50 and S_['best_iterate'] and S_['grad_mode'] == 'cfwd' and scen_ok and ((not L.FIX_RD) if v2 else (L.FIX_RD if L.CTRL in ('S1', 'S3') else not L.FIX_RD)))
     res(frozen, '4b frozen lab variant (Stage 8b, decision 2)', 'method %s, rounds %d, tuning %s, states %s, 50 epochs best iterate %s, Adam lr %g, gain limit %s, noise seeds %d, paper stop %s, grad mode %s, RPM delay %s: must be the frozen "ours" variant' % (S_['method'], S_['n_rounds'], [s for s, _ in L.TUNING], ''.join(S_['states']), S_['best_iterate'], S_['lr'], S_['gain_limit'], S_['n_noise_seeds'], S_['paper_stop'], S_['grad_mode'], ('fixed 4.0502 ms' if L.FIX_RD else 'fitted') if L.CTRL in ('S1', 'S3') else 'n/a'))
+    import numpy as _np
+    _lim = ((float(_np.log(1 - S_['gain_limit'])), float(_np.log(1 + S_['gain_limit']))) if S_.get('linear_limit') else float(_np.log(1 + S_['gain_limit']))) if S_['gain_limit'] else None
+    _lo, _hi = L._limit_box(_np.zeros(10), _np.arange(10), _lim); _want = (0.9, 1.1) if S_['method'] == 'ours21' else (0.8, 1.25)
+    res(abs(_np.exp(_lo[0]) - _want[0]) < 1e-12 and abs(_np.exp(_hi[0]) - _want[1]) < 1e-12, '4c gain step bounds', 'method %s: theta_new in [%.4f, %.4f] x theta_l (expected [%.2f, %.2f]%s)' % (S_['method'], _np.exp(_lo[0]), _np.exp(_hi[0]), _want[0], _want[1], ', linear +-10 % as DiffTune' if S_['method'] == 'ours21' else ''))
     gm = RD.GRAD_MODE_DEFAULT.get(L.CTRL); res(gm == RD.SETTINGS['grad_mode'] == L.GRAD_MODE, '4d grad mode', 'gradient mode of %s: %s (round.py default table), loop_lib.GRAD_MODE %s' % (L.CTRL, gm, L.GRAD_MODE))
     # ---- 5 resources
     sizes = [p.stat().st_size for p in (TOP.parent / 'logs' / 'bank_unseen_S0_2026-10-23').glob('*/*_merged_usd.csv')]
