@@ -51,6 +51,13 @@ def flights_registered(logs, c, l):
     return m if all(s in tun for s, _ in TUNING_ORDER) else None
 
 
+def _method_args(state_json):
+    """Protocol v2 (23 Nov): the method of the round is the one written in its state.json (settings.method); v1 states say 'ours' = the round.py default, so nothing is added for them."""
+    try: m = json.load(open(state_json)).get('settings', {}).get('method', 'ours')
+    except OSError: return []
+    return [] if m == 'ours' else ['--method', m]
+
+
 def hhmm(t): return time.strftime('%H:%M', time.localtime(t))
 
 
@@ -101,7 +108,7 @@ def cmd_desk(a):
     need = Path(a.logs) / 'flights.json'
     if not need.exists(): sys.exit('no flights.json in %s' % a.logs)
     if not a.now and not flights_registered(Path(a.logs).parent.parent, a.controller, l): sys.exit('the tuning flights of round %d are not registered (manifest); use --now to start anyway' % l)
-    cmd = ['nice', '-n', '19', sys.executable, str(HERE / 'round.py'), '--controller', a.controller, '--round', str(l), '--logs', a.logs, '--state-dir', str(Path(a.root) / a.controller), '--n-rounds', str(a.n_rounds)] + (['--top', a.top] if a.top else []) + (['--lenient'] if getattr(a, 'lenient', False) else [])
+    cmd = ['nice', '-n', '19', sys.executable, str(HERE / 'round.py'), '--controller', a.controller, '--round', str(l), '--logs', a.logs, '--state-dir', str(Path(a.root) / a.controller), '--n-rounds', str(a.n_rounds)] + (['--top', a.top] if a.top else []) + (['--lenient'] if getattr(a, 'lenient', False) else []) + _method_args(Path(a.root) / a.controller / ('round_%d' % l) / 'state.json')
     logf = Path(a.root) / a.controller / ('desk_%d.log' % l); logf.parent.mkdir(parents=True, exist_ok=True)
     if a.print_only: print(' '.join(cmd)); return
     p = subprocess.Popen(cmd, stdout=open(logf, 'w'), stderr=subprocess.STDOUT, start_new_session=True)

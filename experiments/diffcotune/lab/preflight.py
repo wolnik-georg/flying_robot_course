@@ -19,6 +19,9 @@ FAILS = []
 if '--controller' in sys.argv:            # Stage 5: select the model of loop_lib before it is imported
     os.environ['DIFFCOTUNE_CONTROLLER'] = sys.argv[sys.argv.index('--controller') + 1]
 
+if '--method' in sys.argv:            # protocol v2 (23 Nov): --method ours2 checks the v2 settings (states p v q w, RPM delay fitted); default = v1 (ours)
+    os.environ['DIFFCOTUNE_METHOD'] = sys.argv[sys.argv.index('--method') + 1]
+
 
 def res(ok, name, msg='', note=False):
     tag = 'NOTE' if note else ('PASS' if ok else 'FAIL')
@@ -27,7 +30,7 @@ def res(ok, name, msg='', note=False):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--controller', default='S0'); ap.add_argument('--pad', nargs=2, type=float); ap.add_argument('--yaml'); ap.add_argument('--method', choices=['ours', 'ours2'], default='ours'); ap.add_argument('--ns2-file', help='mock test: weights file to hash instead of the one the model loads'); ap.add_argument('--ns2-yaml', help='mock test: yaml text to check item 7b on instead of --yaml / the strategy branch'); a = ap.parse_args()
     import numpy as np
     ctrl = a.controller; print('preflight', ctrl, time.strftime('%Y-%m-%d %H:%M:%S'), flush=True)
     # ---- 1 imports
@@ -104,8 +107,9 @@ def main():
     res(idx_ok and rot['CIRCLE'] == -90.0 and rot['FIG8'] == -90.0 and (rot.get('A4') == -90.0 or 'A4' not in rot) and len(m) == nt + 6, '4a flights.json template', 'tuning order %s (lab order), rotate_deg %s, %d test flights' % ([x['scenario'] for x in m[:nt]], rot, sum(x['role'] == 'test' for x in m)))
     old = RD.SETTINGS['n_rounds']; sys.argv = ['round.py']
     S_ = RD.SETTINGS; scen_ok = [s for s, _ in L.TUNING] == ['A1', 'A8', 'CIRCLE', 'FIG8', 'A4'] and L.TUNING_SET == '5'
-    frozen = (S_['method'] == 'ours' and S_['n_rounds'] == 6 and S_['skip_last_fit'] and S_['states'] == ['p', 'v', 'q'] and S_['gain_limit'] == 0.25 and S_['lr'] == 0.01 and not S_['paper_stop'] and S_['noise'] and S_['n_noise_seeds'] == 2
-              and S_['epochs'] == 50 and S_['best_iterate'] and S_['grad_mode'] == 'cfwd' and scen_ok and (L.FIX_RD if L.CTRL in ('S1', 'S3') else not L.FIX_RD))
+    v2 = S_['method'] == 'ours2'          # protocol v2 (23 Nov): same as the frozen variant but states p v q w and the RPM delay fitted
+    frozen = (S_['method'] in ('ours', 'ours2') and S_['n_rounds'] == 6 and S_['skip_last_fit'] and S_['states'] == (['p', 'v', 'q', 'w'] if v2 else ['p', 'v', 'q']) and S_['gain_limit'] == 0.25 and S_['lr'] == 0.01 and not S_['paper_stop'] and S_['noise'] and S_['n_noise_seeds'] == 2
+              and S_['epochs'] == 50 and S_['best_iterate'] and S_['grad_mode'] == 'cfwd' and scen_ok and ((not L.FIX_RD) if v2 else (L.FIX_RD if L.CTRL in ('S1', 'S3') else not L.FIX_RD)))
     res(frozen, '4b frozen lab variant (Stage 8b, decision 2)', 'method %s, rounds %d, tuning %s, states %s, 50 epochs best iterate %s, Adam lr %g, gain limit %s, noise seeds %d, paper stop %s, grad mode %s, RPM delay %s: must be the frozen "ours" variant' % (S_['method'], S_['n_rounds'], [s for s, _ in L.TUNING], ''.join(S_['states']), S_['best_iterate'], S_['lr'], S_['gain_limit'], S_['n_noise_seeds'], S_['paper_stop'], S_['grad_mode'], ('fixed 4.0502 ms' if L.FIX_RD else 'fitted') if L.CTRL in ('S1', 'S3') else 'n/a'))
     gm = RD.GRAD_MODE_DEFAULT.get(L.CTRL); res(gm == RD.SETTINGS['grad_mode'] == L.GRAD_MODE, '4d grad mode', 'gradient mode of %s: %s (round.py default table), loop_lib.GRAD_MODE %s' % (L.CTRL, gm, L.GRAD_MODE))
     # ---- 5 resources

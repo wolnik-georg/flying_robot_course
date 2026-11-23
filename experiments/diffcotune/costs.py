@@ -25,13 +25,17 @@ def window(t, scenario_s, kind='task'):
 # Stage 8: DIFFCOTUNE_METHOD=paper selects the task cost of the paper (arXiv 2505.24068, p. 4: c = ||x_t - x_t*||^2, "for states that evolve in different geometric spaces (e.g. position in R^3 and quaternions in S^3)
 # an unweighted sum of the individual cumulative norm squared errors"): ||p - p*||^2 + ||v - v*||^2 + ||q - q*||^2 + ||w - w*||^2 against the reference STATE (position, velocity from the trajectory; attitude and
 # body rates by differential flatness, reference.flat_ref), the same four parts as J_sysId. Default (ours): the position-only cost below.
-TASK_FORM = 'paper' if os.environ.get('DIFFCOTUNE_METHOD', 'ours') == 'paper' else 'position'
+# Protocol v2 (user decision 23 Nov): DIFFCOTUNE_METHOD=ours2 = the frozen 'ours' method with the task cost of DiffTune's hardware loss, ||p - p*||^2 + tr(I - R*^T R)/2 (weight 1, per tick, mean over the task window);
+# R* = the attitude of the reference by differential flatness (reference.flat_ref, the same q* as TASK_FORM 'paper'). tr(I - R*^T R)/2 = 1 - cos(angle) = 2 (1 - <q, q*>^2) for unit quaternions (sign invariant).
+TASK_FORM = {'paper': 'paper', 'ours2': 'att'}.get(os.environ.get('DIFFCOTUNE_METHOD', 'ours'), 'position')
 
 
 def j_task(out, scenario_s, scale=1.0):
     """(B,) mean squared 3-D position error [m^2 * scale] against the reference of the same ticks (TASK_FORM 'paper': the unweighted sum over p, v, q, w, see above)."""
     if TASK_FORM == 'paper':
         return j_task_paper(out, scenario_s, scale)
+    if TASK_FORM == 'att':
+        return j_task_att(out, scenario_s, scale)
     m = torch.as_tensor(window(out['t'], scenario_s, 'task'))
     e = out['x'][m] - out['ref_pos'][m][:, None, :]
     return scale * (e * e).sum(-1).mean(0)
@@ -60,3 +64,36 @@ def j_task_paper(out, scenario_s, scale=1.0, parts=False):
     p = {'p': (dp * dp).sum(-1).mean(0), 'v': (dv * dv).sum(-1).mean(0), 'q': (dq * dq).sum(-1).mean(0), 'w': (dw * dw).sum(-1).mean(0)}
     tot = scale * (p['p'] + p['v'] + p['q'] + p['w'])
     return (tot, p) if parts else tot
+
+
+def att_err(q, qs):
+    """tr(I - R*^T R)/2 = 1 - cos(angle between the attitudes) = 2 (1 - <q, q*>^2) for unit quaternions (rows x, y, z, w); sign invariant. Torch or numpy; the quaternions are normalised here."""
+    if isinstance(q, torch.Tensor):
+        q = q / q.norm(dim=-1, keepdim=True); qs = qs / qs.norm(dim=-1, keepdim=True); return 2.0 * (1.0 - (q * qs).sum(-1) ** 2)
+    q = q / np.linalg.norm(q, axis=-1, keepdims=True); qs = qs / np.linalg.norm(qs, axis=-1, keepdims=True); return 2.0 * (1.0 - (q * qs).sum(-1) ** 2)
+
+
+def j_task_att(out, scenario_s, scale=1.0, parts=False):
+    """Protocol v2: (B,) mean over the task window of ||p - p*||^2 + tr(I - R*^T R)/2 (both weight 1); out['ref_q'][:, 0:4] = q* (x, y, z, w). parts=True also returns {'p': ..., 'att': ...}."""
+    m = torch.as_tensor(window(out['t'], scenario_s, 'task'))
+    qs = out['ref_q'][m][:, None, 0:4]
+    dp = out['x'][m] - out['ref_pos'][m][:, None, :]
+    p = {'p': (dp * dp).sum(-1).mean(0), 'att': att_err(out['q'][m], qs).mean(0)}
+    tot = scale * (p['p'] + p['att'])
+    return (tot, p) if parts else tot
+
+
+def trace_cost(tr, ref, scenario_s, att=None):
+    """Cost of a state trace (n, 23, ingest layout; model frame) over the scored window (t > SCORE_AFTER_S, t <= scenario end), against the model reference `ref`:
+    returns dict(pos=mean ||p - p*||^2 [m^2], z=mean (z - z*)^2, att=mean tr(I - R*^T R)/2 or None, cost=pos + att (att form) or pos (position form)).
+    p* = the reference position interpolated at the trace times (as usd_ingest.real_cost); q* = the flatness attitude of the reference at the nearest reference tick (1 ms)."""
+    att = (TASK_FORM == 'att') if att is None else att
+    t = tr[:, 0]; m = (t > config.SCORE_AFTER_S) & (t <= scenario_s)
+    rp = np.stack([np.interp(t[m], ref.time_s, ref.pos[:, j]) for j in range(3)], 1)
+    e = tr[m, 1:4] - rp; pos = float((e * e).sum(-1).mean()); z = float((e[:, 2] ** 2).mean())
+    a = None
+    if att:
+        qref, _ = reference.flat_ref(ref); idx = np.clip(np.searchsorted(ref.time_s, t[m]), 0, len(ref.time_s) - 1)
+        i0 = np.clip(idx - 1, 0, len(ref.time_s) - 1); idx = np.where(np.abs(ref.time_s[i0] - t[m]) <= np.abs(ref.time_s[idx] - t[m]), i0, idx)
+        a = float(att_err(tr[m, 7:11], qref[idx]).mean())
+    return dict(pos=pos, z=z, att=a, cost=pos + (a if a is not None else 0.0))

@@ -33,6 +33,7 @@ _ctrl = sys.argv[sys.argv.index('--controller') + 1] if '--controller' in sys.ar
 os.environ['DIFFCOTUNE_GRAD_MODE'] = sys.argv[sys.argv.index('--grad-mode') + 1] if '--grad-mode' in sys.argv else GRAD_MODE_DEFAULT.get(_ctrl, 'reverse')
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): S1 / S3 keep the RPM delay at the calibration (4.0502 ms) and fit the other four beta (loop_lib.FIX_RD). The table is True for S1 and S3 (flipped 15 Nov after the Stage 5c round tests with the delay fitted had run; switch: --fix-rd / --fit-rd). Set BEFORE loop_lib is imported.
 FIX_RD_DEFAULT = dict(S0=False, S1=True, S2=False, S3=True)
+if os.environ.get('DIFFCOTUNE_METHOD') == 'ours2' or ('--method' in sys.argv and sys.argv[sys.argv.index('--method') + 1] == 'ours2'): FIX_RD_DEFAULT = dict(S0=False, S1=False, S2=False, S3=False)          # protocol v2 (decision 3): the RPM delay is fitted for S1 / S3
 os.environ['DIFFCOTUNE_FIX_RD'] = '1' if '--fix-rd' in sys.argv else ('0' if '--fit-rd' in sys.argv else ('1' if FIX_RD_DEFAULT.get(_ctrl, False) else '0'))
 NO_PREVIEW = '--no-preview' in sys.argv          # Stage 8b
 HERE = Path(__file__).resolve().parent
@@ -98,6 +99,7 @@ def cell_of(scen, role, idx):
 def run_round(l, folder, sd, top='auto', strict=True):
     t_start = time.time(); sd = Path(sd); folder = Path(folder); rd = sd / ('round_%d' % l)
     st = json.load(open(rd / 'state.json')); S = st['settings']; assert st['round'] == l, 'state is for round %d' % st['round']
+    assert S.get('method', 'ours') == L.METHOD, 'state of round %d was written by method %s but this run is %s (pass --method %s)' % (l, S.get('method', 'ours'), L.METHOD, S.get('method', 'ours'))          # protocol v2: a state is never run under the other protocol
     phi_l = np.array(st['phi']); psi = np.array(st['psi']); ext = st.get('ext', 0); last0 = l == S['n_rounds'] + ext - 1          # Stage 8d2: ext = extension rounds added so far (state), `last` is decided after keep-best (below)
     man = json.load(open(folder / 'flights.json'))
     # 1. ingest + gate + selection
@@ -128,7 +130,7 @@ def run_round(l, folder, sd, top='auto', strict=True):
     flights = [dict(scenario=g['scenario'], file=g['m']['file'], attempt=g['m']['attempt'], role=g['m']['role'], gate_ok=g['gate']['ok'], gate_reasons=g['gate']['reasons'],
                     rows=g['gate']['rows'], rate_hz=g['gate']['rate_hz'], gap_fraction=g['gate']['gap_fraction'], frame=g.get('frame'), reference_check=g.get('reference_check'),
                     crashed=g.get('flags', {}).get('crashed'), floor=g.get('flags', {}).get('floor'), tilt_max_deg=g.get('flags', {}).get('tilt_max_deg'),
-                    rms3d_cm=g.get('rms3d_cm'), used=any(g is p for p in pick.values()) and g['m']['role'] != 'fallback') for g in ing]
+                    rms3d_cm=g.get('rms3d_cm'), **({} if g.get('att_cost') is None else dict(pos_cost_m2=g.get('pos_cost_m2'), att_cost=g.get('att_cost'), cost_m2=g.get('cost_m2'))), used=any(g is p for p in pick.values()) and g['m']['role'] != 'fallback') for g in ing]
     rep = dict(round=l, controller=L.CTRL, phi=phi_l.tolist(), psi_before=psi.tolist(), flights=flights, missing=missing, seconds_ingest=seconds_ingest)
     keep0 = st['keep']; no_fb = [s for s in r3 if s not in fb]
     # Stage 8e3 (T3b, planning agent 17 Nov): every scenario R3 (3 attempts each, no usable flight) is not a stop when theta_best exists and every fallback flight is present: no beta fit (beta unchanged, as loop_lib.py with 0 usable flights),
@@ -142,7 +144,7 @@ def run_round(l, folder, sd, top='auto', strict=True):
             rep['status'] = ('R3: %s failed all 3 attempts. Fly each of them ONCE more with theta_best = the gains of round %d (%s) (session.py manifest writes it as role "fallback", attempt 4; the fallback flight is not used for the fit), then run this command again. If the fallback flight itself fails: pause, check and fix the drone and setup (battery, props, mocap, EKF toggle) and fly the fallback once more; the round continues either way. A lab day that must stop resumes next session from the saved state (%s). Nothing fitted, no next round written.' % (no_fb, keep0['round'], sd / ('round_%d' % keep0['round']) / 'gains.yaml', rd / 'state.json'))
         rd.mkdir(exist_ok=True); json.dump(rep, open(rd / 'report.json', 'w'), indent=1); (rd / 'report.md').write_text('# Round %d: %s\n' % (l, rep['status'])); say(rep['status'])
         return rep
-    fl = [dict(cost=pick[s]['cost_m2'], z_cost=pick[s]['z_cost_m2'], crashed=False, floor=False, tries=pick[s]['m']['attempt'] - 1) for s, _ in L.TUNING if pick[s] is not None]          # Stage 8d: used flights only (all 5 unless R3)
+    fl = [dict(cost=pick[s]['cost_m2'], z_cost=pick[s]['z_cost_m2'], **({} if pick[s].get('att_cost') is None else dict(pos_cost=pick[s]['pos_cost_m2'], att_cost=pick[s]['att_cost'])), crashed=False, floor=False, tries=pick[s]['m']['attempt'] - 1) for s, _ in L.TUNING if pick[s] is not None]          # Stage 8d: used flights only (all 5 unless R3)
     rc = L.round_cost(fl) if fl else dict(cost=float('nan'), rms3d_cm=float('nan'), z_rms_cm=float('nan'), crashed=0, floor=0, tries=[]); rep['real'] = rc          # Stage 8e3: no usable flight on any scenario (all R3): cost nan
     rep['eligible'] = not r3; rep['r3_version'] = R3_VERSION
     if r3: rep['r3'] = dict(scenarios=r3, fallback_files={s: fb[s]['m']['file'] for s in fb}, theta_best_round=None if keep0 is None else keep0['round'], fallback_flags={s: dict(crashed=fb[s].get('flags', {}).get('crashed'), floor=fb[s].get('flags', {}).get('floor'), gate_ok=fb[s]['gate']['ok']) for s in fb}, note='fallback flights are not used for the fit, the cost or theta_best; this set is not eligible for keep-best; a failed fallback flight is only recorded (pause, fix the setup, fly it once more, the round continues either way)')
@@ -238,7 +240,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--controller', default='S0'); ap.add_argument('--round', type=int); ap.add_argument('--logs'); ap.add_argument('--init', action='store_true')
     ap.add_argument('--state-dir', default=None); ap.add_argument('--n-rounds', type=int, default=None); ap.add_argument('--grad-mode', choices=['reverse', 'forward', 'mixed', 'mixed2', 'cfwd'], default=None)
-    ap.add_argument('--lenient', action='store_true', help='dry / mock tests only: fit floor flights too (as the dry runs do); a real round keeps the strict rule'); ap.add_argument('--method', choices=['paper', 'ours'], default=None, help='Stage 8b: ours (default of the lab, frozen) or paper (tested, not adopted)'); ap.add_argument('--no-preview', action='store_true', help='Stage 8b: skip the frsim safety preview of the new gain set'); ap.add_argument('--fix-rd', action='store_true', help='Stage 5c: keep the RPM delay of S1 / S3 at the calibration'); ap.add_argument('--fit-rd', action='store_true', help='fit the RPM delay (Stage 5c reference runs)')
+    ap.add_argument('--lenient', action='store_true', help='dry / mock tests only: fit floor flights too (as the dry runs do); a real round keeps the strict rule'); ap.add_argument('--method', choices=['paper', 'ours', 'ours2'], default=None, help='Stage 8b: ours (default, frozen protocol v1) or paper (tested, not adopted); ours2 = protocol v2 (23 Nov: cost position + attitude, J_sysId p v q w, RPM delay fitted for S1 / S3)'); ap.add_argument('--no-preview', action='store_true', help='Stage 8b: skip the frsim safety preview of the new gain set'); ap.add_argument('--fix-rd', action='store_true', help='Stage 5c: keep the RPM delay of S1 / S3 at the calibration'); ap.add_argument('--fit-rd', action='store_true', help='fit the RPM delay (Stage 5c reference runs)')
     ap.add_argument('--top', default='auto', choices=['auto', 'logged', 'planned'], help='peer path of the S0 model: auto = logged for A1 / A8 (default), planned = frsim top path')
     a = ap.parse_args(); a.state_dir = a.state_dir or str(HERE / a.controller)
     assert a.controller == L.CTRL and a.controller in L.MODEL_MODULES, 'controller must be one of S0 S1 S2 S3'

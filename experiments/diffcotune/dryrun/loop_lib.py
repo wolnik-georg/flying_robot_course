@@ -38,10 +38,12 @@ assert GRAD_MODE in ('reverse', 'forward', 'mixed', 'mixed2', 'cfwd'), GRAD_MODE
 # task cost = unweighted full-state ||x - x*||^2 (costs.TASK_FORM), J_sysId = unweighted p + v + q + w, the paper's stop rule on the raw cost (change < 1e-3 or rise > 1e-3, cap K/2 = 50 epochs, the LAST iterate is returned),
 # no sensor noise in the tuning step, no +-25 % trust region (gains stay positive: they are exp(phi) times the defaults), plain Adam lr from DIFFCOTUNE_LR (Stage 8 step 1c), 6 rounds. 'ours' = the frozen method of Stages 3-7, now with 6 rounds (decision 8).
 METHOD = os.environ.get('DIFFCOTUNE_METHOD', 'ours')
-assert METHOD in ('ours', 'paper'), METHOD
+assert METHOD in ('ours', 'paper', 'ours2'), METHOD
 METHOD_SETTINGS = {'ours': dict(lr=0.01, best=True, states=('p', 'v', 'q'), gain_limit=0.25, noise=True, paper_stop=False, n_rounds=6),
                    'paper': dict(lr=float(os.environ.get('DIFFCOTUNE_LR', '0.01'))          # Stage 8 step 1c: 0.01 chosen by the probe rule (S0, real error after round 1: 1e-3 18.31, 3e-3 17.67, 1e-2 17.24 cm)
-                           , best=False, states=('p', 'v', 'q', 'w'), gain_limit=None, noise=False, paper_stop=True, n_rounds=6)}
+                           , best=False, states=('p', 'v', 'q', 'w'), gain_limit=None, noise=False, paper_stop=True, n_rounds=6),
+                   # Protocol v2 (user decision 23 Nov, docs/diffcotune_decisions_2026-11-23.md): 'ours' with the cost ||p - p*||^2 + tr(I - R*^T R)/2 (costs.TASK_FORM 'att'), J_sysId states p, v, q, w and the RPM delay fitted for S1 / S3 (FIX_RD default off); everything else as 'ours'
+                   'ours2': dict(lr=0.01, best=True, states=('p', 'v', 'q', 'w'), gain_limit=0.25, noise=True, paper_stop=False, n_rounds=6)}
 N_BETA = 5 if CTRL in ('S1', 'S3') else 4          # S1 / S3 carry the rpm delay as a fifth beta (decision 5b.2 of the plan)
 # Stage 5c, RPM delay fixed (user decision, 14 Nov 2026): DIFFCOTUNE_FIX_RD=1 keeps the fifth beta (RPM delay) of S1 / S3 at the calibration (psi = 0, 4.0502 ms) and fits only the other four; the model still has N_BETA = 5 entries. Default off (= all earlier results).
 FIX_RD = os.environ.get('DIFFCOTUNE_FIX_RD', '0') == '1' and N_BETA == 5
@@ -201,6 +203,15 @@ def flight_cost(trace, scenario_s):
     return float((e * e).sum(-1).mean()), float((e[:, 2] ** 2).mean())
 
 
+def flight_cost_ref(trace, scen, cell):
+    """(cost, z cost, extra) of a simulated flight: v1 = flight_cost (extra = {}); protocol v2 (costs.TASK_FORM 'att') = position + attitude cost, extra = dict(pos_cost, att_cost)."""
+    import costs as C
+    ref = R.build(scen, cell)
+    if C.TASK_FORM != 'att':
+        return flight_cost(trace, ref.scenario_s) + ({},)
+    tc = C.trace_cost(trace, ref, ref.scenario_s); return tc['cost'], tc['z'], dict(pos_cost=tc['pos'], att_cost=tc['att'])
+
+
 def floor_failed(trace, scenario_s):
     """Stage 3d floor rule: the mean z of the scored part is < 50 % of the mean reference z (the drone stays on the floor). Reported for every flight; it
     does not trigger a repeat (only the tilt rule does, as before)."""
@@ -218,8 +229,8 @@ def fly_set(pool, phi, plant, scen_list, seeds, max_tries=3):
         res = pool.fly(jobs); nxt = []
         for i, (tr, stable, tilt) in zip(todo, res):
             tries[i] += 1
-            c, cz = flight_cost(tr, R.build(*scen_list[i]).scenario_s)
-            final[i] = dict(trace=tr, cost=c, z_cost=cz, floor=floor_failed(tr, R.build(*scen_list[i]).scenario_s), seed=jobs[todo.index(i)][4], tries=tries[i], crashed=not stable, tilt=tilt)
+            c, cz, ex = flight_cost_ref(tr, *scen_list[i])
+            final[i] = dict(trace=tr, cost=c, z_cost=cz, **ex, floor=floor_failed(tr, R.build(*scen_list[i]).scenario_s), seed=jobs[todo.index(i)][4], tries=tries[i], crashed=not stable, tilt=tilt)
             if not stable and tries[i] < max_tries:
                 nxt.append(i)
         todo = nxt
@@ -241,8 +252,8 @@ def fly_set_strict(pool, phi, plant, scen_list, seeds, max_tries=3):
         jobs = [(scen_list[i][0], scen_list[i][1], gains, plant, seeds[i] + 1000 * len(att[i])) for i in todo]
         res = pool.fly(jobs); nxt = []
         for i, job, (tr, stable, tilt) in zip(todo, jobs, res):
-            sc = R.build(*scen_list[i]).scenario_s; c, cz = flight_cost(tr, sc); fl_ = floor_failed(tr, sc)
-            att[i].append(dict(trace=tr, cost=c, z_cost=cz, floor=fl_, seed=job[4], tries=len(att[i]) + 1, crashed=not stable, tilt=tilt, usable=bool(stable and not fl_)))
+            sc = R.build(*scen_list[i]).scenario_s; c, cz, ex = flight_cost_ref(tr, *scen_list[i]); fl_ = floor_failed(tr, sc)
+            att[i].append(dict(trace=tr, cost=c, z_cost=cz, **ex, floor=fl_, seed=job[4], tries=len(att[i]) + 1, crashed=not stable, tilt=tilt, usable=bool(stable and not fl_)))
             if not att[i][-1]['usable'] and len(att[i]) < max_tries:
                 nxt.append(i)
         todo = nxt
@@ -252,7 +263,9 @@ def fly_set_strict(pool, phi, plant, scen_list, seeds, max_tries=3):
 def round_cost(flights):
     """Real cost of a gain set: mean over the scenarios of the mean squared 3-D error [m^2]; 3-D RMS and z RMS in cm."""
     c = float(np.mean([f['cost'] for f in flights])); cz = float(np.mean([f['z_cost'] for f in flights]))
-    return dict(cost=c, rms3d_cm=100 * c ** 0.5, z_rms_cm=100 * cz ** 0.5, crashed=int(sum(f['crashed'] for f in flights)), floor=int(sum(f['floor'] for f in flights)), tries=[f['tries'] for f in flights])
+    cp = float(np.mean([f.get('pos_cost', f['cost']) for f in flights]))          # protocol v2 (ours2): cost = position + attitude part; the 3-D RMS stays the position part (v1: pos_cost = cost)
+    ca = float(np.mean([f['att_cost'] for f in flights])) if all(f.get('att_cost') is not None for f in flights) else None
+    return dict(cost=c, rms3d_cm=100 * cp ** 0.5, **({} if ca is None else dict(pos_cost=cp, att_cost=ca)), z_rms_cm=100 * cz ** 0.5, crashed=int(sum(f['crashed'] for f in flights)), floor=int(sum(f['floor'] for f in flights)), tries=[f['tries'] for f in flights])
 
 
 def adam_inner(eval_fn, x0, idx, lr, K2=50, checks=None, check_fn=None, label='', stop=True, best=False, limit=None, paper_stop=False):

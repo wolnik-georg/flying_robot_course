@@ -54,8 +54,9 @@ stack_guard() {  # 2026-11-20 incident: an unnoticed ROS reinstall on the lab PC
   fi
   ROS_FP_NOW="$FP"
 }
+GAINS_ROOT="${GAINS_ROOT:-$LAB}"   # protocol v2 (23 Nov): GAINS_ROOT=$PWD/experiments/diffcotune/lab/v2 reads the gains of lab/v2/<C>/round_<l>; default = protocol v1 (lab/<C>)
 prep() {  # prep <S0|S2|S1|S3> <round>
-  local C="$1" L="$2" G="$LAB/$1/round_$2/gains.yaml"
+  local C="$1" L="$2" G="$GAINS_ROOT/$1/round_$2/gains.yaml"
   [ -f "$G" ] || die "no $G (round.py --init / desk step not done for $C round $L)"
   [ -f "$YAML" ] || die "yaml not found: $YAML (set YAML=...)"
   say "PREP $C round $L   yaml=$YAML"
@@ -102,7 +103,7 @@ EOT
 }
 
 solo() {  # solo <C> <round>
-  local C="$1" L="$2" G="$LAB/$1/round_$2/gains.yaml"
+  local C="$1" L="$2" G="$GAINS_ROOT/$1/round_$2/gains.yaml"
   [ -f "$G" ] || die "no $G"; [ -f "$YAML" ] || die "yaml not found: $YAML"
   say "SOLO SWITCH $C round $L (cf_second disabled)"
   need_cs2_stopped

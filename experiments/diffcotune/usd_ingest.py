@@ -25,6 +25,7 @@ import numpy as np
 
 import ingest
 import reference as R
+import costs as COSTS
 from frsim import config
 
 BOTTOM_PREFIX = 'cf5'
@@ -265,6 +266,9 @@ def ingest_flight(path, scenario, cell, top_from_log=False, rotate_deg=None, lag
                reference_check_raw=reference_check(fl, ref), reference_check=reference_check(fl, ref, frame if align else None), flags=flight_flags(tr, ref))
     c, cz = real_cost(tr, ref)
     out.update(cost_m2=c, z_cost_m2=cz, rms3d_cm=100 * c ** 0.5, usable=gate['ok'] and not np.isnan(c))
+    if COSTS.TASK_FORM == 'att':          # Protocol v2 (ours2): the cost of the round is ||p - p*||^2 + tr(I - R*^T R)/2; the 3-D position RMS stays the position part
+        tc = COSTS.trace_cost(tr, ref, ref.scenario_s)
+        out.update(cost_m2=tc['cost'], pos_cost_m2=tc['pos'], att_cost=tc['att'], z_cost_m2=tc['z'], rms3d_cm=100 * tc['pos'] ** 0.5, usable=gate['ok'] and not np.isnan(tc['cost']))
     return out
 
 
