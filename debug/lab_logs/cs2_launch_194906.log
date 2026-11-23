@@ -1,0 +1,803 @@
+[INFO] [launch]: All log files can be found below /home/flyingrobots/.ros/log/2026-11-23-19-49-06-536570-flightcontrol1-600570
+[INFO] [launch]: Default logging verbosity is set to INFO
+/opt/ros/jazzy/lib/python3.12/site-packages/launch/conditions/launch_configuration_equals.py:53: UserWarning: The 'LaunchConfigurationEquals' and 'LaunchConfigurationNotEquals' Conditions are  deprecated. Use the 'EqualsSubstitution' and 'NotEqualsSubstitution' substitutions instead! E.g.:
+  IfCondition(
+  	EqualsSubstitution(LaunchConfiguration('some_launch_arg'), "some_equality_check")
+  )
+  warnings.warn(
+[INFO] [motion_capture_tracking_node-1]: process started with pid [600575]
+[INFO] [crazyflie_server-2]: process started with pid [600576]
+[INFO] [teleop-3]: process started with pid [600577]
+[INFO] [joy_node-4]: process started with pid [600578]
+[INFO] [gui.py-5]: process started with pid [600579]
+[crazyflie_server-2] [INFO] [1795459746.666922529] [crazyflie_server]: CS2_CONNECT_PARAM_PACE_V1 connect-param pacing: ENABLED (150ms per firmware_params write on connect)
+[motion_capture_tracking_node-1] logClouds=0
+[teleop-3] [INFO] [1795459746.671384550] [teleop]: Mode changed to high_level
+[motion_capture_tracking_node-1] [WARN] [1795459746.677410970] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282481 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.677513408] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.677518962] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.677293 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.677523122] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.677293 s.
+[crazyflie_server-2] [INFO] [1795459746.678673891] [crazyflie_server]: [cf5] SYS: ----------------------------
+[crazyflie_server-2] [INFO] [1795459746.681900161] [crazyflie_server]: [cf5] SYS: Crazyflie 2.1 Brushless is up and running!
+[crazyflie_server-2] [INFO] [1795459746.685931846] [crazyflie_server]: [cf5] SYS: Build 8:ccb0606ddcfe (2026.04 +8) MODIFIED
+[motion_capture_tracking_node-1] [WARN] [1795459746.686998938] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719457
+[motion_capture_tracking_node-1]  0.493735
+[motion_capture_tracking_node-1] 0.0282356 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.687079473] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.687087240] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.686931 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.687093226] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.686931 s.
+[crazyflie_server-2] [INFO] [1795459746.691936017] [crazyflie_server]: [cf5] SYS: I am 0x3839353334354717001C002C and I have 1024KB of flash!
+[crazyflie_server-2] [INFO] [1795459746.693587789] [crazyflie_server]: [cf5] CFGBLK: v1, verification [OK]
+[motion_capture_tracking_node-1] [WARN] [1795459746.697344018] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719531
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282355 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.697420190] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.697427114] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.697260 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.697433338] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.697260 s.
+[crazyflie_server-2] [INFO] [1795459746.697635558] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found: onewire
+[crazyflie_server-2] [INFO] [1795459746.705893158] [crazyflie_server]: [cf5] DECK_DISCOVERY: Backend found:DECK_DISCOVERY: Backend found:DECK_FORCED: CONFIG_DECK_FORCE=bcRpm found
+[motion_capture_tracking_node-1] [WARN] [1795459746.707312805] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719473
+[motion_capture_tracking_node-1]  0.493735
+[motion_capture_tracking_node-1] 0.0282388 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.707411257] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.707419145] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.707230 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.707426429] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.707230 s.
+[crazyflie_server-2] [INFO] [1795459746.707599062] [crazyflie_server]: [cf5] ver bcUSD for deck 0
+[crazyflie_server-2] [INFO] [1795459746.709577210] [crazyflie_server]: [cf5] uSD: mount SD-Card [OK].
+[crazyflie_server-2] [INFO] [1795459746.711524249] [crazyflie_server]: [cf5] ver bcRpm for deck 1
+[crazyflie_server-2] [INFO] [1795459746.713434876] [crazyflie_server]: [cf5] uSD: wait for sensors
+[crazyflie_server-2] [INFO] [1795459746.714996742] [crazyflie_server]: [cf5] K].
+[crazyflie_server-2] [INFO] [1795459746.716217654] [crazyflie_server]: [cf5] OK]
+[motion_capture_tracking_node-1] [WARN] [1795459746.717335449] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719567
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1]  0.028241 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.717419488] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.717427225] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.717251 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.717433823] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.717251 s.
+[crazyflie_server-2] [INFO] [1795459746.722128346] [crazyflie_server]: [cf5] IMU: BMP390 I2C connection [OKESTIMATOR: Using Complementary) controller
+[motion_capture_tracking_node-1] [WARN] [1795459746.727046789] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719546
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282354 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.727125497] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.727135762] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.726984 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.727143857] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.726984 s.
+[crazyflie_server-2] [INFO] [1795459746.730304310] [crazyflie_server]: [cf5] MTR-DRV: Using brushless motorSYS: About to run tests in sysSYS: NRF51 version: 2024.10 (C21B)
+[crazyflie_server-2] [INFO] [1795459746.731399294] [crazyflie_server]: [cf5] ]
+[crazyflie_server-2] [INFO] [1795459746.732933037] [crazyflie_server]: [cf5] SYS: Self test passed!
+[motion_capture_tracking_node-1] [WARN] [1795459746.737169927] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719551
+[motion_capture_tracking_node-1]  0.493734
+[motion_capture_tracking_node-1] 0.0282475 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.737551720] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.737559796] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.737096 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.737566571] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.737096 s.
+[crazyflie_server-2] [INFO] [1795459746.741778080] [crazyflie_server]: [cf5] STAB: Wait for sensor calibratSTAB: Starting stabilizer loopuSD: Config read [OK].
+[crazyflie_server-2] [INFO] [1795459746.747033747] [crazyflie_server]: [cf5] uSD: [OK].
+[motion_capture_tracking_node-1] [WARN] [1795459746.747173472] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719503
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282357 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.747267622] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.747274637] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.747082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.747280879] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.747082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.757258091] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071956
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282364 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.757336133] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.757342607] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.757188 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.757348647] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.757188 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.767403885] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719553
+[motion_capture_tracking_node-1]  0.493731
+[motion_capture_tracking_node-1] 0.0282337 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.767489602] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.767496605] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.767343 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.767503196] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.767343 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.777073520] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719583
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1]  0.028233 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.777422129] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.777429034] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.776996 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.777435210] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.776996 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.787354783] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719596
+[motion_capture_tracking_node-1]  0.493732
+[motion_capture_tracking_node-1] 0.0282369 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.787424092] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.787429923] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.787289 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.787436089] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.787289 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.797179240] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071954
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282509 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.797271420] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.797278702] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.797035 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.797285443] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.797035 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.807405794] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719507
+[motion_capture_tracking_node-1]   0.49373
+[motion_capture_tracking_node-1] 0.0282338 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.807477861] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.807483571] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.807275 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.807489634] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.807275 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.817437604] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719584
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282462 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.817519187] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.817525375] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.817339 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.817530975] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.817339 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.828634889] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719568
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282312 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.828897989] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.828905563] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.828528 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.828911744] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.828528 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.837443260] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719577
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282369 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.837532292] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.837538310] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.837286 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.837544414] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.837286 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.847210789] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719516
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282358 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.847302153] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.847309103] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.847095 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.847315262] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.847095 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.856942532] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719523
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282327 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.857007140] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.857011720] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.856875 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.857015778] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.856875 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.867543660] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719552
+[motion_capture_tracking_node-1]  0.493735
+[motion_capture_tracking_node-1]  0.028235 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.867610701] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.867615366] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.867438 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.867619488] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.867438 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.877229667] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719582
+[motion_capture_tracking_node-1]   0.49373
+[motion_capture_tracking_node-1] 0.0282306 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.877276992] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.877281623] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.877191 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.877285792] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.877191 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.886971248] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719606
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282333 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.887026486] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.887031007] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.886911 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.887035250] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.886911 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.897361513] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719546
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282357 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.897433108] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.897438285] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.897246 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.897442689] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.897246 s.
+[joy_node-4] [INFO] [1795459746.900292217] [joy_node]: Opened joystick: Xbox 360 Controller.  deadzone: 0.050000
+[motion_capture_tracking_node-1] [WARN] [1795459746.907422914] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719548
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282355 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.907473565] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.907478305] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.907383 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.907482737] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.907383 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.917166909] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719549
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282333 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.917219097] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.917223621] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.917115 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.917227102] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.917115 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.927319950] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719546
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282423 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.927387289] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.927393677] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.927248 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.927397680] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.927248 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.937287007] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719515
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1]  0.028242 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.937338076] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.937342690] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.937233 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.937347370] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.937233 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.947149879] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071949
+[motion_capture_tracking_node-1]  0.493746
+[motion_capture_tracking_node-1] 0.0282478 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.947195057] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.947199429] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.947088 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.947203327] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.947088 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.957203817] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719567
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282374 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.957290253] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.957295766] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.957136 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.957300118] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.957136 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.967478085] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719526
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282353 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.967540987] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.967546358] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.967387 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.967550622] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.967387 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.977258037] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719518
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282375 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.977308457] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.977312961] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.977208 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.977319033] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.977208 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.987245687] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719578
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1]  0.028238 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.987295956] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.987300183] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.987179 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.987304026] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.987179 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.997298222] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719547
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282358 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459746.997376340] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459746.997381509] [motion_capture_tracking]: No updated pose for cf5 for 1795459746.997180 s.
+[motion_capture_tracking_node-1] [WARN] [1795459746.997386205] [motion_capture_tracking]: No updated pose for cf_second for 1795459746.997180 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.006870630] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719546
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028239 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.006917737] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.006921648] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.006837 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.006925422] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.006837 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.017513125] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282424 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.017554920] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.017558720] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.017467 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.017562268] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.017467 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.027372478] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719577
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282373 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.027430825] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.027435286] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.027286 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.027439349] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.027286 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.037314355] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719507
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282401 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.037373873] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.037382037] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.037244 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.037386486] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.037244 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.047086790] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719554
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282365 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.047149166] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.047154736] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.047024 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.047158541] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.047024 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.056901500] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719566
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282394 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.056955779] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.056959967] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.056819 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.056964188] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.056819 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.067480101] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719558
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282387 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.067524827] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.067528424] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.067430 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.067531765] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.067430 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.077388994] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719595
+[motion_capture_tracking_node-1]  0.493732
+[motion_capture_tracking_node-1] 0.0282376 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.077430585] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.077434319] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.077354 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.077437793] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.077354 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.087064226] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719528
+[motion_capture_tracking_node-1]  0.493731
+[motion_capture_tracking_node-1] 0.0282311 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.087137462] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.087142404] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.086966 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.087146868] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.086966 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.097178570] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719555
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282354 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.097232351] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.097236975] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.097120 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.097247619] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.097120 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.107223644] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]  0.493732
+[motion_capture_tracking_node-1] 0.0282372 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.107277393] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.107281566] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.107182 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.107285731] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.107182 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.117411292] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719548
+[motion_capture_tracking_node-1]  0.493735
+[motion_capture_tracking_node-1] 0.0282301 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.117501794] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.117509679] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.117291 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.117515445] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.117291 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.127334590] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719569
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282358 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.127399273] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.127404062] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.127245 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.127408439] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.127245 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.136907924] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719611
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282485 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.136964618] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.136969637] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.136842 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.136973313] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.136842 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.147239270] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.071956
+[motion_capture_tracking_node-1]  0.49374
+[motion_capture_tracking_node-1] 0.028245 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.147284557] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.147288315] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.147190 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.147291793] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.147190 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.157634313] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719611
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282488 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.157712829] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.157718068] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.157523 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.157722540] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.157523 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.167596648] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719591
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282436 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.167668004] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.167677225] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.167489 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.167681891] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.167489 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.177136819] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071961
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282316 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.177219791] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.177227230] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.177082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.177238062] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.177082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.186886085] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719608
+[motion_capture_tracking_node-1]  0.493734
+[motion_capture_tracking_node-1]  0.028241 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.186954595] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.186959346] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.186792 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.186963486] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.186792 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.197008562] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719596
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1] 0.0282417 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.197098746] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.197105609] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.196918 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.197110676] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.196918 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.207328298] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719609
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282418 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.207393443] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.207402133] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.207250 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.207406712] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.207250 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.217440020] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719599
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282457 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.217512935] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.217518307] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.217316 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.217522737] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.217316 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.227030236] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282412 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.227077913] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.227082367] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.226988 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.227086152] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.226988 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.236932936] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719577
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282359 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.237009342] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.237014577] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.236842 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.237020771] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.236842 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.247283776] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719591
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1]  0.028243 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.247407052] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.247421557] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.247133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.247430786] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.247133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.257238997] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719568
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282416 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.257307198] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.257312188] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.257169 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.257316061] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.257169 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.267174551] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719542
+[motion_capture_tracking_node-1]  0.493733
+[motion_capture_tracking_node-1] 0.0282357 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.267259455] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.267264416] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.267079 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.267268875] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.267079 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.277118068] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719553
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282332 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.277162075] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.277165837] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.277082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.277169259] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.277082 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.286982064] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719539
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282391 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.287052078] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.287056693] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.286877 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.287061472] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.286877 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.297357734] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719579
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282389 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.297403872] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.297407947] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.297314 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.297431319] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.297314 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.307229794] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719517
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028241 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.307269653] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.307273293] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.307194 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.307276675] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.307194 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.317511523] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719559
+[motion_capture_tracking_node-1]  0.493734
+[motion_capture_tracking_node-1] 0.0282321 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.317590803] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.317595739] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.317338 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.317599729] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.317338 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.327247148] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071951
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282361 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.327316664] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.327321374] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.327183 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.327325078] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.327183 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.336866274] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719559
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282414 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.336926847] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.336931685] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.336799 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.336935400] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.336799 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.347260844] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719513
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282374 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.347332512] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.347337506] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.347143 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.347341275] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.347143 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.357227027] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719524
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1] 0.0282447 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.357264663] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.357273258] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.357198 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.357278048] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.357198 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.367306639] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719542
+[motion_capture_tracking_node-1]  0.493745
+[motion_capture_tracking_node-1] 0.0282479 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.367391608] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.367397066] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.367169 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.367418052] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.367169 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.377548184] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719592
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282465 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.377613887] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.377618434] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.377461 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.377622768] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.377461 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.387433903] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719503
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282335 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.387506176] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.387511144] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.387327 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.387515258] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.387327 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.397369203] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071954
+[motion_capture_tracking_node-1]  0.493746
+[motion_capture_tracking_node-1] 0.0282452 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.397414819] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.397419187] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.397317 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.397422936] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.397317 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.407061826] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719463
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028236 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.407121774] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.407126224] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.406992 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.407130092] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.406992 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.417398206] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719586
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1] 0.0282409 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.417444466] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.417448461] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.417345 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.417452314] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.417345 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.426913539] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719581
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282424 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.426970653] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.426975485] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.426853 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.426978867] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.426853 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.437372355] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719524
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028238 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.437451733] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.437461223] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.437296 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.437490303] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.437296 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.447423955] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719557
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1] 0.0282504 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.447491369] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.447496353] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.447320 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.447500419] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.447320 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.457135858] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719533
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282445 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.457196556] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.457201609] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.457054 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.457210695] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.457054 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.467236533] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719593
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282445 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.467327698] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.467335094] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.467101 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.467341456] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.467101 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.477450855] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719549
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028246 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.477520820] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.477525326] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.477364 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.477529921] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.477364 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.487369969] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282483 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.487434250] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.487438762] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.487273 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.487443232] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.487273 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.497280004] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719512
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282446 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.497409472] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.497414927] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.497228 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.497419065] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.497228 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.507249975] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719599
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1] 0.0282445 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.507308218] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.507312576] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.507165 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.507333208] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.507165 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.517390940] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.07196
+[motion_capture_tracking_node-1]  0.49374
+[motion_capture_tracking_node-1] 0.028241 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.517529486] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.517534634] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.517324 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.517538436] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.517324 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.527401023] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719585
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282412 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.527531235] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.527535690] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.527346 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.527539223] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.527346 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.537292035] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719586
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1] 0.0282466 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.537348204] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.537352309] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.537205 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.537356039] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.537205 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.547269098] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719536
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282417 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.547314840] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.547319765] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.547211 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.547323504] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.547211 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.556819234] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719603
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282465 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.556874499] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.556878721] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.556778 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.556882585] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.556778 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.567020298] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719584
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282505 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.567083272] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.567087932] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.566931 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.567092345] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.566931 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.577290882] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719601
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282373 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.577337681] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.577341785] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.577212 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.577365913] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.577212 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.587509924] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719544
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282425 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.587564838] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.587569370] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.587447 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.587573379] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.587447 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.597151753] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719619
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282388 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.597199758] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.597203963] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.597097 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.597207925] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.597097 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.606901098] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719534
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282409 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.606965644] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.606970324] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.606824 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.606974661] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.606824 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.617372783] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719568
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1]  0.028236 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.617419168] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.617422722] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.617330 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.617426515] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.617330 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.627246381] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719575
+[motion_capture_tracking_node-1]  0.493743
+[motion_capture_tracking_node-1]  0.028244 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.627349945] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.627357030] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.627150 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.627363423] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.627150 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.637326716] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719551
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1]  0.028243 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.637403365] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.637408638] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.637218 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.637413821] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.637218 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.647368652] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719575
+[motion_capture_tracking_node-1]  0.493744
+[motion_capture_tracking_node-1] 0.0282477 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.647461367] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.647468710] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.647262 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.647494341] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.647262 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.657354944] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719611
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282466 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.657446019] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.657453898] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.657247 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.657460569] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.657247 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.667103130] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719554
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282508 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.667200784] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.667209360] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.666975 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.667223646] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.666975 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.677330959] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719535
+[motion_capture_tracking_node-1]  0.493745
+[motion_capture_tracking_node-1] 0.0282443 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.677398385] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.677403588] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.677258 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.677407975] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.677258 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.687242508] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.071954
+[motion_capture_tracking_node-1] 0.493742
+[motion_capture_tracking_node-1] 0.028244 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.687316212] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.687321540] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.687133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.687326003] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.687133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.697370289] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071952
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282471 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.697414268] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.697418763] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.697319 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.697422987] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.697319 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.707076734] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719571
+[motion_capture_tracking_node-1]  0.493733
+[motion_capture_tracking_node-1] 0.0282372 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.707128031] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.707132767] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.707049 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.707136219] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.707049 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.717493043] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071955
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1] 0.0282507 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.717540051] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.717544079] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.717437 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.717565988] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.717437 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.727324204] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719581
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282349 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.727364662] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.727368597] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.727291 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.727372219] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.727291 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.737197474] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719558
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282454 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.737290881] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.737302587] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.737085 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.737311456] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.737085 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.746961980] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719554
+[motion_capture_tracking_node-1]  0.493732
+[motion_capture_tracking_node-1] 0.0282513 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.747054517] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.747062545] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.746875 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.747069728] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.746875 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.757110960] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719607
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282377 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.757216318] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.757224170] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.757001 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.757232084] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.757001 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.767402022] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719599
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282371 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.768251365] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.768350611] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.767298 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.768358033] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.767298 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.777271813] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719563
+[motion_capture_tracking_node-1]  0.493741
+[motion_capture_tracking_node-1]  0.028243 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.777342826] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.777349089] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.777200 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.777354915] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.777200 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.787251067] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719565
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282326 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.787351430] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.787359751] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.787148 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.787377163] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.787148 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.800354760] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719558
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1] 0.0282395 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.800448028] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.800455158] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.800234 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.800461817] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.800234 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.807339054] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719544
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282426 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.807416094] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.807422798] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.807262 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.807429501] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.807262 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.818712421] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719573
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282315 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.818805870] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.818813083] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.818599 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.818819851] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.818599 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.827239860] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719578
+[motion_capture_tracking_node-1]  0.493734
+[motion_capture_tracking_node-1] 0.0282378 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.827327900] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.827334696] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.827133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.827341293] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.827133 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.837518434] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at  0.071956
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1] 0.0282348 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.837611488] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.837618801] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.837399 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.837625486] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.837399 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.850043888] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719574
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282461 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.850137980] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.850145089] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.849927 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.850151862] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.849927 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.857129324] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719603
+[motion_capture_tracking_node-1]  0.493738
+[motion_capture_tracking_node-1] 0.0282282 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.857222093] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.857229008] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.857025 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.857252375] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.857025 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.867646712] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719499
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282391 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.867718590] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.867723685] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.867534 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.867727947] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.867534 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.877386979] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719559
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282413 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.877454911] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.877459766] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.877283 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.877464184] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.877283 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.887229403] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719536
+[motion_capture_tracking_node-1]  0.493742
+[motion_capture_tracking_node-1] 0.0282377 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.887305927] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.887311329] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.887104 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.887316180] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.887104 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.897292611] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719556
+[motion_capture_tracking_node-1]   0.49374
+[motion_capture_tracking_node-1] 0.0282344 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.897366158] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.897371918] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.897180 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.897377228] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.897180 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.906867253] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719605
+[motion_capture_tracking_node-1]  0.493737
+[motion_capture_tracking_node-1] 0.0282366 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.906909245] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.906913318] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.906827 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.906916939] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.906827 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.917414294] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719619
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282423 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.917455024] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.917459063] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.917377 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.917462421] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.917377 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.927299074] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719564
+[motion_capture_tracking_node-1]  0.493739
+[motion_capture_tracking_node-1] 0.0282467 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.927335010] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.927357094] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.927274 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.927360479] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.927274 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.937183192] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719591
+[motion_capture_tracking_node-1]  0.493744
+[motion_capture_tracking_node-1] 0.0282481 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.937233231] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.937236870] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.937140 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.937240705] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.937140 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.947540920] [motion_capture_tracking]: error: nearest neighbors of rigid body cf5 are centered at 0.0719591
+[motion_capture_tracking_node-1]  0.493736
+[motion_capture_tracking_node-1] 0.0282339 instead of (0,0.3,0)
+[motion_capture_tracking_node-1] [WARN] [1795459747.947600513] [motion_capture_tracking]: rigid body tracker initialization failed - check that position is correct, all markers are visible, and marker configuration matches config file
+[motion_capture_tracking_node-1] [WARN] [1795459747.947605444] [motion_capture_tracking]: No updated pose for cf5 for 1795459747.947472 s.
+[motion_capture_tracking_node-1] [WARN] [1795459747.947610158] [motion_capture_tracking]: No updated pose for cf_second for 1795459747.947472 s.
