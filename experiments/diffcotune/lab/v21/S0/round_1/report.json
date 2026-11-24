@@ -1,0 +1,388 @@
+{
+ "round": 1,
+ "controller": "S0",
+ "phi": [
+  -0.10536051565782628,
+  0.09531017980432493,
+  -0.10536051565782628,
+  0.09531017980432493,
+  0.08789182891895607,
+  0.06468124681056572,
+  -0.040895111889919226,
+  0.09531017980432493,
+  -0.06651310022628358,
+  -0.10536051565782628
+ ],
+ "psi_before": [
+  -0.00028337227568133914,
+  0.1423371232228272,
+  0.4207322560897039,
+  -0.1687046521745781
+ ],
+ "flights": [
+  {
+   "scenario": "A1",
+   "file": "A1.csv",
+   "attempt": 1,
+   "role": "tuning",
+   "gate_ok": true,
+   "gate_reasons": [],
+   "rows": 7502,
+   "rate_hz": 499.99999999999955,
+   "gap_fraction": 0.0,
+   "frame": {
+    "theta_deg": 0.0,
+    "t_xy": [
+     0.0,
+     -1.0000000000000828e-06
+    ],
+    "lag_s": 0.0,
+    "source": "not observable (no motion), 0",
+    "lag_source": "not observable, 0"
+   },
+   "reference_check": {
+    "max_abs_m": 1.4800004000115052e-09,
+    "max_abs_scored_m": 8.279747059410786e-20,
+    "offset_m": [
+     0.0,
+     -8.279747059410786e-20,
+     0.0
+    ],
+    "max_abs_scored_after_offset_m": 0.0,
+    "best_lag_ms": 0,
+    "max_abs_scored_after_offset_and_lag_m": 0.0
+   },
+   "crashed": false,
+   "floor": false,
+   "tilt_max_deg": 37.60606766058532,
+   "rms3d_cm": 13.158263856744465,
+   "pos_cost_m2": 0.01731399077237077,
+   "att_cost": 0.1169693556315795,
+   "cost_m2": 0.13428334640395026,
+   "used": true
+  },
+  {
+   "scenario": "A8",
+   "file": "A8.csv",
+   "attempt": 1,
+   "role": "tuning",
+   "gate_ok": true,
+   "gate_reasons": [],
+   "rows": 13427,
+   "rate_hz": 500.0000000000551,
+   "gap_fraction": 0.0,
+   "frame": {
+    "theta_deg": -2.2809255297590588e-33,
+    "t_xy": [
+     9.99999999999803e-07,
+     -4.43905833326226e-05
+    ],
+    "lag_s": 0.10400000000000001,
+    "source": "fitted",
+    "lag_source": "fitted from the logged command"
+   },
+   "reference_check": {
+    "max_abs_m": 0.09431822697337983,
+    "max_abs_scored_m": 0.0015872373739014428,
+    "offset_m": [
+     -1.9693516023662483e-19,
+     -4.1705463111829655e-05,
+     0.0
+    ],
+    "max_abs_scored_after_offset_m": 0.0015932017953800143,
+    "best_lag_ms": 0,
+    "max_abs_scored_after_offset_and_lag_m": 0.0015932017953800143
+   },
+   "crashed": false,
+   "floor": false,
+   "tilt_max_deg": 21.205468913088314,
+   "rms3d_cm": 5.024360490530333,
+   "pos_cost_m2": 0.0025244198338802214,
+   "att_cost": 0.0032524692986491766,
+   "cost_m2": 0.0057768891325293975,
+   "used": true
+  },
+  {
+   "scenario": "A4",
+   "file": "A4.csv",
+   "attempt": 1,
+   "role": "tuning",
+   "gate_ok": true,
+   "gate_reasons": [],
+   "rows": 7503,
+   "rate_hz": 499.99999999999955,
+   "gap_fraction": 0.0,
+   "frame": {
+    "theta_deg": -90.0,
+    "t_xy": [
+     0.5998118812025928,
+     0.062498000000004134
+    ],
+    "lag_s": 0.08600000000000001,
+    "source": "given",
+    "lag_source": "fitted from the logged command"
+   },
+   "reference_check": {
+    "max_abs_m": 0.0017768271818624504,
+    "max_abs_scored_m": 0.0017768271818624504,
+    "offset_m": [
+     -0.00014153954862636958,
+     4.163336342344337e-15,
+     0.0
+    ],
+    "max_abs_scored_after_offset_m": 0.00191836673048882,
+    "best_lag_ms": 0,
+    "max_abs_scored_after_offset_and_lag_m": 0.00191836673048882
+   },
+   "crashed": false,
+   "floor": false,
+   "tilt_max_deg": 16.706738899897022,
+   "rms3d_cm": 7.494802209000646,
+   "pos_cost_m2": 0.005617206015204096,
+   "att_cost": 0.00213131190398137,
+   "cost_m2": 0.007748517919185466,
+   "used": true
+  },
+  {
+   "scenario": "CIRCLE",
+   "file": "CIRCLE.csv",
+   "attempt": 1,
+   "role": "tuning",
+   "gate_ok": true,
+   "gate_reasons": [],
+   "rows": 7319,
+   "rate_hz": 499.99999999999955,
+   "gap_fraction": 0.0,
+   "frame": {
+    "theta_deg": -90.0,
+    "t_xy": [
+     0.4500388704258293,
+     -2.1303209843205606e-05
+    ],
+    "lag_s": 0.0,
+    "source": "given",
+    "lag_source": "fitted from the logged command"
+   },
+   "reference_check": {
+    "max_abs_m": 0.6536646143703426,
+    "max_abs_scored_m": 0.0027472328392110223,
+    "offset_m": [
+     3.9368634191072616e-05,
+     -2.0302288879031786e-05,
+     0.0
+    ],
+    "max_abs_scored_after_offset_m": 0.002712318745489828,
+    "best_lag_ms": 0,
+    "max_abs_scored_after_offset_and_lag_m": 0.002712318745489828
+   },
+   "crashed": false,
+   "floor": false,
+   "tilt_max_deg": 5.23248283111715,
+   "rms3d_cm": 6.8713293557762345,
+   "pos_cost_m2": 0.004721516711555225,
+   "att_cost": 0.00041225444437742567,
+   "cost_m2": 0.00513377115593265,
+   "used": true
+  },
+  {
+   "scenario": "FIG8",
+   "file": "FIG8.csv",
+   "attempt": 1,
+   "role": "tuning",
+   "gate_ok": true,
+   "gate_reasons": [],
+   "rows": 8679,
+   "rate_hz": 499.99999999999955,
+   "gap_fraction": 0.0,
+   "frame": {
+    "theta_deg": -90.0,
+    "t_xy": [
+     -0.29993985876577084,
+     4.0105232190411344e-05
+    ],
+    "lag_s": 0.0,
+    "source": "given",
+    "lag_source": "fitted from the logged command"
+   },
+   "reference_check": {
+    "max_abs_m": 0.6407138529155261,
+    "max_abs_scored_m": 0.0029434282676708903,
+    "offset_m": [
+     6.014554755441433e-05,
+     4.015737017937255e-05,
+     0.0
+    ],
+    "max_abs_scored_after_offset_m": 0.0029456120945208363,
+    "best_lag_ms": 0,
+    "max_abs_scored_after_offset_and_lag_m": 0.0029456120945208363
+   },
+   "crashed": false,
+   "floor": false,
+   "tilt_max_deg": 7.994378676686621,
+   "rms3d_cm": 6.898471257590501,
+   "pos_cost_m2": 0.004758890569180227,
+   "att_cost": 0.0005708410795886099,
+   "cost_m2": 0.005329731648768837,
+   "used": true
+  }
+ ],
+ "missing": [],
+ "seconds_ingest": 3.346068859100342,
+ "real": {
+  "cost": 0.03165445125207332,
+  "rms3d_cm": 8.358950161616056,
+  "pos_cost": 0.006987204780438107,
+  "att_cost": 0.024667246471635217,
+  "z_rms_cm": 5.339256935949783,
+  "crashed": 0,
+  "floor": 0,
+  "tries": [
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "eligible": true,
+ "r3_version": "R3-2026-11-16",
+ "per_scenario_cm": {
+  "A1": 13.158263856744465,
+  "A8": 5.024360490530333,
+  "CIRCLE": 6.8713293557762345,
+  "FIG8": 6.898471257590501,
+  "A4": 7.494802209000646
+ },
+ "test_cm": {},
+ "extension_rounds_used": 0,
+ "rs_version": "RS-2026-11-17",
+ "prev_r3": false,
+ "restart_from_best": false,
+ "rs_stop": false,
+ "keep_best": {
+  "cost": 0.03165445125207332,
+  "rms3d_cm": 8.358950161616056,
+  "round": 1,
+  "phi": [
+   -0.10536051565782628,
+   0.09531017980432493,
+   -0.10536051565782628,
+   0.09531017980432493,
+   0.08789182891895607,
+   0.06468124681056572,
+   -0.040895111889919226,
+   0.09531017980432493,
+   -0.06651310022628358,
+   -0.10536051565782628
+  ]
+ },
+ "top_path": {
+  "A1": "logged",
+  "A8": "logged",
+  "CIRCLE": "planned",
+  "FIG8": "planned",
+  "A4": "planned"
+ },
+ "fit": {
+  "epochs": 51,
+  "J0": 5.658977189962966,
+  "J_best": 5.339578902318104,
+  "best_epoch": 24,
+  "J_end": null,
+  "reason": "max epochs"
+ },
+ "seconds_fit": 888.7166845798492,
+ "psi_after_fit": [
+  -0.042393550695553804,
+  0.10980020323160296,
+  0.5029323732875923,
+  -0.2083987212821708
+ ],
+ "tune": {
+  "epochs": 51,
+  "J0": 0.025250528363550663,
+  "J_best": 0.02198315274158381,
+  "J_end": null,
+  "best_epoch": 23,
+  "hits": [
+   8,
+   4,
+   2,
+   2,
+   26,
+   6,
+   0,
+   0,
+   0,
+   0
+  ],
+  "noise_seeds": [
+   6002,
+   6003
+  ],
+  "epochs_used": 51,
+  "reason": "max epochs"
+ },
+ "seconds_tune": 1038.6645410060883,
+ "preview": {
+  "verdict": "PREVIEW PASSED",
+  "passed": true,
+  "fails": [],
+  "mean_rms_cm": {
+   "new": 6.543687860019483,
+   "best": 7.200476317462825
+  },
+  "seconds": 24.170443296432495,
+  "notes_worse": [],
+  "text": "PREVIEW PASSED\npredicted 3-D RMS (mean over the 5 tuning scenarios and 2 seeds): new set 6.54 cm, best flown set 7.20 cm (24 s)\n  A1      new: 14.0 cm floor | 13.9 cm floor        best: 16.2 cm tilt+floor | 16.0 cm tilt+floor\n  A8      new: 4.8 cm | 4.6 cm                      best: 5.3 cm | 5.1 cm\n  CIRCLE  new: 3.6 cm | 3.6 cm                      best: 3.9 cm | 3.9 cm\n  FIG8    new: 3.4 cm | 3.5 cm                      best: 3.6 cm | 3.7 cm\n  A4      new: 7.3 cm | 6.8 cm                      best: 7.3 cm floor | 7.1 cm floor\n  events the best flown set shows too (not counted): A1 seed 2000 floor, A1 seed 2001 floor"
+ },
+ "phi_next": [
+  -0.21072103131565256,
+  0.19062035960864987,
+  -0.11566626125759322,
+  0.18732714786169954,
+  0.18320200872328102,
+  0.15999142661489066,
+  -0.019973561561133422,
+  0.0709343414244913,
+  -0.06402049593827529,
+  -0.14642062134330855
+ ],
+ "psi_after": [
+  -0.042393550695553804,
+  0.10980020323160296,
+  0.5029323732875923,
+  -0.2083987212821708
+ ],
+ "theta_factors_next": {
+  "Pxy": 0.9,
+  "Pz": 1.1,
+  "Dxy": 0.9897,
+  "Dz": 1.0964,
+  "Iz": 1.1,
+  "KRxy": 1.1,
+  "KRz": 1.0211,
+  "Kwxy": 0.9759,
+  "Kwz": 1.0025,
+  "KIxy": 0.9598
+ },
+ "theta_factors_vs_default": {
+  "Pxy": 0.9,
+  "Pz": 1.1,
+  "Dxy": 0.9,
+  "Dz": 1.1,
+  "Iz": 1.0919,
+  "KRxy": 1.0668,
+  "KRz": 0.9599,
+  "Kwxy": 1.1,
+  "Kwz": 0.9357,
+  "KIxy": 0.9
+ },
+ "last_round": false,
+ "recommendation_if_last": null,
+ "seconds_total": 1958.8034975528717,
+ "seed_info": {
+  "noise_seed_base": 6000,
+  "note": "noise seeds of the tuning step of round l: base + 2 l, base + 2 l + 1"
+ }
+}
