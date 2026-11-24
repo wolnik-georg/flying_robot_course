@@ -1,0 +1,27 @@
+{
+ "controller": "S1",
+ "round": 1,
+ "pid": 1171416,
+ "start": 1795537434.6660483,
+ "expected_min": 23.0,
+ "log": "experiments/diffcotune/lab/v21/S1/desk_1.log",
+ "cmd": [
+  "nice",
+  "-n",
+  "19",
+  "/usr/bin/python3",
+  "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/round.py",
+  "--controller",
+  "S1",
+  "--round",
+  "1",
+  "--logs",
+  "experiments/logs/usd_merged/rounds_v21/S1/round_1",
+  "--state-dir",
+  "experiments/diffcotune/lab/v21/S1",
+  "--n-rounds",
+  "6",
+  "--method",
+  "ours21"
+ ]
+}

@@ -9,8 +9,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent)); sys.path.insert(0, str(HERE.parent / 'dryrun')); sys.path.insert(0, str(HERE))
 import torch; torch.set_num_threads(2)
 import loop_lib as L, usd_ingest as U, round as RD, costs as C, ingest  # noqa
-ctrl = L.CTRL; folder = HERE.parent.parent / 'logs' / 'usd_merged' / 'rounds' / ctrl / 'round_0'
-rep = json.load(open(HERE / 'v21' / ctrl / 'round_0' / 'report.json')); psi_after = np.array(rep['psi_after_fit'])
+ctrl = L.CTRL; RND = int(os.environ.get('ROUND', '0')); folder = HERE.parent.parent / 'logs' / 'usd_merged' / ('rounds' if RND == 0 else 'rounds_v21') / ctrl / ('round_%d' % RND)
+rep = json.load(open(HERE / 'v21' / ctrl / ('round_%d' % RND) / 'report.json')); psi_after = np.array(rep['psi_after_fit'])
 USED = {f['scenario']: f['file'] for f in rep['flights'] if f.get('used')}
 rot = dict(A1=None, A8=None, A4=-90.0, CIRCLE=-90.0, FIG8=-90.0); S = L.model(); res = {}
 for tag, psi in (('before', np.zeros(L.N_BETA)), ('after', psi_after)):
@@ -25,6 +25,6 @@ for tag, psi in (('before', np.zeros(L.N_BETA)), ('after', psi_after)):
     res[tag] = dict(mean={k: float(np.mean(v)) for k, v in acc.items()}, per_scenario=per)
     res[tag]['total'] = sum(res[tag]['mean'].values())
 res['psi_after_fit'] = psi_after.tolist(); res['beta_names'] = L.BETA_NAMES + (['rpm_delay'] if L.N_BETA == 5 else []); res['beta_after'] = dict(zip(res['beta_names'], np.exp(psi_after).tolist()))
-json.dump(res, open(HERE / 'results' / ('v21_fit_parts_%s.json' % ctrl), 'w'), indent=1)
+json.dump(res, open(HERE / 'results' / ('v21_fit_parts_%s%s.json' % (ctrl, '' if RND == 0 else '_r%d' % RND)), 'w'), indent=1)
 for tag in ('before', 'after'): print(ctrl, tag, {k: '%.4g' % v for k, v in res[tag]['mean'].items()}, 'total %.4g' % res[tag]['total'])
 print(ctrl, 'psi after fit (log factors)', np.round(psi_after, 3).tolist(), 'factors', {k: round(v, 3) for k, v in res['beta_after'].items()})
