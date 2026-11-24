@@ -1,0 +1,27 @@
+{
+ "controller": "S3",
+ "round": 3,
+ "pid": 1224491,
+ "start": 1795547167.154063,
+ "expected_min": 23.0,
+ "log": "experiments/diffcotune/lab/v21/S3/desk_3.log",
+ "cmd": [
+  "nice",
+  "-n",
+  "19",
+  "/usr/bin/python3",
+  "/home/georg/Desktop/flying_robot_course/experiments/diffcotune/lab/round.py",
+  "--controller",
+  "S3",
+  "--round",
+  "3",
+  "--logs",
+  "experiments/logs/usd_merged/rounds_v21/S3/round_3",
+  "--state-dir",
+  "experiments/diffcotune/lab/v21/S3",
+  "--n-rounds",
+  "6",
+  "--method",
+  "ours21"
+ ]
+}
