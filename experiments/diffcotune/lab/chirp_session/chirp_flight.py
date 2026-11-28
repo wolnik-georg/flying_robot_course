@@ -21,7 +21,8 @@ try:
 except ImportError:
     LogDataGeneric = None
 RATE_HZ = 100.0
-LIM_TILT_DEG = 15.0; LIM_RATE_DPS = 300.0; LIM_WINDOW_S = 0.3; STALE_S = 0.5; LIM_EXCURSION_M = 0.3; Z_FLOOR_M = 0.25
+LIM_TILT_DEG = 15.0; LIM_RATE_DPS = 300.0; LIM_WINDOW_S = 0.3; STALE_S = 1e9;   # LAB 2026-11-28 (user order): telemetry-silent abort disabled (radio CSVs are not the dataset; usual flights have none; F1 tripped on it). Was 0.5 s.
+LIM_EXCURSION_M = 0.3; Z_FLOOR_M = 0.25
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'out')
 
 def chirp_triple(tau, T, f0, f1, amp0, amp, ramp, taper):
