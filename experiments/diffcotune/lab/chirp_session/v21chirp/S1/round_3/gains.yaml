@@ -1,0 +1,22 @@
+# CHIRP F3 (derived 2026-11-28): copy of lab/v21/S1/round_1/gains.yaml, ONLY KR_x and KR_y x0.9. Original header follows.
+# DiffCoTune S1 gains to fly (Stage 4a / 5). Merge into the cf5 block of the study_S1 crazyflies.yaml; written by lab/round.py, not applied by it.
+# round 1: theta_1 from round 0 (method version A + B, keep-best round 0)
+robots:
+  cf5:
+    firmware_params:
+      ctrlOmarIndi:
+        Kpos_Px: 7.700000000000001
+        Kpos_Py: 7.700000000000001
+        Kpos_Pz: 6.3
+        Kpos_Dx: 4.4
+        Kpos_Dy: 4.4
+        Kpos_Dz: 3.6
+        Kpos_Iz: 1.6500000000000001
+        KR_x: 0.006930000000000001
+        KR_y: 0.006930000000000001
+        KR_z: 0.0088
+        Kw_x: 0.001178120757958952
+        Kw_y: 0.001178120757958952
+        Kw_z: 0.0022
+        KI_x: 0.033
+        KI_y: 0.033

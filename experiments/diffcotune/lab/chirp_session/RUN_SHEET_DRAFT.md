@@ -60,11 +60,19 @@ Laptop = this repo `~/Desktop/flying_robot_course` (branch feature/auto-tuning);
 | `proposal/crazyflies_chirp_telemetry_PROPOSED.yaml` | `experiments/diffcotune/lab/chirp_session/crazyflies_chirp_telemetry.yaml` | fragment for the cf5 block; merge into the lab-PC yaml (the lab yaml is edited by `lab_run.sh prep`; `YAML.before_lab_run_2026-11-18` is the backup), see 2.4 |
 | `proposal/usddeck_limit128_ring16k_AB.patch` | `experiments/diffcotune/lab/chirp_session/usddeck_limit128_ring16k_AB.patch` | applied to the firmware tree on the laptop (`~/Desktop/crazyflie-firmware` / `flying_drone_stack/firmware_app`: path of the usddeck.c tree to be confirmed) |
 | `proposal/decode_usd_log_rename_additions.txt` | merged into `flying_drone_stack/tools/decode_usd_log.py` by the user's go (not before) | 115-column names |
-| new | `chirp_session/v21chirp/S1/round_{1,3}/gains.yaml`, `v21chirp/S3/round_1/gains.yaml` | F1/F2/F5 = copy of `v21/S1/round_1/gains.yaml`; **F3 = KR_x, KR_y x0.9 -> 0.00693 (from 0.0077), Kw unchanged 0.001178120757958952**, KR_z unchanged (to confirm with the sim agent); F6 = copy of `v21/S3/round_1/gains.yaml` as flown. Not created yet |
+| new | `chirp_session/v21chirp/S1/round_{1,3}/gains.yaml`, `v21chirp/S3/round_1/gains.yaml` | F1/F2/F5 = copy of `v21/S1/round_1/gains.yaml`; **F3 = KR_x, KR_y x0.9 -> 0.00693 (from 0.0077), Kw unchanged 0.001178120757958952**, **KR_z unchanged (confirmed by the user 2026-11-28)**; F6 = copy of `v21/S3/round_1/gains.yaml` as flown. **Created 2026-11-28**, see 2.1a |
 | new | `chirp_session/usd_start_snippet.py` | written (decision 1), to be handed to the sim agent |
 | new | `chirp_session/session_log_2026-11-28.md` | one line per step/flight |
 
-Changes needed to the script before use (list only; no edit now): (a) uSD start/stop with gate = `usd_start_snippet.py` (decision 1); (b) abort additions: position excursion > 0.3 m, z < 0.25 m after the takeoff wait (protocol floor rule, S0_LAB_CARD l.41); NO vbat trigger (decision 5); (c) `--height` argument (0.6 m for F1-F6; raising it is the user's call after F2); (d) `--amp-ramp` 0.1 -> 0.3 m/s2 over the first 20 s of each chirp; (e) write setpoints/CSV to `chirp_session/out/` named by flight id (F1..F5, G2); (f) require TTY (exit if `not sys.stdin.isatty()`).
+**2.1a Gain files (created, `chirp_session/v21chirp/`; `v21/S1` and `v21/S3` untouched).** Source: `experiments/diffcotune/lab/v21/{S1,S3}/round_1/gains.yaml`, last changed in commit `dba5d986` (v2.1 round 1 desk steps), the files as flown in S1 / S3 round 1.
+| chirp file | used for | content | check |
+|---|---|---|---|
+| `v21chirp/S1/round_1/gains.yaml` | F1, F2, F5 | byte-identical copy of `v21/S1/round_1` | `cmp` identical |
+| `v21chirp/S1/round_3/gains.yaml` | F3 | the same + 1 comment line; only `KR_x` 0.0077 -> 0.00693, `KR_y` 0.0077 -> 0.00693 (x0.9); `KR_z` 0.0088, `Kw_x/y` 0.001178120757958952, `Kw_z` 0.0022 unchanged | `diff` shows only those 2 values + the header line |
+| `v21chirp/S3/round_1/gains.yaml` | F6 | byte-identical copy of `v21/S3/round_1` | `cmp` identical |
+`round_3` is only a directory name for `lab_run.sh prep S1 3` (chirp GAINS_ROOT); it is NOT a DiffCoTune round.
+
+Changes needed to the script before use (list only; no edit now): (a) uSD start/stop with gate = `usd_start_snippet.py` (decision 1); (b) abort additions: position excursion > 0.3 m (**session safety limit, approved by the user 2026-11-28; not a protocol rule**), z < 0.25 m after the takeoff wait (protocol floor rule, S0_LAB_CARD l.41); NO vbat trigger (decision 5); (c) `--height` argument (0.6 m for F1-F6; raising it is the user's call after F2); (d) `--amp-ramp` 0.1 -> 0.3 m/s2 over the first 20 s of each chirp; (e) write setpoints/CSV to `chirp_session/out/` named by flight id (F1..F5, G2); (f) require TTY (exit if `not sys.stdin.isatty()`).
 Changes needed to crazyswarm2 (**not made**): none mandatory. Optional: 100 Hz telemetry fragment (yaml in the lab-PC workspace); `usd_gate` import path `crazyflie_examples.usd_gate` (exists in `~/Desktop/crazyswarm2` on the laptop; on the lab PC it is in the built workspace).
 
 ### 2.2 Flash procedure (patched image) and readback
@@ -130,5 +138,5 @@ After each flight (user): power off, card out, `copy_usd_log.py` (2.3), then `<G
 ## 4. Open items (everything else is decided)
 1. `<GONOGO>`: path + thresholds from REPORT_59 (used after G-tests and every flight).
 2. `<PATCHED_BIN>`: path, sha256, md5 of the patched image from REPORT_59 (exact rebuild of 9e133f76 first).
-3. To confirm with the sim agent: KR_z unchanged in F3; `chirp_flight.py` uses `usd_start_snippet.py` and the added aborts (position excursion, z < 0.25 m, TTY check); files at `proposal/lab_pkg/`.
+3. To confirm with the sim agent: `chirp_flight.py` uses `usd_start_snippet.py` and the added aborts (position excursion, z < 0.25 m, TTY check); files at `proposal/lab_pkg/`.
 4. The v3 config on the cf_second card and a second patched drone are NOT part of this session (solo cf5).
