@@ -1,0 +1,15 @@
+--- a/flying_drone_stack/tools/decode_usd_log.py
++++ b/flying_drone_stack/tools/decode_usd_log.py
+@@ -21,6 +21,12 @@
+ # `if k in out`, so an unmapped channel produces an EMPTY result rather than an error. Every
+ # channel in tools/usd_thesis_config.txt is therefore mapped here explicitly, and load() checks.
+ RENAME = {
++    # REPORT_52 / 59 config v3 additions
++    "locSrv.qx": "locsrv_qx", "locSrv.qy": "locsrv_qy", "locSrv.qz": "locsrv_qz", "locSrv.qw": "locsrv_qw",
++    "ctrlOmarIndi.tau_rpm_fx": "omar_tau_rpm_fx", "ctrlOmarIndi.tau_rpm_fy": "omar_tau_rpm_fy", "ctrlOmarIndi.tau_gyro_fx": "omar_tau_gyro_fx", "ctrlOmarIndi.tau_gyro_fy": "omar_tau_gyro_fy",
++    "ctrlOmarIndi.omegarx": "omar_omegar_x", "ctrlOmarIndi.omegary": "omar_omegar_y", "ctrlOmarIndi.omegaddx": "omar_omegadd_x", "ctrlOmarIndi.omegaddy": "omar_omegadd_y",
++    "ctrlOmarIndi.KR_x": "omar_KR_x", "ctrlOmarIndi.KR_y": "omar_KR_y", "ctrlOmarIndi.Kw_x": "omar_Kw_x", "ctrlOmarIndi.Kw_y": "omar_Kw_y",
++    "supervisor.info": "supervisor_info", "usd.fatWrBps": "usd_fatWrBps", "usd.spiWrBps": "usd_spiWrBps",
+     "stateEstimate.x": "x", "stateEstimate.y": "y", "stateEstimate.z": "z",
+     "stateEstimate.vx": "vx", "stateEstimate.vy": "vy", "stateEstimate.vz": "vz",
+     "gyro.x": "gyro_x", "gyro.y": "gyro_y", "gyro.z": "gyro_z",
