@@ -137,6 +137,10 @@ def main(argv=None):
         if not a.no_usd: ctx = usd_setup(swarm.allcfs, th)
         if a.ground: pos0 = np.array(cf.position, float); mon.armed = False
         else:
+            # LAB FIX 2026-11-28 (lab agent, user order): same as run_formation.py (fd1167f): EKF reset on the ground (estimator 1 -> 2, resetEstimation) and cf.arm(True) BEFORE takeoff. Without arm(True) the brushless cf5 silently never takes off (G7 attempt: z 0.05 m -> floor abort).
+            cf.setParam('stabilizer.estimator', 1); th.sleep(1.0); cf.setParam('stabilizer.estimator', 2); th.sleep(0.2)
+            cf.setParam('kalman.resetEstimation', 1); th.sleep(0.2); cf.setParam('kalman.resetEstimation', 0); th.sleep(3.0)
+            cf.arm(True); th.sleep(0.5)
             cf.takeoff(targetHeight=a.height, duration=3.0); asleep(th, mon, a.takeoff_wait, cf); mon.armed = True; mon.last_msg = mon.clock()
             pos0 = np.array(cf.position, float)
             if not np.any(pos0): pos0 = np.array(cf.initialPosition, float) + np.array([0.0, 0.0, a.height])
