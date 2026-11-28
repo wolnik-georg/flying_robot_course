@@ -1,0 +1,124 @@
+# Chirp session (S1 loop measurement): run sheet DRAFT, 2026-11-28 (lab agent, desk only)
+
+Status: DRAFT for the user's check. Nothing flown, flashed, copied to the lab PC or applied. Lab lock stays. The lab-session start is the user's call.
+Source package (read-only, branch `desk/s1-simulator-gap`): `~/Desktop/frc_desk_s1gap/experiments/desk_s1_gap/proposal/` (LAB_DAY_SUMMARY, flight_card_chirp_DRAFT, chirp_flight_script_DRAFT.py, usd config v3, telemetry yaml, ring16k patch).
+**REPORT_59 does not exist yet** (latest is REPORT_58): the sim agent's GO / NO-GO script path is unknown. Every `<GONOGO>` below is a placeholder; fill it in when REPORT_59 lands.
+Rules: uSD logs only; never `usec.reset` in flight; cards < 85 files; CPU only; fresh batteries; `GAINS_ROOT=$PWD/experiments/diffcotune/lab/v21`.
+
+---------------------------------------------------------------------------------------------------
+## 1. Safety review: every concern (ranked)
+
+**Blockers (must be fixed or decided before F1)**
+1. **The script never starts uSD logging.** `chirp_flight_script_DRAFT.py` contains no `usd.runTag` / `usd.logging` set, no usd gate (`usd_gate.py` in crazyswarm2 is only wired into `run_formation` / `simple_flight`) and no ground `usec.reset`. As drafted every flight would produce NO uSD file (the 11-18 failure again) and the analysis is uSD-only. Needed: on the ground, before takeoff, start logging through the same verified path as `run_formation` (runtime set via CS2 post-set fix 71219f3 + gate check that BOTH decks... here only cf5 writes: `usd_gate` per-drone check), and stop (`usd.logging 0`) after landing. Never put `usec.reset` after takeoff. Decision: wrap the script so it imports `usd_gate` from `crazyflie_examples` (preferred), or start logging by hand in G-steps and add `--no-usd-gate`-style note (not recommended: unverified).
+2. **KR x1.1 / x1.2 (F3, F4) sit beyond the real stability edge.** frsim edge is at KR x1.35 but the REAL edge is at x1.0 (LAB_DAY_SUMMARY). Real evidence: v21 S1 round 2 (KR 0.00847 = x1.10 vs round 1, Kw x0.90) oscillated at 17.05 cm (3-4 Hz), round 1 = 3.18 cm keep-best. F3 (x1.1) and F4 (x1.2) with a 0.3 m/s2 chirp may drive the real loop into the limit cycle. The card's "no oscillating gain set" rule cannot be met by design for F3/F4. Also unstated: is Kw kept at round-1 value (0.001178) while only KR is scaled? Need: the exact F3/F4 fragment (KR_x, KR_y only, KR_z unchanged?) and a decision with margin check (PREVIEW-style frsim run at the real-edge calibration, REPORT_59). Proposal: F3 only after F2 shows PM/GM from the chirp itself; F4 only if F3 Ms/PM keep the predicted trend and gyro rms in the holds stays < 30 deg/s; otherwise stop the series.
+3. **No on-board 15 deg / 300 deg/s trip.** The tilt/rate trip lives in the PC script (radio telemetry, 20 Hz default, 0.3 s window + latency 50 ms, radio latency unmeasured). A radio drop-out or a Python hang = no abort; only firmware protections remain (commander timeout 0.5 s level-out / 2 s motors off, tumble check 60 deg for 1 s, emergency packet). With a limit-cycle growth (item 2) 0.3-0.5 s may be enough to reach > 25 deg. First flights must be low (item 8).
+4. **Emergency stop = fall from hover height** (motors off, firmware locks, reboot needed). At 0.9 m on the chirp flights this is a ~0.9 m drop with a 41 g brushless: propeller/frame damage risk, soft floor needed. `q` (land) is the normal path, `e` last resort only.
+
+**Serious**
+5. **Keyboard abort needs a focused terminal with a TTY.** `sys.stdin` must be a terminal and the operator presses `q` + Enter (line-buffered, 1 key then Enter). Under `ros2 launch` or a backgrounded process it does not work. Run the script from the foreground terminal with `ros2 run` equivalent (`python3 chirp_flight_script.py`), operator's hand on the keyboard, a second person watching the drone. Consider a hardware abort too: the radio-less option = remote-control or pulling the battery (not instant).
+6. **Monitor only runs while ROS callbacks are spun** (inside `th.sleep`). Any blocking call (takeoff/land service wait) stalls it; script uses abortable sleeps, but `cf.takeoff` / `cf.land` themselves are non-blocking requests, so OK. Mock-tested only; CS2 sim backend cannot run `emergency` (not implemented) => the real `cf.emergency()` path (cflib backend) is exercised for the first time in G4.
+7. **Telemetry topics 20 Hz** unless the 100 Hz yaml fragment is applied (needs CS2 relaunch and a yaml edit in the lab-PC crazyswarm2; and is cf5 `firmware_logging.custom_topics` only). 100 Hz is a G2 acceptance (>= 95 % of nominal messages in 60 s), otherwise 50 Hz. Higher telemetry rate adds radio load; solo so OK.
+8. **First flights low.** Card says hover 0.9 m for every flight; the user's rule is low first flights. Recommendation: G7 tethered 0.3-0.4 m at 0.1 m/s2 first; then F1 at **0.5 m, amplitude 0.1 then 0.2 m/s2 for the first 20 s** is NOT in the card (card F1 = 0.3 m/s2 at 0.9 m): decision needed. Proposed: F1 = 0.6 m (the lab standard 0.5 m was used for all DiffCoTune flights; chirp reference positions at 0.9 m exceed the mocap-validated volume?: check the mocap box) with amplitude ramp 0.1 -> 0.3 over the first 20 s of the chirp.
+9. **0.3 m/s2 peak roll 10.6 deg is frsim**, with the sim loop being MORE damped (Ms 10.9 dB sim vs the real unknown, real damping 0.02 vs sim 0.12). The real roll at the lightly damped 3-4 Hz mode can be much larger than 10.6 deg. The chirp passes through 3-4 Hz where the loop gain peaks. Peak roll at the mode with real damping is untested.
+10. **Chirp envelope / amplitude units**: script position amplitude = amp / (2 pi f)^2 and v, a from numerical gradient on a 1 ms grid: at 1 Hz the position excursion is 0.3/39.5 = 7.6 mm, at 8 Hz 0.1 mm: tiny positions with relatively large mocap noise; the position feedback fights the feedforward acceleration. The script streams full state each 10 ms and indexes the grid by wall time (`th.time()`): any stall = jump in phase. Needs the G2 gap check (no gaps > 30 ms).
+11. **Hold burst after abort sets position to `pos0`** (a 0.3 s burst at 100 Hz): if the drone has drifted or is oscillating the position loop yanks it back; untested on a real vehicle. Consider a land-from-current-position (HLC `land` already does `notifySetpointsStop` first; the burst is optional).
+12. **S1 solo setup carries the S1 history**: climb overshoot to 0.74-0.80 m on A1 takeoff with these gains (S1 r0/r1 log), so `takeoff(0.9, 3 s)` may overshoot to ~1.1-1.2 m: ceiling / mocap box / downwash-free? Check the room height and the mocap volume. DShot hover check must still show diff +2.7 m/s2 after the flash.
+
+**Process / data risks**
+13. **The firmware patch is scratch-built.** REPORT_52 is inconsistent: "not linked" (line 7) vs "link succeeded without warning" (stack line); the RAM margin is 13.7-14.7 KB above the checked stack, main stack is only 1 KB: the new image is untested on the drone. A flash changes the image of record (87bd963e... `fbl_v2b_candidate.bin` / the DShot S1/S3 image 9e133f76; the current image sha for S1 is 9e133f76 per `lab_run.sh`). Need: the exact `.bin` path + sha256 of the PATCHED build (not stated in the package), diff against the flashed image is ONLY usddeck.c, controller/gains/params unchanged, and a rollback path (keep the flashed image `.bin`; re-flash command below).
+14. **After the flash all S1 flown behaviour must be re-verified**: controller slot line (console) `Using OutOfTree4 (9) controller`; param readback is a cache. Check `check_dshot_rpm.py` and the DShot hover check (+2.7 m/s2).
+15. **Config v3 on cf5's card** replaces `config.txt` (96-variable study config is the current one: sha d247134c...). The S0/S2/S3 round 4 flights tomorrow need the 96-variable config again + the patched image behaves the same with it (limit 128 >= 96; 16 KB ring only changes buffering, buffer line in config.txt line 2 = 8192 for the study config). Keep the study config copy and RESTORE it after the session (`restore_study_sd_config.py`): else DiffCoTune files change format. Decoder: `decode_usd_log_rename_additions.txt` needs merging into `decode_usd_log.py` names; the pipeline (`merge_usd_logs`, `round.py` ingest) reading a 115-column file is NOT validated: do not feed chirp logs into the v21 rounds.
+16. **uSD write margin** (G8): 215.5 kB/s v3 vs 178.5 kB/s now; the real 96-variable logs already lose 1.1 % rows. If G8 fails, no chirp flights.
+17. **Card capacity/file count**: cf5 now 29 files, cf_second 20: both < 85. Chirp uses cf5 only (solo). One log per flight + G tests (each G1/G8 writes a file; usd gate test leaves runTag 888 file): about 8 G files + 5 flights -> cf5 ~42. OK, but archive the G files (test files, not flights) before F1 as in lab_run.sh.
+18. **Lab / FBL**: the lab lock exists; the chirp session is the user's call. The S1 line of v21 is PAUSED: this session must not change `v21/S1` gain files (F3/F4 sets go into `chirp_session/`, not into `v21/`), and must not use `GAINS_ROOT` default (v1 gains).
+19. **Battery**: 0.9 m hover + 3 min flight + 60 s chirps x2: fresh pack per flight, rest >= 4.1 V, stop if < 3.7 V loaded in the log (`pm.vbat`; the card says "battery below the lab minimum" without a number: use 3.6 V low-pass over 0.5 s -> land).
+20. **cf_second must be OFF the radio and not powered in the room volume** (solo yaml switch; `lab_run.sh solo S1 1`), otherwise radio sharing and a second body in the mocap.
+21. **Mocap**: chirp amplitude in position is mm-level; mocap dropouts (real packet statistics) change E_full results, not safety. A dropout > 0.5 s: EKF diverges: abort rule `telemetry silent` covers radio, not mocap: add a vbat/position sanity check (z < 0.3 m or |pos - pos0| > 0.3 m = abort) in the script: currently NOT in the abort list.
+22. Draft script details to review: `cf.get_position()` fallback uses `initialPosition` + hover (OK only with `--auto-center` not used here), `Monitor(swarm.allcfs, cf.prefix)` passes `allcfs` as node (check it is a Node), `log` file written in the CWD, keys thread is a daemon on `sys.stdin`.
+
+---------------------------------------------------------------------------------------------------
+## 2. Lab integration plan (exact paths; crazyswarm2 NOT changed now)
+
+Laptop = this repo `~/Desktop/flying_robot_course` (branch feature/auto-tuning); lab PC = `~/flying_robot_course`, same branch, `git pull`.
+
+### 2.1 Files to add (all in OUR repo, none in crazyswarm2; copy, never edit the sim agent's branch)
+| source (read-only) | destination in this repo | note |
+|---|---|---|
+| `proposal/chirp_flight_script_DRAFT.py` | `experiments/diffcotune/lab/chirp_session/chirp_flight.py` | after items 1, 5, 21 changes (below); run with `python3`, not `ros2 run` (needs stdin) |
+| `proposal/usd_study_config_chirp_proposed_v3.txt` | `experiments/diffcotune/lab/chirp_session/usd_chirp_config_v3.txt` | copied to cf5's card as `config.txt` only; keep `flying_drone_stack/tools/usd_study_config.txt` untouched |
+| `proposal/crazyflies_chirp_telemetry_PROPOSED.yaml` | `experiments/diffcotune/lab/chirp_session/crazyflies_chirp_telemetry.yaml` | fragment for the cf5 block; merge into the lab-PC yaml (the lab yaml is edited by `lab_run.sh prep`; `YAML.before_lab_run_2026-11-18` is the backup), see 2.4 |
+| `proposal/usddeck_limit128_ring16k_AB.patch` | `experiments/diffcotune/lab/chirp_session/usddeck_limit128_ring16k_AB.patch` | applied to the firmware tree on the laptop (`~/Desktop/crazyflie-firmware` / `flying_drone_stack/firmware_app`: path of the usddeck.c tree to be confirmed) |
+| `proposal/decode_usd_log_rename_additions.txt` | merged into `flying_drone_stack/tools/decode_usd_log.py` by the user's go (not before) | 115-column names |
+| new | `chirp_session/gains_F{1,2,3,4,5}.yaml` | F1/F2/F5 = copy of `v21/S1/round_1/gains.yaml`; F3 = KR_x/KR_y x1.1 -> 0.00847 (Kw unchanged 0.001178120757958952); F4 = x1.2 -> 0.00924. **To be confirmed with the sim agent** (Kw, KR_z) |
+| new | `chirp_session/session_log_2026-11-28.md` | one line per step/flight |
+
+Changes needed to the script before use (list only; no edit now): (a) uSD start/stop with gate (item 1); (b) abort additions: position excursion > 0.3 m, z < 0.3 m after takeoff wait, vbat < limit; (c) hover height argument `--height` (default 0.6 for F1); (d) `--amp-ramp` first 20 s; (e) write setpoints/CSV to `chirp_session/out/` named by flight id (F1..F5, G2); (f) require TTY (exit if `not sys.stdin.isatty()`).
+Changes needed to crazyswarm2 (**not made**): none mandatory. Optional: 100 Hz telemetry fragment (yaml in the lab-PC workspace); `usd_gate` import path `crazyflie_examples.usd_gate` (exists in `~/Desktop/crazyswarm2` on the laptop; on the lab PC it is in the built workspace).
+
+### 2.2 Flash procedure (patched image) and readback
+Laptop first (the planning agent / user decide; this is a firmware change):
+1. `cd <firmware tree>` ; `git status` clean; `patch -p1 --dry-run < .../usddeck_limit128_ring16k_AB.patch` then apply; full build for the SAME target/config as the image of record (S1/S3 DShot image 9e133f76); record `size` output: RAM must be 116.4 KB of 131 KB, stack check passes; save `chirp_ring16k_candidate.bin` + `sha256sum` into `chirp_session/IMAGE.md`. **Stop if the link or RAM check fails.**
+2. Keep the current image for rollback: `flying_drone_stack/firmware_app/build_artifacts/` (the image with sha 9e133f76; path to be confirmed, not found in the repo listing).
+3. Flash cf5 ONLY (solo session; cf_second stays on the image of record), CS2 stopped, drone on: `cfloader flash $BIN stm32-fw -w radio://0/80/2M/E7E7E7BB02` (command as in `docs/fbl/LAB_PLAN.md`), power-cycle.
+4. Readback: `python3 flying_drone_stack/tools/check_active_controller.py radio://0/80/2M/E7E7E7BB02 9` must print "Using OutOfTree4 (9) controller" (console line; param readback is a cache); `python3 flying_drone_stack/tools/check_dshot_rpm.py radio://0/80/2M/E7E7E7BB02`; `python3 experiments/diffcotune/lab/apply_gains.py readback --uri radio://0/80/2M/E7E7E7BB02 --fragment experiments/diffcotune/lab/chirp_session/gains_F1.yaml --strategy S1` after the CS2 yaml apply (as in `lab_run.sh prep`); `python3 flying_drone_stack/tools/check_usd_deck.py radio://0/80/2M/E7E7E7BB02` after the card config is v3: console must show `malloc buffer 16384 bytes [OK]`.
+5. DShot hover check after the first hover (G7 / F1): `diff = a_rpm_fz - a_imu_fz ~ +2.7 m/s2`.
+6. **Rollback**: re-flash the image of record with the same `cfloader` line, restore the study config (`restore_study_sd_config.py`), `check_usd_deck.py`, controller 9 check.
+
+### 2.3 Card handling
+Cards at /media/georg/THESIS1 (cf5) and THESIS2 (cf_second). Before the session: both cards < 85 files (now 29 / 20), `python3 flying_drone_stack/tools/usd_card_count.py --expect 0` after archiving test files. cf5 card: `config.txt` := `chirp_session/usd_chirp_config_v3.txt` (`cp` + `sha256sum`, copy of the old config saved as `config.txt.study96` OUTSIDE the card root). cf_second card unchanged and drone off. Copy after each flight: `python3 flying_drone_stack/tools/copy_usd_log.py /media/georg/THESIS1 cf5_chirp_F<n> --dest experiments/logs/usd_raw/2026-11-28` (byte verify; tag by flight id; match to the setpoint CSV by time). No radio CSVs.
+
+### 2.4 Yaml / CS2
+`export GAINS_ROOT=$PWD/experiments/diffcotune/lab/v21` is NOT used here (the F sets live in `chirp_session/`); `lab_run.sh prep` takes `$GAINS_ROOT/<S>/round_<l>/gains.yaml`. Plan: create `chirp_session/v21chirp/S1/round_{1,3,4}/gains.yaml` (F1/F2/F5 = copy of `v21/S1/round_1`; F3, F4 modified) so the standard wrapper works unchanged:
+`export GAINS_ROOT=$PWD/experiments/diffcotune/lab/chirp_session/v21chirp` and `experiments/diffcotune/lab/lab_run.sh prep S1 1` (round dirs 1, 3, 4 = F1/F2/F5, F3, F4; names to be agreed). Then `lab_run.sh solo S1 <l>` (cf_second disabled). Note `prep` includes `check_dshot_rpm`, readback, gate test (both drones) and leaves test files to archive. For 100 Hz telemetry merge the fragment with `apply_gains.py merge --fragment chirp_session/crazyflies_chirp_telemetry.yaml --yaml $YAML --out $YAML.new` only if the merge tool supports the `firmware_logging` key (not checked) otherwise by hand; sha256 of the yaml after every switch; CS2 relaunch.
+
+---------------------------------------------------------------------------------------------------
+## 3. Lab-day run sheet
+
+Conventions: lab PC, `cd ~/flying_robot_course && git pull`; one terminal for CS2, one for commands. "Stop rule" = stop the whole session and tell the planning agent. Log every step with a time in `chirp_session/session_log_2026-11-28.md`. After every flight: `<GONOGO>` (sim agent script, REPORT_59) on the copied log; flight is only counted if GO.
+
+### Step 0. Setup (user, once)
+| # | Command | Expected | Stop rule |
+|---|---|---|---|
+| 0.1 | `git pull`; `git log --oneline -1`; `sha256sum` of chirp_session files | files present, sums as in IMAGE.md | missing / differing |
+| 0.2 | mocap on, props OFF, fresh battery on cf5, cf_second OFF and removed from the room | - | - |
+| 0.3 | flash the patched image on cf5 (2.2 steps 3-5) | readback lines OK, `malloc buffer 16384 bytes [OK]` | link/readback fails -> rollback 2.2.6, no flights |
+| 0.4 | `python3 flying_drone_stack/tools/usd_card_count.py --expect 0` after archiving, both cards | < 85 files each | >= 85 |
+
+### Ground tests (props OFF unless stated)
+| # | Command / action | Expected | Stop rule |
+|---|---|---|---|
+| G1 logging chain 10 s | start logging (gate), hand-tilt the drone, stop; `python3 flying_drone_stack/tools/decode_usd_log.py <file>` | `locsrv_q*` unit norm and changing; 4 tau columns non-zero, change with tilt; `torquex` present; file closed | any column missing/zero -> NO-GO (patch/config) |
+| G2 stream delivery 20 s (clamped, idle) | `python3 experiments/diffcotune/lab/chirp_session/chirp_flight.py --ground --T 20` (to be added) | `ctrltarget_ay` follows the chirp (amp 0.3, 100 Hz, no gaps > 30 ms); telemetry msgs per topic over 60 s >= 95 % of nominal | gap > 30 ms or < 95 % -> fall back to 50 Hz; still bad -> stop |
+| G3 operator abort | during the stream press `q` + Enter | first hold setpoint in the log < 0.2 s after the key; HLC land accepted | >= 0.2 s -> stop |
+| G4 emergency (clamped, props off) | key `e`; also `ros2 service call /all/emergency std_srvs/srv/Empty` | `motor.m*` / `rpm.m*` = 0 within one tick; reboot after | motors not 0 -> stop |
+| G5 telemetry trip (hand) | tilt > 15 deg for > 0.3 s; spin > 300 deg/s for > 0.3 s | abort fires; write down delay (expected 0.30-0.35 s + radio) | no trip -> stop |
+| G6 stream loss (clamped) | pull the dongle during the stream | level-out ~0.5 s, motors off ~2 s (`supervisor.info`) | times differ from code -> nothing is flown |
+| G8 uSD write margin 120 s idle | 1) v3+patch, 2) control: study 96-variable config, same card, fresh format/archived | v3: rows with dt > 3 ms < 0.2 %, no gap > 60 ms, `usd.fatWrBps` ~ 215 kB/s; control ~ 1.1 % loss | not met -> lower log rate to 250 Hz (REPORT_52) or stop |
+| G7 tethered low step (props ON, user decision, FIRST flight) | slack tether, hover 0.3-0.4 m, chirp 0.1 m/s2 for the first 20 s only, then test `q` once in the air with a hold command | no tilt > 8 deg, abort test clean | any tilt > 10 deg -> land, stop |
+Order: G1, G2, G3, G4, G5, G6, G8, then G7 (G7 = first flight, last ground item).
+
+### Flights F1-F5 (solo, hover height per item 8; each: takeoff, 10 s hold, y chirp 1->8 Hz 60 s, 5 s rest, x chirp 60 s, 10 s hold, land; ~3 min)
+Before EACH flight: fresh battery, `check_usd_deck.py` cf5 (canLog 1, `usd.bcUSD`), `usd_card_count.py` < 85, readback of the gains of that flight, controller 9 console line after any reboot. Start: `python3 experiments/diffcotune/lab/chirp_session/chirp_flight.py --height <h> --amp 0.3 --flight F<n>` (foreground terminal, hand near keyboard, `q`+Enter = land, `e`+Enter = emergency). After landing: `usd.logging 0` is done by the script, power state: leave the drone on for the copy? No: copy only after power-off (card handling while powered gave canLog 0 on 11-20).
+| # | Gains | Expected | Go for next | Stop rule |
+|---|---|---|---|---|
+| F1 | `chirp_session/.../round_1` (S1 v21 r1) | file complete (115 columns), coherence chirp->attitude > 0.8 over 1.5-8 Hz, tilt response linear | `<GONOGO>` GO and tilt max < 8 deg, roll gyro rms in the holds < 30 deg/s | tilt > 15 deg, abort fired, or limit-cycle (roll gyro rms over 0.5 s > 150 deg/s) |
+| F2 | same (repeat after the quick look) | measurement: gyro-vs-mocap delay +-2 ms, L(f) Ms/PM/GM (sim ref Ms 10.9 dB, PM 18 deg, GM 4.8 dB at the flown gains) | `<GONOGO>` GO and tilt max < 10 deg | as F1 |
+| F3 | KR x1.1 (item 2: decision first) | margin trend (sim x1.3: dMs +2.1 dB, dPM -4.3 deg) | GO and tilt max < 12 deg | oscillation (3-4 Hz) in the hold segment, roll rms > 30 deg/s in the 10 s holds -> end series, NO F4 |
+| F4 | KR x1.2 (item 2) | one step closer to the edge | end of the KR series | same; first sign of growth -> `q` |
+| F5 | same as F2 | repeatability (error bars) | - | as F1 |
+After each flight (user): power off, card out, `copy_usd_log.py` (2.3), then `<GONOGO> <copied file>`; quick look: tilt max, gyro rms in the holds, `pm.vbat`. Nothing flies the next item if GO is missing.
+
+### End of session
+1. Restore: re-flash is NOT required (the patched image is compatible), but put the study config back: `restore_study_sd_config.py` / copy `config.txt.study96`, `check_usd_deck.py`; decide with the user whether cf5 keeps the patched image for DiffCoTune S3/S0/S2 round 4 (they are scheduled next; they need the 96-variable config, line 2 `8192` as before).
+2. Archive test files (G-tests, usd gate 888 files) in `_archive_2026-11-28_chirp` on the cards, `usd_card_count.py --expect 0`.
+3. Switch the yaml back (`lab_run.sh prep S3 4` does this next session), `session_log` entry, commit explicit paths; the lab lock is removed only by the user.
+
+---------------------------------------------------------------------------------------------------
+## 4. Open questions for the user / planning agent
+1. Approve the script wrapper changes (uSD start with gate, extra abort triggers, TTY check, height/amp-ramp arguments)?
+2. F1 height: 0.9 m as in the package, or lower (0.5-0.6 m) with an amplitude ramp 0.1 -> 0.3? G7 tethered first: yes/no?
+3. F3/F4 (KR x1.1, x1.2): given the real edge at x1.0 and the 17 cm oscillation of v21 S1 round 2, do them at all? Which gains exactly (KR_x/y only, Kw unchanged)?
+4. Image: who builds the patched `.bin`, which target/config, and on which machine? Flash cf5 only?
+5. REPORT_59: GO/NO-GO script path and thresholds (replace every `<GONOGO>`).
+6. Battery minimum voltage for the abort (the card says only "lab minimum").
+7. Does the chirp session run before the S3/S0/S2 round 4 flights, and is the 96-variable config restored in between?
