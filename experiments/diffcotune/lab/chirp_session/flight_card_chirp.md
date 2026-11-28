@@ -14,12 +14,12 @@ G1 logging chain 10 s; G2 `python3 chirp_flight.py --ground --T 20 --flight G2` 
 ## 2. Flights (solo, `python3 chirp_flight.py --height 0.6 --amp 0.3 --flight F<n>`; each: takeoff, uSD gate in hover, 10 s hold, y chirp 1 -> 8 Hz 60 s with the ramp 0.1 -> 0.3 m/s2 over 20 s, 5 s rest, x chirp 60 s, 10 s hold, land, uSD stop; about 3 min)
 | # | gains (`chirp_session/v21chirp/...`) | decides | check after the flight (copied file; < 2 min) | go to next if |
 |---|---|---|---|---|
-| F1 | S1 v21 r1 as flown (`S1/round_1`) | chain works, linear response | `python3 usd_check.py <F1> --axis y --amp 0.3 --kr 0.0077 --kw 0.00117812 --tilt-go 8` and `--axis x` for the x chirp | GO |
-| F2 | same | **the measurement** | same with `--tilt-go 10` | GO |
-| F3 | KR_x = KR_y x0.9 = 0.00693 (`S1/round_3`); KR_z 0.0088 and Kw unchanged | margin trend toward the stable side | `--kr 0.00693 --kw 0.00117812 --tilt-go 10` | GO |
+| F1 | S1 v21 r1 as flown (`S1/round_1`) | chain works, linear response | `python3 usd_check.py <F1> --axis y --amp 0.3 --kr 0.0077 --kw 0.00117812 ` and `--axis x` for the x chirp; the default `--tilt-go` is 12 deg (user decision: a WARN between 12 and 15 deg means stop and decide) | GO |
+| F2 | same | **the measurement** | same | GO |
+| F3 | KR_x = KR_y x0.9 = 0.00693 (`S1/round_3`); KR_z 0.0088 and Kw unchanged | margin trend toward the stable side | `--kr 0.00693 --kw 0.00117812 ` | GO |
 | F4 | dropped (real edge at KR x1.0; S1 r2 at x1.10 oscillated) | - | - | - |
 | F5 | same as F2 | repeatability | as F2 | - |
-| F6 | **S3 v21 r1 as flown** (`S3/round_1`: KR_x/y 0.00707035, Kw 0.00113856; NS2 active) | the S3 check, analysed like F2, reported separately | `--kr 0.00707035 --kw 0.00113856 --tilt-go 10` | GO |
+| F6 | **S3 v21 r1 as flown** (`S3/round_1`: KR_x/y 0.00707035, Kw 0.00113856; NS2 active) | the S3 check, analysed like F2, reported separately | `--kr 0.00707035 --kw 0.00113856 ` | GO |
 `usd_check` reads the gains of the axis that was excited: the y chirp (roll) checks `KR_x / Kw_x`, the x chirp (pitch) checks `KR_y / Kw_y` (tested on frsim files for F6 and the x axis). The amplitude check expects the ramp (`--amp0 0.1 --ramp 20`, defaults; `--no-ramp` for flat files): segment peaks against the expected envelope, then 0.3 +-15 %.
 NO-GO: stop and read the failed check. After each flight: power off, card out, `copy_usd_log.py` byte-verified, then `usd_check`. Nothing flies the next item without GO.
 

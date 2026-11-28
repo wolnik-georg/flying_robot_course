@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """usd_check (REPORT_59 L3): on-the-spot GO / NO-GO of one chirp flight from its uSD file, in well under 2 minutes.
-  usage: python3 usd_check.py <uSD file> [--axis y|x] [--amp 0.3] [--kr 0.0077] [--kw 0.00117812] [--tilt-go 8.0] [--hold-gyro-go 30]
-Checks: (1) all 115 variables of config v3 present with the right type; (2) lost rows < 0.2 % and no gap > 60 ms; (3) the chirp is on the right axis (y chirp -> roll, ctrltarget_ay; x chirp -> pitch, ctrltarget_ax), peak acceleration within 15 % of --amp, swept 1 -> 8 Hz, the other axis quiet; (4) peak tilt below --tilt-go (card: F1 8 deg; 15 deg is the abort limit);
+  usage: python3 usd_check.py <uSD file> [--axis y|x] [--amp 0.3] [--kr 0.0077] [--kw 0.00117812] [--tilt-go 12.0] [--hold-gyro-go 30]
+Checks: (1) all 115 variables of config v3 present with the right type; (2) lost rows < 0.2 % and no gap > 60 ms; (3) the chirp is on the right axis (y chirp -> roll, ctrltarget_ay; x chirp -> pitch, ctrltarget_ax), peak acceleration within 15 % of --amp, swept 1 -> 8 Hz, the other axis quiet; (4) peak tilt below --tilt-go (default 12 deg, user decision; a WARN between --tilt-go and the 15 deg abort limit means: stop and decide);
 (5) roll/pitch gyro rms in the first 8 s (hold) below --hold-gyro-go deg/s; (6) timing pipeline OK (mocap quaternion present, unit norm, changing; coherence gyro vs mocap >= 0.8 in >= 4 of 5 bands); (7) KR / Kw logged as commanded (1 %); (8) the INDI-correction variables are not constant (the rate reference omega_r is ~0 for a streamed full-state setpoint: jerk 0); usd.fatWrBps shown.
 Exit code 0 = GO, 1 = NO-GO."""
 import os, sys, time, argparse, json, numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import chirp_lib as CL, cfusdlog
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('file'); ap.add_argument('--axis', default='y'); ap.add_argument('--amp', type=float, default=0.3); ap.add_argument('--kr', type=float, default=0.0077); ap.add_argument('--kw', type=float, default=0.00117812); ap.add_argument('--tilt-go', type=float, default=8.0); ap.add_argument('--hold-gyro-go', type=float, default=30.0); ap.add_argument('--amp0', type=float, default=0.1, help='ramp start (run sheet: 0.1 -> amp over --ramp s)'); ap.add_argument('--ramp', type=float, default=20.0); ap.add_argument('--no-ramp', action='store_true', help='flat-amplitude file (old rehearsals)'); a = ap.parse_args(); t_start = time.time(); R = []
+    ap = argparse.ArgumentParser(); ap.add_argument('file'); ap.add_argument('--axis', default='y'); ap.add_argument('--amp', type=float, default=0.3); ap.add_argument('--kr', type=float, default=0.0077); ap.add_argument('--kw', type=float, default=0.00117812); ap.add_argument('--tilt-go', type=float, default=12.0); ap.add_argument('--hold-gyro-go', type=float, default=30.0); ap.add_argument('--amp0', type=float, default=0.1, help='ramp start (run sheet: 0.1 -> amp over --ramp s)'); ap.add_argument('--ramp', type=float, default=20.0); ap.add_argument('--no-ramp', action='store_true', help='flat-amplitude file (old rehearsals)'); a = ap.parse_args(); t_start = time.time(); R = []
     def add(name, ok, detail, warn=False): R.append((name, 'PASS' if ok else ('WARN' if warn else 'FAIL'), detail))
     raw = cfusdlog.decode(a.file)
     if raw is None or 'fixedFrequency' not in raw: print('NO-GO: not a uSD log (magic / event missing)'); return 1

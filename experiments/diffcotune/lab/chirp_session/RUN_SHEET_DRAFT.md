@@ -6,6 +6,14 @@ Source package (read-only, branch `desk/s1-simulator-gap`): `~/Desktop/frc_desk_
 **Placeholders filled from REPORT_59 (sim worktree commit 93536bfe, 28 Nov): none left.** `<PATCHED_BIN>` = section 2.2a, `<GONOGO>` = `usd_check.py` (section 3.1). Where the sim card and this sheet differ, this sheet is the lab master (section 5).
 Rules: uSD logs only; never `usec.reset` in flight; cards < 85 files; CPU only; fresh batteries; `GAINS_ROOT=$PWD/experiments/diffcotune/lab/v21`.
 
+## User logistics checklist (before the lab session; tick by hand)
+- [ ] Room booked (and the lab lock decision is yours)
+- [ ] Fresh batteries (one per flight F1-F3, F5, F6, plus G7 and spares; rest >= 4.1 V, swap if < 4.0 V)
+- [ ] Both uSD cards archived, each < 85 files (now 29 / 20); cf5 card gets `config.txt` v3
+- [ ] Mocap calibrated
+- [ ] Tether for G7 (slack, hover 0.35 m)
+- [ ] Laptop with the patched bin AND the rollback bin: `flying_drone_stack/firmware_app/build_artifacts/fbl_v2b_dshot_usd128_candidate.bin` (+ `.sha256`) and `fbl_v2b_dshot_candidate.bin` (section 2.2a), Crazyradio, cfloader
+
 ---------------------------------------------------------------------------------------------------
 ## 0. Decisions applied (user, 2026-11-28; the user may override)
 1. **uSD logging:** verified start/stop path as a snippet, `chirp_session/usd_start_snippet.py` (source: crazyswarm2 `usd_gate.py`, commit 42fc430; usage in `run_formation.py` at HEAD fd1167f = post-set fix; line numbers inside the file). The sim agent puts it into `chirp_flight.py`: ground precheck, `usec.reset` on the ground only, `start_and_verify` in hover before the chirp, `stop_and_verify` after landing, `usd.logging 0` in `finally`.
@@ -213,5 +221,6 @@ Files reviewed: `proposal/lab_pkg/chirp_flight.py`, `flight_card_chirp.md`, `PAC
 ---------------------------------------------------------------------------------------------------
 ## 7. Package copied into our repo (28 Nov, user decision)
 Source: sim worktree `~/Desktop/frc_desk_s1gap`, commit **b17da76b** (REPORT_61), path `experiments/desk_s1_gap/proposal/lab_pkg/`, read with `git -C ~/Desktop/frc_desk_s1gap show b17da76b:<path>` (not the working tree); each copy verified with `cmp` against `git show`. Destination `experiments/diffcotune/lab/chirp_session/` (flat, so the tools find each other): `chirp_flight.py usd_check.py usd_analyse.py chirp_lib.py decode_usd_log_v3.py decode_usd_log_v3.patch config.txt v3_variables.json q2_loop.py q2_timing.py rebuild.py cfusdlog.py flight_card_chirp.md PACKAGE_MANIFEST.md`. The firmware bin is not copied here (it is in `build_artifacts/`, section 2.2a). `decode_usd_log_v3.patch` is NOT applied to `flying_drone_stack/tools/decode_usd_log.py` (needs the user's go; the chirp tools use the bundled `decode_usd_log_v3.py`).
+**Update 28 Nov (user): `usd_check.py` and `flight_card_chirp.md` re-copied from sim commit 3229483c** ("usd_check: --tilt-go default 12 deg", read with `git show 3229483c:<path>`, `cmp` verified); the other 12 files stay from b17da76b. `decode_usd_log_v3.patch` stays NOT applied; revisit after the session if v3 becomes the standard.
 Where this overrides the sheet text above: the analysis tools live here, not in `flying_drone_stack/tools/chirp_session/` (open item 2 closed).
 Run from the copied location, dry-run files read from the sim worktree (`results/dryrun*/`, untracked there), `--tilt-go 12`: F2 y GO, F2 x GO, F3 GO with WARN 4 (peak above 12 deg in the sim file), F6 (S3 values) GO, `F2_amp2` NO-GO. The `chirp_flight.py` launch directory is `chirp_session/`; it writes the setpoint CSVs to `chirp_session/out/` (create the folder is automatic; do not commit it).
