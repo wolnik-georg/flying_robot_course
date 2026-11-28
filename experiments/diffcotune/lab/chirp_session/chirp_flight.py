@@ -120,7 +120,7 @@ def stream_land(cf, th, xy_pos, z_start):
     t1 = th.time()
     while not th.isShutdown() and th.time() - t1 < 1.5: cf.cmdFullState(np.array([xy[0], xy[1], 0.07]), zero3, zero3, 0.0, zero3); th.sleepForRate(20.0)
     t1 = th.time()
-    while not th.isShutdown() and th.time() - t1 < 0.5: cf.cmdFullState(np.array([xy[0], xy[1], 0.02]), zero3, zero3, 0.0, zero3); th.sleepForRate(20.0)
+    while not th.isShutdown() and th.time() - t1 < 2.0: cf.cmdFullState(np.array([xy[0], xy[1], 0.02]), zero3, zero3, 0.0, zero3); th.sleepForRate(20.0)
     th.sleep(0.2); cf.notifySetpointsStop(); th.sleep(0.3); cf.arm(False); print('[chirp] landed, disarmed')
 
 def abort_sequence(cf, th, mon, height, log, ground=False):
