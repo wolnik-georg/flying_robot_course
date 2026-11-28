@@ -14,3 +14,8 @@ Flights (all complete, 115 vars, ~0.5 % lost rows, copies byte-verified in exper
   F3 S1 KR x0.9 thesis06 (KR_x 0.00693 logged): roll 10.7 / 16 / 5.1 | pitch 10.7 / 16 / 4.5
   F5 S1 r1 thesis07: roll 10.4 / 18 / 5.2 | pitch 11.5 / 20 / 4.3
   29 Hz INDI line in every flight (28.7-28.9 Hz); gyro delay minus mocap latency -5.5..+1.5 ms. Failed / empty files: thesis00, 02, 04 (0 B, aborted attempts). G1-G8 not run (user decision); hover at ~0.8 m (height after takeoff).
+Extra flights (user, 19:0x-19:25), all complete, copies byte-verified:
+  F7 S1 r1, amp 0.15 (ramp 0.05->0.15) thesis08: roll Ms 13.6 [9.9,17.3] PM 20 GM 2.9 | pitch 12.6 / 25 / 3.4 (wide CIs, low SNR); peak tilt 19.5 deg only at touchdown (z 0.07), in air p99 5.8 deg
+  F8 S0 r1 (KR_x 0.0074677, Kw_x 0.001265 logged; tau_rpm std 0 = no INDI) thesis09: roll Ms 8.5 PM 24 GM none | pitch 8.4 / 25 / none; no 29 Hz line (strength 4-5)
+  F9 S3 r1 (KR_x 0.0070704 logged) thesis10: roll 11.7 / 17 / 4.5 | pitch 8.6 / 21 / 4.4
+  Correction: rnn.pred_* is non-zero in S0/S1 too (computed always), so it does NOT prove NS2 is applied; S3 = strategy set by lab_run.sh solo S3 (lab_check_strategy + readback), not shown by the log.
