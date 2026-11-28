@@ -83,8 +83,10 @@ def usd_stop(ctx):
 def usd_finally(ctx):
     """in the script's finally: every exit path closes the file (idempotent)"""
     if ctx and ctx.get('started'):
-        try: ctx['allcfs'].setParam('usd.logging', 0)
-        except Exception: pass
+        for _ in range(3):   # LAB 2026-11-28: resend the close 3x (an unclosed file = 0 B on the card); then tell the operator when power-off is safe
+            try: ctx['allcfs'].setParam('usd.logging', 0); ctx['th'].sleep(0.5)
+            except Exception: pass
+    print('[chirp] DONE - uSD file closed. Wait 3 s, then power cf5 off.')
 
 def asleep(th, mon, dur, cf=None):
     """abortable sleep"""
