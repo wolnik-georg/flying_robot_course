@@ -107,6 +107,20 @@ def stream(cf, th, mon, pos0, axis, T, f0, f1, amp0, amp, ramp, rest, log, fligh
         th.sleepForRate(RATE_HZ)
     return n
 
+def stream_land(cf, th, xy_pos, z_start):
+    """LAB 2026-11-28: streamed landing, copied from crazyswarm2 flight.py _onboard_stream_land (fd1167f). After cmdFullState the firmware
+    stays in low-level mode, so HLC land() is ignored and the setpoint watchdog then cuts the motors in the air (documented 2026-09-09; F1 today).
+    Keep streaming, chase the measured height down at 0.20 m/s, disarm via z only on the ground, then hand back with notifySetpointsStop."""
+    zero3 = np.zeros(3); xy = np.array(xy_pos[:2], float); z_meas = float(z_start); t0 = th.time(); max_s = max(z_meas - 0.12, 0.0) / 0.20 + 8.0
+    print(f'[chirp] streamed landing from z={z_meas:.2f} m')
+    while not th.isShutdown() and th.time() - t0 < max_s:
+        p = np.asarray(cf.position, float); z_meas = float(p[2]) if np.any(p) else z_meas
+        if z_meas <= 0.12: break
+        cf.cmdFullState(np.array([xy[0], xy[1], max(z_meas - 0.04, 0.07)]), np.array([0.0, 0.0, -0.20]), zero3, 0.0, zero3); th.sleepForRate(20.0)
+    t1 = th.time()
+    while not th.isShutdown() and th.time() - t1 < 0.5: cf.cmdFullState(np.array([xy[0], xy[1], 0.02]), zero3, zero3, 0.0, zero3); th.sleepForRate(20.0)
+    th.sleep(0.2); cf.notifySetpointsStop(); th.sleep(0.3); cf.arm(False); print('[chirp] landed, disarmed')
+
 def abort_sequence(cf, th, mon, height, log, ground=False):
     """emergency key -> cf.emergency() FIRST; otherwise (1) hold burst at the CURRENT position (0.3 s, 100 Hz; one packet already stops the chirp by the zero-order hold), (2) notifySetpointsStop, (3) HLC land, (4) last resort: 'e' key or limits still exceeded 1.5 s after the land command -> cf.emergency()"""
     log.append((th.time(), -1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
@@ -115,11 +129,8 @@ def abort_sequence(cf, th, mon, height, log, ground=False):
     if cur is not None and not ground:
         for _ in range(30): cf.cmdFullState(cur, np.zeros(3), np.zeros(3), 0.0, np.zeros(3)); th.sleepForRate(RATE_HZ)
     if ground: return
-    cf.notifySetpointsStop(); cf.land(targetHeight=0.03, duration=height + 1.0); t_land = th.time()
-    while th.time() - t_land < height + 2.0 and not th.isShutdown():
-        mon.poll()
-        if mon.emergency or (mon.bad_now and th.time() - t_land > 1.5): print('[chirp] EMERGENCY STOP'); cf.emergency(); return
-        th.sleep(0.02)
+    if cur is None: cur = np.array([0.0, 0.0, height])
+    stream_land(cf, th, cur, cur[2] if cur[2] > 0 else height)
 
 def parse(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0]); ap.add_argument('--flight', default='FX'); ap.add_argument('--height', type=float, default=0.6); ap.add_argument('--amp', type=float, default=0.3); ap.add_argument('--amp0', type=float, default=0.1); ap.add_argument('--ramp', type=float, default=20.0)
@@ -155,7 +166,7 @@ def main(argv=None):
                 if mon.abort: break
                 stream(cf, th, mon, pos0, 1 if ax == 'y' else 0, a.T, a.f0, a.f1, a.amp0, a.amp, a.ramp or None, 5.0 if ax != a.axes[-1] else a.hold, log, a.flight)
         if not mon.abort and not a.ground:                                                   # normal end: hold burst not needed, land
-            cf.notifySetpointsStop(); cf.land(targetHeight=0.03, duration=a.height + 1.0); asleep(th, mon, a.height + 2.0, cf)
+            p_now = np.asarray(cf.position, float); stream_land(cf, th, pos0, float(p_now[2]) if np.any(p_now) else a.height)
     finally:
         if mon.abort: print('[chirp] ABORT:', mon.reason)
         try:
