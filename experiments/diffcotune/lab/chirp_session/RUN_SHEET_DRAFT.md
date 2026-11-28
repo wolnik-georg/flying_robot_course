@@ -154,11 +154,11 @@ After each flight (user): power off, card out, `copy_usd_log.py` (2.3), then `us
 3. Session log entry, commit explicit paths; the lab lock is removed only by the user. Round 4 flights stay on hold (decision 6).
 
 ---------------------------------------------------------------------------------------------------
-## 4. Open items
-None for the placeholders. To settle before the lab day:
-1. `chirp_flight.py` in `proposal/lab_pkg/` is still the unchanged DRAFT logic (checked 28 Nov): no uSD start/stop (snippet not integrated), no amplitude ramp, no `--height` (HOVER_Z fixed 0.9), no excursion / z < 0.25 m abort, no TTY check, no per-flight output name. The sim agent's REPORT_61 is to bring it to F1-F6; the lab agent must review the final file against section 2.1 (a)-(f) before G2.
-2. Copy plan (not done): bin to the flashing PC; analysis files to `flying_drone_stack/tools/chirp_session/`; `chirp_flight.py` to `experiments/diffcotune/lab/chirp_session/chirp_flight.py` (NOT crazyswarm2, see section 5).
-3. v3 config on the cf5 card: `lab_pkg/config.txt` is byte-identical to `proposal/usd_study_config_chirp_proposed_v3.txt` (checked).
+## 4. Open items (after the REPORT_61 review, section 6)
+1. **Decision for the user: the tilt rule vs the sim's own prediction.** `usd_check` check 4 only WARNs (exit 0 = GO) when peak tilt is between `--tilt-go` and the 15 deg abort limit; the sheet's "go to next only if tilt max < 8 / 10 deg" is therefore NOT enforced by the exit code: the lab agent reads the WARN line by hand. Also the sim's expected peak roll at 0.3 m/s2 is 10.6 deg (frsim; the dry-run F2 shows 10.5 deg), above the F1 limit 8 and the F2/F3 limit 10: with the sim's own numbers F1 and F2 would end with a WARN. Choose: keep 8 / 10 (a WARN stops the series and the user decides), or raise F1/F2/F3 `--tilt-go` (e.g. 12, the sim card's old F3 value). Not changed by me.
+2. Copy plan (not done): analysis files (`usd_check.py chirp_lib.py cfusdlog.py decode_usd_log_v3.py v3_variables.json rebuild.py q2_loop.py q2_timing.py usd_analyse.py`) to `flying_drone_stack/tools/chirp_session/`; `chirp_flight.py` (commit b17da76b version) to `experiments/diffcotune/lab/chirp_session/chirp_flight.py`; the sim worktree commit is local only (not pushed), the lab PC cannot see it: files must travel by our repo or by hand.
+3. G2 must confirm: `cf.position` is live (the script reads `/cf5/pose` through crazyflie_py; it starts as [0, 0, 0] and is updated only inside `th.sleep`); a dead pose topic would trip the z < 0.25 m abort right after takeoff (safe direction) or leave the excursion check blind.
+4. v3 config on the cf5 card: `lab_pkg/config.txt` is byte-identical to `proposal/usd_study_config_chirp_proposed_v3.txt` (checked).
 
 ---------------------------------------------------------------------------------------------------
 ## 5. Differences: sim card (`proposal/lab_pkg/flight_card_chirp.md`, as of 13:24, REPORT_59) vs this sheet (the sheet is the lab master)
@@ -182,3 +182,30 @@ None for the placeholders. To settle before the lab day:
 | 16 | analysis tools | `flying_drone_stack/tools/chirp_session/` (manifest) | same; nothing copied yet |
 | 17 | telemetry 100 Hz yaml | optional | optional; accept only if G2 shows >= 95 % messages, else 50 Hz or 20 Hz (0.35 s trip) |
 | 18 | `flight_card` vs script | card says script in the card = final and mock-tested | the script is still the DRAFT logic (open item 1) |
+
+---------------------------------------------------------------------------------------------------
+## 6. Review of REPORT_61 (sim worktree commit b17da76b, read with `git show b17da76b:<path>`; lab agent, 28 Nov)
+Files reviewed: `proposal/lab_pkg/chirp_flight.py`, `flight_card_chirp.md`, `PACKAGE_MANIFEST.md`, `REPORT_61.md`. Dry-run files: `results/dryrun/*.bin` and `results/dryrun_x/F2.bin` exist only as UNTRACKED files in the sim worktree (not in the commit); `usd_check.py` used for the run is the committed b17da76b version (extracted by `git archive`).
+**Section 5 rows, all 18:**
+| # | resolved? | where |
+|---|---|---|
+| 1 height 0.6 | yes | `--height` default 0.6, G7 0.35, land duration follows the height |
+| 2 ramp | yes | `--amp0 0.1 --ramp 20` defaults, `chirp_triple` ramps `A(t)`; usd_check expects the ramp |
+| 3 flight list | yes | card F1, F2, F3, F5, F6 |
+| 4 F3 gains | yes | KR_x/y 0.00693, KR_z 0.0088 and Kw unchanged (card + `usd_analyse`) |
+| 5 F4 | yes | dropped |
+| 6 F6 | yes | S3 v21 r1, KR 0.00707035, Kw 0.00113856 |
+| 7 tilt-go | yes in the card (8 / 10 / 10 / 10 / 10); **but not enforced**: open item 1 |
+| 8 G7 first | yes | `--g7`, card order G1..G6, G8, G7 |
+| 9 location / python3 / TTY | yes | script refuses without a TTY (`CHIRP_ALLOW_NO_TTY=1_MOCK_TEST_ONLY` is a test escape; never set it in the lab); no crazyswarm2 change |
+| 10 uSD gate | yes | the four snippet functions are inside the script; order precheck -> `usec.reset` on the ground -> takeoff -> start_and_verify in hover -> chirp -> land -> stop_and_verify -> `usd.logging 0` in `finally`; a failed start trips an abort and lands; `usec.reset` appears only in `usd_setup` (ground) |
+| 11 aborts | yes | q / e, tilt 15 deg / rate 300 deg/s 0.3 s, telemetry silent 0.5 s, excursion > 0.3 m (marked user-approved in the script docstring and the card), z < 0.25 m after the takeoff wait, uSD start failure; no battery trigger; hold burst at the CURRENT position |
+| 12 battery | yes | printed at start and in the card (4.1 V / 4.0 V) |
+| 13 archive not format | yes | card text |
+| 14 decision 7 | yes | card section 4 |
+| 15 round 4 on hold | yes | card section 4 |
+| 16 analysis location | partly | manifest row updated; copies still to be made by us (open item 2) |
+| 17 telemetry yaml | yes | optional; 20 Hz topics exist in `crazyflies.yaml` (attitude, gyro_acc at 20 Hz) so the 0.5 s stale rule works without it (trip 0.35 s) |
+| 18 script final | yes | final logic, mock `main()` test 18/18 per REPORT_61 (not re-run by me) |
+**Script review notes (read-only, no edits):** (a) on a normal end the script lands with `notifySetpointsStop` + HLC land and waits `height + 2 s` before `usd_stop`; (b) after `e` the script skips `usd_stop` but still sends `usd.logging 0` (may not arrive after the firmware lock; the file may stay unclosed: check the card after any `e`); (c) `--ground` (G2) sends full-state setpoints at ground level: motors will spin, props OFF and the drone clamped as in the sheet; (d) no change to crazyswarm2; the script needs `crazyflie_examples.usd_gate` of 42fc430 from the built lab workspace.
+**`usd_check.py` on the sim agent's dry-run files (once, y axis unless noted; exit 0 = GO):** F2 y: GO (checks 1-3, 5-8 PASS, check 4 WARN: peak tilt 10.5 deg vs 10; `usd.fatWrBps` median 215,029 B/s); F2 x: GO; F3 (`--kr 0.00693`): GO; F6 (S3 values): GO. Negative files: `F2_amp2` NO-GO (check 3, peak 0.598), `F2_lostrows` NO-GO (check 2, 3.04 % rows), `F2_swapaxis` NO-GO (checks 3, 6), `F2_novar` NO-GO (checks 1, 8), `F2_wrongkr` checked against the S3 values NO-GO in the sim agent's dry run, and by me against 0.00693 / 0.00847 NO-GO (check 7), GO against its own 0.0077. These are frsim-generated files, not flights.
